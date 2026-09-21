@@ -1,0 +1,30 @@
+{
+  "player": {
+    "startSquad": 1,
+    "moveSpeed": 5,
+    "formationSpacing": 0.45
+  },
+  "weapon": {
+    "rifle": {
+      "damage": 3,
+      "fireRate": 7,
+      "projectileSpeed": 28,
+      "range": 18
+    }
+  },
+  "enemies": {
+    "grunt": {
+      "hp": 10,
+      "moveSpeed": 1.5,
+      "contactDamage": 1,
+      "radius": 0.3
+    }
+  },
+  "bosses": {
+    "basic": {
+      "hp": 1000,
+      "moveSpeed": 0.7,
+      "radius": 1.2
+    }
+  }
+}
