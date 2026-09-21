@@ -37,6 +37,14 @@ Do not optimize for production backend, monetization, accounts, analytics, store
 
 Do not replace this stack without an explicit task.
 
+## Development environment ownership
+
+The coding agent owns routine environment setup and maintenance needed for its assigned task. Install project dependencies with npm; add, remove, or update npm packages when the task requires it; approve only legitimate required dependency install scripts; run npm scripts, tests, typechecks, builds, and development servers; and inspect or repair package and tooling configuration. Use the project's Node version manager when available, install or switch to the declared Node version with existing tooling, and create or update `.node-version` when the agreed environment requires it. Initialize Git if needed, inspect status and diffs, and make task checkpoint commits when appropriate.
+
+Do not ask the user to run routine setup commands. If Node, npm, or another expected tool is unavailable, inspect the environment and attempt the smallest safe project-compatible fix. System-wide installations are allowed only when clearly required for TopWar development and low-risk and reversible; prefer existing tooling and project-local dependencies. Never install unrelated utilities, broadly reconfigure the operating system, or weaken security settings.
+
+Ask for human intervention only when genuinely required, such as administrator/UAC confirmation, credentials, third-party authentication, destructive or broad machine-level changes, or ambiguous system-wide configuration with meaningful risk. Include environment setup in verification before declaring the task complete. The user primarily tests the game and provides product feedback.
+
 ## Architecture boundaries
 
 The intended dependency direction is:
