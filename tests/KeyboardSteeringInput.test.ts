@@ -23,6 +23,22 @@ class FakeWindow {
 }
 
 describe('KeyboardSteeringInput', () => {
+  it('maps each desktop key independently to its horizontal direction', () => {
+    const fakeWindow = new FakeWindow();
+    const onAxisChange = vi.fn();
+    const input = new KeyboardSteeringInput(fakeWindow as unknown as Window, { onAxisChange });
+    input.start();
+    for (const [key, axis] of [
+      ['a', -1], ['ArrowLeft', -1], ['D', 1], ['ArrowRight', 1],
+    ] as const) {
+      fakeWindow.emit('keydown', key);
+      expect(onAxisChange).toHaveBeenLastCalledWith(axis);
+      fakeWindow.emit('keyup', key);
+      expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    }
+    input.dispose();
+  });
+
   it('supports A/D and arrows, neutralizes opposing keys, and resumes the held side', () => {
     const fakeWindow = new FakeWindow();
     const onAxisChange = vi.fn();

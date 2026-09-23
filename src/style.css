@@ -40,7 +40,11 @@ body {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  #game-viewport {
-    cursor: none;
+  #game-viewport[data-mouse-direction='left'] {
+    cursor: url('/cursors/steer-left.svg') 12 12, auto;
+  }
+
+  #game-viewport[data-mouse-direction='right'] {
+    cursor: url('/cursors/steer-right.svg') 12 12, auto;
   }
 }
