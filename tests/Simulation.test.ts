@@ -3,7 +3,7 @@ import { SeededRng } from '../src/core/Rng';
 import { Simulation } from '../src/simulation/Simulation';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
-const create = () => new Simulation({ seed: 1, levelId: 'prototype' });
+const create = () => new Simulation({ seed: 1, levelId: 'prototype', startSquad: 1 });
 
 describe('Simulation', () => {
   it('starts with plain session state and does not consume its seed', () => {
@@ -14,7 +14,15 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
+      squad: { count: 1 },
     });
+  });
+
+  it('accepts a zero-soldier start and rejects invalid squad counts', () => {
+    expect(new Simulation({ seed: 1, levelId: 'prototype', startSquad: 0 }).getState().squad.count).toBe(0);
+    for (const startSquad of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.NaN, Infinity]) {
+      expect(() => new Simulation({ seed: 1, levelId: 'prototype', startSquad })).toThrow(/startSquad/);
+    }
   });
 
   it('advances tick and time without moving the player or consuming RNG', () => {
@@ -27,6 +35,7 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
+      squad: { count: 1 },
     });
     simulation.step(1 / 60);
     simulation.step(1 / 30);
@@ -34,11 +43,12 @@ describe('Simulation', () => {
     expect(simulation.getState().elapsedSeconds).toBeCloseTo(1 / 15);
     expect(simulation.getState().rngState).toBe(1);
     expect(simulation.getState().player).toEqual({ x: 0, z: 0 });
+    expect(simulation.getState().squad.count).toBe(1);
   });
 
   it('produces identical state for the same seed, level, and step sequence', () => {
-    const first = new Simulation({ seed: 0xffffffff, levelId: 'repeat' });
-    const second = new Simulation({ seed: 0xffffffff, levelId: 'repeat' });
+    const first = new Simulation({ seed: 0xffffffff, levelId: 'repeat', startSquad: 3 });
+    const second = new Simulation({ seed: 0xffffffff, levelId: 'repeat', startSquad: 3 });
     for (const dt of [1 / 60, 1 / 60, 0.125, 1 / 60]) {
       first.step(dt);
       second.step(dt);
@@ -51,8 +61,10 @@ describe('Simulation', () => {
     simulation.step(0.125);
     const exposed = simulation.getState();
     exposed.player.x = 999;
+    exposed.squad.count = 999;
     exposed.tick = 999;
     expect(simulation.getState().player.x).toBe(0);
+    expect(simulation.getState().squad.count).toBe(1);
     expect(simulation.getState().tick).toBe(1);
 
     const restored = JSON.parse(JSON.stringify(simulation.getState())) as SimulationState;
@@ -60,9 +72,11 @@ describe('Simulation', () => {
     rng.nextFloat();
     restored.rngState = rng.getState();
     restored.player = { x: -2.5, z: 4 };
-    const another = new Simulation({ seed: 99, levelId: 'other' });
+    restored.squad.count = 5;
+    const another = new Simulation({ seed: 99, levelId: 'other', startSquad: 0 });
     another.restoreState(JSON.parse(JSON.stringify(restored)) as SimulationState);
     expect(another.getState()).toEqual(restored);
+    expect(another.getState().squad.count).toBe(5);
     another.step(0.125);
     expect(another.getState().rngState).toBe(restored.rngState);
   });
@@ -74,11 +88,11 @@ describe('Simulation', () => {
   });
 
   it.each([-1, 1.5, 4294967296, Number.NaN, Infinity])('rejects invalid seed %s', (seed) => {
-    expect(() => new Simulation({ seed, levelId: 'prototype' })).toThrow();
+    expect(() => new Simulation({ seed, levelId: 'prototype', startSquad: 1 })).toThrow();
   });
 
   it.each(['', '   ', null, 7])('rejects invalid level id %s', (levelId) => {
-    expect(() => new Simulation({ seed: 1, levelId: levelId as string })).toThrow();
+    expect(() => new Simulation({ seed: 1, levelId: levelId as string, startSquad: 1 })).toThrow();
   });
 
   it.each([
@@ -93,6 +107,13 @@ describe('Simulation', () => {
     (state: SimulationState) => { state.player.z = Infinity; },
     (state: SimulationState) => { (state as unknown as Record<string, unknown>).extra = 1; },
     (state: SimulationState) => { (state.player as unknown as Record<string, unknown>).extra = 1; },
+    (state: SimulationState) => { delete (state as unknown as Record<string, unknown>).squad; },
+    (state: SimulationState) => { state.squad = null as unknown as SimulationState['squad']; },
+    (state: SimulationState) => { (state.squad as unknown as Record<string, unknown>).extra = 1; },
+    (state: SimulationState) => { delete (state.squad as unknown as Record<string, unknown>).count; },
+    (state: SimulationState) => { state.squad.count = -1; },
+    (state: SimulationState) => { state.squad.count = 1.5; },
+    (state: SimulationState) => { state.squad.count = Number.MAX_SAFE_INTEGER + 1; },
   ])('rejects invalid restored state transactionally', (damage) => {
     const simulation = create();
     simulation.step(0.125);

@@ -4,6 +4,7 @@ import type { SimulationState } from './SimulationState';
 export interface SimulationOptions {
   seed: number;
   levelId: string;
+  startSquad: number;
 }
 
 function validLevelId(levelId: unknown): levelId is string {
@@ -16,12 +17,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
+function validSquadCount(count: unknown): count is number {
+  return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0;
+}
+
 function validateState(value: unknown): { state: SimulationState; rng: SeededRng } {
   if (!isPlainObject(value)) {
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -50,6 +55,17 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation player.z must be finite');
   }
 
+  if (!isPlainObject(state.squad)) {
+    throw new Error('Simulation squad must be a plain object');
+  }
+  const squad = state.squad;
+  if (Object.keys(squad).length !== 1 || !Object.hasOwn(squad, 'count')) {
+    throw new Error('Simulation squad must contain only count');
+  }
+  if (!validSquadCount(squad.count)) {
+    throw new Error('Simulation squad.count must be a non-negative safe integer');
+  }
+
   return {
     state: {
       tick: state.tick as number,
@@ -58,6 +74,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       seed: state.seed as number,
       rngState: rng.getState(),
       player: { x: player.x, z: player.z },
+      squad: { count: squad.count },
     },
     rng,
   };
@@ -70,6 +87,9 @@ export class Simulation {
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
     if (!validLevelId(options.levelId)) throw new Error('Simulation levelId must be a non-empty string');
+    if (!validSquadCount(options.startSquad)) {
+      throw new Error('Simulation startSquad must be a non-negative safe integer');
+    }
     this.state = {
       tick: 0,
       elapsedSeconds: 0,
@@ -77,6 +97,7 @@ export class Simulation {
       seed: options.seed,
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
+      squad: { count: options.startSquad },
     };
   }
 
@@ -94,7 +115,12 @@ export class Simulation {
   }
 
   getState(): SimulationState {
-    return { ...this.state, rngState: this.rng.getState(), player: { ...this.state.player } };
+    return {
+      ...this.state,
+      rngState: this.rng.getState(),
+      player: { ...this.state.player },
+      squad: { ...this.state.squad },
+    };
   }
 
   restoreState(state: SimulationState): void {

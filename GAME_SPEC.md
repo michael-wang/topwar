@@ -35,6 +35,10 @@ Start
 
 No lobby is required for the first playable version.
 
+## Pacing and escalation
+
+The advertisement is a visual and gameplay reference, not a pacing reference. Real gameplay starts with low pressure so one soldier and small early gains such as +1 or +2 feel meaningful. Enemy count, HP, density, speed, and player growth can all shape difficulty. Large crowds and huge recruitment numbers are escalation rewards. Levels should include rises, relief, decisions, and climaxes instead of constant maximum pressure. Pacing and encounter quantities must remain data-driven.
+
 ## 3. Controls
 
 Primary:

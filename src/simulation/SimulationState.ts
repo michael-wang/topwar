@@ -3,6 +3,10 @@ export interface PlayerSimulationState {
   z: number;
 }
 
+export interface SquadSimulationState {
+  count: number;
+}
+
 export interface SimulationState {
   tick: number;
   elapsedSeconds: number;
@@ -10,4 +14,5 @@ export interface SimulationState {
   seed: number;
   rngState: number;
   player: PlayerSimulationState;
+  squad: SquadSimulationState;
 }

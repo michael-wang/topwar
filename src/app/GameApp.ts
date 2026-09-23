@@ -5,7 +5,7 @@ import { Simulation } from '../simulation/Simulation';
 export class GameApp {
   private readonly renderer: GameRenderer;
   private readonly fixedStepLoop = new FixedStepLoop();
-  private readonly simulation = new Simulation({ seed: 1, levelId: 'prototype' });
+  private readonly simulation = new Simulation({ seed: 1, levelId: 'prototype', startSquad: 1 });
   private frameId: number | null = null;
   private previousFrameTimestampMs: number | null = null;
   private running = false;
