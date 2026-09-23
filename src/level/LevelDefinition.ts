@@ -12,7 +12,10 @@ const EnemyGroupSchema = z.strictObject({
   formation: z.strictObject({
     columns: positiveSafeInteger,
     spacing: z.number().finite().positive(),
-  }),
+    jitter: z.number().finite().nonnegative(),
+    seed: z.number().int().min(0).max(0xffffffff),
+  }).refine((formation) => formation.jitter < formation.spacing / 2,
+    { path: ['jitter'], message: 'Jitter must be less than half of spacing' }),
 });
 
 export const LevelDefinitionSchema = z.strictObject({

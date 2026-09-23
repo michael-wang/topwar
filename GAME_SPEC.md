@@ -37,11 +37,11 @@ No lobby is required for the first playable version.
 
 ## Pacing and escalation
 
-The advertisement is a visual and gameplay reference, not a pacing reference. Real gameplay starts with low pressure so one soldier and small early gains such as +1 or +2 feel meaningful. Enemy count, HP, density, and player growth can all shape difficulty. Large crowds and huge recruitment numbers are escalation rewards. Levels should include rises, relief, decisions, and climaxes instead of constant maximum pressure. Pacing and encounter quantities must remain data-driven.
+The advertisement is again a visual and opening-pacing reference. The player starts small but sees a large, distant enemy threat immediately. Enemy count, HP, density, and player growth can shape later difficulty; pacing and encounter quantities remain data-driven.
 
-The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass and density ahead, and from the risk of reaching enemies before clearing them. The first group starts far enough ahead to allow orientation.
+The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass and density ahead, and from the risk of reaching enemies before clearing them. Distance provides orientation time; the crowd should read as an irregular mob, not orderly ranks.
 
-Level 001 is a baseline calibration ramp: base power should eventually become insufficient. Establish that ceiling through visible enemy mass and density before adding upgrade opportunities or hidden stat inflation.
+Level 001 opens with one large, distant irregular swarm. Upgrade opportunities will be introduced in a later task.
 
 ## 3. Controls
 

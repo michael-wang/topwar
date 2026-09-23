@@ -1,62 +1,18 @@
 {
   "id": "level-001",
-  "length": 172,
+  "length": 120,
   "enemyGroups": [
     {
-      "id": "intro-1",
-      "z": 12,
+      "id": "opening-swarm",
+      "z": 72,
       "enemy": "grunt",
-      "count": 2,
-      "formation": { "columns": 2, "spacing": 0.8 }
-    },
-    {
-      "id": "intro-2",
-      "z": 24,
-      "enemy": "grunt",
-      "count": 3,
-      "formation": { "columns": 3, "spacing": 0.8 }
-    },
-    {
-      "id": "pressure-1",
-      "z": 39,
-      "enemy": "grunt",
-      "count": 5,
-      "formation": { "columns": 3, "spacing": 0.75 }
-    },
-    {
-      "id": "pressure-2",
-      "z": 56,
-      "enemy": "grunt",
-      "count": 8,
-      "formation": { "columns": 4, "spacing": 0.7 }
-    },
-    {
-      "id": "wall-1",
-      "z": 76,
-      "enemy": "grunt",
-      "count": 12,
-      "formation": { "columns": 5, "spacing": 0.7 }
-    },
-    {
-      "id": "wall-2",
-      "z": 99,
-      "enemy": "grunt",
-      "count": 18,
-      "formation": { "columns": 6, "spacing": 0.65 }
-    },
-    {
-      "id": "overwhelm-1",
-      "z": 126,
-      "enemy": "grunt",
-      "count": 28,
-      "formation": { "columns": 8, "spacing": 0.6 }
-    },
-    {
-      "id": "overwhelm-2",
-      "z": 156,
-      "enemy": "grunt",
-      "count": 40,
-      "formation": { "columns": 9, "spacing": 0.55 }
+      "count": 240,
+      "formation": {
+        "columns": 11,
+        "spacing": 0.43,
+        "jitter": 0.16,
+        "seed": 104729
+      }
     }
   ]
 }

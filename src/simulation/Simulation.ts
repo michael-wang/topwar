@@ -205,7 +205,8 @@ export class Simulation {
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
-      for (const offset of createEnemyFormation(group.count, group.formation.columns, group.formation.spacing)) {
+      for (const offset of createEnemyFormation(group.count, group.formation.columns,
+        group.formation.spacing, group.formation.jitter, group.formation.seed)) {
         const z = group.z + offset.z;
         if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
           throw new Error(`Enemy group ${group.id} produces a non-finite position`);

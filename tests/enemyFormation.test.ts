@@ -20,6 +20,25 @@ describe('createEnemyFormation', () => {
     const first = createEnemyFormation(8, 4, 0.7);
     expect(first).toHaveLength(8);
     expect(createEnemyFormation(8, 4, 0.7)).toEqual(first);
+    expect(createEnemyFormation(8, 4, 0.7, 0, 104729)).toEqual(first);
+  });
+
+  it('makes a reproducible irregular swarm inside the authored grid envelope', () => {
+    const regular = createEnemyFormation(240, 11, 0.43);
+    const first = createEnemyFormation(240, 11, 0.43, 0.16, 104729);
+    expect(first).toHaveLength(240);
+    expect(createEnemyFormation(240, 11, 0.43, 0.16, 104729)).toEqual(first);
+    expect(createEnemyFormation(240, 11, 0.43, 0.16, 104730)).not.toEqual(first);
+    expect(first.some((offset, index) => offset.x !== regular[index].x)).toBe(true);
+    expect(first.some((offset, index) => offset.z !== regular[index].z)).toBe(true);
+    for (let index = 0; index < first.length; index++) {
+      expect(Math.abs(first[index].x - regular[index].x)).toBeLessThanOrEqual(0.16);
+      expect(Math.abs(first[index].z - regular[index].z)).toBeLessThanOrEqual(0.16);
+    }
+    const meanX = first.reduce((sum, offset) => sum + offset.x, 0) / first.length;
+    const meanZ = first.reduce((sum, offset) => sum + offset.z, 0) / first.length;
+    expect(Math.abs(meanX)).toBeLessThan(0.08);
+    expect(Math.abs(meanZ)).toBeLessThan(0.08);
   });
 
   it('rejects invalid counts, columns, and spacing', () => {
@@ -32,5 +51,12 @@ describe('createEnemyFormation', () => {
     for (const spacing of [0, -1, Infinity, NaN]) {
       expect(() => createEnemyFormation(2, 2, spacing)).toThrow();
     }
+    for (const jitter of [-1, Infinity, NaN, 0.4, 0.5]) {
+      expect(() => createEnemyFormation(2, 2, 0.8, jitter, 1)).toThrow(/jitter/);
+    }
+    for (const seed of [-1, 1.5, 4294967296, NaN, Infinity]) {
+      expect(() => createEnemyFormation(2, 2, 0.8, 0.1, seed)).toThrow();
+    }
+    expect(() => createEnemyFormation(2, 2, 0.8, 0.1, 0)).not.toThrow();
   });
 });

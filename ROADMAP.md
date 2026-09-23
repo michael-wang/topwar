@@ -47,8 +47,10 @@ Named local save/load slots, export/import JSON, deterministic restore tests.
 ## 011 Stress/performance pass
 Measure hundreds of units, introduce instancing/pooling only where needed.
 
-## Baseline pressure calibration — current milestone
-Expand authored enemy mass until base power has a clear ceiling.
+## Current pivot slice
+1. Irregular opening swarm with crowd-capable rendering.
+2. Destructible dual upgrade gates.
+3. Rocket specialist.
 
 ## 012 Recruitment gates — next gameplay milestone
 Data-driven +N gates, squad growth feedback.

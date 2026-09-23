@@ -6,38 +6,60 @@ export class EnemyRenderer {
   private readonly headGeometry = new THREE.SphereGeometry(0.18, 8, 6);
   private readonly bodyMaterial = new THREE.MeshStandardMaterial({ color: '#c93332' });
   private readonly headMaterial = new THREE.MeshStandardMaterial({ color: '#f15a4c' });
-  private readonly members: THREE.Group[] = [];
+  private readonly transform = new THREE.Object3D();
+  private body: THREE.InstancedMesh;
+  private head: THREE.InstancedMesh;
+  private capacity = 1;
 
-  constructor(private readonly scene: THREE.Scene) {}
+  constructor(private readonly scene: THREE.Scene) {
+    this.body = this.createMesh(this.bodyGeometry, this.bodyMaterial);
+    this.head = this.createMesh(this.headGeometry, this.headMaterial);
+    this.scene.add(this.body, this.head);
+  }
 
   update(enemies: readonly EnemyRenderState[]): void {
-    while (this.members.length < enemies.length) this.addMember();
-    for (let index = 0; index < this.members.length; index++) {
-      const member = this.members[index];
+    if (enemies.length > this.capacity) this.grow(enemies.length);
+    this.body.count = enemies.length;
+    this.head.count = enemies.length;
+    for (let index = 0; index < enemies.length; index++) {
       const enemy = enemies[index];
-      member.visible = enemy !== undefined;
       // Match the squad's visual X flip for the camera that looks along +Z.
-      if (enemy) member.position.set(-enemy.x, 0, enemy.z);
+      this.transform.position.set(-enemy.x, 0.32, enemy.z);
+      this.transform.updateMatrix();
+      this.body.setMatrixAt(index, this.transform.matrix);
+      this.transform.position.y = 0.75;
+      this.transform.updateMatrix();
+      this.head.setMatrixAt(index, this.transform.matrix);
     }
+    this.body.instanceMatrix.needsUpdate = true;
+    this.head.instanceMatrix.needsUpdate = true;
   }
 
   dispose(): void {
-    for (const member of this.members) this.scene.remove(member);
-    this.members.length = 0;
+    this.scene.remove(this.body, this.head);
+    this.body.dispose();
+    this.head.dispose();
     this.bodyGeometry.dispose();
     this.headGeometry.dispose();
     this.bodyMaterial.dispose();
     this.headMaterial.dispose();
   }
 
-  private addMember(): void {
-    const member = new THREE.Group();
-    const body = new THREE.Mesh(this.bodyGeometry, this.bodyMaterial);
-    body.position.y = 0.32;
-    const head = new THREE.Mesh(this.headGeometry, this.headMaterial);
-    head.position.y = 0.75;
-    member.add(body, head);
-    this.scene.add(member);
-    this.members.push(member);
+  private createMesh(geometry: THREE.BufferGeometry, material: THREE.Material): THREE.InstancedMesh {
+    const mesh = new THREE.InstancedMesh(geometry, material, this.capacity);
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    return mesh;
+  }
+
+  private grow(required: number): void {
+    while (this.capacity < required) this.capacity *= 2;
+    this.scene.remove(this.body, this.head);
+    this.body.dispose();
+    this.head.dispose();
+    this.body = this.createMesh(this.bodyGeometry, this.bodyMaterial);
+    this.head = this.createMesh(this.headGeometry, this.headMaterial);
+    this.scene.add(this.body, this.head);
   }
 }

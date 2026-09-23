@@ -222,25 +222,16 @@ describe('Static authored enemies', () => {
   const authored = LevelDefinitionSchema.parse(authoredLevel);
   const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1, gruntHp: 10 });
 
-  it('materializes the authored 2 through 40 progression with stable IDs and group centers', () => {
+  it('materializes the same 240-member irregular swarm on every fresh run', () => {
     const first = createAuthored().getState();
     const second = createAuthored().getState();
     expect(first).toEqual(second);
     expect(first.levelId).toBe('level-001');
-    expect(first.enemies).toHaveLength(116);
-    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 116 }, (_, index) => index + 1));
-    expect(first.enemies.map((enemy) => enemy.type)).toEqual(Array(116).fill('grunt'));
-    expect(first.enemies.slice(0, 2)).toEqual([
-      { id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 },
-      { id: 2, type: 'grunt', x: 0.4, z: 12, hp: 10 },
-    ]);
-    const ends = [2, 5, 10, 18, 30, 48, 76, 116];
-    const groups = ends.map((end, index) => first.enemies.slice(index === 0 ? 0 : ends[index - 1], end));
-    [12, 24, 39, 56, 76, 99, 126, 156].forEach((centerZ, index) => {
-      const positions = groups[index].map((enemy) => enemy.z);
-      expect((Math.min(...positions) + Math.max(...positions)) / 2).toBeCloseTo(centerZ);
-    });
-    expect(groups[2].map((enemy) => enemy.z)).toEqual([39.375, 39.375, 39.375, 38.625, 38.625]);
+    expect(first.enemies).toHaveLength(240);
+    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 240 }, (_, index) => index + 1));
+    expect(first.enemies.every((enemy) => enemy.type === 'grunt' && enemy.hp === 10)).toBe(true);
+    const meanZ = first.enemies.reduce((sum, enemy) => sum + enemy.z, 0) / first.enemies.length;
+    expect(meanZ).toBeCloseTo(72, 1);
     expect(first.rngState).toBe(1);
   });
 
@@ -266,7 +257,7 @@ describe('Static authored enemies', () => {
     restored.restoreState(parsed);
     expect(restored.getState()).toEqual(original);
     parsed.enemies[0].x = 999;
-    expect(restored.getState().enemies[0].x).toBe(-0.4);
+    expect(restored.getState().enemies[0].x).toBe(original.enemies[0].x);
   });
 
   it.each([

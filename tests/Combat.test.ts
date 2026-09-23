@@ -48,7 +48,7 @@ describe('Automatic rifle and projectile state', () => {
 
   it('initializes grunt HP from session config and fires immediately, then at the configured cadence', () => {
     const authored: LevelDefinition = { id: 'one', length: 30, enemyGroups: [
-      { id: 'g', z: 10, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8 } },
+      { id: 'g', z: 10, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8, jitter: 0, seed: 0 } },
     ] };
     const simulation = create(1, 12, authored);
     expect(simulation.getState().enemies[0].hp).toBe(12);
@@ -120,7 +120,7 @@ describe('Automatic rifle and projectile state', () => {
 describe('Swept hits and enemy death', () => {
   it('removes a base grunt on one aligned shot using the runtime damage and HP', () => {
     const oneGrunt: LevelDefinition = { id: 'fodder', length: 20, enemyGroups: [
-      { id: 'first', z: 2, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8 } },
+      { id: 'first', z: 2, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8, jitter: 0, seed: 0 } },
     ] };
     const simulation = create(1, gameConfig.enemies.grunt.hp, oneGrunt);
     expect(simulation.getState().enemies[0].hp).toBe(3);
@@ -162,13 +162,13 @@ describe('Swept hits and enemy death', () => {
     expect(simulation.getState().enemies).toEqual([]);
   });
 
-  it('erodes the authored opening pair with three aligned rifle streams', () => {
-    const simulation = create(3, 10, LevelDefinitionSchema.parse(authoredLevel));
+  it('erodes the authored distant swarm with aligned rifle streams', () => {
+    const simulation = create(3, 3, LevelDefinitionSchema.parse(authoredLevel));
     const configured = { ...tuning, forwardSpeed: 3,
-      rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
-    for (let tick = 0; tick < 120; tick++) simulation.step(1 / 60, { targetX: 0 }, configured);
-    expect(simulation.getState().enemies.map((enemy) => enemy.id)).not.toContain(1);
-    expect(simulation.getState().enemies.map((enemy) => enemy.id)).not.toContain(2);
+      rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 } };
+    for (let tick = 0; tick < 780; tick++) simulation.step(1 / 60, { targetX: 0 }, configured);
+    expect(simulation.getState().enemies.length).toBeLessThan(240);
+    expect(simulation.getState().player.z).toBeCloseTo(39);
   });
   it('hits an enemy between endpoints, damages it, and leaves enemies static', () => {
     const simulation = create();

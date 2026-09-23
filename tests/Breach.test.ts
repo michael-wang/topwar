@@ -99,7 +99,7 @@ describe('moving defense-line breaches', () => {
     const state = fresh.getState();
     expect(state.player).toEqual({ x: 0, z: 0 });
     expect(state.squad.count).toBe(5);
-    expect(state.enemies).toHaveLength(116);
+    expect(state.enemies).toHaveLength(240);
     expect(state.enemies.map(({ id, x, z }) => ({ id, x, z }))).toEqual(authoredPositions);
     expect(state.enemies.every((enemy) => enemy.hp === 4)).toBe(true);
     expect(state.projectiles).toEqual([]);
