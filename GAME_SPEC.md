@@ -41,6 +41,8 @@ The advertisement is a visual and gameplay reference, not a pacing reference. Re
 
 The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass and density ahead, and from the risk of reaching enemies before clearing them. The first group starts far enough ahead to allow orientation.
 
+Level 001 is a baseline calibration ramp: base power should eventually become insufficient. Establish that ceiling through visible enemy mass and density before adding upgrade opportunities or hidden stat inflation.
+
 ## 3. Controls
 
 Desktop is mouse-first: moving inside the gameplay viewport steers relatively without a button. The cursor stays visible for boundary awareness and indicates left or right steering, returning to neutral when movement stops. A/D and Left/Right arrows are equivalent alternatives. Mobile is touch-first: drag from any comfortable point without a jump on touch-down. Switching controls should be frictionless; Pointer Lock is not required for the first playable prototype.

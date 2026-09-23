@@ -1,6 +1,6 @@
 {
   "id": "level-001",
-  "length": 72,
+  "length": 172,
   "enemyGroups": [
     {
       "id": "intro-1",
@@ -24,11 +24,39 @@
       "formation": { "columns": 3, "spacing": 0.75 }
     },
     {
-      "id": "climax-1",
+      "id": "pressure-2",
       "z": 56,
       "enemy": "grunt",
       "count": 8,
       "formation": { "columns": 4, "spacing": 0.7 }
+    },
+    {
+      "id": "wall-1",
+      "z": 76,
+      "enemy": "grunt",
+      "count": 12,
+      "formation": { "columns": 5, "spacing": 0.7 }
+    },
+    {
+      "id": "wall-2",
+      "z": 99,
+      "enemy": "grunt",
+      "count": 18,
+      "formation": { "columns": 6, "spacing": 0.65 }
+    },
+    {
+      "id": "overwhelm-1",
+      "z": 126,
+      "enemy": "grunt",
+      "count": 28,
+      "formation": { "columns": 8, "spacing": 0.6 }
+    },
+    {
+      "id": "overwhelm-2",
+      "z": 156,
+      "enemy": "grunt",
+      "count": 40,
+      "formation": { "columns": 9, "spacing": 0.55 }
     }
   ]
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
+import gameData from '../public/game-data/game.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
+import { createEnemyFormation } from '../src/simulation/enemies/formation';
 
 function level() {
   return structuredClone(authoredLevel);
@@ -10,10 +12,27 @@ describe('LevelDefinitionSchema', () => {
   it('validates the authored first level and its deliberate small-group escalation', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
-    expect(parsed.length).toBe(72);
-    expect(parsed.enemyGroups.map((group) => [group.z, group.count])).toEqual([
-      [12, 2], [24, 3], [39, 5], [56, 8],
+    expect(parsed.length).toBe(172);
+    expect(parsed.enemyGroups).toHaveLength(8);
+    expect(parsed.enemyGroups.map(({ id, z, count, formation }) =>
+      [id, z, count, formation.columns, formation.spacing])).toEqual([
+      ['intro-1', 12, 2, 2, 0.8],
+      ['intro-2', 24, 3, 3, 0.8],
+      ['pressure-1', 39, 5, 3, 0.75],
+      ['pressure-2', 56, 8, 4, 0.7],
+      ['wall-1', 76, 12, 5, 0.7],
+      ['wall-2', 99, 18, 6, 0.65],
+      ['overwhelm-1', 126, 28, 8, 0.6],
+      ['overwhelm-2', 156, 40, 9, 0.55],
     ]);
+    expect(new Set(parsed.enemyGroups.map((group) => group.id)).size).toBe(8);
+    expect(parsed.enemyGroups.reduce((sum, group) => sum + group.count, 0)).toBe(116);
+    for (const group of parsed.enemyGroups) {
+      const offsets = createEnemyFormation(group.count, group.formation.columns, group.formation.spacing);
+      expect(offsets).toHaveLength(group.count);
+      expect(Math.max(...offsets.map((offset) => Math.abs(offset.x))) + gameData.enemies.grunt.radius)
+        .toBeLessThanOrEqual(gameData.track.halfWidth);
+    }
   });
 
   it('accepts one- and two-enemy groups without a crowd minimum', () => {
@@ -54,9 +73,9 @@ describe('LevelDefinitionSchema', () => {
   });
 
   it('keeps group Z non-negative and strictly inside level length', () => {
-    for (const z of [-1, 72, 73, Infinity, NaN]) {
+    for (const z of [-1, 172, 173, Infinity, NaN]) {
       const candidate = level();
-      candidate.enemyGroups[3].z = z;
+      candidate.enemyGroups[7].z = z;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
   });
