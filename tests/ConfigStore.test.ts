@@ -34,7 +34,7 @@ describe('GameConfigSchema and loading', () => {
     expect(store.getConfig()).toEqual(base);
     expect(store.getConfig().weapon.rifle.range).toBe(40);
     expect(store.getConfig().player).toMatchObject({ startSquad: 1, startRocketCount: 0 });
-    expect(store.getConfig().player.forwardSpeed).toBe(2);
+    expect(store.getConfig().player.forwardSpeed).toBe(1.5);
     expect(store.getConfig().weapon.rocket).toEqual({ damage: 15, fireRate: 0.6,
       projectileSpeed: 18, range: 40, blastRadius: 1.25 });
     expect(store.getConfig().enemies.grunt.hp).toBe(3);

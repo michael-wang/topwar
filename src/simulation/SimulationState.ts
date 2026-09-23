@@ -16,15 +16,20 @@ export interface EnemySimulationState {
   hp: number;
 }
 
-export interface UpgradeGateSimulationState {
+interface UpgradeGateBaseState {
   id: string;
   x: number;
   zOffset: number;
   width: number;
   hp: number;
   maxHp: number;
-  reward: { kind: 'rifle' | 'rocket'; amount: number; count: number };
-  rewardsRemaining: number;
+}
+
+export interface UpgradeGateSimulationState extends UpgradeGateBaseState {
+  reward: { mode: 'periodic'; kind: 'rifle'; amount: number; intervalSeconds: number }
+    | { mode: 'instant'; kind: 'rifle'; amount: number };
+  // Present only for periodic armories; null until their wall breaks.
+  rewardCooldownRemainingSeconds?: number | null;
 }
 
 export interface ProjectileSimulationState {

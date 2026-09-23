@@ -17,13 +17,13 @@ describe('LevelDefinitionSchema', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
     expect(parsed.length).toBe(112);
-    expect(parsed.enemyGroups).toEqual([{ id: 'opening-stream', z: 60, enemy: 'grunt', count: 600,
-      formation: { columns: 6, spacing: 0.72, jitter: 0.20, seed: 104729 } }]);
+    expect(parsed.enemyGroups).toEqual([{ id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
+      formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } }]);
     expect(parsed.upgradeGates).toEqual([
-      { id: 'rifle-armory', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
-        reward: { kind: 'rifle', amount: 1, count: 5 } },
-      { id: 'rocket-armory', x: 2.7, zOffset: 8, width: 0.9, hp: 100,
-        reward: { kind: 'rocket', amount: 1, count: 3 } },
+      { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
+        reward: { mode: 'periodic', kind: 'rifle', amount: 1, intervalSeconds: 2 } },
+      { id: 'rifle-jackpot', x: 2.7, zOffset: 8, width: 0.9, hp: 1000,
+        reward: { mode: 'instant', kind: 'rifle', amount: 99 } },
     ]);
   });
 
@@ -48,13 +48,22 @@ describe('LevelDefinitionSchema', () => {
       candidate.upgradeGates[0].reward.amount = amount;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
-    for (const count of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    for (const intervalSeconds of [0, -1, Infinity, NaN]) {
       const candidate = level();
-      candidate.upgradeGates[0].reward.count = count;
+      candidate.upgradeGates[0].reward.intervalSeconds = intervalSeconds;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], reward: { kind: 'laser', amount: 1 } },
+      { ...level().upgradeGates[0], reward: { mode: 'laser', kind: 'rifle', amount: 1 } },
+    ] })).toThrow();
+    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
+      { ...level().upgradeGates[1], reward: { ...level().upgradeGates[1].reward, intervalSeconds: 2 } },
+    ] })).toThrow(/intervalSeconds/);
+    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
+      { ...level().upgradeGates[0], reward: { ...level().upgradeGates[0].reward, count: 5 } },
+    ] })).toThrow(/count/);
+    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
+      { ...level().upgradeGates[0], reward: { mode: 'instant', kind: 'rocket', amount: 1 } },
     ] })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[0], surprise: 1 },
@@ -115,7 +124,7 @@ describe('LevelDefinitionSchema', () => {
       candidate.enemyGroups[0].count = count;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
-    for (const columns of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 601]) {
+    for (const columns of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 841]) {
       const candidate = level();
       candidate.enemyGroups[0].formation.columns = columns;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();

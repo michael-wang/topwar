@@ -5,9 +5,9 @@ import { Simulation, type SimulationTuning } from '../src/simulation/Simulation'
 import type { EnemySimulationState, ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
 const left = { id: 'left', x: -1, zOffset: 5, width: 1.5, hp: 6,
-  reward: { kind: 'rifle' as const, amount: 1, count: 5 } };
+  reward: { mode: 'periodic' as const, kind: 'rifle' as const, amount: 1, intervalSeconds: 2 } };
 const right = { id: 'right', x: 1, zOffset: 5, width: 1.5, hp: 9,
-  reward: { kind: 'rocket' as const, amount: 1, count: 3 } };
+  reward: { mode: 'instant' as const, kind: 'rifle' as const, amount: 99 } };
 const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [], upgradeGates: [left, right] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
@@ -38,62 +38,61 @@ function setProjectiles(simulation: Simulation, projectiles: ProjectileSimulatio
 const step = (simulation: Simulation, dt = 1, overrides: Partial<SimulationTuning> = {}) =>
   simulation.step(dt, { targetX: 0 }, { ...tuning, ...overrides });
 
-describe('persistent side armories', () => {
-  it('materializes full authored walls and reward queues; retry recreates both', () => {
+describe('persistent advertisement-style armories', () => {
+  it('materializes the authored 840-enemy stream and two independent walls; retry restores both', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const run = create(authored);
     const first = run.getState();
-    expect(first.enemies).toHaveLength(600);
-    expect(first.gates.map((gate) => [gate.id, gate.zOffset, gate.hp, gate.maxHp, gate.rewardsRemaining])).toEqual([
-      ['rifle-armory', 8, 100, 100, 5], ['rocket-armory', 8, 100, 100, 3],
+    expect(first.enemies).toHaveLength(840);
+    expect(first.gates.map((gate) => [gate.id, gate.zOffset, gate.hp, gate.maxHp, gate.reward.mode])).toEqual([
+      ['rifle-generator', 8, 100, 100, 'periodic'], ['rifle-jackpot', 8, 1000, 1000, 'instant'],
     ]);
+    expect(first.gates[0]).toHaveProperty('rewardCooldownRemainingSeconds', null);
     setProjectiles(run, [rifle(1, -2.5)]);
     step(run);
     expect(run.getState().gates[0].hp).toBe(97);
-    const retry = create(authored).getState();
-    expect(retry.gates).toEqual(first.gates);
+    expect(create(authored).getState().gates).toEqual(first.gates);
+    expect(create(authored).getState().enemies).toEqual(first.enemies);
   });
 
-  it('owns serializable armory state and rejects invalid restore transactionally', () => {
+  it('owns serializable gate state and rejects obsolete or invalid timers transactionally', () => {
     const simulation = create();
     const exposed = simulation.getState();
     exposed.gates[0].hp = 1;
-    exposed.gates[0].reward.count = 99;
-    expect(simulation.getState().gates[0]).toMatchObject({ hp: 6, reward: { count: 5 } });
-    const partial = simulation.getState();
-    partial.gates[0].hp = 0;
-    partial.gates[0].rewardsRemaining = 3;
-    simulation.restoreState(JSON.parse(JSON.stringify(partial)) as SimulationState);
-    expect(simulation.getState().gates[0]).toMatchObject({ hp: 0, rewardsRemaining: 3 });
+    exposed.gates[0].reward.amount = 9;
+    expect(simulation.getState().gates[0].hp).toBe(6);
+    const active = simulation.getState();
+    active.gates[0].hp = 0;
+    if (active.gates[0].reward.mode !== 'periodic') throw new Error('expected periodic gate');
+    active.gates[0].rewardCooldownRemainingSeconds = 1.25;
+    simulation.restoreState(JSON.parse(JSON.stringify(active)) as SimulationState);
     const before = simulation.getState();
     for (const corrupt of [
-      (s: SimulationState) => { s.gates[0].rewardsRemaining = 0; },
-      (s: SimulationState) => { s.gates[0].rewardsRemaining = 6; },
-      (s: SimulationState) => { s.gates[0].rewardsRemaining = 1.5; },
+      (s: SimulationState) => { Object.assign(s.gates[0], { rewardsRemaining: 5 }); },
+      (s: SimulationState) => { Object.assign(s.gates[0].reward, { count: 5 }); },
+      (s: SimulationState) => { Object.assign(s.gates[0], { rewardCooldownRemainingSeconds: -1 }); },
+      (s: SimulationState) => { Object.assign(s.gates[0], { rewardCooldownRemainingSeconds: 3 }); },
       (s: SimulationState) => { s.gates[0].hp = -1; },
       (s: SimulationState) => { s.gates[1].id = s.gates[0].id; },
-      (s: SimulationState) => { (s.gates[0] as unknown as Record<string, unknown>).choiceGroup = 'old'; },
+      (s: SimulationState) => { Object.assign(s.gates[1], { rewardCooldownRemainingSeconds: 1 }); },
     ]) {
       const invalid = structuredClone(before);
-      invalid.rngState = 123;
       corrupt(invalid);
       expect(() => simulation.restoreState(invalid)).toThrow();
       expect(simulation.getState()).toEqual(before);
     }
   });
 
-  it('keeps both offsets constant while the player advances far past the original world position', () => {
+  it('keeps both walls beside the player as forward position advances', () => {
     const simulation = create();
     for (let index = 0; index < 10; index++) step(simulation, 1, { forwardSpeed: 10,
       rifle: { ...tuning.rifle, projectileSpeed: 1, range: 1 } });
     const state = simulation.getState();
     expect(state.player.z).toBe(100);
-    expect(state.gates).toHaveLength(2);
     expect(state.gates.map((gate) => state.player.z + gate.zOffset)).toEqual([105, 105]);
-    expect(state.gates.map((gate) => gate.zOffset)).toEqual([5, 5]);
   });
 
-  it('damages only an aligned wall, consumes the bullet, and sweeps a moving wall', () => {
+  it('sweeps intact walls and chooses the earliest enemy or wall hit', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, -1)]);
     step(simulation, 1, { forwardSpeed: 2 });
@@ -107,9 +106,6 @@ describe('persistent side armories', () => {
     setProjectiles(fast, [{ ...rifle(1, -1), speed: 100 }]);
     step(fast, 0.1, { forwardSpeed: 2 });
     expect(fast.getState().gates[0].hp).toBe(3);
-  });
-
-  it('compares enemy and moving-armory hit times rather than stale world Z', () => {
     const nearerEnemy = create();
     setProjectiles(nearerEnemy, [rifle(1, -1)], [grunt(1, -1, 5.8)]);
     step(nearerEnemy, 1, { forwardSpeed: 2 });
@@ -122,119 +118,168 @@ describe('persistent side armories', () => {
     expect(nearerWall.getState().gates[0].hp).toBe(3);
   });
 
-  it('breaks a wall at zero HP without granting a reward; both sides remain independent', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 9), rifle(2, 1, 12)]);
-    step(simulation);
-    expect(simulation.getState().gates.map((gate) => [gate.hp, gate.rewardsRemaining])).toEqual([[0, 5], [0, 3]]);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
-    expect(simulation.getState().projectiles).toEqual([]);
-  });
-
-  it('retains partial damage while switching lanes and can use both armories in one run', () => {
+  it('does not recruit while the generator wall still has HP', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, -1)]);
     step(simulation);
-    expect(simulation.getState().gates[0].hp).toBe(3);
-    setProjectiles(simulation, [rifle(2, 1)]);
-    step(simulation);
-    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([3, 6]);
-    setProjectiles(simulation, [rifle(3, -1)]);
-    step(simulation);
-    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([0, 6]);
-    setProjectiles(simulation, [rifle(4, -1), rifle(5, 1, 6)]);
-    step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0 });
-    expect(simulation.getState().gates.map((gate) => [gate.hp, gate.rewardsRemaining]))
-      .toEqual([[0, 4], [0, 3]]);
-    setProjectiles(simulation, [rifle(6, 1)]);
-    step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 3, rocketCount: 1 });
-    expect(simulation.getState().gates.map((gate) => gate.rewardsRemaining)).toEqual([4, 2]);
+    step(simulation, 5);
+    expect(simulation.getState().gates[0]).toMatchObject({ hp: 3,
+      rewardCooldownRemainingSeconds: null });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
   });
 
-  it('collects five rifle rewards separately, then completes only the rifle armory', () => {
+  it('breaks the left wall without an immediate reward, then recruits every two seconds', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, -1, 6)]);
     step(simulation);
-    expect(simulation.getState().squad.count).toBe(1);
-    for (let index = 0; index < 5; index++) {
-      setProjectiles(simulation, [rifle(index + 2, -1)]);
-      step(simulation);
-      expect(simulation.getState().squad).toEqual({ count: index + 2, rocketCount: 0 });
-      expect(simulation.getState().gates.find((gate) => gate.id === 'left')?.rewardsRemaining)
-        .toBe(index === 4 ? undefined : 4 - index);
-    }
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['right']);
-  });
-
-  it('collects three rocket specialists one at a time, even with high-damage rockets', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, 1, 9)]);
-    step(simulation);
     expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
-    for (let index = 0; index < 3; index++) {
-      setProjectiles(simulation, [rocket(index + 2, 1)]);
-      step(simulation);
-      expect(simulation.getState().squad).toEqual({ count: index + 2, rocketCount: index + 1 });
-    }
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left']);
+    expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
+      rewardCooldownRemainingSeconds: 2 });
+    step(simulation, 1);
+    expect(simulation.getState().squad.count).toBe(1);
+    step(simulation, 1);
+    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0 });
+    step(simulation, 6);
+    expect(simulation.getState().squad).toEqual({ count: 5, rocketCount: 0 });
+    expect(simulation.getState().gates[0].hp).toBe(0);
+    expect(simulation.getState().gates[1].hp).toBe(9);
   });
 
-  it('does not fire a newly granted unit until the following step, then uses its role', () => {
+  it('lets projectiles pass through an active generator and new recruits fire next step', () => {
     const simulation = create();
-    setProjectiles(simulation, [rifle(1, 1, 9), rifle(2, 1)]);
+    setProjectiles(simulation, [rifle(1, -1, 6)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 1 });
+    setProjectiles(simulation, [{ ...rifle(2, -1), speed: 4 }]);
+    step(simulation, 2);
+    expect(simulation.getState().squad.count).toBe(2);
+    expect(simulation.getState().projectiles.map((projectile) => projectile.id)).toContain(2);
     expect(simulation.getState().weapons.nextProjectileId).toBe(3);
     const state = simulation.getState();
     state.weapons.rifleCooldownRemainingSeconds = 0;
-    state.weapons.rocketCooldownRemainingSeconds = 0;
     simulation.restoreState(state);
-    simulation.step(0.1, { targetX: 0 }, tuning);
-    expect(simulation.getState().projectiles.map((projectile) => projectile.kind)).toEqual(['rifle', 'rocket']);
+    step(simulation, 0.1);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(5);
   });
 
-  it('rocket impact blasts nearby enemies without splash damage to either armory', () => {
+  it('restores partial timer progress and deterministic future recruitment', () => {
+    const first = create();
+    setProjectiles(first, [rifle(1, -1, 6)]);
+    step(first);
+    step(first, 0.75);
+    const second = create();
+    second.restoreState(JSON.parse(JSON.stringify(first.getState())) as SimulationState);
+    step(first, 1.25);
+    step(second, 1.25);
+    expect(second.getState()).toEqual(first.getState());
+    expect(first.getState().squad.count).toBe(2);
+    step(first, 20);
+    expect(first.getState().squad.count).toBe(12);
+  });
+
+  it('pays at the two-second boundary with 60 Hz fixed steps', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, -1, 6)]);
+    step(simulation);
+    for (let tick = 0; tick < 120; tick++) step(simulation, 1 / 60);
+    expect(simulation.getState().squad.count).toBe(2);
+  });
+
+  it('freezes generator rewards at zero squad and retry resets the wall', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, -1, 6)]);
+    step(simulation);
+    const lost = simulation.getState();
+    lost.squad.count = 0;
+    simulation.restoreState(lost);
+    step(simulation, 10);
+    expect(simulation.getState().squad.count).toBe(0);
+    expect(simulation.getState().gates[0]).toEqual(lost.gates[0]);
+    expect(create().getState().gates[0]).toMatchObject({ hp: 6, rewardCooldownRemainingSeconds: null });
+  });
+
+  it('retains right-wall damage, then grants +99 exactly once on destruction', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, 1)]);
+    step(simulation);
+    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([6, 6]);
+    setProjectiles(simulation, [rifle(2, 1, 9)]);
+    step(simulation);
+    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
+    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left']);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(3);
+    const state = simulation.getState();
+    state.weapons.rifleCooldownRemainingSeconds = 0;
+    simulation.restoreState(state);
+    step(simulation, 0.1);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(103);
+    expect(simulation.getState().squad.count).toBe(100);
+  });
+
+  it('cannot pay the jackpot twice when two projectiles cross it in one step', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, 1, 9), rifle(2, 1, 9)]);
+    step(simulation);
+    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
+    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left']);
+  });
+
+  it('continues automatic left recruitment after the right jackpot pays out', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, -1, 6), rifle(2, 1, 9)]);
+    step(simulation);
+    expect(simulation.getState().squad.count).toBe(100);
+    expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
+      rewardCooldownRemainingSeconds: 2 });
+    step(simulation, 2);
+    expect(simulation.getState().squad).toEqual({ count: 101, rocketCount: 0 });
+  });
+
+  it('requires all 1000 authored jackpot HP and keeps left investment independent', () => {
+    const simulation = create(LevelDefinitionSchema.parse(authoredLevel));
+    setProjectiles(simulation, [rifle(1, 2.5, 999)]);
+    step(simulation);
+    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([100, 1]);
+    setProjectiles(simulation, [rifle(2, 2.5, 1)]);
+    step(simulation);
+    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
+    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['rifle-generator']);
+    expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().gates[1].hp).toBe(1000);
+  });
+
+  it('rocket direct hits damage walls and splash only nearby enemies', () => {
     const simulation = create();
     setProjectiles(simulation, [rocket(1, -1)], [grunt(1, -1, 5.4), grunt(2, 2, 5)]);
     step(simulation);
     expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([0, 9]);
     expect(simulation.getState().enemies).toEqual([grunt(2, 2, 5)]);
     expect(simulation.getState().squad.count).toBe(1);
-    setProjectiles(simulation, [rocket(2, -1)]);
-    step(simulation);
-    expect(simulation.getState().squad.count).toBe(2);
-    expect(simulation.getState().gates[0].rewardsRemaining).toBe(4);
+    expect(simulation.getState().gates[0]).toHaveProperty('rewardCooldownRemainingSeconds', 2);
+    const jackpot = create();
+    setProjectiles(jackpot, [rocket(1, 1)]);
+    step(jackpot);
+    expect(jackpot.getState().squad.count).toBe(100);
+    expect(jackpot.getState().gates.map((gate) => gate.hp)).toEqual([6]);
   });
 
-  it('rejects unsafe reward growth without partially committing state', () => {
-    const simulation = create();
-    const state = simulation.getState();
-    state.gates[0].hp = 0;
-    state.gates[0].reward.amount = Number.MAX_SAFE_INTEGER;
-    state.projectiles = [rifle(1, -1)];
-    state.weapons.rifleCooldownRemainingSeconds = 10;
-    state.weapons.nextProjectileId = 2;
-    simulation.restoreState(state);
-    const before = simulation.getState();
-    expect(() => step(simulation)).toThrow(/reward exceeds/);
-    expect(simulation.getState()).toEqual(before);
-  });
-
-  it('restores future wall damage, reward collection, and rifle-first casualties deterministically', () => {
-    const first = create();
-    setProjectiles(first, [rifle(1, 1, 9), rifle(2, 1)]);
-    const second = create();
-    second.restoreState(JSON.parse(JSON.stringify(first.getState())) as SimulationState);
-    step(first);
-    step(second);
-    expect(second.getState()).toEqual(first.getState());
-    const state = first.getState();
-    state.enemies = [grunt(1, 0, 0)];
-    state.weapons.rocketCooldownRemainingSeconds = 10;
-    first.restoreState(state);
-    first.step(0.1, { targetX: 0 }, tuning);
-    expect(first.getState().squad).toEqual({ count: 1, rocketCount: 1 });
+  it('rejects unsafe periodic and instant growth without partially committing', () => {
+    for (const mode of ['periodic', 'instant'] as const) {
+      const simulation = create();
+      const state = simulation.getState();
+      const gate = state.gates.find((candidate) => candidate.reward.mode === mode)!;
+      gate.reward.amount = Number.MAX_SAFE_INTEGER;
+      if (mode === 'periodic') {
+        gate.hp = 0;
+        if (gate.reward.mode !== 'periodic') throw new Error('expected periodic gate');
+        gate.rewardCooldownRemainingSeconds = 1;
+      } else {
+        state.projectiles = [rifle(1, 1, 9)];
+        state.weapons.nextProjectileId = 2;
+      }
+      state.weapons.rifleCooldownRemainingSeconds = 10;
+      simulation.restoreState(state);
+      const before = simulation.getState();
+      expect(() => step(simulation)).toThrow(/reward exceeds/);
+      expect(simulation.getState()).toEqual(before);
+    }
   });
 });

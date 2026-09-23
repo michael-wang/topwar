@@ -24,10 +24,10 @@ export interface UpgradeGateRenderState {
   width: number;
   hp: number;
   maxHp: number;
-  rewardKind: 'rifle' | 'rocket';
+  rewardMode: 'periodic' | 'instant';
+  rewardKind: 'rifle';
   rewardAmount: number;
-  rewardsRemaining: number;
-  rewardTotal: number;
+  rewardIntervalSeconds: number | null;
 }
 
 export interface ProjectileRenderState {

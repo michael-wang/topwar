@@ -258,14 +258,15 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0 },
-      enemies: [], projectiles: [], gates: [{ id: 'rifle-armory',
+      enemies: [], projectiles: [], gates: [{ id: 'rifle-generator',
         x: -2.7, zOffset: 8, width: 0.9, hp: 70, maxHp: 100,
-        reward: { kind: 'rifle', amount: 1, count: 5 }, rewardsRemaining: 5 }] });
+        reward: { mode: 'periodic', kind: 'rifle', amount: 1, intervalSeconds: 2 },
+        rewardCooldownRemainingSeconds: null }] });
     app.start();
     raf.frame(100);
-    expect(mock.render.mock.lastCall![0]).toMatchObject({ gates: [{ id: 'rifle-armory',
-      x: -2.7, z: 11, width: 0.9, hp: 70, maxHp: 100, rewardKind: 'rifle', rewardAmount: 1,
-      rewardsRemaining: 5, rewardTotal: 5 }] });
+    expect(mock.render.mock.lastCall![0]).toMatchObject({ gates: [{ id: 'rifle-generator',
+      x: -2.7, z: 11, width: 0.9, hp: 70, maxHp: 100, rewardMode: 'periodic',
+      rewardKind: 'rifle', rewardAmount: 1, rewardIntervalSeconds: 2 }] });
     app.dispose();
   });
 

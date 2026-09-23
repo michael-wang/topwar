@@ -18,16 +18,19 @@ const EnemyGroupSchema = z.strictObject({
     { path: ['jitter'], message: 'Jitter must be less than half of spacing' }),
 });
 
+export const UpgradeRewardSchema = z.discriminatedUnion('mode', [
+  z.strictObject({ mode: z.literal('periodic'), kind: z.literal('rifle'),
+    amount: positiveSafeInteger, intervalSeconds: z.number().finite().positive() }),
+  z.strictObject({ mode: z.literal('instant'), kind: z.literal('rifle'), amount: positiveSafeInteger }),
+]);
+
 const UpgradeGateSchema = z.strictObject({
   id: nonEmptyId,
   x: z.number().finite(),
   zOffset: z.number().finite().positive(),
   width: z.number().finite().positive(),
   hp: z.number().finite().positive(),
-  reward: z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.literal('rifle'), amount: positiveSafeInteger, count: positiveSafeInteger }),
-    z.strictObject({ kind: z.literal('rocket'), amount: positiveSafeInteger, count: positiveSafeInteger }),
-  ]),
+  reward: UpgradeRewardSchema,
 });
 
 export const LevelDefinitionSchema = z.strictObject({
@@ -64,3 +67,4 @@ export const LevelDefinitionSchema = z.strictObject({
 });
 
 export type LevelDefinition = z.infer<typeof LevelDefinitionSchema>;
+export type UpgradeReward = z.infer<typeof UpgradeRewardSchema>;

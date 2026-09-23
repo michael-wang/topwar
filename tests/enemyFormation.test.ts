@@ -53,7 +53,7 @@ describe('createEnemyFormation', () => {
     const z = offsets.map((offset) => group.z + offset.z);
     const nearest = Math.min(...z);
     const farthest = Math.max(...z);
-    expect(offsets).toHaveLength(600);
+    expect(offsets).toHaveLength(840);
     expect(nearest).toBeGreaterThan(24);
     expect(nearest).toBeLessThan(30);
     expect(farthest).toBeGreaterThan(90);

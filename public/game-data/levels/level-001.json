@@ -2,21 +2,21 @@
   "id": "level-001",
   "length": 112,
   "upgradeGates": [
-    { "id": "rifle-armory", "x": -2.7, "zOffset": 8, "width": 0.9, "hp": 100,
-      "reward": { "kind": "rifle", "amount": 1, "count": 5 } },
-    { "id": "rocket-armory", "x": 2.7, "zOffset": 8, "width": 0.9, "hp": 100,
-      "reward": { "kind": "rocket", "amount": 1, "count": 3 } }
+    { "id": "rifle-generator", "x": -2.7, "zOffset": 8, "width": 0.9, "hp": 100,
+      "reward": { "mode": "periodic", "kind": "rifle", "amount": 1, "intervalSeconds": 2 } },
+    { "id": "rifle-jackpot", "x": 2.7, "zOffset": 8, "width": 0.9, "hp": 1000,
+      "reward": { "mode": "instant", "kind": "rifle", "amount": 99 } }
   ],
   "enemyGroups": [
     {
       "id": "opening-stream",
       "z": 60,
       "enemy": "grunt",
-      "count": 600,
+      "count": 840,
       "formation": {
-        "columns": 6,
-        "spacing": 0.72,
-        "jitter": 0.20,
+        "columns": 7,
+        "spacing": 0.60,
+        "jitter": 0.16,
         "seed": 104729
       }
     }

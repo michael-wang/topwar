@@ -1,5 +1,5 @@
 import { SeededRng } from '../core/Rng';
-import { LevelDefinitionSchema, type LevelDefinition } from '../level/LevelDefinition';
+import { LevelDefinitionSchema, UpgradeRewardSchema, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
 import { afterCasualties } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
@@ -57,6 +57,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     }
   }
   for (const gate of gates) {
+    if (gate.hp === 0) continue;
     if (Math.abs(projectile.x - gate.x) > gate.width / 2) continue;
     const gateStartZ = currentPlayerZ + gate.zOffset;
     const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
@@ -170,8 +171,8 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   if (!Array.isArray(state.gates)) throw new Error('Simulation gates must be an array');
   const gateIds = new Set<string>();
   const gates: UpgradeGateSimulationState[] = state.gates.map((value: unknown, index: number) => {
-    if (!isPlainObject(value) || Object.keys(value).length !== 8
-      || ['id', 'x', 'zOffset', 'width', 'hp', 'maxHp', 'reward', 'rewardsRemaining']
+    if (!isPlainObject(value)
+      || ['id', 'x', 'zOffset', 'width', 'hp', 'maxHp', 'reward']
         .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation gate ${index} has missing or unknown fields`);
     }
@@ -184,19 +185,27 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       || value.hp > value.maxHp) {
       throw new Error(`Simulation gate ${index} has invalid position, width, or HP`);
     }
-    const reward = value.reward;
-    if (!isPlainObject(reward) || Object.keys(reward).length !== 3
-      || !Object.hasOwn(reward, 'kind') || !Object.hasOwn(reward, 'amount') || !Object.hasOwn(reward, 'count')
-      || (reward.kind !== 'rifle' && reward.kind !== 'rocket')
-      || !Number.isSafeInteger(reward.amount) || (reward.amount as number) <= 0
-      || !Number.isSafeInteger(reward.count) || (reward.count as number) <= 0
-      || !Number.isSafeInteger(value.rewardsRemaining) || (value.rewardsRemaining as number) <= 0
-      || (value.rewardsRemaining as number) > (reward.count as number)) {
+    const parsedReward = UpgradeRewardSchema.safeParse(value.reward);
+    if (!parsedReward.success) {
       throw new Error(`Simulation gate ${index} reward is invalid`);
     }
-    return { id: value.id, x: value.x, zOffset: value.zOffset, width: value.width,
-      hp: value.hp, maxHp: value.maxHp, reward: { kind: reward.kind, amount: reward.amount as number,
-        count: reward.count as number }, rewardsRemaining: value.rewardsRemaining as number };
+    const reward = parsedReward.data;
+    const base = { id: value.id, x: value.x, zOffset: value.zOffset, width: value.width,
+      hp: value.hp, maxHp: value.maxHp };
+    if (reward.mode === 'instant') {
+      if (Object.keys(value).length !== 7 || value.hp === 0) {
+        throw new Error(`Simulation gate ${index} completed instant reward must be removed`);
+      }
+      return { ...base, reward };
+    }
+    const cooldown = value.rewardCooldownRemainingSeconds;
+    if (Object.keys(value).length !== 8
+      || (value.hp > 0 && cooldown !== null)
+      || (value.hp === 0 && (typeof cooldown !== 'number' || !Number.isFinite(cooldown)
+        || cooldown < 0 || cooldown > reward.intervalSeconds))) {
+      throw new Error(`Simulation gate ${index} periodic reward timer is invalid`);
+    }
+    return { ...base, reward, rewardCooldownRemainingSeconds: cooldown as number | null };
   });
 
   if (!Array.isArray(state.projectiles)) throw new Error('Simulation projectiles must be an array');
@@ -306,8 +315,9 @@ export class Simulation {
       player: { x: 0, z: 0 },
       squad: { count: options.startSquad, rocketCount: options.startRocketCount },
       enemies,
-      gates: level.upgradeGates.map((gate) => ({ ...gate, maxHp: gate.hp, reward: { ...gate.reward },
-        rewardsRemaining: gate.reward.count })),
+      gates: level.upgradeGates.map((gate) => gate.reward.mode === 'periodic'
+        ? { ...gate, maxHp: gate.hp, reward: { ...gate.reward }, rewardCooldownRemainingSeconds: null }
+        : { ...gate, maxHp: gate.hp, reward: { ...gate.reward } }),
       projectiles: [],
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
@@ -415,6 +425,8 @@ export class Simulation {
     if (!Number.isSafeInteger(nextProjectileId)) throw new Error('Simulation projectile ID exceeds the supported range');
 
     const survivingProjectiles: ProjectileSimulationState[] = [];
+    // A breaking shot starts the timer; it cannot collect the first periodic reward.
+    const newlyBroken = new Set<string>();
     for (const projectile of projectiles) {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
@@ -423,18 +435,17 @@ export class Simulation {
         this.state.player.z, nextZ);
       if (hit) {
         if (hit.kind === 'gate') {
-          if (hit.gate.hp > 0) {
-            hit.gate.hp = Math.max(0, hit.gate.hp - projectile.damage);
-          } else {
+          hit.gate.hp = Math.max(0, hit.gate.hp - projectile.damage);
+          if (hit.gate.hp === 0 && hit.gate.reward.mode === 'periodic') {
+            hit.gate.rewardCooldownRemainingSeconds = hit.gate.reward.intervalSeconds;
+            newlyBroken.add(hit.gate.id);
+          } else if (hit.gate.hp === 0 && hit.gate.reward.mode === 'instant') {
             const amount = hit.gate.reward.amount;
-            if (!Number.isSafeInteger(squad.count + amount)
-              || (hit.gate.reward.kind === 'rocket' && !Number.isSafeInteger(squad.rocketCount + amount))) {
+            if (!Number.isSafeInteger(squad.count + amount)) {
               throw new Error('Simulation squad reward exceeds the supported range');
             }
             squad.count += amount;
-            if (hit.gate.reward.kind === 'rocket') squad.rocketCount += amount;
-            hit.gate.rewardsRemaining--;
-            if (hit.gate.rewardsRemaining === 0) gates.splice(gates.indexOf(hit.gate), 1);
+            gates.splice(gates.indexOf(hit.gate), 1);
           }
         } else if (projectile.kind === 'rifle') {
           hit.enemy.hp -= projectile.damage;
@@ -458,6 +469,24 @@ export class Simulation {
       }
       const remainingRange = projectile.remainingRange - travel;
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
+    }
+    for (const gate of gates) {
+      if (gate.reward.mode !== 'periodic' || gate.hp > 0 || newlyBroken.has(gate.id)) continue;
+      const remaining = gate.rewardCooldownRemainingSeconds! - dtSeconds;
+      const tolerance = gate.reward.intervalSeconds * 1e-12;
+      if (remaining > tolerance) {
+        gate.rewardCooldownRemainingSeconds = remaining;
+        continue;
+      }
+      const due = Math.floor((-remaining + tolerance) / gate.reward.intervalSeconds) + 1;
+      const growth = due * gate.reward.amount;
+      if (!Number.isSafeInteger(due) || !Number.isSafeInteger(growth)
+        || !Number.isSafeInteger(squad.count + growth)) {
+        throw new Error('Simulation squad reward exceeds the supported range');
+      }
+      squad.count += growth;
+      gate.rewardCooldownRemainingSeconds = Math.max(0, Math.min(gate.reward.intervalSeconds,
+        remaining + due * gate.reward.intervalSeconds));
     }
     const contactRadius = tuning.memberRadius + tuning.gruntRadius;
     if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');

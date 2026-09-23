@@ -41,7 +41,7 @@ The advertisement is a visual and opening-pacing reference. The player starts sm
 
 The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass ahead and from the risk of reaching enemies before clearing them. The enemy field begins relatively close and extends deep into the level. It should read as an irregular, continuous mob with breathing room between grunts, not orderly ranks.
 
-Level 001 opens with one long enemy stream rather than an isolated blob. Persistent side armories give the player a reason to divide fire between survival and squad growth.
+Level 001 opens with one long, denser enemy stream rather than an isolated blob. Slower forced progression gives the player time to invest in persistent side armories. This level deliberately embraces exaggerated advertisement-style squad growth.
 
 ## 3. Controls
 
@@ -53,7 +53,7 @@ The squad follows horizontal input and progresses forward automatically. Firing 
 
 The player controls a squad rather than an individual soldier.
 
-The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. Their side armories offer distinct ways to invest firepower.
+The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. Rocket combat remains implemented, although Level 001's current armories both recruit rifle soldiers.
 
 Initial prototype:
 
@@ -159,9 +159,7 @@ Examples:
 - +20
 - +99
 
-Two independent armories persist beside the advancing player. The left rifle armory and right rocket armory each have a thick wall that retains damage while the player fights elsewhere. Breaking a wall opens a short queue of +1 rewards; each later hit collects one unit, one at a time. Both paths remain available throughout the run. The player decides how much firepower to invest in each while surviving the enemy stream. Wall HP and reward counts are authored level data.
-
-During opening balance tests, both walls have equal HP; the route difference is rifle volume versus rocket specialization.
+Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall unlocks automatic +1 rifle recruitment every 2 simulation seconds, indefinitely while the run lives. Breaking the right 1000 HP wall immediately grants +99 rifle soldiers once. Both paths remain available throughout the run; the player decides how much firepower to invest while surviving the enemy stream. Wall HP and rewards are authored level data.
 
 Later we can test:
 
