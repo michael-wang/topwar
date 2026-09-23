@@ -16,12 +16,12 @@
       "damage": 3,
       "fireRate": 7,
       "projectileSpeed": 28,
-      "range": 28
+      "range": 40
     }
   },
   "enemies": {
     "grunt": {
-      "hp": 10,
+      "hp": 3,
       "moveSpeed": 1.5,
       "contactDamage": 1,
       "radius": 0.3

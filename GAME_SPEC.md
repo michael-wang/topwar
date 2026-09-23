@@ -99,6 +99,8 @@ Base enemy:
 - dies under fire
 - is visually represented as a red low-poly/simple unit during grey-box development
 
+Basic grunts are low-HP fodder and may die from one base rifle hit. Tougher, multi-hit enemies should look distinctly different rather than making every grunt spongey.
+
 The important visual outcome:
 
 > Sustained fire should visibly carve holes/corridors into dense enemy groups.

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import gameData from '../public/game-data/game.json';
+import { GameConfigSchema } from '../src/config/configSchema';
 import type { LevelDefinition } from '../src/level/LevelDefinition';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
@@ -6,6 +8,7 @@ import { Simulation, type SimulationTuning } from '../src/simulation/Simulation'
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
 const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [] };
+const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, formationSpacing: 0.45,
   gruntRadius: 0.3, rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
@@ -29,6 +32,19 @@ const enemy = (id: number, x: number, z: number, hp = 10): EnemySimulationState 
   ({ id, type: 'grunt', x, z, hp });
 
 describe('Automatic rifle and projectile state', () => {
+  it('captures the runtime rifle range on creation without changing bullets already in flight', () => {
+    const simulation = create();
+    const configured = { ...tuning, rifle: { ...gameConfig.weapon.rifle } };
+    step(simulation, 0.1, configured);
+    const first = simulation.getState().projectiles[0];
+    expect(first.z + first.remainingRange).toBeCloseTo(40);
+
+    step(simulation, 0.05, { ...configured, rifle: { ...configured.rifle, range: 5 } });
+    const [existing, newBullet] = simulation.getState().projectiles;
+    expect(existing.z + existing.remainingRange).toBeCloseTo(40);
+    expect(newBullet.z + newBullet.remainingRange).toBeCloseTo(5);
+  });
+
   it('initializes grunt HP from session config and fires immediately, then at the configured cadence', () => {
     const authored: LevelDefinition = { id: 'one', length: 30, enemyGroups: [
       { id: 'g', z: 10, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8 } },
@@ -101,6 +117,50 @@ describe('Automatic rifle and projectile state', () => {
 });
 
 describe('Swept hits and enemy death', () => {
+  it('removes a base grunt on one aligned shot using the runtime damage and HP', () => {
+    const oneGrunt: LevelDefinition = { id: 'fodder', length: 20, enemyGroups: [
+      { id: 'first', z: 2, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8 } },
+    ] };
+    const simulation = create(1, gameConfig.enemies.grunt.hp, oneGrunt);
+    expect(simulation.getState().enemies[0].hp).toBe(3);
+    step(simulation, 0.1, { ...tuning, gruntRadius: gameConfig.enemies.grunt.radius,
+      rifle: { ...gameConfig.weapon.rifle } });
+    expect(simulation.getState().enemies).toEqual([]);
+    expect(simulation.getState().projectiles).toEqual([]);
+  });
+
+  it.each([
+    ['center', 0, true],
+    ['just inside radius', gameConfig.enemies.grunt.radius - 0.001, true],
+    ['exact radius boundary', gameConfig.enemies.grunt.radius, true],
+    ['outside radius', gameConfig.enemies.grunt.radius + 0.001, false],
+  ] as const)('%s collision behaves deterministically', (_label, x, shouldHit) => {
+    const simulation = create(0);
+    restoreCombat(simulation, [enemy(1, 0, 5, 3)], [bullet(1, x)]);
+    step(simulation, 1, { ...tuning, gruntRadius: gameConfig.enemies.grunt.radius });
+    expect(simulation.getState().enemies.length).toBe(shouldHit ? 0 : 1);
+  });
+
+  it('sweeps a high-speed shot across an enemy without tunneling', () => {
+    const simulation = create(0);
+    restoreCombat(simulation, [enemy(1, 0, 5, 3)], [{ ...bullet(1), speed: 1000 }]);
+    step(simulation, 0.01);
+    expect(simulation.getState().enemies).toEqual([]);
+  });
+
+  it('keeps higher-HP enemies alive until enough individual hits land', () => {
+    const simulation = create(0);
+    restoreCombat(simulation, [enemy(1, 0, 5, 6)], [bullet(1)]);
+    step(simulation, 1);
+    expect(simulation.getState().enemies).toEqual([enemy(1, 0, 5, 3)]);
+    const state = simulation.getState();
+    state.projectiles = [bullet(2)];
+    state.rifle.nextProjectileId = 3;
+    simulation.restoreState(state);
+    step(simulation, 1);
+    expect(simulation.getState().enemies).toEqual([]);
+  });
+
   it('erodes the authored opening pair with three aligned rifle streams', () => {
     const simulation = create(3, 10, LevelDefinitionSchema.parse(authoredLevel));
     const configured = { ...tuning, forwardSpeed: 3,
