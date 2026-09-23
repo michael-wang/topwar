@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import authoredLevel from '../public/game-data/levels/level-001.json';
+import gameConfig from '../public/game-data/game.json';
 import { createEnemyFormation } from '../src/simulation/enemies/formation';
 
 describe('createEnemyFormation', () => {
@@ -32,13 +34,33 @@ describe('createEnemyFormation', () => {
     expect(first.some((offset, index) => offset.x !== regular[index].x)).toBe(true);
     expect(first.some((offset, index) => offset.z !== regular[index].z)).toBe(true);
     for (let index = 0; index < first.length; index++) {
-      expect(Math.abs(first[index].x - regular[index].x)).toBeLessThanOrEqual(0.16);
+      expect(Math.abs(first[index].x - regular[index].x)).toBeLessThanOrEqual(0.16 + 0.43 / 6);
       expect(Math.abs(first[index].z - regular[index].z)).toBeLessThanOrEqual(0.16);
     }
     const meanX = first.reduce((sum, offset) => sum + offset.x, 0) / first.length;
     const meanZ = first.reduce((sum, offset) => sum + offset.z, 0) / first.length;
     expect(Math.abs(meanX)).toBeLessThan(0.08);
     expect(Math.abs(meanZ)).toBeLessThan(0.08);
+    const firstRowCenter = first.slice(0, 11).reduce((sum, offset) => sum + offset.x, 0) / 11;
+    const secondRowCenter = first.slice(11, 22).reduce((sum, offset) => sum + offset.x, 0) / 11;
+    expect(firstRowCenter).toBeLessThan(secondRowCenter);
+  });
+
+  it('spreads the authored stream along the road with a closer front and a long tail', () => {
+    const group = authoredLevel.enemyGroups[0];
+    const { columns, spacing, jitter, seed } = group.formation;
+    const offsets = createEnemyFormation(group.count, columns, spacing, jitter, seed);
+    const z = offsets.map((offset) => group.z + offset.z);
+    const nearest = Math.min(...z);
+    const farthest = Math.max(...z);
+    expect(offsets).toHaveLength(600);
+    expect(nearest).toBeGreaterThan(24);
+    expect(nearest).toBeLessThan(30);
+    expect(farthest).toBeGreaterThan(90);
+    expect(farthest).toBeLessThan(97);
+    expect(farthest - nearest).toBeGreaterThanOrEqual(65);
+    expect(Math.max(...offsets.map((offset) => Math.abs(offset.x))) + gameConfig.enemies.grunt.radius)
+      .toBeLessThan(gameConfig.track.halfWidth);
   });
 
   it('rejects invalid counts, columns, and spacing', () => {

@@ -37,11 +37,11 @@ No lobby is required for the first playable version.
 
 ## Pacing and escalation
 
-The advertisement is again a visual and opening-pacing reference. The player starts small but sees a large, distant enemy threat immediately. Enemy count, HP, density, and player growth can shape later difficulty; pacing and encounter quantities remain data-driven.
+The advertisement is a visual and opening-pacing reference. The player starts small but sees a sustained enemy threat ahead. Enemy count, HP, density, and player growth can shape later difficulty; pacing and encounter quantities remain data-driven.
 
-The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass and density ahead, and from the risk of reaching enemies before clearing them. Distance provides orientation time; the crowd should read as an irregular mob, not orderly ranks.
+The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass ahead and from the risk of reaching enemies before clearing them. The enemy field begins relatively close and extends deep into the level. It should read as an irregular, continuous mob with breathing room between grunts, not orderly ranks.
 
-Level 001 opens with one large, distant irregular swarm. Upgrade opportunities will be introduced in a later task.
+Level 001 opens with one long enemy stream rather than an isolated blob. Upgrade opportunities will be introduced in a later task.
 
 ## 3. Controls
 

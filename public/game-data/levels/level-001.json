@@ -1,16 +1,16 @@
 {
   "id": "level-001",
-  "length": 120,
+  "length": 112,
   "enemyGroups": [
     {
-      "id": "opening-swarm",
-      "z": 72,
+      "id": "opening-stream",
+      "z": 60,
       "enemy": "grunt",
-      "count": 240,
+      "count": 600,
       "formation": {
-        "columns": 11,
-        "spacing": 0.43,
-        "jitter": 0.16,
+        "columns": 6,
+        "spacing": 0.72,
+        "jitter": 0.20,
         "seed": 104729
       }
     }

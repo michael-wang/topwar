@@ -222,16 +222,18 @@ describe('Static authored enemies', () => {
   const authored = LevelDefinitionSchema.parse(authoredLevel);
   const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1, gruntHp: 10 });
 
-  it('materializes the same 240-member irregular swarm on every fresh run', () => {
+  it('materializes the same 600-member enemy stream on every fresh run', () => {
     const first = createAuthored().getState();
     const second = createAuthored().getState();
     expect(first).toEqual(second);
     expect(first.levelId).toBe('level-001');
-    expect(first.enemies).toHaveLength(240);
-    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 240 }, (_, index) => index + 1));
+    expect(first.enemies).toHaveLength(600);
+    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 600 }, (_, index) => index + 1));
     expect(first.enemies.every((enemy) => enemy.type === 'grunt' && enemy.hp === 10)).toBe(true);
     const meanZ = first.enemies.reduce((sum, enemy) => sum + enemy.z, 0) / first.enemies.length;
-    expect(meanZ).toBeCloseTo(72, 1);
+    expect(meanZ).toBeCloseTo(60, 1);
+    expect(Math.min(...first.enemies.map((enemy) => enemy.z))).toBeLessThan(30);
+    expect(Math.max(...first.enemies.map((enemy) => enemy.z))).toBeGreaterThan(90);
     expect(first.rngState).toBe(1);
   });
 

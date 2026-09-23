@@ -28,10 +28,12 @@ export function createEnemyFormation(count: number, columns: number, spacing: nu
   for (let row = 0; row < rows; row++) {
     const membersInRow = Math.min(columns, count - row * columns);
     const z = ((rows - 1) / 2 - row) * spacing;
+    // Alternate a small row shift so a jittered stream does not read as straight files.
+    const rowShift = jitter === 0 ? 0 : (row % 2 === 0 ? -1 : 1) * spacing / 6;
     for (let column = 0; column < membersInRow; column++) {
       const x = (column - (membersInRow - 1) / 2) * spacing;
       offsets.push(jitter === 0 ? { x, z } : {
-        x: x + (rng.nextFloat() * 2 - 1) * jitter,
+        x: x + rowShift + (rng.nextFloat() * 2 - 1) * jitter,
         z: z + (rng.nextFloat() * 2 - 1) * jitter,
       });
     }

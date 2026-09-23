@@ -162,13 +162,13 @@ describe('Swept hits and enemy death', () => {
     expect(simulation.getState().enemies).toEqual([]);
   });
 
-  it('erodes the authored distant swarm with aligned rifle streams', () => {
+  it('erodes the authored stream with aligned rifle streams', () => {
     const simulation = create(3, 3, LevelDefinitionSchema.parse(authoredLevel));
-    const configured = { ...tuning, forwardSpeed: 3,
+    const configured = { ...tuning, forwardSpeed: 0,
       rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 } };
     for (let tick = 0; tick < 780; tick++) simulation.step(1 / 60, { targetX: 0 }, configured);
-    expect(simulation.getState().enemies.length).toBeLessThan(240);
-    expect(simulation.getState().player.z).toBeCloseTo(39);
+    expect(simulation.getState().enemies.length).toBeLessThan(600);
+    expect(simulation.getState().player.z).toBe(0);
   });
   it('hits an enemy between endpoints, damages it, and leaves enemies static', () => {
     const simulation = create();

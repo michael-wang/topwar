@@ -13,12 +13,12 @@ function twoGroups() {
 }
 
 describe('LevelDefinitionSchema', () => {
-  it('validates the single authored opening swarm', () => {
+  it('validates the single authored opening stream', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
-    expect(parsed.length).toBe(120);
-    expect(parsed.enemyGroups).toEqual([{ id: 'opening-swarm', z: 72, enemy: 'grunt', count: 240,
-      formation: { columns: 11, spacing: 0.43, jitter: 0.16, seed: 104729 } }]);
+    expect(parsed.length).toBe(112);
+    expect(parsed.enemyGroups).toEqual([{ id: 'opening-stream', z: 60, enemy: 'grunt', count: 600,
+      formation: { columns: 6, spacing: 0.72, jitter: 0.20, seed: 104729 } }]);
   });
 
   it('accepts one- and two-enemy groups without a crowd minimum', () => {
@@ -46,20 +46,20 @@ describe('LevelDefinitionSchema', () => {
 
   it('rejects duplicate group ids and unordered or duplicate Z positions', () => {
     const duplicateId = twoGroups();
-    duplicateId.enemyGroups[1].id = 'opening-swarm';
+    duplicateId.enemyGroups[1].id = 'opening-stream';
     expect(() => LevelDefinitionSchema.parse(duplicateId)).toThrow(/Duplicate enemy-group id/);
 
     const unordered = twoGroups();
-    unordered.enemyGroups[1].z = 71;
+    unordered.enemyGroups[1].z = 59;
     expect(() => LevelDefinitionSchema.parse(unordered)).toThrow(/strictly increasing Z order/);
 
     const duplicateZ = twoGroups();
-    duplicateZ.enemyGroups[1].z = 72;
+    duplicateZ.enemyGroups[1].z = 60;
     expect(() => LevelDefinitionSchema.parse(duplicateZ)).toThrow(/strictly increasing Z order/);
   });
 
   it('keeps group Z non-negative and strictly inside level length', () => {
-    for (const z of [-1, 120, 121, Infinity, NaN]) {
+    for (const z of [-1, 112, 113, Infinity, NaN]) {
       const candidate = level();
       candidate.enemyGroups[0].z = z;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
@@ -72,7 +72,7 @@ describe('LevelDefinitionSchema', () => {
       candidate.enemyGroups[0].count = count;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
-    for (const columns of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 241]) {
+    for (const columns of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 601]) {
       const candidate = level();
       candidate.enemyGroups[0].formation.columns = columns;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
@@ -88,7 +88,7 @@ describe('LevelDefinitionSchema', () => {
   });
 
   it('validates authored jitter relative to spacing and uint32 seeds', () => {
-    for (const jitter of [-1, Infinity, NaN, 0.215, 0.22]) {
+    for (const jitter of [-1, Infinity, NaN, 0.36, 0.4]) {
       const candidate = level();
       candidate.enemyGroups[0].formation.jitter = jitter;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow(/jitter/i);
