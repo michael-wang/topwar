@@ -14,6 +14,7 @@ export interface GameRenderState {
   };
   enemies: EnemyRenderState[];
   gates: UpgradeGateRenderState[];
+  pickups: UpgradePickupRenderState[];
   projectiles: ProjectileRenderState[];
 }
 
@@ -24,10 +25,17 @@ export interface UpgradeGateRenderState {
   width: number;
   hp: number;
   maxHp: number;
-  rewardMode: 'periodic' | 'instant';
+  rewardMode: 'pickup' | 'instant';
   rewardKind: 'rifle';
   rewardAmount: number;
   rewardIntervalSeconds: number | null;
+}
+
+export interface UpgradePickupRenderState {
+  id: number;
+  x: number;
+  z: number;
+  rewardAmount: number;
 }
 
 export interface ProjectileRenderState {

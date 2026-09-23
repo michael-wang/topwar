@@ -161,7 +161,9 @@ export class GameApp {
       gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
         hp: gate.hp, maxHp: gate.maxHp, rewardMode: gate.reward.mode, rewardKind: gate.reward.kind,
         rewardAmount: gate.reward.amount,
-        rewardIntervalSeconds: gate.reward.mode === 'periodic' ? gate.reward.intervalSeconds : null })),
+        rewardIntervalSeconds: gate.reward.mode === 'pickup' ? gate.reward.intervalSeconds : null })),
+      pickups: state.pickups.map((pickup) => ({ id: pickup.id, x: pickup.x,
+        z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount })),
       projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
         x: projectile.x, z: projectile.z })),
     };

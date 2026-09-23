@@ -26,10 +26,21 @@ interface UpgradeGateBaseState {
 }
 
 export interface UpgradeGateSimulationState extends UpgradeGateBaseState {
-  reward: { mode: 'periodic'; kind: 'rifle'; amount: number; intervalSeconds: number }
+  reward: { mode: 'pickup'; kind: 'rifle'; amount: number; intervalSeconds: number; dropSpeed: number }
     | { mode: 'instant'; kind: 'rifle'; amount: number };
-  // Present only for periodic armories; null until their wall breaks.
+  // Present only for pickup armories; null until their wall breaks.
   rewardCooldownRemainingSeconds?: number | null;
+}
+
+export interface UpgradePickupSimulationState {
+  id: number;
+  sourceGateId: string;
+  x: number;
+  zOffset: number;
+  width: number;
+  rewardKind: 'rifle';
+  rewardAmount: number;
+  dropSpeed: number;
 }
 
 export interface ProjectileSimulationState {
@@ -59,6 +70,8 @@ export interface SimulationState {
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
   gates: UpgradeGateSimulationState[];
+  pickups: UpgradePickupSimulationState[];
+  nextPickupId: number;
   projectiles: ProjectileSimulationState[];
   weapons: WeaponSimulationState;
 }

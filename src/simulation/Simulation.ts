@@ -3,7 +3,7 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type LevelDefinition } from
 import { createEnemyFormation } from './enemies/formation';
 import { afterCasualties } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
-import type { EnemySimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState } from './SimulationState';
+import type { EnemySimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
   seed: number;
@@ -105,7 +105,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'gates', 'projectiles', 'weapons'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -203,10 +203,38 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       || (value.hp > 0 && cooldown !== null)
       || (value.hp === 0 && (typeof cooldown !== 'number' || !Number.isFinite(cooldown)
         || cooldown < 0 || cooldown > reward.intervalSeconds))) {
-      throw new Error(`Simulation gate ${index} periodic reward timer is invalid`);
+      throw new Error(`Simulation gate ${index} pickup reward timer is invalid`);
     }
     return { ...base, reward, rewardCooldownRemainingSeconds: cooldown as number | null };
   });
+
+  if (!Array.isArray(state.pickups)) throw new Error('Simulation pickups must be an array');
+  const pickupIds = new Set<number>();
+  const pickups: UpgradePickupSimulationState[] = state.pickups.map((value: unknown, index: number) => {
+    if (!isPlainObject(value) || Object.keys(value).length !== 8
+      || ['id', 'sourceGateId', 'x', 'zOffset', 'width', 'rewardKind', 'rewardAmount', 'dropSpeed']
+        .some((field) => !Object.hasOwn(value, field))) {
+      throw new Error(`Simulation pickup ${index} has missing or unknown fields`);
+    }
+    if (!Number.isSafeInteger(value.id) || (value.id as number) <= 0 || pickupIds.has(value.id as number)) {
+      throw new Error(`Simulation pickup ${index} id must be unique and positive`);
+    }
+    pickupIds.add(value.id as number);
+    if (!validLevelId(value.sourceGateId) || typeof value.x !== 'number' || !Number.isFinite(value.x)
+      || !positiveFinite(value.zOffset)
+      || !positiveFinite(value.width) || value.rewardKind !== 'rifle'
+      || !Number.isSafeInteger(value.rewardAmount) || (value.rewardAmount as number) <= 0
+      || !positiveFinite(value.dropSpeed)) {
+      throw new Error(`Simulation pickup ${index} has invalid position or reward`);
+    }
+    return { id: value.id as number, sourceGateId: value.sourceGateId, x: value.x,
+      zOffset: value.zOffset, width: value.width, rewardKind: 'rifle',
+      rewardAmount: value.rewardAmount as number, dropSpeed: value.dropSpeed };
+  });
+  if (!Number.isSafeInteger(state.nextPickupId) || (state.nextPickupId as number) <= 0
+    || pickups.some((pickup) => pickup.id >= (state.nextPickupId as number))) {
+    throw new Error('Simulation nextPickupId must exceed active pickup IDs');
+  }
 
   if (!Array.isArray(state.projectiles)) throw new Error('Simulation projectiles must be an array');
   const projectileIds = new Set<number>();
@@ -266,6 +294,8 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       squad: { count: squad.count, rocketCount: squad.rocketCount },
       enemies,
       gates,
+      pickups,
+      nextPickupId: state.nextPickupId as number,
       projectiles,
       weapons: { rifleCooldownRemainingSeconds: weapons.rifleCooldownRemainingSeconds as number,
         rocketCooldownRemainingSeconds: weapons.rocketCooldownRemainingSeconds as number,
@@ -315,10 +345,12 @@ export class Simulation {
       player: { x: 0, z: 0 },
       squad: { count: options.startSquad, rocketCount: options.startRocketCount },
       enemies,
-      gates: level.upgradeGates.map((gate) => gate.reward.mode === 'periodic'
+      gates: level.upgradeGates.map((gate) => gate.reward.mode === 'pickup'
         ? { ...gate, maxHp: gate.hp, reward: { ...gate.reward }, rewardCooldownRemainingSeconds: null }
         : { ...gate, maxHp: gate.hp, reward: { ...gate.reward } }),
       projectiles: [],
+      pickups: [],
+      nextPickupId: 1,
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
   }
@@ -425,7 +457,7 @@ export class Simulation {
     if (!Number.isSafeInteger(nextProjectileId)) throw new Error('Simulation projectile ID exceeds the supported range');
 
     const survivingProjectiles: ProjectileSimulationState[] = [];
-    // A breaking shot starts the timer; it cannot collect the first periodic reward.
+    // A breaking shot starts the timer; the first plaque waits for a full interval.
     const newlyBroken = new Set<string>();
     for (const projectile of projectiles) {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
@@ -436,7 +468,7 @@ export class Simulation {
       if (hit) {
         if (hit.kind === 'gate') {
           hit.gate.hp = Math.max(0, hit.gate.hp - projectile.damage);
-          if (hit.gate.hp === 0 && hit.gate.reward.mode === 'periodic') {
+          if (hit.gate.hp === 0 && hit.gate.reward.mode === 'pickup') {
             hit.gate.rewardCooldownRemainingSeconds = hit.gate.reward.intervalSeconds;
             newlyBroken.add(hit.gate.id);
           } else if (hit.gate.hp === 0 && hit.gate.reward.mode === 'instant') {
@@ -470,23 +502,48 @@ export class Simulation {
       const remainingRange = projectile.remainingRange - travel;
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
     }
+    // Emissions are timed within this step, so a large dt also advances newly born plaques.
+    const travelingPickups = this.state.pickups.map((pickup) => ({ pickup: { ...pickup }, travelSeconds: dtSeconds }));
+    let nextPickupId = this.state.nextPickupId;
     for (const gate of gates) {
-      if (gate.reward.mode !== 'periodic' || gate.hp > 0 || newlyBroken.has(gate.id)) continue;
-      const remaining = gate.rewardCooldownRemainingSeconds! - dtSeconds;
+      if (gate.reward.mode !== 'pickup' || gate.hp > 0 || newlyBroken.has(gate.id)) continue;
+      const cooldown = gate.rewardCooldownRemainingSeconds!;
+      const remaining = cooldown - dtSeconds;
       const tolerance = gate.reward.intervalSeconds * 1e-12;
       if (remaining > tolerance) {
         gate.rewardCooldownRemainingSeconds = remaining;
         continue;
       }
       const due = Math.floor((-remaining + tolerance) / gate.reward.intervalSeconds) + 1;
-      const growth = due * gate.reward.amount;
-      if (!Number.isSafeInteger(due) || !Number.isSafeInteger(growth)
-        || !Number.isSafeInteger(squad.count + growth)) {
-        throw new Error('Simulation squad reward exceeds the supported range');
+      if (!Number.isSafeInteger(due) || due > 10_000 || !Number.isSafeInteger(nextPickupId + due)) {
+        throw new Error('Simulation step requests too many pickup emissions');
       }
-      squad.count += growth;
+      for (let ordinal = 0; ordinal < due; ordinal++) {
+        travelingPickups.push({ pickup: { id: nextPickupId++, sourceGateId: gate.id, x: gate.x,
+          zOffset: gate.zOffset, width: gate.width, rewardKind: gate.reward.kind,
+          rewardAmount: gate.reward.amount, dropSpeed: gate.reward.dropSpeed },
+        travelSeconds: Math.max(0, dtSeconds - cooldown - ordinal * gate.reward.intervalSeconds) });
+      }
       gate.rewardCooldownRemainingSeconds = Math.max(0, Math.min(gate.reward.intervalSeconds,
         remaining + due * gate.reward.intervalSeconds));
+    }
+    const survivingPickups: UpgradePickupSimulationState[] = [];
+    for (const { pickup, travelSeconds } of travelingPickups.sort((a, b) => a.pickup.id - b.pickup.id)) {
+      const endOffset = pickup.zOffset - pickup.dropSpeed * travelSeconds;
+      if (!Number.isFinite(endOffset)) throw new Error('Simulation pickup movement exceeds the supported range');
+      if (endOffset > 0) {
+        survivingPickups.push({ ...pickup, zOffset: endOffset });
+        continue;
+      }
+      const crossingFraction = (dtSeconds - travelSeconds + pickup.zOffset / pickup.dropSpeed) / dtSeconds;
+      const playerXAtCrossing = this.state.player.x + (nextX - this.state.player.x) * crossingFraction;
+      if (Math.abs(playerXAtCrossing - pickup.x) <= pickup.width / 2) {
+        if (!Number.isSafeInteger(squad.count + pickup.rewardAmount)) {
+          throw new Error('Simulation squad reward exceeds the supported range');
+        }
+        squad.count += pickup.rewardAmount;
+      }
+      // Both a collected and a missed plaque disappear once it passes the player.
     }
     const contactRadius = tuning.memberRadius + tuning.gruntRadius;
     if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
@@ -519,7 +576,8 @@ export class Simulation {
         squad = afterCasualties(squad, 1);
       }
     }
-    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, gates, projectiles: survivingProjectiles,
+    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, gates,
+      pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
@@ -533,6 +591,7 @@ export class Simulation {
       squad: { ...this.state.squad },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
       gates: this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } })),
+      pickups: this.state.pickups.map((pickup) => ({ ...pickup })),
       projectiles: this.state.projectiles.map((projectile) => ({ ...projectile })),
       weapons: { ...this.state.weapons },
     };

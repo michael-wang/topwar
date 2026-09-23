@@ -28,7 +28,7 @@ export class UpgradeGateRenderer {
       let visual = this.visuals.get(gate.id);
       if (!visual) {
         const panel = new THREE.Mesh(this.wallGeometry,
-          gate.rewardMode === 'periodic' ? this.generatorMaterial : this.jackpotMaterial);
+          gate.rewardMode === 'pickup' ? this.generatorMaterial : this.jackpotMaterial);
         this.scene.add(panel);
         visual = { panel, label: null, hp: NaN };
         this.visuals.set(gate.id, visual);
@@ -60,7 +60,7 @@ export class UpgradeGateRenderer {
 
   private createLabel(gate: UpgradeGateRenderState): GateVisual['label'] {
     const unit = gate.rewardKind.toUpperCase();
-    const lines = gate.rewardMode === 'periodic'
+    const lines = gate.rewardMode === 'pickup'
       ? gate.hp > 0
         ? [`${unit} +${gate.rewardAmount}/${gate.rewardIntervalSeconds}s`, `WALL ${Math.ceil(gate.hp)}`]
         : [`+${gate.rewardAmount} ${unit}`, `EVERY ${gate.rewardIntervalSeconds}s`]

@@ -7,8 +7,8 @@ describe('UpgradeGateRenderer', () => {
     const scene = new THREE.Scene();
     const renderer = new UpgradeGateRenderer(scene);
     const gate = { id: 'left', x: -2.7, z: 14, width: 0.9, hp: 100, maxHp: 100,
-      rewardMode: 'periodic' as const, rewardKind: 'rifle' as const,
-      rewardAmount: 1, rewardIntervalSeconds: 2 };
+      rewardMode: 'pickup' as const, rewardKind: 'rifle' as const,
+      rewardAmount: 1, rewardIntervalSeconds: 1 };
     renderer.update([gate]);
     expect(scene.children).toHaveLength(1);
     const panel = scene.children[0] as THREE.Mesh;

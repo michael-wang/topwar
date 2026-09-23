@@ -5,6 +5,7 @@ import { renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
 import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
+import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
 
 export class GameRenderer {
   private readonly scene = new THREE.Scene();
@@ -14,6 +15,7 @@ export class GameRenderer {
   private readonly enemyRenderer = new EnemyRenderer(this.scene);
   private readonly projectileRenderer = new ProjectileRenderer(this.scene);
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
+  private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
   private readonly ground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly road: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly markerGeometry = new THREE.PlaneGeometry(1, 0.08);
@@ -103,6 +105,7 @@ export class GameRenderer {
     this.enemyRenderer.update(state.enemies);
     this.projectileRenderer.update(state.projectiles);
     this.gateRenderer.update(state.gates);
+    this.pickupRenderer.update(state.pickups);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -121,6 +124,7 @@ export class GameRenderer {
     this.enemyRenderer.dispose();
     this.projectileRenderer.dispose();
     this.gateRenderer.dispose();
+    this.pickupRenderer.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();

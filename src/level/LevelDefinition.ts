@@ -19,8 +19,9 @@ const EnemyGroupSchema = z.strictObject({
 });
 
 export const UpgradeRewardSchema = z.discriminatedUnion('mode', [
-  z.strictObject({ mode: z.literal('periodic'), kind: z.literal('rifle'),
-    amount: positiveSafeInteger, intervalSeconds: z.number().finite().positive() }),
+  z.strictObject({ mode: z.literal('pickup'), kind: z.literal('rifle'),
+    amount: positiveSafeInteger, intervalSeconds: z.number().finite().positive(),
+    dropSpeed: z.number().finite().positive() }),
   z.strictObject({ mode: z.literal('instant'), kind: z.literal('rifle'), amount: positiveSafeInteger }),
 ]);
 

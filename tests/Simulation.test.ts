@@ -26,6 +26,8 @@ describe('Simulation', () => {
       squad: { count: 1, rocketCount: 0 },
       enemies: [],
       gates: [],
+      pickups: [],
+      nextPickupId: 1,
       projectiles: [],
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     });
@@ -66,6 +68,8 @@ describe('Simulation', () => {
       squad: { count: 1, rocketCount: 0 },
       enemies: [],
       gates: [],
+      pickups: [],
+      nextPickupId: 1,
       projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 28 / 60, speed: 28, damage: 3, remainingRange: 18 - 28 / 60, blastRadius: 0 }],
       weapons: { rifleCooldownRemainingSeconds: 1 / 7 - 1 / 60, rocketCooldownRemainingSeconds: 0, nextProjectileId: 2 },
     });

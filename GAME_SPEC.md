@@ -159,7 +159,7 @@ Examples:
 - +20
 - +99
 
-Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall unlocks automatic +1 rifle recruitment every 2 simulation seconds, indefinitely while the run lives. Breaking the right 1000 HP wall immediately grants +99 rifle soldiers once. Both paths remain available throughout the run; the player decides how much firepower to invest while surviving the enemy stream. Wall HP and rewards are authored level data.
+Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall makes it emit physical +1 rifle plaques every second. The player must move into the left lane to collect each plaque; missed plaques grant nothing. Breaking the right 1000 HP wall immediately grants +99 rifle soldiers once. Both paths remain available throughout the run. Wall HP and rewards are authored level data.
 
 Later we can test:
 
