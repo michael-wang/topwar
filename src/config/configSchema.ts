@@ -5,7 +5,8 @@ const nonnegative = z.number().finite().nonnegative();
 
 export const GameConfigSchema = z.strictObject({
   player: z.strictObject({
-    startSquad: z.number().int().nonnegative(),
+    startSquad: z.number().int().safe().nonnegative(),
+    startRocketCount: z.number().int().safe().nonnegative(),
     moveSpeed: nonnegative,
     forwardSpeed: nonnegative,
     formationSpacing: positive,
@@ -25,6 +26,13 @@ export const GameConfigSchema = z.strictObject({
       projectileSpeed: positive,
       range: positive,
     }),
+    rocket: z.strictObject({
+      damage: positive,
+      fireRate: positive,
+      projectileSpeed: positive,
+      range: positive,
+      blastRadius: positive,
+    }),
   }),
   enemies: z.strictObject({
     grunt: z.strictObject({
@@ -40,6 +48,7 @@ export const GameConfigSchema = z.strictObject({
       radius: positive,
     }),
   }),
-});
+}).refine((config) => config.player.startRocketCount <= config.player.startSquad,
+  { path: ['player', 'startRocketCount'], message: 'startRocketCount cannot exceed startSquad' });
 
 export type GameConfig = z.infer<typeof GameConfigSchema>;

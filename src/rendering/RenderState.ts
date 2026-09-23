@@ -5,6 +5,7 @@ export interface GameRenderState {
   };
   squad: {
     count: number;
+    rocketCount: number;
     formationSpacing: number;
   };
   track: {
@@ -17,6 +18,7 @@ export interface GameRenderState {
 
 export interface ProjectileRenderState {
   id: number;
+  kind: 'rifle' | 'rocket';
   x: number;
   z: number;
 }

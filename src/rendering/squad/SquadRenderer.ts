@@ -7,7 +7,9 @@ export class SquadRenderer {
   private readonly headGeometry = new THREE.SphereGeometry(0.18, 8, 6);
   private readonly bodyMaterial = new THREE.MeshStandardMaterial({ color: '#1769ee' });
   private readonly headMaterial = new THREE.MeshStandardMaterial({ color: '#4b91ff' });
-  private readonly members: THREE.Group[] = [];
+  private readonly launcherGeometry = new THREE.BoxGeometry(0.22, 0.17, 0.66);
+  private readonly launcherMaterial = new THREE.MeshStandardMaterial({ color: '#173a77' });
+  private readonly members: { group: THREE.Group; launcher: THREE.Mesh }[] = [];
 
   constructor(private readonly scene: THREE.Scene) {}
 
@@ -16,21 +18,24 @@ export class SquadRenderer {
     while (this.members.length < offsets.length) this.addMember();
 
     for (let index = 0; index < this.members.length; index++) {
-      const member = this.members[index];
+      const { group, launcher } = this.members[index];
       const offset = offsets[index];
-      member.visible = offset !== undefined;
+      group.visible = offset !== undefined;
+      launcher.visible = index >= state.squad.count - state.squad.rocketCount;
       // The camera looks along +Z, which mirrors X on screen. Flip visual X so drag right reads right.
-      if (offset) member.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
+      if (offset) group.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
     }
   }
 
   dispose(): void {
-    for (const member of this.members) this.scene.remove(member);
+    for (const member of this.members) this.scene.remove(member.group);
     this.members.length = 0;
     this.bodyGeometry.dispose();
     this.headGeometry.dispose();
+    this.launcherGeometry.dispose();
     this.bodyMaterial.dispose();
     this.headMaterial.dispose();
+    this.launcherMaterial.dispose();
   }
 
   private addMember(): void {
@@ -39,8 +44,11 @@ export class SquadRenderer {
     body.position.y = 0.32;
     const head = new THREE.Mesh(this.headGeometry, this.headMaterial);
     head.position.y = 0.75;
-    member.add(body, head);
+    const launcher = new THREE.Mesh(this.launcherGeometry, this.launcherMaterial);
+    launcher.position.set(-0.22, 0.56, 0.1);
+    launcher.visible = false;
+    member.add(body, head, launcher);
     this.scene.add(member);
-    this.members.push(member);
+    this.members.push({ group: member, launcher });
   }
 }

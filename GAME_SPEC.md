@@ -53,6 +53,8 @@ The squad follows horizontal input and progresses forward automatically. Firing 
 
 The player controls a squad rather than an individual soldier.
 
+The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. This clear difference is intended to support an opening upgrade decision when gates are added later.
+
 Initial prototype:
 
 - start with configurable soldier count

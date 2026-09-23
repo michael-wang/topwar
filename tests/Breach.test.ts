@@ -11,17 +11,18 @@ const tuning: SimulationTuning = {
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
   gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
+  rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
 
 function withState(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = []) {
-  const simulation = new Simulation({ seed: 7, level, startSquad: count, gruntHp: 3 });
+  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0, gruntHp: 3 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;
-  state.rifle.cooldownRemainingSeconds = 100;
-  state.rifle.nextProjectileId = projectiles.length + 1;
+  state.weapons.rifleCooldownRemainingSeconds = 100;
+  state.weapons.nextProjectileId = projectiles.length + 1;
   simulation.restoreState(state);
   return simulation;
 }
@@ -57,7 +58,8 @@ describe('moving defense-line breaches', () => {
   });
 
   it('does not breach an enemy killed by a projectile earlier in the tick', () => {
-    const projectile = { id: 1, x: 2, z: 1.5, speed: 10, damage: 3, remainingRange: 18 };
+    const projectile = { id: 1, kind: 'rifle' as const, x: 2, z: 1.5,
+      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 };
     const simulation = withState(2, [grunt(1, 2, 2)], [projectile]);
     advance(simulation);
     expect(simulation.getState().squad.count).toBe(2);
@@ -73,7 +75,7 @@ describe('moving defense-line breaches', () => {
     advance(simulation);
     expect(simulation.getState().player).toEqual(stopped.player);
     expect(simulation.getState().enemies).toEqual(stopped.enemies);
-    expect(simulation.getState().rifle).toEqual(stopped.rifle);
+    expect(simulation.getState().weapons).toEqual(stopped.weapons);
   });
 
   it('is deterministic and rejects invalid offset transactionally', () => {
@@ -92,10 +94,10 @@ describe('moving defense-line breaches', () => {
 
   it('a fresh run restores authored enemies, squad size, and weapon allocator', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
-    const first = new Simulation({ seed: 1, level: authored, startSquad: 3, gruntHp: 3 });
+    const first = new Simulation({ seed: 1, level: authored, startSquad: 3, startRocketCount: 0, gruntHp: 3 });
     const authoredPositions = first.getState().enemies.map(({ id, x, z }) => ({ id, x, z }));
     first.step(0.1, { targetX: 0 }, { ...tuning, forwardSpeed: 3 });
-    const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, gruntHp: 4 });
+    const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, startRocketCount: 0, gruntHp: 4 });
     const state = fresh.getState();
     expect(state.player).toEqual({ x: 0, z: 0 });
     expect(state.squad.count).toBe(5);
@@ -103,6 +105,7 @@ describe('moving defense-line breaches', () => {
     expect(state.enemies.map(({ id, x, z }) => ({ id, x, z }))).toEqual(authoredPositions);
     expect(state.enemies.every((enemy) => enemy.hp === 4)).toBe(true);
     expect(state.projectiles).toEqual([]);
-    expect(state.rifle).toEqual({ cooldownRemainingSeconds: 0, nextProjectileId: 1 });
+    expect(state.weapons).toEqual({ rifleCooldownRemainingSeconds: 0,
+      rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 });
   });
 });

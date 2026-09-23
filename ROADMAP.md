@@ -50,7 +50,7 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 ## Current pivot slice
 1. Irregular opening swarm with crowd-capable rendering.
 2. Destructible dual upgrade gates.
-3. Rocket specialist.
+3. Rocket specialist combat foundation (implemented; gates remain future work).
 
 ## 012 Recruitment gates — next gameplay milestone
 Data-driven +N gates, squad growth feedback.

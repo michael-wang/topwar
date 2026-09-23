@@ -13,9 +13,10 @@ const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
   memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
+  rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
-const create = (count = 1, gruntHp = 10, authored = level) =>
-  new Simulation({ seed: 17, level: authored, startSquad: count, gruntHp });
+const create = (count = 1, gruntHp = 10, authored = level, rocketCount = 0) =>
+  new Simulation({ seed: 17, level: authored, startSquad: count, startRocketCount: rocketCount, gruntHp });
 const step = (simulation: Simulation, dt = 0.1, override: SimulationTuning = tuning) =>
   simulation.step(dt, { targetX: 0 }, override);
 
@@ -23,12 +24,13 @@ function restoreCombat(simulation: Simulation, enemies: EnemySimulationState[], 
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;
-  state.rifle = { cooldownRemainingSeconds: 10, nextProjectileId: Math.max(1, ...projectiles.map((p) => p.id + 1)) };
+  state.weapons = { rifleCooldownRemainingSeconds: 10, rocketCooldownRemainingSeconds: 10,
+    nextProjectileId: Math.max(1, ...projectiles.map((p) => p.id + 1)) };
   simulation.restoreState(state);
 }
 
 const bullet = (id: number, x = 0, z = 0, damage = 3): ProjectileSimulationState =>
-  ({ id, x, z, damage, speed: 10, remainingRange: 18 });
+  ({ id, kind: 'rifle', x, z, damage, speed: 10, remainingRange: 18, blastRadius: 0 });
 const enemy = (id: number, x: number, z: number, hp = 10): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp });
 
@@ -54,7 +56,7 @@ describe('Automatic rifle and projectile state', () => {
     expect(simulation.getState().enemies[0].hp).toBe(12);
     step(simulation, 0.1);
     expect(simulation.getState().projectiles.map((p) => p.id)).toEqual([1]);
-    expect(simulation.getState().rifle.nextProjectileId).toBe(2);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(2);
     step(simulation, 0.3);
     expect(simulation.getState().projectiles.map((p) => p.id)).toEqual([1]);
     step(simulation, 0.11);
@@ -79,16 +81,16 @@ describe('Automatic rifle and projectile state', () => {
     expect(simulation.getState().projectiles[0]).toMatchObject({ z: 1, remainingRange: 17 });
     const exposed = simulation.getState();
     exposed.projectiles[0].x = 999;
-    exposed.rifle.nextProjectileId = 999;
+    exposed.weapons.nextProjectileId = 999;
     expect(simulation.getState().projectiles[0].x).toBe(0);
-    expect(simulation.getState().rifle.nextProjectileId).toBe(2);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(2);
     const saved = JSON.parse(JSON.stringify(simulation.getState()));
     const restored = create();
     restored.restoreState(saved);
     expect(restored.getState()).toEqual(simulation.getState());
     step(restored, 2, { ...tuning, rifle: { ...tuning.rifle, fireRate: 0.1 } });
     expect(restored.getState().projectiles).toEqual([]);
-    expect(restored.getState().rifle.nextProjectileId).toBe(3);
+    expect(restored.getState().weapons.nextProjectileId).toBe(3);
   });
 
   it('captures shot tuning at creation; later tuning affects only new bullets', () => {
@@ -106,7 +108,7 @@ describe('Automatic rifle and projectile state', () => {
     step(first);
     const state = first.getState();
     state.projectiles = [];
-    state.rifle.cooldownRemainingSeconds = 0;
+    state.weapons.rifleCooldownRemainingSeconds = 0;
     const second = create();
     second.restoreState(JSON.parse(JSON.stringify(state)));
     step(second);
@@ -156,7 +158,7 @@ describe('Swept hits and enemy death', () => {
     expect(simulation.getState().enemies).toEqual([enemy(1, 0, 5, 3)]);
     const state = simulation.getState();
     state.projectiles = [bullet(2)];
-    state.rifle.nextProjectileId = 3;
+    state.weapons.nextProjectileId = 3;
     simulation.restoreState(state);
     step(simulation, 1);
     expect(simulation.getState().enemies).toEqual([]);
@@ -207,8 +209,8 @@ describe('Swept hits and enemy death', () => {
     for (const damage of [
       (s: typeof before) => { s.projectiles[0].remainingRange = 0; },
       (s: typeof before) => { s.projectiles.push({ ...s.projectiles[0] }); },
-      (s: typeof before) => { s.rifle.nextProjectileId = 1; },
-      (s: typeof before) => { s.rifle.cooldownRemainingSeconds = Infinity; },
+      (s: typeof before) => { s.weapons.nextProjectileId = 1; },
+      (s: typeof before) => { s.weapons.rifleCooldownRemainingSeconds = Infinity; },
       (s: typeof before) => { (s.projectiles[0] as unknown as Record<string, unknown>).extra = 1; },
     ]) {
       const invalid = JSON.parse(JSON.stringify(before)) as typeof before;

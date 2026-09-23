@@ -34,6 +34,7 @@ export class GameApp {
       seed: 1,
       level,
       startSquad: this.config.player.startSquad,
+      startRocketCount: this.config.player.startRocketCount,
       gruntHp: this.config.enemies.grunt.hp,
     });
     this.targetX = this.simulation.getState().player.x;
@@ -116,6 +117,7 @@ export class GameApp {
       seed: 1,
       level: this.level,
       startSquad: this.config.player.startSquad,
+      startRocketCount: this.config.player.startRocketCount,
       gruntHp: this.config.enemies.grunt.hp,
     });
     this.targetX = this.simulation.getState().player.x;
@@ -145,16 +147,19 @@ export class GameApp {
         gruntRadius: this.config.enemies.grunt.radius,
         gruntContactDamage: this.config.enemies.grunt.contactDamage,
         rifle: { ...this.config.weapon.rifle },
+        rocket: { ...this.config.weapon.rocket },
       },
     ));
     const state = this.simulation.getState();
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
-      squad: { count: state.squad.count, formationSpacing: this.config.player.formationSpacing },
+      squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
+        formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth,
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
       enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type, x: enemy.x, z: enemy.z })),
-      projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, x: projectile.x, z: projectile.z })),
+      projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
+        x: projectile.x, z: projectile.z })),
     };
     this.renderer.render(renderState);
     this.gameOverOverlay.setVisible(state.squad.count === 0);

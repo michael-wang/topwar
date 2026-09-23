@@ -6,11 +6,12 @@ import { Simulation } from '../src/simulation/Simulation';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
 const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [] };
-const create = () => new Simulation({ seed: 1, level, startSquad: 1, gruntHp: 10 });
+const create = () => new Simulation({ seed: 1, level, startSquad: 1, startRocketCount: 0, gruntHp: 10 });
 const still = { targetX: 0 };
 const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
   gruntContactDamage: 1,
-  rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
+  rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
+  rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
 
 describe('Simulation', () => {
@@ -22,17 +23,32 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
-      squad: { count: 1 },
+      squad: { count: 1, rocketCount: 0 },
       enemies: [],
       projectiles: [],
-      rifle: { cooldownRemainingSeconds: 0, nextProjectileId: 1 },
+      weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     });
   });
 
   it('accepts a zero-soldier start and rejects invalid squad counts', () => {
-    expect(new Simulation({ seed: 1, level, startSquad: 0, gruntHp: 10 }).getState().squad.count).toBe(0);
+    expect(new Simulation({ seed: 1, level, startSquad: 0, startRocketCount: 0, gruntHp: 10 }).getState().squad.count).toBe(0);
     for (const startSquad of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.NaN, Infinity]) {
-      expect(() => new Simulation({ seed: 1, level, startSquad, gruntHp: 10 })).toThrow(/startSquad/);
+      expect(() => new Simulation({ seed: 1, level, startSquad, startRocketCount: 0, gruntHp: 10 })).toThrow(/startSquad/);
+    }
+  });
+
+  it('validates and owns initial rocket composition', () => {
+    const simulation = new Simulation({ seed: 1, level, startSquad: 2, startRocketCount: 1, gruntHp: 10 });
+    const exposed = simulation.getState();
+    expect(exposed.squad).toEqual({ count: 2, rocketCount: 1 });
+    exposed.squad.rocketCount = 0;
+    expect(simulation.getState().squad.rocketCount).toBe(1);
+    const restored = create();
+    restored.restoreState(JSON.parse(JSON.stringify(simulation.getState())) as SimulationState);
+    expect(restored.getState().squad).toEqual({ count: 2, rocketCount: 1 });
+    for (const startRocketCount of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, 3]) {
+      expect(() => new Simulation({ seed: 1, level, startSquad: 2, startRocketCount, gruntHp: 10 }))
+        .toThrow(/startRocketCount/);
     }
   });
 
@@ -46,10 +62,10 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
-      squad: { count: 1 },
+      squad: { count: 1, rocketCount: 0 },
       enemies: [],
-      projectiles: [{ id: 1, x: 0, z: 28 / 60, speed: 28, damage: 3, remainingRange: 18 - 28 / 60 }],
-      rifle: { cooldownRemainingSeconds: 1 / 7 - 1 / 60, nextProjectileId: 2 },
+      projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 28 / 60, speed: 28, damage: 3, remainingRange: 18 - 28 / 60, blastRadius: 0 }],
+      weapons: { rifleCooldownRemainingSeconds: 1 / 7 - 1 / 60, rocketCooldownRemainingSeconds: 0, nextProjectileId: 2 },
     });
     simulation.step(1 / 60, still, stillTuning);
     simulation.step(1 / 30, still, stillTuning);
@@ -62,8 +78,8 @@ describe('Simulation', () => {
 
   it('produces identical state for the same seed, level, and step sequence', () => {
     const repeatLevel = { ...level, id: 'repeat' };
-    const first = new Simulation({ seed: 0xffffffff, level: repeatLevel, startSquad: 3, gruntHp: 10 });
-    const second = new Simulation({ seed: 0xffffffff, level: repeatLevel, startSquad: 3, gruntHp: 10 });
+    const first = new Simulation({ seed: 0xffffffff, level: repeatLevel, startSquad: 3, startRocketCount: 0, gruntHp: 10 });
+    const second = new Simulation({ seed: 0xffffffff, level: repeatLevel, startSquad: 3, startRocketCount: 0, gruntHp: 10 });
     for (const dt of [1 / 60, 1 / 60, 0.125, 1 / 60]) {
       first.step(dt, still, stillTuning);
       second.step(dt, still, stillTuning);
@@ -88,7 +104,7 @@ describe('Simulation', () => {
     restored.rngState = rng.getState();
     restored.player = { x: -2.5, z: 4 };
     restored.squad.count = 5;
-    const another = new Simulation({ seed: 99, level: { ...level, id: 'other' }, startSquad: 0, gruntHp: 10 });
+    const another = new Simulation({ seed: 99, level: { ...level, id: 'other' }, startSquad: 0, startRocketCount: 0, gruntHp: 10 });
     another.restoreState(JSON.parse(JSON.stringify(restored)) as SimulationState);
     expect(another.getState()).toEqual(restored);
     expect(another.getState().squad.count).toBe(5);
@@ -103,11 +119,11 @@ describe('Simulation', () => {
   });
 
   it.each([-1, 1.5, 4294967296, Number.NaN, Infinity])('rejects invalid seed %s', (seed) => {
-    expect(() => new Simulation({ seed, level, startSquad: 1, gruntHp: 10 })).toThrow();
+    expect(() => new Simulation({ seed, level, startSquad: 1, startRocketCount: 0, gruntHp: 10 })).toThrow();
   });
 
   it.each(['', '   ', null, 7])('rejects invalid level id %s', (levelId) => {
-    expect(() => new Simulation({ seed: 1, level: { ...level, id: levelId as string }, startSquad: 1, gruntHp: 10 })).toThrow();
+    expect(() => new Simulation({ seed: 1, level: { ...level, id: levelId as string }, startSquad: 1, startRocketCount: 0, gruntHp: 10 })).toThrow();
   });
 
   it.each([
@@ -130,6 +146,10 @@ describe('Simulation', () => {
     (state: SimulationState) => { state.squad.count = -1; },
     (state: SimulationState) => { state.squad.count = 1.5; },
     (state: SimulationState) => { state.squad.count = Number.MAX_SAFE_INTEGER + 1; },
+    (state: SimulationState) => { state.squad.rocketCount = -1; },
+    (state: SimulationState) => { state.squad.rocketCount = 1.5; },
+    (state: SimulationState) => { state.squad.rocketCount = state.squad.count + 1; },
+    (state: SimulationState) => { delete (state.squad as unknown as Record<string, unknown>).rocketCount; },
   ])('rejects invalid restored state transactionally', (damage) => {
     const simulation = create();
     simulation.step(0.125, still, stillTuning);
@@ -220,7 +240,7 @@ describe('Simulation movement', () => {
 
 describe('Static authored enemies', () => {
   const authored = LevelDefinitionSchema.parse(authoredLevel);
-  const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1, gruntHp: 10 });
+  const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1, startRocketCount: 0, gruntHp: 10 });
 
   it('materializes the same 600-member enemy stream on every fresh run', () => {
     const first = createAuthored().getState();
@@ -255,7 +275,7 @@ describe('Static authored enemies', () => {
   it('restores enemy data after JSON serialization', () => {
     const original = createAuthored().getState();
     const parsed = JSON.parse(JSON.stringify(original)) as SimulationState;
-    const restored = new Simulation({ seed: 99, level, startSquad: 0, gruntHp: 10 });
+    const restored = new Simulation({ seed: 99, level, startSquad: 0, startRocketCount: 0, gruntHp: 10 });
     restored.restoreState(parsed);
     expect(restored.getState()).toEqual(original);
     parsed.enemies[0].x = 999;

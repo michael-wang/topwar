@@ -33,6 +33,9 @@ describe('GameConfigSchema and loading', () => {
     expect(fetchJson).toHaveBeenCalledWith(sourceUrl);
     expect(store.getConfig()).toEqual(base);
     expect(store.getConfig().weapon.rifle.range).toBe(40);
+    expect(store.getConfig().player).toMatchObject({ startSquad: 1, startRocketCount: 0 });
+    expect(store.getConfig().weapon.rocket).toEqual({ damage: 15, fireRate: 0.6,
+      projectileSpeed: 18, range: 40, blastRadius: 1.25 });
     expect(store.getConfig().enemies.grunt.hp).toBe(3);
   });
 
@@ -58,6 +61,14 @@ describe('GameConfigSchema and loading', () => {
     expect(() => GameConfigSchema.parse({ ...base, controls: { mouseSensitivity: Infinity } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, controls: { mouseSensitivity: 1.5 } })).not.toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, startSquad: 1.5 } })).toThrow();
+    for (const startRocketCount of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, 2]) {
+      expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, startRocketCount } })).toThrow(/startRocketCount/);
+    }
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, startSquad: 2, startRocketCount: 2 } })).not.toThrow();
+    for (const key of ['damage', 'fireRate', 'projectileSpeed', 'range', 'blastRadius'] as const) {
+      expect(() => GameConfigSchema.parse({ ...base, weapon: { ...base.weapon,
+        rocket: { ...base.weapon.rocket, [key]: 0 } } })).toThrow();
+    }
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, formationSpacing: 0 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: Infinity } })).toThrow();
@@ -187,7 +198,8 @@ describe('ConfigStore reload and subscriptions', () => {
     store.updateOverrides({ player: { moveSpeed: 8 } });
     expect(listener).toHaveBeenCalledTimes(1);
 
-    current = { ...base, player: { ...base.player, startSquad: 3 }, weapon: { rifle: { ...base.weapon.rifle, damage: 6 } } };
+    current = { ...base, player: { ...base.player, startSquad: 3 },
+      weapon: { ...base.weapon, rifle: { ...base.weapon.rifle, damage: 6 } } };
     await store.reloadBase();
     expect(store.getConfig().player).toEqual({ ...base.player, startSquad: 3, moveSpeed: 8 });
     expect(store.getConfig().weapon.rifle.damage).toBe(6);

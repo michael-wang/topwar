@@ -8,24 +8,34 @@ const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
   memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
+  rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
 const shot = (id: number, x = 0, z = 0): ProjectileSimulationState =>
-  ({ id, x, z, speed: 10, damage: 3, remainingRange: 18 });
+  ({ id, kind: 'rifle', x, z, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 });
 
-function simulationWith(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = []) {
-  const simulation = new Simulation({ seed: 7, level, startSquad: count, gruntHp: 3 });
+function simulationWith(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = [], rocketCount = 0) {
+  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;
-  state.rifle.cooldownRemainingSeconds = 100;
-  state.rifle.nextProjectileId = projectiles.length + 1;
+  state.weapons.rifleCooldownRemainingSeconds = 100;
+  state.weapons.rocketCooldownRemainingSeconds = 100;
+  state.weapons.nextProjectileId = projectiles.length + 1;
   simulation.restoreState(state);
   return simulation;
 }
 
 describe('Enemy contact casualties', () => {
+  it('preserves rocket specialists until rifle soldiers are gone', () => {
+    const oneContact = simulationWith(2, [grunt(1, 0, 0)], [], 1);
+    oneContact.step(0.1, { targetX: 0 }, tuning);
+    expect(oneContact.getState().squad).toEqual({ count: 1, rocketCount: 1 });
+    const twoContacts = simulationWith(2, [grunt(1, 0, 0), grunt(2, 0, 0)], [], 1);
+    twoContacts.step(0.1, { targetX: 0 }, tuning);
+    expect(twoContacts.getState().squad).toEqual({ count: 0, rocketCount: 0 });
+  });
   it('removes one contacting grunt and one soldier exactly once', () => {
     const simulation = simulationWith(3, [grunt(1, 0, 0)]);
     simulation.step(0.1, { targetX: 0 }, tuning);
@@ -98,7 +108,7 @@ describe('Enemy contact casualties', () => {
     expect(later.player).toEqual(stopped.player);
     expect(later.enemies).toEqual(stopped.enemies);
     expect(later.projectiles).toEqual(stopped.projectiles);
-    expect(later.rifle).toEqual(stopped.rifle);
+    expect(later.weapons).toEqual(stopped.weapons);
     expect(later.tick).toBe(stopped.tick + 1);
     expect(later.elapsedSeconds).toBe(stopped.elapsedSeconds + 1);
   });

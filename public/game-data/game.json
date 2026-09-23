@@ -1,6 +1,7 @@
 {
   "player": {
     "startSquad": 1,
+    "startRocketCount": 0,
     "moveSpeed": 5,
     "forwardSpeed": 3,
     "formationSpacing": 0.45,
@@ -19,6 +20,13 @@
       "fireRate": 7,
       "projectileSpeed": 28,
       "range": 40
+    },
+    "rocket": {
+      "damage": 15,
+      "fireRate": 0.6,
+      "projectileSpeed": 18,
+      "range": 40,
+      "blastRadius": 1.25
     }
   },
   "enemies": {

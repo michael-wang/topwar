@@ -1,6 +1,7 @@
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
+import { afterCasualties } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import type { EnemySimulationState, ProjectileSimulationState, SimulationState } from './SimulationState';
 
@@ -8,6 +9,7 @@ export interface SimulationOptions {
   seed: number;
   level: LevelDefinition;
   startSquad: number;
+  startRocketCount: number;
   gruntHp: number;
 }
 
@@ -25,6 +27,7 @@ export interface SimulationTuning {
   gruntRadius: number;
   gruntContactDamage: number;
   rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
+  rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
 
 function positiveFinite(value: unknown): value is number {
@@ -82,7 +85,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'projectiles', 'rifle'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'projectiles', 'weapons'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -115,11 +118,12 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation squad must be a plain object');
   }
   const squad = state.squad;
-  if (Object.keys(squad).length !== 1 || !Object.hasOwn(squad, 'count')) {
-    throw new Error('Simulation squad must contain only count');
+  if (Object.keys(squad).length !== 2 || !Object.hasOwn(squad, 'count') || !Object.hasOwn(squad, 'rocketCount')) {
+    throw new Error('Simulation squad must contain only count and rocketCount');
   }
-  if (!validSquadCount(squad.count)) {
-    throw new Error('Simulation squad.count must be a non-negative safe integer');
+  if (!validSquadCount(squad.count) || !validSquadCount(squad.rocketCount)
+    || (squad.rocketCount as number) > (squad.count as number)) {
+    throw new Error('Simulation squad count and rocketCount must be valid, with rocketCount <= count');
   }
 
   if (!Array.isArray(state.enemies)) throw new Error('Simulation enemies must be an array');
@@ -148,31 +152,47 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
-    if (Object.keys(value).length !== 6 || ['id', 'x', 'z', 'speed', 'damage', 'remainingRange'].some((field) => !Object.hasOwn(value, field))) {
+    if (Object.keys(value).length !== 8 || ['id', 'kind', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius']
+      .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation projectile ${index} has missing or unknown fields`);
     }
     if (!Number.isSafeInteger(value.id) || (value.id as number) <= 0 || projectileIds.has(value.id as number)) {
       throw new Error(`Simulation projectile ${index} id must be unique and positive`);
     }
     projectileIds.add(value.id as number);
+    if (value.kind !== 'rifle' && value.kind !== 'rocket') {
+      throw new Error(`Simulation projectile ${index} kind is unsupported`);
+    }
     if (typeof value.x !== 'number' || !Number.isFinite(value.x) || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
       throw new Error(`Simulation projectile ${index} position must be finite`);
     }
     if (!positiveFinite(value.speed) || !positiveFinite(value.damage) || !positiveFinite(value.remainingRange)) {
       throw new Error(`Simulation projectile ${index} speed, damage, and remainingRange must be positive and finite`);
     }
-    return { id: value.id as number, x: value.x, z: value.z, speed: value.speed, damage: value.damage, remainingRange: value.remainingRange };
+    if (typeof value.blastRadius !== 'number' || !Number.isFinite(value.blastRadius)
+      || (value.kind === 'rifle' && value.blastRadius !== 0)
+      || (value.kind === 'rocket' && value.blastRadius <= 0)) {
+      throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
+    }
+    return { id: value.id as number, kind: value.kind, x: value.x, z: value.z, speed: value.speed,
+      damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius };
   });
-  if (!isPlainObject(state.rifle) || Object.keys(state.rifle).length !== 2
-    || !Object.hasOwn(state.rifle, 'cooldownRemainingSeconds') || !Object.hasOwn(state.rifle, 'nextProjectileId')) {
-    throw new Error('Simulation rifle must contain cooldownRemainingSeconds and nextProjectileId');
+  const weapons = state.weapons;
+  if (!isPlainObject(weapons) || Object.keys(weapons).length !== 3
+    || ['rifleCooldownRemainingSeconds', 'rocketCooldownRemainingSeconds', 'nextProjectileId']
+      .some((field) => !Object.hasOwn(weapons, field))) {
+    throw new Error('Simulation weapons state has missing or unknown fields');
   }
-  if (typeof state.rifle.cooldownRemainingSeconds !== 'number' || !Number.isFinite(state.rifle.cooldownRemainingSeconds)
-    || state.rifle.cooldownRemainingSeconds < 0) throw new Error('Simulation rifle cooldown must be finite and non-negative');
-  const nextProjectileId = state.rifle.nextProjectileId;
+  for (const key of ['rifleCooldownRemainingSeconds', 'rocketCooldownRemainingSeconds'] as const) {
+    const cooldown = weapons[key];
+    if (typeof cooldown !== 'number' || !Number.isFinite(cooldown) || cooldown < 0) {
+      throw new Error(`Simulation ${key} must be finite and non-negative`);
+    }
+  }
+  const nextProjectileId = weapons.nextProjectileId;
   if (!Number.isSafeInteger(nextProjectileId) || (nextProjectileId as number) <= 0
     || projectiles.some((projectile) => projectile.id >= (nextProjectileId as number))) {
-    throw new Error('Simulation rifle nextProjectileId must exceed active projectile IDs');
+    throw new Error('Simulation weapons nextProjectileId must exceed active projectile IDs');
   }
 
   return {
@@ -183,10 +203,12 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       seed: state.seed as number,
       rngState: rng.getState(),
       player: { x: player.x, z: player.z },
-      squad: { count: squad.count },
+      squad: { count: squad.count, rocketCount: squad.rocketCount },
       enemies,
       projectiles,
-      rifle: { cooldownRemainingSeconds: state.rifle.cooldownRemainingSeconds, nextProjectileId: nextProjectileId as number },
+      weapons: { rifleCooldownRemainingSeconds: weapons.rifleCooldownRemainingSeconds as number,
+        rocketCooldownRemainingSeconds: weapons.rocketCooldownRemainingSeconds as number,
+        nextProjectileId: nextProjectileId as number },
     },
     rng,
   };
@@ -201,6 +223,9 @@ export class Simulation {
     const level = LevelDefinitionSchema.parse(options.level);
     if (!validSquadCount(options.startSquad)) {
       throw new Error('Simulation startSquad must be a non-negative safe integer');
+    }
+    if (!validSquadCount(options.startRocketCount) || options.startRocketCount > options.startSquad) {
+      throw new Error('Simulation startRocketCount must be a non-negative safe integer within startSquad');
     }
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
     const enemies: EnemySimulationState[] = [];
@@ -227,10 +252,10 @@ export class Simulation {
       seed: options.seed,
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
-      squad: { count: options.startSquad },
+      squad: { count: options.startSquad, rocketCount: options.startRocketCount },
       enemies,
       projectiles: [],
-      rifle: { cooldownRemainingSeconds: 0, nextProjectileId: 1 },
+      weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
   }
 
@@ -264,6 +289,11 @@ export class Simulation {
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
       throw new Error('Simulation rifle tuning must be positive and finite');
     }
+    if (!tuning.rocket || !positiveFinite(tuning.rocket.damage) || !positiveFinite(tuning.rocket.fireRate)
+      || !positiveFinite(tuning.rocket.projectileSpeed) || !positiveFinite(tuning.rocket.range)
+      || !positiveFinite(tuning.rocket.blastRadius)) {
+      throw new Error('Simulation rocket tuning must be positive and finite');
+    }
     const nextElapsedSeconds = this.state.elapsedSeconds + dtSeconds;
     if (!Number.isFinite(nextElapsedSeconds) || !Number.isSafeInteger(this.state.tick + 1)) {
       throw new Error('Simulation time or tick exceeds the supported range');
@@ -287,26 +317,40 @@ export class Simulation {
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
-    let nextProjectileId = this.state.rifle.nextProjectileId;
-    let cooldown = this.state.rifle.cooldownRemainingSeconds - dtSeconds;
-    const interval = 1 / tuning.rifle.fireRate;
-    if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
-    // A malformed direct step must not turn into an unbounded catch-up loop.
-    if (cooldown <= 0 && Math.floor(-cooldown / interval) + 1 > 10_000) {
-      throw new Error('Simulation step requests too many rifle volleys');
-    }
-    // Fire before travel; bullets created this tick travel for this full fixed step.
-    while (cooldown <= 0) {
-      for (const offset of createSquadFormation(this.state.squad.count, tuning.formationSpacing)) {
-        if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
-        const x = nextX + offset.x;
-        const z = nextZ + offset.z;
-        if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
-        projectiles.push({ id: nextProjectileId++, x, z, speed: tuning.rifle.projectileSpeed,
-          damage: tuning.rifle.damage, remainingRange: tuning.rifle.range });
+    let nextProjectileId = this.state.weapons.nextProjectileId;
+    const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
+    const rifleCount = this.state.squad.count - this.state.squad.rocketCount;
+    const nextCooldowns = { rifle: this.state.weapons.rifleCooldownRemainingSeconds,
+      rocket: this.state.weapons.rocketCooldownRemainingSeconds };
+    // Fire before travel; projectiles created this tick travel for this full fixed step.
+    for (const kind of ['rifle', 'rocket'] as const) {
+      const activeOffsets = kind === 'rifle' ? offsets.slice(0, rifleCount) : offsets.slice(rifleCount);
+      const weapon = tuning[kind];
+      const interval = 1 / weapon.fireRate;
+      if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
+      if (activeOffsets.length === 0) {
+        nextCooldowns[kind] = 0;
+        continue;
       }
-      cooldown += interval;
-      if (!Number.isFinite(cooldown)) throw new Error('Simulation rifle cooldown exceeds the supported range');
+      let cooldown = nextCooldowns[kind] - dtSeconds;
+      // A malformed direct step must not turn into an unbounded catch-up loop.
+      if (cooldown <= 0 && Math.floor(-cooldown / interval) + 1 > 10_000) {
+        throw new Error('Simulation step requests too many weapon volleys');
+      }
+      while (cooldown <= 0) {
+        for (const offset of activeOffsets) {
+          if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
+          const x = nextX + offset.x;
+          const z = nextZ + offset.z;
+          if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
+          projectiles.push({ id: nextProjectileId++, kind, x, z, speed: weapon.projectileSpeed,
+            damage: weapon.damage, remainingRange: weapon.range,
+            blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0 });
+        }
+        cooldown += interval;
+        if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
+      }
+      nextCooldowns[kind] = cooldown;
     }
     if (!Number.isSafeInteger(nextProjectileId)) throw new Error('Simulation projectile ID exceeds the supported range');
 
@@ -317,8 +361,21 @@ export class Simulation {
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
       const hit = findFirstHit(projectile, endZ, enemies, tuning.gruntRadius);
       if (hit) {
-        hit.hp -= projectile.damage;
-        if (hit.hp <= 0) enemies.splice(enemies.indexOf(hit), 1);
+        if (projectile.kind === 'rifle') {
+          hit.hp -= projectile.damage;
+          if (hit.hp <= 0) enemies.splice(enemies.indexOf(hit), 1);
+        } else {
+          const radiusSquared = projectile.blastRadius * projectile.blastRadius;
+          // The direct-hit enemy centers the blast; ID order makes multi-target resolution stable.
+          for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
+            const dx = enemy.x - hit.x;
+            const dz = enemy.z - hit.z;
+            if (dx * dx + dz * dz <= radiusSquared) {
+              enemy.hp -= projectile.damage;
+              if (enemy.hp <= 0) enemies.splice(enemies.indexOf(enemy), 1);
+            }
+          }
+        }
         continue;
       }
       const remainingRange = projectile.remainingRange - travel;
@@ -326,12 +383,12 @@ export class Simulation {
     }
     const contactRadius = tuning.memberRadius + tuning.gruntRadius;
     if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
-    let squadCount = this.state.squad.count;
+    let squad = { ...this.state.squad };
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
-      if (squadCount === 0) break;
+      if (squad.count === 0) break;
       // Sweep each moving squad member against the stationary enemy.
-      const contact = createSquadFormation(squadCount, tuning.formationSpacing).some((offset) => {
+      const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) => {
         const startX = this.state.player.x + offset.x;
         const startZ = this.state.player.z + offset.z;
         const endX = nextX + offset.x;
@@ -343,21 +400,22 @@ export class Simulation {
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squadCount = Math.max(0, squadCount - tuning.gruntContactDamage);
+        squad = afterCasualties(squad, tuning.gruntContactDamage);
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
     if (!Number.isFinite(defenseLineZ)) throw new Error('Simulation defense line exceeds the supported range');
     // Only survivors can leak; contact and projectile kills have already removed their enemies.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
-      if (squadCount === 0) break;
+      if (squad.count === 0) break;
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squadCount = Math.max(0, squadCount - 1);
+        squad = afterCasualties(squad, 1);
       }
     }
-    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad: { count: squadCount }, enemies, projectiles: survivingProjectiles,
-      rifle: { cooldownRemainingSeconds: cooldown, nextProjectileId }, tick: this.state.tick + 1,
+    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, projectiles: survivingProjectiles,
+      weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
+        nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
   }
 
@@ -369,7 +427,7 @@ export class Simulation {
       squad: { ...this.state.squad },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
       projectiles: this.state.projectiles.map((projectile) => ({ ...projectile })),
-      rifle: { ...this.state.rifle },
+      weapons: { ...this.state.weapons },
     };
   }
 

@@ -5,6 +5,7 @@ export interface PlayerSimulationState {
 
 export interface SquadSimulationState {
   count: number;
+  rocketCount: number;
 }
 
 export interface EnemySimulationState {
@@ -17,15 +18,18 @@ export interface EnemySimulationState {
 
 export interface ProjectileSimulationState {
   id: number;
+  kind: 'rifle' | 'rocket';
   x: number;
   z: number;
   speed: number;
   damage: number;
   remainingRange: number;
+  blastRadius: number;
 }
 
-export interface RifleSimulationState {
-  cooldownRemainingSeconds: number;
+export interface WeaponSimulationState {
+  rifleCooldownRemainingSeconds: number;
+  rocketCooldownRemainingSeconds: number;
   nextProjectileId: number;
 }
 
@@ -39,5 +43,5 @@ export interface SimulationState {
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
   projectiles: ProjectileSimulationState[];
-  rifle: RifleSimulationState;
+  weapons: WeaponSimulationState;
 }
