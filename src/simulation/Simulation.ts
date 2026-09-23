@@ -84,7 +84,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'projectiles', 'rifle'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'startGraceSeconds', 'seed', 'rngState', 'player', 'squad', 'enemies', 'projectiles', 'rifle'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -95,6 +95,10 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation elapsedSeconds must be finite and non-negative');
   }
   if (!validLevelId(state.levelId)) throw new Error('Simulation levelId must be a non-empty string');
+  if (typeof state.startGraceSeconds !== 'number' || !Number.isFinite(state.startGraceSeconds)
+    || state.startGraceSeconds < 0) {
+    throw new Error('Simulation startGraceSeconds must be finite and non-negative');
+  }
 
   const rng = new SeededRng(state.seed as number);
   rng.setState(state.rngState as number);
@@ -182,6 +186,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       tick: state.tick as number,
       elapsedSeconds: state.elapsedSeconds,
       levelId: state.levelId,
+      startGraceSeconds: state.startGraceSeconds,
       seed: state.seed as number,
       rngState: rng.getState(),
       player: { x: player.x, z: player.z },
@@ -225,6 +230,7 @@ export class Simulation {
       tick: 0,
       elapsedSeconds: 0,
       levelId: level.id,
+      startGraceSeconds: level.startGraceSeconds,
       seed: options.seed,
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
@@ -337,7 +343,8 @@ export class Simulation {
     // Activation is derived from position; no separate AI state is persisted.
     for (const enemy of enemies) {
       enemyStartZById.set(enemy.id, enemy.z);
-      if (enemy.z - nextZ <= tuning.gruntActivationDistance) {
+      if (nextElapsedSeconds >= this.state.startGraceSeconds
+        && enemy.z - nextZ <= tuning.gruntActivationDistance) {
         const nextEnemyZ = enemy.z - enemyTravel;
         if (!Number.isFinite(nextEnemyZ)) throw new Error('Simulation enemy movement exceeds the supported range');
         enemy.z = nextEnemyZ;

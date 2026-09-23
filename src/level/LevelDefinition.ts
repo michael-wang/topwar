@@ -18,6 +18,7 @@ const EnemyGroupSchema = z.strictObject({
 export const LevelDefinitionSchema = z.strictObject({
   id: nonEmptyId,
   length: z.number().finite().positive(),
+  startGraceSeconds: z.number().finite().nonnegative(),
   enemyGroups: z.array(EnemyGroupSchema),
 }).superRefine((level, context) => {
   const ids = new Set<string>();

@@ -33,6 +33,7 @@ export interface SimulationState {
   tick: number;
   elapsedSeconds: number;
   levelId: string;
+  startGraceSeconds: number;
   seed: number;
   rngState: number;
   player: PlayerSimulationState;

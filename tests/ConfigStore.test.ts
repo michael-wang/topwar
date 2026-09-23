@@ -34,6 +34,7 @@ describe('GameConfigSchema and loading', () => {
     expect(store.getConfig()).toEqual(base);
     expect(store.getConfig().weapon.rifle.range).toBe(40);
     expect(store.getConfig().enemies.grunt.hp).toBe(3);
+    expect(store.getConfig().enemies.grunt.moveSpeed).toBe(2.5);
   });
 
   it('rejects invalid base values, string coercion, and unknown keys', async () => {

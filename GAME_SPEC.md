@@ -39,6 +39,8 @@ No lobby is required for the first playable version.
 
 The advertisement is a visual and gameplay reference, not a pacing reference. Real gameplay starts with low pressure so one soldier and small early gains such as +1 or +2 feel meaningful. Enemy count, HP, density, speed, and player growth can all shape difficulty. Large crowds and huge recruitment numbers are escalation rewards. Levels should include rises, relief, decisions, and climaxes instead of constant maximum pressure. Pacing and encounter quantities must remain data-driven.
 
+Each level may give a short opening grace period. The player can move and fire while enemies hold position, so the run shifts from calm orientation into pressure.
+
 ## 3. Controls
 
 Desktop is mouse-first: moving inside the gameplay viewport steers relatively without a button. The cursor stays visible for boundary awareness and indicates left or right steering, returning to neutral when movement stops. A/D and Left/Right arrows are equivalent alternatives. Mobile is touch-first: drag from any comfortable point without a jump on touch-down. Switching controls should be frictionless; Pointer Lock is not required for the first playable prototype.

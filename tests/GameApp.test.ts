@@ -99,7 +99,7 @@ import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
 const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntMoveSpeed: 1.5, gruntActivationDistance: 10, gruntContactDamage: 1,
+  gruntMoveSpeed: 2.5, gruntActivationDistance: 10, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
@@ -107,7 +107,7 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     player: { startSquad, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
     controls: { mouseSensitivity: 1 },
-    enemies: { grunt: { hp: 10, radius: 0.3, moveSpeed: 1.5, activationDistance: 10, contactDamage: 1 } },
+    enemies: { grunt: { hp: 10, radius: 0.3, moveSpeed: 2.5, activationDistance: 10, contactDamage: 1 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } },
   } as GameConfig;
   const listeners = new Set<ConfigListener>();

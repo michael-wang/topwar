@@ -11,6 +11,7 @@ describe('LevelDefinitionSchema', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
     expect(parsed.length).toBe(72);
+    expect(parsed.startGraceSeconds).toBe(1.5);
     expect(parsed.enemyGroups.map((group) => [group.z, group.count])).toEqual([
       [12, 2], [24, 3], [39, 5], [56, 8],
     ]);
@@ -33,6 +34,16 @@ describe('LevelDefinitionSchema', () => {
     const candidate = level();
     candidate.enemyGroups[0].id = '';
     expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+  });
+
+  it('accepts zero opening grace and rejects invalid grace values', () => {
+    expect(LevelDefinitionSchema.parse({ ...level(), startGraceSeconds: 0 }).startGraceSeconds).toBe(0);
+    for (const startGraceSeconds of [-1, Infinity, NaN, '1.5']) {
+      expect(() => LevelDefinitionSchema.parse({ ...level(), startGraceSeconds })).toThrow(/startGraceSeconds/);
+    }
+    const missing = level() as Record<string, unknown>;
+    delete missing.startGraceSeconds;
+    expect(() => LevelDefinitionSchema.parse(missing)).toThrow(/startGraceSeconds/);
   });
 
   it('rejects duplicate group ids and unordered or duplicate Z positions', () => {

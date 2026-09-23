@@ -4,7 +4,7 @@ import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelD
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
-const emptyLevel: LevelDefinition = { id: 'enemy-advance-test', length: 30, enemyGroups: [] };
+const emptyLevel: LevelDefinition = { id: 'enemy-advance-test', length: 30, startGraceSeconds: 0, enemyGroups: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 100,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
@@ -48,7 +48,7 @@ describe('grunt activation and forward advance', () => {
   });
 
   it('preserves later authored groups until the player approaches', () => {
-    const authored = LevelDefinitionSchema.parse(authoredLevel);
+    const authored = { ...LevelDefinitionSchema.parse(authoredLevel), startGraceSeconds: 0 };
     const simulation = new Simulation({ seed: 1, level: authored, startSquad: 1, gruntHp: 3 });
     const before = simulation.getState().enemies;
     const state = simulation.getState();
