@@ -135,7 +135,7 @@ Initial simple rule:
 
 - an enemy reaching the squad removes soldiers or otherwise deals deterministic squad damage
 
-Exact contact model is open to tuning.
+Base contact is an event, not damage every frame: a basic grunt trades itself for its configured squad casualties.
 
 It must be easy to change without rewriting rendering.
 

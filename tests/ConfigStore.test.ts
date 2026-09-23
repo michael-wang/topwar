@@ -57,6 +57,13 @@ describe('GameConfigSchema and loading', () => {
     expect(() => GameConfigSchema.parse({ ...base, controls: { mouseSensitivity: 1.5 } })).not.toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, startSquad: 1.5 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, formationSpacing: 0 } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0 } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: Infinity } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0.22 } })).not.toThrow();
+    for (const contactDamage of [0, -1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, contactDamage } } })).toThrow();
+    }
+    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, contactDamage: 2 } } })).not.toThrow();
     expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, hp: Infinity } } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, bosses: { basic: { ...base.bosses.basic, radius: -1 } } })).toThrow();
   });

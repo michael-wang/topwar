@@ -3,7 +3,8 @@
     "startSquad": 1,
     "moveSpeed": 5,
     "forwardSpeed": 3,
-    "formationSpacing": 0.45
+    "formationSpacing": 0.45,
+    "memberRadius": 0.22
   },
   "track": {
     "halfWidth": 2.5

@@ -120,7 +120,9 @@ export class GameApp {
         forwardSpeed: this.config.player.forwardSpeed,
         trackHalfWidth: this.config.track.halfWidth,
         formationSpacing: this.config.player.formationSpacing,
+        memberRadius: this.config.player.memberRadius,
         gruntRadius: this.config.enemies.grunt.radius,
+        gruntContactDamage: this.config.enemies.grunt.contactDamage,
         rifle: { ...this.config.weapon.rifle },
       },
     ));

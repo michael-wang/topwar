@@ -11,7 +11,8 @@ const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [] };
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, formationSpacing: 0.45,
-  gruntRadius: 0.3, rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
+  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+  rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
 };
 const create = (count = 1, gruntHp = 10, authored = level) =>
   new Simulation({ seed: 17, level: authored, startSquad: count, gruntHp });
@@ -135,21 +136,21 @@ describe('Swept hits and enemy death', () => {
     ['exact radius boundary', gameConfig.enemies.grunt.radius, true],
     ['outside radius', gameConfig.enemies.grunt.radius + 0.001, false],
   ] as const)('%s collision behaves deterministically', (_label, x, shouldHit) => {
-    const simulation = create(0);
+    const simulation = create(1);
     restoreCombat(simulation, [enemy(1, 0, 5, 3)], [bullet(1, x)]);
     step(simulation, 1, { ...tuning, gruntRadius: gameConfig.enemies.grunt.radius });
     expect(simulation.getState().enemies.length).toBe(shouldHit ? 0 : 1);
   });
 
   it('sweeps a high-speed shot across an enemy without tunneling', () => {
-    const simulation = create(0);
+    const simulation = create(1);
     restoreCombat(simulation, [enemy(1, 0, 5, 3)], [{ ...bullet(1), speed: 1000 }]);
     step(simulation, 0.01);
     expect(simulation.getState().enemies).toEqual([]);
   });
 
   it('keeps higher-HP enemies alive until enough individual hits land', () => {
-    const simulation = create(0);
+    const simulation = create(1);
     restoreCombat(simulation, [enemy(1, 0, 5, 6)], [bullet(1)]);
     step(simulation, 1);
     expect(simulation.getState().enemies).toEqual([enemy(1, 0, 5, 3)]);
@@ -178,21 +179,21 @@ describe('Swept hits and enemy death', () => {
   });
 
   it('does not auto-aim, hit behind travel, or modify a missed enemy', () => {
-    const simulation = create(0);
+    const simulation = create(1);
     restoreCombat(simulation, [enemy(1, 0.4, 5), enemy(2, 0, -2)], [bullet(1)]);
     step(simulation, 1);
     expect(simulation.getState().enemies).toEqual([enemy(1, 0.4, 5), enemy(2, 0, -2)]);
   });
 
   it('hits only the earliest enemy, breaking exact ties by ID', () => {
-    const simulation = create(0);
+    const simulation = create(1);
     restoreCombat(simulation, [enemy(9, 0, 7), enemy(5, 0, 5), enemy(2, 0, 5)], [bullet(1)]);
     step(simulation, 1);
     expect(simulation.getState().enemies.map((e) => [e.id, e.hp])).toEqual([[9, 10], [5, 10], [2, 7]]);
   });
 
   it('removes a killed enemy before later projectiles in the same tick can hit it', () => {
-    const simulation = create(0);
+    const simulation = create(1);
     restoreCombat(simulation, [enemy(1, 0, 5, 3), enemy(2, 0, 7, 3)], [bullet(1), bullet(2)]);
     step(simulation, 1);
     expect(simulation.getState().enemies).toEqual([]);

@@ -87,12 +87,12 @@ vi.mock('../src/input/KeyboardSteeringInput', () => ({
 import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
-const combatTuning = { formationSpacing: 0.45, gruntRadius: 0.3,
+const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
   let config = {
-    player: { startSquad, formationSpacing, moveSpeed: 5, forwardSpeed: 3 },
+    player: { startSquad, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5 },
     controls: { mouseSensitivity: 1 },
     enemies: { grunt: { hp: 10, radius: 0.3, moveSpeed: 1.5, contactDamage: 1 } },
@@ -167,10 +167,11 @@ describe('GameApp config and frame lifecycle', () => {
     app.start();
     raf.frame(100);
     config.changeRifle({ damage: 9, fireRate: 4 });
-    config.changeGrunt({ hp: 99, radius: 0.5 });
+    config.changePlayer({ memberRadius: 0.3 });
+    config.changeGrunt({ hp: 99, radius: 0.5, contactDamage: 2 });
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
-      trackHalfWidth: 2.5, formationSpacing: 0.45, gruntRadius: 0.5,
+      trackHalfWidth: 2.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5, gruntContactDamage: 2,
       rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3, gruntHp: 10 });

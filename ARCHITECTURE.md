@@ -481,8 +481,11 @@ Consume level data to create visible enemy groups. No combat.
 ### 008A — Player offense
 Automatic rifle fire, projectiles, enemy HP/death.
 
-### 008B — Enemy threat
-Enemy advance/contact, squad casualties, failure.
+### 008B.1 — Contact casualties
+Static enemy contact removes squad members.
+
+### 008B.2 — Enemy advance + failure/retry
+Enemies move toward the player and the complete failure loop is added.
 
 ### 009 — Dev Panel v1
 Pause/time scale and selected runtime tuning.

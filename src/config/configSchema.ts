@@ -9,6 +9,7 @@ export const GameConfigSchema = z.strictObject({
     moveSpeed: nonnegative,
     forwardSpeed: nonnegative,
     formationSpacing: positive,
+    memberRadius: positive,
   }),
   track: z.strictObject({
     halfWidth: positive,
@@ -28,7 +29,7 @@ export const GameConfigSchema = z.strictObject({
     grunt: z.strictObject({
       hp: positive,
       moveSpeed: nonnegative,
-      contactDamage: nonnegative,
+      contactDamage: z.number().int().safe().positive(),
       radius: positive,
     }),
   }),
