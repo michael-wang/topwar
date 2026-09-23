@@ -15,12 +15,38 @@ body {
 }
 
 #game-viewport {
+  position: relative;
   width: min(100vw, 56.25vh);
   width: min(100vw, 56.25dvh);
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #b8c3cb;
   touch-action: none;
+}
+
+.game-over-overlay:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1rem;
+  background: rgb(18 24 30 / 72%);
+  color: white;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+.game-over-overlay h1 { margin: 0; font-size: clamp(2rem, 8vw, 3rem); }
+
+.game-over-overlay button {
+  padding: 0.7rem 1.5rem;
+  border: 0;
+  border-radius: 0.3rem;
+  background: #f37b3b;
+  color: #1c2024;
+  font: bold 1.1rem sans-serif;
+  cursor: pointer;
 }
 
 #game-viewport canvas {

@@ -5,7 +5,7 @@ import type { EnemySimulationState, ProjectileSimulationState } from '../src/sim
 
 const level: LevelDefinition = { id: 'contact-test', length: 20, enemyGroups: [] };
 const tuning: SimulationTuning = {
-  moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, formationSpacing: 0.45,
+  moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
   memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
 };
@@ -48,7 +48,7 @@ describe('Static enemy contact casualties', () => {
 
   it('sweeps the member path across an enemy without tunneling', () => {
     const simulation = simulationWith(1, [grunt(1, 0, 5)]);
-    simulation.step(1, { targetX: 0 }, { ...tuning, forwardSpeed: 10 });
+    simulation.step(1, { targetX: 0 }, { ...tuning, forwardSpeed: 10, defenseLineOffset: 100 });
     expect(simulation.getState().player.z).toBe(10);
     expect(simulation.getState().squad.count).toBe(0);
     expect(simulation.getState().enemies).toEqual([]);
@@ -57,7 +57,7 @@ describe('Static enemy contact casualties', () => {
   it('does not touch enemies behind or outside the swept path', () => {
     const enemies = [grunt(1, 0, -2), grunt(2, 1, 5)];
     const simulation = simulationWith(1, enemies);
-    simulation.step(1, { targetX: 0 }, { ...tuning, forwardSpeed: 10 });
+    simulation.step(1, { targetX: 0 }, { ...tuning, forwardSpeed: 10, defenseLineOffset: 100 });
     expect(simulation.getState().squad.count).toBe(1);
     expect(simulation.getState().enemies).toEqual(enemies);
   });

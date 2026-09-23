@@ -10,7 +10,7 @@ import type { EnemySimulationState, ProjectileSimulationState } from '../src/sim
 const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [] };
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
-  moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, formationSpacing: 0.45,
+  moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
   memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
 };
@@ -181,7 +181,7 @@ describe('Swept hits and enemy death', () => {
   it('does not auto-aim, hit behind travel, or modify a missed enemy', () => {
     const simulation = create(1);
     restoreCombat(simulation, [enemy(1, 0.4, 5), enemy(2, 0, -2)], [bullet(1)]);
-    step(simulation, 1);
+    step(simulation, 1, { ...tuning, defenseLineOffset: 100 });
     expect(simulation.getState().enemies).toEqual([enemy(1, 0.4, 5), enemy(2, 0, -2)]);
   });
 

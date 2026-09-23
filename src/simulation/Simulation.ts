@@ -19,6 +19,7 @@ export interface SimulationTuning {
   moveSpeed: number;
   forwardSpeed: number;
   trackHalfWidth: number;
+  defenseLineOffset: number;
   formationSpacing: number;
   memberRadius: number;
   gruntRadius: number;
@@ -248,6 +249,9 @@ export class Simulation {
     if (!Number.isFinite(tuning.trackHalfWidth) || tuning.trackHalfWidth <= 0) {
       throw new Error('Simulation trackHalfWidth must be finite and greater than zero');
     }
+    if (!positiveFinite(tuning.defenseLineOffset)) {
+      throw new Error('Simulation defenseLineOffset must be finite and greater than zero');
+    }
     if (!positiveFinite(tuning.formationSpacing) || !positiveFinite(tuning.memberRadius)
       || !positiveFinite(tuning.gruntRadius)) {
       throw new Error('Simulation formationSpacing, memberRadius, and gruntRadius must be positive and finite');
@@ -338,6 +342,16 @@ export class Simulation {
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
         squadCount = Math.max(0, squadCount - tuning.gruntContactDamage);
+      }
+    }
+    const defenseLineZ = nextZ - tuning.defenseLineOffset;
+    if (!Number.isFinite(defenseLineZ)) throw new Error('Simulation defense line exceeds the supported range');
+    // Only survivors can leak; contact and projectile kills have already removed their enemies.
+    for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
+      if (squadCount === 0) break;
+      if (enemy.z <= defenseLineZ) {
+        enemies.splice(enemies.indexOf(enemy), 1);
+        squadCount = Math.max(0, squadCount - 1);
       }
     }
     this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad: { count: squadCount }, enemies, projectiles: survivingProjectiles,

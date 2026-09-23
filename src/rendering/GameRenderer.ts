@@ -16,6 +16,10 @@ export class GameRenderer {
   private readonly road: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly markerGeometry = new THREE.PlaneGeometry(1, 0.08);
   private readonly markerMaterial = new THREE.MeshBasicMaterial({ color: '#edf1e8' });
+  private readonly defenseLine = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 0.18),
+    new THREE.MeshBasicMaterial({ color: '#ec4e26', side: THREE.DoubleSide }),
+  );
   private readonly markers: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = [];
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
@@ -39,6 +43,9 @@ export class GameRenderer {
     );
     this.road.rotation.x = -Math.PI / 2;
     this.scene.add(this.road);
+    this.defenseLine.rotation.x = -Math.PI / 2;
+    this.defenseLine.position.y = 0.025;
+    this.scene.add(this.defenseLine);
 
     for (let index = 0; index < 20; index++) {
       const marker = new THREE.Mesh(this.markerGeometry, this.markerMaterial);
@@ -82,6 +89,8 @@ export class GameRenderer {
     this.ground.position.z = state.player.z;
     this.road.position.z = state.player.z;
     this.road.scale.x = state.track.halfWidth * 2 + 0.5;
+    this.defenseLine.scale.x = state.track.halfWidth * 2 + 0.5;
+    this.defenseLine.position.z = state.track.defenseLineZ;
     const firstMarkerZ = Math.floor((state.player.z - 12) / 4) * 4;
     for (let index = 0; index < this.markers.length; index++) {
       const marker = this.markers[index];
@@ -103,6 +112,8 @@ export class GameRenderer {
     this.road.material.dispose();
     this.markerGeometry.dispose();
     this.markerMaterial.dispose();
+    this.defenseLine.geometry.dispose();
+    this.defenseLine.material.dispose();
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();
     this.projectileRenderer.dispose();

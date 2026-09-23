@@ -137,6 +137,8 @@ Initial simple rule:
 
 Base contact is an event, not damage every frame: a basic grunt trades itself for its configured squad casualties.
 
+A surviving enemy left behind the advancing player crosses a defense line at `player.z - defenseLineOffset` and costs one soldier. Contacted or shot enemies cannot also breach. When the squad reaches zero, the run ends.
+
 It must be easy to change without rewriting rendering.
 
 ## 9. Recruitment gates

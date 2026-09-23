@@ -20,6 +20,9 @@ const mock = vi.hoisted(() => ({
   startResizeHandling: vi.fn(),
   stopResizeHandling: vi.fn(),
   dispose: vi.fn(),
+  overlayConstructedWith: vi.fn(),
+  overlayVisible: vi.fn(),
+  overlayDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
   inputStop: vi.fn(),
@@ -48,6 +51,14 @@ vi.mock('../src/rendering/GameRenderer', () => ({
     startResizeHandling = mock.startResizeHandling;
     stopResizeHandling = mock.stopResizeHandling;
     dispose = mock.dispose;
+  },
+}));
+
+vi.mock('../src/ui/GameOverOverlay', () => ({
+  GameOverOverlay: class {
+    constructor(_viewport: HTMLElement, onRetry: () => void) { mock.overlayConstructedWith(onRetry); }
+    setVisible = mock.overlayVisible;
+    dispose = mock.overlayDispose;
   },
 }));
 
@@ -87,13 +98,13 @@ vi.mock('../src/input/KeyboardSteeringInput', () => ({
 import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
-const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
   let config = {
     player: { startSquad, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
-    track: { halfWidth: 2.5 },
+    track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
     controls: { mouseSensitivity: 1 },
     enemies: { grunt: { hp: 10, radius: 0.3, moveSpeed: 1.5, contactDamage: 1 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } },
@@ -171,7 +182,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changeGrunt({ hp: 99, radius: 0.5, contactDamage: 2 });
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
-      trackHalfWidth: 2.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5, gruntContactDamage: 2,
+      trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5, gruntContactDamage: 2,
       rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3, gruntHp: 10 });
@@ -189,7 +200,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.render).toHaveBeenLastCalledWith({
       player: { x: 2, z: 3 },
       squad: { count: 3, formationSpacing: 0.8 },
-      track: { halfWidth: 2.5 },
+      track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
       projectiles: [{ id: 1, x: 2, z: 5 }],
     });
@@ -199,7 +210,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.render).toHaveBeenLastCalledWith({
       player: { x: 2, z: 3 },
       squad: { count: 3, formationSpacing: 1.2 },
-      track: { halfWidth: 2.5 },
+      track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
       projectiles: [{ id: 1, x: 2, z: 5 }],
     });
@@ -247,7 +258,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.render).toHaveBeenLastCalledWith({
       player: { x: 2, z: 3 },
       squad: { count: 3, formationSpacing: 0.9 },
-      track: { halfWidth: 2.5 },
+      track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
       projectiles: [{ id: 1, x: 2, z: 5 }],
     });
@@ -267,6 +278,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.keyboardStart).toHaveBeenCalledTimes(2);
     expect(mock.keyboardStop).toHaveBeenCalledTimes(2);
     expect(mock.keyboardDispose).toHaveBeenCalledTimes(1);
+    expect(mock.overlayDispose).toHaveBeenCalledTimes(1);
     expect(config.listenerCount()).toBe(0);
     expect(() => app.start()).toThrow(/disposed/);
   });
@@ -296,12 +308,12 @@ describe('GameApp config and frame lifecycle', () => {
     );
 
     config.changePlayer({ moveSpeed: 8, forwardSpeed: 1.5 });
-    config.changeTrack({ halfWidth: 3.5 });
+    config.changeTrack({ halfWidth: 3.5, defenseLineOffset: 2 });
     raf.frame(100 + 3 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 3.25 },
-      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning },
+      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning, defenseLineOffset: 2 },
     );
 
     callbacks.onDrag(0.5);
@@ -309,13 +321,13 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 5.5 },
-      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning },
+      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning, defenseLineOffset: 2 },
     );
     raf.frame(100 + 5 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 5.5 },
-      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning },
+      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning, defenseLineOffset: 2 },
     );
     app.dispose();
   });
@@ -397,6 +409,40 @@ describe('GameApp config and frame lifecycle', () => {
       1 / 60, { targetX: 3.75 },
       { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
     );
+    app.dispose();
+  });
+
+  it('derives Game Over from zero squad and retries with current config in the same RAF loop', () => {
+    const raf = createRaf();
+    const config = createConfigStore(3);
+    const app = new GameApp({} as HTMLElement, config.store, level);
+    app.start();
+    raf.frame(100);
+    raf.frame(108);
+    expect(mock.step).not.toHaveBeenCalled();
+    mock.getState.mockReturnValueOnce({
+      player: { x: 2, z: 3 }, squad: { count: 0 }, enemies: [], projectiles: [],
+    });
+    raf.frame(116);
+    expect(mock.overlayVisible).toHaveBeenLastCalledWith(true);
+    expect(raf.pending.size).toBe(1);
+
+    config.changePlayer({ startSquad: 5 });
+    config.changeGrunt({ hp: 4 });
+    mock.getState.mockReturnValueOnce({
+      player: { x: 0, z: 0 }, squad: { count: 5 }, enemies: [], projectiles: [],
+    });
+    const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
+    onRetry();
+    expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5, gruntHp: 4 });
+    expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
+    expect(raf.pending.size).toBe(1);
+    const priorSteps = mock.step.mock.calls.length;
+    raf.frame(124);
+    expect(mock.step).toHaveBeenCalledTimes(priorSteps);
+    raf.frame(124 + 1000 / 60);
+    expect(mock.step).toHaveBeenCalledTimes(priorSteps + 1);
+    expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 0 });
     app.dispose();
   });
 });

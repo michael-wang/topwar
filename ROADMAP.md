@@ -32,8 +32,11 @@ Automatic rifle fire, projectiles, enemy HP/death.
 ## 008B.1 Contact casualties
 Static enemy contact removes squad members.
 
-## 008B.2 Enemy advance + failure/retry
-Enemies move toward the player and the complete failure loop is added.
+## 008B.2A Defense-line breaches + Game Over/Retry
+Surviving enemies left behind cost soldiers; zero squad ends the run and Retry starts a fresh run.
+
+## 008B.2B Enemy advance
+Enemies actively move toward the defense line/player using the established casualty and failure rules.
 
 ## 009 Dev Panel v1
 Pause/time scale plus live editing of a small approved set of config values.

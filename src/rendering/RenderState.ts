@@ -9,6 +9,7 @@ export interface GameRenderState {
   };
   track: {
     halfWidth: number;
+    defenseLineZ: number;
   };
   enemies: EnemyRenderState[];
   projectiles: ProjectileRenderState[];

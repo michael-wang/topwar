@@ -8,11 +8,13 @@ import type { LevelDefinition } from '../level/LevelDefinition';
 import { GameRenderer } from '../rendering/GameRenderer';
 import type { GameRenderState } from '../rendering/RenderState';
 import { Simulation } from '../simulation/Simulation';
+import { GameOverOverlay } from '../ui/GameOverOverlay';
 
 export class GameApp {
   private readonly renderer: GameRenderer;
   private readonly fixedStepLoop = new FixedStepLoop();
-  private readonly simulation: Simulation;
+  private simulation: Simulation;
+  private readonly gameOverOverlay: GameOverOverlay;
   private readonly dragInput: PointerDragInput;
   private readonly mouseInput: MouseSteeringInput;
   private readonly keyboardInput: KeyboardSteeringInput;
@@ -26,7 +28,7 @@ export class GameApp {
   private running = false;
   private disposed = false;
 
-  constructor(viewport: HTMLElement, configStore: ConfigStore, level: LevelDefinition) {
+  constructor(viewport: HTMLElement, configStore: ConfigStore, private readonly level: LevelDefinition) {
     this.config = configStore.getConfig();
     this.simulation = new Simulation({
       seed: 1,
@@ -36,6 +38,7 @@ export class GameApp {
     });
     this.targetX = this.simulation.getState().player.x;
     this.renderer = new GameRenderer(viewport);
+    this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
       onDragStart: () => {
         this.dragStartPlayerX = this.simulation.getState().player.x;
@@ -102,8 +105,25 @@ export class GameApp {
     this.dragInput.dispose();
     this.mouseInput.dispose();
     this.keyboardInput.dispose();
+    this.gameOverOverlay.dispose();
     this.renderer.dispose();
     this.disposed = true;
+  }
+
+  private retry(): void {
+    if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
+    this.simulation = new Simulation({
+      seed: 1,
+      level: this.level,
+      startSquad: this.config.player.startSquad,
+      gruntHp: this.config.enemies.grunt.hp,
+    });
+    this.targetX = this.simulation.getState().player.x;
+    this.dragStartPlayerX = this.targetX;
+    this.rebaseMouseTarget = true;
+    this.fixedStepLoop.reset();
+    this.previousFrameTimestampMs = null;
+    this.gameOverOverlay.setVisible(false);
   }
 
   private readonly renderFrame = (timestampMs: number): void => {
@@ -119,6 +139,7 @@ export class GameApp {
         moveSpeed: this.config.player.moveSpeed,
         forwardSpeed: this.config.player.forwardSpeed,
         trackHalfWidth: this.config.track.halfWidth,
+        defenseLineOffset: this.config.track.defenseLineOffset,
         formationSpacing: this.config.player.formationSpacing,
         memberRadius: this.config.player.memberRadius,
         gruntRadius: this.config.enemies.grunt.radius,
@@ -130,11 +151,13 @@ export class GameApp {
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, formationSpacing: this.config.player.formationSpacing },
-      track: { halfWidth: this.config.track.halfWidth },
+      track: { halfWidth: this.config.track.halfWidth,
+        defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
       enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type, x: enemy.x, z: enemy.z })),
       projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, x: projectile.x, z: projectile.z })),
     };
     this.renderer.render(renderState);
+    this.gameOverOverlay.setVisible(state.squad.count === 0);
     this.frameId = requestAnimationFrame(this.renderFrame);
   };
 }

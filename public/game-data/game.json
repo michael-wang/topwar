@@ -7,7 +7,8 @@
     "memberRadius": 0.22
   },
   "track": {
-    "halfWidth": 2.5
+    "halfWidth": 2.5,
+    "defenseLineOffset": 1.5
   },
   "controls": {
     "mouseSensitivity": 1

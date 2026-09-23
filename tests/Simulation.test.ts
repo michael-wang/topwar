@@ -10,7 +10,7 @@ const create = () => new Simulation({ seed: 1, level, startSquad: 1, gruntHp: 10
 const still = { targetX: 0 };
 const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
-const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, ...combatTuning };
+const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
 
 describe('Simulation', () => {
   it('starts with plain session state and does not consume its seed', () => {
@@ -145,7 +145,7 @@ describe('Simulation', () => {
 });
 
 describe('Simulation movement', () => {
-  const tuning = { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning };
+  const tuning = { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
 
   it('moves toward a target at the configured rate without overshooting', () => {
     const simulation = create();
@@ -249,7 +249,7 @@ describe('Static authored enemies', () => {
     exposed.enemies[0].x = 999;
     exposed.enemies.pop();
     expect(simulation.getState().enemies).toEqual(before);
-    simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning });
+    simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning });
     expect(simulation.getState().enemies).toEqual(before);
     expect(simulation.getState().player.z).toBe(1.5);
     expect(simulation.getState().rngState).toBe(1);
