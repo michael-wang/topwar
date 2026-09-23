@@ -45,7 +45,7 @@ describe('persistent side armories', () => {
     const first = run.getState();
     expect(first.enemies).toHaveLength(600);
     expect(first.gates.map((gate) => [gate.id, gate.zOffset, gate.hp, gate.maxHp, gate.rewardsRemaining])).toEqual([
-      ['rifle-armory', 8, 100, 100, 5], ['rocket-armory', 8, 500, 500, 3],
+      ['rifle-armory', 8, 100, 100, 5], ['rocket-armory', 8, 100, 100, 3],
     ]);
     setProjectiles(run, [rifle(1, -2.5)]);
     step(run);

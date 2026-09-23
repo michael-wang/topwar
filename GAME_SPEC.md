@@ -161,6 +161,8 @@ Examples:
 
 Two independent armories persist beside the advancing player. The left rifle armory and right rocket armory each have a thick wall that retains damage while the player fights elsewhere. Breaking a wall opens a short queue of +1 rewards; each later hit collects one unit, one at a time. Both paths remain available throughout the run. The player decides how much firepower to invest in each while surviving the enemy stream. Wall HP and reward counts are authored level data.
 
+During opening balance tests, both walls have equal HP; the route difference is rifle volume versus rocket specialization.
+
 Later we can test:
 
 - additive gates

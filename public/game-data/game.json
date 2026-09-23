@@ -3,7 +3,7 @@
     "startSquad": 1,
     "startRocketCount": 0,
     "moveSpeed": 5,
-    "forwardSpeed": 3,
+    "forwardSpeed": 2,
     "formationSpacing": 0.45,
     "memberRadius": 0.22
   },

@@ -22,7 +22,7 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.upgradeGates).toEqual([
       { id: 'rifle-armory', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { kind: 'rifle', amount: 1, count: 5 } },
-      { id: 'rocket-armory', x: 2.7, zOffset: 8, width: 0.9, hp: 500,
+      { id: 'rocket-armory', x: 2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { kind: 'rocket', amount: 1, count: 3 } },
     ]);
   });
