@@ -3,7 +3,7 @@ import { LevelDefinitionSchema, type LevelDefinition } from '../level/LevelDefin
 import { createEnemyFormation } from './enemies/formation';
 import { afterCasualties } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
-import type { EnemySimulationState, ProjectileSimulationState, SimulationState } from './SimulationState';
+import type { EnemySimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
   seed: number;
@@ -34,10 +34,12 @@ function positiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
+type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; z: number }
+  | { kind: 'gate'; gate: UpgradeGateSimulationState; z: number };
+
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
-  enemies: EnemySimulationState[], radius: number): EnemySimulationState | undefined {
-  let first: EnemySimulationState | undefined;
-  let firstZ = Infinity;
+  enemies: EnemySimulationState[], gates: UpgradeGateSimulationState[], radius: number): ProjectileHit | undefined {
+  let first: ProjectileHit | undefined;
   for (const enemy of enemies) {
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
@@ -46,9 +48,15 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const exitZ = enemy.z + halfChord;
     if (exitZ < projectile.z || entryZ > endZ) continue;
     const hitZ = Math.max(projectile.z, entryZ);
-    if (hitZ < firstZ || (hitZ === firstZ && first && enemy.id < first.id)) {
-      first = enemy;
-      firstZ = hitZ;
+    if (!first || hitZ < first.z || (hitZ === first.z && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
+      first = { kind: 'enemy', enemy, z: hitZ };
+    }
+  }
+  for (const gate of gates) {
+    if (gate.z < projectile.z || gate.z > endZ || Math.abs(projectile.x - gate.x) > gate.width / 2) continue;
+    // A gate wins an exact-distance tie so it cannot be shot through.
+    if (!first || gate.z < first.z || (gate.z === first.z && (first.kind === 'enemy' || gate.id < first.gate.id))) {
+      first = { kind: 'gate', gate, z: gate.z };
     }
   }
   return first;
@@ -85,7 +93,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'projectiles', 'weapons'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'gates', 'projectiles', 'weapons'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -148,6 +156,32 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     return { id, type: 'grunt', x: value.x, z: value.z, hp: value.hp };
   });
 
+  if (!Array.isArray(state.gates)) throw new Error('Simulation gates must be an array');
+  const gateIds = new Set<string>();
+  const gates: UpgradeGateSimulationState[] = state.gates.map((value: unknown, index: number) => {
+    if (!isPlainObject(value) || Object.keys(value).length !== 8
+      || ['id', 'choiceGroup', 'x', 'z', 'width', 'hp', 'maxHp', 'reward'].some((field) => !Object.hasOwn(value, field))) {
+      throw new Error(`Simulation gate ${index} has missing or unknown fields`);
+    }
+    if (!validLevelId(value.id) || gateIds.has(value.id)) throw new Error(`Simulation gate ${index} id is invalid or duplicated`);
+    gateIds.add(value.id);
+    if (!validLevelId(value.choiceGroup) || typeof value.x !== 'number' || !Number.isFinite(value.x)
+      || typeof value.z !== 'number' || !Number.isFinite(value.z) || value.z < 0
+      || !positiveFinite(value.width) || !positiveFinite(value.hp) || !positiveFinite(value.maxHp)
+      || value.hp > value.maxHp) {
+      throw new Error(`Simulation gate ${index} has invalid position, width, or HP`);
+    }
+    const reward = value.reward;
+    if (!isPlainObject(reward) || Object.keys(reward).length !== 2
+      || !Object.hasOwn(reward, 'kind') || !Object.hasOwn(reward, 'amount')
+      || (reward.kind !== 'rifle' && reward.kind !== 'rocket')
+      || !Number.isSafeInteger(reward.amount) || (reward.amount as number) <= 0) {
+      throw new Error(`Simulation gate ${index} reward is invalid`);
+    }
+    return { id: value.id, choiceGroup: value.choiceGroup, x: value.x, z: value.z, width: value.width,
+      hp: value.hp, maxHp: value.maxHp, reward: { kind: reward.kind, amount: reward.amount as number } };
+  });
+
   if (!Array.isArray(state.projectiles)) throw new Error('Simulation projectiles must be an array');
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
@@ -205,6 +239,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       player: { x: player.x, z: player.z },
       squad: { count: squad.count, rocketCount: squad.rocketCount },
       enemies,
+      gates,
       projectiles,
       weapons: { rifleCooldownRemainingSeconds: weapons.rifleCooldownRemainingSeconds as number,
         rocketCooldownRemainingSeconds: weapons.rocketCooldownRemainingSeconds as number,
@@ -254,6 +289,7 @@ export class Simulation {
       player: { x: 0, z: 0 },
       squad: { count: options.startSquad, rocketCount: options.startRocketCount },
       enemies,
+      gates: level.upgradeGates.map((gate) => ({ ...gate, maxHp: gate.hp, reward: { ...gate.reward } })),
       projectiles: [],
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
@@ -316,6 +352,8 @@ export class Simulation {
       throw new Error('Simulation movement exceeds the supported range');
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
+    const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
+    let squad = { ...this.state.squad };
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
     let nextProjectileId = this.state.weapons.nextProjectileId;
     const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
@@ -359,17 +397,34 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      const hit = findFirstHit(projectile, endZ, enemies, tuning.gruntRadius);
+      const hit = findFirstHit(projectile, endZ, enemies, gates, tuning.gruntRadius);
       if (hit) {
-        if (projectile.kind === 'rifle') {
-          hit.hp -= projectile.damage;
-          if (hit.hp <= 0) enemies.splice(enemies.indexOf(hit), 1);
-        } else {
+        if (hit.kind === 'gate') {
+          hit.gate.hp -= projectile.damage;
+          if (hit.gate.hp <= 0) {
+            const amount = hit.gate.reward.amount;
+            if (!Number.isSafeInteger(squad.count + amount)
+              || (hit.gate.reward.kind === 'rocket' && !Number.isSafeInteger(squad.rocketCount + amount))) {
+              throw new Error('Simulation squad reward exceeds the supported range');
+            }
+            squad.count += amount;
+            if (hit.gate.reward.kind === 'rocket') squad.rocketCount += amount;
+            for (let index = gates.length - 1; index >= 0; index--) {
+              if (gates[index].choiceGroup === hit.gate.choiceGroup) gates.splice(index, 1);
+            }
+          }
+        } else if (projectile.kind === 'rifle') {
+          hit.enemy.hp -= projectile.damage;
+          if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
+        }
+        if (projectile.kind === 'rocket') {
           const radiusSquared = projectile.blastRadius * projectile.blastRadius;
-          // The direct-hit enemy centers the blast; ID order makes multi-target resolution stable.
+          const blastX = hit.kind === 'gate' ? projectile.x : hit.enemy.x;
+          const blastZ = hit.kind === 'gate' ? hit.gate.z : hit.enemy.z;
+          // Only enemies receive blast damage; ID order makes multi-target resolution stable.
           for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
-            const dx = enemy.x - hit.x;
-            const dz = enemy.z - hit.z;
+            const dx = enemy.x - blastX;
+            const dz = enemy.z - blastZ;
             if (dx * dx + dz * dz <= radiusSquared) {
               enemy.hp -= projectile.damage;
               if (enemy.hp <= 0) enemies.splice(enemies.indexOf(enemy), 1);
@@ -381,9 +436,13 @@ export class Simulation {
       const remainingRange = projectile.remainingRange - travel;
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
     }
+    // The last volley may still open a gate on the step that reaches its Z.
+    const passedGroups = new Set(gates.filter((gate) => nextZ >= gate.z).map((gate) => gate.choiceGroup));
+    for (let index = gates.length - 1; index >= 0; index--) {
+      if (passedGroups.has(gates[index].choiceGroup)) gates.splice(index, 1);
+    }
     const contactRadius = tuning.memberRadius + tuning.gruntRadius;
     if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
-    let squad = { ...this.state.squad };
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
@@ -413,7 +472,7 @@ export class Simulation {
         squad = afterCasualties(squad, 1);
       }
     }
-    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, projectiles: survivingProjectiles,
+    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, gates, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
@@ -426,6 +485,7 @@ export class Simulation {
       player: { ...this.state.player },
       squad: { ...this.state.squad },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
+      gates: this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } })),
       projectiles: this.state.projectiles.map((projectile) => ({ ...projectile })),
       weapons: { ...this.state.weapons },
     };

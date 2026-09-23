@@ -5,7 +5,7 @@ import type { EnemySimulationState, ProjectileSimulationState } from '../src/sim
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 
-const level: LevelDefinition = { id: 'breach-test', length: 20, enemyGroups: [] };
+const level: LevelDefinition = { id: 'breach-test', length: 20, enemyGroups: [], upgradeGates: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,

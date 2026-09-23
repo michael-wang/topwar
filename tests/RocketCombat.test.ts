@@ -5,7 +5,7 @@ import { Simulation, type SimulationTuning } from '../src/simulation/Simulation'
 import type { EnemySimulationState, ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
 const config = GameConfigSchema.parse(gameData);
-const level = { id: 'rocket-test', length: 100, enemyGroups: [] };
+const level = { id: 'rocket-test', length: 100, enemyGroups: [], upgradeGates: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: config.track.halfWidth,
   defenseLineOffset: config.track.defenseLineOffset,

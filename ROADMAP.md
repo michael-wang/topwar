@@ -48,9 +48,9 @@ Named local save/load slots, export/import JSON, deterministic restore tests.
 Measure hundreds of units, introduce instancing/pooling only where needed.
 
 ## Current pivot slice
-1. Irregular opening swarm with crowd-capable rendering.
-2. Destructible dual upgrade gates.
-3. Rocket specialist combat foundation (implemented; gates remain future work).
+1. Continuous irregular enemy stream — implemented.
+2. Rocket specialist combat — implemented.
+3. Destructible opening dual upgrade gates — implemented.
 
 ## 012 Recruitment gates — next gameplay milestone
 Data-driven +N gates, squad growth feedback.

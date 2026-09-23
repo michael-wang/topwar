@@ -16,6 +16,17 @@ export interface EnemySimulationState {
   hp: number;
 }
 
+export interface UpgradeGateSimulationState {
+  id: string;
+  choiceGroup: string;
+  x: number;
+  z: number;
+  width: number;
+  hp: number;
+  maxHp: number;
+  reward: { kind: 'rifle' | 'rocket'; amount: number };
+}
+
 export interface ProjectileSimulationState {
   id: number;
   kind: 'rifle' | 'rocket';
@@ -42,6 +53,7 @@ export interface SimulationState {
   player: PlayerSimulationState;
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
+  gates: UpgradeGateSimulationState[];
   projectiles: ProjectileSimulationState[];
   weapons: WeaponSimulationState;
 }

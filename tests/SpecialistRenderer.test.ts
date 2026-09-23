@@ -8,7 +8,7 @@ describe('rocket specialist rendering', () => {
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, formationSpacing: 0.45 },
-      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], projectiles: [] };
+      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], gates: [], projectiles: [] };
     renderer.update(state);
     expect(scene.children).toHaveLength(2);
     const [rifle, rocket] = scene.children as THREE.Group[];

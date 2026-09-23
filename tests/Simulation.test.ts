@@ -5,7 +5,7 @@ import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelD
 import { Simulation } from '../src/simulation/Simulation';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
-const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [] };
+const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [], upgradeGates: [] };
 const create = () => new Simulation({ seed: 1, level, startSquad: 1, startRocketCount: 0, gruntHp: 10 });
 const still = { targetX: 0 };
 const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
@@ -25,6 +25,7 @@ describe('Simulation', () => {
       player: { x: 0, z: 0 },
       squad: { count: 1, rocketCount: 0 },
       enemies: [],
+      gates: [],
       projectiles: [],
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     });
@@ -64,6 +65,7 @@ describe('Simulation', () => {
       player: { x: 0, z: 0 },
       squad: { count: 1, rocketCount: 0 },
       enemies: [],
+      gates: [],
       projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 28 / 60, speed: 28, damage: 3, remainingRange: 18 - 28 / 60, blastRadius: 0 }],
       weapons: { rifleCooldownRemainingSeconds: 1 / 7 - 1 / 60, rocketCooldownRemainingSeconds: 0, nextProjectileId: 2 },
     });

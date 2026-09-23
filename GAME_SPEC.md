@@ -53,7 +53,7 @@ The squad follows horizontal input and progresses forward automatically. Firing 
 
 The player controls a squad rather than an individual soldier.
 
-The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. This clear difference is intended to support an opening upgrade decision when gates are added later.
+The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. This difference makes the opening upgrade choice immediately readable.
 
 Initial prototype:
 
@@ -159,11 +159,7 @@ Examples:
 - +20
 - +99
 
-Initial gate behavior:
-
-- crossing a gate changes squad count
-- value is data-driven
-- visual label is large and immediately readable
+The opening upgrade is a destructible dual choice. The lower-HP left gate grants +1 rifle soldier; the higher-HP right gate grants +1 rocket specialist. Destroying either awards its unit and removes the other option. Passing both without destroying one grants nothing. Gate rewards and HP are authored level data, with large readable labels and remaining HP.
 
 Later we can test:
 

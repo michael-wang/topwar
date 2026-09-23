@@ -18,10 +18,24 @@ const EnemyGroupSchema = z.strictObject({
     { path: ['jitter'], message: 'Jitter must be less than half of spacing' }),
 });
 
+const UpgradeGateSchema = z.strictObject({
+  id: nonEmptyId,
+  choiceGroup: nonEmptyId,
+  x: z.number().finite(),
+  z: z.number().finite().nonnegative(),
+  width: z.number().finite().positive(),
+  hp: z.number().finite().positive(),
+  reward: z.discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('rifle'), amount: positiveSafeInteger }),
+    z.strictObject({ kind: z.literal('rocket'), amount: positiveSafeInteger }),
+  ]),
+});
+
 export const LevelDefinitionSchema = z.strictObject({
   id: nonEmptyId,
   length: z.number().finite().positive(),
   enemyGroups: z.array(EnemyGroupSchema),
+  upgradeGates: z.array(UpgradeGateSchema),
 }).superRefine((level, context) => {
   const ids = new Set<string>();
   let previousZ = -Infinity;
@@ -39,6 +53,16 @@ export const LevelDefinitionSchema = z.strictObject({
     }
     if (group.formation.columns > group.count) {
       context.addIssue({ code: 'custom', path: ['enemyGroups', index, 'formation', 'columns'], message: 'Formation columns cannot exceed group count' });
+    }
+  });
+  const gateIds = new Set<string>();
+  level.upgradeGates.forEach((gate, index) => {
+    if (gateIds.has(gate.id)) {
+      context.addIssue({ code: 'custom', path: ['upgradeGates', index, 'id'], message: `Duplicate upgrade-gate id: ${gate.id}` });
+    }
+    gateIds.add(gate.id);
+    if (gate.z >= level.length) {
+      context.addIssue({ code: 'custom', path: ['upgradeGates', index, 'z'], message: 'Upgrade-gate Z must be less than level length' });
     }
   });
 });

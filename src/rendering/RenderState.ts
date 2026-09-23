@@ -13,7 +13,19 @@ export interface GameRenderState {
     defenseLineZ: number;
   };
   enemies: EnemyRenderState[];
+  gates: UpgradeGateRenderState[];
   projectiles: ProjectileRenderState[];
+}
+
+export interface UpgradeGateRenderState {
+  id: string;
+  x: number;
+  z: number;
+  width: number;
+  hp: number;
+  maxHp: number;
+  rewardKind: 'rifle' | 'rocket';
+  rewardAmount: number;
 }
 
 export interface ProjectileRenderState {

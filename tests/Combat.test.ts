@@ -7,7 +7,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
-const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [] };
+const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [], upgradeGates: [] };
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
@@ -49,7 +49,7 @@ describe('Automatic rifle and projectile state', () => {
   });
 
   it('initializes grunt HP from session config and fires immediately, then at the configured cadence', () => {
-    const authored: LevelDefinition = { id: 'one', length: 30, enemyGroups: [
+    const authored: LevelDefinition = { id: 'one', length: 30, upgradeGates: [], enemyGroups: [
       { id: 'g', z: 10, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8, jitter: 0, seed: 0 } },
     ] };
     const simulation = create(1, 12, authored);
@@ -121,7 +121,7 @@ describe('Automatic rifle and projectile state', () => {
 
 describe('Swept hits and enemy death', () => {
   it('removes a base grunt on one aligned shot using the runtime damage and HP', () => {
-    const oneGrunt: LevelDefinition = { id: 'fodder', length: 20, enemyGroups: [
+    const oneGrunt: LevelDefinition = { id: 'fodder', length: 20, upgradeGates: [], enemyGroups: [
       { id: 'first', z: 2, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8, jitter: 0, seed: 0 } },
     ] };
     const simulation = create(1, gameConfig.enemies.grunt.hp, oneGrunt);
