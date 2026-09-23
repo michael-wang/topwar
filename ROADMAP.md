@@ -20,8 +20,11 @@ Simulation owns squad count; renderer shows simple blue units. No weapon.
 ## 006 Pointer input
 Touch/mouse drag maps into simulation horizontal control.
 
-## 007 Enemy crowd
-Data-driven enemy spawn plus efficient red-unit rendering. No combat yet.
+## 007A Level pacing data
+Runtime-authored level definition and encounter pacing. No enemies yet.
+
+## 007B Enemy groups
+Simulation and rendering consume level data to create visible enemies. No combat.
 
 ## 008 Combat
 Automatic fire, projectile/hit model, HP/death. Make crowd erosion visible.
@@ -38,8 +41,8 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 ## 012 Recruitment gates
 Data-driven +N gates, squad growth feedback.
 
-## 013 Level data
-Ordered data-driven sections: crowds + gates + progression.
+## 013 Expanded level content
+Build ordered gates, sections, and progression on the level data from 007A.
 
 ## 014 Boss
 Boss HP, movement/threat, win/lose, retry.

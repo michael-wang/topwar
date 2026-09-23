@@ -472,8 +472,11 @@ Render N simple blue units from simulation state.
 ### 006 — Input
 Pointer drag controls X.
 
-### 007 — Enemy simulation/rendering
-Spawn many simple red enemies.
+### 007A — Level pacing data
+Runtime-authored level definition and encounter pacing. No enemies yet.
+
+### 007B — Enemy simulation/rendering
+Consume level data to create visible enemy groups. No combat.
 
 ### 008 — Combat
 Automatic firing and enemy damage/death.
@@ -490,8 +493,8 @@ Instancing/performance pass with measurable target.
 ### 012 — Gates
 Additive squad gates.
 
-### 013 — Level data
-Data-driven sections and spawning.
+### 013 — Expanded level content
+Build gates, sections, and progression on the level data from 007A.
 
 ### 014 — Boss
 Boss HP, movement, win/lose.

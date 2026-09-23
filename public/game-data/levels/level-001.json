@@ -1,0 +1,34 @@
+{
+  "id": "level-001",
+  "length": 72,
+  "enemyGroups": [
+    {
+      "id": "intro-1",
+      "z": 12,
+      "enemy": "grunt",
+      "count": 2,
+      "formation": { "columns": 2, "spacing": 0.8 }
+    },
+    {
+      "id": "intro-2",
+      "z": 24,
+      "enemy": "grunt",
+      "count": 3,
+      "formation": { "columns": 3, "spacing": 0.8 }
+    },
+    {
+      "id": "pressure-1",
+      "z": 39,
+      "enemy": "grunt",
+      "count": 5,
+      "formation": { "columns": 3, "spacing": 0.75 }
+    },
+    {
+      "id": "climax-1",
+      "z": 56,
+      "enemy": "grunt",
+      "count": 8,
+      "formation": { "columns": 4, "spacing": 0.7 }
+    }
+  ]
+}
