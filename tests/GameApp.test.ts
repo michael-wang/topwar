@@ -257,13 +257,15 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
-    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0 },
-      enemies: [], projectiles: [], gates: [{ id: 'opening-rifle', choiceGroup: 'opening-choice',
-        x: -1.25, z: 14, width: 2.1, hp: 30, maxHp: 36, reward: { kind: 'rifle', amount: 1 } }] });
+    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0 },
+      enemies: [], projectiles: [], gates: [{ id: 'rifle-armory',
+        x: -2.7, zOffset: 8, width: 0.9, hp: 70, maxHp: 100,
+        reward: { kind: 'rifle', amount: 1, count: 5 }, rewardsRemaining: 5 }] });
     app.start();
     raf.frame(100);
-    expect(mock.render.mock.lastCall![0]).toMatchObject({ gates: [{ id: 'opening-rifle',
-      x: -1.25, z: 14, width: 2.1, hp: 30, maxHp: 36, rewardKind: 'rifle', rewardAmount: 1 }] });
+    expect(mock.render.mock.lastCall![0]).toMatchObject({ gates: [{ id: 'rifle-armory',
+      x: -2.7, z: 11, width: 0.9, hp: 70, maxHp: 100, rewardKind: 'rifle', rewardAmount: 1,
+      rewardsRemaining: 5, rewardTotal: 5 }] });
     app.dispose();
   });
 

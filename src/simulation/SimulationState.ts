@@ -18,13 +18,13 @@ export interface EnemySimulationState {
 
 export interface UpgradeGateSimulationState {
   id: string;
-  choiceGroup: string;
   x: number;
-  z: number;
+  zOffset: number;
   width: number;
   hp: number;
   maxHp: number;
-  reward: { kind: 'rifle' | 'rocket'; amount: number };
+  reward: { kind: 'rifle' | 'rocket'; amount: number; count: number };
+  rewardsRemaining: number;
 }
 
 export interface ProjectileSimulationState {

@@ -26,6 +26,8 @@ export interface UpgradeGateRenderState {
   maxHp: number;
   rewardKind: 'rifle' | 'rocket';
   rewardAmount: number;
+  rewardsRemaining: number;
+  rewardTotal: number;
 }
 
 export interface ProjectileRenderState {

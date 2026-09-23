@@ -158,8 +158,9 @@ export class GameApp {
       track: { halfWidth: this.config.track.halfWidth,
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
       enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type, x: enemy.x, z: enemy.z })),
-      gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: gate.z, width: gate.width,
-        hp: gate.hp, maxHp: gate.maxHp, rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount })),
+      gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
+        hp: gate.hp, maxHp: gate.maxHp, rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount,
+        rewardsRemaining: gate.rewardsRemaining, rewardTotal: gate.reward.count })),
       projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
         x: projectile.x, z: projectile.z })),
     };

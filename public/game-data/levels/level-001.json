@@ -2,10 +2,10 @@
   "id": "level-001",
   "length": 112,
   "upgradeGates": [
-    { "id": "opening-rifle", "choiceGroup": "opening-choice", "x": -1.25, "z": 14, "width": 2.1, "hp": 36,
-      "reward": { "kind": "rifle", "amount": 1 } },
-    { "id": "opening-rocket", "choiceGroup": "opening-choice", "x": 1.25, "z": 14, "width": 2.1, "hp": 72,
-      "reward": { "kind": "rocket", "amount": 1 } }
+    { "id": "rifle-armory", "x": -2.7, "zOffset": 8, "width": 0.9, "hp": 100,
+      "reward": { "kind": "rifle", "amount": 1, "count": 5 } },
+    { "id": "rocket-armory", "x": 2.7, "zOffset": 8, "width": 0.9, "hp": 500,
+      "reward": { "kind": "rocket", "amount": 1, "count": 3 } }
   ],
   "enemyGroups": [
     {

@@ -20,10 +20,10 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyGroups).toEqual([{ id: 'opening-stream', z: 60, enemy: 'grunt', count: 600,
       formation: { columns: 6, spacing: 0.72, jitter: 0.20, seed: 104729 } }]);
     expect(parsed.upgradeGates).toEqual([
-      { id: 'opening-rifle', choiceGroup: 'opening-choice', x: -1.25, z: 14, width: 2.1, hp: 36,
-        reward: { kind: 'rifle', amount: 1 } },
-      { id: 'opening-rocket', choiceGroup: 'opening-choice', x: 1.25, z: 14, width: 2.1, hp: 72,
-        reward: { kind: 'rocket', amount: 1 } },
+      { id: 'rifle-armory', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
+        reward: { kind: 'rifle', amount: 1, count: 5 } },
+      { id: 'rocket-armory', x: 2.7, zOffset: 8, width: 0.9, hp: 500,
+        reward: { kind: 'rocket', amount: 1, count: 3 } },
     ]);
   });
 
@@ -31,9 +31,9 @@ describe('LevelDefinitionSchema', () => {
     const duplicate = level();
     duplicate.upgradeGates[1].id = duplicate.upgradeGates[0].id;
     expect(() => LevelDefinitionSchema.parse(duplicate)).toThrow(/Duplicate upgrade-gate id/);
-    for (const z of [-1, 112, Infinity]) {
+    for (const z of [-1, 0, Infinity, NaN]) {
       const candidate = level();
-      candidate.upgradeGates[0].z = z;
+      candidate.upgradeGates[0].zOffset = z;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
     for (const field of ['hp', 'width'] as const) {
@@ -48,12 +48,20 @@ describe('LevelDefinitionSchema', () => {
       candidate.upgradeGates[0].reward.amount = amount;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
+    for (const count of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const candidate = level();
+      candidate.upgradeGates[0].reward.count = count;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[0], reward: { kind: 'laser', amount: 1 } },
     ] })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[0], surprise: 1 },
     ] })).toThrow(/surprise/);
+    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
+      { ...level().upgradeGates[0], choiceGroup: 'obsolete' },
+    ] })).toThrow(/choiceGroup/);
   });
 
   it('accepts one- and two-enemy groups without a crowd minimum', () => {

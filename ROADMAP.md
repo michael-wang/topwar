@@ -50,7 +50,7 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 ## Current pivot slice
 1. Continuous irregular enemy stream — implemented.
 2. Rocket specialist combat — implemented.
-3. Destructible opening dual upgrade gates — implemented.
+3. Persistent rifle and rocket side armories with destructible walls and sequential +1 rewards — implemented.
 
 ## 012 Recruitment gates — next gameplay milestone
 Data-driven +N gates, squad growth feedback.

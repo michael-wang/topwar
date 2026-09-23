@@ -34,12 +34,14 @@ function positiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
-type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; z: number }
-  | { kind: 'gate'; gate: UpgradeGateSimulationState; z: number };
+type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
+  | { kind: 'gate'; gate: UpgradeGateSimulationState; fraction: number; z: number };
 
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
-  enemies: EnemySimulationState[], gates: UpgradeGateSimulationState[], radius: number): ProjectileHit | undefined {
+  enemies: EnemySimulationState[], gates: UpgradeGateSimulationState[], radius: number,
+  currentPlayerZ: number, nextPlayerZ: number): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
+  const travel = endZ - projectile.z;
   for (const enemy of enemies) {
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
@@ -48,15 +50,24 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const exitZ = enemy.z + halfChord;
     if (exitZ < projectile.z || entryZ > endZ) continue;
     const hitZ = Math.max(projectile.z, entryZ);
-    if (!first || hitZ < first.z || (hitZ === first.z && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
-      first = { kind: 'enemy', enemy, z: hitZ };
+    const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
+    if (!first || fraction < first.fraction
+      || (fraction === first.fraction && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
+      first = { kind: 'enemy', enemy, fraction, z: hitZ };
     }
   }
   for (const gate of gates) {
-    if (gate.z < projectile.z || gate.z > endZ || Math.abs(projectile.x - gate.x) > gate.width / 2) continue;
+    if (Math.abs(projectile.x - gate.x) > gate.width / 2) continue;
+    const gateStartZ = currentPlayerZ + gate.zOffset;
+    const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
+    if (projectile.z > gateStartZ || relativeTravel <= 0) continue;
+    const fraction = (gateStartZ - projectile.z) / relativeTravel;
+    if (fraction < 0 || fraction > 1) continue;
+    const hitZ = projectile.z + travel * fraction;
     // A gate wins an exact-distance tie so it cannot be shot through.
-    if (!first || gate.z < first.z || (gate.z === first.z && (first.kind === 'enemy' || gate.id < first.gate.id))) {
-      first = { kind: 'gate', gate, z: gate.z };
+    if (!first || fraction < first.fraction
+      || (fraction === first.fraction && (first.kind === 'enemy' || gate.id < first.gate.id))) {
+      first = { kind: 'gate', gate, fraction, z: hitZ };
     }
   }
   return first;
@@ -160,26 +171,32 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   const gateIds = new Set<string>();
   const gates: UpgradeGateSimulationState[] = state.gates.map((value: unknown, index: number) => {
     if (!isPlainObject(value) || Object.keys(value).length !== 8
-      || ['id', 'choiceGroup', 'x', 'z', 'width', 'hp', 'maxHp', 'reward'].some((field) => !Object.hasOwn(value, field))) {
+      || ['id', 'x', 'zOffset', 'width', 'hp', 'maxHp', 'reward', 'rewardsRemaining']
+        .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation gate ${index} has missing or unknown fields`);
     }
     if (!validLevelId(value.id) || gateIds.has(value.id)) throw new Error(`Simulation gate ${index} id is invalid or duplicated`);
     gateIds.add(value.id);
-    if (!validLevelId(value.choiceGroup) || typeof value.x !== 'number' || !Number.isFinite(value.x)
-      || typeof value.z !== 'number' || !Number.isFinite(value.z) || value.z < 0
-      || !positiveFinite(value.width) || !positiveFinite(value.hp) || !positiveFinite(value.maxHp)
+    if (typeof value.x !== 'number' || !Number.isFinite(value.x)
+      || !positiveFinite(value.zOffset) || !positiveFinite(value.width)
+      || typeof value.hp !== 'number' || !Number.isFinite(value.hp) || value.hp < 0
+      || !positiveFinite(value.maxHp)
       || value.hp > value.maxHp) {
       throw new Error(`Simulation gate ${index} has invalid position, width, or HP`);
     }
     const reward = value.reward;
-    if (!isPlainObject(reward) || Object.keys(reward).length !== 2
-      || !Object.hasOwn(reward, 'kind') || !Object.hasOwn(reward, 'amount')
+    if (!isPlainObject(reward) || Object.keys(reward).length !== 3
+      || !Object.hasOwn(reward, 'kind') || !Object.hasOwn(reward, 'amount') || !Object.hasOwn(reward, 'count')
       || (reward.kind !== 'rifle' && reward.kind !== 'rocket')
-      || !Number.isSafeInteger(reward.amount) || (reward.amount as number) <= 0) {
+      || !Number.isSafeInteger(reward.amount) || (reward.amount as number) <= 0
+      || !Number.isSafeInteger(reward.count) || (reward.count as number) <= 0
+      || !Number.isSafeInteger(value.rewardsRemaining) || (value.rewardsRemaining as number) <= 0
+      || (value.rewardsRemaining as number) > (reward.count as number)) {
       throw new Error(`Simulation gate ${index} reward is invalid`);
     }
-    return { id: value.id, choiceGroup: value.choiceGroup, x: value.x, z: value.z, width: value.width,
-      hp: value.hp, maxHp: value.maxHp, reward: { kind: reward.kind, amount: reward.amount as number } };
+    return { id: value.id, x: value.x, zOffset: value.zOffset, width: value.width,
+      hp: value.hp, maxHp: value.maxHp, reward: { kind: reward.kind, amount: reward.amount as number,
+        count: reward.count as number }, rewardsRemaining: value.rewardsRemaining as number };
   });
 
   if (!Array.isArray(state.projectiles)) throw new Error('Simulation projectiles must be an array');
@@ -289,7 +306,8 @@ export class Simulation {
       player: { x: 0, z: 0 },
       squad: { count: options.startSquad, rocketCount: options.startRocketCount },
       enemies,
-      gates: level.upgradeGates.map((gate) => ({ ...gate, maxHp: gate.hp, reward: { ...gate.reward } })),
+      gates: level.upgradeGates.map((gate) => ({ ...gate, maxHp: gate.hp, reward: { ...gate.reward },
+        rewardsRemaining: gate.reward.count })),
       projectiles: [],
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
@@ -351,6 +369,10 @@ export class Simulation {
     if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) {
       throw new Error('Simulation movement exceeds the supported range');
     }
+    if (this.state.gates.some((gate) => !Number.isFinite(this.state.player.z + gate.zOffset)
+      || !Number.isFinite(nextZ + gate.zOffset))) {
+      throw new Error('Simulation armory position exceeds the supported range');
+    }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
@@ -397,11 +419,13 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      const hit = findFirstHit(projectile, endZ, enemies, gates, tuning.gruntRadius);
+      const hit = findFirstHit(projectile, endZ, enemies, gates, tuning.gruntRadius,
+        this.state.player.z, nextZ);
       if (hit) {
         if (hit.kind === 'gate') {
-          hit.gate.hp -= projectile.damage;
-          if (hit.gate.hp <= 0) {
+          if (hit.gate.hp > 0) {
+            hit.gate.hp = Math.max(0, hit.gate.hp - projectile.damage);
+          } else {
             const amount = hit.gate.reward.amount;
             if (!Number.isSafeInteger(squad.count + amount)
               || (hit.gate.reward.kind === 'rocket' && !Number.isSafeInteger(squad.rocketCount + amount))) {
@@ -409,9 +433,8 @@ export class Simulation {
             }
             squad.count += amount;
             if (hit.gate.reward.kind === 'rocket') squad.rocketCount += amount;
-            for (let index = gates.length - 1; index >= 0; index--) {
-              if (gates[index].choiceGroup === hit.gate.choiceGroup) gates.splice(index, 1);
-            }
+            hit.gate.rewardsRemaining--;
+            if (hit.gate.rewardsRemaining === 0) gates.splice(gates.indexOf(hit.gate), 1);
           }
         } else if (projectile.kind === 'rifle') {
           hit.enemy.hp -= projectile.damage;
@@ -420,7 +443,7 @@ export class Simulation {
         if (projectile.kind === 'rocket') {
           const radiusSquared = projectile.blastRadius * projectile.blastRadius;
           const blastX = hit.kind === 'gate' ? projectile.x : hit.enemy.x;
-          const blastZ = hit.kind === 'gate' ? hit.gate.z : hit.enemy.z;
+          const blastZ = hit.kind === 'gate' ? hit.z : hit.enemy.z;
           // Only enemies receive blast damage; ID order makes multi-target resolution stable.
           for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
             const dx = enemy.x - blastX;
@@ -435,11 +458,6 @@ export class Simulation {
       }
       const remainingRange = projectile.remainingRange - travel;
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
-    }
-    // The last volley may still open a gate on the step that reaches its Z.
-    const passedGroups = new Set(gates.filter((gate) => nextZ >= gate.z).map((gate) => gate.choiceGroup));
-    for (let index = gates.length - 1; index >= 0; index--) {
-      if (passedGroups.has(gates[index].choiceGroup)) gates.splice(index, 1);
     }
     const contactRadius = tuning.memberRadius + tuning.gruntRadius;
     if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');

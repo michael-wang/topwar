@@ -41,7 +41,7 @@ The advertisement is a visual and opening-pacing reference. The player starts sm
 
 The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass ahead and from the risk of reaching enemies before clearing them. The enemy field begins relatively close and extends deep into the level. It should read as an irregular, continuous mob with breathing room between grunts, not orderly ranks.
 
-Level 001 opens with one long enemy stream rather than an isolated blob. Upgrade opportunities will be introduced in a later task.
+Level 001 opens with one long enemy stream rather than an isolated blob. Persistent side armories give the player a reason to divide fire between survival and squad growth.
 
 ## 3. Controls
 
@@ -53,7 +53,7 @@ The squad follows horizontal input and progresses forward automatically. Firing 
 
 The player controls a squad rather than an individual soldier.
 
-The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. This difference makes the opening upgrade choice immediately readable.
+The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. Their side armories offer distinct ways to invest firepower.
 
 Initial prototype:
 
@@ -159,7 +159,7 @@ Examples:
 - +20
 - +99
 
-The opening upgrade is a destructible dual choice. The lower-HP left gate grants +1 rifle soldier; the higher-HP right gate grants +1 rocket specialist. Destroying either awards its unit and removes the other option. Passing both without destroying one grants nothing. Gate rewards and HP are authored level data, with large readable labels and remaining HP.
+Two independent armories persist beside the advancing player. The left rifle armory and right rocket armory each have a thick wall that retains damage while the player fights elsewhere. Breaking a wall opens a short queue of +1 rewards; each later hit collects one unit, one at a time. Both paths remain available throughout the run. The player decides how much firepower to invest in each while surviving the enemy stream. Wall HP and reward counts are authored level data.
 
 Later we can test:
 
@@ -197,12 +197,9 @@ Example conceptual structure:
       "count": 60
     },
     {
-      "z": 24,
-      "type": "gateChoice",
-      "gates": [
-        { "x": -1.5, "add": 5 },
-        { "x": 1.5, "add": 20 }
-      ]
+      "type": "sideArmory",
+      "zOffset": 8,
+      "reward": { "kind": "rifle", "amount": 1, "count": 5 }
     },
     {
       "z": 40,

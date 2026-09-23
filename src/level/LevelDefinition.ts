@@ -20,14 +20,13 @@ const EnemyGroupSchema = z.strictObject({
 
 const UpgradeGateSchema = z.strictObject({
   id: nonEmptyId,
-  choiceGroup: nonEmptyId,
   x: z.number().finite(),
-  z: z.number().finite().nonnegative(),
+  zOffset: z.number().finite().positive(),
   width: z.number().finite().positive(),
   hp: z.number().finite().positive(),
   reward: z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.literal('rifle'), amount: positiveSafeInteger }),
-    z.strictObject({ kind: z.literal('rocket'), amount: positiveSafeInteger }),
+    z.strictObject({ kind: z.literal('rifle'), amount: positiveSafeInteger, count: positiveSafeInteger }),
+    z.strictObject({ kind: z.literal('rocket'), amount: positiveSafeInteger, count: positiveSafeInteger }),
   ]),
 });
 
@@ -61,9 +60,6 @@ export const LevelDefinitionSchema = z.strictObject({
       context.addIssue({ code: 'custom', path: ['upgradeGates', index, 'id'], message: `Duplicate upgrade-gate id: ${gate.id}` });
     }
     gateIds.add(gate.id);
-    if (gate.z >= level.length) {
-      context.addIssue({ code: 'custom', path: ['upgradeGates', index, 'z'], message: 'Upgrade-gate Z must be less than level length' });
-    }
   });
 });
 
