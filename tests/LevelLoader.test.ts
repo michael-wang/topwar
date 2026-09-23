@@ -16,8 +16,8 @@ describe('loadLevelDefinition', () => {
 
   it('rejects invalid fetched data with the requested URL and validation path', async () => {
     await expect(loadLevelDefinition(url, {
-      fetchJson: async () => ({ ...authoredLevel, enemyGroups: [{ ...authoredLevel.enemyGroups[0], count: 0 }] }),
-    })).rejects.toThrow(/level-001\.json:[\s\S]*enemyGroups[\s\S]*count/);
+      fetchJson: async () => ({ ...authoredLevel, enemyStream: { ...authoredLevel.enemyStream, columns: 0 } }),
+    })).rejects.toThrow(/level-001\.json:[\s\S]*enemyStream[\s\S]*columns/);
   });
 
   it('reports the URL for failed HTTP, malformed JSON, and network failures', async () => {

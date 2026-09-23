@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 
+const finiteGroup = { id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
+  formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } };
+
 function level() {
-  return structuredClone(authoredLevel);
+  return { ...structuredClone(authoredLevel), enemyGroups: [structuredClone(finiteGroup)] };
 }
 
 function twoGroups() {
@@ -13,18 +16,62 @@ function twoGroups() {
 }
 
 describe('LevelDefinitionSchema', () => {
-  it('validates the single authored opening stream', () => {
+  it('validates the authored endless stream and unchanged armories', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
     expect(parsed.length).toBe(112);
-    expect(parsed.enemyGroups).toEqual([{ id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
-      formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } }]);
+    expect(parsed.enemyGroups).toEqual([]);
+    expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
+      columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 });
     expect(parsed.upgradeGates).toEqual([
       { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
       { id: 'rifle-jackpot', x: 2.7, zOffset: 8, width: 0.9, hp: 1000,
         reward: { mode: 'instant', kind: 'rifle', amount: 99 } },
     ]);
+  });
+
+  it('accepts finite levels without a stream and validates stream fields strictly', () => {
+    const finite = level();
+    const { enemyStream: _stream, ...finiteOnly } = finite;
+    expect(LevelDefinitionSchema.parse(finiteOnly).enemyStream).toBeUndefined();
+    for (const columns of [undefined, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const candidate = structuredClone(authoredLevel);
+      Object.assign(candidate.enemyStream, { columns });
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const spacing of [0, -1, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.spacing = spacing;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const jitter of [-1, 0.30, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.jitter = jitter;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const seed of [-1, 1.5, 4294967296, NaN, Infinity]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.seed = seed;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const seed of [0, 4294967295]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.seed = seed;
+      expect(LevelDefinitionSchema.parse(candidate).enemyStream?.seed).toBe(seed);
+    }
+    for (const spawnAheadDistance of [0, 24, -1, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.spawnAheadDistance = spawnAheadDistance;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const startZ of [-1, 96, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.startZ = startZ;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+      enemyStream: { ...authoredLevel.enemyStream, extra: true } })).toThrow(/extra/);
   });
 
   it('validates gate IDs, positions, HP, width, and strict rewards', () => {

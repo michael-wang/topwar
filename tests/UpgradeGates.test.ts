@@ -42,11 +42,12 @@ const step = (simulation: Simulation, dt = 1, overrides: Partial<SimulationTunin
   simulation.step(dt, { targetX: 0 }, { ...tuning, ...overrides });
 
 describe('persistent advertisement-style armories', () => {
-  it('materializes the authored 840-enemy stream and two independent walls; retry restores both', () => {
+  it('materializes the opening stream horizon and two independent walls; retry restores both', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const run = create(authored);
     const first = run.getState();
-    expect(first.enemies).toHaveLength(840);
+    expect(first.enemies.length).toBeGreaterThan(700);
+    expect(first.enemyStream?.nextEnemyId).toBe(first.enemies.length + 1);
     expect(first.gates.map((gate) => [gate.id, gate.zOffset, gate.hp, gate.maxHp, gate.reward.mode])).toEqual([
       ['rifle-generator', 8, 100, 100, 'pickup'], ['rifle-jackpot', 8, 1000, 1000, 'instant'],
     ]);

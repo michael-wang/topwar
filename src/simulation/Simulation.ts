@@ -1,9 +1,10 @@
 import { SeededRng } from '../core/Rng';
-import { LevelDefinitionSchema, UpgradeRewardSchema, type LevelDefinition } from '../level/LevelDefinition';
+import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
+import { createEnemyStreamRow } from './enemies/streamRow';
 import { afterCasualties } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
-import type { EnemySimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
+import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
   seed: number;
@@ -100,12 +101,36 @@ function validSquadCount(count: unknown): count is number {
   return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0;
 }
 
+function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
+  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number): void {
+  const horizonZ = playerZ + stream.spawnAheadDistance;
+  if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
+  while (true) {
+    const rowZ = stream.startZ + cursor.nextRowIndex * stream.spacing;
+    if (!Number.isFinite(rowZ)) throw new Error('Simulation enemy stream row position is non-finite');
+    if (rowZ > horizonZ) break;
+    if (!Number.isSafeInteger(cursor.nextRowIndex + 1)
+      || !Number.isSafeInteger(cursor.nextEnemyId + stream.columns)) {
+      throw new Error('Simulation enemy stream exceeds the supported range');
+    }
+    for (const offset of createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
+      stream.spacing, stream.jitter, stream.seed)) {
+      const z = rowZ + offset.z;
+      if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
+        throw new Error('Simulation enemy stream produces a non-finite position');
+      }
+      enemies.push({ id: cursor.nextEnemyId++, type: stream.enemy, x: offset.x, z, hp: gruntHp });
+    }
+    cursor.nextRowIndex++;
+  }
+}
+
 function validateState(value: unknown): { state: SimulationState; rng: SeededRng } {
   if (!isPlainObject(value)) {
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'enemyStream', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -167,6 +192,20 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     if (!positiveFinite(value.hp)) throw new Error(`Simulation enemy ${index} hp must be positive and finite`);
     return { id, type: 'grunt', x: value.x, z: value.z, hp: value.hp };
   });
+
+  let enemyStream: EnemyStreamSimulationState | null = null;
+  if (state.enemyStream !== null) {
+    const cursor = state.enemyStream;
+    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 2
+      || !Object.hasOwn(cursor, 'nextRowIndex') || !Object.hasOwn(cursor, 'nextEnemyId')
+      || !Number.isSafeInteger(cursor.nextRowIndex) || (cursor.nextRowIndex as number) < 0
+      || !Number.isSafeInteger(cursor.nextEnemyId) || (cursor.nextEnemyId as number) <= 0
+      || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))) {
+      throw new Error('Simulation enemy stream cursor is invalid');
+    }
+    enemyStream = { nextRowIndex: cursor.nextRowIndex as number,
+      nextEnemyId: cursor.nextEnemyId as number };
+  }
 
   if (!Array.isArray(state.gates)) throw new Error('Simulation gates must be an array');
   const gateIds = new Set<string>();
@@ -293,6 +332,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       player: { x: player.x, z: player.z },
       squad: { count: squad.count, rocketCount: squad.rocketCount },
       enemies,
+      enemyStream,
       gates,
       pickups,
       nextPickupId: state.nextPickupId as number,
@@ -308,6 +348,8 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
 export class Simulation {
   private rng: SeededRng;
   private state: SimulationState;
+  private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
+  private readonly gruntHp: number;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -319,6 +361,8 @@ export class Simulation {
       throw new Error('Simulation startRocketCount must be a non-negative safe integer within startSquad');
     }
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
+    this.enemyStreamDefinition = level.enemyStream;
+    this.gruntHp = options.gruntHp;
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
       for (const offset of createEnemyFormation(group.count, group.formation.columns,
@@ -336,6 +380,12 @@ export class Simulation {
         });
       }
     }
+    const enemyStream = level.enemyStream
+      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1 }
+      : null;
+    if (enemyStream && level.enemyStream) {
+      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp);
+    }
     this.state = {
       tick: 0,
       elapsedSeconds: 0,
@@ -345,6 +395,7 @@ export class Simulation {
       player: { x: 0, z: 0 },
       squad: { count: options.startSquad, rocketCount: options.startRocketCount },
       enemies,
+      enemyStream,
       gates: level.upgradeGates.map((gate) => gate.reward.mode === 'pickup'
         ? { ...gate, maxHp: gate.hp, reward: { ...gate.reward }, rewardCooldownRemainingSeconds: null }
         : { ...gate, maxHp: gate.hp, reward: { ...gate.reward } }),
@@ -416,6 +467,10 @@ export class Simulation {
       throw new Error('Simulation armory position exceeds the supported range');
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
+    const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
+    if (enemyStream && this.enemyStreamDefinition) {
+      extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, nextZ, this.gruntHp);
+    }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
@@ -576,7 +631,7 @@ export class Simulation {
         squad = afterCasualties(squad, 1);
       }
     }
-    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, gates,
+    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, enemyStream, gates,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
@@ -590,6 +645,7 @@ export class Simulation {
       player: { ...this.state.player },
       squad: { ...this.state.squad },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
+      enemyStream: this.state.enemyStream ? { ...this.state.enemyStream } : null,
       gates: this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } })),
       pickups: this.state.pickups.map((pickup) => ({ ...pickup })),
       projectiles: this.state.projectiles.map((projectile) => ({ ...projectile })),
@@ -599,6 +655,9 @@ export class Simulation {
 
   restoreState(state: SimulationState): void {
     const candidate = validateState(state);
+    if ((candidate.state.enemyStream !== null) !== (this.enemyStreamDefinition !== undefined)) {
+      throw new Error('Simulation enemy stream state does not match the loaded level');
+    }
     this.state = candidate.state;
     this.rng = candidate.rng;
   }

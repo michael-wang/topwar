@@ -7,18 +7,14 @@
     { "id": "rifle-jackpot", "x": 2.7, "zOffset": 8, "width": 0.9, "hp": 1000,
       "reward": { "mode": "instant", "kind": "rifle", "amount": 99 } }
   ],
-  "enemyGroups": [
-    {
-      "id": "opening-stream",
-      "z": 60,
-      "enemy": "grunt",
-      "count": 840,
-      "formation": {
-        "columns": 7,
-        "spacing": 0.60,
-        "jitter": 0.16,
-        "seed": 104729
-      }
-    }
-  ]
+  "enemyGroups": [],
+  "enemyStream": {
+    "enemy": "grunt",
+    "startZ": 24,
+    "spawnAheadDistance": 96,
+    "columns": 7,
+    "spacing": 0.60,
+    "jitter": 0.16,
+    "seed": 104729
+  }
 }

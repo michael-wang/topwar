@@ -16,6 +16,11 @@ export interface EnemySimulationState {
   hp: number;
 }
 
+export interface EnemyStreamSimulationState {
+  nextRowIndex: number;
+  nextEnemyId: number;
+}
+
 interface UpgradeGateBaseState {
   id: string;
   x: number;
@@ -69,6 +74,7 @@ export interface SimulationState {
   player: PlayerSimulationState;
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
+  enemyStream: EnemyStreamSimulationState | null;
   gates: UpgradeGateSimulationState[];
   pickups: UpgradePickupSimulationState[];
   nextPickupId: number;

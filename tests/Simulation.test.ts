@@ -25,6 +25,7 @@ describe('Simulation', () => {
       player: { x: 0, z: 0 },
       squad: { count: 1, rocketCount: 0 },
       enemies: [],
+      enemyStream: null,
       gates: [],
       pickups: [],
       nextPickupId: 1,
@@ -67,6 +68,7 @@ describe('Simulation', () => {
       player: { x: 0, z: 0 },
       squad: { count: 1, rocketCount: 0 },
       enemies: [],
+      enemyStream: null,
       gates: [],
       pickups: [],
       nextPickupId: 1,
@@ -248,18 +250,21 @@ describe('Static authored enemies', () => {
   const authored = LevelDefinitionSchema.parse(authoredLevel);
   const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1, startRocketCount: 0, gruntHp: 10 });
 
-  it('materializes the same 840-member enemy stream on every fresh run', () => {
+  it('materializes the same initial enemy horizon on every fresh run', () => {
     const first = createAuthored().getState();
     const second = createAuthored().getState();
     expect(first).toEqual(second);
     expect(first.levelId).toBe('level-001');
-    expect(first.enemies).toHaveLength(840);
-    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 840 }, (_, index) => index + 1));
+    expect(first.enemies.length).toBeGreaterThan(700);
+    expect(first.enemies.length).toBeLessThan(950);
+    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: first.enemies.length }, (_, index) => index + 1));
+    expect(first.enemyStream).toEqual({ nextRowIndex: first.enemies.length / 7, nextEnemyId: first.enemies.length + 1 });
     expect(first.enemies.every((enemy) => enemy.type === 'grunt' && enemy.hp === 10)).toBe(true);
     const meanZ = first.enemies.reduce((sum, enemy) => sum + enemy.z, 0) / first.enemies.length;
     expect(meanZ).toBeCloseTo(60, 1);
-    expect(Math.min(...first.enemies.map((enemy) => enemy.z))).toBeLessThan(30);
-    expect(Math.max(...first.enemies.map((enemy) => enemy.z))).toBeGreaterThan(90);
+    expect(Math.min(...first.enemies.map((enemy) => enemy.z))).toBeGreaterThan(23);
+    expect(Math.min(...first.enemies.map((enemy) => enemy.z))).toBeLessThan(25);
+    expect(Math.max(...first.enemies.map((enemy) => enemy.z))).toBeGreaterThan(95);
     expect(first.rngState).toBe(1);
   });
 
@@ -271,9 +276,9 @@ describe('Static authored enemies', () => {
     exposed.enemies.pop();
     expect(simulation.getState().enemies).toEqual(before);
     simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning });
-    expect(simulation.getState().enemies).toEqual(before);
+    expect(simulation.getState().enemies.slice(0, before.length)).toEqual(before);
     simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning });
-    expect(simulation.getState().enemies).toEqual(before);
+    expect(simulation.getState().enemies.slice(0, before.length)).toEqual(before);
     expect(simulation.getState().player.z).toBe(3);
     expect(simulation.getState().rngState).toBe(1);
   });
@@ -281,7 +286,7 @@ describe('Static authored enemies', () => {
   it('restores enemy data after JSON serialization', () => {
     const original = createAuthored().getState();
     const parsed = JSON.parse(JSON.stringify(original)) as SimulationState;
-    const restored = new Simulation({ seed: 99, level, startSquad: 0, startRocketCount: 0, gruntHp: 10 });
+    const restored = new Simulation({ seed: 99, level: authored, startSquad: 0, startRocketCount: 0, gruntHp: 10 });
     restored.restoreState(parsed);
     expect(restored.getState()).toEqual(original);
     parsed.enemies[0].x = 999;

@@ -18,6 +18,24 @@ const EnemyGroupSchema = z.strictObject({
     { path: ['jitter'], message: 'Jitter must be less than half of spacing' }),
 });
 
+const EnemyStreamSchema = z.strictObject({
+  enemy: z.literal('grunt'),
+  startZ: z.number().finite().nonnegative(),
+  spawnAheadDistance: z.number().finite().positive(),
+  columns: positiveSafeInteger,
+  spacing: z.number().finite().positive(),
+  jitter: z.number().finite().nonnegative(),
+  seed: z.number().int().min(0).max(0xffffffff),
+}).superRefine((stream, context) => {
+  if (stream.spawnAheadDistance <= stream.startZ) {
+    context.addIssue({ code: 'custom', path: ['spawnAheadDistance'],
+      message: 'Spawn-ahead distance must exceed stream start Z' });
+  }
+  if (stream.jitter >= stream.spacing / 2) {
+    context.addIssue({ code: 'custom', path: ['jitter'], message: 'Jitter must be less than half of spacing' });
+  }
+});
+
 export const UpgradeRewardSchema = z.discriminatedUnion('mode', [
   z.strictObject({ mode: z.literal('pickup'), kind: z.literal('rifle'),
     amount: positiveSafeInteger, intervalSeconds: z.number().finite().positive(),
@@ -38,6 +56,7 @@ export const LevelDefinitionSchema = z.strictObject({
   id: nonEmptyId,
   length: z.number().finite().positive(),
   enemyGroups: z.array(EnemyGroupSchema),
+  enemyStream: EnemyStreamSchema.optional(),
   upgradeGates: z.array(UpgradeGateSchema),
 }).superRefine((level, context) => {
   const ids = new Set<string>();
@@ -68,4 +87,5 @@ export const LevelDefinitionSchema = z.strictObject({
 });
 
 export type LevelDefinition = z.infer<typeof LevelDefinitionSchema>;
+export type EnemyStreamDefinition = z.infer<typeof EnemyStreamSchema>;
 export type UpgradeReward = z.infer<typeof UpgradeRewardSchema>;

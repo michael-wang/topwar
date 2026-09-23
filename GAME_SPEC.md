@@ -41,7 +41,7 @@ The advertisement is a visual and opening-pacing reference. The player starts sm
 
 The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass ahead and from the risk of reaching enemies before clearing them. The enemy field begins relatively close and extends deep into the level. It should read as an irregular, continuous mob with breathing room between grunts, not orderly ranks.
 
-Level 001 opens with one long, denser enemy stream rather than an isolated blob. Slower forced progression gives the player time to invest in persistent side armories. This level deliberately embraces exaggerated advertisement-style squad growth.
+Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. Slower forced progression gives the player time to invest in persistent side armories. This level deliberately embraces exaggerated advertisement-style squad growth.
 
 ## 3. Controls
 

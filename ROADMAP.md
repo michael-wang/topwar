@@ -51,9 +51,9 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 1. Continuous irregular enemy stream — implemented.
 2. Rocket specialist combat — implemented.
 3. Persistent side armories: collectible +1 rifle generator and one-time +99 rifle jackpot — implemented.
-4. Endless enemy stream — next pivot task.
-5. Squad visual compression for +99 — later pivot task.
-6. Periodic large enemy — after endless spawning.
+4. Endless enemy stream — implemented.
+5. Squad visual compression for +99 — next pivot task.
+6. Periodic 500-HP large enemy — after visual compression.
 
 ## 012 Recruitment gates — later milestone
 Data-driven +N gates, squad growth feedback.
