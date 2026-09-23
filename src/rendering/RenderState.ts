@@ -7,4 +7,7 @@ export interface GameRenderState {
     count: number;
     formationSpacing: number;
   };
+  track: {
+    halfWidth: number;
+  };
 }

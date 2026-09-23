@@ -20,6 +20,7 @@ body {
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #b8c3cb;
+  touch-action: none;
 }
 
 #game-viewport canvas {

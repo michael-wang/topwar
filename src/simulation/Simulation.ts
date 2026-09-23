@@ -7,6 +7,16 @@ export interface SimulationOptions {
   startSquad: number;
 }
 
+export interface SimulationInput {
+  targetX: number;
+}
+
+export interface SimulationTuning {
+  moveSpeed: number;
+  forwardSpeed: number;
+  trackHalfWidth: number;
+}
+
 function validLevelId(levelId: unknown): levelId is string {
   return typeof levelId === 'string' && levelId.trim().length > 0;
 }
@@ -101,14 +111,39 @@ export class Simulation {
     };
   }
 
-  step(dtSeconds: number): void {
+  step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
     if (!Number.isFinite(dtSeconds) || dtSeconds <= 0) {
       throw new Error('Simulation dtSeconds must be finite and greater than zero');
     }
-    const nextElapsedSeconds = this.state.elapsedSeconds + dtSeconds;
-    if (!Number.isFinite(nextElapsedSeconds) || !Number.isSafeInteger(this.state.tick + 1)) {
-      throw new Error('Simulation time or tick exceeds the supported range');
+    if (!input || !Number.isFinite(input.targetX)) {
+      throw new Error('Simulation targetX must be finite');
     }
+    if (!tuning || !Number.isFinite(tuning.moveSpeed) || tuning.moveSpeed < 0) {
+      throw new Error('Simulation moveSpeed must be finite and non-negative');
+    }
+    if (!Number.isFinite(tuning.forwardSpeed) || tuning.forwardSpeed < 0) {
+      throw new Error('Simulation forwardSpeed must be finite and non-negative');
+    }
+    if (!Number.isFinite(tuning.trackHalfWidth) || tuning.trackHalfWidth <= 0) {
+      throw new Error('Simulation trackHalfWidth must be finite and greater than zero');
+    }
+
+    const halfWidth = tuning.trackHalfWidth;
+    const currentX = Math.max(-halfWidth, Math.min(halfWidth, this.state.player.x));
+    const targetX = Math.max(-halfWidth, Math.min(halfWidth, input.targetX));
+    const maxHorizontalDelta = tuning.moveSpeed * dtSeconds;
+    const difference = targetX - currentX;
+    const nextX = Math.abs(difference) <= maxHorizontalDelta
+      ? targetX
+      : currentX + Math.sign(difference) * maxHorizontalDelta;
+    const nextZ = this.state.player.z + tuning.forwardSpeed * dtSeconds;
+    const nextElapsedSeconds = this.state.elapsedSeconds + dtSeconds;
+    if (!Number.isFinite(nextX) || !Number.isFinite(nextZ) || !Number.isFinite(nextElapsedSeconds)
+      || !Number.isSafeInteger(this.state.tick + 1)) {
+      throw new Error('Simulation movement, time, or tick exceeds the supported range');
+    }
+    this.state.player.x = nextX;
+    this.state.player.z = nextZ;
     this.state.tick += 1;
     this.state.elapsedSeconds = nextElapsedSeconds;
     this.state.rngState = this.rng.getState();

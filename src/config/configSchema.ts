@@ -7,7 +7,11 @@ export const GameConfigSchema = z.strictObject({
   player: z.strictObject({
     startSquad: z.number().int().nonnegative(),
     moveSpeed: nonnegative,
+    forwardSpeed: nonnegative,
     formationSpacing: positive,
+  }),
+  track: z.strictObject({
+    halfWidth: positive,
   }),
   weapon: z.strictObject({
     rifle: z.strictObject({

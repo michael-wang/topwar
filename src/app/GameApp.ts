@@ -1,6 +1,7 @@
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
 import type { GameConfig } from '../config/configSchema';
+import { PointerDragInput } from '../input/PointerDragInput';
 import { GameRenderer } from '../rendering/GameRenderer';
 import type { GameRenderState } from '../rendering/RenderState';
 import { Simulation } from '../simulation/Simulation';
@@ -9,8 +10,11 @@ export class GameApp {
   private readonly renderer: GameRenderer;
   private readonly fixedStepLoop = new FixedStepLoop();
   private readonly simulation: Simulation;
+  private readonly input: PointerDragInput;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
+  private targetX: number;
+  private dragStartPlayerX = 0;
   private frameId: number | null = null;
   private previousFrameTimestampMs: number | null = null;
   private running = false;
@@ -23,7 +27,17 @@ export class GameApp {
       levelId: 'prototype',
       startSquad: this.config.player.startSquad,
     });
+    this.targetX = this.simulation.getState().player.x;
     this.renderer = new GameRenderer(viewport);
+    this.input = new PointerDragInput(viewport, {
+      onDragStart: () => {
+        this.dragStartPlayerX = this.simulation.getState().player.x;
+        this.targetX = this.dragStartPlayerX;
+      },
+      onDrag: (normalizedDeltaX) => {
+        this.targetX = this.dragStartPlayerX + normalizedDeltaX * (this.config.track.halfWidth * 2);
+      },
+    });
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
   }
 
@@ -34,6 +48,7 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
+    this.input.start();
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
 
@@ -45,6 +60,7 @@ export class GameApp {
     this.frameId = null;
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
+    this.input.stop();
     this.renderer.stopResizeHandling();
   }
 
@@ -52,6 +68,7 @@ export class GameApp {
     if (this.disposed) return;
     this.stop();
     this.unsubscribeConfig();
+    this.input.dispose();
     this.renderer.dispose();
     this.disposed = true;
   }
@@ -62,11 +79,20 @@ export class GameApp {
       ? 0
       : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
     this.previousFrameTimestampMs = timestampMs;
-    this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(dtSeconds));
+    this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
+      dtSeconds,
+      { targetX: this.targetX },
+      {
+        moveSpeed: this.config.player.moveSpeed,
+        forwardSpeed: this.config.player.forwardSpeed,
+        trackHalfWidth: this.config.track.halfWidth,
+      },
+    ));
     const state = this.simulation.getState();
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, formationSpacing: this.config.player.formationSpacing },
+      track: { halfWidth: this.config.track.halfWidth },
     };
     this.renderer.render(renderState);
     this.frameId = requestAnimationFrame(this.renderFrame);

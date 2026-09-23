@@ -50,6 +50,8 @@ Behavior:
 - the squad follows horizontal input
 - forward progression is automatic
 - firing is automatic
+- drag is relative to the squad's current position, so pointer-down alone does not jump it
+- one-handed movement should feel immediate and low-friction
 
 Development desktop control:
 

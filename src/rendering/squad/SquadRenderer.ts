@@ -19,7 +19,8 @@ export class SquadRenderer {
       const member = this.members[index];
       const offset = offsets[index];
       member.visible = offset !== undefined;
-      if (offset) member.position.set(state.player.x + offset.x, 0, state.player.z + offset.z);
+      // The camera looks along +Z, which mirrors X on screen. Flip visual X so drag right reads right.
+      if (offset) member.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
     }
   }
 

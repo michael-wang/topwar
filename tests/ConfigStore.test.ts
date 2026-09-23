@@ -45,6 +45,11 @@ describe('GameConfigSchema and loading', () => {
 
   it('enforces the numeric field boundaries', () => {
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, startSquad: 0, moveSpeed: 0 } })).not.toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, forwardSpeed: 0 } })).not.toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, forwardSpeed: -1 } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, forwardSpeed: Infinity } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, track: { halfWidth: 0 } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, track: { halfWidth: 1.5 } })).not.toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, startSquad: 1.5 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, formationSpacing: 0 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, hp: Infinity } } })).toThrow();
