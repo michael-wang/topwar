@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
@@ -8,6 +9,7 @@ export class GameRenderer {
   private readonly camera = new THREE.PerspectiveCamera(55, 9 / 16, 0.1, 100);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer = new SquadRenderer(this.scene);
+  private readonly enemyRenderer = new EnemyRenderer(this.scene);
   private readonly ground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly road: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly markerGeometry = new THREE.PlaneGeometry(1, 0.08);
@@ -85,6 +87,7 @@ export class GameRenderer {
       marker.scale.x = state.track.halfWidth * 2;
     }
     this.squadRenderer.update(state);
+    this.enemyRenderer.update(state.enemies);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -98,6 +101,7 @@ export class GameRenderer {
     this.markerGeometry.dispose();
     this.markerMaterial.dispose();
     this.squadRenderer.dispose();
+    this.enemyRenderer.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();

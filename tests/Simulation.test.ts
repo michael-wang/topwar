@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { SeededRng } from '../src/core/Rng';
+import authoredLevel from '../public/game-data/levels/level-001.json';
+import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
-const create = () => new Simulation({ seed: 1, levelId: 'prototype', startSquad: 1 });
+const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [] };
+const create = () => new Simulation({ seed: 1, level, startSquad: 1 });
 const still = { targetX: 0 };
 const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5 };
 
@@ -17,13 +20,14 @@ describe('Simulation', () => {
       rngState: 1,
       player: { x: 0, z: 0 },
       squad: { count: 1 },
+      enemies: [],
     });
   });
 
   it('accepts a zero-soldier start and rejects invalid squad counts', () => {
-    expect(new Simulation({ seed: 1, levelId: 'prototype', startSquad: 0 }).getState().squad.count).toBe(0);
+    expect(new Simulation({ seed: 1, level, startSquad: 0 }).getState().squad.count).toBe(0);
     for (const startSquad of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.NaN, Infinity]) {
-      expect(() => new Simulation({ seed: 1, levelId: 'prototype', startSquad })).toThrow(/startSquad/);
+      expect(() => new Simulation({ seed: 1, level, startSquad })).toThrow(/startSquad/);
     }
   });
 
@@ -38,6 +42,7 @@ describe('Simulation', () => {
       rngState: 1,
       player: { x: 0, z: 0 },
       squad: { count: 1 },
+      enemies: [],
     });
     simulation.step(1 / 60, still, stillTuning);
     simulation.step(1 / 30, still, stillTuning);
@@ -49,8 +54,9 @@ describe('Simulation', () => {
   });
 
   it('produces identical state for the same seed, level, and step sequence', () => {
-    const first = new Simulation({ seed: 0xffffffff, levelId: 'repeat', startSquad: 3 });
-    const second = new Simulation({ seed: 0xffffffff, levelId: 'repeat', startSquad: 3 });
+    const repeatLevel = { ...level, id: 'repeat' };
+    const first = new Simulation({ seed: 0xffffffff, level: repeatLevel, startSquad: 3 });
+    const second = new Simulation({ seed: 0xffffffff, level: repeatLevel, startSquad: 3 });
     for (const dt of [1 / 60, 1 / 60, 0.125, 1 / 60]) {
       first.step(dt, still, stillTuning);
       second.step(dt, still, stillTuning);
@@ -75,7 +81,7 @@ describe('Simulation', () => {
     restored.rngState = rng.getState();
     restored.player = { x: -2.5, z: 4 };
     restored.squad.count = 5;
-    const another = new Simulation({ seed: 99, levelId: 'other', startSquad: 0 });
+    const another = new Simulation({ seed: 99, level: { ...level, id: 'other' }, startSquad: 0 });
     another.restoreState(JSON.parse(JSON.stringify(restored)) as SimulationState);
     expect(another.getState()).toEqual(restored);
     expect(another.getState().squad.count).toBe(5);
@@ -90,11 +96,11 @@ describe('Simulation', () => {
   });
 
   it.each([-1, 1.5, 4294967296, Number.NaN, Infinity])('rejects invalid seed %s', (seed) => {
-    expect(() => new Simulation({ seed, levelId: 'prototype', startSquad: 1 })).toThrow();
+    expect(() => new Simulation({ seed, level, startSquad: 1 })).toThrow();
   });
 
   it.each(['', '   ', null, 7])('rejects invalid level id %s', (levelId) => {
-    expect(() => new Simulation({ seed: 1, levelId: levelId as string, startSquad: 1 })).toThrow();
+    expect(() => new Simulation({ seed: 1, level: { ...level, id: levelId as string }, startSquad: 1 })).toThrow();
   });
 
   it.each([
@@ -200,6 +206,79 @@ describe('Simulation movement', () => {
     const simulation = create();
     const before = simulation.getState();
     expect(() => simulation.step(Number.MAX_VALUE, { targetX: 1 }, tuning)).toThrow();
+    expect(simulation.getState()).toEqual(before);
+  });
+});
+
+describe('Static authored enemies', () => {
+  const authored = LevelDefinitionSchema.parse(authoredLevel);
+  const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1 });
+
+  it('materializes 2, 3, 5, and 8 enemies with stable IDs and authored group centers', () => {
+    const first = createAuthored().getState();
+    const second = createAuthored().getState();
+    expect(first).toEqual(second);
+    expect(first.levelId).toBe('level-001');
+    expect(first.enemies).toHaveLength(18);
+    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 18 }, (_, index) => index + 1));
+    expect(first.enemies.map((enemy) => enemy.type)).toEqual(Array(18).fill('grunt'));
+    expect(first.enemies.slice(0, 2)).toEqual([
+      { id: 1, type: 'grunt', x: -0.4, z: 12 },
+      { id: 2, type: 'grunt', x: 0.4, z: 12 },
+    ]);
+    const groups = [first.enemies.slice(0, 2), first.enemies.slice(2, 5),
+      first.enemies.slice(5, 10), first.enemies.slice(10, 18)];
+    [12, 24, 39, 56].forEach((centerZ, index) => {
+      const positions = groups[index].map((enemy) => enemy.z);
+      expect((Math.min(...positions) + Math.max(...positions)) / 2).toBeCloseTo(centerZ);
+    });
+    expect(groups[2].map((enemy) => enemy.z)).toEqual([39.375, 39.375, 39.375, 38.625, 38.625]);
+    expect(first.rngState).toBe(1);
+  });
+
+  it('keeps enemies static while stepping and returns owned enemy data', () => {
+    const simulation = createAuthored();
+    const before = simulation.getState().enemies;
+    const exposed = simulation.getState();
+    exposed.enemies[0].x = 999;
+    exposed.enemies.pop();
+    expect(simulation.getState().enemies).toEqual(before);
+    simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 });
+    expect(simulation.getState().enemies).toEqual(before);
+    expect(simulation.getState().player.z).toBe(1.5);
+    expect(simulation.getState().rngState).toBe(1);
+  });
+
+  it('restores enemy data after JSON serialization', () => {
+    const original = createAuthored().getState();
+    const parsed = JSON.parse(JSON.stringify(original)) as SimulationState;
+    const restored = new Simulation({ seed: 99, level, startSquad: 0 });
+    restored.restoreState(parsed);
+    expect(restored.getState()).toEqual(original);
+    parsed.enemies[0].x = 999;
+    expect(restored.getState().enemies[0].x).toBe(-0.4);
+  });
+
+  it.each([
+    (state: SimulationState) => { state.enemies = null as unknown as SimulationState['enemies']; },
+    (state: SimulationState) => { state.enemies[0].id = 0; },
+    (state: SimulationState) => { state.enemies[0].id = 1.5; },
+    (state: SimulationState) => { state.enemies[0].id = Number.MAX_SAFE_INTEGER + 1; },
+    (state: SimulationState) => { state.enemies[1].id = state.enemies[0].id; },
+    (state: SimulationState) => { state.enemies[0].type = 'unknown' as 'grunt'; },
+    (state: SimulationState) => { state.enemies[0].x = Infinity; },
+    (state: SimulationState) => { state.enemies[0].z = NaN; },
+    (state: SimulationState) => { (state.enemies[0] as unknown as Record<string, unknown>).hp = 10; },
+    (state: SimulationState) => { delete (state.enemies[0] as unknown as Record<string, unknown>).x; },
+  ])('rejects invalid enemy restore transactionally', (damage) => {
+    const simulation = createAuthored();
+    const before = simulation.getState();
+    const invalid = simulation.getState();
+    const rng = new SeededRng(1);
+    rng.nextFloat();
+    invalid.rngState = rng.getState();
+    damage(invalid);
+    expect(() => simulation.restoreState(invalid)).toThrow();
     expect(simulation.getState()).toEqual(before);
   });
 });

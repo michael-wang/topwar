@@ -10,4 +10,12 @@ export interface GameRenderState {
   track: {
     halfWidth: number;
   };
+  enemies: EnemyRenderState[];
+}
+
+export interface EnemyRenderState {
+  id: number;
+  type: 'grunt';
+  x: number;
+  z: number;
 }

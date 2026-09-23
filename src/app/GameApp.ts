@@ -4,6 +4,7 @@ import type { GameConfig } from '../config/configSchema';
 import { KeyboardSteeringInput } from '../input/KeyboardSteeringInput';
 import { MouseSteeringInput } from '../input/MouseSteeringInput';
 import { PointerDragInput } from '../input/PointerDragInput';
+import type { LevelDefinition } from '../level/LevelDefinition';
 import { GameRenderer } from '../rendering/GameRenderer';
 import type { GameRenderState } from '../rendering/RenderState';
 import { Simulation } from '../simulation/Simulation';
@@ -25,11 +26,11 @@ export class GameApp {
   private running = false;
   private disposed = false;
 
-  constructor(viewport: HTMLElement, configStore: ConfigStore) {
+  constructor(viewport: HTMLElement, configStore: ConfigStore, level: LevelDefinition) {
     this.config = configStore.getConfig();
     this.simulation = new Simulation({
       seed: 1,
-      levelId: 'prototype',
+      level,
       startSquad: this.config.player.startSquad,
     });
     this.targetX = this.simulation.getState().player.x;
@@ -124,6 +125,7 @@ export class GameApp {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth },
+      enemies: state.enemies.map((enemy) => ({ ...enemy })),
     };
     this.renderer.render(renderState);
     this.frameId = requestAnimationFrame(this.renderFrame);

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigStore, ConfigListener } from '../src/config/ConfigStore';
 import type { GameConfig } from '../src/config/configSchema';
+import authoredLevel from '../public/game-data/levels/level-001.json';
+import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import type { PointerDragCallbacks } from '../src/input/PointerDragInput';
 import type { MouseSteeringCallbacks } from '../src/input/MouseSteeringInput';
 import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInput';
@@ -8,7 +10,11 @@ import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInp
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
   step: vi.fn(),
-  getState: vi.fn(() => ({ player: { x: 2, z: 3 }, squad: { count: 3 } })),
+  getState: vi.fn(() => ({
+    player: { x: 2, z: 3 },
+    squad: { count: 3 },
+    enemies: [{ id: 1, type: 'grunt' as const, x: -0.4, z: 12 }],
+  })),
   render: vi.fn(),
   startResizeHandling: vi.fn(),
   stopResizeHandling: vi.fn(),
@@ -79,6 +85,8 @@ vi.mock('../src/input/KeyboardSteeringInput', () => ({
 
 import { GameApp } from '../src/app/GameApp';
 
+const level = LevelDefinitionSchema.parse(authoredLevel);
+
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
   let config = {
     player: { startSquad, formationSpacing, moveSpeed: 5, forwardSpeed: 3 },
@@ -142,8 +150,8 @@ describe('GameApp config and frame lifecycle', () => {
   it('starts the simulation from config and sends plain live state to the renderer', () => {
     const raf = createRaf();
     const config = createConfigStore(5, 0.8);
-    const app = new GameApp({} as HTMLElement, config.store);
-    expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, levelId: 'prototype', startSquad: 5 });
+    const app = new GameApp({} as HTMLElement, config.store, level);
+    expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5 });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -152,6 +160,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 },
       squad: { count: 3, formationSpacing: 0.8 },
       track: { halfWidth: 2.5 },
+      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
     });
 
     config.changePlayer({ startSquad: 9, formationSpacing: 1.2 });
@@ -160,6 +169,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 },
       squad: { count: 3, formationSpacing: 1.2 },
       track: { halfWidth: 2.5 },
+      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
     });
     expect(mock.constructedWith).toHaveBeenCalledTimes(1);
     app.dispose();
@@ -169,7 +179,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('uses one RAF loop and keeps its config listener across stop/start without catch-up', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store);
+    const app = new GameApp({} as HTMLElement, config.store, level);
     app.start();
     app.start();
     expect(raf.pending.size).toBe(1);
@@ -206,6 +216,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 },
       squad: { count: 3, formationSpacing: 0.9 },
       track: { halfWidth: 2.5 },
+      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
     });
     raf.frame(300_000 + 1000 / 60);
     expect(mock.step).toHaveBeenCalledTimes(2);
@@ -230,7 +241,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('maps relative drag from current player X and uses live movement tuning per tick', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store);
+    const app = new GameApp({} as HTMLElement, config.store, level);
     const callbacks = mock.inputConstructedWith.mock.calls[0][0] as PointerDragCallbacks;
     app.start();
     raf.frame(100);
@@ -279,7 +290,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('accumulates mouse deltas with live sensitivity and track width', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store);
+    const app = new GameApp({} as HTMLElement, config.store, level);
     const mouse = mock.mouseConstructedWith.mock.calls[0][0] as MouseSteeringCallbacks;
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
     app.start();
@@ -320,7 +331,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('maps keyboard edges and neutral release to the current player position', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store);
+    const app = new GameApp({} as HTMLElement, config.store, level);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
     const drag = mock.inputConstructedWith.mock.calls[0][0] as PointerDragCallbacks;
     app.start();

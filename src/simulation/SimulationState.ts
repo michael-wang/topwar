@@ -7,6 +7,13 @@ export interface SquadSimulationState {
   count: number;
 }
 
+export interface EnemySimulationState {
+  id: number;
+  type: 'grunt';
+  x: number;
+  z: number;
+}
+
 export interface SimulationState {
   tick: number;
   elapsedSeconds: number;
@@ -15,4 +22,5 @@ export interface SimulationState {
   rngState: number;
   player: PlayerSimulationState;
   squad: SquadSimulationState;
+  enemies: EnemySimulationState[];
 }
