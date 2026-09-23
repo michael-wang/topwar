@@ -32,6 +32,7 @@ describe('GameConfigSchema and loading', () => {
     await store.load();
     expect(fetchJson).toHaveBeenCalledWith(sourceUrl);
     expect(store.getConfig()).toEqual(base);
+    expect(store.getConfig().weapon.rifle.range).toBe(28);
   });
 
   it('rejects invalid base values, string coercion, and unknown keys', async () => {

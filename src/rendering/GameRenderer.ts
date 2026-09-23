@@ -54,7 +54,7 @@ export class GameRenderer {
     this.scene.add(sunlight);
 
     this.camera.position.set(0, 8, -10);
-    this.camera.lookAt(0, 0, 5);
+    this.camera.lookAt(0, 0, 11);
     this.resize();
   }
 
@@ -78,7 +78,7 @@ export class GameRenderer {
     const cameraDistance = Math.max(10, state.track.halfWidth * 4);
     this.camera.position.y = cameraDistance * 0.8;
     this.camera.position.z = state.player.z - cameraDistance;
-    this.camera.lookAt(0, 0, state.player.z + cameraDistance * 0.5);
+    this.camera.lookAt(0, 0, state.player.z + cameraDistance * 1.1);
     this.ground.position.z = state.player.z;
     this.road.position.z = state.player.z;
     this.road.scale.x = state.track.halfWidth * 2 + 0.5;

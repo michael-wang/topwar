@@ -16,7 +16,7 @@
       "damage": 3,
       "fireRate": 7,
       "projectileSpeed": 28,
-      "range": 18
+      "range": 28
     }
   },
   "enemies": {
