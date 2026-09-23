@@ -34,7 +34,6 @@ describe('GameConfigSchema and loading', () => {
     expect(store.getConfig()).toEqual(base);
     expect(store.getConfig().weapon.rifle.range).toBe(40);
     expect(store.getConfig().enemies.grunt.hp).toBe(3);
-    expect(store.getConfig().enemies.grunt.moveSpeed).toBe(2.5);
   });
 
   it('rejects invalid base values, string coercion, and unknown keys', async () => {
@@ -63,9 +62,9 @@ describe('GameConfigSchema and loading', () => {
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: Infinity } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0.22 } })).not.toThrow();
-    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, activationDistance: 0 } } })).toThrow();
-    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, activationDistance: Infinity } } })).toThrow();
-    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, activationDistance: 10 } } })).not.toThrow();
+    for (const obsolete of [{ moveSpeed: 2.5 }, { activationDistance: 10 }]) {
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, ...obsolete } } })).toThrow();
+    }
     for (const contactDamage of [0, -1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
       expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, contactDamage } } })).toThrow();
     }

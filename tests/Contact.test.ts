@@ -3,10 +3,10 @@ import type { LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
-const level: LevelDefinition = { id: 'contact-test', length: 20, startGraceSeconds: 0, enemyGroups: [] };
+const level: LevelDefinition = { id: 'contact-test', length: 20, enemyGroups: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
+  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>

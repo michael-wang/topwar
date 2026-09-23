@@ -5,11 +5,11 @@ import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelD
 import { Simulation } from '../src/simulation/Simulation';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
-const level: LevelDefinition = { id: 'prototype', length: 1, startGraceSeconds: 0, enemyGroups: [] };
+const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [] };
 const create = () => new Simulation({ seed: 1, level, startSquad: 1, gruntHp: 10 });
 const still = { targetX: 0 };
 const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
+  gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
 
@@ -19,7 +19,6 @@ describe('Simulation', () => {
       tick: 0,
       elapsedSeconds: 0,
       levelId: 'prototype',
-      startGraceSeconds: 0,
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
@@ -44,7 +43,6 @@ describe('Simulation', () => {
       tick: 1,
       elapsedSeconds: 1 / 60,
       levelId: 'prototype',
-      startGraceSeconds: 0,
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
@@ -118,9 +116,7 @@ describe('Simulation', () => {
     (state: SimulationState) => { state.elapsedSeconds = Infinity; },
     (state: SimulationState) => { state.elapsedSeconds = -1; },
     (state: SimulationState) => { state.levelId = ''; },
-    (state: SimulationState) => { state.startGraceSeconds = -1; },
-    (state: SimulationState) => { state.startGraceSeconds = Infinity; },
-    (state: SimulationState) => { delete (state as unknown as Record<string, unknown>).startGraceSeconds; },
+    (state: SimulationState) => { (state as unknown as Record<string, unknown>).startGraceSeconds = 1.5; },
     (state: SimulationState) => { state.seed = 4294967296; },
     (state: SimulationState) => { state.rngState = -1; },
     (state: SimulationState) => { state.player.x = Number.NaN; },
@@ -257,7 +253,9 @@ describe('Static authored enemies', () => {
     expect(simulation.getState().enemies).toEqual(before);
     simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning });
     expect(simulation.getState().enemies).toEqual(before);
-    expect(simulation.getState().player.z).toBe(1.5);
+    simulation.step(0.5, { targetX: 2 }, { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning });
+    expect(simulation.getState().enemies).toEqual(before);
+    expect(simulation.getState().player.z).toBe(3);
     expect(simulation.getState().rngState).toBe(1);
   });
 

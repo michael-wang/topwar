@@ -1,7 +1,6 @@
 {
   "id": "level-001",
   "length": 72,
-  "startGraceSeconds": 1.5,
   "enemyGroups": [
     {
       "id": "intro-1",

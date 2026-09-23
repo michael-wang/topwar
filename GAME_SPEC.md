@@ -37,9 +37,9 @@ No lobby is required for the first playable version.
 
 ## Pacing and escalation
 
-The advertisement is a visual and gameplay reference, not a pacing reference. Real gameplay starts with low pressure so one soldier and small early gains such as +1 or +2 feel meaningful. Enemy count, HP, density, speed, and player growth can all shape difficulty. Large crowds and huge recruitment numbers are escalation rewards. Levels should include rises, relief, decisions, and climaxes instead of constant maximum pressure. Pacing and encounter quantities must remain data-driven.
+The advertisement is a visual and gameplay reference, not a pacing reference. Real gameplay starts with low pressure so one soldier and small early gains such as +1 or +2 feel meaningful. Enemy count, HP, density, and player growth can all shape difficulty. Large crowds and huge recruitment numbers are escalation rewards. Levels should include rises, relief, decisions, and climaxes instead of constant maximum pressure. Pacing and encounter quantities must remain data-driven.
 
-Each level may give a short opening grace period. The player can move and fire while enemies hold position, so the run shifts from calm orientation into pressure.
+The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass and density ahead, and from the risk of reaching enemies before clearing them. The first group starts far enough ahead to allow orientation.
 
 ## 3. Controls
 
@@ -96,14 +96,14 @@ No reload mechanic initially.
 
 Base enemy:
 
-- moves toward/blocks the squad
+- remains stationary and blocks the squad's path
 - has HP
 - dies under fire
 - is visually represented as a red low-poly/simple unit during grey-box development
 
 Basic grunts are low-HP fodder and may die from one base rifle hit. Tougher, multi-hit enemies should look distinctly different rather than making every grunt spongey.
 
-A basic grunt marches straight toward the defense line once the player is close enough. It keeps its X lane rather than homing horizontally; activation distance preserves gaps between authored encounters.
+Moving or chasing enemies, if introduced later, should be visibly distinct special enemy types.
 
 The important visual outcome:
 
@@ -112,7 +112,6 @@ The important visual outcome:
 Tunables:
 
 - HP
-- movement speed
 - contact behavior
 - density/count
 - spawn shape

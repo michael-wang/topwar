@@ -7,11 +7,11 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
-const level: LevelDefinition = { id: 'test', length: 30, startGraceSeconds: 0, enemyGroups: [] };
+const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [] };
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
+  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
 };
 const create = (count = 1, gruntHp = 10, authored = level) =>
@@ -47,7 +47,7 @@ describe('Automatic rifle and projectile state', () => {
   });
 
   it('initializes grunt HP from session config and fires immediately, then at the configured cadence', () => {
-    const authored: LevelDefinition = { id: 'one', length: 30, startGraceSeconds: 0, enemyGroups: [
+    const authored: LevelDefinition = { id: 'one', length: 30, enemyGroups: [
       { id: 'g', z: 10, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8 } },
     ] };
     const simulation = create(1, 12, authored);
@@ -119,7 +119,7 @@ describe('Automatic rifle and projectile state', () => {
 
 describe('Swept hits and enemy death', () => {
   it('removes a base grunt on one aligned shot using the runtime damage and HP', () => {
-    const oneGrunt: LevelDefinition = { id: 'fodder', length: 20, startGraceSeconds: 0, enemyGroups: [
+    const oneGrunt: LevelDefinition = { id: 'fodder', length: 20, enemyGroups: [
       { id: 'first', z: 2, enemy: 'grunt', count: 1, formation: { columns: 1, spacing: 0.8 } },
     ] };
     const simulation = create(1, gameConfig.enemies.grunt.hp, oneGrunt);

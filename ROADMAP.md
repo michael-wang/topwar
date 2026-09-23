@@ -35,8 +35,8 @@ Static enemy contact removes squad members.
 ## 008B.2A Defense-line breaches + Game Over/Retry
 Surviving enemies left behind cost soldiers; zero squad ends the run and Retry starts a fresh run.
 
-## 008B.2B Enemy advance
-Nearby grunts march straight toward the defense line in their authored lanes, using the established casualty and failure rules.
+## 008B.2B Stationary grunt pressure
+Basic grunts hold their authored positions; player advance, contact, and defense-line breaches create pressure.
 
 ## 009 Dev Panel v1
 Pause/time scale plus live editing of a small approved set of config values.
@@ -47,7 +47,7 @@ Named local save/load slots, export/import JSON, deterministic restore tests.
 ## 011 Stress/performance pass
 Measure hundreds of units, introduce instancing/pooling only where needed.
 
-## 012 Recruitment gates
+## 012 Recruitment gates — next gameplay milestone
 Data-driven +N gates, squad growth feedback.
 
 ## 013 Expanded level content

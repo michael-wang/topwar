@@ -99,7 +99,7 @@ import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
 const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntMoveSpeed: 2.5, gruntActivationDistance: 10, gruntContactDamage: 1,
+  gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
@@ -107,7 +107,7 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     player: { startSquad, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
     controls: { mouseSensitivity: 1 },
-    enemies: { grunt: { hp: 10, radius: 0.3, moveSpeed: 2.5, activationDistance: 10, contactDamage: 1 } },
+    enemies: { grunt: { hp: 10, radius: 0.3, contactDamage: 1 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } },
   } as GameConfig;
   const listeners = new Set<ConfigListener>();
@@ -180,11 +180,11 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100);
     config.changeRifle({ damage: 9, fireRate: 4 });
     config.changePlayer({ memberRadius: 0.3 });
-    config.changeGrunt({ hp: 99, radius: 0.5, moveSpeed: 2, activationDistance: 15, contactDamage: 2 });
+    config.changeGrunt({ hp: 99, radius: 0.5, contactDamage: 2 });
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
       trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5,
-      gruntMoveSpeed: 2, gruntActivationDistance: 15, gruntContactDamage: 2,
+      gruntContactDamage: 2,
       rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3, gruntHp: 10 });

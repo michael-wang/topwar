@@ -5,11 +5,11 @@ import type { EnemySimulationState, ProjectileSimulationState } from '../src/sim
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 
-const level: LevelDefinition = { id: 'breach-test', length: 20, startGraceSeconds: 0, enemyGroups: [] };
+const level: LevelDefinition = { id: 'breach-test', length: 20, enemyGroups: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
+  gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
@@ -93,12 +93,14 @@ describe('moving defense-line breaches', () => {
   it('a fresh run restores authored enemies, squad size, and weapon allocator', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const first = new Simulation({ seed: 1, level: authored, startSquad: 3, gruntHp: 3 });
+    const authoredPositions = first.getState().enemies.map(({ id, x, z }) => ({ id, x, z }));
     first.step(0.1, { targetX: 0 }, { ...tuning, forwardSpeed: 3 });
     const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, gruntHp: 4 });
     const state = fresh.getState();
     expect(state.player).toEqual({ x: 0, z: 0 });
     expect(state.squad.count).toBe(5);
     expect(state.enemies).toHaveLength(18);
+    expect(state.enemies.map(({ id, x, z }) => ({ id, x, z }))).toEqual(authoredPositions);
     expect(state.enemies.every((enemy) => enemy.hp === 4)).toBe(true);
     expect(state.projectiles).toEqual([]);
     expect(state.rifle).toEqual({ cooldownRemainingSeconds: 0, nextProjectileId: 1 });
