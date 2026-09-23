@@ -101,6 +101,8 @@ Base enemy:
 
 Basic grunts are low-HP fodder and may die from one base rifle hit. Tougher, multi-hit enemies should look distinctly different rather than making every grunt spongey.
 
+A basic grunt marches straight toward the defense line once the player is close enough. It keeps its X lane rather than homing horizontally; activation distance preserves gaps between authored encounters.
+
 The important visual outcome:
 
 > Sustained fire should visibly carve holes/corridors into dense enemy groups.

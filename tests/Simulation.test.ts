@@ -8,7 +8,8 @@ import type { SimulationState } from '../src/simulation/SimulationState';
 const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [] };
 const create = () => new Simulation({ seed: 1, level, startSquad: 1, gruntHp: 10 });
 const still = { targetX: 0 };
-const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
+  gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
 

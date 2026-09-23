@@ -23,6 +23,8 @@ export interface SimulationTuning {
   formationSpacing: number;
   memberRadius: number;
   gruntRadius: number;
+  gruntMoveSpeed: number;
+  gruntActivationDistance: number;
   gruntContactDamage: number;
   rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
 }
@@ -259,6 +261,12 @@ export class Simulation {
     if (!Number.isSafeInteger(tuning.gruntContactDamage) || tuning.gruntContactDamage <= 0) {
       throw new Error('Simulation gruntContactDamage must be a positive safe integer');
     }
+    if (!Number.isFinite(tuning.gruntMoveSpeed) || tuning.gruntMoveSpeed < 0) {
+      throw new Error('Simulation gruntMoveSpeed must be finite and non-negative');
+    }
+    if (!positiveFinite(tuning.gruntActivationDistance)) {
+      throw new Error('Simulation gruntActivationDistance must be finite and greater than zero');
+    }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.damage) || !positiveFinite(tuning.rifle.fireRate)
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
       throw new Error('Simulation rifle tuning must be positive and finite');
@@ -323,21 +331,35 @@ export class Simulation {
       const remainingRange = projectile.remainingRange - travel;
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
     }
+    const enemyStartZById = new Map<number, number>();
+    const enemyTravel = tuning.gruntMoveSpeed * dtSeconds;
+    if (!Number.isFinite(enemyTravel)) throw new Error('Simulation enemy movement exceeds the supported range');
+    // Activation is derived from position; no separate AI state is persisted.
+    for (const enemy of enemies) {
+      enemyStartZById.set(enemy.id, enemy.z);
+      if (enemy.z - nextZ <= tuning.gruntActivationDistance) {
+        const nextEnemyZ = enemy.z - enemyTravel;
+        if (!Number.isFinite(nextEnemyZ)) throw new Error('Simulation enemy movement exceeds the supported range');
+        enemy.z = nextEnemyZ;
+      }
+    }
     const contactRadius = tuning.memberRadius + tuning.gruntRadius;
     if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
     let squadCount = this.state.squad.count;
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squadCount === 0) break;
+      const enemyStartZ = enemyStartZById.get(enemy.id)!;
+      // Relative start/end positions sweep both moving bodies in the same tick.
       const contact = createSquadFormation(squadCount, tuning.formationSpacing).some((offset) => {
-        const startX = this.state.player.x + offset.x;
-        const startZ = this.state.player.z + offset.z;
-        const endX = nextX + offset.x;
-        const endZ = nextZ + offset.z;
+        const startX = this.state.player.x + offset.x - enemy.x;
+        const startZ = this.state.player.z + offset.z - enemyStartZ;
+        const endX = nextX + offset.x - enemy.x;
+        const endZ = nextZ + offset.z - enemy.z;
         if (![startX, startZ, endX, endZ].every(Number.isFinite)) {
           throw new Error('Simulation squad contact position is non-finite');
         }
-        return segmentTouchesCircle(startX, startZ, endX, endZ, enemy.x, enemy.z, contactRadius);
+        return segmentTouchesCircle(startX, startZ, endX, endZ, 0, 0, contactRadius);
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);

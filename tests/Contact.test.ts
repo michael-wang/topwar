@@ -6,7 +6,7 @@ import type { EnemySimulationState, ProjectileSimulationState } from '../src/sim
 const level: LevelDefinition = { id: 'contact-test', length: 20, enemyGroups: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+  memberRadius: 0.22, gruntRadius: 0.3, gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
@@ -25,7 +25,7 @@ function simulationWith(count: number, enemies: EnemySimulationState[], projecti
   return simulation;
 }
 
-describe('Static enemy contact casualties', () => {
+describe('Enemy contact casualties', () => {
   it('removes one contacting grunt and one soldier exactly once', () => {
     const simulation = simulationWith(3, [grunt(1, 0, 0)]);
     simulation.step(0.1, { targetX: 0 }, tuning);

@@ -62,6 +62,9 @@ describe('GameConfigSchema and loading', () => {
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0 } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: Infinity } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0.22 } })).not.toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, activationDistance: 0 } } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, activationDistance: Infinity } } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, activationDistance: 10 } } })).not.toThrow();
     for (const contactDamage of [0, -1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
       expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, contactDamage } } })).toThrow();
     }

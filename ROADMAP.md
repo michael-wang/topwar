@@ -36,7 +36,7 @@ Static enemy contact removes squad members.
 Surviving enemies left behind cost soldiers; zero squad ends the run and Retry starts a fresh run.
 
 ## 008B.2B Enemy advance
-Enemies actively move toward the defense line/player using the established casualty and failure rules.
+Nearby grunts march straight toward the defense line in their authored lanes, using the established casualty and failure rules.
 
 ## 009 Dev Panel v1
 Pause/time scale plus live editing of a small approved set of config values.

@@ -25,6 +25,7 @@
     "grunt": {
       "hp": 3,
       "moveSpeed": 1.5,
+      "activationDistance": 10,
       "contactDamage": 1,
       "radius": 0.3
     }

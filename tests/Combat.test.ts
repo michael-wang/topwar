@@ -11,7 +11,7 @@ const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [] };
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+  memberRadius: 0.22, gruntRadius: 0.3, gruntMoveSpeed: 0, gruntActivationDistance: 10, gruntContactDamage: 1,
   rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
 };
 const create = (count = 1, gruntHp = 10, authored = level) =>

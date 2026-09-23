@@ -143,6 +143,8 @@ export class GameApp {
         formationSpacing: this.config.player.formationSpacing,
         memberRadius: this.config.player.memberRadius,
         gruntRadius: this.config.enemies.grunt.radius,
+        gruntMoveSpeed: this.config.enemies.grunt.moveSpeed,
+        gruntActivationDistance: this.config.enemies.grunt.activationDistance,
         gruntContactDamage: this.config.enemies.grunt.contactDamage,
         rifle: { ...this.config.weapon.rifle },
       },
