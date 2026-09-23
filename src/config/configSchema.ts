@@ -13,6 +13,9 @@ export const GameConfigSchema = z.strictObject({
   track: z.strictObject({
     halfWidth: positive,
   }),
+  controls: z.strictObject({
+    mouseSensitivity: positive,
+  }),
   weapon: z.strictObject({
     rifle: z.strictObject({
       damage: positive,

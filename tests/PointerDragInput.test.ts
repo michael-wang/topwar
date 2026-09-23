@@ -20,8 +20,8 @@ class FakeViewport {
   releasePointerCapture(id: number): void { this.captured.delete(id); }
   listenerCount(type: string): number { return this.listeners.get(type)?.size ?? 0; }
 
-  emit(type: string, pointerId: number, clientX: number): void {
-    const event = { pointerId, clientX, preventDefault: vi.fn() } as unknown as PointerEvent;
+  emit(type: string, pointerId: number, clientX: number, pointerType = 'touch'): void {
+    const event = { pointerId, clientX, pointerType, preventDefault: vi.fn() } as unknown as PointerEvent;
     for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
 }
@@ -35,6 +35,11 @@ describe('PointerDragInput', () => {
     input.start();
     input.start();
     expect(viewport.listenerCount('pointerdown')).toBe(1);
+
+    viewport.emit('pointerdown', 9, 50, 'mouse');
+    viewport.emit('pointermove', 9, 100, 'mouse');
+    expect(onDragStart).not.toHaveBeenCalled();
+    expect(onDrag).not.toHaveBeenCalled();
 
     viewport.emit('pointerdown', 1, 50);
     viewport.emit('pointerdown', 2, 100);

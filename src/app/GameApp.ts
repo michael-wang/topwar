@@ -1,6 +1,8 @@
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
 import type { GameConfig } from '../config/configSchema';
+import { KeyboardSteeringInput } from '../input/KeyboardSteeringInput';
+import { MouseSteeringInput } from '../input/MouseSteeringInput';
 import { PointerDragInput } from '../input/PointerDragInput';
 import { GameRenderer } from '../rendering/GameRenderer';
 import type { GameRenderState } from '../rendering/RenderState';
@@ -10,11 +12,14 @@ export class GameApp {
   private readonly renderer: GameRenderer;
   private readonly fixedStepLoop = new FixedStepLoop();
   private readonly simulation: Simulation;
-  private readonly input: PointerDragInput;
+  private readonly dragInput: PointerDragInput;
+  private readonly mouseInput: MouseSteeringInput;
+  private readonly keyboardInput: KeyboardSteeringInput;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
   private dragStartPlayerX = 0;
+  private rebaseMouseTarget = false;
   private frameId: number | null = null;
   private previousFrameTimestampMs: number | null = null;
   private running = false;
@@ -29,13 +34,33 @@ export class GameApp {
     });
     this.targetX = this.simulation.getState().player.x;
     this.renderer = new GameRenderer(viewport);
-    this.input = new PointerDragInput(viewport, {
+    this.dragInput = new PointerDragInput(viewport, {
       onDragStart: () => {
         this.dragStartPlayerX = this.simulation.getState().player.x;
         this.targetX = this.dragStartPlayerX;
+        this.rebaseMouseTarget = true;
       },
       onDrag: (normalizedDeltaX) => {
         this.targetX = this.dragStartPlayerX + normalizedDeltaX * (this.config.track.halfWidth * 2);
+      },
+    });
+    this.mouseInput = new MouseSteeringInput(viewport, {
+      onMove: (normalizedDeltaX) => {
+        if (this.rebaseMouseTarget) {
+          this.targetX = this.simulation.getState().player.x;
+          this.rebaseMouseTarget = false;
+        }
+        const halfWidth = this.config.track.halfWidth;
+        const deltaX = normalizedDeltaX * (halfWidth * 2) * this.config.controls.mouseSensitivity;
+        this.targetX = Math.max(-halfWidth, Math.min(halfWidth, this.targetX + deltaX));
+      },
+    });
+    this.keyboardInput = new KeyboardSteeringInput(window, {
+      onAxisChange: (axis) => {
+        this.targetX = axis === 0
+          ? this.simulation.getState().player.x
+          : axis * this.config.track.halfWidth;
+        this.rebaseMouseTarget = true;
       },
     });
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
@@ -48,7 +73,9 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
-    this.input.start();
+    this.dragInput.start();
+    this.mouseInput.start();
+    this.keyboardInput.start();
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
 
@@ -60,7 +87,9 @@ export class GameApp {
     this.frameId = null;
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
-    this.input.stop();
+    this.keyboardInput.stop();
+    this.mouseInput.stop();
+    this.dragInput.stop();
     this.renderer.stopResizeHandling();
   }
 
@@ -68,7 +97,9 @@ export class GameApp {
     if (this.disposed) return;
     this.stop();
     this.unsubscribeConfig();
-    this.input.dispose();
+    this.dragInput.dispose();
+    this.mouseInput.dispose();
+    this.keyboardInput.dispose();
     this.renderer.dispose();
     this.disposed = true;
   }

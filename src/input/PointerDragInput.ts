@@ -43,6 +43,7 @@ export class PointerDragInput {
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
     if (this.activePointerId !== null) return;
     this.activePointerId = event.pointerId;
     this.startClientX = event.clientX;

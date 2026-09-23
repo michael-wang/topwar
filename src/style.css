@@ -38,3 +38,9 @@ body {
   font: 1rem/1.5 sans-serif;
   text-align: center;
 }
+
+@media (hover: hover) and (pointer: fine) {
+  #game-viewport {
+    cursor: none;
+  }
+}

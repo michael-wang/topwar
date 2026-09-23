@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigStore, ConfigListener } from '../src/config/ConfigStore';
 import type { GameConfig } from '../src/config/configSchema';
 import type { PointerDragCallbacks } from '../src/input/PointerDragInput';
+import type { MouseSteeringCallbacks } from '../src/input/MouseSteeringInput';
+import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInput';
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
@@ -15,6 +17,14 @@ const mock = vi.hoisted(() => ({
   inputStart: vi.fn(),
   inputStop: vi.fn(),
   inputDispose: vi.fn(),
+  mouseConstructedWith: vi.fn(),
+  mouseStart: vi.fn(),
+  mouseStop: vi.fn(),
+  mouseDispose: vi.fn(),
+  keyboardConstructedWith: vi.fn(),
+  keyboardStart: vi.fn(),
+  keyboardStop: vi.fn(),
+  keyboardDispose: vi.fn(),
 }));
 
 vi.mock('../src/simulation/Simulation', () => ({
@@ -45,12 +55,35 @@ vi.mock('../src/input/PointerDragInput', () => ({
   },
 }));
 
+vi.mock('../src/input/MouseSteeringInput', () => ({
+  MouseSteeringInput: class {
+    constructor(_viewport: HTMLElement, callbacks: MouseSteeringCallbacks) {
+      mock.mouseConstructedWith(callbacks);
+    }
+    start = mock.mouseStart;
+    stop = mock.mouseStop;
+    dispose = mock.mouseDispose;
+  },
+}));
+
+vi.mock('../src/input/KeyboardSteeringInput', () => ({
+  KeyboardSteeringInput: class {
+    constructor(_eventTarget: Window, callbacks: KeyboardSteeringCallbacks) {
+      mock.keyboardConstructedWith(callbacks);
+    }
+    start = mock.keyboardStart;
+    stop = mock.keyboardStop;
+    dispose = mock.keyboardDispose;
+  },
+}));
+
 import { GameApp } from '../src/app/GameApp';
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
   let config = {
     player: { startSquad, formationSpacing, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5 },
+    controls: { mouseSensitivity: 1 },
   } as GameConfig;
   const listeners = new Set<ConfigListener>();
   return {
@@ -69,11 +102,16 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
       config = { ...config, track: { ...config.track, ...changes } };
       for (const listener of listeners) listener(config);
     },
+    changeControls: (changes: Partial<GameConfig['controls']>) => {
+      config = { ...config, controls: { ...config.controls, ...changes } };
+      for (const listener of listeners) listener(config);
+    },
     listenerCount: () => listeners.size,
   };
 }
 
 function createRaf() {
+  vi.stubGlobal('window', {});
   const pending = new Map<number, FrameRequestCallback>();
   let nextId = 1;
   const request = vi.fn((callback: FrameRequestCallback) => {
@@ -137,6 +175,8 @@ describe('GameApp config and frame lifecycle', () => {
     expect(raf.pending.size).toBe(1);
     expect(mock.startResizeHandling).toHaveBeenCalledTimes(1);
     expect(mock.inputStart).toHaveBeenCalledTimes(1);
+    expect(mock.mouseStart).toHaveBeenCalledTimes(1);
+    expect(mock.keyboardStart).toHaveBeenCalledTimes(1);
 
     raf.frame(100);
     expect(mock.step).not.toHaveBeenCalled();
@@ -155,6 +195,8 @@ describe('GameApp config and frame lifecycle', () => {
     expect(raf.cancel).toHaveBeenCalledTimes(1);
     expect(config.listenerCount()).toBe(1);
     expect(mock.inputStop).toHaveBeenCalledTimes(1);
+    expect(mock.mouseStop).toHaveBeenCalledTimes(1);
+    expect(mock.keyboardStop).toHaveBeenCalledTimes(1);
 
     config.changePlayer({ formationSpacing: 0.9 });
     app.start();
@@ -175,6 +217,12 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.inputStart).toHaveBeenCalledTimes(2);
     expect(mock.inputStop).toHaveBeenCalledTimes(2);
     expect(mock.inputDispose).toHaveBeenCalledTimes(1);
+    expect(mock.mouseStart).toHaveBeenCalledTimes(2);
+    expect(mock.mouseStop).toHaveBeenCalledTimes(2);
+    expect(mock.mouseDispose).toHaveBeenCalledTimes(1);
+    expect(mock.keyboardStart).toHaveBeenCalledTimes(2);
+    expect(mock.keyboardStop).toHaveBeenCalledTimes(2);
+    expect(mock.keyboardDispose).toHaveBeenCalledTimes(1);
     expect(config.listenerCount()).toBe(0);
     expect(() => app.start()).toThrow(/disposed/);
   });
@@ -224,6 +272,86 @@ describe('GameApp config and frame lifecycle', () => {
       1 / 60,
       { targetX: 5.5 },
       { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5 },
+    );
+    app.dispose();
+  });
+
+  it('accumulates mouse deltas with live sensitivity and track width', () => {
+    const raf = createRaf();
+    const config = createConfigStore();
+    const app = new GameApp({} as HTMLElement, config.store);
+    const mouse = mock.mouseConstructedWith.mock.calls[0][0] as MouseSteeringCallbacks;
+    const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
+    app.start();
+    raf.frame(100);
+
+    mouse.onMove(0.1);
+    raf.frame(100 + 1000 / 60);
+    expect(mock.step).toHaveBeenLastCalledWith(
+      1 / 60,
+      { targetX: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+    );
+
+    config.changeControls({ mouseSensitivity: 2 });
+    mouse.onMove(-0.05);
+    raf.frame(100 + 2 * 1000 / 60);
+    expect(mock.step).toHaveBeenLastCalledWith(
+      1 / 60,
+      { targetX: 2 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+    );
+
+    config.changeTrack({ halfWidth: 3.5 });
+    mouse.onMove(-0.05);
+    raf.frame(100 + 3 * 1000 / 60);
+    const [dtSeconds, input, tuning] = mock.step.mock.lastCall!;
+    expect(dtSeconds).toBe(1 / 60);
+    expect((input as { targetX: number }).targetX).toBeCloseTo(1.3);
+    expect(tuning).toEqual({ moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 });
+
+    keyboard.onAxisChange(1);
+    mouse.onMove(-0.05);
+    raf.frame(100 + 4 * 1000 / 60);
+    expect((mock.step.mock.lastCall![1] as { targetX: number }).targetX).toBeCloseTo(1.3);
+    app.dispose();
+  });
+
+  it('maps keyboard edges and neutral release to the current player position', () => {
+    const raf = createRaf();
+    const config = createConfigStore();
+    const app = new GameApp({} as HTMLElement, config.store);
+    const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
+    const drag = mock.inputConstructedWith.mock.calls[0][0] as PointerDragCallbacks;
+    app.start();
+    raf.frame(100);
+
+    keyboard.onAxisChange(-1);
+    raf.frame(100 + 1000 / 60);
+    expect(mock.step).toHaveBeenLastCalledWith(
+      1 / 60, { targetX: -2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+    );
+    config.changeTrack({ halfWidth: 3.5 });
+    keyboard.onAxisChange(1);
+    raf.frame(100 + 2 * 1000 / 60);
+    expect(mock.step).toHaveBeenLastCalledWith(
+      1 / 60, { targetX: 3.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 },
+    );
+    keyboard.onAxisChange(0);
+    raf.frame(100 + 3 * 1000 / 60);
+    expect(mock.step).toHaveBeenLastCalledWith(
+      1 / 60, { targetX: 2 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 },
+    );
+
+    drag.onDragStart();
+    drag.onDrag(0.25);
+    raf.frame(100 + 4 * 1000 / 60);
+    expect(mock.step).toHaveBeenLastCalledWith(
+      1 / 60, { targetX: 3.75 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 },
     );
     app.dispose();
   });

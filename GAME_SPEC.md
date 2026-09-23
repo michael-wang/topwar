@@ -41,23 +41,9 @@ The advertisement is a visual and gameplay reference, not a pacing reference. Re
 
 ## 3. Controls
 
-Primary:
+Desktop is mouse-first: moving inside the gameplay viewport steers relatively without a button, and the cursor hides only over the game. A/D and Left/Right arrows are alternatives. Mobile is touch-first: drag from any comfortable point without a jump on touch-down. Switching controls should be frictionless; Pointer Lock is not required for the first playable prototype.
 
-- drag left/right
-
-Behavior:
-
-- the squad follows horizontal input
-- forward progression is automatic
-- firing is automatic
-- drag is relative to the squad's current position, so pointer-down alone does not jump it
-- one-handed movement should feel immediate and low-friction
-
-Development desktop control:
-
-- mouse drag uses the same Pointer Event path
-
-The game should be playable one-handed on a phone.
+The squad follows horizontal input and progresses forward automatically. Firing is automatic when implemented. One-handed movement should feel immediate and low-friction.
 
 ## 4. Squad
 

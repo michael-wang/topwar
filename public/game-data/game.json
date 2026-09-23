@@ -8,6 +8,9 @@
   "track": {
     "halfWidth": 2.5
   },
+  "controls": {
+    "mouseSensitivity": 1
+  },
   "weapon": {
     "rifle": {
       "damage": 3,
