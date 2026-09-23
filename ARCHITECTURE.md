@@ -478,8 +478,11 @@ Runtime-authored level definition and encounter pacing. No enemies yet.
 ### 007B — Enemy simulation/rendering
 Consume level data to create visible enemy groups. No combat.
 
-### 008 — Combat
-Automatic firing and enemy damage/death.
+### 008A — Player offense
+Automatic rifle fire, projectiles, enemy HP/death.
+
+### 008B — Enemy threat
+Enemy advance/contact, squad casualties, failure.
 
 ### 009 — Dev Panel v1
 Pause/time scale and selected runtime tuning.

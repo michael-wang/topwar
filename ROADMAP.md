@@ -26,8 +26,11 @@ Runtime-authored level definition and encounter pacing. No enemies yet.
 ## 007B Enemy groups
 Simulation and rendering consume level data to create visible enemies. No combat.
 
-## 008 Combat
-Automatic fire, projectile/hit model, HP/death. Make crowd erosion visible.
+## 008A Player offense
+Automatic rifle fire, projectiles, enemy HP/death.
+
+## 008B Enemy threat
+Enemy advance/contact, squad casualties, failure.
 
 ## 009 Dev Panel v1
 Pause/time scale plus live editing of a small approved set of config values.

@@ -32,6 +32,7 @@ export class GameApp {
       seed: 1,
       level,
       startSquad: this.config.player.startSquad,
+      gruntHp: this.config.enemies.grunt.hp,
     });
     this.targetX = this.simulation.getState().player.x;
     this.renderer = new GameRenderer(viewport);
@@ -118,6 +119,9 @@ export class GameApp {
         moveSpeed: this.config.player.moveSpeed,
         forwardSpeed: this.config.player.forwardSpeed,
         trackHalfWidth: this.config.track.halfWidth,
+        formationSpacing: this.config.player.formationSpacing,
+        gruntRadius: this.config.enemies.grunt.radius,
+        rifle: { ...this.config.weapon.rifle },
       },
     ));
     const state = this.simulation.getState();
@@ -125,7 +129,8 @@ export class GameApp {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth },
-      enemies: state.enemies.map((enemy) => ({ ...enemy })),
+      enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type, x: enemy.x, z: enemy.z })),
+      projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, x: projectile.x, z: projectile.z })),
     };
     this.renderer.render(renderState);
     this.frameId = requestAnimationFrame(this.renderFrame);

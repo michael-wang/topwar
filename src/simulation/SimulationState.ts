@@ -12,6 +12,21 @@ export interface EnemySimulationState {
   type: 'grunt';
   x: number;
   z: number;
+  hp: number;
+}
+
+export interface ProjectileSimulationState {
+  id: number;
+  x: number;
+  z: number;
+  speed: number;
+  damage: number;
+  remainingRange: number;
+}
+
+export interface RifleSimulationState {
+  cooldownRemainingSeconds: number;
+  nextProjectileId: number;
 }
 
 export interface SimulationState {
@@ -23,4 +38,6 @@ export interface SimulationState {
   player: PlayerSimulationState;
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
+  projectiles: ProjectileSimulationState[];
+  rifle: RifleSimulationState;
 }

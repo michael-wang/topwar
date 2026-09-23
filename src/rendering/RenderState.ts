@@ -11,6 +11,13 @@ export interface GameRenderState {
     halfWidth: number;
   };
   enemies: EnemyRenderState[];
+  projectiles: ProjectileRenderState[];
+}
+
+export interface ProjectileRenderState {
+  id: number;
+  x: number;
+  z: number;
 }
 
 export interface EnemyRenderState {

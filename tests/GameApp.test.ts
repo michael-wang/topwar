@@ -13,7 +13,8 @@ const mock = vi.hoisted(() => ({
   getState: vi.fn(() => ({
     player: { x: 2, z: 3 },
     squad: { count: 3 },
-    enemies: [{ id: 1, type: 'grunt' as const, x: -0.4, z: 12 }],
+    enemies: [{ id: 1, type: 'grunt' as const, x: -0.4, z: 12, hp: 10 }],
+    projectiles: [{ id: 1, x: 2, z: 5 }],
   })),
   render: vi.fn(),
   startResizeHandling: vi.fn(),
@@ -86,12 +87,16 @@ vi.mock('../src/input/KeyboardSteeringInput', () => ({
 import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
+const combatTuning = { formationSpacing: 0.45, gruntRadius: 0.3,
+  rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } };
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
   let config = {
     player: { startSquad, formationSpacing, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5 },
     controls: { mouseSensitivity: 1 },
+    enemies: { grunt: { hp: 10, radius: 0.3, moveSpeed: 1.5, contactDamage: 1 } },
+    weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 } },
   } as GameConfig;
   const listeners = new Set<ConfigListener>();
   return {
@@ -112,6 +117,14 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     },
     changeControls: (changes: Partial<GameConfig['controls']>) => {
       config = { ...config, controls: { ...config.controls, ...changes } };
+      for (const listener of listeners) listener(config);
+    },
+    changeRifle: (changes: Partial<GameConfig['weapon']['rifle']>) => {
+      config = { ...config, weapon: { rifle: { ...config.weapon.rifle, ...changes } } };
+      for (const listener of listeners) listener(config);
+    },
+    changeGrunt: (changes: Partial<GameConfig['enemies']['grunt']>) => {
+      config = { ...config, enemies: { grunt: { ...config.enemies.grunt, ...changes } } };
       for (const listener of listeners) listener(config);
     },
     listenerCount: () => listeners.size,
@@ -147,11 +160,27 @@ afterEach(() => {
 });
 
 describe('GameApp config and frame lifecycle', () => {
+  it('passes live rifle/radius tuning without reconstructing or healing the simulation', () => {
+    const raf = createRaf();
+    const config = createConfigStore();
+    const app = new GameApp({} as HTMLElement, config.store, level);
+    app.start();
+    raf.frame(100);
+    config.changeRifle({ damage: 9, fireRate: 4 });
+    config.changeGrunt({ hp: 99, radius: 0.5 });
+    raf.frame(100 + 1000 / 60);
+    expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
+      trackHalfWidth: 2.5, formationSpacing: 0.45, gruntRadius: 0.5,
+      rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 } });
+    expect(mock.constructedWith).toHaveBeenCalledOnce();
+    expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3, gruntHp: 10 });
+    app.dispose();
+  });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
     const raf = createRaf();
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level);
-    expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5 });
+    expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5, gruntHp: 10 });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -161,6 +190,7 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 3, formationSpacing: 0.8 },
       track: { halfWidth: 2.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
+      projectiles: [{ id: 1, x: 2, z: 5 }],
     });
 
     config.changePlayer({ startSquad: 9, formationSpacing: 1.2 });
@@ -170,6 +200,7 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 3, formationSpacing: 1.2 },
       track: { halfWidth: 2.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
+      projectiles: [{ id: 1, x: 2, z: 5 }],
     });
     expect(mock.constructedWith).toHaveBeenCalledTimes(1);
     app.dispose();
@@ -197,7 +228,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenCalledExactlyOnceWith(
       1 / 60,
       { targetX: 2 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
     expect(mock.render).toHaveBeenCalledTimes(2);
     app.stop();
@@ -217,6 +248,7 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 3, formationSpacing: 0.9 },
       track: { halfWidth: 2.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
+      projectiles: [{ id: 1, x: 2, z: 5 }],
     });
     raf.frame(300_000 + 1000 / 60);
     expect(mock.step).toHaveBeenCalledTimes(2);
@@ -251,7 +283,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 2 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
 
     callbacks.onDrag(0.25);
@@ -259,7 +291,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 3.25 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
 
     config.changePlayer({ moveSpeed: 8, forwardSpeed: 1.5 });
@@ -268,7 +300,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 3.25 },
-      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5 },
+      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning },
     );
 
     callbacks.onDrag(0.5);
@@ -276,13 +308,13 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 5.5 },
-      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5 },
+      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning },
     );
     raf.frame(100 + 5 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 5.5 },
-      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5 },
+      { moveSpeed: 8, forwardSpeed: 1.5, trackHalfWidth: 3.5, ...combatTuning },
     );
     app.dispose();
   });
@@ -301,7 +333,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 2.5 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
 
     config.changeControls({ mouseSensitivity: 2 });
@@ -310,7 +342,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60,
       { targetX: 2 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
 
     config.changeTrack({ halfWidth: 3.5 });
@@ -319,7 +351,7 @@ describe('GameApp config and frame lifecycle', () => {
     const [dtSeconds, input, tuning] = mock.step.mock.lastCall!;
     expect(dtSeconds).toBe(1 / 60);
     expect((input as { targetX: number }).targetX).toBeCloseTo(1.3);
-    expect(tuning).toEqual({ moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 });
+    expect(tuning).toEqual({ moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning });
 
     keyboard.onAxisChange(1);
     mouse.onMove(-0.05);
@@ -341,20 +373,20 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100 + 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60, { targetX: -2.5 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
     config.changeTrack({ halfWidth: 3.5 });
     keyboard.onAxisChange(1);
     raf.frame(100 + 2 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60, { targetX: 3.5 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
     );
     keyboard.onAxisChange(0);
     raf.frame(100 + 3 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60, { targetX: 2 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
     );
 
     drag.onDragStart();
@@ -362,7 +394,7 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100 + 4 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60, { targetX: 3.75 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
     );
     app.dispose();
   });
