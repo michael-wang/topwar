@@ -378,3 +378,12 @@ A rough playable scene is enough:
 Art can remain primitive.
 
 Fun cannot.
+
+## Upgrade choices
+
+- Present two clearly different options by default; add more only when later design calls for them.
+- One path may offer clear quantitative growth, such as more soldiers, projectiles, or firing volume.
+- Another may offer strong specialization with an obvious cost, such as high damage with slow fire, broad damage with low frequency, or piercing power with a readable tradeoff.
+- Make choices understandable in roughly one or two seconds. Favor visible gameplay changes over small hidden percentage bonuses.
+- Keep both options satisfying and viable; avoid hidden traps.
+- Let strategy give each run character without interrupting action or requiring a complex build system.
