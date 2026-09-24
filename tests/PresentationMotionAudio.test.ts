@@ -11,7 +11,7 @@ describe('presentation-only motion', () => {
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
-      tier2RifleCount: 0, tier3RifleCount: 0, formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
+      rifleCounts: [2], formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state, 100);
     const soldiers = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
@@ -23,14 +23,14 @@ describe('presentation-only motion', () => {
     const rifle = soldier.children[6];
     const arms = [soldier.children[2], soldier.children[3]];
     const restingZ = rifle.position.z;
-    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 4 }] }, 400);
+    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 400);
     expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
     expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
     expect(legs.map((leg) => leg.rotation.x)).toEqual(legRotations);
     expect(rifle.position.z).toBeLessThan(restingZ);
     expect(arms[0].rotation.x).toBeGreaterThan(-0.78);
     expect(soldier.children[8].visible).toBe(true);
-    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 4 }] }, 500);
+    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 500);
     expect(rifle.position.z).toBeCloseTo(restingZ);
     expect(soldier.children[8].visible).toBe(false);
     renderer.dispose();
@@ -51,14 +51,14 @@ describe('presentation-only motion', () => {
 
     const scene = new THREE.Scene();
     const renderer = new ProjectileRenderer(scene);
-    renderer.update([{ id: 1, kind: 'rifle', x: 0, z: 1 },
-      { id: 2, kind: 'heavyRifle', x: 0, z: 1 },
-      { id: 3, kind: 'rocket', x: 0, z: 1 }], 100);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1 },
+      { id: 2, kind: 'rifle', tier: 2, x: 0, z: 1 },
+      { id: 3, kind: 'rocket', tier: 0, x: 0, z: 1 }], 100);
     expect(scene.children.map((child) => child.scale.x)).toEqual([1.35, 1.35, 1.35]);
-    renderer.update([{ id: 1, kind: 'rifle', x: 0, z: 2 }], 200);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2 }], 200);
     expect(scene.children[0].scale.x).toBe(1);
     renderer.reset();
-    renderer.update([{ id: 1, kind: 'rifle', x: 0, z: 2 }], 210);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2 }], 210);
     expect(scene.children[0].scale.x).toBeCloseTo(1.35);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);

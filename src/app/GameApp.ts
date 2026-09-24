@@ -41,13 +41,11 @@ export class GameApp {
       level,
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
-      gruntHp: this.config.enemies.grunt.hp,
-      bruteHp: this.config.enemies.brute.hp,
-      tier3Hp: this.config.enemies.tier3.hp,
+      tiers: this.config.tiers,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
-    this.previousDefenseValue = squadDefenseValue(initialState.squad);
+    this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.renderer = new GameRenderer(viewport);
     this.audio = new GameAudio(viewport);
     this.damageFlash = new DamageFlashOverlay(viewport);
@@ -132,13 +130,11 @@ export class GameApp {
       level: this.level,
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
-      gruntHp: this.config.enemies.grunt.hp,
-      bruteHp: this.config.enemies.brute.hp,
-      tier3Hp: this.config.enemies.tier3.hp,
+      tiers: this.config.tiers,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
-    this.previousDefenseValue = squadDefenseValue(initialState.squad);
+    this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.dragStartPlayerX = this.targetX;
     this.rebaseMouseTarget = true;
     this.fixedStepLoop.reset();
@@ -165,16 +161,14 @@ export class GameApp {
         defenseLineOffset: this.config.track.defenseLineOffset,
         formationSpacing: this.config.player.formationSpacing,
         memberRadius: this.config.player.memberRadius,
-        gruntRadius: this.config.enemies.grunt.radius,
-        bruteRadius: this.config.enemies.brute.radius,
-        tier3Radius: this.config.enemies.tier3.radius,
+        normalEnemyRadius: this.config.tiers.normalEnemyRadius,
         bossRadius: this.config.bosses.basic.radius,
         rifle: { ...this.config.weapon.rifle },
         rocket: { ...this.config.weapon.rocket },
       },
     ));
     const state = this.simulation.getState();
-    const currentDefenseValue = squadDefenseValue(state.squad);
+    const currentDefenseValue = squadDefenseValue(state.squad, this.config.tiers.mergeCount);
     const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
     if (feedback) this.damageFlash.flash(feedback === 'fatal');
     this.audio.observe(this.previousDefenseValue, currentDefenseValue,
@@ -184,12 +178,11 @@ export class GameApp {
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
-        tier2RifleCount: state.squad.tier2RifleCount,
-        tier3RifleCount: state.squad.tier3RifleCount,
+        rifleCounts: [...state.squad.rifleCounts],
         formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth,
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
-      enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type,
+      enemies: state.enemies.map((enemy) => ({ id: enemy.id, tier: enemy.tier,
         x: enemy.x, z: enemy.z, hp: enemy.hp })),
       boss: state.boss ? { ...state.boss, visualScale: this.config.bosses.basic.visualScale } : null,
       streamRewards: state.streamRewards.map((reward) => ({ ...reward })),
@@ -200,6 +193,7 @@ export class GameApp {
         z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount,
         rewardKind: pickup.rewardKind })),
       projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
+        tier: projectile.tier,
         x: projectile.x, z: projectile.z })),
     };
     this.renderer.render(renderState);

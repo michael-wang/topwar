@@ -1,14 +1,11 @@
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
+import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 
 export const DEATH_PARTICLE_CAPACITY = 192;
 export const DEATH_PARTICLE_LIFETIME_MS = 260;
 const PARTICLES_PER_DEATH = 6;
-const PALETTE: Record<EnemyRenderState['type'], THREE.Color> = {
-  grunt: new THREE.Color('#d99581'),
-  brute: new THREE.Color('#ff6050'),
-  tier3: new THREE.Color('#ff79cf'),
-};
+const PALETTE = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.head));
 
 function hash(value: number): number {
   let bits = value >>> 0;
@@ -28,8 +25,8 @@ export function deathParticleVelocity(enemyId: number, particleIndex: number):
     z: Math.sin(angle) * speed };
 }
 
-export function deathParticleColor(type: EnemyRenderState['type']): THREE.Color {
-  return PALETTE[type];
+export function deathParticleColor(tier: number): THREE.Color {
+  return PALETTE[paletteIndex(tier, PALETTE.length)];
 }
 
 export class DeathBurst {
@@ -54,7 +51,7 @@ export class DeathBurst {
   }
 
   spawn(enemy: EnemyRenderState, nowMs: number): void {
-    const color = deathParticleColor(enemy.type);
+    const color = deathParticleColor(enemy.tier);
     for (let index = 0; index < PARTICLES_PER_DEATH; index++) {
       const slot = this.cursor;
       const offset = slot * 3;

@@ -21,9 +21,6 @@ export const GameConfigSchema = z.strictObject({
   }),
   weapon: z.strictObject({
     rifle: z.strictObject({
-      damage: positive,
-      tier2DamageMultiplier: positive,
-      tier3DamageMultiplier: positive,
       fireRate: positive,
       projectileSpeed: positive,
       range: positive,
@@ -36,19 +33,12 @@ export const GameConfigSchema = z.strictObject({
       blastRadius: positive,
     }),
   }),
-  enemies: z.strictObject({
-    grunt: z.strictObject({
-      hp: positive,
-      radius: positive,
-    }),
-    brute: z.strictObject({
-      hp: positive,
-      radius: positive,
-    }),
-    tier3: z.strictObject({
-      hp: positive,
-      radius: positive,
-    }),
+  tiers: z.strictObject({
+    mergeCount: z.number().int().safe().min(2),
+    tier1Power: positive,
+    tier2Power: positive,
+    higherTierPowerMultiplier: z.number().finite().gt(1),
+    normalEnemyRadius: positive,
   }),
   bosses: z.strictObject({
     basic: z.strictObject({

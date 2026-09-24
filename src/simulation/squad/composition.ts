@@ -1,59 +1,78 @@
 import type { SquadSimulationState } from '../SimulationState';
-import { TIER2_EXCHANGE_VALUE, TIER3_EXCHANGE_VALUE } from '../tierExchange';
+import { exchangeValueForTier } from '../tiers/tierRules';
 
-export function tier1RifleCount(squad: SquadSimulationState): number {
+export function validateSquad(squad: SquadSimulationState): void {
   if (!Number.isSafeInteger(squad.count) || squad.count < 0
     || !Number.isSafeInteger(squad.rocketCount) || squad.rocketCount < 0
-    || !Number.isSafeInteger(squad.tier2RifleCount) || squad.tier2RifleCount < 0
-    || !Number.isSafeInteger(squad.tier3RifleCount) || squad.tier3RifleCount < 0
-    || !Number.isSafeInteger(squad.rocketCount + squad.tier2RifleCount + squad.tier3RifleCount)
-    || squad.rocketCount + squad.tier2RifleCount + squad.tier3RifleCount > squad.count) {
+    || !Array.isArray(squad.rifleCounts)) {
     throw new Error('Squad composition must contain valid non-negative safe integers');
   }
-  return squad.count - squad.rocketCount - squad.tier2RifleCount - squad.tier3RifleCount;
+  let total = squad.rocketCount;
+  for (let index = 0; index < squad.rifleCounts.length; index++) {
+    const count = squad.rifleCounts[index];
+    if (!Object.hasOwn(squad.rifleCounts, index) || !Number.isSafeInteger(count) || count < 0) {
+      throw new Error('Squad rifle counts must be dense non-negative safe integers');
+    }
+    total += count;
+    if (!Number.isSafeInteger(total)) throw new Error('Squad count exceeds the supported range');
+  }
+  if (total !== squad.count) throw new Error('Squad count must equal visible rifle and rocket bodies');
 }
 
-export function normalizeRifleSquad(squad: SquadSimulationState): SquadSimulationState {
-  const tier1 = tier1RifleCount(squad);
-  const tier2Total = squad.tier2RifleCount + Math.floor(tier1 / TIER2_EXCHANGE_VALUE);
-  const tier3 = squad.tier3RifleCount + Math.floor(tier2Total / TIER2_EXCHANGE_VALUE);
-  const tier2 = tier2Total % TIER2_EXCHANGE_VALUE;
-  const count = tier1 % TIER2_EXCHANGE_VALUE + tier2 + tier3 + squad.rocketCount;
-  if (![tier2Total, tier3, count].every(Number.isSafeInteger)) {
-    throw new Error('Simulation squad normalization exceeds the supported range');
+export function normalizeRifleSquad(squad: SquadSimulationState, mergeCount: number): SquadSimulationState {
+  validateSquad(squad);
+  if (!Number.isSafeInteger(mergeCount) || mergeCount < 2) throw new Error('Invalid rifle merge count');
+  const counts = [...squad.rifleCounts];
+  for (let index = 0; index < counts.length; index++) {
+    const upgrades = Math.floor(counts[index] / mergeCount);
+    counts[index] %= mergeCount;
+    if (upgrades) {
+      counts[index + 1] = (counts[index + 1] ?? 0) + upgrades;
+      if (!Number.isSafeInteger(counts[index + 1])) throw new Error('Squad normalization exceeds the supported range');
+    }
   }
-  return { count, rocketCount: squad.rocketCount, tier2RifleCount: tier2, tier3RifleCount: tier3 };
+  while (counts.length && counts[counts.length - 1] === 0) counts.pop();
+  const count = squad.rocketCount + counts.reduce((sum, value) => sum + value, 0);
+  if (!Number.isSafeInteger(count)) throw new Error('Squad normalization exceeds the supported range');
+  return { count, rocketCount: squad.rocketCount, rifleCounts: counts };
 }
 
 export function addRifleSoldiers(squad: SquadSimulationState, amount: number,
-  tier: 1 | 2 | 3): SquadSimulationState {
-  tier1RifleCount(squad);
-  if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(squad.count + amount)
-    || (tier === 2 && !Number.isSafeInteger(squad.tier2RifleCount + amount))
-    || (tier === 3 && !Number.isSafeInteger(squad.tier3RifleCount + amount))) {
-    throw new Error('Simulation squad reward exceeds the supported range');
-  }
-  return normalizeRifleSquad({ count: squad.count + amount, rocketCount: squad.rocketCount,
-    tier2RifleCount: squad.tier2RifleCount + (tier === 2 ? amount : 0),
-    tier3RifleCount: squad.tier3RifleCount + (tier === 3 ? amount : 0) });
+  tier: number, mergeCount: number): SquadSimulationState {
+  validateSquad(squad);
+  if (!Number.isSafeInteger(tier) || tier < 1 || !Number.isSafeInteger(amount) || amount <= 0
+    || !Number.isSafeInteger(squad.count + amount)) throw new Error('Squad reward exceeds the supported range');
+  const counts = [...squad.rifleCounts];
+  counts[tier - 1] = (counts[tier - 1] ?? 0) + amount;
+  if (!Number.isSafeInteger(counts[tier - 1])) throw new Error('Squad reward exceeds the supported range');
+  for (let index = 0; index < counts.length; index++) counts[index] ??= 0;
+  return normalizeRifleSquad({ count: squad.count + amount,
+    rocketCount: squad.rocketCount, rifleCounts: counts }, mergeCount);
 }
 
-export function afterCasualties(squad: SquadSimulationState, casualties: number): SquadSimulationState {
-  const tier1 = tier1RifleCount(squad);
-  if (!Number.isSafeInteger(casualties) || casualties < 0) {
-    throw new Error('Squad composition and casualties must be valid non-negative safe integers');
-  }
-  const rifleDefense = tier1 + squad.tier2RifleCount * TIER2_EXCHANGE_VALUE
-    + squad.tier3RifleCount * TIER3_EXCHANGE_VALUE;
-  if (!Number.isSafeInteger(rifleDefense)) {
-    throw new Error('Simulation squad defensive value exceeds the supported range');
-  }
-  const remainingRifleDefense = Math.max(0, rifleDefense - casualties);
+export function rifleDefenseValue(squad: SquadSimulationState, mergeCount: number): number {
+  validateSquad(squad);
+  let value = 0;
+  squad.rifleCounts.forEach((count, index) => {
+    if (!count) return;
+    value += count * exchangeValueForTier(index + 1, mergeCount);
+    if (!Number.isSafeInteger(value)) throw new Error('Squad defense exceeds the supported range');
+  });
+  return value;
+}
+
+export function afterCasualties(squad: SquadSimulationState, casualties: number,
+  mergeCount: number): SquadSimulationState {
+  if (!Number.isSafeInteger(casualties) || casualties < 0) throw new Error('Invalid casualty count');
+  const rifleDefense = rifleDefenseValue(squad, mergeCount);
+  let remaining = Math.max(0, rifleDefense - casualties);
   const rocketCount = Math.max(0, squad.rocketCount - Math.max(0, casualties - rifleDefense));
-  const tier3RifleCount = Math.floor(remainingRifleDefense / TIER3_EXCHANGE_VALUE);
-  const tier2RifleCount = Math.floor((remainingRifleDefense % TIER3_EXCHANGE_VALUE) / TIER2_EXCHANGE_VALUE);
-  const tier1Remainder = remainingRifleDefense % TIER2_EXCHANGE_VALUE;
-  const count = tier1Remainder + tier2RifleCount + tier3RifleCount + rocketCount;
-  if (!Number.isSafeInteger(count)) throw new Error('Simulation squad casualty result exceeds the supported range');
-  return { count, tier2RifleCount, tier3RifleCount, rocketCount };
+  const counts: number[] = [];
+  while (remaining > 0) {
+    counts.push(remaining % mergeCount);
+    remaining = Math.floor(remaining / mergeCount);
+  }
+  const count = rocketCount + counts.reduce((sum, value) => sum + value, 0);
+  if (!Number.isSafeInteger(count)) throw new Error('Squad casualty result exceeds the supported range');
+  return { count, rocketCount, rifleCounts: counts };
 }

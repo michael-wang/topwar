@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { StreamRewardRenderState } from '../RenderState';
+import { REWARD_PALETTE, paletteIndex } from '../tierPalettes';
 
 interface RewardVisual {
   panel: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
@@ -16,12 +17,9 @@ export class StreamRewardRenderer {
   private readonly labelGeometry = new THREE.PlaneGeometry(0.82, 0.9);
   // The panel sits across the firing lane. Blend it over tracers so shots that
   // ignore this reward tier remain visible as they travel through the plaque.
-  private readonly tier1Material = new THREE.MeshBasicMaterial({
-    color: '#1ac1ed', transparent: true, opacity: 0.55, depthWrite: false,
-  });
-  private readonly tier2Material = new THREE.MeshBasicMaterial({
-    color: '#edc242', transparent: true, opacity: 0.55, depthWrite: false,
-  });
+  private readonly panelMaterials = REWARD_PALETTE.map((color) => new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity: 0.55, depthWrite: false,
+  }));
   private readonly visuals = new Map<number, RewardVisual>();
   private readonly pops: { panel: RewardVisual['panel']; startedAtMs: number; baseScale: number;
     startY: number }[] = [];
@@ -53,7 +51,7 @@ export class StreamRewardRenderer {
       let visual = this.visuals.get(reward.id);
       if (!visual) {
         const panel = new THREE.Mesh(this.panelGeometry,
-          reward.tier === 1 ? this.tier1Material : this.tier2Material);
+          this.panelMaterials[paletteIndex(reward.tier, REWARD_PALETTE.length)]);
         this.scene.add(panel);
         visual = { panel, label: null, hitProgress: NaN, pulseStartedAtMs: null };
         this.visuals.set(reward.id, visual);
@@ -91,8 +89,7 @@ export class StreamRewardRenderer {
     this.reset();
     this.panelGeometry.dispose();
     this.labelGeometry.dispose();
-    this.tier1Material.dispose();
-    this.tier2Material.dispose();
+    for (const material of this.panelMaterials) material.dispose();
   }
 
   private createLabel(reward: StreamRewardRenderState): RewardVisual['label'] {

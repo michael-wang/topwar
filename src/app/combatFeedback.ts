@@ -1,11 +1,8 @@
 import type { SquadSimulationState } from '../simulation/SimulationState';
-import { tier1RifleCount } from '../simulation/squad/composition';
-import { TIER2_EXCHANGE_VALUE, TIER3_EXCHANGE_VALUE } from '../simulation/tierExchange';
+import { rifleDefenseValue } from '../simulation/squad/composition';
 
-export function squadDefenseValue(squad: SquadSimulationState): number {
-  return tier1RifleCount(squad) + squad.tier2RifleCount * TIER2_EXCHANGE_VALUE
-    + squad.tier3RifleCount * TIER3_EXCHANGE_VALUE
-    + squad.rocketCount;
+export function squadDefenseValue(squad: SquadSimulationState, mergeCount: number): number {
+  return rifleDefenseValue(squad, mergeCount) + squad.rocketCount;
 }
 
 export function damageFeedback(previousDefense: number, currentDefense: number): 'normal' | 'fatal' | null {

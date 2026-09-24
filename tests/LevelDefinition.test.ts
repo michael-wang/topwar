@@ -30,10 +30,9 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
-      bosses: [{ row: 136, tier: 1, hpMultiplier: 5000 },
-        { row: 328, tier: 2, hpMultiplier: 1000 }],
-      bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2 },
-      tier3Ramp: { startRow: 240, fullRow: 336, curvePower: 2 },
+      tierProgression: { firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
+        curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 5000,
+        laterBossHpMultiplier: 1000 },
       rewards: { rowsPerReward: 8, spawnAheadDistance: 30,
         hitsRequired: 10, seed: 271828, sideX: 2.2 } });
     expect(parsed.upgradeGates).toEqual([]);
@@ -82,26 +81,28 @@ describe('LevelDefinitionSchema', () => {
       enemyStream: { ...authoredLevel.enemyStream, extra: true } })).toThrow(/extra/);
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream, firstBruteRow: 96 } })).toThrow(/firstBruteRow/);
-    const { bruteRamp: _ramp, ...withoutRamp } = authoredLevel.enemyStream;
+    const { tierProgression: _ramp, ...withoutRamp } = authoredLevel.enemyStream;
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-      enemyStream: withoutRamp })).toThrow(/bruteRamp/);
+      enemyStream: withoutRamp })).toThrow(/tierProgression/);
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream,
-        bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2, chance: 0.5 } } })).toThrow(/chance/);
+        bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2, chance: 0.5 } } })).toThrow(/bruteRamp/);
     for (const startRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 144, curvePower: 2 } } }))
-        .toThrow(/startRow/);
+        enemyStream: { ...authoredLevel.enemyStream, tierProgression: {
+          ...authoredLevel.enemyStream.tierProgression, firstTransitionStartRow: startRow } } }))
+        .toThrow(/firstTransitionStartRow/);
     }
-    for (const fullRow of [-1, 48, 47, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
+    for (const transitionRows of [-1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow: 48, fullRow, curvePower: 2 } } }))
-        .toThrow(/fullRow/);
+        enemyStream: { ...authoredLevel.enemyStream, tierProgression: {
+          ...authoredLevel.enemyStream.tierProgression, transitionRows } } }))
+        .toThrow();
     }
     for (const curvePower of [0, -1, Infinity, NaN]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream,
-          bruteRamp: { startRow: 48, fullRow: 144, curvePower } } })).toThrow(/curvePower/);
+        enemyStream: { ...authoredLevel.enemyStream, tierProgression: {
+          ...authoredLevel.enemyStream.tierProgression, curvePower } } })).toThrow(/curvePower/);
     }
   });
 

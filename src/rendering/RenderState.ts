@@ -6,8 +6,7 @@ export interface GameRenderState {
   squad: {
     count: number;
     rocketCount: number;
-    tier2RifleCount: number;
-    tier3RifleCount: number;
+    rifleCounts: number[];
     formationSpacing: number;
   };
   track: {
@@ -24,7 +23,7 @@ export interface GameRenderState {
 
 export interface BossRenderState {
   id: number;
-  tier: 1 | 2;
+  tier: number;
   x: number;
   z: number;
   hp: number;
@@ -34,7 +33,7 @@ export interface BossRenderState {
 
 export interface StreamRewardRenderState {
   id: number;
-  tier: 1 | 2;
+  tier: number;
   x: number;
   z: number;
   hitProgress: number;
@@ -62,14 +61,15 @@ export interface UpgradePickupRenderState {
 
 export interface ProjectileRenderState {
   id: number;
-  kind: 'rifle' | 'heavyRifle' | 'tier3Rifle' | 'rocket';
+  kind: 'rifle' | 'rocket';
+  tier: number;
   x: number;
   z: number;
 }
 
 export interface EnemyRenderState {
   id: number;
-  type: 'grunt' | 'brute' | 'tier3';
+  tier: number;
   x: number;
   z: number;
   hp: number;

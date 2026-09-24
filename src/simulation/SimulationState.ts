@@ -6,13 +6,12 @@ export interface PlayerSimulationState {
 export interface SquadSimulationState {
   count: number;
   rocketCount: number;
-  tier2RifleCount: number;
-  tier3RifleCount: number;
+  rifleCounts: number[];
 }
 
 export interface EnemySimulationState {
   id: number;
-  type: 'grunt' | 'brute' | 'tier3';
+  tier: number;
   x: number;
   z: number;
   hp: number;
@@ -23,12 +22,12 @@ export interface EnemyStreamSimulationState {
   nextEnemyId: number;
   nextRewardBlockIndex: number;
   nextRewardId: number;
-  nextBossIndex: number;
+  nextBossTier: number;
 }
 
 export interface BossSimulationState {
   id: number;
-  tier: 1 | 2;
+  tier: number;
   x: number;
   z: number;
   hp: number;
@@ -37,7 +36,7 @@ export interface BossSimulationState {
 
 export interface StreamRewardSimulationState {
   id: number;
-  tier: 1 | 2;
+  tier: number;
   x: number;
   z: number;
   hitProgress: number;
@@ -67,7 +66,8 @@ export interface UpgradePickupSimulationState {
 
 export interface ProjectileSimulationState {
   id: number;
-  kind: 'rifle' | 'heavyRifle' | 'tier3Rifle' | 'rocket';
+  kind: 'rifle' | 'rocket';
+  tier: number;
   x: number;
   z: number;
   speed: number;

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
+import { paletteIndex } from '../tierPalettes';
 
 export function projectilePulseScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / 65);
@@ -34,7 +35,8 @@ export class ProjectileRenderer {
   private readonly heavyTipMaterial = new THREE.MeshBasicMaterial({ color: '#fff3bd' });
   private readonly tier3BodyGeometry = new THREE.CylinderGeometry(0.23, 0.23, 1.35, 8);
   private readonly tier3TipGeometry = new THREE.SphereGeometry(0.24, 8, 6);
-  private readonly tier3BodyMaterial = new THREE.MeshBasicMaterial({ color: '#8ceaff' });
+  private readonly highTierBodyMaterials = ['#8ceaff', '#42bfd0', '#8575e0', '#4b91ff', '#3579d6']
+    .map((color) => new THREE.MeshBasicMaterial({ color }));
   private readonly tier3TipMaterial = new THREE.MeshBasicMaterial({ color: '#ffffff' });
   private readonly rocketBodyGeometry = new THREE.CylinderGeometry(0.14, 0.14, 0.85, 7);
   private readonly rocketTipGeometry = new THREE.ConeGeometry(0.16, 0.3, 7);
@@ -56,7 +58,7 @@ export class ProjectileRenderer {
       heavyBody.rotation.x = Math.PI / 2;
       const heavyTip = new THREE.Mesh(this.heavyTipGeometry, this.heavyTipMaterial);
       heavyTip.position.z = 0.53;
-      const tier3Body = new THREE.Mesh(this.tier3BodyGeometry, this.tier3BodyMaterial);
+      const tier3Body = new THREE.Mesh(this.tier3BodyGeometry, this.highTierBodyMaterials[0]);
       tier3Body.rotation.x = Math.PI / 2;
       const tier3Tip = new THREE.Mesh(this.tier3TipGeometry, this.tier3TipMaterial);
       tier3Tip.position.z = 0.68;
@@ -77,13 +79,17 @@ export class ProjectileRenderer {
       member.group.visible = projectile !== undefined;
       if (projectile) {
         const isRocket = projectile.kind === 'rocket';
-        for (const mesh of member.rifle) mesh.visible = projectile.kind === 'rifle';
-        for (const mesh of member.heavyRifle) mesh.visible = projectile.kind === 'heavyRifle';
-        for (const mesh of member.tier3Rifle) mesh.visible = projectile.kind === 'tier3Rifle';
+        for (const mesh of member.rifle) mesh.visible = projectile.kind === 'rifle' && projectile.tier === 1;
+        for (const mesh of member.heavyRifle) mesh.visible = projectile.kind === 'rifle' && projectile.tier === 2;
+        for (const mesh of member.tier3Rifle) mesh.visible = projectile.kind === 'rifle' && projectile.tier >= 3;
+        if (projectile.kind === 'rifle' && projectile.tier >= 3) {
+          member.tier3Rifle[0].material = this.highTierBodyMaterials[paletteIndex(projectile.tier - 2,
+            this.highTierBodyMaterials.length)];
+        }
         for (const mesh of member.rocket) mesh.visible = isRocket;
         member.group.position.set(-projectile.x, isRocket ? 0.66
-          : projectile.kind === 'tier3Rifle' ? 0.82
-            : projectile.kind === 'heavyRifle' ? 0.72 : 0.58, projectile.z);
+          : projectile.tier >= 3 ? 0.82
+            : projectile.tier === 2 ? 0.72 : 0.58, projectile.z);
         member.group.scale.setScalar(this.pulse.scaleFor(projectile.id, nowMs));
       }
     }
@@ -108,7 +114,7 @@ export class ProjectileRenderer {
     this.tipMaterial.dispose();
     this.heavyBodyMaterial.dispose();
     this.heavyTipMaterial.dispose();
-    this.tier3BodyMaterial.dispose();
+    for (const material of this.highTierBodyMaterials) material.dispose();
     this.tier3TipMaterial.dispose();
     this.rocketBodyMaterial.dispose();
     this.rocketTipMaterial.dispose();

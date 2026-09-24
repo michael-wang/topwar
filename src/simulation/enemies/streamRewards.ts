@@ -4,10 +4,6 @@ import type { EnemyStreamDefinition } from '../../level/LevelDefinition';
 export interface RewardPlacement { side: -1 | 1; zSlot: number }
 export interface RewardBlockPlacement extends RewardPlacement { rowIndex: number }
 
-export function rewardTierForRow(rowIndex: number, fullTier2Row: number): 1 | 2 {
-  return rowIndex >= fullTier2Row ? 2 : 1;
-}
-
 // One deterministic row and placement per authored block, independent of gameplay RNG.
 export function rewardPlacementForBlock(blockIndex: number, columns: number,
   rewards: NonNullable<EnemyStreamDefinition['rewards']>): RewardBlockPlacement {

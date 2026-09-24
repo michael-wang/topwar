@@ -80,7 +80,7 @@ describe('createEnemyStreamRow', () => {
     expect(row(0)).toEqual(first);
     expect(second).not.toEqual(first);
     expect(first.reduce((sum, offset) => sum + offset.x, 0) / first.length).toBeCloseTo(0, 0);
-    expect(Math.max(...first.map((offset) => Math.abs(offset.x))) + gameConfig.enemies.grunt.radius)
+    expect(Math.max(...first.map((offset) => Math.abs(offset.x))) + gameConfig.tiers.normalEnemyRadius)
       .toBeLessThan(gameConfig.track.halfWidth);
     expect(first.every((offset) => Math.abs(offset.z) <= stream.jitter)).toBe(true);
     expect((stream.startZ + 1 * stream.spacing) - (stream.startZ + 0 * stream.spacing))

@@ -1,53 +1,31 @@
 # TopWar — Game Spec
 
-## Core fantasy
+## Core loop
 
-Start with a tiny squad, steer horizontally, and auto-fire into endless dense enemy pressure. Divert fire toward risky side rewards to recruit soldiers and grow into stronger player tiers while increasingly dangerous, color-coded enemies enter the stream. A giant Boss guards the first tier handoff.
+Steer a tiny auto-firing squad through an endless deterministic enemy stream. Side rewards ask the player to divert fire while all seven enemies in each row remain. Soldiers merge into stronger tiers; giant Bosses mark each tier handoff. The run ends when the visible squad reaches zero, followed by immediate Retry. The player advances in simulation Z while staying near the bottom of the portrait view; normal enemies remain stationary in gameplay coordinates and visually walk toward the squad.
 
-## Current session model
+## Formula-driven tiers
 
-- The current prototype is endless survival. The player advances in simulation Z but stays near the bottom of the portrait view. Enemy positions remain stationary in gameplay coordinates; their visual walk cycle makes the crowd look as though it approaches.
-- The player steers horizontally by touch drag, desktop mouse, or keyboard. Rifle fire is automatic. Uncleared enemies cause contact or defense-line casualties.
-- The run ends when visible squad count reaches zero. Game Over offers immediate Retry. There is no required win state or fixed session length.
+Level 001 authors a first transition start at row **48**, **96** transition rows, **96** stable rows, and quadratic probability. The cycle is 192 rows: the transition into Tier N starts at `48 + (N - 2) × 192` and fully saturates 96 rows later. During a transition only the established tier and its next tier coexist. The center-most slot guarantees a reveal on the exact start row. Slot rolls use deterministic content inputs, independently of gameplay RNG. There is no authored tier maximum.
 
-## Enemy stream and normal tiers
+Normal enemy HP and player rifle damage share one power rule: Tier-1 = **3**, Tier-2 = **300**, and each tier after Tier-2 multiplies power by **10**. Thus a same-tier rifle shot kills a full-health normal enemy. Normal enemies all use radius **0.30** and the same humanoid body size. Tier is color, not size. Enemy body/head colors cycle through six palettes: muted brick red, saturated red, magenta, violet, orange, and olive. Player rifle bodies cycle through five separate cool-color palettes; all use the same normal body scale. Weapon and projectile visuals stay bounded rather than growing forever.
 
-The deterministic endless stream generates seven-enemy rows ahead of the player, without preallocating the entire future field. Enemy lookahead is 96 world units. Tier rolls depend on authored data and row/slot, not gameplay RNG or earlier kills. Normal enemies share one humanoid visual scale and radius **0.30**: **color indicates tier; size indicates role**. Larger bodies are reserved for specials and Bosses.
+## Player combat and defense
 
-| Normal tier | HP | Color | Current progression |
-| --- | ---: | --- | --- |
-| Tier-1 grunt | 3 | Muted brick red | Opening fodder |
-| Tier-2 brute | 300 | Saturated red | Guaranteed first reveal at row 48; quadratic ramp reaches full probability at row 144 |
-| Tier-3 | 3000 | Magenta | Guaranteed first reveal at row 240; quadratic ramp fully saturates at row 336 |
+Level 001 starts with one Tier-1 rifle soldier. Every **10** rifle soldiers of a tier automatically merge into one of the next tier, cascading as needed. All tiers share the authored rifle fire rate, projectile speed, and range. A Tier N soldier has `10^(N - 1)` Tier-1-equivalent defense points. A Tier N projectile has the same penetration budget: each lower-tier normal enemy costs its tier's defense value, then the shot continues while budget remains. Same-tier or higher-tier normal enemies stop the shot; every Boss stops it. Casualties consume rifle defense first and can demote a high-tier body into lower-tier bodies. Rocket specialists remain last-loss prototype infrastructure and are not Level 001's current progression route.
 
-Tier-3 takes precedence when both tier rolls would select the same slot. After row 144, non-Tier-3 enemies are Tier-2; from row 336, all new normal enemies are Tier-3. Future normal tiers should retain color-not-size unless playtesting changes that rule; their HP, colors, and timing are undecided.
+## Rewards
 
-## Player progression and combat
+Every eight-row block has exactly one deterministic, random-looking side reward at X = **±2.2**. Reward lookahead is **30** world units; enemy lookahead remains **96**. Rewards do not replace enemies. A reward's tier follows the highest fully saturated enemy tier: Tier-1 before row 144, Tier-2 from row 144, Tier-3 from row 336, and so on by formula. Every rifle tier can progress every reward tier by one hit; ten hits grant one soldier of the reward tier and normalize the squad. Higher-tier rifle shots continue through lower-tier rewards without losing penetration. Other rifle hits stop; rockets pass through without reward progress. Ignored rewards expire harmlessly. Generic side-armory code exists but is inactive in Level 001.
 
-- Level 001 starts with one Tier-1 rifle soldier. Each Tier-1 rifle projectile deals **3 damage**. The squad uses a compact circular formation and fires at the normal rifle cadence.
-- Every **10 Tier-1 rifles** automatically normalize into **one Tier-2 rifle**; every **10 Tier-2 rifles** normalize into **one Tier-3 rifle**, including cascades from large Tier-1 gains. All normal rifle tiers share one body scale; color, weapon, and projectile identify the tier. Tier-up briefly enlarges the upgraded soldier before settling. Tier-2 and Tier-3 fire one projectile at the same rifle cadence, dealing **300** and **3000** damage respectively.
-- A heavy rifle shot pierces up to **10 Tier-1 enemies**, spending one penetration point per enemy. A Tier-2 or Tier-3 enemy stops it; a full-health Tier-3 takes ten heavy hits. Tier-1 shots also damage higher tiers normally and stop on impact.
-- One Tier-2 rifle has **10 Tier-1-equivalent defensive points**; one Tier-3 rifle has **100**. Partial losses demote higher-tier rifles into the corresponding remaining lower-tier bodies. A Tier-3 shot has **100 Tier-1-equivalent penetration points**: it spends one per Tier-1 enemy or ten per Tier-2 enemy, and stops on Tier-3 or Boss. Tier-2 and Tier-3 enemy contact or breach currently each costs ten defensive points; Tier-1 costs one. Rockets are consumed last under the current casualty policy. Rocket specialist combat exists as prototype infrastructure but is not a Level 001 progression route.
+## Boss handoffs
 
-## Stream rewards
+A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 5000 = 15,000`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Enemy and reward streams continue behind a living Boss. Boss contact or defense-line crossing is fatal. Bosses have no attacks or special rewards.
 
-- Every eight-row block contains **exactly one** authored reward opportunity. Its row and left/right side look random but are deterministic. A reward sits at X = **±2.2**; all seven enemies remain in its row.
-- Rewards materialize only **30 world units** ahead, independent of the enemy lookahead of 96. Each target needs **10 valid rifle-tier hits**. Unlocking adds one soldier immediately; ignored targets expire harmlessly behind the defense line.
-- Before row 144, targets grant one Tier-1 rifle. From row 144 onward, they grant one Tier-2 rifle; ten of those Tier-2 rifles can form a player Tier-3. No Tier-3 reward exists.
-- Any rifle tier progresses any current stream reward by one hit; the reward tier determines the soldier awarded, not the required rifle tier. Tier-1 shots are consumed by either reward tier. Higher-tier shots continue through lower-tier rewards without spending enemy penetration; matching-tier shots stop. Rockets pass through rewards without progress.
+## Presentation
 
-The player must notice a side target, steer, and spend fire on it while the full enemy row remains threatening. Generic side-armory code exists but is inactive in Level 001.
-
-## Presentation and feel
-
-Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward with a brief tier-colored burst, reward hits pulse, removed rewards pop, newly recruited soldiers pop in, Tier-2 and Tier-3 upgrades pulse with a ground ring, Boss hits briefly pulse its scale, and player damage flashes the screen red. Audio is limited to quiet reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps; gunfire stays silent.
-
-The next product pass validates the shortened Tier-2 to Tier-3 handoff in playtests.
-
-## Boss handoff encounters
-
-Each implemented normal tier has a Boss eight rows before the next tier fully saturates. The Tier-1 Boss appears at **row 136** with **15,000 HP** (3 × its authored 5000 multiplier); the Tier-2 Boss appears at **row 328** with **300,000 HP** (300 × its authored 1000 multiplier). Both use visual scale **7** and gameplay radius **2.0**. Boss color follows its tier; HP multipliers are authored per encounter. Each Boss replaces only its own seven-enemy row, while normal enemies and rewards continue materializing behind it. Boss contact is fatal. Bosses have no attacks or rewards. A Tier-3 Boss waits until a Tier-4 handoff exists.
+Primitive humanoid players hold a planted firing pose with recoil and muzzle flashes. Enemies use a visual walking cycle, a yellow hit flash, tier-colored death burst, and gray backward death motion. Reward hits pulse, reward removal and recruited soldiers pop, and tier-ups glow with a short ring. Boss hits pulse, and player damage flashes red. Audio remains sparse: quiet reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps. Automatic gunfire is silent.
 
 ## Development principles
 
-Keep fixed-step deterministic gameplay separate from disposable rendering and audio. Load balance data at runtime and keep gameplay state serializable. Make changes quick to test and easy to delete or refactor. Prioritize a satisfying few seconds of play before expanding the number of tiers or encounters.
+Keep deterministic fixed-step gameplay separate from disposable rendering and audio. Load balance and progression inputs at runtime. Serialize plain gameplay state, including generic tiers and stream cursors. Prioritize fast iteration and long-run playtest evidence before tuning the infinite loop.

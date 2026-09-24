@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createSquadFormation } from '../../simulation/squad/formation';
 import type { GameRenderState, ProjectileRenderState } from '../RenderState';
+import { PLAYER_PALETTE, paletteIndex } from '../tierPalettes';
 
 const RECOIL_MS = 85;
 const FLASH_MS = 50;
@@ -42,12 +43,10 @@ export class SquadRenderer {
   private readonly rifleGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.58);
   private readonly launcherGeometry = new THREE.BoxGeometry(0.22, 0.17, 0.66);
   private readonly muzzleGeometry = new THREE.SphereGeometry(0.085, 6, 4);
-  private readonly bodyMaterial = new THREE.MeshStandardMaterial({ color: '#1769ee' });
-  private readonly headMaterial = new THREE.MeshStandardMaterial({ color: '#4b91ff' });
-  private readonly heavyBodyMaterial = new THREE.MeshStandardMaterial({ color: '#10429b' });
-  private readonly heavyHeadMaterial = new THREE.MeshStandardMaterial({ color: '#3579d6' });
-  private readonly tier3BodyMaterial = new THREE.MeshStandardMaterial({ color: '#2938c7' });
-  private readonly tier3HeadMaterial = new THREE.MeshStandardMaterial({ color: '#6677ff' });
+  private readonly bodyMaterials = PLAYER_PALETTE.map((entry) =>
+    new THREE.MeshStandardMaterial({ color: entry.body }));
+  private readonly headMaterials = PLAYER_PALETTE.map((entry) =>
+    new THREE.MeshStandardMaterial({ color: entry.head }));
   private readonly rifleMaterial = new THREE.MeshStandardMaterial({ color: '#173a77' });
   private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#ffe26b' });
   private readonly upgradeBodyMaterial = new THREE.MeshStandardMaterial({ color: '#fff0a4' });
@@ -57,14 +56,11 @@ export class SquadRenderer {
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
   private readonly tierRing = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
   private readonly members: SoldierVisual[] = [];
-  private previousTier2RifleCount = 0;
-  private previousTier3RifleCount = 0;
-  private tierUpTier: 2 | 3 | null = null;
+  private previousRifleCounts: number[] = [];
+  private tierUpTier: number | null = null;
   private tierUpAtMs = -Infinity;
   private lastSeenProjectileId = 0;
-  private rifleFiredAtMs = -Infinity;
-  private heavyFiredAtMs = -Infinity;
-  private tier3FiredAtMs = -Infinity;
+  private readonly rifleFiredAtMs = new Map<number, number>();
   private rocketFiredAtMs = -Infinity;
 
   constructor(private readonly scene: THREE.Scene) {
@@ -76,15 +72,22 @@ export class SquadRenderer {
 
   update(state: GameRenderState, nowMs = performance.now()): void {
     this.observeShots(state.projectiles, nowMs);
-    if (state.squad.tier3RifleCount > this.previousTier3RifleCount) {
-      this.tierUpAtMs = nowMs;
-      this.tierUpTier = 3;
-    } else if (state.squad.tier2RifleCount > this.previousTier2RifleCount) {
-      this.tierUpAtMs = nowMs;
-      this.tierUpTier = 2;
+    let higherTierDecreased = false;
+    const tierSlots = Math.max(state.squad.rifleCounts.length, this.previousRifleCounts.length);
+    for (let index = tierSlots - 1; index >= 1; index--) {
+      const currentCount = state.squad.rifleCounts[index] ?? 0;
+      const previousCount = this.previousRifleCounts[index] ?? 0;
+      if (!higherTierDecreased && currentCount > previousCount) {
+        this.tierUpAtMs = nowMs;
+        this.tierUpTier = index + 1;
+        break;
+      }
+      if (currentCount < previousCount) higherTierDecreased = true;
     }
-    this.previousTier2RifleCount = state.squad.tier2RifleCount;
-    this.previousTier3RifleCount = state.squad.tier3RifleCount;
+    this.previousRifleCounts = [...state.squad.rifleCounts];
+    for (const tier of this.rifleFiredAtMs.keys()) {
+      if (!state.squad.rifleCounts[tier - 1]) this.rifleFiredAtMs.delete(tier);
+    }
     const tierAgeMs = nowMs - this.tierUpAtMs;
     const tierActive = tierAgeMs >= 0 && tierAgeMs < TIER_UP_MS;
     this.tierRing.visible = tierActive;
@@ -97,8 +100,6 @@ export class SquadRenderer {
     while (this.members.length < offsets.length) this.addMember();
 
     const rocketStart = state.squad.count - state.squad.rocketCount;
-    const tier3Start = rocketStart - state.squad.tier3RifleCount;
-    const heavyStart = tier3Start - state.squad.tier2RifleCount;
     for (let index = 0; index < this.members.length; index++) {
       const member = this.members[index];
       const offset = offsets[index];
@@ -107,31 +108,35 @@ export class SquadRenderer {
       if (!offset) continue;
       if (!wasVisible) member.appearedAtMs = nowMs;
       const isRocket = index >= rocketStart;
-      const isTier3 = index >= tier3Start && !isRocket;
-      const isHeavy = index >= heavyStart && !isTier3 && !isRocket;
-      const firedAt = isRocket ? this.rocketFiredAtMs : isTier3 ? this.tier3FiredAtMs
-        : isHeavy ? this.heavyFiredAtMs : this.rifleFiredAtMs;
+      let tier = 0;
+      if (!isRocket) {
+        let roleIndex = index;
+        for (let tierIndex = 0; tierIndex < state.squad.rifleCounts.length; tierIndex++) {
+          roleIndex -= state.squad.rifleCounts[tierIndex];
+          if (roleIndex < 0) { tier = tierIndex + 1; break; }
+        }
+      }
+      const firedAt = isRocket ? this.rocketFiredAtMs : this.rifleFiredAtMs.get(tier) ?? -Infinity;
       const recoil = firingRecoil(nowMs, firedAt);
       const spawnScale = soldierSpawnScale(nowMs - member.appearedAtMs);
-      const upgrading = tierActive && ((isTier3 && this.tierUpTier === 3)
-        || (isHeavy && this.tierUpTier === 2));
+      const upgrading = tierActive && tier === this.tierUpTier;
       member.group.scale.setScalar(upgrading ? tierUpScale(tierAgeMs) : spawnScale);
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
       for (const part of [member.torso, member.leftArm, member.rightArm, member.leftLeg, member.rightLeg]) {
         part.material = glowing ? this.upgradeBodyMaterial
-          : isTier3 ? this.tier3BodyMaterial : isHeavy ? this.heavyBodyMaterial : this.bodyMaterial;
+          : this.bodyMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       }
       member.head.material = glowing ? this.upgradeHeadMaterial
-        : isTier3 ? this.tier3HeadMaterial : isHeavy ? this.heavyHeadMaterial : this.headMaterial;
+        : this.headMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       member.rifle.visible = !isRocket;
-      member.rifle.scale.setScalar(isTier3 ? 1.25 : isHeavy ? 1.12 : 1);
-      member.rifle.position.z = 0.38 - (isTier3 ? 0.16 : 0.11) * recoil;
+      member.rifle.scale.setScalar(tier >= 3 ? 1.25 : tier === 2 ? 1.12 : 1);
+      member.rifle.position.z = 0.38 - (tier >= 3 ? 0.16 : 0.11) * recoil;
       member.launcher.visible = isRocket;
       member.launcher.position.z = 0.12 - 0.09 * recoil;
       member.leftArm.rotation.x = -0.78 + 0.20 * recoil;
       member.rightArm.rotation.x = -0.78 + 0.20 * recoil;
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
-      member.muzzle.position.z = member.rifle.position.z + (isTier3 ? 0.48 : isHeavy ? 0.40 : 0.32);
+      member.muzzle.position.z = member.rifle.position.z + (tier >= 3 ? 0.48 : tier === 2 ? 0.40 : 0.32);
       // The camera looks along +Z, which mirrors X on screen.
       member.group.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
     }
@@ -139,9 +144,9 @@ export class SquadRenderer {
 
   reset(): void {
     this.lastSeenProjectileId = 0;
-    this.rifleFiredAtMs = this.heavyFiredAtMs = this.tier3FiredAtMs = this.rocketFiredAtMs = -Infinity;
-    this.previousTier2RifleCount = 0;
-    this.previousTier3RifleCount = 0;
+    this.rifleFiredAtMs.clear();
+    this.rocketFiredAtMs = -Infinity;
+    this.previousRifleCounts = [];
     this.tierUpTier = null;
     this.tierUpAtMs = -Infinity;
     this.tierRing.visible = false;
@@ -160,8 +165,7 @@ export class SquadRenderer {
     this.ringMaterial.dispose();
     for (const geometry of [this.torsoGeometry, this.headGeometry, this.armGeometry, this.legGeometry,
       this.rifleGeometry, this.launcherGeometry, this.muzzleGeometry]) geometry.dispose();
-    for (const material of [this.bodyMaterial, this.headMaterial, this.heavyBodyMaterial,
-      this.heavyHeadMaterial, this.tier3BodyMaterial, this.tier3HeadMaterial,
+    for (const material of [...this.bodyMaterials, ...this.headMaterials,
       this.rifleMaterial, this.muzzleMaterial,
       this.upgradeBodyMaterial, this.upgradeHeadMaterial]) material.dispose();
   }
@@ -169,9 +173,7 @@ export class SquadRenderer {
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
     for (const projectile of projectiles) {
       if (projectile.id > this.lastSeenProjectileId) {
-        if (projectile.kind === 'rifle') this.rifleFiredAtMs = nowMs;
-        if (projectile.kind === 'heavyRifle') this.heavyFiredAtMs = nowMs;
-        if (projectile.kind === 'tier3Rifle') this.tier3FiredAtMs = nowMs;
+        if (projectile.kind === 'rifle') this.rifleFiredAtMs.set(projectile.tier, nowMs);
         if (projectile.kind === 'rocket') this.rocketFiredAtMs = nowMs;
       }
       this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
@@ -180,17 +182,17 @@ export class SquadRenderer {
 
   private addMember(): void {
     const group = new THREE.Group();
-    const torso = new THREE.Mesh(this.torsoGeometry, this.bodyMaterial);
+    const torso = new THREE.Mesh(this.torsoGeometry, this.bodyMaterials[0]);
     torso.position.y = 0.53;
-    const head = new THREE.Mesh(this.headGeometry, this.headMaterial);
+    const head = new THREE.Mesh(this.headGeometry, this.headMaterials[0]);
     head.position.y = 0.90;
-    const leftArm = new THREE.Mesh(this.armGeometry, this.bodyMaterial);
+    const leftArm = new THREE.Mesh(this.armGeometry, this.bodyMaterials[0]);
     leftArm.position.set(-0.23, 0.49, 0.09);
-    const rightArm = new THREE.Mesh(this.armGeometry, this.bodyMaterial);
+    const rightArm = new THREE.Mesh(this.armGeometry, this.bodyMaterials[0]);
     rightArm.position.set(0.23, 0.49, 0.09);
-    const leftLeg = new THREE.Mesh(this.legGeometry, this.bodyMaterial);
+    const leftLeg = new THREE.Mesh(this.legGeometry, this.bodyMaterials[0]);
     leftLeg.position.set(-0.10, 0.17, 0);
-    const rightLeg = new THREE.Mesh(this.legGeometry, this.bodyMaterial);
+    const rightLeg = new THREE.Mesh(this.legGeometry, this.bodyMaterials[0]);
     rightLeg.position.set(0.10, 0.17, 0);
     const rifle = new THREE.Mesh(this.rifleGeometry, this.rifleMaterial);
     rifle.position.set(0.20, 0.54, 0.38);

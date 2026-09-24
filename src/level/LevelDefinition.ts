@@ -28,23 +28,16 @@ const EnemyStreamSchema = z.strictObject({
   spacing: z.number().finite().positive(),
   jitter: z.number().finite().nonnegative(),
   seed: z.number().int().min(0).max(0xffffffff),
-  bosses: z.array(z.strictObject({
-    row: nonnegativeSafeInteger,
-    tier: z.union([z.literal(1), z.literal(2)]),
-    hpMultiplier: z.number().finite().positive(),
-  })).optional(),
-  bruteRamp: z.strictObject({
-    startRow: nonnegativeSafeInteger,
-    fullRow: nonnegativeSafeInteger,
+  tierProgression: z.strictObject({
+    firstTransitionStartRow: nonnegativeSafeInteger,
+    transitionRows: positiveSafeInteger,
+    stableRows: positiveSafeInteger,
     curvePower: z.number().finite().positive(),
-  }).refine((ramp) => ramp.fullRow > ramp.startRow,
-    { path: ['fullRow'], message: 'Full Tier-2 row must follow start row' }),
-  tier3Ramp: z.strictObject({
-    startRow: nonnegativeSafeInteger,
-    fullRow: nonnegativeSafeInteger,
-    curvePower: z.number().finite().positive(),
-  }).refine((ramp) => ramp.fullRow > ramp.startRow,
-    { path: ['fullRow'], message: 'Full Tier-3 row must follow start row' }).optional(),
+    bossLeadRows: positiveSafeInteger,
+    firstBossHpMultiplier: z.number().finite().positive(),
+    laterBossHpMultiplier: z.number().finite().positive(),
+  }).refine((rule) => rule.bossLeadRows < rule.transitionRows,
+    { path: ['bossLeadRows'], message: 'Boss lead rows must be shorter than transition' }),
   rewards: z.strictObject({
     rowsPerReward: positiveSafeInteger,
     spawnAheadDistance: z.number().finite().positive(),
@@ -64,12 +57,6 @@ const EnemyStreamSchema = z.strictObject({
     context.addIssue({ code: 'custom', path: ['rewards', 'spawnAheadDistance'],
       message: 'Reward lookahead must not exceed enemy lookahead' });
   }
-  stream.bosses?.forEach((boss, index) => {
-    if (index > 0 && boss.row <= stream.bosses![index - 1].row) {
-      context.addIssue({ code: 'custom', path: ['bosses', index, 'row'],
-        message: 'Boss rows must be strictly increasing and unique' });
-    }
-  });
 });
 
 export const UpgradeRewardSchema = z.strictObject({

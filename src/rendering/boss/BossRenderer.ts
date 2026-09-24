@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
+import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 
 const HIT_FLASH_MS = 80;
 const HIT_PULSE_MS = 100;
@@ -22,14 +23,10 @@ export class BossRenderer {
   private readonly armGeometry = new THREE.BoxGeometry(0.10, 0.34, 0.11);
   private readonly legGeometry = new THREE.BoxGeometry(0.12, 0.34, 0.13);
   private readonly barGeometry = new THREE.PlaneGeometry(0.8, 0.065);
-  private readonly bodyMaterials = [
-    new THREE.MeshStandardMaterial({ color: '#9b6863' }),
-    new THREE.MeshStandardMaterial({ color: '#cf4037' }),
-  ];
-  private readonly headMaterials = [
-    new THREE.MeshStandardMaterial({ color: '#bd8580' }),
-    new THREE.MeshStandardMaterial({ color: '#ef6658' }),
-  ];
+  private readonly bodyMaterials = ENEMY_PALETTE.map((entry) =>
+    new THREE.MeshStandardMaterial({ color: entry.body }));
+  private readonly headMaterials = ENEMY_PALETTE.map((entry) =>
+    new THREE.MeshStandardMaterial({ color: entry.head }));
   private readonly flashBodyMaterial = new THREE.MeshStandardMaterial({ color: '#ffe36e' });
   private readonly flashHeadMaterial = new THREE.MeshStandardMaterial({ color: '#fff8d6' });
   private readonly deathBodyMaterial = new THREE.MeshStandardMaterial({ color: '#777b7c' });
@@ -95,7 +92,8 @@ export class BossRenderer {
           : part === 'leftLeg' ? pose.leftLeg : part === 'rightLeg' ? pose.rightLeg : 0;
         mesh.material = nowMs < this.flashUntilMs
           ? part === 'head' ? this.flashHeadMaterial : this.flashBodyMaterial
-          : part === 'head' ? this.headMaterials[boss.tier - 1] : this.bodyMaterials[boss.tier - 1];
+          : part === 'head' ? this.headMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)]
+            : this.bodyMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
       }
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;

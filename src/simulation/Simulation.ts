@@ -2,11 +2,11 @@ import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
-import { tier2ProbabilityForRow, tier2RollForSlot, tier3ProbabilityForRow, tier3RollForSlot } from './enemies/bruteRamp';
-import { rewardPlacementForBlock, rewardTierForRow } from './enemies/streamRewards';
-import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
+import { rewardPlacementForBlock } from './enemies/streamRewards';
+import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, validateSquad } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
-import { TIER2_EXCHANGE_VALUE, TIER3_EXCHANGE_VALUE } from './tierExchange';
+import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
+  powerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
@@ -14,9 +14,7 @@ export interface SimulationOptions {
   level: LevelDefinition;
   startSquad: number;
   startRocketCount: number;
-  gruntHp: number;
-  bruteHp: number;
-  tier3Hp: number;
+  tiers: TierPower;
 }
 
 export interface SimulationInput {
@@ -30,21 +28,14 @@ export interface SimulationTuning {
   defenseLineOffset: number;
   formationSpacing: number;
   memberRadius: number;
-  gruntRadius: number;
-  bruteRadius: number;
-  tier3Radius: number;
+  normalEnemyRadius: number;
   bossRadius?: number;
-  rifle: { damage: number; tier2DamageMultiplier: number; tier3DamageMultiplier: number;
-    fireRate: number; projectileSpeed: number; range: number };
+  rifle: { fireRate: number; projectileSpeed: number; range: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
 
 function positiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
-}
-
-function rifleTier(kind: ProjectileSimulationState['kind']): number {
-  return kind === 'rifle' ? 1 : kind === 'heavyRifle' ? 2 : kind === 'tier3Rifle' ? 3 : 0;
 }
 
 type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
@@ -55,7 +46,7 @@ type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: num
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   enemies: EnemySimulationState[], boss: BossSimulationState | null,
   rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
-  radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius' | 'tier3Radius'>,
+  normalEnemyRadius: number,
   bossRadius: number | undefined,
   currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
   piercedEnemyIds?: ReadonlySet<number>, passedRewardIds?: ReadonlySet<number>): ProjectileHit | undefined {
@@ -64,8 +55,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   const minimumZ = projectile.z + travel * minimumFraction;
   for (const enemy of enemies) {
     if (piercedEnemyIds?.has(enemy.id)) continue;
-    const radius = enemy.type === 'tier3' ? radii.tier3Radius
-      : enemy.type === 'brute' ? radii.bruteRadius : radii.gruntRadius;
+    const radius = normalEnemyRadius;
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
     const halfChord = Math.sqrt(radius * radius - dx * dx);
@@ -92,7 +82,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   }
   for (const reward of rewards) {
     if (passedRewardIds?.has(reward.id) || projectile.kind === 'rocket') continue;
-    const radius = reward.tier === 1 ? radii.gruntRadius : radii.bruteRadius;
+    const radius = normalEnemyRadius;
     const dx = projectile.x - reward.x;
     if (Math.abs(dx) > radius) continue;
     const halfChord = Math.sqrt(radius * radius - dx * dx);
@@ -100,7 +90,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const exitZ = reward.z + halfChord;
     // A penetrating shot counts only when it enters this reward, not again
     // on a later tick that starts while it is still inside the collision circle.
-    if (rifleTier(projectile.kind) > reward.tier && projectile.z >= entryZ) continue;
+    if (projectile.tier > reward.tier && projectile.z >= entryZ) continue;
     if (exitZ < minimumZ || entryZ > endZ) continue;
     const hitZ = Math.max(minimumZ, entryZ);
     const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
@@ -153,15 +143,8 @@ function validSquadCount(count: unknown): count is number {
   return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0;
 }
 
-export function bossMaxHpForTier(tier: 1 | 2, gruntHp: number, bruteHp: number,
-  hpMultiplier: number): number {
-  const maxHp = (tier === 1 ? gruntHp : bruteHp) * hpMultiplier;
-  if (!positiveFinite(maxHp)) throw new Error('Simulation Boss HP exceeds the supported range');
-  return maxHp;
-}
-
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number, tier3Hp: number,
+  stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
   boss: BossSimulationState | null): BossSimulationState | null {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
@@ -169,16 +152,16 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     const rowZ = stream.startZ + cursor.nextRowIndex * stream.spacing;
     if (!Number.isFinite(rowZ)) throw new Error('Simulation enemy stream row position is non-finite');
     if (rowZ > horizonZ) break;
-    const encounter = stream.bosses?.[cursor.nextBossIndex];
-    if (encounter && cursor.nextRowIndex === encounter.row) {
+    const bossTier = cursor.nextBossTier;
+    if (cursor.nextRowIndex === bossRowForTier(bossTier, stream.tierProgression)) {
       // One active Boss is supported; authored encounters must not overlap in play.
       if (boss) throw new Error('Simulation cannot spawn a Boss while another Boss is active');
-      const maxHp = bossMaxHpForTier(encounter.tier, gruntHp, bruteHp, encounter.hpMultiplier);
+      const maxHp = bossMaxHpForTier(bossTier, stream.tierProgression, power);
       if (!Number.isSafeInteger(cursor.nextEnemyId + 1)) {
         throw new Error('Simulation Boss ID exceeds the supported range');
       }
-      boss = { id: cursor.nextEnemyId++, tier: encounter.tier, x: 0, z: rowZ, hp: maxHp, maxHp };
-      cursor.nextBossIndex++;
+      boss = { id: cursor.nextEnemyId++, tier: bossTier, x: 0, z: rowZ, hp: maxHp, maxHp };
+      cursor.nextBossTier++;
       cursor.nextRowIndex++;
       continue;
     }
@@ -188,15 +171,10 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     }
     const offsets = createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
       stream.spacing, stream.jitter, stream.seed);
-    const { startRow, fullRow } = stream.bruteRamp;
     const rowIndex = cursor.nextRowIndex;
-    const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
-    const tier3Probability = stream.tier3Ramp ? tier3ProbabilityForRow(rowIndex, stream.tier3Ramp) : 0;
     let revealColumn = 0;
-    if (rowIndex === startRow || rowIndex === stream.tier3Ramp?.startRow) {
-      for (let column = 1; column < offsets.length; column++) {
-        if (Math.abs(offsets[column].x) < Math.abs(offsets[revealColumn].x)) revealColumn = column;
-      }
+    for (let column = 1; column < offsets.length; column++) {
+      if (Math.abs(offsets[column].x) < Math.abs(offsets[revealColumn].x)) revealColumn = column;
     }
     for (let column = 0; column < offsets.length; column++) {
       const offset = offsets[column];
@@ -204,16 +182,9 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
         throw new Error('Simulation enemy stream produces a non-finite position');
       }
-      const isTier3 = stream.tier3Ramp !== undefined && (rowIndex === stream.tier3Ramp.startRow
-        ? column === revealColumn
-        : rowIndex >= stream.tier3Ramp.fullRow || (tier3Probability > 0
-          && tier3RollForSlot(stream.seed, rowIndex, column) < tier3Probability));
-      const isBrute = !isTier3 && (rowIndex === startRow ? column === revealColumn
-        : rowIndex >= fullRow || (probability > 0
-          && tier2RollForSlot(stream.seed, rowIndex, column) < probability));
+      const tier = enemyTierForRow(rowIndex, column, revealColumn, stream.seed, stream.tierProgression);
       const enemyId = cursor.nextEnemyId++;
-      enemies.push({ id: enemyId, type: isTier3 ? 'tier3' : isBrute ? 'brute' : stream.enemy,
-        x: offset.x, z, hp: isTier3 ? tier3Hp : isBrute ? bruteHp : gruntHp });
+      enemies.push({ id: enemyId, tier, x: offset.x, z, hp: powerForTier(tier, power) });
     }
     cursor.nextRowIndex++;
   }
@@ -242,14 +213,14 @@ function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: Enem
       || !Number.isSafeInteger(cursor.nextRewardBlockIndex + 1)) {
       throw new Error('Simulation reward stream exceeds the supported range');
     }
-    rewards.push({ id: cursor.nextRewardId++, tier: rewardTierForRow(placement.rowIndex, stream.bruteRamp.fullRow),
+    rewards.push({ id: cursor.nextRewardId++, tier: rewardTierForRow(placement.rowIndex, stream.tierProgression),
       x: placement.side * definition.sideX, z,
       hitProgress: 0, hitsRequired: definition.hitsRequired });
     cursor.nextRewardBlockIndex++;
   }
 }
 
-function validateState(value: unknown): { state: SimulationState; rng: SeededRng } {
+function validateState(value: unknown, mergeCount: number): { state: SimulationState; rng: SeededRng } {
   if (!isPlainObject(value)) {
     throw new Error('Simulation state must be a plain object');
   }
@@ -287,24 +258,20 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation squad must be a plain object');
   }
   const squad = state.squad;
-  if (Object.keys(squad).length !== 4 || !Object.hasOwn(squad, 'count')
-    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'tier2RifleCount')
-    || !Object.hasOwn(squad, 'tier3RifleCount')) {
-    throw new Error('Simulation squad must contain count, rocketCount, tier2RifleCount, and tier3RifleCount');
+  if (Object.keys(squad).length !== 3 || !Object.hasOwn(squad, 'count')
+    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'rifleCounts')) {
+    throw new Error('Simulation squad has missing or unknown fields');
   }
-  if (!validSquadCount(squad.count) || !validSquadCount(squad.rocketCount)
-    || !validSquadCount(squad.tier2RifleCount)
-    || !validSquadCount(squad.tier3RifleCount)
-    || (squad.rocketCount as number) + (squad.tier2RifleCount as number)
-      + (squad.tier3RifleCount as number) > (squad.count as number)) {
-    throw new Error('Simulation squad composition is invalid');
+  validateSquad(squad as unknown as SimulationState['squad']);
+  if ((squad.rifleCounts as number[]).some((count) => count >= mergeCount)) {
+    throw new Error('Simulation squad rifle counts must be normalized');
   }
 
   if (!Array.isArray(state.enemies)) throw new Error('Simulation enemies must be an array');
   const enemyIds = new Set<number>();
   const enemies: EnemySimulationState[] = state.enemies.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation enemy ${index} must be a plain object`);
-    if (Object.keys(value).length !== 5 || ['id', 'type', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
+    if (Object.keys(value).length !== 5 || ['id', 'tier', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation enemy ${index} has missing or unknown fields`);
     }
     if (!Number.isSafeInteger(value.id) || (value.id as number) <= 0) {
@@ -313,13 +280,13 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     const id = value.id as number;
     if (enemyIds.has(id)) throw new Error(`Simulation enemy id ${id} is duplicated`);
     enemyIds.add(id);
-    if (value.type !== 'grunt' && value.type !== 'brute' && value.type !== 'tier3') throw new Error(`Simulation enemy ${index} type is unsupported`);
+    if (!validTier(value.tier as number)) throw new Error(`Simulation enemy ${index} tier is invalid`);
     if (typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
       throw new Error(`Simulation enemy ${index} position must be finite`);
     }
     if (!positiveFinite(value.hp)) throw new Error(`Simulation enemy ${index} hp must be positive and finite`);
-    return { id, type: value.type, x: value.x, z: value.z, hp: value.hp };
+    return { id, tier: value.tier as number, x: value.x, z: value.z, hp: value.hp };
   });
 
   let boss: BossSimulationState | null = null;
@@ -328,14 +295,14 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     if (!isPlainObject(value) || Object.keys(value).length !== 6
       || ['id', 'tier', 'x', 'z', 'hp', 'maxHp'].some((field) => !Object.hasOwn(value, field))
       || !Number.isSafeInteger(value.id) || (value.id as number) <= 0
-      || enemyIds.has(value.id as number) || (value.tier !== 1 && value.tier !== 2)
+      || enemyIds.has(value.id as number) || !validTier(value.tier as number)
       || typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)
       || !positiveFinite(value.hp) || !positiveFinite(value.maxHp)
       || value.hp > value.maxHp) {
       throw new Error('Simulation Boss state is invalid');
     }
-    boss = { id: value.id as number, tier: value.tier, x: value.x, z: value.z,
+    boss = { id: value.id as number, tier: value.tier as number, x: value.x, z: value.z,
       hp: value.hp, maxHp: value.maxHp };
   }
 
@@ -345,21 +312,21 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     if (!isPlainObject(cursor) || Object.keys(cursor).length !== 5
       || !Object.hasOwn(cursor, 'nextRowIndex') || !Object.hasOwn(cursor, 'nextEnemyId')
       || !Object.hasOwn(cursor, 'nextRewardBlockIndex') || !Object.hasOwn(cursor, 'nextRewardId')
-      || !Object.hasOwn(cursor, 'nextBossIndex')
+      || !Object.hasOwn(cursor, 'nextBossTier')
       || !Number.isSafeInteger(cursor.nextRowIndex) || (cursor.nextRowIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextEnemyId) || (cursor.nextEnemyId as number) <= 0
       || !Number.isSafeInteger(cursor.nextRewardBlockIndex) || (cursor.nextRewardBlockIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextRewardId) || (cursor.nextRewardId as number) <= 0
-      || !Number.isSafeInteger(cursor.nextBossIndex) || (cursor.nextBossIndex as number) < 0
+      || !validTier(cursor.nextBossTier as number)
       || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))
-      || (boss && (boss.id >= (cursor.nextEnemyId as number) || cursor.nextBossIndex === 0))) {
+      || (boss && (boss.id >= (cursor.nextEnemyId as number) || cursor.nextBossTier === 1))) {
       throw new Error('Simulation enemy stream cursor is invalid');
     }
     enemyStream = { nextRowIndex: cursor.nextRowIndex as number,
       nextEnemyId: cursor.nextEnemyId as number,
       nextRewardBlockIndex: cursor.nextRewardBlockIndex as number,
       nextRewardId: cursor.nextRewardId as number,
-      nextBossIndex: cursor.nextBossIndex as number };
+      nextBossTier: cursor.nextBossTier as number };
   }
   if (boss && !enemyStream) throw new Error('Simulation Boss requires an enemy stream');
 
@@ -374,7 +341,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       throw new Error(`Simulation stream reward ${index} id is invalid or duplicated`);
     }
     rewardIds.add(value.id as number);
-    if (value.tier !== 1 && value.tier !== 2) throw new Error(`Simulation stream reward ${index} tier is invalid`);
+    if (!validTier(value.tier as number)) throw new Error(`Simulation stream reward ${index} tier is invalid`);
     if (typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
       throw new Error(`Simulation stream reward ${index} position is invalid`);
@@ -384,7 +351,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       || (value.hitProgress as number) >= (value.hitsRequired as number)) {
       throw new Error(`Simulation stream reward ${index} hit progress is invalid`);
     }
-    return { id: value.id as number, tier: value.tier, x: value.x, z: value.z,
+    return { id: value.id as number, tier: value.tier as number, x: value.x, z: value.z,
       hitProgress: value.hitProgress as number, hitsRequired: value.hitsRequired as number };
   });
   if ((!enemyStream && streamRewards.length > 0)
@@ -451,7 +418,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
-    if (Object.keys(value).length !== 9 || ['id', 'kind', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'penetrationRemaining']
+    if (Object.keys(value).length !== 10 || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'penetrationRemaining']
       .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation projectile ${index} has missing or unknown fields`);
     }
@@ -459,9 +426,11 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       throw new Error(`Simulation projectile ${index} id must be unique and positive`);
     }
     projectileIds.add(value.id as number);
-    if (value.kind !== 'rifle' && value.kind !== 'heavyRifle'
-      && value.kind !== 'tier3Rifle' && value.kind !== 'rocket') {
+    if (value.kind !== 'rifle' && value.kind !== 'rocket') {
       throw new Error(`Simulation projectile ${index} kind is unsupported`);
+    }
+    if (value.kind === 'rifle' ? !validTier(value.tier as number) : value.tier !== 0) {
+      throw new Error(`Simulation projectile ${index} tier is invalid`);
     }
     if (typeof value.x !== 'number' || !Number.isFinite(value.x) || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
       throw new Error(`Simulation projectile ${index} position must be finite`);
@@ -475,14 +444,15 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
     }
     if (!Number.isSafeInteger(value.penetrationRemaining)
-      || (value.kind === 'heavyRifle' && ((value.penetrationRemaining as number) < 1
-        || (value.penetrationRemaining as number) > TIER2_EXCHANGE_VALUE))
-      || (value.kind === 'tier3Rifle' && ((value.penetrationRemaining as number) < 1
-        || (value.penetrationRemaining as number) > TIER3_EXCHANGE_VALUE))
-      || ((value.kind === 'rifle' || value.kind === 'rocket') && value.penetrationRemaining !== 0)) {
+      || (value.kind === 'rocket' && value.penetrationRemaining !== 0)
+      || (value.kind === 'rifle' && ((value.tier === 1 && value.penetrationRemaining !== 0)
+        || (value.tier !== 1 && ((value.penetrationRemaining as number) < 1
+          || (value.penetrationRemaining as number) > exchangeValueForTier(value.tier as number, mergeCount)))))) {
       throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`);
     }
-    return { id: value.id as number, kind: value.kind, x: value.x, z: value.z, speed: value.speed,
+    return { id: value.id as number, kind: value.kind as ProjectileSimulationState['kind'],
+      tier: value.tier as number,
+      x: value.x, z: value.z, speed: value.speed,
       damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius,
       penetrationRemaining: value.penetrationRemaining as number };
   });
@@ -511,9 +481,9 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       levelId: state.levelId,
       seed: state.seed as number,
       rngState: rng.getState(),
-      player: { x: player.x, z: player.z },
-      squad: { count: squad.count, rocketCount: squad.rocketCount,
-        tier2RifleCount: squad.tier2RifleCount, tier3RifleCount: squad.tier3RifleCount },
+      player: { x: player.x as number, z: player.z as number },
+      squad: { count: squad.count as number, rocketCount: squad.rocketCount as number,
+        rifleCounts: [...(squad.rifleCounts as number[])] },
       enemies,
       boss,
       enemyStream,
@@ -534,9 +504,7 @@ export class Simulation {
   private rng: SeededRng;
   private state: SimulationState;
   private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
-  private readonly gruntHp: number;
-  private readonly bruteHp: number;
-  private readonly tier3Hp: number;
+  private readonly tiers: TierPower;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -547,13 +515,13 @@ export class Simulation {
     if (!validSquadCount(options.startRocketCount) || options.startRocketCount > options.startSquad) {
       throw new Error('Simulation startRocketCount must be a non-negative safe integer within startSquad');
     }
-    if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
-    if (!positiveFinite(options.bruteHp)) throw new Error('Simulation bruteHp must be positive and finite');
-    if (!positiveFinite(options.tier3Hp)) throw new Error('Simulation tier3Hp must be positive and finite');
+    if (!options.tiers || !Number.isSafeInteger(options.tiers.mergeCount) || options.tiers.mergeCount < 2
+      || !positiveFinite(options.tiers.tier1Power) || !positiveFinite(options.tiers.tier2Power)
+      || !Number.isFinite(options.tiers.higherTierPowerMultiplier)
+      || options.tiers.higherTierPowerMultiplier <= 1
+      || !positiveFinite(options.tiers.normalEnemyRadius)) throw new Error('Simulation tiers are invalid');
     this.enemyStreamDefinition = level.enemyStream;
-    this.gruntHp = options.gruntHp;
-    this.bruteHp = options.bruteHp;
-    this.tier3Hp = options.tier3Hp;
+    this.tiers = { ...options.tiers };
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
       for (const offset of createEnemyFormation(group.count, group.formation.columns,
@@ -564,22 +532,21 @@ export class Simulation {
         }
         enemies.push({
           id: enemies.length + 1,
-          type: group.enemy,
+          tier: 1,
           x: offset.x,
           z,
-          hp: options.gruntHp,
+          hp: powerForTier(1, this.tiers),
         });
       }
     }
     const streamRewards: StreamRewardSimulationState[] = [];
     const enemyStream = level.enemyStream
       ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0,
-        nextRewardId: 1, nextBossIndex: 0 }
+        nextRewardId: 1, nextBossTier: 1 }
       : null;
     let boss: BossSimulationState | null = null;
     if (enemyStream && level.enemyStream) {
-      boss = extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp,
-        options.bruteHp, options.tier3Hp, boss);
+      boss = extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, this.tiers, boss);
       extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
     }
     this.state = {
@@ -590,7 +557,7 @@ export class Simulation {
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
       squad: normalizeRifleSquad({ count: options.startSquad, rocketCount: options.startRocketCount,
-        tier2RifleCount: 0, tier3RifleCount: 0 }),
+        rifleCounts: [options.startSquad - options.startRocketCount] }, this.tiers.mergeCount),
       enemies,
       boss,
       enemyStream,
@@ -623,17 +590,13 @@ export class Simulation {
       throw new Error('Simulation defenseLineOffset must be finite and greater than zero');
     }
     if (!positiveFinite(tuning.formationSpacing) || !positiveFinite(tuning.memberRadius)
-      || !positiveFinite(tuning.gruntRadius) || !positiveFinite(tuning.bruteRadius)
-      || !positiveFinite(tuning.tier3Radius)) {
+      || !positiveFinite(tuning.normalEnemyRadius)) {
       throw new Error('Simulation formationSpacing, memberRadius, and enemy radii must be positive and finite');
     }
-    if (this.enemyStreamDefinition?.bosses?.length && !positiveFinite(tuning.bossRadius)) {
+    if (this.enemyStreamDefinition && !positiveFinite(tuning.bossRadius)) {
       throw new Error('Simulation bossRadius must be positive and finite for a Boss level');
     }
-    if (!tuning.rifle || !positiveFinite(tuning.rifle.damage)
-      || !positiveFinite(tuning.rifle.tier2DamageMultiplier)
-      || !positiveFinite(tuning.rifle.tier3DamageMultiplier)
-      || !positiveFinite(tuning.rifle.fireRate)
+    if (!tuning.rifle || !positiveFinite(tuning.rifle.fireRate)
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
       throw new Error('Simulation rifle tuning must be positive and finite');
     }
@@ -673,7 +636,7 @@ export class Simulation {
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.gruntHp, this.bruteHp, this.tier3Hp, boss);
+        nextZ, this.tiers, boss);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
@@ -681,9 +644,7 @@ export class Simulation {
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
     let nextProjectileId = this.state.weapons.nextProjectileId;
     const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
-    const rifleCount = tier1RifleCount(this.state.squad);
-    const heavyEnd = rifleCount + this.state.squad.tier2RifleCount;
-    const rifleEnd = heavyEnd + this.state.squad.tier3RifleCount;
+    const rifleEnd = this.state.squad.count - this.state.squad.rocketCount;
     const nextCooldowns = { rifle: this.state.weapons.rifleCooldownRemainingSeconds,
       rocket: this.state.weapons.rocketCooldownRemainingSeconds };
     // Fire before travel; projectiles created this tick travel for this full fixed step.
@@ -704,22 +665,24 @@ export class Simulation {
       while (cooldown <= 0) {
         for (let index = 0; index < activeOffsets.length; index++) {
           const offset = activeOffsets[index];
-          const projectileKind = kind === 'rifle' && index >= heavyEnd ? 'tier3Rifle'
-            : kind === 'rifle' && index >= rifleCount ? 'heavyRifle' : kind;
-          const damage = projectileKind === 'tier3Rifle'
-            ? weapon.damage * tuning.rifle.tier3DamageMultiplier
-            : projectileKind === 'heavyRifle' ? weapon.damage * tuning.rifle.tier2DamageMultiplier
-              : weapon.damage;
+          let tier = 0;
+          if (kind === 'rifle') {
+            let roleIndex = index;
+            for (let tierIndex = 0; tierIndex < this.state.squad.rifleCounts.length; tierIndex++) {
+              roleIndex -= this.state.squad.rifleCounts[tierIndex];
+              if (roleIndex < 0) { tier = tierIndex + 1; break; }
+            }
+          }
+          const damage = kind === 'rifle' ? powerForTier(tier, this.tiers) : tuning.rocket.damage;
           if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
           if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
           const x = nextX + offset.x;
           const z = nextZ + offset.z;
           if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
-          projectiles.push({ id: nextProjectileId++, kind: projectileKind, x, z, speed: weapon.projectileSpeed,
+          projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
             damage, remainingRange: weapon.range,
             blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
-            penetrationRemaining: projectileKind === 'tier3Rifle' ? TIER3_EXCHANGE_VALUE
-              : projectileKind === 'heavyRifle' ? TIER2_EXCHANGE_VALUE : 0 });
+            penetrationRemaining: tier > 1 ? exchangeValueForTier(tier, this.tiers.mergeCount) : 0 });
         }
         cooldown += interval;
         if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
@@ -738,10 +701,11 @@ export class Simulation {
       let penetrationRemaining = projectile.penetrationRemaining;
       let minimumFraction = 0;
       let consumed = false;
-      const piercedEnemyIds = rifleTier(projectile.kind) > 1 ? new Set<number>() : undefined;
-      const passedRewardIds = rifleTier(projectile.kind) > 1 ? new Set<number>() : undefined;
+      const piercedEnemyIds = projectile.tier > 1 ? new Set<number>() : undefined;
+      const passedRewardIds = projectile.tier > 1 ? new Set<number>() : undefined;
       while (true) {
-        const hit = findFirstHit(projectile, endZ, enemies, boss, streamRewards, gates, tuning,
+        const hit = findFirstHit(projectile, endZ, enemies, boss, streamRewards, gates,
+          tuning.normalEnemyRadius,
           tuning.bossRadius,
           this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, passedRewardIds);
         if (!hit) break;
@@ -761,9 +725,9 @@ export class Simulation {
           hit.reward.hitProgress++;
           if (hit.reward.hitProgress === hit.reward.hitsRequired) {
             streamRewards.splice(streamRewards.indexOf(hit.reward), 1);
-            squad = addRifleSoldiers(squad, 1, hit.reward.tier);
+            squad = addRifleSoldiers(squad, 1, hit.reward.tier, this.tiers.mergeCount);
           }
-          if (rifleTier(projectile.kind) > hit.reward.tier) {
+          if (projectile.tier > hit.reward.tier) {
             // A higher-tier hit counts once, then continues without spending penetration.
             minimumFraction = hit.fraction;
             passedRewardIds!.add(hit.reward.id);
@@ -775,9 +739,8 @@ export class Simulation {
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
-          const penetrationCost = projectile.kind === 'tier3Rifle'
-            ? hit.enemy.type === 'grunt' ? 1 : hit.enemy.type === 'brute' ? TIER2_EXCHANGE_VALUE : 0
-            : projectile.kind === 'heavyRifle' && hit.enemy.type === 'grunt' ? 1 : 0;
+          const penetrationCost = projectile.tier > hit.enemy.tier
+            ? exchangeValueForTier(hit.enemy.tier, this.tiers.mergeCount) : 0;
           if (penetrationCost > 0) {
             penetrationRemaining -= penetrationCost;
             if (penetrationRemaining > 0) {
@@ -823,16 +786,14 @@ export class Simulation {
       const playerXAtCrossing = this.state.player.x + (nextX - this.state.player.x) * crossingFraction;
       if (Math.abs(playerXAtCrossing - pickup.x) <= pickup.width / 2) {
         squad = addRifleSoldiers(squad, pickup.rewardAmount,
-          pickup.rewardKind === 'tier2Rifle' ? 2 : 1);
+          pickup.rewardKind === 'tier2Rifle' ? 2 : 1, this.tiers.mergeCount);
       }
       // Both a collected and a missed plaque disappear once it passes the player.
     }
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
-      const contactRadius = tuning.memberRadius
-        + (enemy.type === 'tier3' ? tuning.tier3Radius
-          : enemy.type === 'brute' ? tuning.bruteRadius : tuning.gruntRadius);
+      const contactRadius = tuning.memberRadius + tuning.normalEnemyRadius;
       if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
       // Sweep each moving squad member against the stationary enemy.
       const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) => {
@@ -847,7 +808,8 @@ export class Simulation {
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, enemy.type === 'grunt' ? 1 : TIER2_EXCHANGE_VALUE);
+        squad = afterCasualties(squad, exchangeValueForTier(enemy.tier, this.tiers.mergeCount),
+          this.tiers.mergeCount);
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
@@ -857,15 +819,15 @@ export class Simulation {
       const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) =>
         segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
           nextX + offset.x, nextZ + offset.z, boss!.x, boss!.z, radius));
-      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0,
-        tier2RifleCount: 0, tier3RifleCount: 0 };
+      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0, rifleCounts: [] };
     }
     // Only survivors can leak; contact and projectile kills have already removed their enemies.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, enemy.type === 'grunt' ? 1 : TIER2_EXCHANGE_VALUE);
+        squad = afterCasualties(squad, exchangeValueForTier(enemy.tier, this.tiers.mergeCount),
+          this.tiers.mergeCount);
       }
     }
     // Stream rewards expire harmlessly behind the moving defense line.
@@ -883,7 +845,7 @@ export class Simulation {
       ...this.state,
       rngState: this.rng.getState(),
       player: { ...this.state.player },
-      squad: { ...this.state.squad },
+      squad: { ...this.state.squad, rifleCounts: [...this.state.squad.rifleCounts] },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
       boss: this.state.boss ? { ...this.state.boss } : null,
       enemyStream: this.state.enemyStream ? { ...this.state.enemyStream } : null,
@@ -896,21 +858,21 @@ export class Simulation {
   }
 
   restoreState(state: SimulationState): void {
-    const candidate = validateState(state);
+    const candidate = validateState(state, this.tiers.mergeCount);
     if ((candidate.state.enemyStream !== null) !== (this.enemyStreamDefinition !== undefined)) {
       throw new Error('Simulation enemy stream state does not match the loaded level');
     }
-    const encounters = this.enemyStreamDefinition?.bosses ?? [];
+    const progression = this.enemyStreamDefinition?.tierProgression;
     const cursor = candidate.state.enemyStream;
     const boss = candidate.state.boss;
-    const expectedIndex = cursor ? encounters.filter((encounter) => encounter.row < cursor.nextRowIndex).length : 0;
-    const activeEncounter = cursor ? encounters[cursor.nextBossIndex - 1] : undefined;
-    if (cursor && (cursor.nextBossIndex > encounters.length || cursor.nextBossIndex !== expectedIndex
-      || (boss && (!activeEncounter || boss.tier !== activeEncounter.tier
+    const expectedTier = cursor && progression ? 1 + Math.max(0, Math.ceil(
+      (cursor.nextRowIndex - bossRowForTier(1, progression))
+        / (progression.transitionRows + progression.stableRows))) : 1;
+    if (cursor && (cursor.nextBossTier !== expectedTier
+      || (boss && (boss.tier !== cursor.nextBossTier - 1
         || boss.z !== this.enemyStreamDefinition!.startZ
-          + activeEncounter.row * this.enemyStreamDefinition!.spacing || boss.x !== 0
-        || boss.maxHp !== bossMaxHpForTier(activeEncounter.tier, this.gruntHp,
-          this.bruteHp, activeEncounter.hpMultiplier))))) {
+          + bossRowForTier(boss.tier, progression!) * this.enemyStreamDefinition!.spacing || boss.x !== 0
+        || boss.maxHp !== bossMaxHpForTier(boss.tier, progression!, this.tiers))))) {
       throw new Error('Simulation Boss progression does not match the loaded level');
     }
     this.state = candidate.state;

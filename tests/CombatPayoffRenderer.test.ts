@@ -8,15 +8,15 @@ describe('enemy death burst', () => {
   it('uses deterministic directions and distinct tier colors', () => {
     expect(deathParticleVelocity(42, 0)).toEqual(deathParticleVelocity(42, 0));
     expect(deathParticleVelocity(42, 0)).not.toEqual(deathParticleVelocity(42, 1));
-    expect(new Set(['grunt', 'brute', 'tier3'].map((type) =>
-      deathParticleColor(type as 'grunt' | 'brute' | 'tier3').getHexString())).size).toBe(3);
+    expect(new Set([1, 2, 3, 4, 7].map((tier) =>
+      deathParticleColor(tier).getHexString())).size).toBe(4);
   });
 
   it('shares one Points object, caps mass kills, expires particles, and resets', () => {
     const scene = new THREE.Scene();
     const burst = new DeathBurst(scene);
     expect(scene.children).toEqual([burst.points]);
-    for (let id = 1; id <= 50; id++) burst.spawn({ id, type: 'grunt', x: 0, z: id, hp: 0 }, 100);
+    for (let id = 1; id <= 50; id++) burst.spawn({ id, tier: 1, x: 0, z: id, hp: 0 }, 100);
     expect(burst.activeCount).toBe(DEATH_PARTICLE_CAPACITY);
     const positions = burst.points.geometry.attributes.position as THREE.BufferAttribute;
     burst.update(150);
@@ -40,19 +40,19 @@ describe('squad payoff', () => {
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 }, squad: { count: 10, rocketCount: 0,
-      tier2RifleCount: 10, tier3RifleCount: 0, formationSpacing: 0.45 },
+      rifleCounts: [0, 10], formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null,
       streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state, 0);
     renderer.update({ ...state, squad: { ...state.squad, count: 1,
-      tier2RifleCount: 0, tier3RifleCount: 1 } }, 500);
+      rifleCounts: [0, 0, 1] } }, 500);
     const heavy = soldiers(scene)[0];
     expect(heavy.scale.x).toBeGreaterThan(1);
     expect(heavy.scale.x).toBeLessThanOrEqual(1.3);
     expect(ring(scene).visible).toBe(true);
     const glow = (heavy.children[0] as THREE.Mesh).material;
     renderer.update({ ...state, squad: { ...state.squad, count: 1,
-      tier2RifleCount: 0, tier3RifleCount: 1 } }, 900);
+      rifleCounts: [0, 0, 1] } }, 900);
     expect(heavy.scale.x).toBe(1);
     expect((heavy.children[0] as THREE.Mesh).material).not.toBe(glow);
     renderer.reset();
@@ -60,7 +60,8 @@ describe('squad payoff', () => {
     renderer.dispose();
   });
   const state = (count: number, tier2RifleCount = 0) => ({ player: { x: 0.3, z: 2 },
-    squad: { count, tier2RifleCount, tier3RifleCount: 0, rocketCount: 0, formationSpacing: 0.45 },
+    squad: { count, rifleCounts: tier2RifleCount ? [0, tier2RifleCount] : [count],
+      rocketCount: 0, formationSpacing: 0.45 },
     track: { halfWidth: 2.5, defenseLineZ: 0 }, enemies: [], boss: null, streamRewards: [],
     gates: [], pickups: [], projectiles: [] });
   const soldiers = (scene: THREE.Scene) => scene.children.filter(
