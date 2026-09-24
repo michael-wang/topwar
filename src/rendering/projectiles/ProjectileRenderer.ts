@@ -1,7 +1,29 @@
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
 
+export function projectilePulseScale(ageMs: number): number {
+  return 1 + 0.35 * Math.max(0, 1 - ageMs / 65);
+}
+
+export class ProjectilePulseTracker {
+  private readonly births = new Map<number, number>();
+
+  scaleFor(id: number, nowMs: number): number {
+    if (!this.births.has(id)) this.births.set(id, nowMs);
+    return projectilePulseScale(nowMs - this.births.get(id)!);
+  }
+
+  prune(activeIds: ReadonlySet<number>): void {
+    for (const id of this.births.keys()) if (!activeIds.has(id)) this.births.delete(id);
+  }
+
+  reset(): void { this.births.clear(); }
+
+  get size(): number { return this.births.size; }
+}
+
 export class ProjectileRenderer {
+  private readonly pulse = new ProjectilePulseTracker();
   private readonly bodyGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.55, 6);
   private readonly tipGeometry = new THREE.SphereGeometry(0.085, 6, 4);
   private readonly bodyMaterial = new THREE.MeshBasicMaterial({ color: '#ff9c16' });
@@ -19,7 +41,7 @@ export class ProjectileRenderer {
 
   constructor(private readonly scene: THREE.Scene) {}
 
-  update(projectiles: readonly ProjectileRenderState[]): void {
+  update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
     while (this.members.length < projectiles.length) {
       const group = new THREE.Group();
       const body = new THREE.Mesh(this.bodyGeometry, this.bodyMaterial);
@@ -50,11 +72,16 @@ export class ProjectileRenderer {
         for (const mesh of member.heavyRifle) mesh.visible = projectile.kind === 'heavyRifle';
         for (const mesh of member.rocket) mesh.visible = isRocket;
         member.group.position.set(-projectile.x, isRocket ? 0.66 : projectile.kind === 'heavyRifle' ? 0.72 : 0.58, projectile.z);
+        member.group.scale.setScalar(this.pulse.scaleFor(projectile.id, nowMs));
       }
     }
+    this.pulse.prune(new Set(projectiles.map((projectile) => projectile.id)));
   }
 
+  reset(): void { this.pulse.reset(); }
+
   dispose(): void {
+    this.pulse.reset();
     for (const member of this.members) this.scene.remove(member.group);
     this.members.length = 0;
     this.bodyGeometry.dispose();

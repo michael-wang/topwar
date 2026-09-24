@@ -86,7 +86,7 @@ export class GameRenderer {
     window.removeEventListener('resize', this.resize);
   }
 
-  render(state: GameRenderState): void {
+  render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     const cameraDistance = Math.max(10, state.track.halfWidth * 4);
     this.camera.position.y = cameraDistance * 0.8;
@@ -103,10 +103,10 @@ export class GameRenderer {
       marker.position.z = firstMarkerZ + index * 4;
       marker.scale.x = state.track.halfWidth * 2;
     }
-    this.squadRenderer.update(state);
+    this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies);
     this.streamRewardRenderer.update(state.streamRewards);
-    this.projectileRenderer.update(state.projectiles);
+    this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.renderer.render(this.scene, this.camera);
@@ -115,6 +115,7 @@ export class GameRenderer {
   resetFeedback(): void {
     this.enemyRenderer.reset();
     this.streamRewardRenderer.reset();
+    this.projectileRenderer.reset();
   }
 
   dispose(): void {

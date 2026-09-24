@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { createSquadFormation } from '../../simulation/squad/formation';
 import type { GameRenderState } from '../RenderState';
 
+export function squadBobOffset(index: number, nowMs: number): number {
+  return 0.025 * Math.sin(nowMs * 0.012 + index * 2.399963229728653);
+}
+
 export class SquadRenderer {
   private readonly bodyGeometry = new THREE.CylinderGeometry(0.14, 0.21, 0.52, 8);
   private readonly headGeometry = new THREE.SphereGeometry(0.18, 8, 6);
@@ -15,7 +19,7 @@ export class SquadRenderer {
 
   constructor(private readonly scene: THREE.Scene) {}
 
-  update(state: GameRenderState): void {
+  update(state: GameRenderState, nowMs = performance.now()): void {
     const offsets = createSquadFormation(state.squad.count, state.squad.formationSpacing);
     while (this.members.length < offsets.length) this.addMember();
 
@@ -30,7 +34,8 @@ export class SquadRenderer {
       body.material = isHeavy ? this.heavyBodyMaterial : this.bodyMaterial;
       head.material = isHeavy ? this.heavyHeadMaterial : this.headMaterial;
       // The camera looks along +Z, which mirrors X on screen. Flip visual X so drag right reads right.
-      if (offset) group.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
+      if (offset) group.position.set(-(state.player.x + offset.x), squadBobOffset(index, nowMs),
+        state.player.z + offset.z);
     }
   }
 

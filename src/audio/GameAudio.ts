@@ -1,0 +1,121 @@
+import type { ProjectileRenderState } from '../rendering/RenderState';
+
+export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'reward' | 'damage' | 'fatal';
+
+// Visual/audio observation only. Projectile IDs may restart on Retry.
+export class AudioCueObserver {
+  private lastSeenProjectileId = 0;
+
+  observe(projectiles: readonly ProjectileRenderState[], previousDefense: number,
+    currentDefense: number): AudioCue[] {
+    const cues = new Set<AudioCue>();
+    for (const projectile of projectiles) {
+      if (projectile.id > this.lastSeenProjectileId) cues.add(projectile.kind);
+      this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
+    }
+    if (currentDefense > previousDefense) cues.add('reward');
+    if (currentDefense < previousDefense) cues.add(currentDefense === 0 ? 'fatal' : 'damage');
+    return [...cues];
+  }
+
+  reset(): void { this.lastSeenProjectileId = 0; }
+}
+
+const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
+  wave: OscillatorType; volume: number }> = {
+  rifle: { from: 440, to: 160, seconds: 0.055, wave: 'triangle', volume: 0.07 },
+  heavyRifle: { from: 220, to: 75, seconds: 0.13, wave: 'triangle', volume: 0.11 },
+  rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.065 },
+  reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
+  damage: { from: 150, to: 70, seconds: 0.11, wave: 'triangle', volume: 0.11 },
+  fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: 0.14 },
+};
+
+export class GameAudio {
+  private context: AudioContext | null = null;
+  private master: GainNode | null = null;
+  private readonly active = new Set<OscillatorNode>();
+  private readonly observer = new AudioCueObserver();
+  private unlocked = false;
+  private disposed = false;
+
+  constructor(private readonly viewport: HTMLElement, private readonly keyTarget: Window = window) {
+    viewport.addEventListener?.('pointerdown', this.unlock);
+    keyTarget.addEventListener?.('keydown', this.unlock);
+  }
+
+  observe(projectiles: readonly ProjectileRenderState[], previousDefense: number,
+    currentDefense: number): void {
+    for (const cue of this.observer.observe(projectiles, previousDefense, currentDefense)) this.play(cue);
+  }
+
+  resetObservation(): void { this.observer.reset(); }
+
+  play(cue: AudioCue): void {
+    const context = this.context;
+    if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
+    try {
+      const shape = cueShape[cue];
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = context.currentTime;
+      oscillator.type = shape.wave;
+      oscillator.frequency.setValueAtTime(shape.from, start);
+      oscillator.frequency.exponentialRampToValueAtTime(shape.to, start + shape.seconds);
+      gain.gain.setValueAtTime(shape.volume, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + shape.seconds);
+      oscillator.connect(gain);
+      gain.connect(this.master);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+        this.active.delete(oscillator);
+      };
+      this.active.add(oscillator);
+      oscillator.start(start);
+      oscillator.stop(start + shape.seconds);
+    } catch {
+      // Audio is optional presentation feedback.
+    }
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.removeUnlockListeners();
+    for (const oscillator of this.active) {
+      try { oscillator.stop(); } catch { /* already stopped */ }
+      oscillator.disconnect();
+    }
+    this.active.clear();
+    this.master?.disconnect();
+    if (this.context) void this.context.close().catch(() => {});
+    this.context = null;
+    this.master = null;
+  }
+
+  private readonly unlock = (): void => {
+    if (this.disposed || this.unlocked) return;
+    const Constructor = globalThis.AudioContext;
+    if (!Constructor) return;
+    try {
+      this.context ??= new Constructor();
+      this.master ??= this.context.createGain();
+      this.master.gain.value = 0.35;
+      this.master.connect(this.context.destination);
+      void this.context.resume().then(() => {
+        if (this.context?.state === 'running') {
+          this.unlocked = true;
+          this.removeUnlockListeners();
+        }
+      }).catch(() => {});
+    } catch {
+      // Unsupported or denied Web Audio must not interrupt gameplay.
+    }
+  };
+
+  private removeUnlockListeners(): void {
+    this.viewport.removeEventListener?.('pointerdown', this.unlock);
+    this.keyTarget.removeEventListener?.('keydown', this.unlock);
+  }
+}

@@ -307,6 +307,8 @@ Use restraint. Readability wins.
 
 Current minimum combat feedback is a short enemy hit flash, a gray flip on death, a reward impact pulse, and a red screen flash for player damage or loss.
 
+Current lightweight presentation feedback also includes procedural squad motion, a projectile launch pulse, and synthesized firing, reward, damage, and Game Over audio.
+
 ## 16. Development UX requirements
 
 This is part of the game spec.

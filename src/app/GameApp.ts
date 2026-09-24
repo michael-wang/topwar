@@ -11,6 +11,7 @@ import { Simulation } from '../simulation/Simulation';
 import { damageFeedback, squadDefenseValue } from './combatFeedback';
 import { DamageFlashOverlay } from '../ui/DamageFlashOverlay';
 import { GameOverOverlay } from '../ui/GameOverOverlay';
+import { GameAudio } from '../audio/GameAudio';
 
 export class GameApp {
   private readonly renderer: GameRenderer;
@@ -18,6 +19,7 @@ export class GameApp {
   private simulation: Simulation;
   private readonly gameOverOverlay: GameOverOverlay;
   private readonly damageFlash: DamageFlashOverlay;
+  private readonly audio: GameAudio;
   private readonly dragInput: PointerDragInput;
   private readonly mouseInput: MouseSteeringInput;
   private readonly keyboardInput: KeyboardSteeringInput;
@@ -46,6 +48,7 @@ export class GameApp {
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad);
     this.renderer = new GameRenderer(viewport);
+    this.audio = new GameAudio(viewport);
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
@@ -116,6 +119,7 @@ export class GameApp {
     this.keyboardInput.dispose();
     this.gameOverOverlay.dispose();
     this.damageFlash.dispose();
+    this.audio.dispose();
     this.renderer.dispose();
     this.disposed = true;
   }
@@ -139,6 +143,7 @@ export class GameApp {
     this.previousFrameTimestampMs = null;
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
+    this.audio.resetObservation();
     this.renderer.resetFeedback();
   }
 
@@ -168,6 +173,7 @@ export class GameApp {
     const currentDefenseValue = squadDefenseValue(state.squad);
     const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
     if (feedback) this.damageFlash.flash(feedback === 'fatal');
+    this.audio.observe(state.projectiles, this.previousDefenseValue, currentDefenseValue);
     this.previousDefenseValue = currentDefenseValue;
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
