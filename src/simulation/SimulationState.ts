@@ -22,20 +22,14 @@ export interface EnemyStreamSimulationState {
   nextEnemyId: number;
 }
 
-interface UpgradeGateBaseState {
+export interface UpgradeGateSimulationState {
   id: string;
   x: number;
   zOffset: number;
   width: number;
-  hp: number;
-  maxHp: number;
-}
-
-export interface UpgradeGateSimulationState extends UpgradeGateBaseState {
-  reward: { mode: 'pickup'; kind: 'rifle' | 'tier2Rifle'; amount: number; intervalSeconds: number; dropSpeed: number }
-    | { mode: 'instant'; kind: 'rifle'; amount: number };
-  // Present only for pickup armories; null until their wall breaks.
-  rewardCooldownRemainingSeconds?: number | null;
+  reward: { mode: 'hitPickup'; kind: 'rifle' | 'tier2Rifle'; amount: number;
+    hitsRequired: number; dropSpeed: number };
+  hitProgress: number;
 }
 
 export interface UpgradePickupSimulationState {

@@ -25,10 +25,10 @@ describe('LevelDefinitionSchema', () => {
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
       bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 } });
     expect(parsed.upgradeGates).toEqual([
-      { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
-        reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
-      { id: 'rifle-jackpot', x: 2.7, zOffset: 8, width: 0.9, hp: 1000,
-        reward: { mode: 'pickup', kind: 'tier2Rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
+      { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9,
+        reward: { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 } },
+      { id: 'tier2-generator', x: 2.7, zOffset: 8, width: 0.9,
+        reward: { mode: 'hitPickup', kind: 'tier2Rifle', amount: 1, hitsRequired: 100, dropSpeed: 4 } },
     ]);
   });
 
@@ -98,7 +98,7 @@ describe('LevelDefinitionSchema', () => {
     }
   });
 
-  it('validates gate IDs, positions, HP, width, and strict rewards', () => {
+  it('validates gate IDs, positions, width, and strict hit rewards', () => {
     const duplicate = level();
     duplicate.upgradeGates[1].id = duplicate.upgradeGates[0].id;
     expect(() => LevelDefinitionSchema.parse(duplicate)).toThrow(/Duplicate upgrade-gate id/);
@@ -107,21 +107,19 @@ describe('LevelDefinitionSchema', () => {
       candidate.upgradeGates[0].zOffset = z;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
-    for (const field of ['hp', 'width'] as const) {
-      for (const value of [0, -1, Infinity]) {
-        const candidate = level();
-        candidate.upgradeGates[0][field] = value;
-        expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-      }
+    for (const value of [0, -1, Infinity]) {
+      const candidate = level();
+      candidate.upgradeGates[0].width = value;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
     for (const amount of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
       const candidate = level();
       candidate.upgradeGates[0].reward.amount = amount;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
-    for (const intervalSeconds of [0, -1, Infinity, NaN]) {
+    for (const hitsRequired of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity, NaN]) {
       const candidate = level();
-      candidate.upgradeGates[0].reward.intervalSeconds = intervalSeconds;
+      candidate.upgradeGates[0].reward.hitsRequired = hitsRequired;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
     for (const dropSpeed of [0, -1, Infinity, NaN]) {
@@ -130,17 +128,17 @@ describe('LevelDefinitionSchema', () => {
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], reward: { mode: 'periodic', kind: 'rifle', amount: 1, intervalSeconds: 1 } },
+      { ...level().upgradeGates[0], reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1 } },
     ] })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[0], reward: { mode: 'laser', kind: 'rifle', amount: 1 } },
     ] })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[1], reward: { mode: 'instant', kind: 'rifle', amount: 99, intervalSeconds: 2 } },
+      { ...level().upgradeGates[1], reward: { ...level().upgradeGates[1].reward, intervalSeconds: 1 } },
     ] })).toThrow(/intervalSeconds/);
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[1], reward: { mode: 'instant', kind: 'rifle', amount: 99 } },
-    ] })).not.toThrow();
+    ] })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[0], reward: { ...level().upgradeGates[0].reward, count: 5 } },
     ] })).toThrow(/count/);

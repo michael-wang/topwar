@@ -45,30 +45,29 @@ describe('Tier-2 rifle compression', () => {
     expect(config.player).toMatchObject({ startSquad: 1, startRocketCount: 0 });
     expect(create(config.player.startSquad).getState().squad).toEqual({ count: 1,
       tier2RifleCount: 0, rocketCount: 0 });
-    expect(create(99).getState().squad).toEqual({ count: 99, tier2RifleCount: 0, rocketCount: 0 });
-    expect(create(100).getState().squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
-    expect(create(101, 1).getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 1 });
-    expect(create(200, 1).getState().squad).toEqual({ count: 101, tier2RifleCount: 1, rocketCount: 1 });
-    expect(create(100).getState().squad.count).toBe(1);
+    expect(create(9).getState().squad).toEqual({ count: 9, tier2RifleCount: 0, rocketCount: 0 });
+    expect(create(10).getState().squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
+    expect(create(11, 1).getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 1 });
+    expect(create(100).getState().squad).toEqual({ count: 10, tier2RifleCount: 10, rocketCount: 0 });
   });
 
   it('fires one projectile per visible role using one shared rifle cooldown', () => {
     for (const [count, expected] of [
-      [1, ['rifle']], [100, ['heavyRifle']], [101, ['rifle', 'heavyRifle']],
-      [200, ['heavyRifle', 'heavyRifle']],
+      [1, ['rifle']], [10, ['heavyRifle']], [11, ['rifle', 'heavyRifle']],
+      [20, ['heavyRifle', 'heavyRifle']],
     ] as const) {
       const simulation = create(count);
       step(simulation);
       expect(simulation.getState().projectiles.map((projectile) => projectile.kind)).toEqual(expected);
       expect(simulation.getState().weapons.nextProjectileId).toBe(expected.length + 1);
     }
-    const heavyOnly = create(100);
+    const heavyOnly = create(10);
     step(heavyOnly, 0.1);
     const firstCooldown = heavyOnly.getState().weapons.rifleCooldownRemainingSeconds;
     step(heavyOnly, 0.1);
     expect(heavyOnly.getState().projectiles).toHaveLength(1);
     expect(heavyOnly.getState().weapons.rifleCooldownRemainingSeconds).toBeLessThan(firstCooldown);
-    const mixedRocket = create(101, 1);
+    const mixedRocket = create(11, 1);
     step(mixedRocket);
     expect(mixedRocket.getState().projectiles.map((projectile) => projectile.kind)).toEqual([
       'heavyRifle', 'rocket',
@@ -76,7 +75,7 @@ describe('Tier-2 rifle compression', () => {
   });
 
   it('captures 100x rifle damage, speed, and range at creation; restore reproduces later fire', () => {
-    const first = create(100);
+    const first = create(10);
     step(first, 0.01);
     expect(first.getState().projectiles[0]).toMatchObject({ kind: 'heavyRifle', damage: 300,
       speed: config.weapon.rifle.projectileSpeed, blastRadius: 0 });
@@ -107,18 +106,18 @@ describe('Tier-2 rifle compression', () => {
     expect(fodder.getState().enemies).toEqual([grunt(2, 0, 6)]);
   });
 
-  it('damages an intact armory wall by its captured direct damage', () => {
+  it('counts one heavy direct armory hit regardless of captured damage', () => {
     const level: LevelDefinition = { ...emptyLevel, upgradeGates: [{ id: 'wall', x: 0,
-      zOffset: 5, width: 1, hp: 500, reward: { mode: 'pickup', kind: 'rifle',
-        amount: 1, intervalSeconds: 1, dropSpeed: 4 } }] };
+      zOffset: 5, width: 1, reward: { mode: 'hitPickup', kind: 'rifle',
+        amount: 1, hitsRequired: 10, dropSpeed: 4 } }] };
     const simulation = combat([], heavy(), level);
     step(simulation, 0.2);
-    expect(simulation.getState().gates[0].hp).toBe(200);
+    expect(simulation.getState().gates[0].hitProgress).toBe(1);
     expect(simulation.getState().projectiles).toEqual([]);
   });
 
   it('collects a threshold Tier-1 pickup into one heavy body without firing that step', () => {
-    const simulation = create(99);
+    const simulation = create(9);
     const state = simulation.getState();
     state.pickups = [{ id: 1, sourceGateId: 'left', x: 0, zOffset: 1, width: 1,
       rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 4 }];
@@ -166,9 +165,9 @@ describe('Tier-2 rifle compression', () => {
   it('keeps Level 001 enemy progression and both authored generator rewards', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     expect(authored.enemyStream?.bruteRamp).toEqual({ startRow: 48, fullRow: 960, curvePower: 2 });
-    expect(authored.upgradeGates.map((gate) => [gate.hp, gate.reward])).toEqual([
-      [100, { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 }],
-      [1000, { mode: 'pickup', kind: 'tier2Rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 }],
+    expect(authored.upgradeGates.map((gate) => [gate.id, gate.reward])).toEqual([
+      ['rifle-generator', { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 }],
+      ['tier2-generator', { mode: 'hitPickup', kind: 'tier2Rifle', amount: 1, hitsRequired: 100, dropSpeed: 4 }],
     ]);
     expect(create(1, 0, authored).getState().squad.tier2RifleCount).toBe(0);
   });

@@ -64,7 +64,6 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     }
   }
   for (const gate of gates) {
-    if (gate.hp === 0) continue;
     if (Math.abs(projectile.x - gate.x) > gate.width / 2) continue;
     const gateStartZ = currentPlayerZ + gate.zOffset;
     const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
@@ -233,41 +232,28 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   if (!Array.isArray(state.gates)) throw new Error('Simulation gates must be an array');
   const gateIds = new Set<string>();
   const gates: UpgradeGateSimulationState[] = state.gates.map((value: unknown, index: number) => {
-    if (!isPlainObject(value)
-      || ['id', 'x', 'zOffset', 'width', 'hp', 'maxHp', 'reward']
+    if (!isPlainObject(value) || Object.keys(value).length !== 6
+      || ['id', 'x', 'zOffset', 'width', 'reward', 'hitProgress']
         .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation gate ${index} has missing or unknown fields`);
     }
     if (!validLevelId(value.id) || gateIds.has(value.id)) throw new Error(`Simulation gate ${index} id is invalid or duplicated`);
     gateIds.add(value.id);
     if (typeof value.x !== 'number' || !Number.isFinite(value.x)
-      || !positiveFinite(value.zOffset) || !positiveFinite(value.width)
-      || typeof value.hp !== 'number' || !Number.isFinite(value.hp) || value.hp < 0
-      || !positiveFinite(value.maxHp)
-      || value.hp > value.maxHp) {
-      throw new Error(`Simulation gate ${index} has invalid position, width, or HP`);
+      || !positiveFinite(value.zOffset) || !positiveFinite(value.width)) {
+      throw new Error(`Simulation gate ${index} has invalid position or width`);
     }
     const parsedReward = UpgradeRewardSchema.safeParse(value.reward);
     if (!parsedReward.success) {
       throw new Error(`Simulation gate ${index} reward is invalid`);
     }
     const reward = parsedReward.data;
-    const base = { id: value.id, x: value.x, zOffset: value.zOffset, width: value.width,
-      hp: value.hp, maxHp: value.maxHp };
-    if (reward.mode === 'instant') {
-      if (Object.keys(value).length !== 7 || value.hp === 0) {
-        throw new Error(`Simulation gate ${index} completed instant reward must be removed`);
-      }
-      return { ...base, reward };
+    if (!Number.isSafeInteger(value.hitProgress) || (value.hitProgress as number) < 0
+      || (value.hitProgress as number) >= reward.hitsRequired) {
+      throw new Error(`Simulation gate ${index} hitProgress is invalid`);
     }
-    const cooldown = value.rewardCooldownRemainingSeconds;
-    if (Object.keys(value).length !== 8
-      || (value.hp > 0 && cooldown !== null)
-      || (value.hp === 0 && (typeof cooldown !== 'number' || !Number.isFinite(cooldown)
-        || cooldown < 0 || cooldown > reward.intervalSeconds))) {
-      throw new Error(`Simulation gate ${index} pickup reward timer is invalid`);
-    }
-    return { ...base, reward, rewardCooldownRemainingSeconds: cooldown as number | null };
+    return { id: value.id, x: value.x, zOffset: value.zOffset, width: value.width,
+      reward, hitProgress: value.hitProgress as number };
   });
 
   if (!Array.isArray(state.pickups)) throw new Error('Simulation pickups must be an array');
@@ -424,9 +410,7 @@ export class Simulation {
         tier2RifleCount: 0 }),
       enemies,
       enemyStream,
-      gates: level.upgradeGates.map((gate) => gate.reward.mode === 'pickup'
-        ? { ...gate, maxHp: gate.hp, reward: { ...gate.reward }, rewardCooldownRemainingSeconds: null }
-        : { ...gate, maxHp: gate.hp, reward: { ...gate.reward } }),
+      gates: level.upgradeGates.map((gate) => ({ ...gate, reward: { ...gate.reward }, hitProgress: 0 })),
       projectiles: [],
       pickups: [],
       nextPickupId: 1,
@@ -548,8 +532,6 @@ export class Simulation {
     const survivingProjectiles: ProjectileSimulationState[] = [];
     const travelingPickups = this.state.pickups.map((pickup) => ({ pickup: { ...pickup }, travelSeconds: dtSeconds }));
     let nextPickupId = this.state.nextPickupId;
-    // The breaking shot creates a plaque at the wall; later emissions use the timer.
-    const newlyBroken = new Set<string>();
     for (const projectile of projectiles) {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
@@ -557,10 +539,9 @@ export class Simulation {
       const hit = findFirstHit(projectile, endZ, enemies, gates, tuning, this.state.player.z, nextZ);
       if (hit) {
         if (hit.kind === 'gate') {
-          hit.gate.hp = Math.max(0, hit.gate.hp - projectile.damage);
-          if (hit.gate.hp === 0 && hit.gate.reward.mode === 'pickup') {
-            hit.gate.rewardCooldownRemainingSeconds = hit.gate.reward.intervalSeconds;
-            newlyBroken.add(hit.gate.id);
+          hit.gate.hitProgress++;
+          if (hit.gate.hitProgress === hit.gate.reward.hitsRequired) {
+            hit.gate.hitProgress = 0;
             if (!Number.isSafeInteger(nextPickupId + 1)) {
               throw new Error('Simulation pickup ID exceeds the supported range');
             }
@@ -568,9 +549,6 @@ export class Simulation {
               x: hit.gate.x, zOffset: hit.gate.zOffset, width: hit.gate.width,
               rewardKind: hit.gate.reward.kind, rewardAmount: hit.gate.reward.amount,
               dropSpeed: hit.gate.reward.dropSpeed }, travelSeconds: 0 });
-          } else if (hit.gate.hp === 0 && hit.gate.reward.mode === 'instant') {
-            squad = addRifleSoldiers(squad, hit.gate.reward.amount, 1);
-            gates.splice(gates.indexOf(hit.gate), 1);
           }
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
@@ -594,29 +572,6 @@ export class Simulation {
       }
       const remainingRange = projectile.remainingRange - travel;
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
-    }
-    // Emissions are timed within this step, so a large dt also advances newly born plaques.
-    for (const gate of gates) {
-      if (gate.reward.mode !== 'pickup' || gate.hp > 0 || newlyBroken.has(gate.id)) continue;
-      const cooldown = gate.rewardCooldownRemainingSeconds!;
-      const remaining = cooldown - dtSeconds;
-      const tolerance = gate.reward.intervalSeconds * 1e-12;
-      if (remaining > tolerance) {
-        gate.rewardCooldownRemainingSeconds = remaining;
-        continue;
-      }
-      const due = Math.floor((-remaining + tolerance) / gate.reward.intervalSeconds) + 1;
-      if (!Number.isSafeInteger(due) || due > 10_000 || !Number.isSafeInteger(nextPickupId + due)) {
-        throw new Error('Simulation step requests too many pickup emissions');
-      }
-      for (let ordinal = 0; ordinal < due; ordinal++) {
-        travelingPickups.push({ pickup: { id: nextPickupId++, sourceGateId: gate.id, x: gate.x,
-          zOffset: gate.zOffset, width: gate.width, rewardKind: gate.reward.kind,
-          rewardAmount: gate.reward.amount, dropSpeed: gate.reward.dropSpeed },
-        travelSeconds: Math.max(0, dtSeconds - cooldown - ordinal * gate.reward.intervalSeconds) });
-      }
-      gate.rewardCooldownRemainingSeconds = Math.max(0, Math.min(gate.reward.intervalSeconds,
-        remaining + due * gate.reward.intervalSeconds));
     }
     const survivingPickups: UpgradePickupSimulationState[] = [];
     for (const { pickup, travelSeconds } of travelingPickups.sort((a, b) => a.pickup.id - b.pickup.id)) {

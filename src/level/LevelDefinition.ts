@@ -44,19 +44,19 @@ const EnemyStreamSchema = z.strictObject({
   }
 });
 
-export const UpgradeRewardSchema = z.discriminatedUnion('mode', [
-  z.strictObject({ mode: z.literal('pickup'), kind: z.enum(['rifle', 'tier2Rifle']),
-    amount: positiveSafeInteger, intervalSeconds: z.number().finite().positive(),
-    dropSpeed: z.number().finite().positive() }),
-  z.strictObject({ mode: z.literal('instant'), kind: z.literal('rifle'), amount: positiveSafeInteger }),
-]);
+export const UpgradeRewardSchema = z.strictObject({
+  mode: z.literal('hitPickup'),
+  kind: z.enum(['rifle', 'tier2Rifle']),
+  amount: positiveSafeInteger,
+  hitsRequired: positiveSafeInteger,
+  dropSpeed: z.number().finite().positive(),
+});
 
 const UpgradeGateSchema = z.strictObject({
   id: nonEmptyId,
   x: z.number().finite(),
   zOffset: z.number().finite().positive(),
   width: z.number().finite().positive(),
-  hp: z.number().finite().positive(),
   reward: UpgradeRewardSchema,
 });
 

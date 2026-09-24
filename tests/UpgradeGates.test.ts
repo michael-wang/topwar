@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
-import type { EnemySimulationState, ProjectileSimulationState, SimulationState, UpgradePickupSimulationState } from '../src/simulation/SimulationState';
+import type { EnemySimulationState, ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
-const left = { id: 'left', x: -1, zOffset: 5, width: 1.5, hp: 6,
-  reward: { mode: 'pickup' as const, kind: 'rifle' as const, amount: 1, intervalSeconds: 1, dropSpeed: 4 } };
-const right = { id: 'right', x: 1, zOffset: 5, width: 1.5, hp: 9,
-  reward: { mode: 'pickup' as const, kind: 'tier2Rifle' as const, amount: 1, intervalSeconds: 1, dropSpeed: 4 } };
+const left = { id: 'left', x: -1, zOffset: 5, width: 1.5,
+  reward: { mode: 'hitPickup' as const, kind: 'rifle' as const, amount: 1, hitsRequired: 10, dropSpeed: 4 } };
+const right = { id: 'right', x: 1, zOffset: 5, width: 1.5,
+  reward: { mode: 'hitPickup' as const, kind: 'tier2Rifle' as const, amount: 1, hitsRequired: 100, dropSpeed: 4 } };
 const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [], upgradeGates: [left, right] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
@@ -16,272 +16,226 @@ const tuning: SimulationTuning = {
   rifle: { damage: 3, fireRate: 1, projectileSpeed: 10, range: 20 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 10, range: 20, blastRadius: 1.25 },
 };
-const create = (source = level) => new Simulation({ seed: 1, level: source, startSquad: 1, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
-const rifle = (id: number, x: number, damage = 3): ProjectileSimulationState =>
-  ({ id, kind: 'rifle', x, z: 0, speed: 10, damage, remainingRange: 20, blastRadius: 0 });
-const rocket = (id: number, x: number): ProjectileSimulationState =>
-  ({ id, kind: 'rocket', x, z: 0, speed: 10, damage: 15, remainingRange: 20, blastRadius: 1.25 });
+const create = (source = level, startSquad = 1) => new Simulation({ seed: 1, level: source,
+  startSquad, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
+const shot = (id: number, x: number, kind: ProjectileSimulationState['kind'] = 'rifle',
+  damage = 3): ProjectileSimulationState => ({ id, kind, x, z: 0, speed: 100,
+  damage, remainingRange: 20, blastRadius: kind === 'rocket' ? 1.25 : 0 });
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
-const pickup = (id: number, zOffset = 2): UpgradePickupSimulationState =>
-  ({ id, sourceGateId: 'left', x: -1, zOffset, width: 1.5,
-    rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 4 });
 
-function setProjectiles(simulation: Simulation, projectiles: ProjectileSimulationState[],
+function inject(simulation: Simulation, projectiles: ProjectileSimulationState[],
   enemies?: EnemySimulationState[]): void {
   const state = simulation.getState();
   if (enemies) state.enemies = enemies;
   state.projectiles = projectiles;
-  state.weapons.rifleCooldownRemainingSeconds = 10;
-  state.weapons.rocketCooldownRemainingSeconds = 10;
+  state.weapons.rifleCooldownRemainingSeconds = 100;
+  state.weapons.rocketCooldownRemainingSeconds = 100;
   state.weapons.nextProjectileId = Math.max(state.weapons.nextProjectileId,
-    1, ...projectiles.map((projectile) => projectile.id + 1));
+    ...projectiles.map((projectile) => projectile.id + 1));
   simulation.restoreState(state);
 }
 
-const step = (simulation: Simulation, dt = 1, overrides: Partial<SimulationTuning> = {}) =>
-  simulation.step(dt, { targetX: 0 }, { ...tuning, ...overrides });
+const step = (simulation: Simulation, dt = 0.1, targetX = 0,
+  changes: Partial<SimulationTuning> = {}) =>
+  simulation.step(dt, { targetX }, { ...tuning, ...changes });
 
-describe('persistent advertisement-style armories', () => {
-  it('materializes the opening stream horizon and two independent walls; retry restores both', () => {
+describe('persistent hit-count armories', () => {
+  it('materializes authored generators at 0 progress and Retry restores them with the enemy field', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const run = create(authored);
     const first = run.getState();
     expect(first.enemies.length).toBeGreaterThan(700);
-    expect(first.enemyStream?.nextEnemyId).toBe(first.enemies.length + 1);
-    expect(first.gates.map((gate) => [gate.id, gate.zOffset, gate.hp, gate.maxHp, gate.reward.mode])).toEqual([
-      ['rifle-generator', 8, 100, 100, 'pickup'], ['rifle-jackpot', 8, 1000, 1000, 'pickup'],
+    expect(first.gates.map((gate) => [gate.id, gate.reward.kind, gate.reward.hitsRequired,
+      gate.hitProgress])).toEqual([
+      ['rifle-generator', 'rifle', 10, 0], ['tier2-generator', 'tier2Rifle', 100, 0],
     ]);
-    expect(first.gates[0]).toHaveProperty('rewardCooldownRemainingSeconds', null);
-    setProjectiles(run, [rifle(1, -2.5)]);
+    inject(run, [shot(1, -2.5)]);
     step(run);
-    expect(run.getState().gates[0].hp).toBe(97);
+    expect(run.getState().gates[0].hitProgress).toBe(1);
     expect(create(authored).getState().gates).toEqual(first.gates);
     expect(create(authored).getState().enemies).toEqual(first.enemies);
   });
 
-  it('owns serializable gate state and rejects obsolete or invalid timers transactionally', () => {
+  it('owns JSON-serializable progress and rejects invalid restored values transactionally', () => {
     const simulation = create();
+    inject(simulation, [shot(1, -1)]);
+    step(simulation);
+    const saved = JSON.parse(JSON.stringify(simulation.getState())) as SimulationState;
+    const restored = create();
+    restored.restoreState(saved);
+    expect(restored.getState()).toEqual(saved);
     const exposed = simulation.getState();
-    exposed.gates[0].hp = 1;
-    exposed.gates[0].reward.amount = 9;
-    expect(simulation.getState().gates[0].hp).toBe(6);
-    const active = simulation.getState();
-    active.gates[0].hp = 0;
-    if (active.gates[0].reward.mode !== 'pickup') throw new Error('expected pickup gate');
-    active.gates[0].rewardCooldownRemainingSeconds = 0.75;
-    simulation.restoreState(JSON.parse(JSON.stringify(active)) as SimulationState);
-    const before = simulation.getState();
+    exposed.gates[0].hitProgress = 9;
+    exposed.gates[0].reward.hitsRequired = 20;
+    expect(simulation.getState().gates[0].hitProgress).toBe(1);
+    expect(simulation.getState().gates[0].reward.hitsRequired).toBe(10);
     for (const corrupt of [
-      (s: SimulationState) => { Object.assign(s.gates[0], { rewardsRemaining: 5 }); },
-      (s: SimulationState) => { Object.assign(s.gates[0].reward, { count: 5 }); },
-      (s: SimulationState) => { Object.assign(s.gates[0], { rewardCooldownRemainingSeconds: -1 }); },
-      (s: SimulationState) => { Object.assign(s.gates[0], { rewardCooldownRemainingSeconds: 3 }); },
-      (s: SimulationState) => { s.gates[0].hp = -1; },
-      (s: SimulationState) => { s.gates[1].id = s.gates[0].id; },
-      (s: SimulationState) => { Object.assign(s.gates[1], { rewardCooldownRemainingSeconds: 1 }); },
+      (state: SimulationState) => { state.gates[0].hitProgress = -1; },
+      (state: SimulationState) => { state.gates[0].hitProgress = 10; },
+      (state: SimulationState) => { state.gates[0].hitProgress = 0.5; },
+      (state: SimulationState) => { state.gates[0].hitProgress = Number.MAX_SAFE_INTEGER + 1; },
+      (state: SimulationState) => { state.gates[1].id = state.gates[0].id; },
+      (state: SimulationState) => { Object.assign(state.gates[0], { hp: 100 }); },
+      (state: SimulationState) => { Object.assign(state.gates[0], { rewardCooldownRemainingSeconds: 1 }); },
+      (state: SimulationState) => { Object.assign(state.gates[0].reward, { intervalSeconds: 1 }); },
     ]) {
-      const invalid = structuredClone(before);
+      const invalid = structuredClone(saved);
       corrupt(invalid);
       expect(() => simulation.restoreState(invalid)).toThrow();
-      expect(simulation.getState()).toEqual(before);
+      expect(simulation.getState()).toEqual(saved);
     }
   });
 
-  it('keeps both walls beside the player as forward position advances', () => {
+  it('keeps both targets at player-relative Z even after advancing beyond their original position', () => {
     const simulation = create();
-    for (let index = 0; index < 10; index++) step(simulation, 1, { forwardSpeed: 10,
+    for (let index = 0; index < 10; index++) step(simulation, 1, 0, { forwardSpeed: 10,
       rifle: { ...tuning.rifle, projectileSpeed: 1, range: 1 } });
     const state = simulation.getState();
     expect(state.player.z).toBe(100);
     expect(state.gates.map((gate) => state.player.z + gate.zOffset)).toEqual([105, 105]);
+    expect(state.gates.map((gate) => gate.hitProgress)).toEqual([0, 0]);
   });
 
-  it('sweeps intact walls and chooses the earliest enemy or wall hit', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1)]);
-    step(simulation, 1, { forwardSpeed: 2 });
-    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([3, 9]);
-    expect(simulation.getState().projectiles).toEqual([]);
+  it('uses swept moving-target collision, horizontal width, and earliest enemy or armory hit', () => {
+    const hit = create();
+    inject(hit, [shot(1, -1)]);
+    step(hit, 0.1, 0, { forwardSpeed: 2 });
+    expect(hit.getState().gates[0].hitProgress).toBe(1);
+    expect(hit.getState().projectiles).toEqual([]);
     const miss = create();
-    setProjectiles(miss, [rifle(1, 0)]);
+    inject(miss, [shot(1, 0)]);
     step(miss);
-    expect(miss.getState().gates.map((gate) => gate.hp)).toEqual([6, 9]);
+    expect(miss.getState().gates.map((gate) => gate.hitProgress)).toEqual([0, 0]);
     const fast = create();
-    setProjectiles(fast, [{ ...rifle(1, -1), speed: 100 }]);
-    step(fast, 0.1, { forwardSpeed: 2 });
-    expect(fast.getState().gates[0].hp).toBe(3);
+    inject(fast, [{ ...shot(1, -1), speed: 1000 }]);
+    step(fast, 0.01, 0, { forwardSpeed: 20 });
+    expect(fast.getState().gates[0].hitProgress).toBe(1);
     const nearerEnemy = create();
-    setProjectiles(nearerEnemy, [rifle(1, -1)], [grunt(1, -1, 5.8)]);
-    step(nearerEnemy, 1, { forwardSpeed: 2 });
+    inject(nearerEnemy, [shot(1, -1)], [grunt(1, -1, 4.3)]);
+    step(nearerEnemy);
     expect(nearerEnemy.getState().enemies).toEqual([]);
-    expect(nearerEnemy.getState().gates[0].hp).toBe(6);
-    const nearerWall = create();
-    setProjectiles(nearerWall, [rifle(1, -1)], [grunt(1, -1, 6.8)]);
-    step(nearerWall, 1, { forwardSpeed: 2 });
-    expect(nearerWall.getState().enemies).toEqual([grunt(1, -1, 6.8)]);
-    expect(nearerWall.getState().gates[0].hp).toBe(3);
+    expect(nearerEnemy.getState().gates[0].hitProgress).toBe(0);
+    const nearerGate = create();
+    inject(nearerGate, [shot(1, -1)], [grunt(1, -1, 6.8)]);
+    step(nearerGate);
+    expect(nearerGate.getState().enemies).toEqual([grunt(1, -1, 6.8)]);
+    expect(nearerGate.getState().gates[0].hitProgress).toBe(1);
   });
 
-  it('can hit the authored left armory from the legal left track edge', () => {
+  it('can hit the authored left target from the legal track edge', () => {
     const simulation = create(LevelDefinitionSchema.parse(authoredLevel));
-    const live = { ...tuning, moveSpeed: 5, forwardSpeed: 1.5,
-      rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 } };
-    for (let tick = 0; tick < 120; tick++) simulation.step(1 / 60, { targetX: -2.5 }, live);
-    expect(simulation.getState().gates[0].hp).toBeLessThan(100);
+    inject(simulation, [shot(1, -2.5)]);
+    step(simulation);
+    expect(simulation.getState().gates[0].hitProgress).toBe(1);
   });
 
-  it('emits no pickups while the generator wall still has HP', () => {
+  it('counts hits rather than damage and emits one pickup on each left threshold', () => {
     const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1)]);
+    inject(simulation, Array.from({ length: 9 }, (_, index) => shot(index + 1, -1,
+      index === 0 ? 'heavyRifle' : 'rifle', index === 0 ? 300 : 3)));
     step(simulation);
-    step(simulation, 5);
-    expect(simulation.getState().gates[0]).toMatchObject({ hp: 3,
-      rewardCooldownRemainingSeconds: null });
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
+    expect(simulation.getState().gates.map((gate) => gate.hitProgress)).toEqual([9, 0]);
     expect(simulation.getState().pickups).toEqual([]);
-  });
-
-  it('breaks the wall into an immediate pickup, then emits once per full interval', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6)]);
+    inject(simulation, [shot(10, -1, 'rocket', 15)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
-      rewardCooldownRemainingSeconds: 1 });
+    expect(simulation.getState().gates[0].hitProgress).toBe(0);
     expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'left',
-      x: -1, zOffset: 5, width: 1.5, rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 4 }]);
-    step(simulation, 0.5);
-    expect(simulation.getState().pickups).toHaveLength(1);
-    step(simulation, 0.5);
+      x: -1, zOffset: 5, rewardKind: 'rifle', rewardAmount: 1 }]);
+    expect(simulation.getState().squad.count).toBe(1);
+    inject(simulation, Array.from({ length: 10 }, (_, index) => shot(index + 11, -1, 'heavyRifle', 300)));
+    step(simulation);
+    expect(simulation.getState().gates[0].hitProgress).toBe(0);
     expect(simulation.getState().pickups.map((item) => item.id)).toEqual([1, 2]);
-    expect(simulation.getState().squad.count).toBe(1);
-    step(simulation, 1);
-    expect(simulation.getState().pickups.map((pickup) => pickup.id)).toEqual([2, 3]);
-    expect(simulation.getState().pickups[0].zOffset).toBe(1);
-    expect(simulation.getState().gates[0].hp).toBe(0);
-    expect(simulation.getState().gates[1].hp).toBe(9);
   });
 
-  it('lets projectiles pass through an active generator; missed plaques grant nothing', () => {
+  it('emits a right Tier-2 pickup every hundred hits without changing left progress', () => {
     const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6)]);
+    inject(simulation, [shot(1, -1)]);
     step(simulation);
-    setProjectiles(simulation, [{ ...rifle(2, -1), speed: 4 }]);
-    step(simulation, 2);
-    expect(simulation.getState().squad.count).toBe(1);
-    expect(simulation.getState().projectiles.map((projectile) => projectile.id)).toContain(2);
-    expect(simulation.getState().weapons.nextProjectileId).toBe(3);
-    step(simulation, 1);
-    expect(simulation.getState().pickups.map((pickup) => pickup.id)).toEqual([3, 4]);
-    expect(simulation.getState().squad.count).toBe(1);
-  });
-
-  it('restores timer, pickup IDs, and positions for deterministic future emissions', () => {
-    const first = create();
-    setProjectiles(first, [rifle(1, -1, 6)]);
-    step(first);
-    step(first, 0.75);
-    const second = create();
-    second.restoreState(JSON.parse(JSON.stringify(first.getState())) as SimulationState);
-    step(first, 1.25);
-    step(second, 1.25);
-    expect(second.getState()).toEqual(first.getState());
-    expect(first.getState().pickups.map((pickup) => pickup.id)).toEqual([2, 3]);
-    expect(first.getState().nextPickupId).toBe(4);
-    const exposed = first.getState();
-    exposed.pickups[0].x = 999;
-    expect(first.getState().pickups[0].x).toBe(-1);
-  });
-
-  it('emits at the one-second boundary with 60 Hz fixed steps', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6)]);
+    inject(simulation, Array.from({ length: 99 }, (_, index) => shot(index + 2, 1,
+      'heavyRifle', 300)));
     step(simulation);
-    for (let tick = 0; tick < 60; tick++) step(simulation, 1 / 60);
-    expect(simulation.getState().pickups).toHaveLength(2);
-    expect(simulation.getState().squad.count).toBe(1);
-  });
-
-  it('collects only a horizontal crossing and lets the new rifle fire next step', () => {
-    const simulation = create();
-    const state = simulation.getState();
-    state.pickups = [pickup(1)];
-    state.nextPickupId = 2;
-    state.weapons.rifleCooldownRemainingSeconds = 10;
-    simulation.restoreState(state);
-    simulation.step(1, { targetX: -2 }, { ...tuning, moveSpeed: 2 });
+    expect(simulation.getState().gates.map((gate) => gate.hitProgress)).toEqual([1, 99]);
     expect(simulation.getState().pickups).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().weapons.nextProjectileId).toBe(1);
-    const afterCollection = simulation.getState();
-    afterCollection.weapons.rifleCooldownRemainingSeconds = 0;
-    simulation.restoreState(afterCollection);
-    step(simulation, 0.1);
-    expect(simulation.getState().weapons.nextProjectileId).toBe(3);
+    inject(simulation, [shot(101, 1)]);
+    step(simulation);
+    expect(simulation.getState().gates.map((gate) => gate.hitProgress)).toEqual([1, 0]);
+    expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'right',
+      rewardKind: 'tier2Rifle', rewardAmount: 1, zOffset: 5 }]);
+    inject(simulation, Array.from({ length: 100 }, (_, index) => shot(index + 102, 1)));
+    step(simulation);
+    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([1, 2]);
+    expect(simulation.getState().gates.map((gate) => gate.hitProgress)).toEqual([1, 0]);
   });
 
-  it('moves an uncollected plaque by its captured relative speed', () => {
+  it('counts one direct rocket hit and no extra armory hits from its enemy-only blast', () => {
+    const nearby: LevelDefinition = { ...level, upgradeGates: [left,
+      { ...right, x: 0, width: 0.4 }] };
+    const simulation = create(nearby);
+    inject(simulation, [shot(1, -1, 'rocket', 15)], [grunt(1, -1.8, 5)]);
+    step(simulation);
+    expect(simulation.getState().gates.map((gate) => gate.hitProgress)).toEqual([1, 0]);
+    expect(simulation.getState().enemies).toEqual([]);
+  });
+
+  it('moves an uncollected pickup at its captured relative speed without time-based emissions', () => {
     const simulation = create();
-    const state = simulation.getState();
-    state.pickups = [pickup(1, 5)];
-    state.nextPickupId = 2;
-    state.weapons.rifleCooldownRemainingSeconds = 10;
-    simulation.restoreState(state);
+    inject(simulation, Array.from({ length: 10 }, (_, index) => shot(index + 1, -1)));
+    step(simulation);
     step(simulation, 0.25);
-    expect(simulation.getState().pickups[0].zOffset).toBe(4);
-    expect(simulation.getState().pickups[0].dropSpeed).toBe(4);
+    expect(simulation.getState().pickups).toMatchObject([{ id: 1, zOffset: 4, dropSpeed: 4 }]);
+    expect(simulation.getState().nextPickupId).toBe(2);
+    step(simulation, 1);
+    expect(simulation.getState().pickups).toEqual([]);
+    expect(simulation.getState().nextPickupId).toBe(2);
+    expect(simulation.getState().squad.count).toBe(1);
   });
 
-  it('does not collide projectiles or rocket splash with pickups', () => {
+  it('does not let projectiles or rocket splash hit pickup plaques', () => {
     const simulation = create();
     const state = simulation.getState();
-    state.pickups = [pickup(1, 5)];
+    state.pickups = [{ id: 1, sourceGateId: 'left', x: -1, zOffset: 5, width: 1.5,
+      rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 4 }];
     state.nextPickupId = 2;
     simulation.restoreState(state);
-    setProjectiles(simulation, [rocket(1, -1)], [grunt(1, -1, 4)]);
+    inject(simulation, [shot(1, -1, 'rocket', 15)], [grunt(1, -1, 4)]);
     step(simulation, 0.5);
     expect(simulation.getState().enemies).toEqual([]);
     expect(simulation.getState().pickups).toMatchObject([{ id: 1, zOffset: 3 }]);
     expect(simulation.getState().squad.count).toBe(1);
   });
 
-  it('removes missed fast pickups and resolves multiple crossings in ID order', () => {
+  it('sweeps high-speed pickup crossings and resolves collected and missed plaques in ID order', () => {
     const simulation = create();
     const state = simulation.getState();
-    state.pickups = [pickup(2, 1), { ...pickup(1, 1), x: 1 }];
+    state.pickups = [
+      { id: 2, sourceGateId: 'left', x: -1, zOffset: 1, width: 1.5,
+        rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 20 },
+      { id: 1, sourceGateId: 'right', x: 1, zOffset: 1, width: 1.5,
+        rewardKind: 'tier2Rifle', rewardAmount: 1, dropSpeed: 20 },
+    ];
     state.nextPickupId = 3;
-    state.weapons.rifleCooldownRemainingSeconds = 10;
+    state.weapons.rifleCooldownRemainingSeconds = 100;
     simulation.restoreState(state);
-    simulation.step(1, { targetX: -1 }, { ...tuning, moveSpeed: 4 });
+    step(simulation, 0.1, -1, { moveSpeed: 20 });
     expect(simulation.getState().pickups).toEqual([]);
-    expect(simulation.getState().squad.count).toBe(2);
-    expect(simulation.getState().nextPickupId).toBe(3);
+    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0 });
   });
 
-  it('catches up emissions during a large step without skipping IDs', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6)]);
-    step(simulation);
-    step(simulation, 3.25);
-    expect(simulation.getState().nextPickupId).toBe(5);
-    expect(simulation.getState().pickups.map((item) => [item.id, item.zOffset])).toEqual([[4, 4]]);
-    expect(simulation.getState().squad.count).toBe(1);
-  });
-
-  it('rejects invalid pickup restore transactionally', () => {
+  it('rejects corrupt pickup state without changing live state', () => {
     const simulation = create();
     const state = simulation.getState();
-    state.pickups = [pickup(1)];
+    state.pickups = [{ id: 1, sourceGateId: 'left', x: -1, zOffset: 2, width: 1.5,
+      rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 4 }];
     state.nextPickupId = 2;
     simulation.restoreState(state);
     const before = simulation.getState();
     for (const corrupt of [
-      (s: SimulationState) => { s.pickups.push({ ...pickup(1) }); },
-      (s: SimulationState) => { s.pickups[0].dropSpeed = 0; },
-      (s: SimulationState) => { s.pickups[0].zOffset = -1; },
-      (s: SimulationState) => { s.nextPickupId = 1; },
-      (s: SimulationState) => { Object.assign(s.pickups[0], { extra: true }); },
+      (candidate: SimulationState) => { candidate.pickups.push({ ...candidate.pickups[0] }); },
+      (candidate: SimulationState) => { candidate.pickups[0].dropSpeed = 0; },
+      (candidate: SimulationState) => { candidate.nextPickupId = 1; },
+      (candidate: SimulationState) => { Object.assign(candidate.pickups[0], { hp: 1 }); },
     ]) {
       const invalid = structuredClone(before);
       corrupt(invalid);
@@ -290,153 +244,56 @@ describe('persistent advertisement-style armories', () => {
     }
   });
 
-  it('freezes pickup emissions at zero squad and retry resets the wall', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6)]);
+  it('collects a physical Tier-1 plaque, normalizes 10:1, and fires its new heavy next step', () => {
+    const simulation = create(level, 9);
+    inject(simulation, Array.from({ length: 10 }, (_, index) => shot(index + 1, -1)));
     step(simulation);
-    const lost = simulation.getState();
-    lost.squad.count = 0;
-    simulation.restoreState(lost);
-    step(simulation, 10);
-    expect(simulation.getState().squad.count).toBe(0);
+    expect(simulation.getState().squad).toEqual({ count: 9, tier2RifleCount: 0, rocketCount: 0 });
     expect(simulation.getState().pickups).toHaveLength(1);
-    expect(simulation.getState().gates[0]).toEqual(lost.gates[0]);
-    expect(create().getState().gates[0]).toMatchObject({ hp: 6, rewardCooldownRemainingSeconds: null });
-  });
-
-  it('retains right-wall damage, emits Tier-2 immediately, and grants only on collection', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, 1)]);
-    step(simulation);
-    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([6, 6]);
-    setProjectiles(simulation, [rifle(2, 1, 9)]);
-    step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left', 'right']);
-    expect(simulation.getState().gates[1]).toMatchObject({ hp: 0, rewardCooldownRemainingSeconds: 1 });
-    expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'right',
-      x: 1, zOffset: 5, rewardAmount: 1, rewardKind: 'tier2Rifle' }]);
-    expect(simulation.getState().weapons.nextProjectileId).toBe(3);
-    step(simulation, 1);
-    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([1, 2]);
+    step(simulation, 1.25, -1, { moveSpeed: 2 });
+    expect(simulation.getState().pickups).toEqual([]);
+    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
     const state = simulation.getState();
-    state.player.x = 1;
+    state.weapons.rifleCooldownRemainingSeconds = 0;
     simulation.restoreState(state);
-    simulation.step(0.25, { targetX: 1 }, tuning);
-    expect(simulation.getState().squad.count).toBe(2);
-    expect(simulation.getState().squad.rocketCount).toBe(0);
-    expect(simulation.getState().squad.tier2RifleCount).toBe(1);
-    expect(simulation.getState().weapons.nextProjectileId).toBe(3);
-    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([2]);
-    const grown = simulation.getState();
-    grown.weapons.rifleCooldownRemainingSeconds = 0;
-    simulation.restoreState(grown);
-    step(simulation, 0.1);
-    expect(simulation.getState().weapons.nextProjectileId).toBe(5);
+    step(simulation, 0.01, -1);
+    expect(simulation.getState().projectiles.map((projectile) => projectile.kind)).toEqual(['heavyRifle']);
   });
 
-  it('spawns one immediate pickup when two projectiles cross the breaking wall', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, 1, 9), rifle(2, 1, 9)]);
-    step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['tier2Rifle']);
-    expect(simulation.getState().nextPickupId).toBe(2);
+  it('directly adds a Tier-2 only on collection and removes missed plaques without reward', () => {
+    const collected = create();
+    inject(collected, Array.from({ length: 100 }, (_, index) => shot(index + 1, 1)));
+    step(collected);
+    expect(collected.getState().squad.count).toBe(1);
+    step(collected, 1.25, 1, { moveSpeed: 2 });
+    expect(collected.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 0 });
+    const missed = create();
+    inject(missed, Array.from({ length: 100 }, (_, index) => shot(index + 1, 1)));
+    step(missed);
+    step(missed, 1.25);
+    expect(missed.getState().pickups).toEqual([]);
+    expect(missed.getState().squad).toEqual({ count: 1, tier2RifleCount: 0, rocketCount: 0 });
   });
 
-  it('misses a Tier-2 plaque outside its lane and continues generating later plaques', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, 1, 9)]);
-    step(simulation);
-    step(simulation, 1.25);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().pickups).toMatchObject([{ id: 2,
-      sourceGateId: 'right', rewardAmount: 1, rewardKind: 'tier2Rifle', zOffset: 4 }]);
-    step(simulation, 1);
-    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([3]);
-    expect(simulation.getState().gates[1].hp).toBe(0);
-  });
-
-  it('freezes both generators at Game Over and retry restores intact walls', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6), rifle(2, 1, 9)]);
-    step(simulation);
-    const lost = simulation.getState();
-    lost.squad.count = 0;
-    simulation.restoreState(lost);
-    const frozen = simulation.getState();
-    step(simulation, 5);
-    expect(simulation.getState().pickups).toEqual(frozen.pickups);
-    expect(simulation.getState().nextPickupId).toBe(frozen.nextPickupId);
-    expect(create().getState()).toMatchObject({ pickups: [], nextPickupId: 1 });
-    expect(create().getState().gates.map((gate) => gate.hp)).toEqual([6, 9]);
-  });
-
-  it('runs both generators independently after both walls break', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rifle(1, -1, 6), rifle(2, 1, 9)]);
-    step(simulation);
-    expect(simulation.getState().squad.count).toBe(1);
-    expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
-      rewardCooldownRemainingSeconds: 1 });
-    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['rifle', 'tier2Rifle']);
-    step(simulation, 1);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['rifle', 'tier2Rifle', 'rifle', 'tier2Rifle']);
-  });
-
-  it('requires all 1000 authored jackpot HP and keeps left investment independent', () => {
-    const simulation = create(LevelDefinitionSchema.parse(authoredLevel));
-    setProjectiles(simulation, [rifle(1, 2.5, 999)]);
-    step(simulation);
-    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([100, 1]);
-    setProjectiles(simulation, [rifle(2, 2.5, 1)]);
-    step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['rifle-generator', 'rifle-jackpot']);
-    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['tier2Rifle']);
-    expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().gates[1].hp).toBe(1000);
-  });
-
-  it('rocket direct hits damage walls and splash only nearby enemies', () => {
-    const simulation = create();
-    setProjectiles(simulation, [rocket(1, -1)], [grunt(1, -1, 5.4), grunt(2, 2, 5)]);
-    step(simulation);
-    expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([0, 9]);
-    expect(simulation.getState().enemies).toEqual([grunt(2, 2, 5)]);
-    expect(simulation.getState().squad.count).toBe(1);
-    expect(simulation.getState().gates[0]).toHaveProperty('rewardCooldownRemainingSeconds', 1);
-    const jackpot = create();
-    setProjectiles(jackpot, [rocket(1, 1)]);
-    step(jackpot);
-    expect(jackpot.getState().squad.count).toBe(1);
-    expect(jackpot.getState().gates.map((gate) => gate.hp)).toEqual([6, 0]);
-    expect(jackpot.getState().pickups.map((item) => item.rewardKind)).toEqual(['tier2Rifle']);
-  });
-
-  it('rejects unsafe pickup and instant growth without partially committing', () => {
-    for (const mode of ['pickup', 'instant'] as const) {
-      const instantLevel: LevelDefinition = { ...level, upgradeGates: [left,
-        { ...right, reward: { mode: 'instant', kind: 'rifle', amount: 99 } }] };
-      const simulation = create(mode === 'instant' ? instantLevel : level);
-      const state = simulation.getState();
-      const gate = state.gates.find((candidate) => candidate.reward.mode === mode)!;
-      gate.reward.amount = Number.MAX_SAFE_INTEGER;
-      if (mode === 'pickup') {
-        gate.hp = 0;
-        if (gate.reward.mode !== 'pickup') throw new Error('expected pickup gate');
-        gate.rewardCooldownRemainingSeconds = 1;
-        state.pickups = [{ ...pickup(1), x: 0, rewardAmount: Number.MAX_SAFE_INTEGER }];
-        state.nextPickupId = 2;
-      } else {
-        state.projectiles = [rifle(1, 1, 9)];
-        state.weapons.nextProjectileId = 2;
-      }
-      state.weapons.rifleCooldownRemainingSeconds = 10;
-      simulation.restoreState(state);
-      const before = simulation.getState();
-      expect(() => step(simulation)).toThrow(/reward exceeds/);
-      expect(simulation.getState()).toEqual(before);
+  it('restores partial hit progress for deterministic future hits and freezes at Game Over', () => {
+    const original = create();
+    inject(original, Array.from({ length: 7 }, (_, index) => shot(index + 1, -1)));
+    step(original);
+    const restored = create();
+    restored.restoreState(JSON.parse(JSON.stringify(original.getState())) as SimulationState);
+    for (const simulation of [original, restored]) {
+      inject(simulation, Array.from({ length: 3 }, (_, index) => shot(index + 8, -1)));
+      step(simulation);
     }
+    expect(restored.getState()).toEqual(original.getState());
+    expect(original.getState().pickups).toHaveLength(1);
+    const lost = original.getState();
+    lost.squad = { count: 0, rocketCount: 0, tier2RifleCount: 0 };
+    original.restoreState(lost);
+    const before = original.getState();
+    step(original, 1);
+    expect(original.getState().gates).toEqual(before.gates);
+    expect(original.getState().pickups).toEqual(before.pickups);
+    expect(original.getState().projectiles).toEqual(before.projectiles);
   });
 });

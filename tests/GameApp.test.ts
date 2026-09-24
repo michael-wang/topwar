@@ -278,21 +278,20 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
-  it('passes active gate HP and reward as plain render data', () => {
+  it('passes active gate hit progress and reward as plain render data', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
       enemies: [], projectiles: [], pickups: [{ id: 4, x: -2.7, zOffset: 2, rewardAmount: 1,
         rewardKind: 'rifle' }], gates: [{ id: 'rifle-generator',
-        x: -2.7, zOffset: 8, width: 0.9, hp: 70, maxHp: 100,
-        reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 },
-        rewardCooldownRemainingSeconds: null }] });
+        x: -2.7, zOffset: 8, width: 0.9, hitProgress: 7,
+        reward: { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 } }] });
     app.start();
     raf.frame(100);
     expect(mock.render.mock.lastCall![0]).toMatchObject({ gates: [{ id: 'rifle-generator',
-      x: -2.7, z: 11, width: 0.9, hp: 70, maxHp: 100, rewardMode: 'pickup',
-      rewardKind: 'rifle', rewardAmount: 1, rewardIntervalSeconds: 1 }],
+      x: -2.7, z: 11, width: 0.9, hitProgress: 7, hitsRequired: 10,
+      rewardKind: 'rifle', rewardAmount: 1 }],
       pickups: [{ id: 4, x: -2.7, z: 5, rewardAmount: 1, rewardKind: 'rifle' }] });
     app.dispose();
   });

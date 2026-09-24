@@ -22,18 +22,20 @@ describe('squad composition', () => {
     expect(() => afterCasualties({ count: 1, rocketCount: 1, tier2RifleCount: 1 }, 1)).toThrow();
   });
 
-  it('compresses complete hundreds of Tier-1 rifles and leaves other roles alone', () => {
+  it('compresses complete tens of Tier-1 rifles and leaves other roles alone', () => {
     const squad = (count: number, rocketCount = 0) =>
       normalizeRifleSquad({ count, rocketCount, tier2RifleCount: 0 });
-    expect(squad(99)).toEqual({ count: 99, rocketCount: 0, tier2RifleCount: 0 });
-    expect(squad(100)).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 1 });
-    expect(squad(101)).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 1 });
-    expect(squad(200)).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 2 });
-    expect(squad(250)).toEqual({ count: 52, rocketCount: 0, tier2RifleCount: 2 });
-    expect(squad(101, 1)).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 1 });
-    expect(tier1RifleCount(squad(250))).toBe(50);
-    expect(addRifleSoldiers(squad(99), 1, 1)).toEqual(squad(100));
-    expect(addRifleSoldiers(squad(200), 1, 2)).toEqual({ count: 3, rocketCount: 0,
+    expect(squad(9)).toEqual({ count: 9, rocketCount: 0, tier2RifleCount: 0 });
+    expect(squad(10)).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 1 });
+    expect(squad(11)).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 1 });
+    expect(squad(19)).toEqual({ count: 10, rocketCount: 0, tier2RifleCount: 1 });
+    expect(squad(20)).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 2 });
+    expect(squad(29)).toEqual({ count: 11, rocketCount: 0, tier2RifleCount: 2 });
+    expect(squad(100)).toEqual({ count: 10, rocketCount: 0, tier2RifleCount: 10 });
+    expect(squad(11, 1)).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 1 });
+    expect(tier1RifleCount(squad(29))).toBe(9);
+    expect(addRifleSoldiers(squad(9), 1, 1)).toEqual(squad(10));
+    expect(addRifleSoldiers(squad(20), 1, 2)).toEqual({ count: 3, rocketCount: 0,
       tier2RifleCount: 3 });
   });
 
@@ -43,5 +45,12 @@ describe('squad composition', () => {
     expect(afterCasualties(mixed, 2)).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 1 });
     expect(afterCasualties(mixed, 3)).toEqual({ count: 1, rocketCount: 1, tier2RifleCount: 0 });
     expect(afterCasualties(mixed, 4)).toEqual({ count: 0, rocketCount: 0, tier2RifleCount: 0 });
+  });
+
+  it('rejects reward growth beyond safe integer squad counts', () => {
+    const full = { count: Number.MAX_SAFE_INTEGER, rocketCount: 0,
+      tier2RifleCount: Number.MAX_SAFE_INTEGER };
+    expect(() => addRifleSoldiers(full, 1, 1)).toThrow(/supported range/);
+    expect(() => addRifleSoldiers(full, 1, 2)).toThrow(/supported range/);
   });
 });

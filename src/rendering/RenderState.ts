@@ -24,12 +24,10 @@ export interface UpgradeGateRenderState {
   x: number;
   z: number;
   width: number;
-  hp: number;
-  maxHp: number;
-  rewardMode: 'pickup' | 'instant';
   rewardKind: 'rifle' | 'tier2Rifle';
   rewardAmount: number;
-  rewardIntervalSeconds: number | null;
+  hitProgress: number;
+  hitsRequired: number;
 }
 
 export interface UpgradePickupRenderState {

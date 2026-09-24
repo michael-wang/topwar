@@ -11,8 +11,8 @@ export function tier1RifleCount(squad: SquadSimulationState): number {
 }
 
 export function normalizeRifleSquad(squad: SquadSimulationState): SquadSimulationState {
-  const upgrades = Math.floor(tier1RifleCount(squad) / 100);
-  return { count: squad.count - 99 * upgrades, rocketCount: squad.rocketCount,
+  const upgrades = Math.floor(tier1RifleCount(squad) / 10);
+  return { count: squad.count - 9 * upgrades, rocketCount: squad.rocketCount,
     tier2RifleCount: squad.tier2RifleCount + upgrades };
 }
 

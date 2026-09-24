@@ -4,7 +4,7 @@ import type { UpgradeGateRenderState } from '../RenderState';
 interface GateVisual {
   panel: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
   label: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | null;
-  hp: number;
+  hitProgress: number;
 }
 
 export class UpgradeGateRenderer {
@@ -30,20 +30,19 @@ export class UpgradeGateRenderer {
         const panel = new THREE.Mesh(this.wallGeometry,
           gate.rewardKind === 'rifle' ? this.generatorMaterial : this.jackpotMaterial);
         this.scene.add(panel);
-        visual = { panel, label: null, hp: NaN };
+        visual = { panel, label: null, hitProgress: NaN };
         this.visuals.set(gate.id, visual);
       }
       const visualX = -gate.x;
-      visual.panel.position.set(visualX, gate.hp > 0 ? 0.85 : 0.55, gate.z);
-      visual.panel.scale.set(gate.width, gate.hp > 0 ? 1 : 0.45, gate.hp > 0 ? 1 : 0.35);
-      if (visual.hp !== gate.hp) {
+      visual.panel.position.set(visualX, 0.85, gate.z);
+      visual.panel.scale.set(gate.width, 1, 1);
+      if (visual.hitProgress !== gate.hitProgress) {
         this.removeLabel(visual);
         visual.label = this.createLabel(gate);
-        visual.hp = gate.hp;
+        visual.hitProgress = gate.hitProgress;
       }
       if (visual.label) {
-        visual.label.position.set(visualX, gate.hp > 0 ? 1.02 : 0.55,
-          gate.z - (gate.hp > 0 ? 0.44 : 0.16));
+        visual.label.position.set(visualX, 1.02, gate.z - 0.44);
         visual.label.scale.x = gate.width * 1.45;
       }
     }
@@ -60,11 +59,7 @@ export class UpgradeGateRenderer {
 
   private createLabel(gate: UpgradeGateRenderState): GateVisual['label'] {
     const unit = gate.rewardKind === 'tier2Rifle' ? 'T2 RIFLE' : 'RIFLE';
-    const lines = gate.rewardMode === 'pickup'
-      ? gate.hp > 0
-        ? [`+${gate.rewardAmount} ${unit}`, `WALL ${Math.ceil(gate.hp)}`]
-        : [`+${gate.rewardAmount} ${unit}`, `EVERY ${gate.rewardIntervalSeconds}s`]
-      : [`+${gate.rewardAmount} ${unit}`, `WALL ${Math.ceil(gate.hp)}`];
+    const lines = [`+${gate.rewardAmount} ${unit}`, `HITS ${gate.hitProgress}/${gate.hitsRequired}`];
     const material = this.createTextMaterial(lines);
     if (!material) return null;
     const label = new THREE.Mesh(this.labelGeometry, material);

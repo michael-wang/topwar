@@ -17,7 +17,8 @@ const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth
   rifle: { damage: 3, fireRate: 0.1, projectileSpeed: 1, range: 1 },
   rocket: { damage: 15, fireRate: 0.1, projectileSpeed: 1, range: 1, blastRadius: 1.25 } };
 const create = (level = smallLevel, count = 20) => new Simulation({ seed: 17, level,
-  startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
+  // Keep the stream lifecycle tests at the same visible squad size after 10:1 rifle compression.
+  startSquad: count, startRocketCount: Math.max(0, count - 1), gruntHp: 3, bruteHp: 300 });
 const advance = (simulation: Simulation, dt = 1, forwardSpeed = 1) =>
   simulation.step(dt, { targetX: 2.5 }, { ...tuning, forwardSpeed });
 
@@ -206,6 +207,7 @@ describe('deterministic endless enemy stream', () => {
     advance(first, 2);
     const lost = first.getState();
     lost.squad.count = 0;
+    lost.squad.rocketCount = 0;
     first.restoreState(lost);
     const before = first.getState();
     advance(first, 10);
