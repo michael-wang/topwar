@@ -47,7 +47,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
   radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius'>,
   currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
-  piercedEnemyIds?: ReadonlySet<number>): ProjectileHit | undefined {
+  piercedEnemyIds?: ReadonlySet<number>, passedRewardIds?: ReadonlySet<number>): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
   const minimumZ = projectile.z + travel * minimumFraction;
@@ -68,7 +68,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     }
   }
   for (const reward of rewards) {
-    if ((reward.tier === 1 && projectile.kind !== 'rifle')
+    if (passedRewardIds?.has(reward.id) || projectile.kind === 'rocket'
       || (reward.tier === 2 && projectile.kind !== 'heavyRifle')) continue;
     const radius = reward.tier === 1 ? radii.gruntRadius : radii.bruteRadius;
     const dx = projectile.x - reward.x;
@@ -76,6 +76,9 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const halfChord = Math.sqrt(radius * radius - dx * dx);
     const entryZ = reward.z - halfChord;
     const exitZ = reward.z + halfChord;
+    // A penetrating shot counts only when it enters this reward, not again
+    // on a later tick that starts while it is still inside the collision circle.
+    if (projectile.kind === 'heavyRifle' && reward.tier === 1 && projectile.z >= entryZ) continue;
     if (exitZ < minimumZ || entryZ > endZ) continue;
     const hitZ = Math.max(minimumZ, entryZ);
     const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
@@ -614,9 +617,10 @@ export class Simulation {
       let minimumFraction = 0;
       let consumed = false;
       const piercedEnemyIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
+      const passedRewardIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
       while (true) {
         const hit = findFirstHit(projectile, endZ, enemies, streamRewards, gates, tuning,
-          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds);
+          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, passedRewardIds);
         if (!hit) break;
         if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
@@ -635,6 +639,12 @@ export class Simulation {
           if (hit.reward.hitProgress === hit.reward.hitsRequired) {
             streamRewards.splice(streamRewards.indexOf(hit.reward), 1);
             squad = addRifleSoldiers(squad, 1, hit.reward.tier);
+          }
+          if (projectile.kind === 'heavyRifle' && hit.reward.tier === 1) {
+            // A higher-tier hit counts once, then continues without spending penetration.
+            minimumFraction = hit.fraction;
+            passedRewardIds!.add(hit.reward.id);
+            continue;
           }
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;

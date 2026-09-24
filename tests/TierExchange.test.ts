@@ -65,15 +65,66 @@ describe('Tier-2 heavy rifle traversal', () => {
     }
   });
 
-  it('pierces a dense row behind a mismatched Tier-1 reward in one swept step', () => {
+  it('progresses a Tier-1 reward and pierces a dense row behind it in one swept step', () => {
     const simulation = setup([grunt(1, 10.6), grunt(2, 11.2), grunt(3, 11.8)],
       [reward(1, 1, 10)]);
     advance(simulation);
     const state = simulation.getState();
-    expect(state.streamRewards[0].hitProgress).toBe(0);
+    expect(state.streamRewards[0].hitProgress).toBe(1);
     expect(state.enemies).toEqual([]);
     expect(state.projectiles).toMatchObject([{ z: 20, remainingRange: 20,
       penetrationRemaining: 7 }]);
+  });
+
+  it('counts one heavy projectile only once when it remains inside a reward across ticks', () => {
+    const simulation = setup([], [reward(1, 1, 10)]);
+    advance(simulation, 0.1);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
+    expect(simulation.getState().projectiles).toMatchObject([{ z: 10,
+      penetrationRemaining: 10 }]);
+    advance(simulation, 0.01);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
+    expect(simulation.getState().projectiles).toMatchObject([{ z: 11,
+      penetrationRemaining: 10 }]);
+  });
+
+  it('counts ten heavy shots on one Tier-1 reward while each still pierces grunts behind', () => {
+    const simulation = setup([], [reward(1, 1, 10)]);
+    for (let volley = 0; volley < 10; volley++) {
+      const state = simulation.getState();
+      state.enemies = [grunt(volley * 3 + 1, 10.6), grunt(volley * 3 + 2, 11.2),
+        grunt(volley * 3 + 3, 11.8)];
+      state.enemyStream!.nextEnemyId = volley * 3 + 4;
+      state.projectiles = [{ ...shot(), id: volley + 1 }];
+      state.weapons.nextProjectileId = volley + 2;
+      simulation.restoreState(state);
+      advance(simulation);
+      const after = simulation.getState();
+      expect(after.enemies).toEqual([]);
+      expect(after.projectiles).toMatchObject([{ penetrationRemaining: 7, z: 20 }]);
+      if (volley < 9) expect(after.streamRewards[0].hitProgress).toBe(volley + 1);
+    }
+    expect(simulation.getState().streamRewards).toEqual([]);
+    expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 0, rocketCount: 0 });
+  });
+
+  it('unlocks a Tier-1 reward at 9/10, normalizes nine Tier-1 bodies, and continues the shot', () => {
+    const simulation = setup([grunt(1, 10.6)], [{ ...reward(1, 1, 10), hitProgress: 9 }]);
+    const ready = simulation.getState();
+    ready.squad = { count: 9, tier2RifleCount: 0, rocketCount: 0 };
+    simulation.restoreState(ready);
+    advance(simulation);
+    const after = simulation.getState();
+    expect(after.streamRewards).toEqual([]);
+    expect(after.squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
+    expect(after.enemies).toEqual([]);
+    expect(after.projectiles).toMatchObject([{ penetrationRemaining: 9, z: 20 }]);
+    expect(after.weapons.nextProjectileId).toBe(2);
+    const restored = create();
+    restored.restoreState(JSON.parse(JSON.stringify(after)) as SimulationState);
+    advance(simulation, 0.1);
+    advance(restored, 0.1);
+    expect(restored.getState()).toEqual(simulation.getState());
   });
 
   it('consumes the tenth Tier-1 penetration and cannot kill an eleventh', () => {
@@ -83,11 +134,11 @@ describe('Tier-2 heavy rifle traversal', () => {
     expect(simulation.getState().projectiles).toEqual([]);
   });
 
-  it('uses forward order for Tier-1, mismatched reward, and later Tier-1', () => {
+  it('uses forward order for Tier-1, lower-tier reward, and later Tier-1', () => {
     const simulation = setup([grunt(2, 10), grunt(1, 11.2)], [reward(1, 1, 10.6)]);
     advance(simulation);
     expect(simulation.getState().enemies).toEqual([]);
-    expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
     expect(simulation.getState().projectiles[0].penetrationRemaining).toBe(8);
   });
 

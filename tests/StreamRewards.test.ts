@@ -118,11 +118,11 @@ describe('endless stream reward placement', () => {
   });
 });
 
-describe('matching-tier reward combat and lifecycle', () => {
-  it('counts only Tier-1 rifle hits, regardless of damage, and awards on the tenth hit', () => {
+describe('tiered reward combat and lifecycle', () => {
+  it('counts Tier-1 rifle hits regardless of damage, and awards on the tenth hit', () => {
     const simulation = create(level, 9);
     const rewardX = simulation.getState().streamRewards[0].x;
-    prepare(simulation, [projectile(1, 'heavyRifle', rewardX), projectile(2, 'rocket', rewardX)]);
+    prepare(simulation, [projectile(2, 'rocket', rewardX)]);
     step(simulation);
     expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
     prepare(simulation, Array.from({ length: 9 }, (_, index) => projectile(index + 3, 'rifle', rewardX, 900)));
@@ -156,7 +156,6 @@ describe('matching-tier reward combat and lifecycle', () => {
   });
 
   it.each([
-    { tier: 1, kind: 'heavyRifle' },
     { tier: 1, kind: 'rocket' },
     { tier: 2, kind: 'rifle' },
     { tier: 2, kind: 'rocket' },
@@ -174,12 +173,10 @@ describe('matching-tier reward combat and lifecycle', () => {
     const after = simulation.getState();
     expect(after.streamRewards[0].hitProgress).toBe(0);
     expect(after.enemies).toEqual([]);
-    expect(after.projectiles).toEqual(kind === 'heavyRifle'
-      ? [{ ...projectile(1, kind, reward.x), z: 10, remainingRange: 30, penetrationRemaining: 9 }]
-      : []);
+    expect(after.projectiles).toEqual([]);
   });
 
-  it('keeps a mismatched shot in flight when no later target is hit', () => {
+  it('counts a higher-tier hit and keeps its shot in flight when no later target is hit', () => {
     const simulation = create();
     const state = simulation.getState();
     state.enemies = [];
@@ -187,9 +184,9 @@ describe('matching-tier reward combat and lifecycle', () => {
     const x = state.streamRewards[0].x;
     prepare(simulation, [projectile(1, 'heavyRifle', x)]);
     step(simulation);
-    expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
     expect(simulation.getState().projectiles).toMatchObject([
-      { id: 1, kind: 'heavyRifle', x, z: 10, remainingRange: 30 },
+      { id: 1, kind: 'heavyRifle', x, z: 10, remainingRange: 30, penetrationRemaining: 10 },
     ]);
   });
 
