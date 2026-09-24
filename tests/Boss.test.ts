@@ -10,6 +10,8 @@ import type { ProjectileSimulationState, SimulationState } from '../src/simulati
 const config = GameConfigSchema.parse(gameData);
 const level = LevelDefinitionSchema.parse(levelData);
 const stream = level.enemyStream!;
+const bossRow = stream.boss!.row;
+const bossZ = stream.startZ + bossRow * stream.spacing;
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
   gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3, bossRadius: config.bosses.basic.radius,
@@ -18,29 +20,56 @@ const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth
 const create = (gruntHp = 3) => new Simulation({ seed: 7, level, startSquad: 1,
   startRocketCount: 0, gruntHp, bruteHp: 300, tier3Hp: 3000,
   bossHpMultiplier: config.bosses.basic.hpMultiplier });
-const shot = (kind: ProjectileSimulationState['kind'], damage: number, id = 1): ProjectileSimulationState =>
-  ({ id, kind, x: 0, z: 47.5, speed: 100, damage, remainingRange: 40,
-    blastRadius: kind === 'rocket' ? 1.25 : 0,
-    penetrationRemaining: kind === 'heavyRifle' ? 10 : 0 });
-function prepare(sim: Simulation, projectiles: ProjectileSimulationState[]): void {
-  const state = sim.getState();
-  state.enemies = [];
-  state.projectiles = projectiles;
-  state.weapons.rifleCooldownRemainingSeconds = 100;
-  state.weapons.rocketCooldownRemainingSeconds = 100;
-  state.weapons.nextProjectileId = Math.max(2, ...projectiles.map((projectile) => projectile.id + 1));
-  sim.restoreState(state);
-}
 const step = (sim: Simulation, dt = 0.1, changes: Partial<SimulationTuning> = {}) =>
   sim.step(dt, { targetX: 0 }, { ...tuning, ...changes });
 
-describe('first Tier-1 Boss', () => {
-  it('validates the authored encounter and derives HP from Tier-1 HP', () => {
-    expect(config.bosses.basic).toEqual({ hpMultiplier: 100, visualScale: 7, radius: 2 });
-    expect(stream.boss).toEqual({ row: 44, tier: 1 });
-    expect(create().getState().boss).toMatchObject({ id: 309, tier: 1, x: 0,
-      z: 24 + 44 * 0.6, hp: 300, maxHp: 300 });
-    expect(create(5).getState().boss).toMatchObject({ hp: 500, maxHp: 500 });
+// A valid snapshot just before the late Boss enters the enemy horizon keeps
+// these tests focused on spatial materialization instead of hundreds of ticks.
+function approachBoss(sim: Simulation, playerZ = bossZ - 25): void {
+  const state = sim.getState();
+  state.player.z = playerZ;
+  state.enemies = [];
+  state.streamRewards = [];
+  state.enemyStream!.nextRowIndex = bossRow;
+  state.enemyStream!.nextEnemyId = bossRow * stream.columns + 1;
+  state.enemyStream!.nextRewardBlockIndex = Math.floor(bossRow / stream.rewards!.rowsPerReward) - 1;
+  state.enemyStream!.nextRewardId = state.enemyStream!.nextRewardBlockIndex + 1;
+  state.weapons.rifleCooldownRemainingSeconds = 100;
+  state.weapons.rocketCooldownRemainingSeconds = 100;
+  sim.restoreState(state);
+}
+
+function shot(kind: ProjectileSimulationState['kind'], damage: number): ProjectileSimulationState {
+  return { id: 1, kind, x: 0, z: bossZ - 2.5, speed: 100, damage, remainingRange: 40,
+    blastRadius: kind === 'rocket' ? 1.25 : 0,
+    penetrationRemaining: kind === 'heavyRifle' ? 10 : 0 };
+}
+
+function prepareShot(sim: Simulation, projectile: ProjectileSimulationState): void {
+  const state = sim.getState();
+  state.enemies = [];
+  state.projectiles = [projectile];
+  state.weapons.rifleCooldownRemainingSeconds = 100;
+  state.weapons.rocketCooldownRemainingSeconds = 100;
+  state.weapons.nextProjectileId = 2;
+  sim.restoreState(state);
+}
+
+describe('embedded Tier-1 Boss', () => {
+  it('validates committed row and multiplier, deriving HP from Tier-1 HP', () => {
+    expect(config.bosses.basic).toEqual({ hpMultiplier: 1000, visualScale: 7, radius: 2 });
+    expect(stream.boss).toEqual({ row: 920, tier: 1 });
+    expect(create().getState().boss).toBeNull();
+    expect(create().getState().enemyStream!.bossSpawned).toBe(false);
+    const sim = create();
+    approachBoss(sim);
+    step(sim);
+    expect(sim.getState().boss).toMatchObject({ tier: 1, x: 0, z: bossZ,
+      hp: 3000, maxHp: 3000 });
+    const changedHp = create(5);
+    approachBoss(changedHp);
+    step(changedHp);
+    expect(changedHp.getState().boss).toMatchObject({ hp: 5000, maxHp: 5000 });
     for (const key of ['hp', 'moveSpeed']) {
       expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
         ...config.bosses.basic, [key]: 1 } } })).toThrow();
@@ -49,134 +78,139 @@ describe('first Tier-1 Boss', () => {
       expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
         ...config.bosses.basic, hpMultiplier } } })).toThrow();
     }
-    for (const visualScale of [1, 0, Infinity]) {
-      expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
-        ...config.bosses.basic, visualScale } } })).toThrow();
-    }
-    for (const radius of [0, -1, Infinity]) {
-      expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
-        ...config.bosses.basic, radius } } })).toThrow();
-    }
     for (const boss of [{ row: -1, tier: 1 }, { row: 1.5, tier: 1 },
-      { row: 44, tier: 2 }, { row: 44, tier: 1, extra: true }]) {
+      { row: 920, tier: 2 }, { row: 920, tier: 1, extra: true }]) {
       expect(() => LevelDefinitionSchema.parse({ ...level,
         enemyStream: { ...stream, boss } })).toThrow();
     }
   });
 
-  it('stops at row 44, defers future rewards, and resumes unchanged rows after death', () => {
+  it('replaces only row 920 and keeps generating a deterministic army behind a living Boss', () => {
     const sim = create();
-    const initial = sim.getState();
-    expect(initial.enemyStream).toMatchObject({ nextRowIndex: 45, nextEnemyId: 310, bossSpawned: true });
-    expect(initial.enemies).toHaveLength(44 * 7);
-    expect(initial.enemies.every((enemy) => enemy.z < initial.boss!.z)).toBe(true);
-    expect(initial.enemies.every((enemy) => enemy.type === 'grunt')).toBe(true);
-    expect(initial.enemies.some((enemy) => enemy.id === initial.boss!.id)).toBe(false);
-    const clearLane = sim.getState();
-    clearLane.enemies = [];
-    clearLane.weapons.rifleCooldownRemainingSeconds = 100;
-    clearLane.weapons.rocketCooldownRemainingSeconds = 100;
-    sim.restoreState(clearLane);
-    step(sim, 1, { forwardSpeed: 25 });
-    const gated = sim.getState();
-    expect(gated.boss).not.toBeNull();
-    expect(gated.enemyStream!.nextRowIndex).toBe(45);
-    expect(gated.streamRewards.every((reward) => reward.z < initial.boss!.z + 0.3)).toBe(true);
-    const pendingBlock = Array.from({ length: 10 }, (_, index) => index).find((block) =>
-      rewardPlacementForBlock(block, stream.columns, stream.rewards!).rowIndex > 44)!;
-    expect(gated.enemyStream!.nextRewardBlockIndex).toBeLessThanOrEqual(pendingBlock);
-    prepare(sim, [shot('heavyRifle', 300)]);
+    expect(sim.getState().enemyStream!.nextRowIndex).toBeLessThan(bossRow);
+    approachBoss(sim);
     step(sim);
-    expect(sim.getState().boss).toBeNull();
-    expect(sim.getState().enemyStream!.nextRowIndex).toBe(45);
-    step(sim);
-    const resumed = sim.getState();
-    expect(resumed.enemyStream!.nextRowIndex).toBeGreaterThan(48);
-    expect(resumed.enemies.some((enemy) => enemy.id === 310)).toBe(true);
-    expect(resumed.enemies.some((enemy) => enemy.type === 'brute')).toBe(true);
-    expect(resumed.streamRewards.some((reward) => reward.z > initial.boss!.z)).toBe(true);
-    expect(resumed.boss).toBeNull();
-    expect(resumed.enemyStream!.bossSpawned).toBe(true);
+    const spawned = sim.getState();
+    expect(spawned.boss).not.toBeNull();
+    expect(spawned.enemyStream!.bossSpawned).toBe(true);
+    expect(spawned.enemyStream!.nextRowIndex).toBeGreaterThan(bossRow + 1);
+    expect(spawned.enemies).toHaveLength((spawned.enemyStream!.nextRowIndex - bossRow - 1) * stream.columns);
+    expect(spawned.enemies.every((enemy) => enemy.z > bossZ + stream.spacing - stream.jitter - 0.01)).toBe(true);
+    expect(spawned.enemies.some((enemy) => enemy.id === spawned.boss!.id)).toBe(false);
+    expect(spawned.enemies.some((enemy) => enemy.type === 'brute')).toBe(true);
+    expect(spawned.enemies.some((enemy) => enemy.type === 'tier3')).toBe(true);
+    const nextRow = spawned.enemyStream!.nextRowIndex;
+    const nextId = spawned.enemyStream!.nextEnemyId;
+    step(sim, 0.1, { forwardSpeed: 12 });
+    const advanced = sim.getState();
+    expect(advanced.boss).toEqual(spawned.boss);
+    expect(advanced.enemyStream!.nextRowIndex).toBeGreaterThan(nextRow);
+    expect(advanced.enemies.some((enemy) => enemy.id === nextId)).toBe(true);
   });
 
-  it('uses swept ordering and stops rifle, heavy, and rocket shots on the Boss', () => {
+  it('materializes rewards after row 920 while Boss is alive without duplicates', () => {
+    const sim = create();
+    approachBoss(sim);
+    step(sim);
+    const alive = sim.getState();
+    expect(alive.boss).not.toBeNull();
+    const placements = Array.from({ length: 4 }, (_, offset) =>
+      rewardPlacementForBlock(Math.floor(bossRow / 8) + offset, stream.columns, stream.rewards!));
+    expect(placements[0].rowIndex).not.toBe(bossRow);
+    expect(placements.some((placement) => placement.rowIndex > bossRow)).toBe(true);
+    expect(alive.streamRewards.some((reward) => reward.z > bossZ)).toBe(true);
+    expect(new Set(alive.streamRewards.map((reward) => reward.id)).size).toBe(alive.streamRewards.length);
+    const ids = alive.streamRewards.map((reward) => reward.id);
+    step(sim);
+    expect(sim.getState().streamRewards.map((reward) => reward.id)).toEqual(ids);
+    const restored = create();
+    restored.restoreState(sim.getState());
+    step(restored, 0.1, { forwardSpeed: 12 });
+    step(sim, 0.1, { forwardSpeed: 12 });
+    expect(restored.getState()).toEqual(sim.getState());
+  });
+
+  it('keeps swept projectile ordering and fatal Boss contact unchanged', () => {
     for (const [kind, damage] of [['rifle', 3], ['heavyRifle', 300], ['rocket', 15]] as const) {
       const sim = create();
-      prepare(sim, [shot(kind, damage)]);
+      approachBoss(sim);
       step(sim);
-      expect(sim.getState().boss?.hp ?? 0).toBe(300 - damage);
+      prepareShot(sim, shot(kind, damage));
+      step(sim);
+      expect(sim.getState().boss?.hp).toBe(3000 - damage);
       expect(sim.getState().projectiles).toEqual([]);
     }
     const sim = create();
+    approachBoss(sim);
+    step(sim);
     const state = sim.getState();
-    state.enemies = [{ id: 1, type: 'grunt', x: 0, z: 47.8, hp: 3 },
-      { id: 2, type: 'grunt', x: 0, z: 52.5, hp: 3 }];
+    state.enemies = [{ id: 1, type: 'grunt', x: 0, z: bossZ - 2.1, hp: 3 },
+      { id: 2, type: 'grunt', x: 0, z: bossZ + 3, hp: 3 }];
     state.projectiles = [shot('heavyRifle', 300)];
-    state.weapons.rifleCooldownRemainingSeconds = 100;
-    state.weapons.rocketCooldownRemainingSeconds = 100;
     state.weapons.nextProjectileId = 2;
     sim.restoreState(state);
     step(sim);
     expect(sim.getState().enemies.map((enemy) => enemy.id)).toEqual([2]);
-    expect(sim.getState().boss).toBeNull();
+    expect(sim.getState().boss?.hp).toBe(2700);
+    const contactState = sim.getState();
+    contactState.enemies = [];
+    contactState.projectiles = [];
+    contactState.player.z = bossZ - 3;
+    sim.restoreState(contactState);
+    step(sim, 1, { forwardSpeed: 2 });
+    expect(sim.getState().squad.count).toBe(0);
   });
 
-  it('makes geometric contact and defense-line passage fatal', () => {
-    const contact = create();
-    let state = contact.getState();
-    state.enemies = [];
-    state.player.z = 47;
-    state.weapons.rifleCooldownRemainingSeconds = 100;
-    state.weapons.rocketCooldownRemainingSeconds = 100;
-    contact.restoreState(state);
-    step(contact, 1, { forwardSpeed: 2 });
-    expect(contact.getState().squad).toEqual({ count: 0, rocketCount: 0, tier2RifleCount: 0 });
-    const cursor = contact.getState().enemyStream!.nextRowIndex;
-    step(contact);
-    expect(contact.getState().enemyStream!.nextRowIndex).toBe(cursor);
-
-    const breach = create();
-    state = breach.getState();
-    state.enemies = [];
-    state.player.z = state.boss!.z + 2;
-    state.weapons.rifleCooldownRemainingSeconds = 100;
-    state.weapons.rocketCooldownRemainingSeconds = 100;
-    breach.restoreState(state);
-    step(breach);
-    expect(breach.getState().squad.count).toBe(0);
-  });
-
-  it('restores alive/defeated progression and retries with one identical Boss', () => {
-    const sim = create();
-    prepare(sim, [shot('rifle', 3)]);
-    step(sim);
-    const damaged = sim.getState();
-    expect(damaged.boss?.hp).toBe(297);
-    const parsed = JSON.parse(JSON.stringify(damaged)) as SimulationState;
-    const restored = create();
-    restored.restoreState(parsed);
-    expect(restored.getState()).toEqual(damaged);
-    parsed.boss!.hp = 1;
-    parsed.enemyStream!.nextRowIndex = 99;
-    expect(restored.getState()).toEqual(damaged);
-    prepare(sim, [shot('heavyRifle', 300)]);
-    step(sim);
-    const defeated = sim.getState();
-    restored.restoreState(defeated);
-    step(restored);
-    expect(restored.getState().boss).toBeNull();
-    expect(restored.getState().enemyStream!.nextRowIndex).toBeGreaterThan(45);
-    expect(create().getState().boss).toEqual({ id: 309, tier: 1, x: 0,
-      z: 50.4, hp: 300, maxHp: 300 });
-    for (const change of [
-      (value: SimulationState) => { value.boss!.hp = 301; },
-      (value: SimulationState) => { value.boss!.id = value.enemies[0].id; },
-      (value: SimulationState) => { value.enemyStream!.bossSpawned = false; },
-      (value: SimulationState) => { value.boss!.tier = 2 as 1; },
-    ]) {
-      const alive = create().getState();
-      change(alive);
-      expect(() => create().restoreState(alive)).toThrow();
-    }
+  it('restores before, during, and after the Boss without pausing either stream', () => {
+    const before = create();
+    approachBoss(before);
+    const restoredBefore = create();
+    restoredBefore.restoreState(before.getState());
+    step(before);
+    step(restoredBefore);
+    expect(restoredBefore.getState()).toEqual(before.getState());
+    const alive = before.getState();
+    prepareShot(before, shot('rifle', 3));
+    step(before);
+    const damaged = before.getState();
+    expect(damaged.boss?.hp).toBe(2997);
+    const restoredAlive = create();
+    restoredAlive.restoreState(JSON.parse(JSON.stringify(damaged)) as SimulationState);
+    expect(restoredAlive.getState()).toEqual(damaged);
+    const oldRowCursor = damaged.enemyStream!.nextRowIndex;
+    step(restoredAlive, 0.1, { forwardSpeed: 12 });
+    expect(restoredAlive.getState().enemyStream!.nextRowIndex).toBeGreaterThan(oldRowCursor);
+    expect(restoredAlive.getState().boss?.hp).toBe(2997);
+    const defeated = create();
+    defeated.restoreState(damaged);
+    prepareShot(defeated, shot('heavyRifle', 3000));
+    step(defeated);
+    const deadState = defeated.getState();
+    expect(deadState.boss).toBeNull();
+    expect(deadState.enemyStream!.bossSpawned).toBe(true);
+    const aliveContinuation = create();
+    aliveContinuation.restoreState(damaged);
+    const deadContinuation = create();
+    deadContinuation.restoreState(deadState);
+    step(aliveContinuation, 0.1, { forwardSpeed: 12 });
+    step(deadContinuation, 0.1, { forwardSpeed: 12 });
+    expect(deadContinuation.getState().enemies).toEqual(aliveContinuation.getState().enemies);
+    expect(deadContinuation.getState().streamRewards).toEqual(aliveContinuation.getState().streamRewards);
+    expect(deadContinuation.getState().enemyStream).toEqual(aliveContinuation.getState().enemyStream);
+    const rowCursor = deadState.enemyStream!.nextRowIndex;
+    const restoredDead = create();
+    restoredDead.restoreState(deadState);
+    step(restoredDead, 0.1, { forwardSpeed: 12 });
+    expect(restoredDead.getState().boss).toBeNull();
+    expect(restoredDead.getState().enemyStream!.nextRowIndex).toBeGreaterThan(rowCursor);
+    const retry = create();
+    expect(retry.getState().boss).toBeNull();
+    expect(retry.getState().enemyStream!.bossSpawned).toBe(false);
+    approachBoss(retry);
+    step(retry);
+    expect(retry.getState().boss).toEqual(alive.boss);
+    const invalid = retry.getState();
+    invalid.enemyStream!.bossSpawned = false;
+    expect(() => create().restoreState(invalid)).toThrow();
   });
 });

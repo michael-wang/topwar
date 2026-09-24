@@ -153,7 +153,6 @@ function validSquadCount(count: unknown): count is number {
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number, tier3Hp: number,
   boss: BossSimulationState | null, bossHpMultiplier: number | undefined): BossSimulationState | null {
-  if (boss) return boss;
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
@@ -168,7 +167,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       boss = { id: cursor.nextEnemyId++, tier: 1, x: 0, z: rowZ, hp: maxHp, maxHp };
       cursor.bossSpawned = true;
       cursor.nextRowIndex++;
-      break;
+      continue;
     }
     if (!Number.isSafeInteger(cursor.nextRowIndex + 1)
       || !Number.isSafeInteger(cursor.nextEnemyId + stream.columns)) {
@@ -209,14 +208,13 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
 }
 
 function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number, boss: BossSimulationState | null): void {
+  stream: EnemyStreamDefinition, playerZ: number): void {
   const definition = stream.rewards;
   if (!definition) return;
   const horizonZ = playerZ + definition.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation reward stream horizon is non-finite');
   while (true) {
     const placement = rewardPlacementForBlock(cursor.nextRewardBlockIndex, stream.columns, definition);
-    if (boss && stream.boss && placement.rowIndex > stream.boss.row) break;
     const rowZ = stream.startZ + placement.rowIndex * stream.spacing;
     if (!Number.isFinite(rowZ)) throw new Error('Simulation reward row position is non-finite');
     if (rowZ > horizonZ) break;
@@ -567,7 +565,7 @@ export class Simulation {
     if (enemyStream && level.enemyStream) {
       boss = extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp,
         options.bruteHp, options.tier3Hp, boss, this.bossHpMultiplier);
-      extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0, boss);
+      extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
     }
     this.state = {
       tick: 0,
@@ -658,7 +656,7 @@ export class Simulation {
     if (enemyStream && this.enemyStreamDefinition) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.gruntHp, this.bruteHp, this.tier3Hp, boss, this.bossHpMultiplier);
-      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, boss);
+      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };

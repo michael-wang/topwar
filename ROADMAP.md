@@ -6,7 +6,7 @@
 - Normal enemy tiers share one body size and radius (0.30). Color signals tier: Tier-1 is muted brick red (3 HP); Tier-2 is saturated red (300 HP), begins at row 48, and reaches full probability at row 960; Tier-3 is magenta (3000 HP), is guaranteed once at row 360, overlaps the Tier-2 ramp, and fully saturates at row 1320.
 - Ten Tier-1 player rifles normalize into one Tier-2 rifle. Its 300-damage heavy shot pierces up to ten Tier-1 enemies and stops on Tier-2 or Tier-3. One Tier-2 rifle has ten Tier-1 defensive points; Tier-3 contact or breach currently costs ten points too.
 - Every eight enemy rows offer one deterministic, random-looking side reward. Rewards materialize 30 units ahead while enemies extend 96 units ahead. Rewards are Tier-1 before row 960 and Tier-2 from row 960 onward.
-- A giant Tier-1 Boss at row 44 gates the stream before the first Tier-2 reveal at row 48. Its HP derives from Tier-1 HP × the authored 100 multiplier; defeating it resumes the stream.
+- A giant Tier-1 Boss replaces row 920, late in the Tier-2 transition. Its HP derives from Tier-1 HP × the authored 1000 multiplier, while enemy and reward streams continue behind it.
 - Primitive humanoids use planted player firing poses, recoil and muzzle flashes, enemy walking, enemy hit flashes, and gray backward deaths. Audio is limited to reward acquisition and throttled enemy death yelps. Game Over leads directly to Retry.
 
 ## NOW

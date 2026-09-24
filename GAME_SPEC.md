@@ -47,7 +47,7 @@ The next product pass focuses on the payoff of repeated actions: **enemy kill, r
 
 ## First Boss encounter
 
-Level 001 has one giant Tier-1-colored Boss at **row 44**, before the first Tier-2 enemy reveal at row 48. It has visual scale **7**, gameplay radius **2.0**, and HP derived from Tier-1 HP × the authored **100** multiplier (currently 300 HP). Normal rows from row 44 onward and rewards selected after row 44 wait while it lives. Boss contact is fatal; defeating it resumes the stream at row 45. The Boss has no attacks or reward. Later tier Bosses are not implemented and will be designed only after this encounter is validated.
+Level 001 has one giant Tier-1-colored Boss at **row 920**, late in the Tier-1 to Tier-2 transition and 40 rows before full Tier-2 probability. It has visual scale **7**, gameplay radius **2.0**, and HP derived from Tier-1 HP × the authored **1000** multiplier (currently 3000 HP). The Boss replaces only its own seven-enemy row; normal enemies and rewards continue materializing behind it while it lives. Boss contact is fatal. The Boss has no attacks or reward. Later tier Bosses are not implemented and will be designed only after this encounter is validated.
 
 ## Development principles
 

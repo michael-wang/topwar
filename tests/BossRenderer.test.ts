@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { BossRenderer, bossWalkPose } from '../src/rendering/boss/BossRenderer';
 import type { BossRenderState } from '../src/rendering/RenderState';
 
-const boss: BossRenderState = { id: 309, tier: 1, x: 0.5, z: 50.4,
-  hp: 300, maxHp: 300, visualScale: 7 };
+const boss: BossRenderState = { id: 6441, tier: 1, x: 0.5, z: 576,
+  hp: 3000, maxHp: 3000, visualScale: 7 };
 
 describe('BossRenderer', () => {
   it('shows one giant Tier-1 humanoid with a walking pose and a readable HP ratio', () => {
@@ -17,25 +17,25 @@ describe('BossRenderer', () => {
     expect(active.children).toHaveLength(8);
     expect(active.scale.x).toBe(7);
     expect(active.position.x).toBe(-0.5);
-    expect(active.position.z).toBe(50.4);
+    expect(active.position.z).toBe(576);
     expect(((active.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
       .color.getHexString()).toBe('9b6863');
     expect(((active.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial)
       .color.getHexString()).toBe('bd8580');
-    const pose = bossWalkPose(309, 100);
+    const pose = bossWalkPose(6441, 100);
     expect(pose.leftArm).toBeCloseTo(-pose.rightArm);
     expect(pose.leftLeg).toBeCloseTo(-pose.rightLeg);
     const armAngle = active.children[2].rotation.x;
     renderer.update(boss, 300);
     expect(active.children[2].rotation.x).not.toBeCloseTo(armAngle);
-    expect(active.position.z).toBe(50.4);
-    renderer.update({ ...boss, hp: 150 }, 301);
+    expect(active.position.z).toBe(576);
+    renderer.update({ ...boss, hp: 1500 }, 301);
     expect((active.children[7] as THREE.Mesh).scale.x).toBeCloseTo(0.5);
     for (const part of active.children.slice(0, 6) as THREE.Mesh[]) {
       expect(((part.material as THREE.MeshStandardMaterial).color.getHexString()))
         .toBe(part === active.children[1] ? 'fff8d6' : 'ffe36e');
     }
-    renderer.update({ ...boss, hp: 150 }, 400);
+    renderer.update({ ...boss, hp: 1500 }, 400);
     expect(((active.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
       .color.getHexString()).toBe('9b6863');
     renderer.dispose();
@@ -57,7 +57,7 @@ describe('BossRenderer', () => {
     const dispose = vi.spyOn(gray, 'dispose');
     renderer.update(null, 450);
     expect(death.scale.x).toBe(7);
-    expect(death.position.z).toBeGreaterThan(50.4);
+    expect(death.position.z).toBeGreaterThan(576);
     expect(death.rotation.x).toBeGreaterThan(0);
     renderer.update(null, 900);
     expect(death.visible).toBe(false);
