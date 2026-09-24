@@ -5,7 +5,10 @@ interface RewardVisual {
   panel: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
   label: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | null;
   hitProgress: number;
+  pulseStartedAtMs: number | null;
 }
+
+const PULSE_MS = 100;
 
 export class StreamRewardRenderer {
   private readonly panelGeometry = new THREE.BoxGeometry(0.65, 1.25, 0.22);
@@ -22,7 +25,7 @@ export class StreamRewardRenderer {
 
   constructor(private readonly scene: THREE.Scene) {}
 
-  update(rewards: readonly StreamRewardRenderState[]): void {
+  update(rewards: readonly StreamRewardRenderState[], nowMs = performance.now()): void {
     const active = new Set(rewards.map((reward) => reward.id));
     for (const [id, visual] of this.visuals) {
       if (!active.has(id)) {
@@ -36,28 +39,38 @@ export class StreamRewardRenderer {
         const panel = new THREE.Mesh(this.panelGeometry,
           reward.tier === 1 ? this.tier1Material : this.tier2Material);
         this.scene.add(panel);
-        visual = { panel, label: null, hitProgress: NaN };
+        visual = { panel, label: null, hitProgress: NaN, pulseStartedAtMs: null };
         this.visuals.set(reward.id, visual);
       }
       const x = -reward.x;
       visual.panel.position.set(x, 0.7, reward.z);
-      visual.panel.scale.setScalar(reward.tier === 1 ? 1 : 1.25);
       if (visual.hitProgress !== reward.hitProgress) {
+        if (reward.hitProgress > visual.hitProgress) visual.pulseStartedAtMs = nowMs;
         this.removeLabel(visual);
         visual.label = this.createLabel(reward);
         visual.hitProgress = reward.hitProgress;
       }
+      const pulseProgress = visual.pulseStartedAtMs === null
+        ? 1 : Math.min(1, Math.max(0, (nowMs - visual.pulseStartedAtMs) / PULSE_MS));
+      if (pulseProgress === 1) visual.pulseStartedAtMs = null;
+      const pulseScale = 1 + 0.12 * (1 - pulseProgress);
+      const baseScale = reward.tier === 1 ? 1 : 1.25;
+      visual.panel.scale.setScalar(baseScale * pulseScale);
       if (visual.label) {
         visual.label.position.set(x, reward.tier === 1 ? 0.8 : 0.95,
           reward.z - (reward.tier === 1 ? 0.145 : 0.18));
-        visual.label.scale.setScalar(reward.tier === 1 ? 1 : 1.2);
+        visual.label.scale.setScalar((reward.tier === 1 ? 1 : 1.2) * pulseScale);
       }
     }
   }
 
-  dispose(): void {
+  reset(): void {
     for (const visual of this.visuals.values()) this.remove(visual);
     this.visuals.clear();
+  }
+
+  dispose(): void {
+    this.reset();
     this.panelGeometry.dispose();
     this.labelGeometry.dispose();
     this.tier1Material.dispose();

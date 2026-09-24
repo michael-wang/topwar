@@ -27,6 +27,7 @@ body {
 .game-over-overlay:not([hidden]) {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -35,6 +36,34 @@ body {
   color: white;
   font-family: sans-serif;
   text-align: center;
+}
+
+.damage-flash-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.damage-flash-overlay--normal {
+  background: #ef2929;
+  animation: damage-flash-normal 120ms ease-out forwards;
+}
+
+.damage-flash-overlay--fatal {
+  background: #a90d16;
+  animation: damage-flash-fatal 220ms ease-out forwards;
+}
+
+@keyframes damage-flash-normal {
+  from { opacity: 0.34; }
+  to { opacity: 0; }
+}
+
+@keyframes damage-flash-fatal {
+  from { opacity: 0.65; }
+  to { opacity: 0; }
 }
 
 .game-over-overlay h1 { margin: 0; font-size: clamp(2rem, 8vw, 3rem); }

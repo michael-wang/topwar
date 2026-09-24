@@ -5,6 +5,28 @@ import { StreamRewardRenderer } from '../src/rendering/rewards/StreamRewardRende
 describe('StreamRewardRenderer', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it('pulses only when progress rises and settles without rebuilding unchanged labels', () => {
+    const scene = new THREE.Scene();
+    const renderer = new StreamRewardRenderer(scene);
+    const reward = { id: 1, tier: 1 as const, x: 0, z: 10, hitProgress: 0, hitsRequired: 10 };
+    renderer.update([reward], 1000);
+    const panel = scene.children[0] as THREE.Mesh;
+    expect(panel.scale.x).toBe(1);
+    renderer.update([{ ...reward, hitProgress: 1 }], 1010);
+    expect(panel.scale.x).toBeCloseTo(1.12);
+    renderer.update([{ ...reward, hitProgress: 1 }], 1060);
+    expect(panel.scale.x).toBeCloseTo(1.06);
+    renderer.update([{ ...reward, hitProgress: 1 }], 1120);
+    expect(panel.scale.x).toBe(1);
+    renderer.update([{ ...reward, hitProgress: 1 }], 1130);
+    expect(panel.scale.x).toBe(1);
+    renderer.update([{ ...reward, hitProgress: 2 }], 1140);
+    expect(panel.scale.x).toBeCloseTo(1.12);
+    renderer.reset();
+    expect(scene.children).toHaveLength(0);
+    renderer.dispose();
+  });
+
   it('renders distinct stationary Tier-1 and Tier-2 panels and reuses them by ID', () => {
     const scene = new THREE.Scene();
     const renderer = new StreamRewardRenderer(scene);

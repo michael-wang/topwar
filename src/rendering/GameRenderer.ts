@@ -112,6 +112,11 @@ export class GameRenderer {
     this.renderer.render(this.scene, this.camera);
   }
 
+  resetFeedback(): void {
+    this.enemyRenderer.reset();
+    this.streamRewardRenderer.reset();
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.stopResizeHandling();

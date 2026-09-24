@@ -305,6 +305,8 @@ Later feel tools may include:
 
 Use restraint. Readability wins.
 
+Current minimum combat feedback is a short enemy hit flash, a gray flip on death, a reward impact pulse, and a red screen flash for player damage or loss.
+
 ## 16. Development UX requirements
 
 This is part of the game spec.

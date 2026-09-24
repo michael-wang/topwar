@@ -60,4 +60,5 @@ export interface EnemyRenderState {
   type: 'grunt' | 'brute';
   x: number;
   z: number;
+  hp: number;
 }

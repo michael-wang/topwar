@@ -23,12 +23,16 @@ const mock = vi.hoisted(() => ({
     projectiles: [{ id: 1, kind: 'rifle' as 'rifle' | 'heavyRifle' | 'rocket', x: 2, z: 5 }],
   })),
   render: vi.fn(),
+  resetFeedback: vi.fn(),
   startResizeHandling: vi.fn(),
   stopResizeHandling: vi.fn(),
   dispose: vi.fn(),
   overlayConstructedWith: vi.fn(),
   overlayVisible: vi.fn(),
   overlayDispose: vi.fn(),
+  damageFlash: vi.fn(),
+  damageReset: vi.fn(),
+  damageDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
   inputStop: vi.fn(),
@@ -54,9 +58,18 @@ vi.mock('../src/simulation/Simulation', () => ({
 vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
+    resetFeedback = mock.resetFeedback;
     startResizeHandling = mock.startResizeHandling;
     stopResizeHandling = mock.stopResizeHandling;
     dispose = mock.dispose;
+  },
+}));
+
+vi.mock('../src/ui/DamageFlashOverlay', () => ({
+  DamageFlashOverlay: class {
+    flash = mock.damageFlash;
+    reset = mock.damageReset;
+    dispose = mock.damageDispose;
   },
 }));
 
@@ -225,7 +238,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 },
       squad: { count: 3, rocketCount: 0, tier2RifleCount: 0, formationSpacing: 0.8 },
       track: { halfWidth: 2.5, defenseLineZ: 1.5 },
-      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
+      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 }],
       streamRewards: [],
       gates: [],
       pickups: [],
@@ -238,7 +251,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 },
       squad: { count: 3, rocketCount: 0, tier2RifleCount: 0, formationSpacing: 1.2 },
       track: { halfWidth: 2.5, defenseLineZ: 1.5 },
-      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
+      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 }],
       streamRewards: [],
       gates: [],
       pickups: [],
@@ -249,7 +262,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(config.listenerCount()).toBe(0);
   });
 
-  it('passes brute identity and position through plain render state without HP', () => {
+  it('passes brute HP through plain render state for hit feedback', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
@@ -260,7 +273,7 @@ describe('GameApp config and frame lifecycle', () => {
     app.start();
     raf.frame(100);
     expect(mock.render.mock.lastCall![0].enemies).toEqual([
-      { id: 673, type: 'brute', x: 0.1, z: 81.6 },
+      { id: 673, type: 'brute', x: 0.1, z: 81.6, hp: 300 },
     ]);
     expect(mock.render.mock.lastCall![0].streamRewards).toEqual([
       { id: 2, tier: 1, x: -0.8, z: 30, hitProgress: 3, hitsRequired: 10 },
@@ -362,7 +375,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 },
       squad: { count: 3, rocketCount: 0, tier2RifleCount: 0, formationSpacing: 0.9 },
       track: { halfWidth: 2.5, defenseLineZ: 1.5 },
-      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12 }],
+      enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 }],
       streamRewards: [],
       gates: [],
       pickups: [],
@@ -551,5 +564,35 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenCalledTimes(priorSteps + 1);
     expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 0 });
     app.dispose();
+  });
+
+  it('flashes on Tier-2 demotion and fatal loss, ignores growth, and resets on Retry', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const stateWith = (count: number, tier2RifleCount: number) => ({
+      player: { x: 0, z: 0 }, squad: { count, rocketCount: 0, tier2RifleCount },
+      enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
+    });
+    app.start();
+    mock.getState.mockReturnValueOnce(stateWith(1, 1));
+    raf.frame(100);
+    expect(mock.damageFlash).not.toHaveBeenCalled();
+    mock.getState.mockReturnValueOnce(stateWith(9, 0));
+    raf.frame(100 + 1000 / 60);
+    expect(mock.damageFlash).toHaveBeenLastCalledWith(false);
+    mock.getState.mockReturnValueOnce(stateWith(10, 0));
+    raf.frame(100 + 2 * 1000 / 60);
+    expect(mock.damageFlash).toHaveBeenCalledTimes(1);
+    mock.getState.mockReturnValueOnce(stateWith(0, 0));
+    raf.frame(100 + 3 * 1000 / 60);
+    expect(mock.damageFlash).toHaveBeenLastCalledWith(true);
+    const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
+    onRetry();
+    expect(mock.damageReset).toHaveBeenCalledOnce();
+    expect(mock.resetFeedback).toHaveBeenCalledOnce();
+    raf.frame(100 + 4 * 1000 / 60);
+    expect(mock.damageFlash).toHaveBeenCalledTimes(2);
+    app.dispose();
+    expect(mock.damageDispose).toHaveBeenCalledOnce();
   });
 });

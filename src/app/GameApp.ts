@@ -8,6 +8,8 @@ import type { LevelDefinition } from '../level/LevelDefinition';
 import { GameRenderer } from '../rendering/GameRenderer';
 import type { GameRenderState } from '../rendering/RenderState';
 import { Simulation } from '../simulation/Simulation';
+import { damageFeedback, squadDefenseValue } from './combatFeedback';
+import { DamageFlashOverlay } from '../ui/DamageFlashOverlay';
 import { GameOverOverlay } from '../ui/GameOverOverlay';
 
 export class GameApp {
@@ -15,6 +17,7 @@ export class GameApp {
   private readonly fixedStepLoop = new FixedStepLoop();
   private simulation: Simulation;
   private readonly gameOverOverlay: GameOverOverlay;
+  private readonly damageFlash: DamageFlashOverlay;
   private readonly dragInput: PointerDragInput;
   private readonly mouseInput: MouseSteeringInput;
   private readonly keyboardInput: KeyboardSteeringInput;
@@ -25,6 +28,7 @@ export class GameApp {
   private rebaseMouseTarget = false;
   private frameId: number | null = null;
   private previousFrameTimestampMs: number | null = null;
+  private previousDefenseValue: number;
   private running = false;
   private disposed = false;
 
@@ -38,8 +42,11 @@ export class GameApp {
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
     });
-    this.targetX = this.simulation.getState().player.x;
+    const initialState = this.simulation.getState();
+    this.targetX = initialState.player.x;
+    this.previousDefenseValue = squadDefenseValue(initialState.squad);
     this.renderer = new GameRenderer(viewport);
+    this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
       onDragStart: () => {
@@ -108,6 +115,7 @@ export class GameApp {
     this.mouseInput.dispose();
     this.keyboardInput.dispose();
     this.gameOverOverlay.dispose();
+    this.damageFlash.dispose();
     this.renderer.dispose();
     this.disposed = true;
   }
@@ -122,12 +130,16 @@ export class GameApp {
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
     });
-    this.targetX = this.simulation.getState().player.x;
+    const initialState = this.simulation.getState();
+    this.targetX = initialState.player.x;
+    this.previousDefenseValue = squadDefenseValue(initialState.squad);
     this.dragStartPlayerX = this.targetX;
     this.rebaseMouseTarget = true;
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.gameOverOverlay.setVisible(false);
+    this.damageFlash.reset();
+    this.renderer.resetFeedback();
   }
 
   private readonly renderFrame = (timestampMs: number): void => {
@@ -153,6 +165,10 @@ export class GameApp {
       },
     ));
     const state = this.simulation.getState();
+    const currentDefenseValue = squadDefenseValue(state.squad);
+    const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
+    if (feedback) this.damageFlash.flash(feedback === 'fatal');
+    this.previousDefenseValue = currentDefenseValue;
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
@@ -160,7 +176,8 @@ export class GameApp {
         formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth,
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
-      enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type, x: enemy.x, z: enemy.z })),
+      enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type,
+        x: enemy.x, z: enemy.z, hp: enemy.hp })),
       streamRewards: state.streamRewards.map((reward) => ({ ...reward })),
       gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
         rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount,

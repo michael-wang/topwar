@@ -1,14 +1,34 @@
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 
+const HIT_FLASH_MS = 80;
+const DEATH_MS = 450;
+const MAX_DEATH_VISUALS = 48;
+
+interface DeathVisual {
+  group: THREE.Group;
+  startedAtMs: number;
+}
+
 export class EnemyRenderer {
   private readonly bodyGeometry = new THREE.CylinderGeometry(0.14, 0.21, 0.52, 8);
   private readonly headGeometry = new THREE.SphereGeometry(0.18, 8, 6);
-  private readonly gruntBodyMaterial = new THREE.MeshStandardMaterial({ color: '#c93332' });
-  private readonly gruntHeadMaterial = new THREE.MeshStandardMaterial({ color: '#f15a4c' });
-  private readonly bruteBodyMaterial = new THREE.MeshStandardMaterial({ color: '#761a22' });
-  private readonly bruteHeadMaterial = new THREE.MeshStandardMaterial({ color: '#ab3034' });
+  private readonly gruntBodyMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly gruntHeadMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly bruteBodyMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly bruteHeadMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly deathBodyMaterial = new THREE.MeshStandardMaterial({ color: '#777b7c' });
+  private readonly deathHeadMaterial = new THREE.MeshStandardMaterial({ color: '#a3a5a3' });
+  private readonly gruntBodyColor = new THREE.Color('#c93332');
+  private readonly gruntHeadColor = new THREE.Color('#f15a4c');
+  private readonly bruteBodyColor = new THREE.Color('#761a22');
+  private readonly bruteHeadColor = new THREE.Color('#ab3034');
+  private readonly flashBodyColor = new THREE.Color('#ffe36e');
+  private readonly flashHeadColor = new THREE.Color('#fff8d6');
   private readonly transform = new THREE.Object3D();
+  private readonly previousEnemies = new Map<number, EnemyRenderState>();
+  private readonly flashUntilMs = new Map<number, number>();
+  private readonly deathVisuals: DeathVisual[] = [];
   private gruntBody: THREE.InstancedMesh;
   private gruntHead: THREE.InstancedMesh;
   private bruteBody: THREE.InstancedMesh;
@@ -24,7 +44,22 @@ export class EnemyRenderer {
     this.scene.add(this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead);
   }
 
-  update(enemies: readonly EnemyRenderState[]): void {
+  update(enemies: readonly EnemyRenderState[], nowMs = performance.now()): void {
+    const currentIds = new Set(enemies.map((enemy) => enemy.id));
+    for (const previous of this.previousEnemies.values()) {
+      if (!currentIds.has(previous.id)) {
+        this.spawnDeath(previous, nowMs);
+        this.flashUntilMs.delete(previous.id);
+      }
+    }
+    for (const enemy of enemies) {
+      const previous = this.previousEnemies.get(enemy.id);
+      if (previous && enemy.hp < previous.hp) this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
+      this.previousEnemies.set(enemy.id, { ...enemy });
+    }
+    for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
+    this.updateDeaths(nowMs);
+
     let gruntCount = 0;
     for (const enemy of enemies) if (enemy.type === 'grunt') gruntCount++;
     const bruteCount = enemies.length - gruntCount;
@@ -39,6 +74,12 @@ export class EnemyRenderer {
       const index = isBrute ? bruteIndex++ : gruntIndex++;
       const body = isBrute ? this.bruteBody : this.gruntBody;
       const head = isBrute ? this.bruteHead : this.gruntHead;
+      const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
+      if (!flashing) this.flashUntilMs.delete(enemy.id);
+      body.setColorAt(index, flashing ? this.flashBodyColor
+        : isBrute ? this.bruteBodyColor : this.gruntBodyColor);
+      head.setColorAt(index, flashing ? this.flashHeadColor
+        : isBrute ? this.bruteHeadColor : this.gruntHeadColor);
       const scale = isBrute ? 1.9 : 1;
       this.transform.scale.setScalar(scale);
       // Match the squad's visual X flip for the camera that looks along +Z.
@@ -51,11 +92,22 @@ export class EnemyRenderer {
     }
     for (const mesh of [this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead]) {
       mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
+  }
+
+  reset(): void {
+    this.previousEnemies.clear();
+    this.flashUntilMs.clear();
+    for (const visual of this.deathVisuals) visual.group.visible = false;
   }
 
   dispose(): void {
     this.scene.remove(this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead);
+    for (const visual of this.deathVisuals) this.scene.remove(visual.group);
+    this.deathVisuals.length = 0;
+    this.previousEnemies.clear();
+    this.flashUntilMs.clear();
     for (const mesh of [this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead]) mesh.dispose();
     this.bodyGeometry.dispose();
     this.headGeometry.dispose();
@@ -63,6 +115,44 @@ export class EnemyRenderer {
     this.gruntHeadMaterial.dispose();
     this.bruteBodyMaterial.dispose();
     this.bruteHeadMaterial.dispose();
+    this.deathBodyMaterial.dispose();
+    this.deathHeadMaterial.dispose();
+  }
+
+  private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {
+    let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
+    if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
+      const group = new THREE.Group();
+      const body = new THREE.Mesh(this.bodyGeometry, this.deathBodyMaterial);
+      body.position.y = 0.32;
+      const head = new THREE.Mesh(this.headGeometry, this.deathHeadMaterial);
+      head.position.y = 0.75;
+      group.add(body, head);
+      this.scene.add(group);
+      visual = { group, startedAtMs: nowMs };
+      this.deathVisuals.push(visual);
+    }
+    if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
+      candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+    visual.startedAtMs = nowMs;
+    visual.group.visible = true;
+    visual.group.scale.setScalar(enemy.type === 'brute' ? 1.9 : 1);
+    visual.group.position.set(-enemy.x, 0, enemy.z);
+    visual.group.rotation.set(0, 0, 0);
+  }
+
+  private updateDeaths(nowMs: number): void {
+    for (const visual of this.deathVisuals) {
+      if (!visual.group.visible) continue;
+      const elapsed = nowMs - visual.startedAtMs;
+      if (elapsed >= DEATH_MS) {
+        visual.group.visible = false;
+        continue;
+      }
+      const progress = Math.max(0, elapsed / DEATH_MS);
+      visual.group.rotation.x = -Math.PI * progress;
+      visual.group.position.y = Math.sin(Math.PI * progress) * 0.35;
+    }
   }
 
   private createMesh(geometry: THREE.BufferGeometry, material: THREE.Material, capacity: number): THREE.InstancedMesh {
