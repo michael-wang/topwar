@@ -13,14 +13,15 @@ const level: LevelDefinition = { id: 'stream-reward-test', length: 20, enemyGrou
     rewards: rewardConfig } };
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
-  gruntRadius: 0.3, gruntContactDamage: 1, bruteRadius: 0.55, bruteContactDamage: 1,
+  gruntRadius: 0.3, bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 7, level: source,
   startSquad, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
 const projectile = (id: number, kind: ProjectileSimulationState['kind'], x: number,
   damage = kind === 'heavyRifle' ? 300 : 3): ProjectileSimulationState => ({ id, kind, x,
-    z: 0, speed: 100, damage, remainingRange: 40, blastRadius: kind === 'rocket' ? 1.25 : 0 });
+    z: 0, speed: 100, damage, remainingRange: 40, blastRadius: kind === 'rocket' ? 1.25 : 0,
+    penetrationRemaining: kind === 'heavyRifle' ? 10 : 0 });
 
 function prepare(simulation: Simulation, shots: ProjectileSimulationState[] = []): void {
   const state = simulation.getState();
@@ -173,7 +174,9 @@ describe('matching-tier reward combat and lifecycle', () => {
     const after = simulation.getState();
     expect(after.streamRewards[0].hitProgress).toBe(0);
     expect(after.enemies).toEqual([]);
-    expect(after.projectiles).toEqual([]);
+    expect(after.projectiles).toEqual(kind === 'heavyRifle'
+      ? [{ ...projectile(1, kind, reward.x), z: 10, remainingRange: 30, penetrationRemaining: 9 }]
+      : []);
   });
 
   it('keeps a mismatched shot in flight when no later target is hit', () => {

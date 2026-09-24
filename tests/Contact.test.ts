@@ -6,15 +6,15 @@ import type { EnemySimulationState, ProjectileSimulationState } from '../src/sim
 const level: LevelDefinition = { id: 'contact-test', length: 20, enemyGroups: [], upgradeGates: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
-  bruteRadius: 0.55, bruteContactDamage: 1,
+  memberRadius: 0.22, gruntRadius: 0.3, bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
 const shot = (id: number, x = 0, z = 0): ProjectileSimulationState =>
-  ({ id, kind: 'rifle', x, z, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 });
+  ({ id, kind: 'rifle', x, z, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0,
+    penetrationRemaining: 0 });
 
 function simulationWith(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = [], rocketCount = 0) {
   const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 300 });
@@ -92,9 +92,9 @@ describe('Enemy contact casualties', () => {
     expect(both.getState().enemies).toEqual([]);
   });
 
-  it('uses configured integer contact damage and clamps casualties at zero', () => {
+  it('uses one Tier-1 defense point and clamps casualties at zero', () => {
     const simulation = simulationWith(1, [grunt(1, 0, 0)]);
-    simulation.step(0.1, { targetX: 0 }, { ...tuning, gruntContactDamage: 2 });
+    simulation.step(0.1, { targetX: 0 }, tuning);
     expect(simulation.getState().squad.count).toBe(0);
     expect(simulation.getState().enemies).toEqual([]);
   });
@@ -133,8 +133,6 @@ describe('Enemy contact casualties', () => {
     for (const invalid of [
       { ...tuning, memberRadius: 0 },
       { ...tuning, memberRadius: Infinity },
-      { ...tuning, gruntContactDamage: 0 },
-      { ...tuning, gruntContactDamage: 1.5 },
     ]) {
       expect(() => simulation.step(0.1, { targetX: 0 }, invalid)).toThrow();
       expect(simulation.getState()).toEqual(before);

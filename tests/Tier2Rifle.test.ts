@@ -12,8 +12,7 @@ const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: config.track.halfWidth,
   defenseLineOffset: config.track.defenseLineOffset, formationSpacing: config.player.formationSpacing,
   memberRadius: config.player.memberRadius, gruntRadius: config.enemies.grunt.radius,
-  gruntContactDamage: config.enemies.grunt.contactDamage,
-  bruteRadius: config.enemies.brute.radius, bruteContactDamage: config.enemies.brute.contactDamage,
+  bruteRadius: config.enemies.brute.radius,
   rifle: { ...config.weapon.rifle, fireRate: 0.1 }, rocket: { ...config.weapon.rocket },
 };
 const create = (count: number, rocketCount = 0, level = emptyLevel) => new Simulation({
@@ -36,7 +35,7 @@ function combat(enemies: EnemySimulationState[], projectile: ProjectileSimulatio
 }
 
 const heavy = (damage = 300): ProjectileSimulationState => ({ id: 1, kind: 'heavyRifle',
-  x: 0, z: 0, speed: 28, damage, remainingRange: 40, blastRadius: 0 });
+  x: 0, z: 0, speed: 28, damage, remainingRange: 40, blastRadius: 0, penetrationRemaining: 10 });
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
 
@@ -95,15 +94,16 @@ describe('Tier-2 rifle compression', () => {
     expect(first.getState().projectiles.every((projectile) => projectile.blastRadius === 0)).toBe(true);
   });
 
-  it('kills one brute or grunt with a direct shot but neither pierces nor splashes', () => {
+  it('stops at a brute but pierces Tier-1 grunts without splashing', () => {
     const brute: EnemySimulationState = { id: 1, type: 'brute', x: 0, z: 5, hp: 300 };
     const simulation = combat([brute, grunt(2, 0, 6), grunt(3, 1, 5)], heavy());
     step(simulation, 0.2);
     expect(simulation.getState().enemies).toEqual([grunt(2, 0, 6), grunt(3, 1, 5)]);
     expect(simulation.getState().projectiles).toEqual([]);
     const fodder = combat([grunt(1, 0, 5), grunt(2, 0, 6)], heavy());
-    step(fodder, 0.2);
-    expect(fodder.getState().enemies).toEqual([grunt(2, 0, 6)]);
+    step(fodder, 0.25);
+    expect(fodder.getState().enemies).toEqual([]);
+    expect(fodder.getState().projectiles[0].penetrationRemaining).toBe(8);
   });
 
   it('counts one heavy direct armory hit regardless of captured damage', () => {

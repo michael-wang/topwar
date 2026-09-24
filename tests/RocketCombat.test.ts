@@ -10,8 +10,7 @@ const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: config.track.halfWidth,
   defenseLineOffset: config.track.defenseLineOffset,
   formationSpacing: config.player.formationSpacing, memberRadius: config.player.memberRadius,
-  gruntRadius: config.enemies.grunt.radius, gruntContactDamage: config.enemies.grunt.contactDamage,
-  bruteRadius: config.enemies.brute.radius, bruteContactDamage: config.enemies.brute.contactDamage,
+  gruntRadius: config.enemies.grunt.radius, bruteRadius: config.enemies.brute.radius,
   rifle: { ...config.weapon.rifle }, rocket: { ...config.weapon.rocket },
 };
 
@@ -28,7 +27,8 @@ function grunt(id: number, x: number, z: number, hp = 3): EnemySimulationState {
 }
 
 function rocket(id = 1, blastRadius = 1.25): ProjectileSimulationState {
-  return { id, kind: 'rocket', x: 0, z: 0, speed: 10, damage: 3, remainingRange: 18, blastRadius };
+  return { id, kind: 'rocket', x: 0, z: 0, speed: 10, damage: 3, remainingRange: 18,
+    blastRadius, penetrationRemaining: 0 };
 }
 
 function withCombat(enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[]): Simulation {
@@ -107,7 +107,7 @@ describe('rocket blast', () => {
 
   it('removes several base grunts immediately and lets later shots pass dead enemies', () => {
     const rifle: ProjectileSimulationState = { id: 2, kind: 'rifle', x: 0, z: 0,
-      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 };
+      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0, penetrationRemaining: 0 };
     const simulation = withCombat([grunt(1, 0, 5), grunt(2, 0.8, 5), grunt(3, 0, 7)], [rocket(), rifle]);
     step(simulation, 1);
     expect(simulation.getState().enemies).toEqual([]);
@@ -116,7 +116,7 @@ describe('rocket blast', () => {
 
   it('aims a later rocket at survivors after an earlier rifle kill in the same tick', () => {
     const rifle: ProjectileSimulationState = { id: 1, kind: 'rifle', x: 0, z: 0,
-      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 };
+      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0, penetrationRemaining: 0 };
     const simulation = withCombat([grunt(1, 0, 5), grunt(2, 0, 7), grunt(3, 0.8, 7)],
       [rifle, rocket(2)]);
     step(simulation, 1);

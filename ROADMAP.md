@@ -54,8 +54,8 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 4. Endless enemy stream — implemented.
 5. Slow nonlinear deterministic Tier-2 enemy spread through row 960 — implemented.
 6. Tier-1 to Tier-2 squad and firepower compression at 10:1 — implemented.
-7. Tier exchange combat — next: Tier-2 shots pierce up to 10 Tier-1 enemies; Tier-2 soldiers have 10 Tier-1 defensive value and may demote into Tier-1 bodies.
-8. Enemy Tier-3 progression — after tier exchange.
+7. Tier exchange combat — implemented: Tier-2 shots pierce up to 10 Tier-1 enemies; Tier-2 soldiers have 10 Tier-1 defensive value and may demote into Tier-1 bodies.
+8. Enemy Tier-3 progression — next.
 9. Enemy Tier-4 progression — after Tier-3.
 
 ## 012 Recruitment gates — later milestone

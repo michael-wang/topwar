@@ -6,6 +6,7 @@ import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
 import { rewardSlotForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
+import { TIER2_EXCHANGE_VALUE } from './tierExchange';
 import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
@@ -29,9 +30,7 @@ export interface SimulationTuning {
   formationSpacing: number;
   memberRadius: number;
   gruntRadius: number;
-  gruntContactDamage: number;
   bruteRadius: number;
-  bruteContactDamage: number;
   rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
@@ -47,18 +46,21 @@ type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: num
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
   radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius'>,
-  currentPlayerZ: number, nextPlayerZ: number): ProjectileHit | undefined {
+  currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
+  piercedEnemyIds?: ReadonlySet<number>): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
+  const minimumZ = projectile.z + travel * minimumFraction;
   for (const enemy of enemies) {
+    if (piercedEnemyIds?.has(enemy.id)) continue;
     const radius = enemy.type === 'brute' ? radii.bruteRadius : radii.gruntRadius;
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
     const halfChord = Math.sqrt(radius * radius - dx * dx);
     const entryZ = enemy.z - halfChord;
     const exitZ = enemy.z + halfChord;
-    if (exitZ < projectile.z || entryZ > endZ) continue;
-    const hitZ = Math.max(projectile.z, entryZ);
+    if (exitZ < minimumZ || entryZ > endZ) continue;
+    const hitZ = Math.max(minimumZ, entryZ);
     const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
     if (!first || fraction < first.fraction
       || (fraction === first.fraction && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
@@ -74,8 +76,8 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const halfChord = Math.sqrt(radius * radius - dx * dx);
     const entryZ = reward.z - halfChord;
     const exitZ = reward.z + halfChord;
-    if (exitZ < projectile.z || entryZ > endZ) continue;
-    const hitZ = Math.max(projectile.z, entryZ);
+    if (exitZ < minimumZ || entryZ > endZ) continue;
+    const hitZ = Math.max(minimumZ, entryZ);
     const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
     if (!first || fraction < first.fraction
       || (fraction === first.fraction && (first.kind === 'enemy'
@@ -89,7 +91,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
     if (projectile.z > gateStartZ || relativeTravel <= 0) continue;
     const fraction = (gateStartZ - projectile.z) / relativeTravel;
-    if (fraction < 0 || fraction > 1) continue;
+    if (fraction < minimumFraction || fraction > 1) continue;
     const hitZ = projectile.z + travel * fraction;
     // A gate wins an exact-distance tie so it cannot be shot through.
     if (!first || fraction < first.fraction
@@ -351,7 +353,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
-    if (Object.keys(value).length !== 8 || ['id', 'kind', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius']
+    if (Object.keys(value).length !== 9 || ['id', 'kind', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'penetrationRemaining']
       .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation projectile ${index} has missing or unknown fields`);
     }
@@ -373,8 +375,15 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       || (value.kind === 'rocket' && value.blastRadius <= 0)) {
       throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
     }
+    if (!Number.isSafeInteger(value.penetrationRemaining)
+      || (value.kind === 'heavyRifle' && ((value.penetrationRemaining as number) < 1
+        || (value.penetrationRemaining as number) > TIER2_EXCHANGE_VALUE))
+      || (value.kind !== 'heavyRifle' && value.penetrationRemaining !== 0)) {
+      throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`);
+    }
     return { id: value.id as number, kind: value.kind, x: value.x, z: value.z, speed: value.speed,
-      damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius };
+      damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius,
+      penetrationRemaining: value.penetrationRemaining as number };
   });
   const weapons = state.weapons;
   if (!isPlainObject(weapons) || Object.keys(weapons).length !== 3
@@ -507,10 +516,6 @@ export class Simulation {
       || !positiveFinite(tuning.gruntRadius) || !positiveFinite(tuning.bruteRadius)) {
       throw new Error('Simulation formationSpacing, memberRadius, and enemy radii must be positive and finite');
     }
-    if (!Number.isSafeInteger(tuning.gruntContactDamage) || tuning.gruntContactDamage <= 0
-      || !Number.isSafeInteger(tuning.bruteContactDamage) || tuning.bruteContactDamage <= 0) {
-      throw new Error('Simulation enemy contact damage must be a positive safe integer');
-    }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.damage) || !positiveFinite(tuning.rifle.fireRate)
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
       throw new Error('Simulation rifle tuning must be positive and finite');
@@ -588,7 +593,8 @@ export class Simulation {
           if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
           projectiles.push({ id: nextProjectileId++, kind: projectileKind, x, z, speed: weapon.projectileSpeed,
             damage, remainingRange: weapon.range,
-            blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0 });
+            blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
+            penetrationRemaining: projectileKind === 'heavyRifle' ? TIER2_EXCHANGE_VALUE : 0 });
         }
         cooldown += interval;
         if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
@@ -604,9 +610,14 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      const hit = findFirstHit(projectile, endZ, enemies, streamRewards, gates, tuning,
-        this.state.player.z, nextZ);
-      if (hit) {
+      let penetrationRemaining = projectile.penetrationRemaining;
+      let minimumFraction = 0;
+      let consumed = false;
+      const piercedEnemyIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
+      while (true) {
+        const hit = findFirstHit(projectile, endZ, enemies, streamRewards, gates, tuning,
+          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds);
+        if (!hit) break;
         if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
           if (hit.gate.hitProgress === hit.gate.reward.hitsRequired) {
@@ -628,6 +639,16 @@ export class Simulation {
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
+          if (projectile.kind === 'heavyRifle' && hit.enemy.type === 'grunt') {
+            penetrationRemaining--;
+            if (penetrationRemaining > 0) {
+              // The cursor keeps the original step time for moving gates. Skipping
+              // this enemy also handles overlapping circles and exact-position ties.
+              minimumFraction = hit.fraction;
+              piercedEnemyIds!.add(hit.enemy.id);
+              continue;
+            }
+          }
         }
         if (projectile.kind === 'rocket' && hit.kind !== 'streamReward') {
           const radiusSquared = projectile.blastRadius * projectile.blastRadius;
@@ -643,10 +664,13 @@ export class Simulation {
             }
           }
         }
-        continue;
+        consumed = true;
+        break;
       }
       const remainingRange = projectile.remainingRange - travel;
-      if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
+      if (!consumed && remainingRange > 0) {
+        survivingProjectiles.push({ ...projectile, z: endZ, remainingRange, penetrationRemaining });
+      }
     }
     const survivingPickups: UpgradePickupSimulationState[] = [];
     for (const { pickup, travelSeconds } of travelingPickups.sort((a, b) => a.pickup.id - b.pickup.id)) {
@@ -683,8 +707,7 @@ export class Simulation {
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, enemy.type === 'brute'
-          ? tuning.bruteContactDamage : tuning.gruntContactDamage);
+        squad = afterCasualties(squad, enemy.type === 'brute' ? TIER2_EXCHANGE_VALUE : 1);
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
@@ -694,7 +717,7 @@ export class Simulation {
       if (squad.count === 0) break;
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, enemy.type === 'brute' ? tuning.bruteContactDamage : 1);
+        squad = afterCasualties(squad, enemy.type === 'brute' ? TIER2_EXCHANGE_VALUE : 1);
       }
     }
     // Stream rewards expire harmlessly behind the moving defense line.

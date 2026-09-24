@@ -37,12 +37,10 @@ export const GameConfigSchema = z.strictObject({
   enemies: z.strictObject({
     grunt: z.strictObject({
       hp: positive,
-      contactDamage: z.number().int().safe().positive(),
       radius: positive,
     }),
     brute: z.strictObject({
       hp: positive,
-      contactDamage: z.number().int().safe().positive(),
       radius: positive,
     }),
   }),

@@ -144,9 +144,9 @@ Initial simple rule:
 
 - an enemy reaching the squad removes soldiers or otherwise deals deterministic squad damage
 
-Base contact is an event, not damage every frame: a basic grunt trades itself for its configured squad casualties.
+Base contact is an event, not damage every frame. A grunt costs one Tier-1 defense point; a brute costs ten. Rifle defense is spent from Tier-1 soldiers first, then Tier-2 soldiers, then rocket specialists.
 
-A surviving enemy left behind the advancing player crosses a defense line at `player.z - defenseLineOffset` and costs one soldier. Contacted or shot enemies cannot also breach. When the squad reaches zero, the run ends.
+A surviving enemy left behind the advancing player crosses a defense line at `player.z - defenseLineOffset` and costs its tier's defense value. Contacted or shot enemies cannot also breach. When the squad reaches zero, the run ends.
 
 It must be easy to change without rewriting rendering.
 
@@ -163,7 +163,7 @@ Examples:
 
 Level 001 no longer uses permanent side armories as its active reward economy. A deterministic row roll occasionally replaces one enemy with a stationary +1 reward target. It takes 10 matching-tier rifle hits to unlock and immediately add one soldier; projectile damage does not change progress. During mixed Tier-1/Tier-2 enemy rows, rewards remain Tier-1. Once all new enemies are Tier-2, new rewards become Tier-2. Ignored targets expire harmlessly behind the defense line. Generic side-armory code remains available for custom levels but is inactive in Level 001.
 
-Every 10 Tier-1 rifle soldiers automatically merge into one visibly larger Tier-2 rifle soldier. A Tier-2 soldier fires one direct, non-piercing projectile at the normal rifle cadence; its damage remains 100 times current base rifle damage. The 10:1 conversion intentionally creates nonlinear player growth while compressing bodies and tracers. It is one physical squad life, with no special casualty durability. Rocket specialists remain a separate squad role. Future player tiers may follow this progression, but Tier-3 is not defined yet.
+Every 10 Tier-1 rifle soldiers automatically merge into one visibly larger Tier-2 rifle soldier. Its projectile fires at the normal rifle cadence, deals 100 times base rifle damage, and pierces up to ten Tier-1 grunts at one penetration point each. Tier-1 rewards are transparent to it; a matching Tier-2 reward consumes it, as does a Tier-2 brute after taking its damage. The 10:1 conversion compresses bodies and tracers. A Tier-2 rifle soldier has ten Tier-1 defensive points: one grunt casualty can demote it into nine Tier-1 bodies, and a later Tier-1 reward can merge them again. Rocket specialists remain a separate squad role.
 
 Later we can test:
 

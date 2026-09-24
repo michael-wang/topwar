@@ -9,8 +9,7 @@ const level: LevelDefinition = { id: 'breach-test', length: 20, enemyGroups: [],
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntContactDamage: 1,
-  bruteRadius: 0.55, bruteContactDamage: 1,
+  bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
@@ -60,7 +59,7 @@ describe('moving defense-line breaches', () => {
 
   it('does not breach an enemy killed by a projectile earlier in the tick', () => {
     const projectile = { id: 1, kind: 'rifle' as const, x: 2, z: 1.5,
-      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 };
+      speed: 10, damage: 3, remainingRange: 18, blastRadius: 0, penetrationRemaining: 0 };
     const simulation = withState(2, [grunt(1, 2, 2)], [projectile]);
     advance(simulation);
     expect(simulation.getState().squad.count).toBe(2);

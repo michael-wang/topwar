@@ -105,7 +105,7 @@ import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
 const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntContactDamage: 1, bruteRadius: 0.55, bruteContactDamage: 1,
+  bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 
@@ -114,8 +114,8 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     player: { startSquad, startRocketCount: 0, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
     controls: { mouseSensitivity: 1 },
-    enemies: { grunt: { hp: 10, radius: 0.3, contactDamage: 1 },
-      brute: { hp: 300, radius: 0.55, contactDamage: 1 } },
+    enemies: { grunt: { hp: 10, radius: 0.3 },
+      brute: { hp: 300, radius: 0.55 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
       rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } },
   } as GameConfig;
@@ -198,12 +198,12 @@ describe('GameApp config and frame lifecycle', () => {
     config.changeRifle({ damage: 9, fireRate: 4 });
     config.changeRocket({ damage: 25, blastRadius: 2 });
     config.changePlayer({ memberRadius: 0.3 });
-    config.changeGrunt({ hp: 99, radius: 0.5, contactDamage: 2 });
-    config.changeBrute({ hp: 110, radius: 0.7, contactDamage: 2 });
+    config.changeGrunt({ hp: 99, radius: 0.5 });
+    config.changeBrute({ hp: 110, radius: 0.7 });
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
       trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5,
-      gruntContactDamage: 2, bruteRadius: 0.7, bruteContactDamage: 2,
+      bruteRadius: 0.7,
       rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 },
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();

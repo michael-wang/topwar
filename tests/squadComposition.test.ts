@@ -39,12 +39,14 @@ describe('squad composition', () => {
       tier2RifleCount: 3 });
   });
 
-  it('takes Tier-1 lives, then Tier-2 lives, then rocket lives', () => {
+  it('spends Tier-1 defense first, demotes Tier-2, and keeps rockets last', () => {
     const mixed = { count: 4, rocketCount: 1, tier2RifleCount: 1 };
     expect(afterCasualties(mixed, 1)).toEqual({ count: 3, rocketCount: 1, tier2RifleCount: 1 });
     expect(afterCasualties(mixed, 2)).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 1 });
-    expect(afterCasualties(mixed, 3)).toEqual({ count: 1, rocketCount: 1, tier2RifleCount: 0 });
-    expect(afterCasualties(mixed, 4)).toEqual({ count: 0, rocketCount: 0, tier2RifleCount: 0 });
+    expect(afterCasualties(mixed, 3)).toEqual({ count: 10, rocketCount: 1, tier2RifleCount: 0 });
+    expect(afterCasualties(mixed, 4)).toEqual({ count: 9, rocketCount: 1, tier2RifleCount: 0 });
+    expect(afterCasualties(mixed, 12)).toEqual({ count: 1, rocketCount: 1, tier2RifleCount: 0 });
+    expect(afterCasualties(mixed, 13)).toEqual({ count: 0, rocketCount: 0, tier2RifleCount: 0 });
   });
 
   it('rejects reward growth beyond safe integer squad counts', () => {

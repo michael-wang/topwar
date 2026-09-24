@@ -7,7 +7,7 @@ const level: LevelDefinition = { id: 'brute-test', length: 20, enemyGroups: [], 
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22,
-  gruntRadius: 0.3, gruntContactDamage: 1, bruteRadius: 0.55, bruteContactDamage: 1,
+  gruntRadius: 0.3, bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
@@ -16,10 +16,11 @@ const grunt = (id: number, x: number, z: number): EnemySimulationState =>
 const brute = (id: number, x: number, z: number, hp = 300): EnemySimulationState =>
   ({ id, type: 'brute', x, z, hp });
 const rifle = (id: number, x = 0): ProjectileSimulationState =>
-  ({ id, kind: 'rifle', x, z: 0, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 });
+  ({ id, kind: 'rifle', x, z: 0, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0,
+    penetrationRemaining: 0 });
 const rocket = (id: number): ProjectileSimulationState =>
   ({ id, kind: 'rocket', x: 0, z: 0, speed: 10, damage: 15,
-    remainingRange: 18, blastRadius: 1.25 });
+    remainingRange: 18, blastRadius: 1.25, penetrationRemaining: 0 });
 
 function withState(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = []) {
   const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0,
@@ -90,14 +91,14 @@ describe('first Tier-2 brute combat', () => {
     expect(simulation.getState().enemies).toEqual([brute(2, 0.8, 5, 285)]);
   });
 
-  it('charges one casualty and removes the brute on swept direct contact or breach', () => {
+  it('charges ten defense points and removes the brute on swept contact or breach', () => {
     const contact = withState(2, [brute(1, 0, 5)]);
     contact.step(1, { targetX: 0 }, { ...tuning, forwardSpeed: 10, defenseLineOffset: 100 });
-    expect(contact.getState().squad.count).toBe(1);
+    expect(contact.getState().squad.count).toBe(0);
     expect(contact.getState().enemies).toEqual([]);
     const breach = withState(2, [brute(1, 2, 2)]);
     breach.step(1, { targetX: 0 }, { ...tuning, forwardSpeed: 3.5 });
-    expect(breach.getState().squad.count).toBe(1);
+    expect(breach.getState().squad.count).toBe(0);
     expect(breach.getState().enemies).toEqual([]);
   });
 
@@ -114,9 +115,9 @@ describe('first Tier-2 brute combat', () => {
     expect(shotFirst.getState().squad.count).toBe(1);
   });
 
-  it('uses configured brute contact damage and preserves Game Over freeze', () => {
+  it('uses Tier-2 exchange on contact and preserves Game Over freeze', () => {
     const simulation = withState(1, [brute(1, 0, 0)]);
-    simulation.step(0.1, { targetX: 0 }, { ...tuning, bruteContactDamage: 2 });
+    simulation.step(0.1, { targetX: 0 }, tuning);
     const lost = simulation.getState();
     expect(lost.squad.count).toBe(0);
     expect(lost.enemies).toEqual([]);

@@ -11,8 +11,7 @@ const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [], upgrad
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
-  bruteRadius: 0.55, bruteContactDamage: 1,
+  memberRadius: 0.22, gruntRadius: 0.3, bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
@@ -31,7 +30,8 @@ function restoreCombat(simulation: Simulation, enemies: EnemySimulationState[], 
 }
 
 const bullet = (id: number, x = 0, z = 0, damage = 3): ProjectileSimulationState =>
-  ({ id, kind: 'rifle', x, z, damage, speed: 10, remainingRange: 18, blastRadius: 0 });
+  ({ id, kind: 'rifle', x, z, damage, speed: 10, remainingRange: 18, blastRadius: 0,
+    penetrationRemaining: 0 });
 const enemy = (id: number, x: number, z: number, hp = 10): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp });
 

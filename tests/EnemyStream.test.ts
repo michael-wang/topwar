@@ -13,8 +13,7 @@ const smallLevel: LevelDefinition = { id: 'short-endless', length: 3, enemyGroup
     bruteRamp: { startRow: 1000, fullRow: 1100, curvePower: 2 } } };
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntContactDamage: 1,
-  bruteRadius: 0.55, bruteContactDamage: 1,
+  bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 0.1, projectileSpeed: 1, range: 1 },
   rocket: { damage: 15, fireRate: 0.1, projectileSpeed: 1, range: 1, blastRadius: 1.25 } };
 const create = (level = smallLevel, count = 20) => new Simulation({ seed: 17, level,

@@ -62,6 +62,7 @@ export interface ProjectileSimulationState {
   damage: number;
   remainingRange: number;
   blastRadius: number;
+  penetrationRemaining: number;
 }
 
 export interface WeaponSimulationState {

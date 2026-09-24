@@ -9,7 +9,7 @@ const level: LevelDefinition = { id: 'prototype', length: 1, enemyGroups: [], up
 const create = () => new Simulation({ seed: 1, level, startSquad: 1, startRocketCount: 0, gruntHp: 10, bruteHp: 300 });
 const still = { targetX: 0 };
 const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntContactDamage: 1, bruteRadius: 0.55, bruteContactDamage: 1,
+  bruteRadius: 0.55,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
@@ -74,7 +74,8 @@ describe('Simulation', () => {
       gates: [],
       pickups: [],
       nextPickupId: 1,
-      projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 28 / 60, speed: 28, damage: 3, remainingRange: 18 - 28 / 60, blastRadius: 0 }],
+      projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 28 / 60, speed: 28, damage: 3,
+        remainingRange: 18 - 28 / 60, blastRadius: 0, penetrationRemaining: 0 }],
       weapons: { rifleCooldownRemainingSeconds: 1 / 7 - 1 / 60, rocketCooldownRemainingSeconds: 0, nextProjectileId: 2 },
     });
     simulation.step(1 / 60, still, stillTuning);
