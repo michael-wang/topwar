@@ -34,6 +34,12 @@ const EnemyStreamSchema = z.strictObject({
     curvePower: z.number().finite().positive(),
   }).refine((ramp) => ramp.fullRow > ramp.startRow,
     { path: ['fullRow'], message: 'Full Tier-2 row must follow start row' }),
+  tier3Ramp: z.strictObject({
+    startRow: nonnegativeSafeInteger,
+    fullRow: nonnegativeSafeInteger,
+    curvePower: z.number().finite().positive(),
+  }).refine((ramp) => ramp.fullRow > ramp.startRow,
+    { path: ['fullRow'], message: 'Full Tier-3 row must follow start row' }).optional(),
   rewards: z.strictObject({
     rowsPerReward: positiveSafeInteger,
     spawnAheadDistance: z.number().finite().positive(),

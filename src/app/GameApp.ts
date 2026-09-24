@@ -43,6 +43,7 @@ export class GameApp {
       startRocketCount: this.config.player.startRocketCount,
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
+      tier3Hp: this.config.enemies.tier3.hp,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
@@ -133,6 +134,7 @@ export class GameApp {
       startRocketCount: this.config.player.startRocketCount,
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
+      tier3Hp: this.config.enemies.tier3.hp,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
@@ -165,6 +167,7 @@ export class GameApp {
         memberRadius: this.config.player.memberRadius,
         gruntRadius: this.config.enemies.grunt.radius,
         bruteRadius: this.config.enemies.brute.radius,
+        tier3Radius: this.config.enemies.tier3.radius,
         rifle: { ...this.config.weapon.rifle },
         rocket: { ...this.config.weapon.rocket },
       },

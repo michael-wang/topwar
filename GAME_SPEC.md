@@ -43,7 +43,7 @@ The player is forced forward toward stationary basic grunts. Pressure comes from
 
 Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. One +1 reward opportunity appears in every eight-row block beside an intact enemy row; its exact row and side look random but are deterministic. Rewards materialize only 30 units ahead while the enemy mass remains visible 96 units ahead. Pursuing a reward still requires steering and diverting fire without reducing enemy pressure.
 
-The opening is a long sea of one-shot Tier-1 grunts. The first larger, darker Tier-2 brute is guaranteed at row 48; afterward each enemy independently becomes Tier-2 through deterministic rolls against a quadratic probability curve. Row-to-row density fluctuates, while the long-term frequency rises slowly to full Tier-2 saturation at row 960. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Playtest where this pressure becomes unsustainable before designing the next player power upgrade. Future Tier-3 and Tier-4 phases should likewise begin sparse and gradually dominate the stream; their details remain undecided.
+The opening is a long sea of one-shot Tier-1 grunts. The first saturated-red Tier-2 brute is guaranteed at row 48; afterward each enemy independently becomes Tier-2 through deterministic rolls against a quadratic probability curve. Row-to-row density fluctuates, while the long-term Tier-2 frequency rises to full saturation at row 960. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Tier-3 begins with one guaranteed magenta enemy at row 360, overlapping the Tier-2 transition. Its independent quadratic probability rises to full Tier-3 saturation at row 1320. Tier-3 has 3000 HP, so a Tier-2 heavy rifle takes ten hits to kill it. All normal enemy tiers share radius 0.30 and the same humanoid size: muted brick red Tier-1, saturated red Tier-2, and magenta Tier-3. Color communicates normal tier; larger bodies are reserved for future special enemies and bosses. A future boss may dominate a lane visually and have roughly 10–100 times the HP of the dominant normal enemy, subject to playtest. Future normal tiers should keep the color-not-size rule.
 
 ## 3. Controls
 
@@ -144,7 +144,7 @@ Initial simple rule:
 
 - an enemy reaching the squad removes soldiers or otherwise deals deterministic squad damage
 
-Base contact is an event, not damage every frame. A grunt costs one Tier-1 defense point; a brute costs ten. Rifle defense is spent from Tier-1 soldiers first, then Tier-2 soldiers, then rocket specialists.
+Base contact is an event, not damage every frame. A grunt costs one Tier-1 defense point; Tier-2 and Tier-3 enemies currently each cost ten. Rifle defense is spent from Tier-1 soldiers first, then Tier-2 soldiers, then rocket specialists.
 
 A surviving enemy left behind the advancing player crosses a defense line at `player.z - defenseLineOffset` and costs its tier's defense value. Contacted or shot enemies cannot also breach. When the squad reaches zero, the run ends.
 

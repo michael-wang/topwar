@@ -2,7 +2,7 @@ import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
-import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
+import { tier2ProbabilityForRow, tier2RollForSlot, tier3ProbabilityForRow, tier3RollForSlot } from './enemies/bruteRamp';
 import { rewardPlacementForBlock, rewardTierForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
@@ -16,6 +16,7 @@ export interface SimulationOptions {
   startRocketCount: number;
   gruntHp: number;
   bruteHp: number;
+  tier3Hp: number;
 }
 
 export interface SimulationInput {
@@ -31,6 +32,7 @@ export interface SimulationTuning {
   memberRadius: number;
   gruntRadius: number;
   bruteRadius: number;
+  tier3Radius: number;
   rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
@@ -45,7 +47,7 @@ type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: num
 
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
-  radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius'>,
+  radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius' | 'tier3Radius'>,
   currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
   piercedEnemyIds?: ReadonlySet<number>, passedRewardIds?: ReadonlySet<number>): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
@@ -53,7 +55,8 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   const minimumZ = projectile.z + travel * minimumFraction;
   for (const enemy of enemies) {
     if (piercedEnemyIds?.has(enemy.id)) continue;
-    const radius = enemy.type === 'brute' ? radii.bruteRadius : radii.gruntRadius;
+    const radius = enemy.type === 'tier3' ? radii.tier3Radius
+      : enemy.type === 'brute' ? radii.bruteRadius : radii.gruntRadius;
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
     const halfChord = Math.sqrt(radius * radius - dx * dx);
@@ -132,7 +135,7 @@ function validSquadCount(count: unknown): count is number {
 }
 
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number): void {
+  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number, tier3Hp: number): void {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
@@ -148,8 +151,9 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     const { startRow, fullRow } = stream.bruteRamp;
     const rowIndex = cursor.nextRowIndex;
     const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
+    const tier3Probability = stream.tier3Ramp ? tier3ProbabilityForRow(rowIndex, stream.tier3Ramp) : 0;
     let revealColumn = 0;
-    if (rowIndex === startRow) {
+    if (rowIndex === startRow || rowIndex === stream.tier3Ramp?.startRow) {
       for (let column = 1; column < offsets.length; column++) {
         if (Math.abs(offsets[column].x) < Math.abs(offsets[revealColumn].x)) revealColumn = column;
       }
@@ -160,12 +164,16 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
         throw new Error('Simulation enemy stream produces a non-finite position');
       }
-      const isBrute = rowIndex === startRow ? column === revealColumn
+      const isTier3 = stream.tier3Ramp !== undefined && (rowIndex === stream.tier3Ramp.startRow
+        ? column === revealColumn
+        : rowIndex >= stream.tier3Ramp.fullRow || (tier3Probability > 0
+          && tier3RollForSlot(stream.seed, rowIndex, column) < tier3Probability));
+      const isBrute = !isTier3 && (rowIndex === startRow ? column === revealColumn
         : rowIndex >= fullRow || (probability > 0
-          && tier2RollForSlot(stream.seed, rowIndex, column) < probability);
+          && tier2RollForSlot(stream.seed, rowIndex, column) < probability));
       const enemyId = cursor.nextEnemyId++;
-      enemies.push({ id: enemyId, type: isBrute ? 'brute' : stream.enemy,
-        x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
+      enemies.push({ id: enemyId, type: isTier3 ? 'tier3' : isBrute ? 'brute' : stream.enemy,
+        x: offset.x, z, hp: isTier3 ? tier3Hp : isBrute ? bruteHp : gruntHp });
     }
     cursor.nextRowIndex++;
   }
@@ -261,7 +269,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     const id = value.id as number;
     if (enemyIds.has(id)) throw new Error(`Simulation enemy id ${id} is duplicated`);
     enemyIds.add(id);
-    if (value.type !== 'grunt' && value.type !== 'brute') throw new Error(`Simulation enemy ${index} type is unsupported`);
+    if (value.type !== 'grunt' && value.type !== 'brute' && value.type !== 'tier3') throw new Error(`Simulation enemy ${index} type is unsupported`);
     if (typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
       throw new Error(`Simulation enemy ${index} position must be finite`);
@@ -458,6 +466,7 @@ export class Simulation {
   private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
   private readonly gruntHp: number;
   private readonly bruteHp: number;
+  private readonly tier3Hp: number;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -470,9 +479,11 @@ export class Simulation {
     }
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
     if (!positiveFinite(options.bruteHp)) throw new Error('Simulation bruteHp must be positive and finite');
+    if (!positiveFinite(options.tier3Hp)) throw new Error('Simulation tier3Hp must be positive and finite');
     this.enemyStreamDefinition = level.enemyStream;
     this.gruntHp = options.gruntHp;
     this.bruteHp = options.bruteHp;
+    this.tier3Hp = options.tier3Hp;
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
       for (const offset of createEnemyFormation(group.count, group.formation.columns,
@@ -495,7 +506,7 @@ export class Simulation {
       ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0, nextRewardId: 1 }
       : null;
     if (enemyStream && level.enemyStream) {
-      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp);
+      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp, options.tier3Hp);
       extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
     }
     this.state = {
@@ -538,7 +549,8 @@ export class Simulation {
       throw new Error('Simulation defenseLineOffset must be finite and greater than zero');
     }
     if (!positiveFinite(tuning.formationSpacing) || !positiveFinite(tuning.memberRadius)
-      || !positiveFinite(tuning.gruntRadius) || !positiveFinite(tuning.bruteRadius)) {
+      || !positiveFinite(tuning.gruntRadius) || !positiveFinite(tuning.bruteRadius)
+      || !positiveFinite(tuning.tier3Radius)) {
       throw new Error('Simulation formationSpacing, memberRadius, and enemy radii must be positive and finite');
     }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.damage) || !positiveFinite(tuning.rifle.fireRate)
@@ -580,7 +592,7 @@ export class Simulation {
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
       extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.gruntHp, this.bruteHp);
+        nextZ, this.gruntHp, this.bruteHp, this.tier3Hp);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
@@ -725,7 +737,8 @@ export class Simulation {
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
       const contactRadius = tuning.memberRadius
-        + (enemy.type === 'brute' ? tuning.bruteRadius : tuning.gruntRadius);
+        + (enemy.type === 'tier3' ? tuning.tier3Radius
+          : enemy.type === 'brute' ? tuning.bruteRadius : tuning.gruntRadius);
       if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
       // Sweep each moving squad member against the stationary enemy.
       const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) => {
@@ -740,7 +753,7 @@ export class Simulation {
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, enemy.type === 'brute' ? TIER2_EXCHANGE_VALUE : 1);
+        squad = afterCasualties(squad, enemy.type === 'grunt' ? 1 : TIER2_EXCHANGE_VALUE);
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
@@ -750,7 +763,7 @@ export class Simulation {
       if (squad.count === 0) break;
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, enemy.type === 'brute' ? TIER2_EXCHANGE_VALUE : 1);
+        squad = afterCasualties(squad, enemy.type === 'grunt' ? 1 : TIER2_EXCHANGE_VALUE);
       }
     }
     // Stream rewards expire harmlessly behind the moving defense line.

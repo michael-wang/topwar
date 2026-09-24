@@ -5,6 +5,7 @@ const HIT_FLASH_MS = 80;
 const DEATH_MS = 450;
 const MAX_DEATH_VISUALS = 48;
 const PARTS = ['torso', 'head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const;
+const TIERS = ['grunt', 'brute', 'tier3'] as const;
 type Part = typeof PARTS[number];
 type Tier = EnemyRenderState['type'];
 type TierMeshes = Record<Part, THREE.InstancedMesh>;
@@ -30,24 +31,28 @@ export class EnemyRenderer {
   private readonly legGeometry = new THREE.BoxGeometry(0.12, 0.34, 0.13);
   private readonly gruntMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
   private readonly bruteMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly tier3Material = new THREE.MeshStandardMaterial({ color: 'white' });
   private readonly deathBodyMaterial = new THREE.MeshStandardMaterial({ color: '#777b7c' });
   private readonly deathHeadMaterial = new THREE.MeshStandardMaterial({ color: '#a3a5a3' });
-  private readonly gruntBodyColor = new THREE.Color('#c93332');
-  private readonly gruntHeadColor = new THREE.Color('#f15a4c');
-  private readonly bruteBodyColor = new THREE.Color('#761a22');
-  private readonly bruteHeadColor = new THREE.Color('#ab3034');
+  private readonly bodyColors: Record<Tier, THREE.Color> = {
+    grunt: new THREE.Color('#9b6863'), brute: new THREE.Color('#cf4037'), tier3: new THREE.Color('#d72f82'),
+  };
+  private readonly headColors: Record<Tier, THREE.Color> = {
+    grunt: new THREE.Color('#bd8580'), brute: new THREE.Color('#ef6658'), tier3: new THREE.Color('#ff69b3'),
+  };
   private readonly flashBodyColor = new THREE.Color('#ffe36e');
   private readonly flashHeadColor = new THREE.Color('#fff8d6');
   private readonly transform = new THREE.Object3D();
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
   private readonly deathVisuals: DeathVisual[] = [];
-  private readonly capacity: Record<Tier, number> = { grunt: 1, brute: 1 };
+  private readonly capacity: Record<Tier, number> = { grunt: 1, brute: 1, tier3: 1 };
   private readonly meshes: Record<Tier, TierMeshes>;
 
   constructor(private readonly scene: THREE.Scene) {
-    this.meshes = { grunt: this.createTier('grunt', 1), brute: this.createTier('brute', 1) };
-    this.scene.add(...Object.values(this.meshes.grunt), ...Object.values(this.meshes.brute));
+    this.meshes = { grunt: this.createTier('grunt', 1), brute: this.createTier('brute', 1),
+      tier3: this.createTier('tier3', 1) };
+    for (const tier of TIERS) this.scene.add(...Object.values(this.meshes[tier]));
   }
 
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now()): void {
@@ -66,34 +71,28 @@ export class EnemyRenderer {
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
     this.updateDeaths(nowMs);
 
-    let gruntCount = 0;
-    for (const enemy of enemies) if (enemy.type === 'grunt') gruntCount++;
-    const bruteCount = enemies.length - gruntCount;
-    if (gruntCount > this.capacity.grunt) this.grow('grunt', gruntCount);
-    if (bruteCount > this.capacity.brute) this.grow('brute', bruteCount);
-    for (const part of PARTS) {
-      this.meshes.grunt[part].count = gruntCount;
-      this.meshes.brute[part].count = bruteCount;
+    const counts: Record<Tier, number> = { grunt: 0, brute: 0, tier3: 0 };
+    for (const enemy of enemies) counts[enemy.type]++;
+    for (const tier of TIERS) {
+      if (counts[tier] > this.capacity[tier]) this.grow(tier, counts[tier]);
+      for (const part of PARTS) this.meshes[tier][part].count = counts[tier];
     }
-    let gruntIndex = 0;
-    let bruteIndex = 0;
+    const indices: Record<Tier, number> = { grunt: 0, brute: 0, tier3: 0 };
     for (const enemy of enemies) {
-      const isBrute = enemy.type === 'brute';
-      const index = isBrute ? bruteIndex++ : gruntIndex++;
+      const index = indices[enemy.type]++;
       const meshes = this.meshes[enemy.type];
       const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
       if (!flashing) this.flashUntilMs.delete(enemy.id);
-      const bodyColor = flashing ? this.flashBodyColor : isBrute ? this.bruteBodyColor : this.gruntBodyColor;
-      const headColor = flashing ? this.flashHeadColor : isBrute ? this.bruteHeadColor : this.gruntHeadColor;
+      const bodyColor = flashing ? this.flashBodyColor : this.bodyColors[enemy.type];
+      const headColor = flashing ? this.flashHeadColor : this.headColors[enemy.type];
       const pose = enemyWalkPose(enemy.id, nowMs);
-      const scale = isBrute ? 1.9 : 1;
       for (const part of PARTS) {
         const mesh = meshes[part];
         mesh.setColorAt(index, part === 'head' ? headColor : bodyColor);
-        this.setPartMatrix(mesh, index, part, enemy, pose, scale);
+        this.setPartMatrix(mesh, index, part, enemy, pose);
       }
     }
-    for (const tier of ['grunt', 'brute'] as const) {
+    for (const tier of TIERS) {
       for (const part of PARTS) {
         const mesh = this.meshes[tier][part];
         mesh.instanceMatrix.needsUpdate = true;
@@ -109,7 +108,7 @@ export class EnemyRenderer {
   }
 
   dispose(): void {
-    for (const tier of ['grunt', 'brute'] as const) {
+    for (const tier of TIERS) {
       for (const mesh of Object.values(this.meshes[tier])) {
         this.scene.remove(mesh);
         mesh.dispose();
@@ -120,28 +119,28 @@ export class EnemyRenderer {
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
     for (const geometry of [this.torsoGeometry, this.headGeometry, this.armGeometry, this.legGeometry]) geometry.dispose();
-    for (const material of [this.gruntMaterial, this.bruteMaterial,
+    for (const material of [this.gruntMaterial, this.bruteMaterial, this.tier3Material,
       this.deathBodyMaterial, this.deathHeadMaterial]) material.dispose();
   }
 
   private setPartMatrix(mesh: THREE.InstancedMesh, index: number, part: Part,
-    enemy: EnemyRenderState, pose: ReturnType<typeof enemyWalkPose>, scale: number): void {
+    enemy: EnemyRenderState, pose: ReturnType<typeof enemyWalkPose>): void {
     const transform = this.transform;
-    transform.scale.setScalar(scale);
+    transform.scale.setScalar(1);
     transform.rotation.set(0, 0, 0);
     const x = -enemy.x;
     const y = pose.bob;
     const z = enemy.z;
     switch (part) {
-      case 'torso': transform.position.set(x, (0.53 + y) * scale, z); break;
-      case 'head': transform.position.set(x, (0.90 + y) * scale, z - 0.065 * scale); break;
-      case 'leftArm': transform.position.set(x - 0.23 * scale, (0.51 + y) * scale, z);
+      case 'torso': transform.position.set(x, 0.53 + y, z); break;
+      case 'head': transform.position.set(x, 0.90 + y, z - 0.065); break;
+      case 'leftArm': transform.position.set(x - 0.23, 0.51 + y, z);
         transform.rotation.x = pose.leftArm; break;
-      case 'rightArm': transform.position.set(x + 0.23 * scale, (0.51 + y) * scale, z);
+      case 'rightArm': transform.position.set(x + 0.23, 0.51 + y, z);
         transform.rotation.x = pose.rightArm; break;
-      case 'leftLeg': transform.position.set(x - 0.10 * scale, (0.17 + y) * scale, z);
+      case 'leftLeg': transform.position.set(x - 0.10, 0.17 + y, z);
         transform.rotation.x = pose.leftLeg; break;
-      case 'rightLeg': transform.position.set(x + 0.10 * scale, (0.17 + y) * scale, z);
+      case 'rightLeg': transform.position.set(x + 0.10, 0.17 + y, z);
         transform.rotation.x = pose.rightLeg; break;
     }
     transform.updateMatrix();
@@ -174,7 +173,7 @@ export class EnemyRenderer {
     visual.startedAtMs = nowMs;
     visual.startZ = enemy.z;
     visual.group.visible = true;
-    visual.group.scale.setScalar(enemy.type === 'brute' ? 1.9 : 1);
+    visual.group.scale.setScalar(1);
     visual.group.position.set(-enemy.x, 0, enemy.z);
     visual.group.rotation.set(0, 0, 0);
   }
@@ -202,7 +201,8 @@ export class EnemyRenderer {
   }
 
   private createTier(tier: Tier, capacity: number): TierMeshes {
-    const material = tier === 'grunt' ? this.gruntMaterial : this.bruteMaterial;
+    const material = tier === 'grunt' ? this.gruntMaterial
+      : tier === 'brute' ? this.bruteMaterial : this.tier3Material;
     const result = {} as TierMeshes;
     for (const part of PARTS) {
       const mesh = new THREE.InstancedMesh(this.geometryFor(part), material, capacity);

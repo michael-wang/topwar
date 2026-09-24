@@ -12,11 +12,11 @@ const level: LevelDefinition = { id: 'tier-exchange', length: 120, enemyGroups: 
       hitsRequired: 10, seed: 2, sideX: 2.2 } } };
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
-  gruntRadius: 0.3, bruteRadius: 0.55,
+  gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const create = (startSquad = 1) => new Simulation({ seed: 7, level, startSquad,
-  startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
+  startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
 const grunt = (id: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x: 0, z, hp: 3 });
 const brute = (id: number, z: number): EnemySimulationState =>

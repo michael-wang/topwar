@@ -38,7 +38,8 @@ describe('GameConfigSchema and loading', () => {
     expect(store.getConfig().weapon.rocket).toEqual({ damage: 15, fireRate: 0.6,
       projectileSpeed: 18, range: 40, blastRadius: 1.25 });
     expect(store.getConfig().enemies.grunt.hp).toBe(3);
-    expect(store.getConfig().enemies.brute).toEqual({ hp: 300, radius: 0.55 });
+    expect(store.getConfig().enemies.brute).toEqual({ hp: 300, radius: 0.3 });
+    expect(store.getConfig().enemies.tier3).toEqual({ hp: 3000, radius: 0.3 });
     expect(store.getConfig().weapon.rifle.damage).toBe(3);
   });
 

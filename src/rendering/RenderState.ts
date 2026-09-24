@@ -57,7 +57,7 @@ export interface ProjectileRenderState {
 
 export interface EnemyRenderState {
   id: number;
-  type: 'grunt' | 'brute';
+  type: 'grunt' | 'brute' | 'tier3';
   x: number;
   z: number;
   hp: number;

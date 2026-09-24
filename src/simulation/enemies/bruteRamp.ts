@@ -4,12 +4,15 @@ export interface BruteRamp {
   curvePower: number;
 }
 
-export function tier2ProbabilityForRow(rowIndex: number, ramp: BruteRamp): number {
+function tierProbabilityForRow(rowIndex: number, ramp: BruteRamp): number {
   if (rowIndex <= ramp.startRow) return 0;
   if (rowIndex >= ramp.fullRow) return 1;
   const progress = (rowIndex - ramp.startRow) / (ramp.fullRow - ramp.startRow);
   return Math.min(1, Math.max(0, progress ** ramp.curvePower));
 }
+
+export const tier2ProbabilityForRow = tierProbabilityForRow;
+export const tier3ProbabilityForRow = tierProbabilityForRow;
 
 // A slot's roll depends only on authored content, never on gameplay RNG or prior rows.
 export function tier2RollForSlot(seed: number, rowIndex: number, column: number): number {
@@ -18,4 +21,9 @@ export function tier2RollForSlot(seed: number, rowIndex: number, column: number)
   bits = Math.imul(bits ^ (bits >>> 16), 0x7feb352d);
   bits = Math.imul(bits ^ (bits >>> 15), 0x846ca68b);
   return ((bits ^ (bits >>> 16)) >>> 0) / 0x100000000;
+}
+
+// A distinct salt keeps Tier-3 selection independent of the existing Tier-2 layout.
+export function tier3RollForSlot(seed: number, rowIndex: number, column: number): number {
+  return tier2RollForSlot(seed ^ 0x6a09e667, rowIndex, column);
 }

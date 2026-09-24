@@ -12,12 +12,12 @@ const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: config.track.halfWidth,
   defenseLineOffset: config.track.defenseLineOffset, formationSpacing: config.player.formationSpacing,
   memberRadius: config.player.memberRadius, gruntRadius: config.enemies.grunt.radius,
-  bruteRadius: config.enemies.brute.radius,
+  bruteRadius: config.enemies.brute.radius, tier3Radius: 0.3,
   rifle: { ...config.weapon.rifle, fireRate: 0.1 }, rocket: { ...config.weapon.rocket },
 };
 const create = (count: number, rocketCount = 0, level = emptyLevel) => new Simulation({
   seed: 7, level, startSquad: count, startRocketCount: rocketCount,
-  gruntHp: config.enemies.grunt.hp, bruteHp: config.enemies.brute.hp,
+  gruntHp: config.enemies.grunt.hp, bruteHp: config.enemies.brute.hp, tier3Hp: 3000,
 });
 const step = (simulation: Simulation, seconds = 0.1, current = tuning) =>
   simulation.step(seconds, { targetX: 0 }, current);

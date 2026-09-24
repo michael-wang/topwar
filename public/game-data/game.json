@@ -36,7 +36,11 @@
     },
     "brute": {
       "hp": 300,
-      "radius": 0.55
+      "radius": 0.3
+    },
+    "tier3": {
+      "hp": 3000,
+      "radius": 0.3
     }
   },
   "bosses": {

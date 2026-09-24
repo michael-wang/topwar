@@ -9,7 +9,7 @@ const level: LevelDefinition = { id: 'breach-test', length: 20, enemyGroups: [],
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  bruteRadius: 0.55,
+  bruteRadius: 0.3, tier3Radius: 0.3,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
@@ -17,7 +17,7 @@ const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
 
 function withState(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = []) {
-  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
+  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;
@@ -94,10 +94,10 @@ describe('moving defense-line breaches', () => {
 
   it('a fresh run restores authored enemies, squad size, and weapon allocator', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
-    const first = new Simulation({ seed: 1, level: authored, startSquad: 3, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
+    const first = new Simulation({ seed: 1, level: authored, startSquad: 3, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
     const authoredPositions = first.getState().enemies.map(({ id, x, z }) => ({ id, x, z }));
     first.step(0.1, { targetX: 0 }, { ...tuning, forwardSpeed: 3 });
-    const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, startRocketCount: 0, gruntHp: 4, bruteHp: 300 });
+    const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, startRocketCount: 0, gruntHp: 4, bruteHp: 300, tier3Hp: 3000 });
     const state = fresh.getState();
     expect(state.player).toEqual({ x: 0, z: 0 });
     expect(state.squad.count).toBe(5);

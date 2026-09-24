@@ -13,12 +13,12 @@ const smallLevel: LevelDefinition = { id: 'short-endless', length: 3, enemyGroup
     bruteRamp: { startRow: 1000, fullRow: 1100, curvePower: 2 } } };
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  bruteRadius: 0.55,
+  bruteRadius: 0.3, tier3Radius: 0.3,
   rifle: { damage: 3, fireRate: 0.1, projectileSpeed: 1, range: 1 },
   rocket: { damage: 15, fireRate: 0.1, projectileSpeed: 1, range: 1, blastRadius: 1.25 } };
 const create = (level = smallLevel, count = 20) => new Simulation({ seed: 17, level,
   // Keep the stream lifecycle tests at the same visible squad size after 10:1 rifle compression.
-  startSquad: count, startRocketCount: Math.max(0, count - 1), gruntHp: 3, bruteHp: 300 });
+  startSquad: count, startRocketCount: Math.max(0, count - 1), gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
 const advance = (simulation: Simulation, dt = 1, forwardSpeed = 1) =>
   simulation.step(dt, { targetX: 2.5 }, { ...tuning, forwardSpeed });
 
@@ -43,9 +43,10 @@ describe('deterministic endless enemy stream', () => {
         index * 7 + column + 1));
     }
     for (let index = 960; index <= 1000; index++) {
-      expect(row(index).every((enemy) => enemy.type === 'brute')).toBe(true);
+      expect(row(index).every((enemy) => enemy.type === 'brute' || enemy.type === 'tier3')).toBe(true);
     }
-    expect(rampState.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 3))).toBe(true);
+    expect(rampState.enemies.every((enemy) => enemy.hp === (enemy.type === 'tier3' ? 3000
+      : enemy.type === 'brute' ? 300 : 3))).toBe(true);
   });
 
   it('keeps the first reveal center-most, then scatters brutes instead of forming bands', () => {
@@ -77,7 +78,7 @@ describe('deterministic endless enemy stream', () => {
     expect(early).toBeLessThan(0.05);
     expect(middle).toBeGreaterThan(0.1);
     expect(middle).toBeLessThan(0.4);
-    expect(late).toBeGreaterThan(0.6);
+    expect(late).toBeGreaterThan(0.5);
     expect(early).toBeLessThan(middle);
     expect(middle).toBeLessThan(late);
   });

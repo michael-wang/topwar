@@ -11,7 +11,7 @@ export interface SquadSimulationState {
 
 export interface EnemySimulationState {
   id: number;
-  type: 'grunt' | 'brute';
+  type: 'grunt' | 'brute' | 'tier3';
   x: number;
   z: number;
   hp: number;

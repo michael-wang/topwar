@@ -12,12 +12,12 @@ const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [], upgrad
 const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
-  memberRadius: 0.22, gruntRadius: 0.3, bruteRadius: 0.55,
+  memberRadius: 0.22, gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
   rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
 const create = (count = 1, gruntHp = 10, authored = level, rocketCount = 0) =>
-  new Simulation({ seed: 17, level: authored, startSquad: count, startRocketCount: rocketCount, gruntHp, bruteHp: 300 });
+  new Simulation({ seed: 17, level: authored, startSquad: count, startRocketCount: rocketCount, gruntHp, bruteHp: 300, tier3Hp: 3000 });
 const step = (simulation: Simulation, dt = 0.1, override: SimulationTuning = tuning) =>
   simulation.step(dt, { targetX: 0 }, override);
 

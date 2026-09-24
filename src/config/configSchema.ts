@@ -43,6 +43,10 @@ export const GameConfigSchema = z.strictObject({
       hp: positive,
       radius: positive,
     }),
+    tier3: z.strictObject({
+      hp: positive,
+      radius: positive,
+    }),
   }),
   bosses: z.strictObject({
     basic: z.strictObject({
