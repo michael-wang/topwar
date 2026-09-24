@@ -12,6 +12,7 @@ describe('UpgradeGateRenderer', () => {
     renderer.update([gate]);
     expect(scene.children).toHaveLength(1);
     const panel = scene.children[0] as THREE.Mesh;
+    expect((panel.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('18b8e8');
     expect(panel.position.x).toBe(2.7);
     expect((panel.geometry as THREE.BoxGeometry).parameters.depth).toBeGreaterThan(0.7);
     const disposeGeometry = vi.spyOn(panel.geometry, 'dispose');
@@ -22,6 +23,9 @@ describe('UpgradeGateRenderer', () => {
     renderer.update([{ ...gate, hp: 0 }]);
     expect(panel.visible).toBe(true);
     expect(panel.scale.z).toBeLessThan(1);
+    renderer.update([gate, { ...gate, id: 'right', x: 2.7, rewardAmount: 99, hp: 1000, maxHp: 1000 }]);
+    const jackpot = scene.children.find((child) => child !== panel) as THREE.Mesh;
+    expect((jackpot.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('efbd36');
     renderer.update([]);
     expect(scene.children).toHaveLength(0);
     renderer.dispose();

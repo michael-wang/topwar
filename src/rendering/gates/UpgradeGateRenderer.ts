@@ -28,7 +28,7 @@ export class UpgradeGateRenderer {
       let visual = this.visuals.get(gate.id);
       if (!visual) {
         const panel = new THREE.Mesh(this.wallGeometry,
-          gate.rewardMode === 'pickup' ? this.generatorMaterial : this.jackpotMaterial);
+          gate.rewardAmount === 1 ? this.generatorMaterial : this.jackpotMaterial);
         this.scene.add(panel);
         visual = { panel, label: null, hp: NaN };
         this.visuals.set(gate.id, visual);
@@ -62,7 +62,7 @@ export class UpgradeGateRenderer {
     const unit = gate.rewardKind.toUpperCase();
     const lines = gate.rewardMode === 'pickup'
       ? gate.hp > 0
-        ? [`${unit} +${gate.rewardAmount}/${gate.rewardIntervalSeconds}s`, `WALL ${Math.ceil(gate.hp)}`]
+        ? [`+${gate.rewardAmount} ${unit}`, `WALL ${Math.ceil(gate.hp)}`]
         : [`+${gate.rewardAmount} ${unit}`, `EVERY ${gate.rewardIntervalSeconds}s`]
       : [`+${gate.rewardAmount} ${unit}`, `WALL ${Math.ceil(gate.hp)}`];
     const material = this.createTextMaterial(lines);

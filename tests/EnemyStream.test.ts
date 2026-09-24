@@ -9,7 +9,7 @@ const authored = LevelDefinitionSchema.parse(authoredLevel);
 const smallLevel: LevelDefinition = { id: 'short-endless', length: 3, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 2, spawnAheadDistance: 5,
     columns: 2, spacing: 1, jitter: 0.2, seed: 42,
-    bruteRamp: { startRow: 1000, fullRow: 1100 } } };
+    bruteRamp: { startRow: 1000, fullRow: 1100, curvePower: 2 } } };
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
   gruntContactDamage: 1,
@@ -23,15 +23,15 @@ const advance = (simulation: Simulation, dt = 1, forwardSpeed = 1) =>
 
 describe('deterministic endless enemy stream', () => {
   const rampLevel: LevelDefinition = { ...authored,
-    enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 340 } };
+    enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 630 } };
   const rampState = create(rampLevel, 1).getState();
   const row = (index: number) => rampState.enemies.slice(index * 7, (index + 1) * 7);
 
   it('keeps seven original positions and IDs per row while the long ramp eventually saturates', () => {
     const stream = authored.enemyStream!;
-    expect(row(95).filter((enemy) => enemy.type === 'brute')).toHaveLength(0);
-    expect(row(96).filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
-    for (const index of [95, 96, 97, 160, 288, 384, 479, 480, 520]) {
+    expect(row(47).filter((enemy) => enemy.type === 'brute')).toHaveLength(0);
+    expect(row(48).filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
+    for (const index of [47, 48, 49, 96, 160, 288, 504, 732, 900, 960, 1000]) {
       const enemies = row(index);
       expect(enemies).toHaveLength(7);
       const offsets = createEnemyStreamRow(index, stream.columns, stream.spacing,
@@ -41,7 +41,7 @@ describe('deterministic endless enemy stream', () => {
       expect(enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 7 }, (_, column) =>
         index * 7 + column + 1));
     }
-    for (let index = 480; index <= 520; index++) {
+    for (let index = 960; index <= 1000; index++) {
       expect(row(index).every((enemy) => enemy.type === 'brute')).toBe(true);
     }
     expect(rampState.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 3))).toBe(true);
@@ -49,13 +49,13 @@ describe('deterministic endless enemy stream', () => {
 
   it('keeps the first reveal center-most, then scatters brutes instead of forming bands', () => {
     const stream = authored.enemyStream!;
-    const reveal = row(96);
+    const reveal = row(48);
     const nearest = reveal.reduce((best, enemy, column) =>
       Math.abs(enemy.x) < Math.abs(reveal[best].x) ? column : best, 0);
     expect(reveal[nearest].type).toBe('brute');
     expect(reveal.filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
-    expect(reveal[nearest].z).toBeCloseTo(stream.startZ + 96 * stream.spacing, 0);
-    const counts = Array.from({ length: 384 }, (_, offset) => row(96 + offset)
+    expect(reveal[nearest].z).toBeCloseTo(stream.startZ + 48 * stream.spacing, 0);
+    const counts = Array.from({ length: 912 }, (_, offset) => row(48 + offset)
       .filter((enemy) => enemy.type === 'brute').length);
     expect(counts.slice(1, 40)).toContain(0);
     expect(counts.some((count, index) => index > 0 && count < counts[index - 1])).toBe(true);
@@ -70,13 +70,13 @@ describe('deterministic endless enemy stream', () => {
       }
       return brutes / ((end - start + 1) * 7);
     };
-    const early = ratio(97, 160);
-    const middle = ratio(250, 320);
-    const late = ratio(400, 479);
-    expect(early).toBeLessThan(0.2);
-    expect(middle).toBeGreaterThan(0.3);
-    expect(middle).toBeLessThan(0.7);
-    expect(late).toBeGreaterThan(0.7);
+    const early = ratio(49, 160);
+    const middle = ratio(400, 550);
+    const late = ratio(800, 959);
+    expect(early).toBeLessThan(0.05);
+    expect(middle).toBeGreaterThan(0.1);
+    expect(middle).toBeLessThan(0.4);
+    expect(late).toBeGreaterThan(0.6);
     expect(early).toBeLessThan(middle);
     expect(middle).toBeLessThan(late);
   });
@@ -85,7 +85,7 @@ describe('deterministic endless enemy stream', () => {
     const alternate: LevelDefinition = { ...rampLevel,
       enemyStream: { ...rampLevel.enemyStream!, seed: 104730 } };
     const changed = create(alternate, 1).getState().enemies;
-    const types = (enemies: SimulationState['enemies']) => enemies.slice(250 * 7, 321 * 7)
+    const types = (enemies: SimulationState['enemies']) => enemies.slice(500 * 7, 601 * 7)
       .map((enemy) => enemy.type);
     expect(types(changed)).not.toEqual(types(rampState.enemies));
     expect(create(rampLevel, 1).getState().enemies).toEqual(rampState.enemies);
@@ -95,14 +95,14 @@ describe('deterministic endless enemy stream', () => {
 
   it('breaks equal-distance center ties by the lower column index', () => {
     const regular: LevelDefinition = { ...smallLevel, enemyStream: { ...smallLevel.enemyStream!,
-      columns: 4, jitter: 0, bruteRamp: { startRow: 0, fullRow: 3 } } };
+      columns: 4, jitter: 0, bruteRamp: { startRow: 0, fullRow: 3, curvePower: 2 } } };
     expect(create(regular, 1).getState().enemies.slice(0, 4).map((enemy) => enemy.type))
       .toEqual(['grunt', 'brute', 'grunt', 'grunt']);
   });
 
   it('reproduces the ramp before, during, and after transition despite earlier deaths', () => {
     const futureLevel = { ...smallLevel, enemyStream: { ...smallLevel.enemyStream!,
-      bruteRamp: { startRow: 6, fullRow: 10 } } };
+      bruteRamp: { startRow: 6, fullRow: 10, curvePower: 2 } } };
     const first = create(futureLevel);
     const second = create(futureLevel);
     const before = JSON.parse(JSON.stringify(first.getState())) as SimulationState;

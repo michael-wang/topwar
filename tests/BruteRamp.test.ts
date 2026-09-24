@@ -1,20 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { tier2ProbabilityForRow, tier2RollForSlot } from '../src/simulation/enemies/bruteRamp';
 
-const ramp = { startRow: 96, fullRow: 480 };
+const ramp = { startRow: 48, fullRow: 960, curvePower: 2 };
 
 describe('deterministic Tier-2 probability', () => {
   it('rises smoothly from zero to one and stays within bounds', () => {
     expect(tier2ProbabilityForRow(0, ramp)).toBe(0);
-    expect(tier2ProbabilityForRow(95, ramp)).toBe(0);
-    expect(tier2ProbabilityForRow(96, ramp)).toBe(0); // guaranteed reveal is separate
-    expect(tier2ProbabilityForRow(160, ramp)).toBeCloseTo(1 / 6);
-    expect(tier2ProbabilityForRow(288, ramp)).toBeCloseTo(1 / 2);
-    expect(tier2ProbabilityForRow(384, ramp)).toBeCloseTo(3 / 4);
-    expect(tier2ProbabilityForRow(480, ramp)).toBe(1);
+    expect(tier2ProbabilityForRow(47, ramp)).toBe(0);
+    expect(tier2ProbabilityForRow(48, ramp)).toBe(0); // guaranteed reveal is separate
+    expect(tier2ProbabilityForRow(96, ramp)).toBeCloseTo((48 / 912) ** 2);
+    expect(tier2ProbabilityForRow(160, ramp)).toBeCloseTo((112 / 912) ** 2);
+    expect(tier2ProbabilityForRow(504, ramp)).toBeCloseTo(0.25);
+    expect(tier2ProbabilityForRow(732, ramp)).toBeCloseTo(0.5625);
+    expect(tier2ProbabilityForRow(960, ramp)).toBe(1);
     expect(tier2ProbabilityForRow(1000, ramp)).toBe(1);
     let previous = 0;
-    for (let row = 0; row <= 600; row++) {
+    for (let row = 0; row <= 1100; row++) {
       const probability = tier2ProbabilityForRow(row, ramp);
       expect(probability).toBeGreaterThanOrEqual(previous);
       expect(probability).toBeGreaterThanOrEqual(0);

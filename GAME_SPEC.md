@@ -43,7 +43,7 @@ The player is forced forward toward stationary basic grunts. Pressure comes from
 
 Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. Slower forced progression gives the player time to invest in persistent side armories. This level deliberately embraces exaggerated advertisement-style squad growth.
 
-The opening is a long sea of one-shot Tier-1 grunts. After one guaranteed first reveal, larger, darker Tier-2 brutes spread through the stream via independent deterministic rolls with a slowly rising authored probability. Brute density may fluctuate from row to row; only its long-term frequency rises, reaching full Tier-2 saturation at row 480. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Playtest where this pressure becomes unsustainable before designing the next player power upgrade. Future Tier-3 and Tier-4 phases should likewise begin sparse and gradually dominate the stream; their details remain undecided.
+The opening is a long sea of one-shot Tier-1 grunts. The first larger, darker Tier-2 brute is guaranteed at row 48; afterward each enemy independently becomes Tier-2 through deterministic rolls against a quadratic probability curve. Row-to-row density fluctuates, while the long-term frequency rises slowly to full Tier-2 saturation at row 960. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Playtest where this pressure becomes unsustainable before designing the next player power upgrade. Future Tier-3 and Tier-4 phases should likewise begin sparse and gradually dominate the stream; their details remain undecided.
 
 ## 3. Controls
 
@@ -161,7 +161,7 @@ Examples:
 - +20
 - +99
 
-Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall makes it emit physical +1 rifle plaques every second. The player must move into the left lane to collect each plaque; missed plaques grant nothing. Breaking the right 1000 HP wall immediately grants +99 rifle soldiers once. Both paths remain available throughout the run. Wall HP and rewards are authored level data.
+Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall immediately emits a physical +1 rifle plaque, then another every second. Breaking the right 1000 HP wall immediately emits a gold +99 rifle plaque, then another every second. The player must move into the matching lane to collect either reward; missed plaques grant nothing. Both generators remain available throughout the run. Wall HP and rewards are authored level data.
 
 Later we can test:
 

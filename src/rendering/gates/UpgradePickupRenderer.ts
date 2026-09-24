@@ -5,6 +5,7 @@ export class UpgradePickupRenderer {
   private readonly plaqueGeometry = new THREE.BoxGeometry(0.72, 0.72, 0.1);
   private readonly labelGeometry = new THREE.PlaneGeometry(0.65, 0.56);
   private readonly plaqueMaterial = new THREE.MeshBasicMaterial({ color: '#18b8e8' });
+  private readonly jackpotMaterial = new THREE.MeshBasicMaterial({ color: '#efbd36' });
   private readonly labelMaterials = new Map<number, THREE.MeshBasicMaterial>();
   private readonly visuals = new Map<number, THREE.Group>();
 
@@ -22,7 +23,8 @@ export class UpgradePickupRenderer {
       let visual = this.visuals.get(pickup.id);
       if (!visual) {
         visual = new THREE.Group();
-        visual.add(new THREE.Mesh(this.plaqueGeometry, this.plaqueMaterial));
+        visual.add(new THREE.Mesh(this.plaqueGeometry,
+          pickup.rewardAmount === 1 ? this.plaqueMaterial : this.jackpotMaterial));
         const labelMaterial = this.getLabelMaterial(pickup.rewardAmount);
         if (labelMaterial) {
           const label = new THREE.Mesh(this.labelGeometry, labelMaterial);
@@ -44,6 +46,7 @@ export class UpgradePickupRenderer {
     this.plaqueGeometry.dispose();
     this.labelGeometry.dispose();
     this.plaqueMaterial.dispose();
+    this.jackpotMaterial.dispose();
     for (const material of this.labelMaterials.values()) {
       material.map?.dispose();
       material.dispose();

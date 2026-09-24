@@ -7,7 +7,7 @@ import type { EnemySimulationState, ProjectileSimulationState, SimulationState, 
 const left = { id: 'left', x: -1, zOffset: 5, width: 1.5, hp: 6,
   reward: { mode: 'pickup' as const, kind: 'rifle' as const, amount: 1, intervalSeconds: 1, dropSpeed: 4 } };
 const right = { id: 'right', x: 1, zOffset: 5, width: 1.5, hp: 9,
-  reward: { mode: 'instant' as const, kind: 'rifle' as const, amount: 99 } };
+  reward: { mode: 'pickup' as const, kind: 'rifle' as const, amount: 99, intervalSeconds: 1, dropSpeed: 4 } };
 const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [], upgradeGates: [left, right] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
@@ -50,7 +50,7 @@ describe('persistent advertisement-style armories', () => {
     expect(first.enemies.length).toBeGreaterThan(700);
     expect(first.enemyStream?.nextEnemyId).toBe(first.enemies.length + 1);
     expect(first.gates.map((gate) => [gate.id, gate.zOffset, gate.hp, gate.maxHp, gate.reward.mode])).toEqual([
-      ['rifle-generator', 8, 100, 100, 'pickup'], ['rifle-jackpot', 8, 1000, 1000, 'instant'],
+      ['rifle-generator', 8, 100, 100, 'pickup'], ['rifle-jackpot', 8, 1000, 1000, 'pickup'],
     ]);
     expect(first.gates[0]).toHaveProperty('rewardCooldownRemainingSeconds', null);
     setProjectiles(run, [rifle(1, -2.5)]);
@@ -142,22 +142,22 @@ describe('persistent advertisement-style armories', () => {
     expect(simulation.getState().pickups).toEqual([]);
   });
 
-  it('breaks the wall without a reward and emits one plaque per full interval', () => {
+  it('breaks the wall into an immediate pickup, then emits once per full interval', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, -1, 6)]);
     step(simulation);
     expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
     expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
       rewardCooldownRemainingSeconds: 1 });
-    expect(simulation.getState().pickups).toEqual([]);
-    step(simulation, 0.5);
-    expect(simulation.getState().pickups).toEqual([]);
-    step(simulation, 0.5);
     expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'left',
       x: -1, zOffset: 5, width: 1.5, rewardKind: 'rifle', rewardAmount: 1, dropSpeed: 4 }]);
+    step(simulation, 0.5);
+    expect(simulation.getState().pickups).toHaveLength(1);
+    step(simulation, 0.5);
+    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([1, 2]);
     expect(simulation.getState().squad.count).toBe(1);
     step(simulation, 1);
-    expect(simulation.getState().pickups.map((pickup) => pickup.id)).toEqual([1, 2]);
+    expect(simulation.getState().pickups.map((pickup) => pickup.id)).toEqual([2, 3]);
     expect(simulation.getState().pickups[0].zOffset).toBe(1);
     expect(simulation.getState().gates[0].hp).toBe(0);
     expect(simulation.getState().gates[1].hp).toBe(9);
@@ -173,7 +173,7 @@ describe('persistent advertisement-style armories', () => {
     expect(simulation.getState().projectiles.map((projectile) => projectile.id)).toContain(2);
     expect(simulation.getState().weapons.nextProjectileId).toBe(3);
     step(simulation, 1);
-    expect(simulation.getState().pickups.map((pickup) => pickup.id)).toEqual([2, 3]);
+    expect(simulation.getState().pickups.map((pickup) => pickup.id)).toEqual([3, 4]);
     expect(simulation.getState().squad.count).toBe(1);
   });
 
@@ -187,8 +187,8 @@ describe('persistent advertisement-style armories', () => {
     step(first, 1.25);
     step(second, 1.25);
     expect(second.getState()).toEqual(first.getState());
-    expect(first.getState().pickups.map((pickup) => pickup.id)).toEqual([1, 2]);
-    expect(first.getState().nextPickupId).toBe(3);
+    expect(first.getState().pickups.map((pickup) => pickup.id)).toEqual([2, 3]);
+    expect(first.getState().nextPickupId).toBe(4);
     const exposed = first.getState();
     exposed.pickups[0].x = 999;
     expect(first.getState().pickups[0].x).toBe(-1);
@@ -199,7 +199,7 @@ describe('persistent advertisement-style armories', () => {
     setProjectiles(simulation, [rifle(1, -1, 6)]);
     step(simulation);
     for (let tick = 0; tick < 60; tick++) step(simulation, 1 / 60);
-    expect(simulation.getState().pickups).toHaveLength(1);
+    expect(simulation.getState().pickups).toHaveLength(2);
     expect(simulation.getState().squad.count).toBe(1);
   });
 
@@ -264,8 +264,8 @@ describe('persistent advertisement-style armories', () => {
     setProjectiles(simulation, [rifle(1, -1, 6)]);
     step(simulation);
     step(simulation, 3.25);
-    expect(simulation.getState().nextPickupId).toBe(4);
-    expect(simulation.getState().pickups.map((item) => [item.id, item.zOffset])).toEqual([[3, 4]]);
+    expect(simulation.getState().nextPickupId).toBe(5);
+    expect(simulation.getState().pickups.map((item) => [item.id, item.zOffset])).toEqual([[4, 4]]);
     expect(simulation.getState().squad.count).toBe(1);
   });
 
@@ -299,47 +299,89 @@ describe('persistent advertisement-style armories', () => {
     simulation.restoreState(lost);
     step(simulation, 10);
     expect(simulation.getState().squad.count).toBe(0);
-    expect(simulation.getState().pickups).toEqual([]);
+    expect(simulation.getState().pickups).toHaveLength(1);
     expect(simulation.getState().gates[0]).toEqual(lost.gates[0]);
     expect(create().getState().gates[0]).toMatchObject({ hp: 6, rewardCooldownRemainingSeconds: null });
   });
 
-  it('retains right-wall damage, then grants +99 exactly once on destruction', () => {
+  it('retains right-wall damage, emits +99 immediately, and grants only on collection', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, 1)]);
     step(simulation);
     expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([6, 6]);
     setProjectiles(simulation, [rifle(2, 1, 9)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left']);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left', 'right']);
+    expect(simulation.getState().gates[1]).toMatchObject({ hp: 0, rewardCooldownRemainingSeconds: 1 });
+    expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'right',
+      x: 1, zOffset: 5, rewardAmount: 99 }]);
     expect(simulation.getState().weapons.nextProjectileId).toBe(3);
+    step(simulation, 1);
+    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([1, 2]);
     const state = simulation.getState();
-    state.weapons.rifleCooldownRemainingSeconds = 0;
+    state.player.x = 1;
     simulation.restoreState(state);
+    simulation.step(0.25, { targetX: 1 }, tuning);
+    expect(simulation.getState().squad.count).toBe(100);
+    expect(simulation.getState().squad.rocketCount).toBe(0);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(3);
+    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([2]);
+    const grown = simulation.getState();
+    grown.weapons.rifleCooldownRemainingSeconds = 0;
+    simulation.restoreState(grown);
     step(simulation, 0.1);
     expect(simulation.getState().weapons.nextProjectileId).toBe(103);
-    expect(simulation.getState().squad.count).toBe(100);
   });
 
-  it('cannot pay the jackpot twice when two projectiles cross it in one step', () => {
+  it('spawns one immediate pickup when two projectiles cross the breaking wall', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, 1, 9), rifle(2, 1, 9)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left']);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([99]);
+    expect(simulation.getState().nextPickupId).toBe(2);
   });
 
-  it('continues emitting left pickups after the right jackpot pays out', () => {
+  it('misses a +99 plaque outside its lane and continues generating later plaques', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, 1, 9)]);
+    step(simulation);
+    step(simulation, 1.25);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().pickups).toMatchObject([{ id: 2,
+      sourceGateId: 'right', rewardAmount: 99, zOffset: 4 }]);
+    step(simulation, 1);
+    expect(simulation.getState().pickups.map((item) => item.id)).toEqual([3]);
+    expect(simulation.getState().gates[1].hp).toBe(0);
+  });
+
+  it('freezes both generators at Game Over and retry restores intact walls', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, -1, 6), rifle(2, 1, 9)]);
     step(simulation);
-    expect(simulation.getState().squad.count).toBe(100);
+    const lost = simulation.getState();
+    lost.squad.count = 0;
+    simulation.restoreState(lost);
+    const frozen = simulation.getState();
+    step(simulation, 5);
+    expect(simulation.getState().pickups).toEqual(frozen.pickups);
+    expect(simulation.getState().nextPickupId).toBe(frozen.nextPickupId);
+    expect(create().getState()).toMatchObject({ pickups: [], nextPickupId: 1 });
+    expect(create().getState().gates.map((gate) => gate.hp)).toEqual([6, 9]);
+  });
+
+  it('runs both generators independently after both walls break', () => {
+    const simulation = create();
+    setProjectiles(simulation, [rifle(1, -1, 6), rifle(2, 1, 9)]);
+    step(simulation);
+    expect(simulation.getState().squad.count).toBe(1);
     expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
       rewardCooldownRemainingSeconds: 1 });
-    step(simulation, 2);
-    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
-    expect(simulation.getState().pickups).toHaveLength(2);
+    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([1, 99]);
+    step(simulation, 1);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([1, 99, 1, 99]);
   });
 
   it('requires all 1000 authored jackpot HP and keeps left investment independent', () => {
@@ -349,8 +391,9 @@ describe('persistent advertisement-style armories', () => {
     expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([100, 1]);
     setProjectiles(simulation, [rifle(2, 2.5, 1)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 100, rocketCount: 0 });
-    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['rifle-generator']);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['rifle-generator', 'rifle-jackpot']);
+    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([99]);
     expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().gates[1].hp).toBe(1000);
   });
 
@@ -365,13 +408,16 @@ describe('persistent advertisement-style armories', () => {
     const jackpot = create();
     setProjectiles(jackpot, [rocket(1, 1)]);
     step(jackpot);
-    expect(jackpot.getState().squad.count).toBe(100);
-    expect(jackpot.getState().gates.map((gate) => gate.hp)).toEqual([6]);
+    expect(jackpot.getState().squad.count).toBe(1);
+    expect(jackpot.getState().gates.map((gate) => gate.hp)).toEqual([6, 0]);
+    expect(jackpot.getState().pickups.map((item) => item.rewardAmount)).toEqual([99]);
   });
 
   it('rejects unsafe pickup and instant growth without partially committing', () => {
     for (const mode of ['pickup', 'instant'] as const) {
-      const simulation = create();
+      const instantLevel: LevelDefinition = { ...level, upgradeGates: [left,
+        { ...right, reward: { mode: 'instant', kind: 'rifle', amount: 99 } }] };
+      const simulation = create(mode === 'instant' ? instantLevel : level);
       const state = simulation.getState();
       const gate = state.gates.find((candidate) => candidate.reward.mode === mode)!;
       gate.reward.amount = Number.MAX_SAFE_INTEGER;

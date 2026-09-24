@@ -537,7 +537,9 @@ export class Simulation {
     if (!Number.isSafeInteger(nextProjectileId)) throw new Error('Simulation projectile ID exceeds the supported range');
 
     const survivingProjectiles: ProjectileSimulationState[] = [];
-    // A breaking shot starts the timer; the first plaque waits for a full interval.
+    const travelingPickups = this.state.pickups.map((pickup) => ({ pickup: { ...pickup }, travelSeconds: dtSeconds }));
+    let nextPickupId = this.state.nextPickupId;
+    // The breaking shot creates a plaque at the wall; later emissions use the timer.
     const newlyBroken = new Set<string>();
     for (const projectile of projectiles) {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
@@ -550,6 +552,13 @@ export class Simulation {
           if (hit.gate.hp === 0 && hit.gate.reward.mode === 'pickup') {
             hit.gate.rewardCooldownRemainingSeconds = hit.gate.reward.intervalSeconds;
             newlyBroken.add(hit.gate.id);
+            if (!Number.isSafeInteger(nextPickupId + 1)) {
+              throw new Error('Simulation pickup ID exceeds the supported range');
+            }
+            travelingPickups.push({ pickup: { id: nextPickupId++, sourceGateId: hit.gate.id,
+              x: hit.gate.x, zOffset: hit.gate.zOffset, width: hit.gate.width,
+              rewardKind: hit.gate.reward.kind, rewardAmount: hit.gate.reward.amount,
+              dropSpeed: hit.gate.reward.dropSpeed }, travelSeconds: 0 });
           } else if (hit.gate.hp === 0 && hit.gate.reward.mode === 'instant') {
             const amount = hit.gate.reward.amount;
             if (!Number.isSafeInteger(squad.count + amount)) {
@@ -582,8 +591,6 @@ export class Simulation {
       if (remainingRange > 0) survivingProjectiles.push({ ...projectile, z: endZ, remainingRange });
     }
     // Emissions are timed within this step, so a large dt also advances newly born plaques.
-    const travelingPickups = this.state.pickups.map((pickup) => ({ pickup: { ...pickup }, travelSeconds: dtSeconds }));
-    let nextPickupId = this.state.nextPickupId;
     for (const gate of gates) {
       if (gate.reward.mode !== 'pickup' || gate.hp > 0 || newlyBroken.has(gate.id)) continue;
       const cooldown = gate.rewardCooldownRemainingSeconds!;

@@ -23,12 +23,12 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
-      bruteRamp: { startRow: 96, fullRow: 480 } });
+      bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 } });
     expect(parsed.upgradeGates).toEqual([
       { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
       { id: 'rifle-jackpot', x: 2.7, zOffset: 8, width: 0.9, hp: 1000,
-        reward: { mode: 'instant', kind: 'rifle', amount: 99 } },
+        reward: { mode: 'pickup', kind: 'rifle', amount: 99, intervalSeconds: 1, dropSpeed: 4 } },
     ]);
   });
 
@@ -80,16 +80,21 @@ describe('LevelDefinitionSchema', () => {
       enemyStream: withoutRamp })).toThrow(/bruteRamp/);
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream,
-        bruteRamp: { startRow: 96, fullRow: 480, chance: 0.5 } } })).toThrow(/chance/);
+        bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2, chance: 0.5 } } })).toThrow(/chance/);
     for (const startRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 480 } } }))
+        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 960, curvePower: 2 } } }))
         .toThrow(/startRow/);
     }
-    for (const fullRow of [-1, 96, 95, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
+    for (const fullRow of [-1, 48, 47, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow: 96, fullRow } } }))
+        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow: 48, fullRow, curvePower: 2 } } }))
         .toThrow(/fullRow/);
+    }
+    for (const curvePower of [0, -1, Infinity, NaN]) {
+      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+        enemyStream: { ...authoredLevel.enemyStream,
+          bruteRamp: { startRow: 48, fullRow: 960, curvePower } } })).toThrow(/curvePower/);
     }
   });
 
@@ -131,8 +136,11 @@ describe('LevelDefinitionSchema', () => {
       { ...level().upgradeGates[0], reward: { mode: 'laser', kind: 'rifle', amount: 1 } },
     ] })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[1], reward: { ...level().upgradeGates[1].reward, intervalSeconds: 2 } },
+      { ...level().upgradeGates[1], reward: { mode: 'instant', kind: 'rifle', amount: 99, intervalSeconds: 2 } },
     ] })).toThrow(/intervalSeconds/);
+    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
+      { ...level().upgradeGates[1], reward: { mode: 'instant', kind: 'rifle', amount: 99 } },
+    ] })).not.toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
       { ...level().upgradeGates[0], reward: { ...level().upgradeGates[0].reward, count: 5 } },
     ] })).toThrow(/count/);

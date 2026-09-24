@@ -1,12 +1,14 @@
 export interface BruteRamp {
   startRow: number;
   fullRow: number;
+  curvePower: number;
 }
 
 export function tier2ProbabilityForRow(rowIndex: number, ramp: BruteRamp): number {
   if (rowIndex <= ramp.startRow) return 0;
   if (rowIndex >= ramp.fullRow) return 1;
-  return (rowIndex - ramp.startRow) / (ramp.fullRow - ramp.startRow);
+  const progress = (rowIndex - ramp.startRow) / (ramp.fullRow - ramp.startRow);
+  return Math.min(1, Math.max(0, progress ** ramp.curvePower));
 }
 
 // A slot's roll depends only on authored content, never on gameplay RNG or prior rows.
