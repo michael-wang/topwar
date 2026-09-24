@@ -47,7 +47,6 @@
   },
   "bosses": {
     "basic": {
-      "hpMultiplier": 5000,
       "visualScale": 7,
       "radius": 2.0
     }

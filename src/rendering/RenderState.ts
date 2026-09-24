@@ -24,7 +24,7 @@ export interface GameRenderState {
 
 export interface BossRenderState {
   id: number;
-  tier: 1;
+  tier: 1 | 2;
   x: number;
   z: number;
   hp: number;

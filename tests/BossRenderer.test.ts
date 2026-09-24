@@ -72,4 +72,32 @@ describe('BossRenderer', () => {
     expect(dispose).toHaveBeenCalledOnce();
     expect(scene.children).toHaveLength(0);
   });
+
+  it('uses Tier-2 colors and clears the earlier Boss flash and death state', () => {
+    const scene = new THREE.Scene();
+    const renderer = new BossRenderer(scene);
+    const [active, death] = scene.children as THREE.Group[];
+    renderer.update(boss, 0);
+    renderer.update({ ...boss, hp: 2500 }, 1);
+    renderer.update(null, 2);
+    expect(death.visible).toBe(true);
+    const tier2: BossRenderState = { id: 9000, tier: 2, x: 0, z: 900,
+      hp: 300000, maxHp: 300000, visualScale: 7 };
+    renderer.update(tier2, 3);
+    expect(death.visible).toBe(false);
+    expect(active.scale.x).toBe(7);
+    expect((active.children[7] as THREE.Mesh).scale.x).toBe(1);
+    expect(((active.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
+      .color.getHexString()).toBe('cf4037');
+    expect(((active.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial)
+      .color.getHexString()).toBe('ef6658');
+    renderer.update({ ...tier2, hp: 299700 }, 4);
+    expect(active.scale.x).toBeGreaterThan(7);
+    expect((active.children[7] as THREE.Mesh).scale.x).toBeCloseTo(0.999);
+    renderer.update({ ...tier2, hp: 299700 }, 200);
+    expect(active.scale.x).toBe(7);
+    expect(((active.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
+      .color.getHexString()).toBe('cf4037');
+    renderer.dispose();
+  });
 });

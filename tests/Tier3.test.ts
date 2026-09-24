@@ -20,7 +20,7 @@ const tuning: SimulationTuning = {
   rifle: { ...game.weapon.rifle }, rocket: { ...game.weapon.rocket },
 };
 const create = (spawnAheadDistance = 96) => new Simulation({ seed: 17,
-  level: { ...level, enemyStream: { ...stream, spawnAheadDistance, rewards: undefined, boss: undefined } },
+  level: { ...level, enemyStream: { ...stream, spawnAheadDistance, rewards: undefined, bosses: undefined } },
   startSquad: 1, startRocketCount: 0, gruntHp: game.enemies.grunt.hp,
   bruteHp: game.enemies.brute.hp, tier3Hp: game.enemies.tier3.hp });
 
@@ -91,7 +91,7 @@ describe('overlapping Tier-3 enemy pressure', () => {
   it('overlaps all three tiers, preserves Tier-2 saturation underneath, and ends in all Tier-3', () => {
     const compact = { ...stream, startZ: 0, spawnAheadDistance: 100,
       bruteRamp: { startRow: 2, fullRow: 12, curvePower: 1 },
-      tier3Ramp: { startRow: 5, fullRow: 18, curvePower: 1 }, rewards: undefined, boss: undefined };
+      tier3Ramp: { startRow: 5, fullRow: 18, curvePower: 1 }, rewards: undefined, bosses: undefined };
     const simulation = new Simulation({ seed: 17, level: { ...level, enemyStream: compact },
       startSquad: 1, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
     const state = simulation.getState();

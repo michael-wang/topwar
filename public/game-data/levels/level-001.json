@@ -11,7 +11,10 @@
     "spacing": 0.60,
     "jitter": 0.16,
     "seed": 104729,
-    "boss": { "row": 136, "tier": 1 },
+    "bosses": [
+      { "row": 136, "tier": 1, "hpMultiplier": 5000 },
+      { "row": 328, "tier": 2, "hpMultiplier": 1000 }
+    ],
     "bruteRamp": { "startRow": 48, "fullRow": 144, "curvePower": 2 },
     "tier3Ramp": { "startRow": 240, "fullRow": 336, "curvePower": 2 },
     "rewards": { "rowsPerReward": 8, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 2.2 }

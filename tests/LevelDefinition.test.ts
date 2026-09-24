@@ -30,7 +30,8 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
-      boss: { row: 136, tier: 1 },
+      bosses: [{ row: 136, tier: 1, hpMultiplier: 5000 },
+        { row: 328, tier: 2, hpMultiplier: 1000 }],
       bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2 },
       tier3Ramp: { startRow: 240, fullRow: 336, curvePower: 2 },
       rewards: { rowsPerReward: 8, spawnAheadDistance: 30,

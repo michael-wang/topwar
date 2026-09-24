@@ -169,15 +169,14 @@ describe('Tier-3 rifle combat', () => {
 
   it('stops on a Boss even with penetration remaining', () => {
     const bossLevel: LevelDefinition = { ...level,
-      enemyStream: { ...level.enemyStream!, boss: { row: 1, tier: 1 } } };
+      enemyStream: { ...level.enemyStream!, bosses: [{ row: 1, tier: 1, hpMultiplier: 5000 }] } };
     const sim = new Simulation({ seed: 11, level: bossLevel, startSquad: 1,
-      startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000,
-      bossHpMultiplier: 5000 });
+      startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
     const state = sim.getState();
     state.enemies = [];
     state.enemyStream!.nextRowIndex = 2;
     state.enemyStream!.nextEnemyId = 3;
-    state.enemyStream!.bossSpawned = true;
+    state.enemyStream!.nextBossIndex = 1;
     state.boss = { id: 2, tier: 1, x: 0, z: 15, hp: 15000, maxHp: 15000 };
     state.projectiles = [tier3Shot()];
     state.weapons.nextProjectileId = 2;

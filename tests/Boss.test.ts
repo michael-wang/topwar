@@ -3,14 +3,14 @@ import gameData from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
+import { Simulation, bossMaxHpForTier, type SimulationTuning } from '../src/simulation/Simulation';
 import { rewardPlacementForBlock } from '../src/simulation/enemies/streamRewards';
 import type { ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
 const config = GameConfigSchema.parse(gameData);
 const level = LevelDefinitionSchema.parse(levelData);
 const stream = level.enemyStream!;
-const bossRow = stream.boss!.row;
+const bossRow = stream.bosses![0].row;
 const bossZ = stream.startZ + bossRow * stream.spacing;
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
@@ -18,21 +18,23 @@ const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth
   rifle: { ...config.weapon.rifle, fireRate: 0.01, projectileSpeed: 1, range: 1 },
   rocket: { ...config.weapon.rocket, fireRate: 0.01, projectileSpeed: 1, range: 1 } };
 const create = (gruntHp = 3) => new Simulation({ seed: 7, level, startSquad: 1,
-  startRocketCount: 0, gruntHp, bruteHp: 300, tier3Hp: 3000,
-  bossHpMultiplier: config.bosses.basic.hpMultiplier });
+  startRocketCount: 0, gruntHp, bruteHp: 300, tier3Hp: 3000 });
 const step = (sim: Simulation, dt = 0.1, changes: Partial<SimulationTuning> = {}) =>
   sim.step(dt, { targetX: 0 }, { ...tuning, ...changes });
 
 // A valid snapshot just before the Boss enters the enemy horizon keeps
 // these tests focused on spatial materialization instead of hundreds of ticks.
-function approachBoss(sim: Simulation, playerZ = bossZ - 25): void {
+function approachBoss(sim: Simulation, playerZ = bossZ - 25, encounterIndex = 0): void {
+  const row = stream.bosses![encounterIndex].row;
   const state = sim.getState();
   state.player.z = playerZ;
   state.enemies = [];
   state.streamRewards = [];
-  state.enemyStream!.nextRowIndex = bossRow;
-  state.enemyStream!.nextEnemyId = bossRow * stream.columns + 1;
-  state.enemyStream!.nextRewardBlockIndex = Math.floor(bossRow / stream.rewards!.rowsPerReward) - 1;
+  state.boss = null;
+  state.enemyStream!.nextRowIndex = row;
+  state.enemyStream!.nextBossIndex = encounterIndex;
+  state.enemyStream!.nextEnemyId = row * stream.columns + encounterIndex + 1;
+  state.enemyStream!.nextRewardBlockIndex = Math.floor(row / stream.rewards!.rowsPerReward) - 1;
   state.enemyStream!.nextRewardId = state.enemyStream!.nextRewardBlockIndex + 1;
   state.weapons.rifleCooldownRemainingSeconds = 100;
   state.weapons.rocketCooldownRemainingSeconds = 100;
@@ -55,13 +57,17 @@ function prepareShot(sim: Simulation, projectile: ProjectileSimulationState): vo
   sim.restoreState(state);
 }
 
-describe('embedded Tier-1 Boss', () => {
-  it('validates committed row and multiplier, deriving HP from Tier-1 HP', () => {
-    expect(config.bosses.basic).toEqual({ hpMultiplier: 5000, visualScale: 7, radius: 2 });
+describe('embedded Boss encounters', () => {
+  it('validates ordered encounters and derives HP from each normal enemy tier', () => {
+    expect(config.bosses.basic).toEqual({ visualScale: 7, radius: 2 });
     expect(config.enemies.grunt.hp).toBe(3);
-    expect(stream.boss).toEqual({ row: 136, tier: 1 });
+    expect(stream.bosses).toEqual([{ row: 136, tier: 1, hpMultiplier: 5000 },
+      { row: 328, tier: 2, hpMultiplier: 1000 }]);
+    expect(bossMaxHpForTier(1, 3, 300, 5000)).toBe(15000);
+    expect(bossMaxHpForTier(2, 3, 300, 1000)).toBe(300000);
+    expect(bossMaxHpForTier(2, 3, 450, 1000)).toBe(450000);
     expect(create().getState().boss).toBeNull();
-    expect(create().getState().enemyStream!.bossSpawned).toBe(false);
+    expect(create().getState().enemyStream!.nextBossIndex).toBe(0);
     const sim = create();
     approachBoss(sim);
     step(sim);
@@ -71,18 +77,23 @@ describe('embedded Tier-1 Boss', () => {
     approachBoss(changedHp);
     step(changedHp);
     expect(changedHp.getState().boss).toMatchObject({ hp: 25000, maxHp: 25000 });
-    for (const key of ['hp', 'moveSpeed']) {
+    for (const key of ['hp', 'moveSpeed', 'hpMultiplier']) {
       expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
         ...config.bosses.basic, [key]: 1 } } })).toThrow();
     }
-    for (const hpMultiplier of [0, -1, Infinity]) {
-      expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
-        ...config.bosses.basic, hpMultiplier } } })).toThrow();
-    }
-    for (const boss of [{ row: -1, tier: 1 }, { row: 1.5, tier: 1 },
-      { row: 136, tier: 2 }, { row: 136, tier: 1, extra: true }]) {
+    for (const boss of [{ row: -1, tier: 1, hpMultiplier: 1 },
+      { row: 1.5, tier: 1, hpMultiplier: 1 }, { row: 136, tier: 3, hpMultiplier: 1 },
+      { row: 136, tier: 1, hpMultiplier: 0 }, { row: 136, tier: 1, hpMultiplier: Infinity },
+      { row: 136, tier: 1, hpMultiplier: 1, extra: true }]) {
       expect(() => LevelDefinitionSchema.parse({ ...level,
-        enemyStream: { ...stream, boss } })).toThrow();
+        enemyStream: { ...stream, bosses: [boss] } })).toThrow();
+    }
+    expect(() => LevelDefinitionSchema.parse({ ...level,
+      enemyStream: { ...stream, boss: { row: 136, tier: 1 } } })).toThrow();
+    for (const bosses of [[stream.bosses![1], stream.bosses![0]],
+      [stream.bosses![0], stream.bosses![0]]]) {
+      expect(() => LevelDefinitionSchema.parse({ ...level,
+        enemyStream: { ...stream, bosses } })).toThrow();
     }
   });
 
@@ -93,7 +104,7 @@ describe('embedded Tier-1 Boss', () => {
     step(sim);
     const spawned = sim.getState();
     expect(spawned.boss).not.toBeNull();
-    expect(spawned.enemyStream!.bossSpawned).toBe(true);
+    expect(spawned.enemyStream!.nextBossIndex).toBe(1);
     expect(spawned.enemyStream!.nextRowIndex).toBeGreaterThan(bossRow + 1);
     expect(spawned.enemies).toHaveLength((spawned.enemyStream!.nextRowIndex - bossRow - 1) * stream.columns);
     expect(spawned.enemies.every((enemy) => enemy.z > bossZ + stream.spacing - stream.jitter - 0.01)).toBe(true);
@@ -188,7 +199,7 @@ describe('embedded Tier-1 Boss', () => {
     step(defeated);
     const deadState = defeated.getState();
     expect(deadState.boss).toBeNull();
-    expect(deadState.enemyStream!.bossSpawned).toBe(true);
+    expect(deadState.enemyStream!.nextBossIndex).toBe(1);
     const aliveContinuation = create();
     aliveContinuation.restoreState(damaged);
     const deadContinuation = create();
@@ -206,12 +217,87 @@ describe('embedded Tier-1 Boss', () => {
     expect(restoredDead.getState().enemyStream!.nextRowIndex).toBeGreaterThan(rowCursor);
     const retry = create();
     expect(retry.getState().boss).toBeNull();
-    expect(retry.getState().enemyStream!.bossSpawned).toBe(false);
+    expect(retry.getState().enemyStream!.nextBossIndex).toBe(0);
     approachBoss(retry);
     step(retry);
     expect(retry.getState().boss).toEqual(alive.boss);
     const invalid = retry.getState();
-    invalid.enemyStream!.bossSpawned = false;
+    invalid.enemyStream!.nextBossIndex = 0;
     expect(() => create().restoreState(invalid)).toThrow();
+  });
+
+  it('spawns the Tier-2 Boss once at row 328 and continues enemies and rewards', () => {
+    const row = stream.bosses![1].row;
+    const z = stream.startZ + row * stream.spacing;
+    const sim = create();
+    approachBoss(sim, z - 25, 1);
+    const before = sim.getState();
+    const replay = create();
+    replay.restoreState(before);
+    step(sim);
+    step(replay);
+    expect(replay.getState()).toEqual(sim.getState());
+    const spawned = sim.getState();
+    expect(spawned.boss).toMatchObject({ tier: 2, x: 0, z, hp: 300000, maxHp: 300000 });
+    expect(spawned.enemyStream!.nextBossIndex).toBe(2);
+    expect(spawned.enemyStream!.nextRowIndex).toBeGreaterThan(row + 1);
+    expect(spawned.enemies).toHaveLength((spawned.enemyStream!.nextRowIndex - row - 1) * stream.columns);
+    expect(spawned.enemies.every((enemy) => enemy.z > z)).toBe(true);
+    expect(spawned.streamRewards.some((reward) => reward.z > z)).toBe(true);
+    const bossId = spawned.boss!.id;
+    const rewardIds = spawned.streamRewards.map((reward) => reward.id);
+    step(sim);
+    expect(sim.getState().boss!.id).toBe(bossId);
+    expect(sim.getState().streamRewards.map((reward) => reward.id)).toEqual(rewardIds);
+    const restored = create();
+    restored.restoreState(spawned);
+    expect(restored.getState()).toEqual(spawned);
+    const invalid = restored.getState();
+    invalid.enemyStream!.nextBossIndex = 3;
+    expect(() => create().restoreState(invalid)).toThrow();
+    prepareShot(restored, { ...shot('tier3Rifle', 300000), z: z - 2.5,
+      penetrationRemaining: 100 });
+    step(restored);
+    const defeated = restored.getState();
+    expect(defeated.boss).toBeNull();
+    expect(defeated.enemyStream!.nextBossIndex).toBe(2);
+    const afterDeath = create();
+    afterDeath.restoreState(defeated);
+    step(afterDeath, 0.1, { forwardSpeed: 12 });
+    expect(afterDeath.getState().boss).toBeNull();
+    expect(afterDeath.getState().enemyStream!.nextBossIndex).toBe(2);
+    expect(create().getState().enemyStream!.nextBossIndex).toBe(0);
+  });
+
+  it('all rifle tiers stop on the Tier-2 Boss and contact remains fatal', () => {
+    const z = stream.startZ + stream.bosses![1].row * stream.spacing;
+    for (const [kind, damage] of [['rifle', 3], ['heavyRifle', 300],
+      ['tier3Rifle', 3000]] as const) {
+      const sim = create();
+      approachBoss(sim, z - 25, 1);
+      step(sim);
+      prepareShot(sim, { ...shot(kind, damage), z: z - 2.5,
+        penetrationRemaining: kind === 'tier3Rifle' ? 100 : kind === 'heavyRifle' ? 10 : 0 });
+      step(sim);
+      expect(sim.getState().boss?.hp).toBe(300000 - damage);
+      expect(sim.getState().projectiles).toEqual([]);
+    }
+    const sim = create();
+    approachBoss(sim, z - 25, 1);
+    step(sim);
+    const state = sim.getState();
+    state.enemies = [];
+    state.player.z = z - 3;
+    sim.restoreState(state);
+    step(sim, 1, { forwardSpeed: 2 });
+    expect(sim.getState().squad.count).toBe(0);
+  });
+
+  it('rejects a second encounter while a previous Boss is still active', () => {
+    const close = LevelDefinitionSchema.parse({ ...level, enemyStream: { ...stream,
+      bosses: [{ row: 1, tier: 1, hpMultiplier: 1 }, { row: 2, tier: 2, hpMultiplier: 1 }] } });
+    expect(() => new Simulation({ seed: 7, level: close, startSquad: 1,
+      startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 }))
+      .toThrow('another Boss is active');
   });
 });

@@ -23,12 +23,12 @@ export interface EnemyStreamSimulationState {
   nextEnemyId: number;
   nextRewardBlockIndex: number;
   nextRewardId: number;
-  bossSpawned: boolean;
+  nextBossIndex: number;
 }
 
 export interface BossSimulationState {
   id: number;
-  tier: 1;
+  tier: 1 | 2;
   x: number;
   z: number;
   hp: number;

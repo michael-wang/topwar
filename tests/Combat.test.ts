@@ -18,7 +18,7 @@ const tuning: SimulationTuning = {
 };
 const create = (count = 1, gruntHp = 10, authored = level, rocketCount = 0) =>
   new Simulation({ seed: 17, level: { ...authored,
-    enemyStream: authored.enemyStream ? { ...authored.enemyStream, boss: undefined } : undefined },
+    enemyStream: authored.enemyStream ? { ...authored.enemyStream, bosses: undefined } : undefined },
     startSquad: count, startRocketCount: rocketCount, gruntHp, bruteHp: 300, tier3Hp: 3000 });
 const step = (simulation: Simulation, dt = 0.1, override: SimulationTuning = tuning) =>
   simulation.step(dt, { targetX: 0 }, override);

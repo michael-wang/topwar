@@ -20,7 +20,7 @@ const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 0, trackHalfWidth
   rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 7,
-  level: { ...source, enemyStream: source.enemyStream ? { ...source.enemyStream, boss: undefined } : undefined },
+  level: { ...source, enemyStream: source.enemyStream ? { ...source.enemyStream, bosses: undefined } : undefined },
   startSquad, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
 const projectile = (id: number, kind: ProjectileSimulationState['kind'], x: number,
   damage = kind === 'heavyRifle' ? 300 : 3): ProjectileSimulationState => ({ id, kind, x,
@@ -74,9 +74,9 @@ describe('endless stream reward placement', () => {
 
   it('caps authored pre-Boss opportunities at one Tier-2 rifle plus eight Tier-1', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
-    const opportunities = Array.from({ length: stream.boss!.row }, (_, row) => row)
+    const opportunities = Array.from({ length: stream.bosses![0].row }, (_, row) => row)
       .filter((row) => rewardPlacementForRow(row, stream.columns, stream.rewards!) !== null);
-    expect(stream.boss!.row).toBe(136);
+    expect(stream.bosses![0].row).toBe(136);
     expect(opportunities).toHaveLength(17);
     const availableTier1 = 1 + opportunities.length;
     expect(availableTier1).toBe(18);
@@ -152,7 +152,7 @@ describe('endless stream reward placement', () => {
     expect(withReward.streamRewards).toHaveLength(1);
     expect(withoutReward.enemies).toHaveLength(3);
     expect(withReward.enemyStream).toEqual({ nextRowIndex: 1, nextEnemyId: 4,
-      nextRewardBlockIndex: 1, nextRewardId: 2, bossSpawned: false });
+      nextRewardBlockIndex: 1, nextRewardId: 2, nextBossIndex: 0 });
     const reward = withReward.streamRewards[0];
     expect(reward).toMatchObject({ id: 1, tier: 1, hitProgress: 0, hitsRequired: 10 });
     expect(Math.abs(reward.x)).toBe(rewardConfig.sideX);

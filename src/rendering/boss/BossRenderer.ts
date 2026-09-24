@@ -22,8 +22,14 @@ export class BossRenderer {
   private readonly armGeometry = new THREE.BoxGeometry(0.10, 0.34, 0.11);
   private readonly legGeometry = new THREE.BoxGeometry(0.12, 0.34, 0.13);
   private readonly barGeometry = new THREE.PlaneGeometry(0.8, 0.065);
-  private readonly bodyMaterial = new THREE.MeshStandardMaterial({ color: '#9b6863' });
-  private readonly headMaterial = new THREE.MeshStandardMaterial({ color: '#bd8580' });
+  private readonly bodyMaterials = [
+    new THREE.MeshStandardMaterial({ color: '#9b6863' }),
+    new THREE.MeshStandardMaterial({ color: '#cf4037' }),
+  ];
+  private readonly headMaterials = [
+    new THREE.MeshStandardMaterial({ color: '#bd8580' }),
+    new THREE.MeshStandardMaterial({ color: '#ef6658' }),
+  ];
   private readonly flashBodyMaterial = new THREE.MeshStandardMaterial({ color: '#ffe36e' });
   private readonly flashHeadMaterial = new THREE.MeshStandardMaterial({ color: '#fff8d6' });
   private readonly deathBodyMaterial = new THREE.MeshStandardMaterial({ color: '#777b7c' });
@@ -45,7 +51,8 @@ export class BossRenderer {
   constructor(private readonly scene: THREE.Scene) {
     for (const part of PARTS) {
       const geometry = this.geometryFor(part);
-      const mesh = new THREE.Mesh(geometry, part === 'head' ? this.headMaterial : this.bodyMaterial);
+      const mesh = new THREE.Mesh(geometry,
+        part === 'head' ? this.headMaterials[0] : this.bodyMaterials[0]);
       this.positionPart(mesh, part);
       this.parts[part] = mesh;
       this.active.add(mesh);
@@ -64,6 +71,11 @@ export class BossRenderer {
 
   update(boss: BossRenderState | null, nowMs = performance.now()): void {
     if (this.previous && !boss) this.startDeath(this.previous, nowMs);
+    if (boss && this.previous?.id !== boss.id) {
+      this.flashUntilMs = -Infinity;
+      this.hitAtMs = -Infinity;
+      this.death.visible = false;
+    }
     if (boss && this.previous?.id === boss.id && boss.hp < this.previous.hp) {
       this.flashUntilMs = nowMs + HIT_FLASH_MS;
       this.hitAtMs = nowMs;
@@ -83,7 +95,7 @@ export class BossRenderer {
           : part === 'leftLeg' ? pose.leftLeg : part === 'rightLeg' ? pose.rightLeg : 0;
         mesh.material = nowMs < this.flashUntilMs
           ? part === 'head' ? this.flashHeadMaterial : this.flashBodyMaterial
-          : part === 'head' ? this.headMaterial : this.bodyMaterial;
+          : part === 'head' ? this.headMaterials[boss.tier - 1] : this.bodyMaterials[boss.tier - 1];
       }
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
@@ -116,7 +128,7 @@ export class BossRenderer {
     this.scene.remove(this.active, this.death);
     for (const geometry of [this.torsoGeometry, this.headGeometry, this.armGeometry,
       this.legGeometry, this.barGeometry]) geometry.dispose();
-    for (const material of [this.bodyMaterial, this.headMaterial, this.flashBodyMaterial,
+    for (const material of [...this.bodyMaterials, ...this.headMaterials, this.flashBodyMaterial,
       this.flashHeadMaterial, this.deathBodyMaterial, this.deathHeadMaterial,
       this.barBackgroundMaterial, this.barFillMaterial]) material.dispose();
   }

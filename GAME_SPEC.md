@@ -44,9 +44,9 @@ Players and enemies use primitive humanoid silhouettes. Player soldiers hold a p
 
 The next product pass validates the shortened Tier-2 to Tier-3 handoff in playtests.
 
-## First Boss encounter
+## Boss handoff encounters
 
-Level 001 has one giant Tier-1-colored Boss at **row 136**, late in the Tier-1 to Tier-2 transition and eight rows before full Tier-2 probability. It has visual scale **7**, gameplay radius **2.0**, and HP derived from Tier-1 HP × the authored **5000** multiplier (currently 15000 HP). The Boss replaces only its own seven-enemy row; normal enemies and rewards continue materializing behind it while it lives. Boss contact is fatal. The Boss has no attacks or reward. Later tier Bosses are not implemented and will be designed only after this encounter is validated.
+Each implemented normal tier has a Boss eight rows before the next tier fully saturates. The Tier-1 Boss appears at **row 136** with **15,000 HP** (3 × its authored 5000 multiplier); the Tier-2 Boss appears at **row 328** with **300,000 HP** (300 × its authored 1000 multiplier). Both use visual scale **7** and gameplay radius **2.0**. Boss color follows its tier; HP multipliers are authored per encounter. Each Boss replaces only its own seven-enemy row, while normal enemies and rewards continue materializing behind it. Boss contact is fatal. Bosses have no attacks or rewards. A Tier-3 Boss waits until a Tier-4 handoff exists.
 
 ## Development principles
 

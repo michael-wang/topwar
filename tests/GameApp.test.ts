@@ -222,7 +222,7 @@ describe('GameApp config and frame lifecycle', () => {
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 1000 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -230,7 +230,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 1000 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -307,7 +307,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, gruntHp: 10, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 1000 });
+      startRocketCount: 1, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, tier2RifleCount: 0, tier3RifleCount: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', x: 0.225, z: 3 }] });
     app.start();
@@ -575,7 +575,7 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 1, gruntHp: 4, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 1000 });
+      startRocketCount: 1, gruntHp: 4, bruteHp: 300, tier3Hp: 3000 });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);
     const priorSteps = mock.step.mock.calls.length;

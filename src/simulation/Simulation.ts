@@ -17,7 +17,6 @@ export interface SimulationOptions {
   gruntHp: number;
   bruteHp: number;
   tier3Hp: number;
-  bossHpMultiplier?: number;
 }
 
 export interface SimulationInput {
@@ -154,22 +153,32 @@ function validSquadCount(count: unknown): count is number {
   return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0;
 }
 
+export function bossMaxHpForTier(tier: 1 | 2, gruntHp: number, bruteHp: number,
+  hpMultiplier: number): number {
+  const maxHp = (tier === 1 ? gruntHp : bruteHp) * hpMultiplier;
+  if (!positiveFinite(maxHp)) throw new Error('Simulation Boss HP exceeds the supported range');
+  return maxHp;
+}
+
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number, tier3Hp: number,
-  boss: BossSimulationState | null, bossHpMultiplier: number | undefined): BossSimulationState | null {
+  boss: BossSimulationState | null): BossSimulationState | null {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
     const rowZ = stream.startZ + cursor.nextRowIndex * stream.spacing;
     if (!Number.isFinite(rowZ)) throw new Error('Simulation enemy stream row position is non-finite');
     if (rowZ > horizonZ) break;
-    if (stream.boss && !cursor.bossSpawned && cursor.nextRowIndex === stream.boss.row) {
-      const maxHp = gruntHp * bossHpMultiplier!;
-      if (!positiveFinite(maxHp) || !Number.isSafeInteger(cursor.nextEnemyId + 1)) {
-        throw new Error('Simulation Boss HP or ID exceeds the supported range');
+    const encounter = stream.bosses?.[cursor.nextBossIndex];
+    if (encounter && cursor.nextRowIndex === encounter.row) {
+      // One active Boss is supported; authored encounters must not overlap in play.
+      if (boss) throw new Error('Simulation cannot spawn a Boss while another Boss is active');
+      const maxHp = bossMaxHpForTier(encounter.tier, gruntHp, bruteHp, encounter.hpMultiplier);
+      if (!Number.isSafeInteger(cursor.nextEnemyId + 1)) {
+        throw new Error('Simulation Boss ID exceeds the supported range');
       }
-      boss = { id: cursor.nextEnemyId++, tier: 1, x: 0, z: rowZ, hp: maxHp, maxHp };
-      cursor.bossSpawned = true;
+      boss = { id: cursor.nextEnemyId++, tier: encounter.tier, x: 0, z: rowZ, hp: maxHp, maxHp };
+      cursor.nextBossIndex++;
       cursor.nextRowIndex++;
       continue;
     }
@@ -319,14 +328,14 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     if (!isPlainObject(value) || Object.keys(value).length !== 6
       || ['id', 'tier', 'x', 'z', 'hp', 'maxHp'].some((field) => !Object.hasOwn(value, field))
       || !Number.isSafeInteger(value.id) || (value.id as number) <= 0
-      || enemyIds.has(value.id as number) || value.tier !== 1
+      || enemyIds.has(value.id as number) || (value.tier !== 1 && value.tier !== 2)
       || typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)
       || !positiveFinite(value.hp) || !positiveFinite(value.maxHp)
       || value.hp > value.maxHp) {
       throw new Error('Simulation Boss state is invalid');
     }
-    boss = { id: value.id as number, tier: 1, x: value.x, z: value.z,
+    boss = { id: value.id as number, tier: value.tier, x: value.x, z: value.z,
       hp: value.hp, maxHp: value.maxHp };
   }
 
@@ -336,20 +345,21 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     if (!isPlainObject(cursor) || Object.keys(cursor).length !== 5
       || !Object.hasOwn(cursor, 'nextRowIndex') || !Object.hasOwn(cursor, 'nextEnemyId')
       || !Object.hasOwn(cursor, 'nextRewardBlockIndex') || !Object.hasOwn(cursor, 'nextRewardId')
-      || !Object.hasOwn(cursor, 'bossSpawned') || typeof cursor.bossSpawned !== 'boolean'
+      || !Object.hasOwn(cursor, 'nextBossIndex')
       || !Number.isSafeInteger(cursor.nextRowIndex) || (cursor.nextRowIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextEnemyId) || (cursor.nextEnemyId as number) <= 0
       || !Number.isSafeInteger(cursor.nextRewardBlockIndex) || (cursor.nextRewardBlockIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextRewardId) || (cursor.nextRewardId as number) <= 0
+      || !Number.isSafeInteger(cursor.nextBossIndex) || (cursor.nextBossIndex as number) < 0
       || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))
-      || (boss && (boss.id >= (cursor.nextEnemyId as number) || !cursor.bossSpawned))) {
+      || (boss && (boss.id >= (cursor.nextEnemyId as number) || cursor.nextBossIndex === 0))) {
       throw new Error('Simulation enemy stream cursor is invalid');
     }
     enemyStream = { nextRowIndex: cursor.nextRowIndex as number,
       nextEnemyId: cursor.nextEnemyId as number,
       nextRewardBlockIndex: cursor.nextRewardBlockIndex as number,
       nextRewardId: cursor.nextRewardId as number,
-      bossSpawned: cursor.bossSpawned as boolean };
+      nextBossIndex: cursor.nextBossIndex as number };
   }
   if (boss && !enemyStream) throw new Error('Simulation Boss requires an enemy stream');
 
@@ -527,7 +537,6 @@ export class Simulation {
   private readonly gruntHp: number;
   private readonly bruteHp: number;
   private readonly tier3Hp: number;
-  private readonly bossHpMultiplier: number | undefined;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -541,14 +550,10 @@ export class Simulation {
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
     if (!positiveFinite(options.bruteHp)) throw new Error('Simulation bruteHp must be positive and finite');
     if (!positiveFinite(options.tier3Hp)) throw new Error('Simulation tier3Hp must be positive and finite');
-    if (level.enemyStream?.boss && !positiveFinite(options.bossHpMultiplier)) {
-      throw new Error('Simulation bossHpMultiplier must be positive and finite for a Boss level');
-    }
     this.enemyStreamDefinition = level.enemyStream;
     this.gruntHp = options.gruntHp;
     this.bruteHp = options.bruteHp;
     this.tier3Hp = options.tier3Hp;
-    this.bossHpMultiplier = options.bossHpMultiplier;
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
       for (const offset of createEnemyFormation(group.count, group.formation.columns,
@@ -569,12 +574,12 @@ export class Simulation {
     const streamRewards: StreamRewardSimulationState[] = [];
     const enemyStream = level.enemyStream
       ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0,
-        nextRewardId: 1, bossSpawned: false }
+        nextRewardId: 1, nextBossIndex: 0 }
       : null;
     let boss: BossSimulationState | null = null;
     if (enemyStream && level.enemyStream) {
       boss = extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp,
-        options.bruteHp, options.tier3Hp, boss, this.bossHpMultiplier);
+        options.bruteHp, options.tier3Hp, boss);
       extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
     }
     this.state = {
@@ -622,7 +627,7 @@ export class Simulation {
       || !positiveFinite(tuning.tier3Radius)) {
       throw new Error('Simulation formationSpacing, memberRadius, and enemy radii must be positive and finite');
     }
-    if (this.enemyStreamDefinition?.boss && !positiveFinite(tuning.bossRadius)) {
+    if (this.enemyStreamDefinition?.bosses?.length && !positiveFinite(tuning.bossRadius)) {
       throw new Error('Simulation bossRadius must be positive and finite for a Boss level');
     }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.damage)
@@ -668,7 +673,7 @@ export class Simulation {
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.gruntHp, this.bruteHp, this.tier3Hp, boss, this.bossHpMultiplier);
+        nextZ, this.gruntHp, this.bruteHp, this.tier3Hp, boss);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
@@ -895,13 +900,17 @@ export class Simulation {
     if ((candidate.state.enemyStream !== null) !== (this.enemyStreamDefinition !== undefined)) {
       throw new Error('Simulation enemy stream state does not match the loaded level');
     }
-    const encounter = this.enemyStreamDefinition?.boss;
+    const encounters = this.enemyStreamDefinition?.bosses ?? [];
     const cursor = candidate.state.enemyStream;
     const boss = candidate.state.boss;
-    if (cursor && (cursor.bossSpawned !== (encounter !== undefined && cursor.nextRowIndex > encounter.row))
-      || (!encounter && boss)
-      || (encounter && boss && (boss.z !== this.enemyStreamDefinition!.startZ
-        + encounter.row * this.enemyStreamDefinition!.spacing || boss.x !== 0))) {
+    const expectedIndex = cursor ? encounters.filter((encounter) => encounter.row < cursor.nextRowIndex).length : 0;
+    const activeEncounter = cursor ? encounters[cursor.nextBossIndex - 1] : undefined;
+    if (cursor && (cursor.nextBossIndex > encounters.length || cursor.nextBossIndex !== expectedIndex
+      || (boss && (!activeEncounter || boss.tier !== activeEncounter.tier
+        || boss.z !== this.enemyStreamDefinition!.startZ
+          + activeEncounter.row * this.enemyStreamDefinition!.spacing || boss.x !== 0
+        || boss.maxHp !== bossMaxHpForTier(activeEncounter.tier, this.gruntHp,
+          this.bruteHp, activeEncounter.hpMultiplier))))) {
       throw new Error('Simulation Boss progression does not match the loaded level');
     }
     this.state = candidate.state;

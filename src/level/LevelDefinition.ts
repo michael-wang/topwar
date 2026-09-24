@@ -28,7 +28,11 @@ const EnemyStreamSchema = z.strictObject({
   spacing: z.number().finite().positive(),
   jitter: z.number().finite().nonnegative(),
   seed: z.number().int().min(0).max(0xffffffff),
-  boss: z.strictObject({ row: nonnegativeSafeInteger, tier: z.literal(1) }).optional(),
+  bosses: z.array(z.strictObject({
+    row: nonnegativeSafeInteger,
+    tier: z.union([z.literal(1), z.literal(2)]),
+    hpMultiplier: z.number().finite().positive(),
+  })).optional(),
   bruteRamp: z.strictObject({
     startRow: nonnegativeSafeInteger,
     fullRow: nonnegativeSafeInteger,
@@ -60,6 +64,12 @@ const EnemyStreamSchema = z.strictObject({
     context.addIssue({ code: 'custom', path: ['rewards', 'spawnAheadDistance'],
       message: 'Reward lookahead must not exceed enemy lookahead' });
   }
+  stream.bosses?.forEach((boss, index) => {
+    if (index > 0 && boss.row <= stream.bosses![index - 1].row) {
+      context.addIssue({ code: 'custom', path: ['bosses', index, 'row'],
+        message: 'Boss rows must be strictly increasing and unique' });
+    }
+  });
 });
 
 export const UpgradeRewardSchema = z.strictObject({

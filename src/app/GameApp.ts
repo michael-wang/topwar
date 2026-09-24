@@ -44,7 +44,6 @@ export class GameApp {
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
       tier3Hp: this.config.enemies.tier3.hp,
-      bossHpMultiplier: this.config.bosses.basic.hpMultiplier,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
@@ -136,7 +135,6 @@ export class GameApp {
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
       tier3Hp: this.config.enemies.tier3.hp,
-      bossHpMultiplier: this.config.bosses.basic.hpMultiplier,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;

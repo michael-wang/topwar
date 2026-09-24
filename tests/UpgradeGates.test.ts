@@ -16,7 +16,7 @@ const tuning: SimulationTuning = {
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 10, range: 20, blastRadius: 1.25 },
 };
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 1,
-  level: { ...source, enemyStream: source.enemyStream ? { ...source.enemyStream, boss: undefined } : undefined },
+  level: { ...source, enemyStream: source.enemyStream ? { ...source.enemyStream, bosses: undefined } : undefined },
   startSquad, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
 const shot = (id: number, x: number, kind: ProjectileSimulationState['kind'] = 'rifle',
   damage = 3): ProjectileSimulationState => ({ id, kind, x, z: 0, speed: 100,
