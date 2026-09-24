@@ -17,10 +17,10 @@ The deterministic endless stream generates seven-enemy rows ahead of the player,
 | Normal tier | HP | Color | Current progression |
 | --- | ---: | --- | --- |
 | Tier-1 grunt | 3 | Muted brick red | Opening fodder |
-| Tier-2 brute | 300 | Saturated red | Guaranteed first reveal at row 48; quadratic ramp reaches full probability at row 960 |
-| Tier-3 | 3000 | Magenta | Guaranteed first reveal at row 360; overlapping quadratic ramp fully saturates at row 1320 |
+| Tier-2 brute | 300 | Saturated red | Guaranteed first reveal at row 48; quadratic ramp reaches full probability at row 144 |
+| Tier-3 | 3000 | Magenta | Guaranteed first reveal at row 360; quadratic ramp fully saturates at row 1320 |
 
-Tier-3 takes precedence when both tier rolls would select the same slot. After row 960, non-Tier-3 enemies are Tier-2; from row 1320, all new normal enemies are Tier-3. Future normal tiers should retain color-not-size unless playtesting changes that rule; their HP, colors, and timing are undecided.
+Tier-3 takes precedence when both tier rolls would select the same slot. After row 144, non-Tier-3 enemies are Tier-2; from row 1320, all new normal enemies are Tier-3. Future normal tiers should retain color-not-size unless playtesting changes that rule; their HP, colors, and timing are undecided.
 
 ## Player progression and combat
 
@@ -34,7 +34,7 @@ Tier-3 takes precedence when both tier rolls would select the same slot. After r
 
 - Every eight-row block contains **exactly one** authored reward opportunity. Its row and left/right side look random but are deterministic. A reward sits at X = **±2.2**; all seven enemies remain in its row.
 - Rewards materialize only **30 world units** ahead, independent of the enemy lookahead of 96. Each target needs **10 valid rifle-tier hits**. Unlocking adds one soldier immediately; ignored targets expire harmlessly behind the defense line.
-- Before row 960, targets grant one Tier-1 rifle. From row 960 onward, they grant one Tier-2 rifle. No Tier-3 reward exists.
+- Before row 144, targets grant one Tier-1 rifle. From row 144 onward, they grant one Tier-2 rifle. No Tier-3 reward exists.
 - A matching-tier shot progresses the target and is consumed. Higher-tier rifle fire also progresses lower-tier rewards and continues without spending enemy penetration. Lower-tier fire cannot progress a higher-tier reward. Rockets pass through rewards.
 
 The player must notice a side target, steer, and spend fire on it while the full enemy row remains threatening. Generic side-armory code exists but is inactive in Level 001.
@@ -47,7 +47,7 @@ The next product pass focuses on the payoff of repeated actions: **enemy kill, r
 
 ## First Boss encounter
 
-Level 001 has one giant Tier-1-colored Boss at **row 920**, late in the Tier-1 to Tier-2 transition and 40 rows before full Tier-2 probability. It has visual scale **7**, gameplay radius **2.0**, and HP derived from Tier-1 HP × the authored **1000** multiplier (currently 3000 HP). The Boss replaces only its own seven-enemy row; normal enemies and rewards continue materializing behind it while it lives. Boss contact is fatal. The Boss has no attacks or reward. Later tier Bosses are not implemented and will be designed only after this encounter is validated.
+Level 001 has one giant Tier-1-colored Boss at **row 136**, late in the Tier-1 to Tier-2 transition and eight rows before full Tier-2 probability. It has visual scale **7**, gameplay radius **2.0**, and HP derived from Tier-1 HP × the authored **1000** multiplier (currently 3000 HP). The Boss replaces only its own seven-enemy row; normal enemies and rewards continue materializing behind it while it lives. Boss contact is fatal. The Boss has no attacks or reward. Later tier Bosses are not implemented and will be designed only after this encounter is validated.
 
 ## Development principles
 

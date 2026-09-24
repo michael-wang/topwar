@@ -23,7 +23,7 @@ const create = (gruntHp = 3) => new Simulation({ seed: 7, level, startSquad: 1,
 const step = (sim: Simulation, dt = 0.1, changes: Partial<SimulationTuning> = {}) =>
   sim.step(dt, { targetX: 0 }, { ...tuning, ...changes });
 
-// A valid snapshot just before the late Boss enters the enemy horizon keeps
+// A valid snapshot just before the Boss enters the enemy horizon keeps
 // these tests focused on spatial materialization instead of hundreds of ticks.
 function approachBoss(sim: Simulation, playerZ = bossZ - 25): void {
   const state = sim.getState();
@@ -58,7 +58,7 @@ function prepareShot(sim: Simulation, projectile: ProjectileSimulationState): vo
 describe('embedded Tier-1 Boss', () => {
   it('validates committed row and multiplier, deriving HP from Tier-1 HP', () => {
     expect(config.bosses.basic).toEqual({ hpMultiplier: 1000, visualScale: 7, radius: 2 });
-    expect(stream.boss).toEqual({ row: 920, tier: 1 });
+    expect(stream.boss).toEqual({ row: 136, tier: 1 });
     expect(create().getState().boss).toBeNull();
     expect(create().getState().enemyStream!.bossSpawned).toBe(false);
     const sim = create();
@@ -79,13 +79,13 @@ describe('embedded Tier-1 Boss', () => {
         ...config.bosses.basic, hpMultiplier } } })).toThrow();
     }
     for (const boss of [{ row: -1, tier: 1 }, { row: 1.5, tier: 1 },
-      { row: 920, tier: 2 }, { row: 920, tier: 1, extra: true }]) {
+      { row: 136, tier: 2 }, { row: 136, tier: 1, extra: true }]) {
       expect(() => LevelDefinitionSchema.parse({ ...level,
         enemyStream: { ...stream, boss } })).toThrow();
     }
   });
 
-  it('replaces only row 920 and keeps generating a deterministic army behind a living Boss', () => {
+  it('replaces only row 136 and keeps generating a deterministic army behind a living Boss', () => {
     const sim = create();
     expect(sim.getState().enemyStream!.nextRowIndex).toBeLessThan(bossRow);
     approachBoss(sim);
@@ -98,7 +98,7 @@ describe('embedded Tier-1 Boss', () => {
     expect(spawned.enemies.every((enemy) => enemy.z > bossZ + stream.spacing - stream.jitter - 0.01)).toBe(true);
     expect(spawned.enemies.some((enemy) => enemy.id === spawned.boss!.id)).toBe(false);
     expect(spawned.enemies.some((enemy) => enemy.type === 'brute')).toBe(true);
-    expect(spawned.enemies.some((enemy) => enemy.type === 'tier3')).toBe(true);
+    expect(spawned.enemies.some((enemy) => enemy.type === 'tier3')).toBe(false);
     const nextRow = spawned.enemyStream!.nextRowIndex;
     const nextId = spawned.enemyStream!.nextEnemyId;
     step(sim, 0.1, { forwardSpeed: 12 });
@@ -108,7 +108,7 @@ describe('embedded Tier-1 Boss', () => {
     expect(advanced.enemies.some((enemy) => enemy.id === nextId)).toBe(true);
   });
 
-  it('materializes rewards after row 920 while Boss is alive without duplicates', () => {
+  it('materializes rewards after row 136 while Boss is alive without duplicates', () => {
     const sim = create();
     approachBoss(sim);
     step(sim);

@@ -3,6 +3,7 @@ import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
+import { normalizeRifleSquad } from '../src/simulation/squad/composition';
 import { rewardPlacementForBlock, rewardPlacementForRow,
   rewardTierForRow } from '../src/simulation/enemies/streamRewards';
 import type { ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
@@ -71,6 +72,18 @@ describe('endless stream reward placement', () => {
     expect(stream.bruteRamp.startRow).toBe(48);
   });
 
+  it('caps authored pre-Boss opportunities at one Tier-2 rifle plus eight Tier-1', () => {
+    const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
+    const opportunities = Array.from({ length: stream.boss!.row }, (_, row) => row)
+      .filter((row) => rewardPlacementForRow(row, stream.columns, stream.rewards!) !== null);
+    expect(stream.boss!.row).toBe(136);
+    expect(opportunities).toHaveLength(17);
+    const availableTier1 = 1 + opportunities.length;
+    expect(availableTier1).toBe(18);
+    expect(normalizeRifleSquad({ count: availableTier1, rocketCount: 0, tier2RifleCount: 0 }))
+      .toEqual({ count: 9, rocketCount: 0, tier2RifleCount: 1 });
+  });
+
   it('materializes nearby rewards independently of the long enemy horizon', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const stream = authored.enemyStream!;
@@ -121,15 +134,15 @@ describe('endless stream reward placement', () => {
   it('keeps Tier-1 rewards through mixed enemy rows and switches at full saturation', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
     expect(rewardTierForRow(0, stream.bruteRamp.fullRow)).toBe(1);
-    expect(rewardTierForRow(959, stream.bruteRamp.fullRow)).toBe(1);
-    expect(rewardTierForRow(960, stream.bruteRamp.fullRow)).toBe(2);
+    expect(rewardTierForRow(143, stream.bruteRamp.fullRow)).toBe(1);
+    expect(rewardTierForRow(144, stream.bruteRamp.fullRow)).toBe(2);
     expect(rewardTierForRow(1200, stream.bruteRamp.fullRow)).toBe(2);
     const selected = Array.from({ length: 1000 }, (_, row) => row).filter((row) =>
       rewardPlacementForRow(row, stream.columns, stream.rewards!) !== null);
-    expect(selected.filter((row) => row < 960).every((row) =>
-      rewardTierForRow(row, 960) === 1)).toBe(true);
-    expect(selected.filter((row) => row >= 960).every((row) =>
-      rewardTierForRow(row, 960) === 2)).toBe(true);
+    expect(selected.filter((row) => row < 144).every((row) =>
+      rewardTierForRow(row, stream.bruteRamp.fullRow) === 1)).toBe(true);
+    expect(selected.filter((row) => row >= 144).every((row) =>
+      rewardTierForRow(row, stream.bruteRamp.fullRow) === 2)).toBe(true);
   });
 
   it('adds one side reward without removing an enemy or changing row geometry and IDs', () => {

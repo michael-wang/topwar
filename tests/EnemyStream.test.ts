@@ -3,6 +3,7 @@ import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
+import { tier2ProbabilityForRow } from '../src/simulation/enemies/bruteRamp';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
 const parsed = LevelDefinitionSchema.parse(authoredLevel);
@@ -29,7 +30,7 @@ describe('deterministic endless enemy stream', () => {
   const rampState = create(rampLevel, 1).getState();
   const row = (index: number) => rampState.enemies.slice(index * 7, (index + 1) * 7);
 
-  it('keeps seven original positions and IDs per row while the long ramp eventually saturates', () => {
+  it('keeps seven original positions and IDs per row while the short ramp saturates', () => {
     const stream = authored.enemyStream!;
     expect(row(47).filter((enemy) => enemy.type === 'brute')).toHaveLength(0);
     expect(row(48).filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
@@ -43,11 +44,20 @@ describe('deterministic endless enemy stream', () => {
       expect(enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 7 }, (_, column) =>
         index * 7 + column + 1));
     }
-    for (let index = 960; index <= 1000; index++) {
+    for (let index = 144; index <= 160; index++) {
       expect(row(index).every((enemy) => enemy.type === 'brute' || enemy.type === 'tier3')).toBe(true);
     }
     expect(rampState.enemies.every((enemy) => enemy.hp === (enemy.type === 'tier3' ? 3000
       : enemy.type === 'brute' ? 300 : 3))).toBe(true);
+  });
+
+  it('reaches about 84% Tier-2 probability at the Boss and full saturation at row 144', () => {
+    const ramp = authored.enemyStream!.bruteRamp;
+    expect(ramp).toEqual({ startRow: 48, fullRow: 144, curvePower: 2 });
+    for (const index of [0, 47, 48]) expect(tier2ProbabilityForRow(index, ramp)).toBe(0);
+    expect(tier2ProbabilityForRow(136, ramp)).toBeCloseTo(((136 - 48) / (144 - 48)) ** 2);
+    expect(tier2ProbabilityForRow(136, ramp)).toBeGreaterThan(0.8);
+    for (const index of [144, 145, 500]) expect(tier2ProbabilityForRow(index, ramp)).toBe(1);
   });
 
   it('keeps the first reveal center-most, then scatters brutes instead of forming bands', () => {
@@ -58,7 +68,7 @@ describe('deterministic endless enemy stream', () => {
     expect(reveal[nearest].type).toBe('brute');
     expect(reveal.filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
     expect(reveal[nearest].z).toBeCloseTo(stream.startZ + 48 * stream.spacing, 0);
-    const counts = Array.from({ length: 912 }, (_, offset) => row(48 + offset)
+    const counts = Array.from({ length: 96 }, (_, offset) => row(48 + offset)
       .filter((enemy) => enemy.type === 'brute').length);
     expect(counts.slice(1, 40)).toContain(0);
     expect(counts.some((count, index) => index > 0 && count < counts[index - 1])).toBe(true);
@@ -73,12 +83,12 @@ describe('deterministic endless enemy stream', () => {
       }
       return brutes / ((end - start + 1) * 7);
     };
-    const early = ratio(49, 160);
-    const middle = ratio(400, 550);
-    const late = ratio(800, 959);
-    expect(early).toBeLessThan(0.05);
+    const early = ratio(49, 80);
+    const middle = ratio(81, 112);
+    const late = ratio(113, 143);
+    expect(early).toBeLessThan(0.15);
     expect(middle).toBeGreaterThan(0.1);
-    expect(middle).toBeLessThan(0.4);
+    expect(middle).toBeLessThan(0.6);
     expect(late).toBeGreaterThan(0.5);
     expect(early).toBeLessThan(middle);
     expect(middle).toBeLessThan(late);
@@ -88,7 +98,7 @@ describe('deterministic endless enemy stream', () => {
     const alternate: LevelDefinition = { ...rampLevel,
       enemyStream: { ...rampLevel.enemyStream!, seed: 104730 } };
     const changed = create(alternate, 1).getState().enemies;
-    const types = (enemies: SimulationState['enemies']) => enemies.slice(500 * 7, 601 * 7)
+    const types = (enemies: SimulationState['enemies']) => enemies.slice(50 * 7, 144 * 7)
       .map((enemy) => enemy.type);
     expect(types(changed)).not.toEqual(types(rampState.enemies));
     expect(create(rampLevel, 1).getState().enemies).toEqual(rampState.enemies);

@@ -30,8 +30,8 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
-      boss: { row: 920, tier: 1 },
-      bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 },
+      boss: { row: 136, tier: 1 },
+      bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2 },
       tier3Ramp: { startRow: 360, fullRow: 1320, curvePower: 2 },
       rewards: { rowsPerReward: 8, spawnAheadDistance: 30,
         hitsRequired: 10, seed: 271828, sideX: 2.2 } });
@@ -86,10 +86,10 @@ describe('LevelDefinitionSchema', () => {
       enemyStream: withoutRamp })).toThrow(/bruteRamp/);
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream,
-        bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2, chance: 0.5 } } })).toThrow(/chance/);
+        bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2, chance: 0.5 } } })).toThrow(/chance/);
     for (const startRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 960, curvePower: 2 } } }))
+        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 144, curvePower: 2 } } }))
         .toThrow(/startRow/);
     }
     for (const fullRow of [-1, 48, 47, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
@@ -100,7 +100,7 @@ describe('LevelDefinitionSchema', () => {
     for (const curvePower of [0, -1, Infinity, NaN]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
         enemyStream: { ...authoredLevel.enemyStream,
-          bruteRamp: { startRow: 48, fullRow: 960, curvePower } } })).toThrow(/curvePower/);
+          bruteRamp: { startRow: 48, fullRow: 144, curvePower } } })).toThrow(/curvePower/);
     }
   });
 

@@ -28,7 +28,7 @@ describe('overlapping Tier-3 enemy pressure', () => {
     expect(game.enemies.grunt).toEqual({ hp: 3, radius: 0.3 });
     expect(game.enemies.brute).toEqual({ hp: 300, radius: 0.3 });
     expect(game.enemies.tier3).toEqual({ hp: 3000, radius: 0.3 });
-    expect(stream.bruteRamp).toEqual({ startRow: 48, fullRow: 960, curvePower: 2 });
+    expect(stream.bruteRamp).toEqual({ startRow: 48, fullRow: 144, curvePower: 2 });
     expect(stream.tier3Ramp).toEqual({ startRow: 360, fullRow: 1320, curvePower: 2 });
     for (const tier3Ramp of [
       { startRow: -1, fullRow: 1320, curvePower: 2 },
@@ -107,7 +107,7 @@ describe('overlapping Tier-3 enemy pressure', () => {
       expect(row(index).every((enemy) => enemy.type === 'tier3')).toBe(true);
     }
     expect(tier3ProbabilityForRow(504, stream.tier3Ramp!)).toBeCloseTo(0.0225);
-    expect(tier2ProbabilityForRow(504, stream.bruteRamp)).toBeCloseTo(0.25);
+    expect(tier2ProbabilityForRow(504, stream.bruteRamp)).toBe(1);
     expect(tier3RollForSlot(stream.seed, 500, 2)).toBe(tier3RollForSlot(stream.seed, 500, 2));
     expect(state.rngState).toBe(17);
     const restored = new Simulation({ seed: 99, level: { ...level, enemyStream: compact },

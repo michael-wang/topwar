@@ -166,7 +166,7 @@ describe('Tier-2 rifle compression', () => {
 
   it('keeps Level 001 enemy progression and squad compression without active armories', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
-    expect(authored.enemyStream?.bruteRamp).toEqual({ startRow: 48, fullRow: 960, curvePower: 2 });
+    expect(authored.enemyStream?.bruteRamp).toEqual({ startRow: 48, fullRow: 144, curvePower: 2 });
     expect(authored.upgradeGates).toEqual([]);
     expect(create(1, 0, authored).getState().squad.tier2RifleCount).toBe(0);
   });
