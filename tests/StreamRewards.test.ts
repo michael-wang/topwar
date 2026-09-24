@@ -267,7 +267,6 @@ describe('tiered reward combat and lifecycle', () => {
 
   it.each([
     { tier: 1, kind: 'rocket' },
-    { tier: 2, kind: 'rifle' },
     { tier: 2, kind: 'rocket' },
   ] as const)('lets $kind pass a Tier-$tier reward and hit the enemy behind it', ({ tier, kind }) => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
@@ -303,8 +302,9 @@ describe('tiered reward combat and lifecycle', () => {
 
   it.each([
     { tier: 1, kind: 'rifle' },
+    { tier: 2, kind: 'rifle' },
     { tier: 2, kind: 'heavyRifle' },
-  ] as const)('counts and consumes a matching $kind shot at Tier-$tier reward', ({ tier, kind }) => {
+  ] as const)('counts and consumes a $kind shot at Tier-$tier reward', ({ tier, kind }) => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
       spacing: 1, spawnAheadDistance: 8,
       rewards: { ...rewardConfig, spawnAheadDistance: 8 } } };
@@ -350,7 +350,11 @@ describe('tiered reward combat and lifecycle', () => {
     expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
   });
 
-  it('grants Tier-2 only after ten heavy hits and never consumes rifle or rocket hits', () => {
+  it.each([
+    { rifleHits: 10, heavyHits: 0 },
+    { rifleHits: 6, heavyHits: 4 },
+  ] as const)('unlocks Tier-2 after $rifleHits rifle and $heavyHits heavy hits',
+    ({ rifleHits, heavyHits }) => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
       spacing: 1, spawnAheadDistance: 8,
       rewards: { ...rewardConfig, spawnAheadDistance: 8 } } };
@@ -360,17 +364,24 @@ describe('tiered reward combat and lifecycle', () => {
     state.streamRewards = [tier2];
     state.enemies = [];
     simulation.restoreState(state);
-    prepare(simulation, [projectile(1, 'rifle', tier2.x), projectile(2, 'rocket', tier2.x)]);
+    prepare(simulation, [projectile(1, 'rocket', tier2.x)]);
     step(simulation);
     expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
-    prepare(simulation, Array.from({ length: 9 }, (_, index) => projectile(index + 3,
-      'heavyRifle', tier2.x, 3000)));
+    const hits = [
+      ...Array.from({ length: rifleHits }, (_, index) => projectile(index + 2,
+        'rifle', tier2.x, 3000)),
+      ...Array.from({ length: heavyHits }, (_, index) => projectile(index + rifleHits + 2,
+        'heavyRifle', tier2.x, 1)),
+    ];
+    prepare(simulation, hits.slice(0, 9));
     step(simulation);
     expect(simulation.getState().streamRewards[0].hitProgress).toBe(9);
-    prepare(simulation, [projectile(12, 'heavyRifle', tier2.x)]);
+    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 0, rocketCount: 0 });
+    prepare(simulation, [hits[9]]);
     step(simulation);
     expect(simulation.getState().streamRewards).toEqual([]);
     expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 0 });
+    expect(simulation.getState().projectiles).toEqual([]);
   });
 
   it('unlocks a target only once when extra same-tick shots cross its former position', () => {

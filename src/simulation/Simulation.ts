@@ -87,8 +87,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     }
   }
   for (const reward of rewards) {
-    if (passedRewardIds?.has(reward.id) || projectile.kind === 'rocket'
-      || (reward.tier === 2 && projectile.kind !== 'heavyRifle')) continue;
+    if (passedRewardIds?.has(reward.id) || projectile.kind === 'rocket') continue;
     const radius = reward.tier === 1 ? radii.gruntRadius : radii.bruteRadius;
     const dx = projectile.x - reward.x;
     if (Math.abs(dx) > radius) continue;
