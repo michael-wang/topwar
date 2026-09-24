@@ -3,13 +3,10 @@ import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
-import { tier2ProbabilityForRow } from '../src/simulation/enemies/bruteRamp';
-import { rewardChanceForTier2Probability, rewardPlacementForRow,
-  rewardTierForRow, tier2RewardProbabilityForEnemyPressure } from '../src/simulation/enemies/streamRewards';
+import { rewardPlacementForRow, rewardTierForRow } from '../src/simulation/enemies/streamRewards';
 import type { ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
-const rewardConfig = { baseChancePerRow: 0.99, fullTierChancePerRow: 0.99,
-  hitsRequired: 10, seed: 271828, sideX: 2.2 };
+const rewardConfig = { rowsPerReward: 1, hitsRequired: 10, seed: 271828, sideX: 2.2 };
 const level: LevelDefinition = { id: 'stream-reward-test', length: 20, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 5, spawnAheadDistance: 5.5, columns: 3,
     spacing: 100, jitter: 0, seed: 42, bruteRamp: { startRow: 1, fullRow: 2, curvePower: 2 },
@@ -40,118 +37,50 @@ const step = (simulation: Simulation, dt = 0.1, changes: Partial<SimulationTunin
   simulation.step(dt, { targetX: 0 }, { ...tuning, ...changes });
 
 describe('endless stream reward placement', () => {
-  it('uses authored chance and independent row rolls without consuming gameplay RNG', () => {
-    const authored = LevelDefinitionSchema.parse(authoredLevel);
-    expect(authored.upgradeGates).toEqual([]);
-    expect(authored.enemyStream?.rewards).toEqual({ baseChancePerRow: 0.025,
-      fullTierChancePerRow: 0.25,
-      hitsRequired: 10, seed: 271828, sideX: 2.2 });
-    const stream = authored.enemyStream!;
+  it('guarantees exactly one random-looking placement in every authored block', () => {
+    const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
     const rewards = stream.rewards!;
-    const placement = (row: number, seed = rewards.seed) => rewardPlacementForRow(row, 7,
-      { ...rewards, seed }, tier2ProbabilityForRow(row, stream.bruteRamp));
-    const pattern = Array.from({ length: 1000 }, (_, row) => placement(row));
-    expect(pattern).toEqual(Array.from({ length: 1000 }, (_, row) => placement(row)));
-    expect(pattern.filter((placement) => placement !== null).length).toBeGreaterThan(25);
-    expect(pattern.filter((placement) => placement !== null).length).toBeLessThan(150);
-    expect(new Set(pattern.filter((placement) => placement !== null)
-      .map((placement) => placement!.side))).toEqual(new Set([-1, 1]));
-    expect(pattern).not.toEqual(Array.from({ length: 1000 }, (_, row) => placement(row, rewards.seed + 1)));
+    expect(rewards).toEqual({ rowsPerReward: 4, hitsRequired: 10, seed: 271828, sideX: 2.2 });
+    const placements = Array.from({ length: 400 }, (_, row) =>
+      rewardPlacementForRow(row, stream.columns, rewards));
+    expect(placements).toEqual(Array.from({ length: 400 }, (_, row) =>
+      rewardPlacementForRow(row, stream.columns, rewards)));
+    for (let block = 0; block < 100; block++) {
+      expect(placements.slice(block * 4, block * 4 + 4).filter(Boolean)).toHaveLength(1);
+    }
+    const rewardRows = placements.flatMap((placement, row) => placement ? [row] : []);
+    expect(new Set(rewardRows.map((row) => row % 4)).size).toBeGreaterThan(1);
+    expect(new Set(placements.filter(Boolean).map((placement) => placement!.side)))
+      .toEqual(new Set([-1, 1]));
+    expect(placements).not.toEqual(Array.from({ length: 400 }, (_, row) =>
+      rewardPlacementForRow(row, stream.columns, { ...rewards, seed: rewards.seed + 1 })));
     expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().rngState).toBe(7);
   });
 
-  it('interpolates the same Tier-2 curve from sparse opening rewards to full-tier supply', () => {
+  it('offers exactly twelve Tier-1 opportunities before the first brute row', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
-    const rewards = stream.rewards!;
-    const chance = (row: number) => rewardChanceForTier2Probability(rewards,
-      tier2ProbabilityForRow(row, stream.bruteRamp));
-    expect(chance(0)).toBe(0.025);
-    expect(chance(48)).toBe(0.025);
-    expect(chance(504)).toBeCloseTo(0.08125);
-    expect(chance(732)).toBeCloseTo(0.1515625);
-    expect(chance(960)).toBe(0.25);
-    expect(chance(1200)).toBe(0.25);
-    for (let row = 1; row <= 1200; row++) expect(chance(row)).toBeGreaterThanOrEqual(chance(row - 1));
-    for (const p of [0, 0.25, 0.5, 0.75, 1]) {
-      expect(rewardChanceForTier2Probability(rewards, p)).toBeCloseTo(0.025 + 0.225 * p);
-    }
+    const selected = Array.from({ length: 48 }, (_, row) => row).filter((row) =>
+      rewardPlacementForRow(row, stream.columns, stream.rewards!) !== null);
+    expect(selected).toHaveLength(12);
+    expect(selected.every((row) => rewardTierForRow(row, stream.bruteRamp.fullRow) === 1)).toBe(true);
+    expect(stream.bruteRamp.startRow).toBe(48);
   });
 
-  it('weights Tier-2 reward chance by the 10:1 tier exchange value', () => {
-    for (const p of [0, 0.01, 0.1, 0.25, 0.5, 1]) {
-      expect(tier2RewardProbabilityForEnemyPressure(p)).toBeCloseTo(10 * p / (1 + 9 * p));
-    }
-    let previous = 0;
-    for (let index = 0; index <= 100; index++) {
-      const chance = tier2RewardProbabilityForEnemyPressure(index / 100);
-      expect(chance).toBeGreaterThanOrEqual(previous);
-      expect(chance).toBeLessThanOrEqual(1);
-      previous = chance;
-    }
-  });
-
-  it('selects reward tiers independently and deterministically throughout the mixed phase', () => {
+  it('keeps Tier-1 rewards through mixed enemy rows and switches at full saturation', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
-    const { seed } = stream.rewards!;
-    const tier = (row: number, contentSeed = seed) => rewardTierForRow(contentSeed, row,
-      tier2ProbabilityForRow(row, stream.bruteRamp));
-    expect(Array.from({ length: 48 }, (_, row) => tier(row))).toEqual(Array(48).fill(1));
-    expect(tier(48)).toBe(1);
-    expect(tier(960)).toBe(2);
-    expect(tier(1200)).toBe(2);
-    const mixed = Array.from({ length: 700 }, (_, index) => tier(index + 200));
-    expect(mixed).toContain(1);
-    expect(mixed).toContain(2);
-    expect(mixed).toEqual(Array.from({ length: 700 }, (_, index) => tier(index + 200)));
-    expect(mixed).not.toEqual(Array.from({ length: 700 }, (_, index) => tier(index + 200, seed + 1)));
-    expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().rngState).toBe(7);
+    expect(rewardTierForRow(0, stream.bruteRamp.fullRow)).toBe(1);
+    expect(rewardTierForRow(959, stream.bruteRamp.fullRow)).toBe(1);
+    expect(rewardTierForRow(960, stream.bruteRamp.fullRow)).toBe(2);
+    expect(rewardTierForRow(1200, stream.bruteRamp.fullRow)).toBe(2);
+    const selected = Array.from({ length: 1000 }, (_, row) => row).filter((row) =>
+      rewardPlacementForRow(row, stream.columns, stream.rewards!) !== null);
+    expect(selected.filter((row) => row < 960).every((row) =>
+      rewardTierForRow(row, 960) === 1)).toBe(true);
+    expect(selected.filter((row) => row >= 960).every((row) =>
+      rewardTierForRow(row, 960) === 2)).toBe(true);
   });
 
-  it('increases reward density and Tier-2 share across broad authored row windows', () => {
-    const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
-    const band = (start: number, length = 400) => {
-      const rewards = Array.from({ length }, (_, offset) => {
-        const row = start + offset;
-        const p = tier2ProbabilityForRow(row, stream.bruteRamp);
-        return rewardPlacementForRow(row, stream.columns, stream.rewards!, p)
-          ? rewardTierForRow(stream.rewards!.seed, row, p) : null;
-      }).filter((tier): tier is 1 | 2 => tier !== null);
-      return { count: rewards.length, tier2Share: rewards.filter((tier) => tier === 2).length / rewards.length };
-    };
-    const early = band(0);
-    const middle = band(400);
-    const late = band(960);
-    expect(early.count).toBeLessThan(middle.count);
-    expect(middle.count).toBeLessThan(late.count);
-    expect(early.tier2Share).toBeLessThan(middle.tier2Share);
-    expect(middle.tier2Share).toBeLessThan(late.tier2Share);
-    expect(late.tier2Share).toBe(1);
-  });
-
-  it('keeps a row roll fixed while a higher pressure threshold can admit it', () => {
-    const rewards = LevelDefinitionSchema.parse(authoredLevel).enemyStream!.rewards!;
-    const row = Array.from({ length: 2000 }, (_, index) => index)
-      .find((index) => rewardPlacementForRow(index, 7, rewards, 0) === null
-        && rewardPlacementForRow(index, 7, rewards, 1) !== null)!;
-    expect(row).toBeGreaterThanOrEqual(0);
-    const placementAtFullTier = rewardPlacementForRow(row, 7, rewards, 1);
-    expect(rewardPlacementForRow(row, 7, rewards, 0)).toBeNull();
-    expect(placementAtFullTier).not.toBeNull();
-    expect(rewardPlacementForRow(row, 7, rewards, 1)).toEqual(placementAtFullTier);
-  });
-
-  it('offers more rewards across broad early, mixed, and full Tier-2 row bands', () => {
-    const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
-    const countRewards = (startRow: number) => Array.from({ length: 400 }, (_, offset) => {
-      const row = startRow + offset;
-      return rewardPlacementForRow(row, stream.columns, stream.rewards!,
-        tier2ProbabilityForRow(row, stream.bruteRamp));
-    }).filter((placement) => placement !== null).length;
-    expect(countRewards(0)).toBeLessThan(countRewards(400));
-    expect(countRewards(400)).toBeLessThan(countRewards(960));
-  });
-
-  it('adds one side reward without removing an enemy or changing row geometry, IDs, and tier rolls', () => {
+  it('adds one side reward without removing an enemy or changing row geometry and IDs', () => {
     const withReward = create().getState();
     const withoutReward = create({ ...level, enemyStream: { ...level.enemyStream!, rewards: undefined } }).getState();
     expect(withReward.enemies).toHaveLength(3);
@@ -169,12 +98,12 @@ describe('endless stream reward placement', () => {
     expect(reward.z).toBe(5);
   });
 
-  it('keeps all seven authored enemy positions in a reward row and uses seeded Z jitter', () => {
+  it('keeps all seven authored enemy positions and uses seeded Z jitter', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
     const oneRow: LevelDefinition = { ...level, enemyStream: { ...stream,
       startZ: 5, spacing: 100, spawnAheadDistance: 5.5,
-      rewards: { ...stream.rewards!, baseChancePerRow: 0.99, fullTierChancePerRow: 0.99 } } };
-    const placement = rewardPlacementForRow(0, stream.columns, oneRow.enemyStream!.rewards!, 0)!;
+      rewards: { ...stream.rewards!, rowsPerReward: 1 } } };
+    const placement = rewardPlacementForRow(0, stream.columns, oneRow.enemyStream!.rewards!)!;
     const state = create(oneRow).getState();
     const offsets = createEnemyStreamRow(0, stream.columns, 100, stream.jitter, stream.seed);
     expect(state.enemies).toHaveLength(7);
@@ -183,19 +112,16 @@ describe('endless stream reward placement', () => {
     expect(state.streamRewards[0].z).toBe(5 + offsets[placement.zSlot].z);
   });
 
-  it('leaves all seven enemy slots in rows whose reward roll misses', () => {
+  it('leaves all seven enemy slots in rows without a reward', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const rewards = authored.enemyStream!.rewards!;
-    const missingRow = Array.from({ length: 100 }, (_, index) => index)
-      .find((index) => rewardPlacementForRow(index, 7, rewards, 0) === null)!;
+    expect(Array.from({ length: 4 }, (_, row) =>
+      rewardPlacementForRow(row, 7, rewards)).filter(Boolean)).toHaveLength(1);
     const bare: LevelDefinition = { ...authored, enemyStream: { ...authored.enemyStream!,
-      startZ: 0, spawnAheadDistance: 1, spacing: 1,
-      rewards: { ...rewards, baseChancePerRow: 0.01, fullTierChancePerRow: 0.01 } } };
+      startZ: 0, spawnAheadDistance: 3.5, spacing: 1 } };
     const state = create(bare).getState();
-    expect(rewardPlacementForRow(0, 7, bare.enemyStream!.rewards!, 0)).toBeNull();
-    expect(missingRow).toBeGreaterThanOrEqual(0);
-    expect(state.streamRewards).toEqual([]);
-    expect(state.enemies).toHaveLength(14);
+    expect(state.enemies).toHaveLength(28);
+    expect(state.streamRewards).toHaveLength(1);
   });
 
   it('materializes selected reward tiers without changing enemies', () => {
