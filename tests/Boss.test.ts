@@ -57,7 +57,7 @@ function prepareShot(sim: Simulation, projectile: ProjectileSimulationState): vo
 
 describe('embedded Tier-1 Boss', () => {
   it('validates committed row and multiplier, deriving HP from Tier-1 HP', () => {
-    expect(config.bosses.basic).toEqual({ hpMultiplier: 10000, visualScale: 7, radius: 2 });
+    expect(config.bosses.basic).toEqual({ hpMultiplier: 5000, visualScale: 7, radius: 2 });
     expect(config.enemies.grunt.hp).toBe(3);
     expect(stream.boss).toEqual({ row: 136, tier: 1 });
     expect(create().getState().boss).toBeNull();
@@ -66,11 +66,11 @@ describe('embedded Tier-1 Boss', () => {
     approachBoss(sim);
     step(sim);
     expect(sim.getState().boss).toMatchObject({ tier: 1, x: 0, z: bossZ,
-      hp: 30000, maxHp: 30000 });
+      hp: 15000, maxHp: 15000 });
     const changedHp = create(5);
     approachBoss(changedHp);
     step(changedHp);
-    expect(changedHp.getState().boss).toMatchObject({ hp: 50000, maxHp: 50000 });
+    expect(changedHp.getState().boss).toMatchObject({ hp: 25000, maxHp: 25000 });
     for (const key of ['hp', 'moveSpeed']) {
       expect(() => GameConfigSchema.parse({ ...config, bosses: { basic: {
         ...config.bosses.basic, [key]: 1 } } })).toThrow();
@@ -138,7 +138,7 @@ describe('embedded Tier-1 Boss', () => {
       step(sim);
       prepareShot(sim, shot(kind, damage));
       step(sim);
-      expect(sim.getState().boss?.hp).toBe(30000 - damage);
+      expect(sim.getState().boss?.hp).toBe(15000 - damage);
       expect(sim.getState().projectiles).toEqual([]);
     }
     const sim = create();
@@ -152,7 +152,7 @@ describe('embedded Tier-1 Boss', () => {
     sim.restoreState(state);
     step(sim);
     expect(sim.getState().enemies.map((enemy) => enemy.id)).toEqual([2]);
-    expect(sim.getState().boss?.hp).toBe(29700);
+    expect(sim.getState().boss?.hp).toBe(14700);
     const contactState = sim.getState();
     contactState.enemies = [];
     contactState.projectiles = [];
@@ -174,17 +174,17 @@ describe('embedded Tier-1 Boss', () => {
     prepareShot(before, shot('rifle', 3));
     step(before);
     const damaged = before.getState();
-    expect(damaged.boss?.hp).toBe(29997);
+    expect(damaged.boss?.hp).toBe(14997);
     const restoredAlive = create();
     restoredAlive.restoreState(JSON.parse(JSON.stringify(damaged)) as SimulationState);
     expect(restoredAlive.getState()).toEqual(damaged);
     const oldRowCursor = damaged.enemyStream!.nextRowIndex;
     step(restoredAlive, 0.1, { forwardSpeed: 12 });
     expect(restoredAlive.getState().enemyStream!.nextRowIndex).toBeGreaterThan(oldRowCursor);
-    expect(restoredAlive.getState().boss?.hp).toBe(29997);
+    expect(restoredAlive.getState().boss?.hp).toBe(14997);
     const defeated = create();
     defeated.restoreState(damaged);
-    prepareShot(defeated, shot('heavyRifle', 30000));
+    prepareShot(defeated, shot('heavyRifle', 15000));
     step(defeated);
     const deadState = defeated.getState();
     expect(deadState.boss).toBeNull();
