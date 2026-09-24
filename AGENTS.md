@@ -180,6 +180,14 @@ For every task:
 
 If an acceptance criterion cannot be met, stop and explain the blocker instead of inventing a workaround that violates architecture.
 
+## Documentation hygiene
+
+- `ROADMAP.md` is the current product plan, not a milestone history: keep exactly one NOW area, at most three concrete NEXT items, and broad LATER items only.
+- Delete superseded requirements instead of accumulating contradictory text; Git history preserves old decisions.
+- When a pivot makes documentation false, update or remove it in the same task when practical.
+- `ARCHITECTURE.md` describes stable engineering contracts, not product sequencing.
+- `GAME_SPEC.md` describes accepted gameplay and selected near-term design rules. Do not specify distant speculative features in detail.
+
 ## Quality gates
 
 Before declaring a task complete, run the checks requested by that task.

@@ -12,7 +12,7 @@ Build the fun version of the "mobile game ad" fantasy:
 - dense enemy crowds
 - visible holes carved through those crowds
 - recruitment/risk choices
-- short runs
+- endless survival pressure
 - instant retry
 - strong numerical and visual escalation
 
@@ -350,7 +350,7 @@ This game mainly needs predictable arcade interactions:
 
 - projectile vs enemy
 - enemy vs squad danger zone
-- gate trigger regions
+- reward and optional gate target regions
 - obstacle boundaries
 
 Prefer purpose-built spatial tests first.
@@ -382,7 +382,6 @@ Weapon
 
 Enemies
 - default HP
-- speed
 - spawn 10
 - spawn 100
 - clear
@@ -415,8 +414,8 @@ Mobile:
 
 Desktop development:
 
-- mouse horizontal drag
-- optional A/D or arrow keys later, if useful
+- relative mouse steering
+- A/D or arrow keys
 
 Use Pointer Events so touch and mouse share one path.
 
@@ -445,73 +444,14 @@ The camera is not gameplay truth.
 Initial camera should clearly show:
 
 - squad at lower part of screen
-- upcoming threats/gates
+- upcoming threats and rewards
 - enough forward distance to make route decisions
 
 Exact art direction comes after the grey-box loop feels good.
 
-## 18. Development roadmap
+## 18. Product sequencing
 
-Keep tickets small.
-
-### 001 — Bootstrap
-Vite + TS + Three + Vitest, one visible test scene, quality scripts.
-
-### 002 — Fixed-step loop + RNG
-Pure core utilities with unit tests.
-
-### 003 — ConfigStore
-Runtime JSON loading, validation, overrides, local persistence.
-
-### 004 — Minimal simulation
-Player X position, forward progression, stable state shape.
-
-### 005 — Squad rendering
-Render N simple blue units from simulation state.
-
-### 006 — Input
-Pointer drag controls X.
-
-### 007A — Level pacing data
-Runtime-authored level definition and encounter pacing. No enemies yet.
-
-### 007B — Enemy simulation/rendering
-Consume level data to create visible enemy groups. No combat.
-
-### 008A — Player offense
-Automatic rifle fire, projectiles, enemy HP/death.
-
-### 008B.1 — Contact casualties
-Static enemy contact removes squad members.
-
-### 008B.2A — Defense-line breaches + Game Over/Retry
-Surviving enemies left behind cost soldiers; zero squad ends the run and Retry starts a fresh run.
-
-### 008B.2B — Enemy advance
-Enemies actively move toward the defense line/player using the established casualty and failure rules.
-
-### 009 — Dev Panel v1
-Pause/time scale and selected runtime tuning.
-
-### 010 — Snapshot v1
-Named save/load slots + export/import.
-
-### 011 — Crowd optimization
-Instancing/performance pass with measurable target.
-
-### 012 — Gates
-Additive squad gates.
-
-### 013 — Expanded level content
-Build gates, sections, and progression on the level data from 007A.
-
-### 014 — Boss
-Boss HP, movement, win/lose.
-
-### 015 — Feel pass
-Hit feedback, death motion, muzzle flash, numbers, sound hooks.
-
-Every ticket should be independently reviewable.
+Product sequencing lives in ROADMAP.md. This document should remain stable through gameplay pivots. Its contracts are simulation/render separation, deterministic gameplay, runtime-loaded data, serializable state, instanced crowd rendering, and presentation-only visual/audio feedback.
 
 ## 19. Early performance target
 

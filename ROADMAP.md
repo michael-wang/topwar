@@ -1,73 +1,34 @@
-# TopWar — Small-Ticket Roadmap
+# TopWar — Current Roadmap
 
-The purpose of this roadmap is to keep Codex tasks narrow.
+## Current playable
 
-## 001 Bootstrap
-Vite + TypeScript + Three.js + Vitest. Rendering smoke test only.
+- Endless deterministic enemy stream. Enemies remain stationary in gameplay coordinates while the player advances; humanoid enemies visually walk toward the squad. The squad holds near the screen bottom, steers horizontally, and auto-fires.
+- Normal enemy tiers share one body size and radius (0.30). Color signals tier: Tier-1 is muted brick red (3 HP); Tier-2 is saturated red (300 HP), begins at row 48, and reaches full probability at row 960; Tier-3 is magenta (3000 HP), is guaranteed once at row 360, overlaps the Tier-2 ramp, and fully saturates at row 1320.
+- Ten Tier-1 player rifles normalize into one Tier-2 rifle. Its 300-damage heavy shot pierces up to ten Tier-1 enemies and stops on Tier-2 or Tier-3. One Tier-2 rifle has ten Tier-1 defensive points; Tier-3 contact or breach currently costs ten points too.
+- Every eight enemy rows offer one deterministic, random-looking side reward. Rewards materialize 30 units ahead while enemies extend 96 units ahead. Rewards are Tier-1 before row 960 and Tier-2 from row 960 onward.
+- Primitive humanoids use planted player firing poses, recoil and muzzle flashes, enemy walking, enemy hit flashes, and gray backward deaths. Audio is limited to reward acquisition and throttled enemy death yelps. Game Over leads directly to Retry.
 
-## 002 Fixed-step loop and seeded RNG
-No gameplay. Pure core utilities with deterministic tests.
+## NOW
 
-## 003 Runtime ConfigStore
-Fetch base JSON, schema validation, runtime overrides, localStorage persistence. No Dev Panel UI yet.
+**Combat feel vertical slice.** Make enemy kills, reward acquisition, and player Tier-up satisfying in the frequently repeated loop. First prove that a few seconds of shooting and destroying enemies feels good; then expand long-run progression. Detailed effects remain open to playtest.
 
-## 004 Minimal Simulation
-Serializable simulation shell: tick/time, level progress, player X/Z, seed/RNG state.
+## NEXT
 
-## 005 Squad formation + renderer
-Simulation owns squad count; renderer shows simple blue units. No weapon.
+1. **Tier Boss prototype.** Validate one large, lane-dominating Boss near the end or handoff of a normal enemy tier before generalizing. It uses that tier's color. HP derives from `normalTierHp * bossHpMultiplier`; the initial authored, tunable multiplier is 100. A Boss need not end the run.
+2. **Player Tier-3 response.** Design after playtesting where current Tier-3 or Boss pressure becomes unsustainable. Weapon stats remain undecided.
+3. **Higher enemy progression.** Tier-4 and Tier-5 normal enemies follow color-not-size. Their values and timing remain unspecified until the preceding loop is validated.
 
-## 006 Pointer input
-Touch/mouse drag maps into simulation horizontal control.
+## LATER
 
-## 007A Level pacing data
-Runtime-authored level definition and encounter pacing. No enemies yet.
+- Dev Panel and snapshot tooling/UI
+- Profiling and stress pass
+- Richer audio or VFX where playtest shows value
+- Additional Boss variations
+- Mobile polish
 
-## 007B Enemy groups
-Simulation and rendering consume level data to create visible enemies. No combat.
+## Explicitly inactive / rejected
 
-## 008A Player offense
-Automatic rifle fire, projectiles, enemy HP/death.
-
-## 008B.1 Contact casualties
-Static enemy contact removes squad members.
-
-## 008B.2A Defense-line breaches + Game Over/Retry
-Surviving enemies left behind cost soldiers; zero squad ends the run and Retry starts a fresh run.
-
-## 008B.2B Stationary grunt pressure
-Basic grunts hold their authored positions; player advance, contact, and defense-line breaches create pressure.
-
-## 009 Dev Panel v1
-Pause/time scale plus live editing of a small approved set of config values.
-
-## 010 Snapshots v1
-Named local save/load slots, export/import JSON, deterministic restore tests.
-
-## 011 Stress/performance pass
-Measure hundreds of units, introduce instancing/pooling only where needed.
-
-## Current pivot slice
-1. Continuous irregular enemy stream — implemented.
-2. Rocket specialist combat — implemented.
-3. Rare side stream reward targets beside intact enemy rows — implemented; generic side armories are inactive in Level 001.
-4. Endless enemy stream — implemented.
-5. Slow nonlinear deterministic Tier-2 enemy spread through row 960 — implemented.
-6. Tier-1 to Tier-2 squad and firepower compression at 10:1 — implemented.
-7. Tier exchange combat — implemented: Tier-2 shots pierce up to 10 Tier-1 enemies; Tier-2 soldiers have 10 Tier-1 defensive value and may demote into Tier-1 bodies.
-8. Color-coded, overlapping enemy Tier-3 progression — implemented.
-9. Enemy Tier-4 progression — later milestone.
-
-## 012 Recruitment gates — later milestone
-Data-driven +N gates, squad growth feedback.
-
-## 013 Expanded level content
-Build ordered gates, sections, and progression on the level data from 007A.
-
-## 014 Boss
-Boss HP, movement/threat, win/lose, retry.
-
-## 015 Feel pass
-Feedback only after the loop is stable: muzzle flash, hit reaction, death motion, sound hooks, subtle screen feedback.
-
-Rule: one ticket should not quietly absorb the next ticket.
+- Normal enemy tiers do not grow physically larger, and basic enemies do not pursue the player in simulation.
+- No finite 30–60 second level requirement or permanent side-armory economy is active.
+- A Boss is not restricted to the end of the entire run. Tier-4 and Tier-5 stats are not defined.
+- Rocket specialist code remains prototype infrastructure, outside Level 001's current progression route.

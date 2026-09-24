@@ -1,391 +1,54 @@
 # TopWar — Game Spec
 
-Status: prototype direction  
-Codename: TopWar  
-Primary target: mobile web
+## Core fantasy
 
-## 1. Fantasy
+Start with a tiny squad, steer horizontally, and auto-fire into endless dense enemy pressure. Divert fire toward risky side rewards to recruit soldiers and grow into stronger player tiers while increasingly dangerous, color-coded enemies enter the stream. Large Boss encounters are a selected future payoff, not part of the current playable loop.
 
-Make the game implied by those satisfying mobile ads:
+## Current session model
 
-> Start tiny. Grow into a ridiculous squad. Carve a path through a dense enemy army. Take greedy recruitment choices. Reach the boss with enough firepower to erase it.
+- The current prototype is endless survival. The player advances in simulation Z but stays near the bottom of the portrait view. Enemy positions remain stationary in gameplay coordinates; their visual walk cycle makes the crowd look as though it approaches.
+- The player steers horizontally by touch drag, desktop mouse, or keyboard. Rifle fire is automatic. Uncleared enemies cause contact or defense-line casualties.
+- The run ends when visible squad count reaches zero. Game Over offers immediate Retry. There is no required win state or fixed session length.
 
-The prototype is about immediate tactile fun, not meta systems.
+## Enemy stream and normal tiers
 
-## 2. Session shape
+The deterministic endless stream generates seven-enemy rows ahead of the player, without preallocating the entire future field. Enemy lookahead is 96 world units. Tier rolls depend on authored data and row/slot, not gameplay RNG or earlier kills. Normal enemies share one humanoid visual scale and radius **0.30**: **color indicates tier; size indicates role**. Larger bodies are reserved for specials and Bosses.
 
-Target run length:
+| Normal tier | HP | Color | Current progression |
+| --- | ---: | --- | --- |
+| Tier-1 grunt | 3 | Muted brick red | Opening fodder |
+| Tier-2 brute | 300 | Saturated red | Guaranteed first reveal at row 48; quadratic ramp reaches full probability at row 960 |
+| Tier-3 | 3000 | Magenta | Guaranteed first reveal at row 360; overlapping quadratic ramp fully saturates at row 1320 |
 
-- approximately 30–60 seconds for early levels
+Tier-3 takes precedence when both tier rolls would select the same slot. After row 960, non-Tier-3 enemies are Tier-2; from row 1320, all new normal enemies are Tier-3. Future normal tiers should retain color-not-size unless playtesting changes that rule; their HP, colors, and timing are undecided.
 
-Flow:
+## Player progression and combat
 
-```text
-Start
-→ move by horizontal dragging
-→ squad auto-fires
-→ kill dense enemies
-→ choose recruitment opportunities
-→ grow stronger
-→ survive larger enemy sections
-→ boss
-→ win or die
-→ immediate retry
-```
+- Level 001 starts with one Tier-1 rifle soldier. Each Tier-1 rifle projectile deals **3 damage**. The squad uses a compact circular formation and fires at the normal rifle cadence.
+- Every **10 Tier-1 rifles** automatically normalize into **one Tier-2 rifle**. A Tier-2 rifle is one larger visible squad body that fires one **300-damage** heavy rifle projectile at the same cadence.
+- A heavy rifle shot pierces up to **10 Tier-1 enemies**, spending one penetration point per enemy. A Tier-2 or Tier-3 enemy stops it; a full-health Tier-3 takes ten heavy hits. Tier-1 shots also damage higher tiers normally and stop on impact.
+- One Tier-2 rifle has **10 Tier-1-equivalent defensive points**. A one-point casualty can demote one Tier-2 rifle into nine Tier-1 bodies. Tier-2 and Tier-3 enemy contact or breach currently each costs ten defensive points; Tier-1 costs one. Rockets are consumed last under the current casualty policy.
+- Player Tier-3 does not exist yet. Rocket specialist combat exists as prototype infrastructure but is not a Level 001 progression route.
 
-No lobby is required for the first playable version.
+## Stream rewards
 
-## Pacing and escalation
+- Every eight-row block contains **exactly one** authored reward opportunity. Its row and left/right side look random but are deterministic. A reward sits at X = **±2.2**; all seven enemies remain in its row.
+- Rewards materialize only **30 world units** ahead, independent of the enemy lookahead of 96. Each target needs **10 valid rifle-tier hits**. Unlocking adds one soldier immediately; ignored targets expire harmlessly behind the defense line.
+- Before row 960, targets grant one Tier-1 rifle. From row 960 onward, they grant one Tier-2 rifle. No Tier-3 reward exists.
+- A matching-tier shot progresses the target and is consumed. Higher-tier rifle fire also progresses lower-tier rewards and continues without spending enemy penetration. Lower-tier fire cannot progress a higher-tier reward. Rockets pass through rewards.
 
-The advertisement is a visual and opening-pacing reference. The player starts small but sees a sustained enemy threat ahead. Enemy count, HP, density, and player growth can shape later difficulty; pacing and encounter quantities remain data-driven.
+The player must notice a side target, steer, and spend fire on it while the full enemy row remains threatening. Generic side-armory code exists but is inactive in Level 001.
 
-The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass ahead and from the risk of reaching enemies before clearing them. The enemy field begins relatively close and extends deep into the level. It should read as an irregular, continuous mob with breathing room between grunts, not orderly ranks.
+## Presentation and feel
 
-Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. One +1 reward opportunity appears in every eight-row block beside an intact enemy row; its exact row and side look random but are deterministic. Rewards materialize only 30 units ahead while the enemy mass remains visible 96 units ahead. Pursuing a reward still requires steering and diverting fire without reducing enemy pressure.
+Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward, reward hits pulse, and player damage flashes the screen red. Audio intentionally plays only a reward-acquisition chime and throttled enemy-death yelps.
 
-The opening is a long sea of one-shot Tier-1 grunts. The first saturated-red Tier-2 brute is guaranteed at row 48; afterward each enemy independently becomes Tier-2 through deterministic rolls against a quadratic probability curve. Row-to-row density fluctuates, while the long-term Tier-2 frequency rises to full saturation at row 960. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Tier-3 begins with one guaranteed magenta enemy at row 360, overlapping the Tier-2 transition. Its independent quadratic probability rises to full Tier-3 saturation at row 1320. Tier-3 has 3000 HP, so a Tier-2 heavy rifle takes ten hits to kill it. All normal enemy tiers share radius 0.30 and the same humanoid size: muted brick red Tier-1, saturated red Tier-2, and magenta Tier-3. Color communicates normal tier; larger bodies are reserved for future special enemies and bosses. A future boss may dominate a lane visually and have roughly 10–100 times the HP of the dominant normal enemy, subject to playtest. Future normal tiers should keep the color-not-size rule.
+The next product pass focuses on the payoff of repeated actions: **enemy kill, reward acquisition, and player Tier-up**. Prove that a few seconds of shooting and destroying enemies feels satisfying before widening progression.
 
-## 3. Controls
+## Boss design rule
 
-Desktop is mouse-first: moving inside the gameplay viewport steers relatively without a button. The cursor stays visible for boundary awareness and indicates left or right steering, returning to neutral when movement stops. A/D and Left/Right arrows are equivalent alternatives. Mobile is touch-first: drag from any comfortable point without a jump on touch-down. Switching controls should be frictionless; Pointer Lock is not required for the first playable prototype.
+A Boss is **not implemented yet**. One may appear near the end or handoff of a normal enemy tier without ending the run. Unlike normal tier changes, it is physically huge and may dominate most of the lane, while inheriting that tier's color identity. Boss HP derives from `normalTierHp * bossHpMultiplier`; the initial planned, authored and tunable multiplier is **100**. Validate one Boss before building variants. Exact rows and attacks remain undecided.
 
-The squad follows horizontal input and progresses forward automatically. Firing is automatic when implemented. One-handed movement should feel immediate and low-friction.
+## Development principles
 
-## 4. Squad
-
-The player controls a squad rather than an individual soldier.
-
-The squad may contain rifle soldiers and rocket specialists. Rifle soldiers provide dense direct fire; rocket specialists fire slowly but deal high-damage area attacks. Rocket combat remains implemented, although Level 001's current stream rewards recruit rifle soldiers.
-
-Initial prototype:
-
-- start with configurable soldier count
-- squad members form a compact readable formation
-- squad count is visible
-- adding soldiers changes the visual formation quickly
-- losing soldiers visibly shrinks the formation
-
-The squad uses a compact centered golden-angle disk rather than a square grid, reducing overlapping firing columns. Formation spacing remains tunable.
-
-Important tunables:
-
-- start count
-- horizontal move speed
-- formation spacing
-- formation width/depth behavior
-
-## 5. Weapon
-
-Initial weapon:
-
-- automatic rifle
-- auto-fire forward
-- each soldier contributes firepower
-
-Initial model may use either:
-- one projectile/shot per active firing soldier, or
-- an equivalent batched simulation
-
-Choose the simplest model that preserves the feeling that more soldiers means more firepower.
-
-Tunables:
-
-- damage
-- fire rate
-- projectile speed
-- range
-- spread if introduced later
-
-No reload mechanic initially.
-
-## 6. Enemies
-
-Base enemy:
-
-- remains stationary and blocks the squad's path
-- has HP
-- dies under fire
-- is visually represented as a red low-poly/simple unit during grey-box development
-
-Basic grunts are low-HP fodder and may die from one base rifle hit. Tougher, multi-hit enemies should look distinctly different rather than making every grunt spongey.
-
-Moving or chasing enemies, if introduced later, should be visibly distinct special enemy types.
-
-The important visual outcome:
-
-> Sustained fire should visibly carve holes/corridors into dense enemy groups.
-
-Tunables:
-
-- HP
-- contact behavior
-- density/count
-- spawn shape
-
-## 7. Enemy crowd
-
-The crowd is a hero feature.
-
-It should support formations such as:
-
-- rectangle/block
-- wall
-- dense blob
-- corridor
-- split groups
-
-A later version may support authored shapes/masks.
-
-The first version only needs enough formation control to reproduce a dense wall and visibly destroy parts of it.
-
-## 8. Contact/death
-
-Initial simple rule:
-
-- an enemy reaching the squad removes soldiers or otherwise deals deterministic squad damage
-
-Base contact is an event, not damage every frame. A grunt costs one Tier-1 defense point; Tier-2 and Tier-3 enemies currently each cost ten. Rifle defense is spent from Tier-1 soldiers first, then Tier-2 soldiers, then rocket specialists.
-
-A surviving enemy left behind the advancing player crosses a defense line at `player.z - defenseLineOffset` and costs its tier's defense value. Contacted or shot enemies cannot also breach. When the squad reaches zero, the run ends.
-
-It must be easy to change without rewriting rendering.
-
-## 9. Recruitment gates
-
-Gates are a major decision point.
-
-Examples:
-
-- +1
-- +5
-- +20
-- +99
-
-Level 001 no longer uses permanent side armories as its active reward economy. Each eight-row block guarantees one stationary +1 reward target at the left or right edge while all seven enemies remain. The first 48 rows offer six opportunities before the first Tier-2 enemy; the first 96 offer twelve. From a one-rifle start, collecting about nine of those twelve can produce the first Tier-2 rifle around row 96, requiring strong collection rather than immediate growth. Rewards stay Tier-1 throughout the mixed enemy phase and become Tier-2 only at full enemy Tier-2 saturation. Each target takes 10 rifle hits at or above its tier to unlock and immediately add one soldier; projectile damage does not change progress. Ignored targets expire harmlessly behind the defense line. Generic side-armory code remains available for custom levels but is inactive in Level 001.
-
-Every 10 Tier-1 rifle soldiers automatically merge into one visibly larger Tier-2 rifle soldier. Its projectile fires at the normal rifle cadence, deals 100 times base rifle damage, and pierces up to ten Tier-1 grunts at one penetration point each. A Tier-1 reward gains one hit from it without stopping the shot or spending penetration; a matching Tier-2 reward consumes it, as does a Tier-2 brute after taking its damage. The 10:1 conversion compresses bodies and tracers. A Tier-2 rifle soldier has ten Tier-1 defensive points: one grunt casualty can demote it into nine Tier-1 bodies, and a later Tier-1 reward can merge them again. Rocket specialists remain a separate squad role.
-
-Later we can test:
-
-- additive gates
-- multipliers
-- weapon upgrades
-- risk/reward lanes
-
-Level 001 currently tests direct stream rewards; gate variants remain future experiments.
-
-## 10. Level design
-
-Levels are authored from data.
-
-A level should describe ordered content such as:
-
-- starting squad
-- enemy groups
-- gates
-- obstacles
-- boss trigger
-- end condition
-
-Example conceptual structure:
-
-```json
-{
-  "id": "level-001",
-  "startSquad": 1,
-  "sections": [
-    {
-      "z": 12,
-      "type": "enemyGroup",
-      "enemy": "grunt",
-      "count": 60
-    },
-    {
-      "type": "sideArmory",
-      "zOffset": 8,
-      "reward": { "kind": "rifle", "amount": 1, "count": 5 }
-    },
-    {
-      "z": 40,
-      "type": "enemyGroup",
-      "enemy": "grunt",
-      "count": 300
-    }
-  ]
-}
-```
-
-This is illustrative, not a schema commitment.
-
-## 11. Boss
-
-First boss:
-
-- large/simple visual
-- configurable HP
-- moves or threatens the squad
-- visible HP bar
-- final DPS check
-
-Win:
-
-- boss HP reaches zero
-
-Lose:
-
-- squad reaches zero
-
-The first boss does not need complex attack patterns.
-
-## 12. Failure and retry
-
-Failure should be cheap.
-
-On loss:
-
-- show a very short result state
-- retry should restart immediately
-
-Do not force a menu round trip.
-
-## 13. Visual direction for prototype
-
-Prototype art may closely reference the supplied ad for speed.
-
-Grey-box palette/concepts:
-
-- blue player soldiers
-- red enemies
-- green grass
-- light/white road
-- yellow/orange projectiles/muzzle flashes
-- large bright gate numbers
-- simple boss health bar
-
-The point is to validate the advertised fantasy.
-
-If the project is prepared for public release, visual identity and IP-sensitive assets/naming will be revisited.
-
-## 14. Camera/composition
-
-Portrait framing.
-
-Desired composition:
-
-- squad in lower area
-- enough forward visibility for decisions
-- enemy mass clearly readable
-- growth in squad size visually obvious
-- boss feels large at the top/end of the run
-
-Do not chase cinematic camera work before the loop is fun.
-
-## 15. Game feel priorities
-
-In order:
-
-1. movement feels immediate
-2. adding soldiers feels good
-3. more soldiers clearly means more firepower
-4. enemy crowd visibly erodes under fire
-5. impacts/deaths are readable
-6. retry is instant
-7. boss defeat feels like a payoff
-
-Later feel tools may include:
-
-- recoil
-- hit flash
-- tiny camera impulse
-- particles
-- death knockback
-- damage numbers
-- vibration
-- sound
-
-Use restraint. Readability wins.
-
-Current minimum combat feedback is a short enemy hit flash, a gray flip on death, a reward impact pulse, and a red screen flash for player damage or loss.
-
-Current lightweight presentation feedback also includes a projectile launch pulse. Current prototype audio intentionally uses only reward-acquisition feedback and throttled enemy-death yelps; automatic gunfire and damage/Game Over cues are muted to avoid fatigue.
-
-Player soldiers use planted primitive humanoid silhouettes with firing recoil and a small muzzle flash. Enemy humanoids visually walk toward the player while remaining stationary in gameplay; their deaths include a short throttled synthesized yelp.
-
-## 16. Development UX requirements
-
-This is part of the game spec.
-
-We need to be able to tune gameplay while playing.
-
-Eventual Dev Panel capabilities:
-
-- pause
-- time scale
-- player/squad values
-- weapon values
-- enemy values
-- enemy spawn buttons
-- level jump
-- boss jump
-- snapshot save/load
-- import/export
-- seed replay
-- performance stats
-
-Runtime changes should apply without rebuilding the app.
-
-## 17. Snapshot use cases
-
-Examples:
-
-- save just before a 500-enemy crowd
-- save with 12 soldiers before boss
-- save immediately before unlocking a Tier-2 stream reward
-- export a bug state for another developer
-- compare two balance variants from the same starting state
-
-Snapshots are an essential iteration tool.
-
-## 18. Prototype success questions
-
-The first playable versions should answer:
-
-- Is horizontal movement pleasant?
-- Is squad growth immediately satisfying?
-- Does a larger squad feel dramatically stronger?
-- Is carving a tunnel through enemies satisfying?
-- Are gate choices legible at speed?
-- Does the player want to hit Retry?
-- How many visible enemies can we support before performance hurts?
-
-We should not build meta systems until these answers are encouraging.
-
-## 19. First playable milestone
-
-A rough playable scene is enough:
-
-- portrait browser canvas
-- 1+ blue squad units
-- horizontal drag
-- automatic forward fire
-- a dense group of red enemies
-- enemies take damage/die
-- squad visibly grows through one gate
-- basic lose state
-- basic boss
-- instant retry
-- runtime tuning for key values
-- snapshot save/load
-
-Art can remain primitive.
-
-Fun cannot.
-
-## Upgrade choices
-
-- Present two clearly different options by default; add more only when later design calls for them.
-- One path may offer clear quantitative growth, such as more soldiers, projectiles, or firing volume.
-- Another may offer strong specialization with an obvious cost, such as high damage with slow fire, broad damage with low frequency, or piercing power with a readable tradeoff.
-- Make choices understandable in roughly one or two seconds. Favor visible gameplay changes over small hidden percentage bonuses.
-- Keep both options satisfying and viable; avoid hidden traps.
-- Let strategy give each run character without interrupting action or requiring a complex build system.
+Keep fixed-step deterministic gameplay separate from disposable rendering and audio. Load balance data at runtime and keep gameplay state serializable. Make changes quick to test and easy to delete or refactor. Prioritize a satisfying few seconds of play before expanding the number of tiers or encounters.
