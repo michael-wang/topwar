@@ -99,7 +99,7 @@ describe('embedded Tier-1 Boss', () => {
     expect(spawned.enemies.every((enemy) => enemy.z > bossZ + stream.spacing - stream.jitter - 0.01)).toBe(true);
     expect(spawned.enemies.some((enemy) => enemy.id === spawned.boss!.id)).toBe(false);
     expect(spawned.enemies.some((enemy) => enemy.type === 'brute')).toBe(true);
-    expect(spawned.enemies.some((enemy) => enemy.type === 'tier3')).toBe(false);
+    expect(spawned.enemies.some((enemy) => enemy.type === 'tier3')).toBe(true);
     const nextRow = spawned.enemyStream!.nextRowIndex;
     const nextId = spawned.enemyStream!.nextEnemyId;
     step(sim, 0.1, { forwardSpeed: 12 });

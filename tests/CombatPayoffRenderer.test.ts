@@ -47,12 +47,13 @@ describe('squad payoff', () => {
     renderer.update({ ...state, squad: { ...state.squad, count: 1,
       tier2RifleCount: 0, tier3RifleCount: 1 } }, 500);
     const heavy = soldiers(scene)[0];
-    expect(heavy.scale.x).toBeGreaterThan(2.55);
+    expect(heavy.scale.x).toBeGreaterThan(1);
+    expect(heavy.scale.x).toBeLessThanOrEqual(1.3);
     expect(ring(scene).visible).toBe(true);
     const glow = (heavy.children[0] as THREE.Mesh).material;
     renderer.update({ ...state, squad: { ...state.squad, count: 1,
       tier2RifleCount: 0, tier3RifleCount: 1 } }, 900);
-    expect(heavy.scale.x).toBe(2.55);
+    expect(heavy.scale.x).toBe(1);
     expect((heavy.children[0] as THREE.Mesh).material).not.toBe(glow);
     renderer.reset();
     expect(ring(scene).visible).toBe(false);
@@ -99,8 +100,8 @@ describe('squad payoff', () => {
     expect(ring(scene).visible).toBe(false);
     renderer.update(state(1, 1), 500);
     const [heavy] = soldiers(scene);
-    expect(heavy.scale.x).toBeGreaterThan(1.85);
-    expect(heavy.scale.x).toBeLessThan(2.4);
+    expect(heavy.scale.x).toBeGreaterThan(1);
+    expect(heavy.scale.x).toBeLessThanOrEqual(1.3);
     expect(ring(scene).visible).toBe(true);
     const startingRingScale = ring(scene).scale.x;
     const glowMaterial = (heavy.children[0] as THREE.Mesh).material;
@@ -110,7 +111,7 @@ describe('squad payoff', () => {
     renderer.update(state(1, 1), 700);
     expect((heavy.children[0] as THREE.Mesh).material).not.toBe(glowMaterial);
     renderer.update(state(1, 1), 870);
-    expect(heavy.scale.x).toBe(1.85);
+    expect(heavy.scale.x).toBe(1);
     expect(ring(scene).visible).toBe(false);
     renderer.reset();
     expect(ring(scene).visible).toBe(false);

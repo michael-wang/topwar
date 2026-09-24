@@ -115,8 +115,7 @@ export class SquadRenderer {
       const spawnScale = soldierSpawnScale(nowMs - member.appearedAtMs);
       const upgrading = tierActive && ((isTier3 && this.tierUpTier === 3)
         || (isHeavy && this.tierUpTier === 2));
-      member.group.scale.setScalar((isTier3 ? 2.55 : isHeavy ? 1.85 : 1)
-        * (upgrading ? tierUpScale(tierAgeMs) : spawnScale));
+      member.group.scale.setScalar(upgrading ? tierUpScale(tierAgeMs) : spawnScale);
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
       for (const part of [member.torso, member.leftArm, member.rightArm, member.leftLeg, member.rightLeg]) {
         part.material = glowing ? this.upgradeBodyMaterial
@@ -125,7 +124,7 @@ export class SquadRenderer {
       member.head.material = glowing ? this.upgradeHeadMaterial
         : isTier3 ? this.tier3HeadMaterial : isHeavy ? this.heavyHeadMaterial : this.headMaterial;
       member.rifle.visible = !isRocket;
-      member.rifle.scale.setScalar(isTier3 ? 1.55 : isHeavy ? 1.25 : 1);
+      member.rifle.scale.setScalar(isTier3 ? 1.25 : isHeavy ? 1.12 : 1);
       member.rifle.position.z = 0.38 - (isTier3 ? 0.16 : 0.11) * recoil;
       member.launcher.visible = isRocket;
       member.launcher.position.z = 0.12 - 0.09 * recoil;

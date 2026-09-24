@@ -6,7 +6,7 @@ const soldiers = (scene: THREE.Scene) => scene.children.filter(
   (child): child is THREE.Group => child instanceof THREE.Group);
 
 describe('rocket specialist rendering', () => {
-  it('renders Tier-3 after Tier-2 with a larger blue rifle and one pooled tracer', () => {
+  it('renders equally sized rifle tiers with modestly increasing weapons and one pooled Tier-3 tracer', () => {
     const scene = new THREE.Scene();
     const squad = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 }, squad: { count: 4, rocketCount: 1,
@@ -16,9 +16,17 @@ describe('rocket specialist rendering', () => {
     squad.update(state, 0);
     const [t1, t2, t3, rocket] = soldiers(scene);
     squad.update(state, 400);
-    expect([t1.scale.x, t2.scale.x, t3.scale.x]).toEqual([1, 1.85, 2.55]);
+    expect([t1.scale.x, t2.scale.x, t3.scale.x]).toEqual([1, 1, 1]);
     expect((t3.children[0] as THREE.Mesh).material).not.toBe((t2.children[0] as THREE.Mesh).material);
-    expect((t3.children[6] as THREE.Mesh).scale.x).toBeGreaterThan((t2.children[6] as THREE.Mesh).scale.x);
+    expect((t1.children[0] as THREE.Mesh).material).not.toBe((t2.children[0] as THREE.Mesh).material);
+    expect([t1.children[6].scale.x, t2.children[6].scale.x, t3.children[6].scale.x])
+      .toEqual([1, 1.12, 1.25]);
+    const anchors = [t1, t2, t3, rocket].map((member) => [member.position.x, member.position.z]);
+    squad.update({ ...state, squad: { ...state.squad, tier2RifleCount: 0,
+      tier3RifleCount: 0 } }, 410);
+    expect([t1, t2, t3, rocket].map((member) => [member.position.x, member.position.z]))
+      .toEqual(anchors);
+    squad.update(state, 420);
     expect(rocket.children[7].visible).toBe(true);
     squad.update({ ...state, projectiles: [{ id: 1, kind: 'tier3Rifle' as const, x: 0, z: 1 }] }, 500);
     expect(t3.children[8].visible).toBe(true);
@@ -43,7 +51,7 @@ describe('rocket specialist rendering', () => {
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, tier2RifleCount: 0, tier3RifleCount: 0, formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
-    renderer.update(state);
+    renderer.update(state, 0);
     expect(soldiers(scene)).toHaveLength(2);
     const [rifle, rocket] = soldiers(scene);
     expect(rifle.children[7].visible).toBe(false);
@@ -81,25 +89,25 @@ describe('rocket specialist rendering', () => {
     expect(disposeMaterial).toHaveBeenCalledOnce();
   });
 
-  it('renders one larger Tier-2 rifle body in deterministic role order', () => {
+  it('renders Tier-2 color and rifle identity in deterministic role order', () => {
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 },
       squad: { count: 3, rocketCount: 1, tier2RifleCount: 1, tier3RifleCount: 0, formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
-    renderer.update(state);
+    renderer.update(state, 0);
     const [rifle, heavy, rocket] = soldiers(scene);
     expect(soldiers(scene)).toHaveLength(3);
-    expect(rifle.scale.x).toBeGreaterThan(1);
-    expect(heavy.scale.x).toBeGreaterThan(1.85);
-    expect(rocket.scale.x).toBeGreaterThan(1);
+    renderer.update(state, 400);
+    expect([rifle.scale.x, heavy.scale.x, rocket.scale.x]).toEqual([1, 1, 1]);
     expect((heavy.children[0] as THREE.Mesh).material).not.toBe((rifle.children[0] as THREE.Mesh).material);
     expect([rifle.children[7].visible, heavy.children[7].visible, rocket.children[7].visible])
       .toEqual([false, false, true]);
     renderer.update({ ...state, squad: { count: 1, rocketCount: 0, tier2RifleCount: 1, tier3RifleCount: 0,
-      formationSpacing: 0.45 } });
+      formationSpacing: 0.45 } }, 500);
     expect(soldiers(scene)).toHaveLength(3);
-    expect(rifle.scale.x).toBeGreaterThan(1.85);
+    expect(rifle.scale.x).toBe(1);
+    expect(rifle.children[6].scale.x).toBe(1.12);
     expect(heavy.visible).toBe(false);
     expect(rocket.visible).toBe(false);
     const disposeHeavy = vi.spyOn((rifle.children[0] as THREE.Mesh).material as THREE.Material, 'dispose');

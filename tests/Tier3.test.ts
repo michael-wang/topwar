@@ -6,6 +6,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { tier2ProbabilityForRow, tier3ProbabilityForRow, tier3RollForSlot } from '../src/simulation/enemies/bruteRamp';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
+import { rewardPlacementForBlock, rewardTierForRow } from '../src/simulation/enemies/streamRewards';
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
 const game = GameConfigSchema.parse(config);
@@ -29,12 +30,12 @@ describe('overlapping Tier-3 enemy pressure', () => {
     expect(game.enemies.brute).toEqual({ hp: 300, radius: 0.3 });
     expect(game.enemies.tier3).toEqual({ hp: 3000, radius: 0.3 });
     expect(stream.bruteRamp).toEqual({ startRow: 48, fullRow: 144, curvePower: 2 });
-    expect(stream.tier3Ramp).toEqual({ startRow: 360, fullRow: 1320, curvePower: 2 });
+    expect(stream.tier3Ramp).toEqual({ startRow: 240, fullRow: 336, curvePower: 2 });
     for (const tier3Ramp of [
-      { startRow: -1, fullRow: 1320, curvePower: 2 },
-      { startRow: 360, fullRow: 360, curvePower: 2 },
-      { startRow: 360, fullRow: 1320, curvePower: 0 },
-      { startRow: 360, fullRow: 1320, curvePower: 2, extra: true },
+      { startRow: -1, fullRow: 336, curvePower: 2 },
+      { startRow: 240, fullRow: 240, curvePower: 2 },
+      { startRow: 240, fullRow: 336, curvePower: 0 },
+      { startRow: 240, fullRow: 336, curvePower: 2, extra: true },
     ]) {
       expect(() => LevelDefinitionSchema.parse({ ...level, enemyStream: { ...stream, tier3Ramp } })).toThrow();
     }
@@ -43,29 +44,29 @@ describe('overlapping Tier-3 enemy pressure', () => {
     } })).toThrow();
   });
 
-  it('reveals one center-most Tier-3 at row 360 without changing geometry or IDs', () => {
-    const simulation = create(241);
+  it('reveals one center-most Tier-3 at row 240 without changing geometry or IDs', () => {
+    const simulation = create(169);
     const state = simulation.getState();
     const row = (index: number) => state.enemies.slice(index * 7, index * 7 + 7);
-    expect(row(359).every((enemy) => enemy.type !== 'tier3')).toBe(true);
-    const reveal = row(360);
+    expect(row(239).every((enemy) => enemy.type !== 'tier3')).toBe(true);
+    const reveal = row(240);
     expect(reveal.filter((enemy) => enemy.type === 'tier3')).toHaveLength(1);
     const center = reveal.reduce((best, enemy, index) =>
       Math.abs(enemy.x) < Math.abs(reveal[best].x) ? index : best, 0);
     expect(reveal[center].type).toBe('tier3');
-    const offsets = createEnemyStreamRow(360, 7, stream.spacing, stream.jitter, stream.seed);
+    const offsets = createEnemyStreamRow(240, 7, stream.spacing, stream.jitter, stream.seed);
     expect(reveal.map(({ x, z }) => ({ x, z }))).toEqual(offsets.map((offset) =>
-      ({ x: offset.x, z: stream.startZ + 360 * stream.spacing + offset.z })));
-    expect(reveal.map((enemy) => enemy.id)).toEqual([2521, 2522, 2523, 2524, 2525, 2526, 2527]);
+      ({ x: offset.x, z: stream.startZ + 240 * stream.spacing + offset.z })));
+    expect(reveal.map((enemy) => enemy.id)).toEqual([1681, 1682, 1683, 1684, 1685, 1686, 1687]);
     expect(state.rngState).toBe(17);
-    expect(create(241).getState().enemies).toEqual(state.enemies);
+    expect(create(169).getState().enemies).toEqual(state.enemies);
   });
 
-  it('reproduces the reveal after restore and permanently saturates at authored row 1320', () => {
-    const before = create(239);
-    const resumed = create(239);
+  it('reproduces the reveal after restore and permanently saturates at authored row 336', () => {
+    const before = create(167);
+    const resumed = create(167);
     resumed.restoreState(before.getState());
-    const changedSurvivors = create(239);
+    const changedSurvivors = create(167);
     const altered = changedSurvivors.getState();
     altered.enemies.splice(0, 1);
     changedSurvivors.restoreState(altered);
@@ -77,10 +78,10 @@ describe('overlapping Tier-3 enemy pressure', () => {
     expect(resumed.getState()).toEqual(before.getState());
     expect(changedSurvivors.getState().enemies.filter((enemy) => enemy.id >= firstFutureId))
       .toEqual(before.getState().enemies.filter((enemy) => enemy.id >= firstFutureId));
-    expect(before.getState().enemies.filter((enemy) => enemy.id >= 360 * 7 + 1 && enemy.id <= 361 * 7)
+    expect(before.getState().enemies.filter((enemy) => enemy.id >= 240 * 7 + 1 && enemy.id <= 241 * 7)
       .filter((enemy) => enemy.type === 'tier3')).toHaveLength(1);
-    const saturated = create(817).getState();
-    for (const index of [1320, 1321]) {
+    const saturated = create(228).getState();
+    for (const index of [336, 337]) {
       expect(saturated.enemies.slice(index * 7, index * 7 + 7)
         .every((enemy) => enemy.type === 'tier3')).toBe(true);
     }
@@ -106,14 +107,35 @@ describe('overlapping Tier-3 enemy pressure', () => {
     for (let index = 18; index < 30; index++) {
       expect(row(index).every((enemy) => enemy.type === 'tier3')).toBe(true);
     }
-    expect(tier3ProbabilityForRow(504, stream.tier3Ramp!)).toBeCloseTo(0.0225);
-    expect(tier2ProbabilityForRow(504, stream.bruteRamp)).toBe(1);
+    expect(tier3ProbabilityForRow(264, stream.tier3Ramp!)).toBeCloseTo(0.0625);
+    expect(tier3ProbabilityForRow(239, stream.tier3Ramp!)).toBe(0);
+    expect(tier3ProbabilityForRow(336, stream.tier3Ramp!)).toBe(1);
+    expect(tier2ProbabilityForRow(264, stream.bruteRamp)).toBe(1);
     expect(tier3RollForSlot(stream.seed, 500, 2)).toBe(tier3RollForSlot(stream.seed, 500, 2));
     expect(state.rngState).toBe(17);
     const restored = new Simulation({ seed: 99, level: { ...level, enemyStream: compact },
       startSquad: 1, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
     restored.restoreState(state);
     expect(restored.getState()).toEqual(state);
+  });
+
+  it('offers at least ten Tier-2 rewards before the first Tier-3 enemy row', () => {
+    const rewards = stream.rewards!;
+    const placements = Array.from({ length: 12 }, (_, index) =>
+      rewardPlacementForBlock(18 + index, stream.columns, rewards));
+    expect(placements.every(({ rowIndex }) => rowIndex >= 144 && rowIndex < 240)).toBe(true);
+    expect(placements.filter(({ rowIndex }) => rewardTierForRow(rowIndex,
+      stream.bruteRamp.fullRow) === 2).length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('mixes Tier-2 and Tier-3 through the committed short ramp without changing gameplay RNG', () => {
+    const state = create(217).getState();
+    const mixed = state.enemies.slice(260 * stream.columns, 321 * stream.columns);
+    expect(mixed.some((enemy) => enemy.type === 'brute')).toBe(true);
+    expect(mixed.some((enemy) => enemy.type === 'tier3')).toBe(true);
+    expect(mixed.every((enemy) => enemy.type !== 'grunt')).toBe(true);
+    expect(state.rngState).toBe(17);
+    expect(create(217).getState().enemies).toEqual(state.enemies);
   });
 
   it('takes ten heavy shots, stops the heavy projectile, and costs ten defense on contact or breach', () => {

@@ -18,14 +18,14 @@ The deterministic endless stream generates seven-enemy rows ahead of the player,
 | --- | ---: | --- | --- |
 | Tier-1 grunt | 3 | Muted brick red | Opening fodder |
 | Tier-2 brute | 300 | Saturated red | Guaranteed first reveal at row 48; quadratic ramp reaches full probability at row 144 |
-| Tier-3 | 3000 | Magenta | Guaranteed first reveal at row 360; quadratic ramp fully saturates at row 1320 |
+| Tier-3 | 3000 | Magenta | Guaranteed first reveal at row 240; quadratic ramp fully saturates at row 336 |
 
-Tier-3 takes precedence when both tier rolls would select the same slot. After row 144, non-Tier-3 enemies are Tier-2; from row 1320, all new normal enemies are Tier-3. Future normal tiers should retain color-not-size unless playtesting changes that rule; their HP, colors, and timing are undecided.
+Tier-3 takes precedence when both tier rolls would select the same slot. After row 144, non-Tier-3 enemies are Tier-2; from row 336, all new normal enemies are Tier-3. Future normal tiers should retain color-not-size unless playtesting changes that rule; their HP, colors, and timing are undecided.
 
 ## Player progression and combat
 
 - Level 001 starts with one Tier-1 rifle soldier. Each Tier-1 rifle projectile deals **3 damage**. The squad uses a compact circular formation and fires at the normal rifle cadence.
-- Every **10 Tier-1 rifles** automatically normalize into **one Tier-2 rifle**; every **10 Tier-2 rifles** normalize into **one Tier-3 rifle**, including cascades from large Tier-1 gains. Tier-2 and Tier-3 rifles are larger visible bodies and fire one projectile at the same rifle cadence, dealing **300** and **3000** damage respectively.
+- Every **10 Tier-1 rifles** automatically normalize into **one Tier-2 rifle**; every **10 Tier-2 rifles** normalize into **one Tier-3 rifle**, including cascades from large Tier-1 gains. All normal rifle tiers share one body scale; color, weapon, and projectile identify the tier. Tier-up briefly enlarges the upgraded soldier before settling. Tier-2 and Tier-3 fire one projectile at the same rifle cadence, dealing **300** and **3000** damage respectively.
 - A heavy rifle shot pierces up to **10 Tier-1 enemies**, spending one penetration point per enemy. A Tier-2 or Tier-3 enemy stops it; a full-health Tier-3 takes ten heavy hits. Tier-1 shots also damage higher tiers normally and stop on impact.
 - One Tier-2 rifle has **10 Tier-1-equivalent defensive points**; one Tier-3 rifle has **100**. Partial losses demote higher-tier rifles into the corresponding remaining lower-tier bodies. A Tier-3 shot has **100 Tier-1-equivalent penetration points**: it spends one per Tier-1 enemy or ten per Tier-2 enemy, and stops on Tier-3 or Boss. Tier-2 and Tier-3 enemy contact or breach currently each costs ten defensive points; Tier-1 costs one. Rockets are consumed last under the current casualty policy. Rocket specialist combat exists as prototype infrastructure but is not a Level 001 progression route.
 
@@ -42,7 +42,7 @@ The player must notice a side target, steer, and spend fire on it while the full
 
 Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward with a brief tier-colored burst, reward hits pulse, removed rewards pop, newly recruited soldiers pop in, Tier-2 and Tier-3 upgrades pulse with a ground ring, Boss hits briefly pulse its scale, and player damage flashes the screen red. Audio is limited to quiet reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps; gunfire stays silent.
 
-The next product pass playtests player Tier-3 against the current Tier-3 enemy ramp before changing that handoff.
+The next product pass validates the shortened Tier-2 to Tier-3 handoff in playtests.
 
 ## First Boss encounter
 

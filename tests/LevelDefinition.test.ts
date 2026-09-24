@@ -32,7 +32,7 @@ describe('LevelDefinitionSchema', () => {
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
       boss: { row: 136, tier: 1 },
       bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2 },
-      tier3Ramp: { startRow: 360, fullRow: 1320, curvePower: 2 },
+      tier3Ramp: { startRow: 240, fullRow: 336, curvePower: 2 },
       rewards: { rowsPerReward: 8, spawnAheadDistance: 30,
         hitsRequired: 10, seed: 271828, sideX: 2.2 } });
     expect(parsed.upgradeGates).toEqual([]);
