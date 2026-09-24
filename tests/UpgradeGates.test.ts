@@ -12,7 +12,7 @@ const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [],
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
-  rifle: { damage: 3, fireRate: 1, projectileSpeed: 10, range: 20 },
+  rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 1, projectileSpeed: 10, range: 20 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 10, range: 20, blastRadius: 1.25 },
 };
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 1,
@@ -223,7 +223,7 @@ describe('persistent hit-count armories', () => {
     simulation.restoreState(state);
     step(simulation, 0.1, -1, { moveSpeed: 20 });
     expect(simulation.getState().pickups).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 });
   });
 
   it('rejects corrupt pickup state without changing live state', () => {
@@ -251,11 +251,11 @@ describe('persistent hit-count armories', () => {
     const simulation = create(level, 9);
     inject(simulation, Array.from({ length: 10 }, (_, index) => shot(index + 1, -1)));
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 9, tier2RifleCount: 0, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 9, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
     expect(simulation.getState().pickups).toHaveLength(1);
     step(simulation, 1.25, -1, { moveSpeed: 2 });
     expect(simulation.getState().pickups).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
     const state = simulation.getState();
     state.weapons.rifleCooldownRemainingSeconds = 0;
     simulation.restoreState(state);
@@ -269,13 +269,13 @@ describe('persistent hit-count armories', () => {
     step(collected);
     expect(collected.getState().squad.count).toBe(1);
     step(collected, 1.25, 1, { moveSpeed: 2 });
-    expect(collected.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 0 });
+    expect(collected.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
     const missed = create();
     inject(missed, Array.from({ length: 100 }, (_, index) => shot(index + 1, 1)));
     step(missed);
     step(missed, 1.25);
     expect(missed.getState().pickups).toEqual([]);
-    expect(missed.getState().squad).toEqual({ count: 1, tier2RifleCount: 0, rocketCount: 0 });
+    expect(missed.getState().squad).toEqual({ count: 1, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
   });
 
   it('restores partial hit progress for deterministic future hits and freezes at Game Over', () => {
@@ -291,7 +291,7 @@ describe('persistent hit-count armories', () => {
     expect(restored.getState()).toEqual(original.getState());
     expect(original.getState().pickups).toHaveLength(1);
     const lost = original.getState();
-    lost.squad = { count: 0, rocketCount: 0, tier2RifleCount: 0 };
+    lost.squad = { count: 0, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 };
     original.restoreState(lost);
     const before = original.getState();
     step(original, 1);

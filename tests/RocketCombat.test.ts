@@ -49,7 +49,7 @@ describe('rocket specialist firing', () => {
     const simulation = create(1, 0);
     step(simulation);
     expect(simulation.getState().projectiles.map((projectile) => projectile.kind)).toEqual(['rifle']);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 });
   });
 
   it('assigns the final formation offset to the rocket and fires one projectile per role', () => {

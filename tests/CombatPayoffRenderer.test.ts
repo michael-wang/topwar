@@ -36,8 +36,30 @@ describe('enemy death burst', () => {
 });
 
 describe('squad payoff', () => {
+  it('uses the existing ring and glow for Tier-3 compression, then resets', () => {
+    const scene = new THREE.Scene();
+    const renderer = new SquadRenderer(scene);
+    const state = { player: { x: 0, z: 0 }, squad: { count: 10, rocketCount: 0,
+      tier2RifleCount: 10, tier3RifleCount: 0, formationSpacing: 0.45 },
+      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null,
+      streamRewards: [], gates: [], pickups: [], projectiles: [] };
+    renderer.update(state, 0);
+    renderer.update({ ...state, squad: { ...state.squad, count: 1,
+      tier2RifleCount: 0, tier3RifleCount: 1 } }, 500);
+    const heavy = soldiers(scene)[0];
+    expect(heavy.scale.x).toBeGreaterThan(2.55);
+    expect(ring(scene).visible).toBe(true);
+    const glow = (heavy.children[0] as THREE.Mesh).material;
+    renderer.update({ ...state, squad: { ...state.squad, count: 1,
+      tier2RifleCount: 0, tier3RifleCount: 1 } }, 900);
+    expect(heavy.scale.x).toBe(2.55);
+    expect((heavy.children[0] as THREE.Mesh).material).not.toBe(glow);
+    renderer.reset();
+    expect(ring(scene).visible).toBe(false);
+    renderer.dispose();
+  });
   const state = (count: number, tier2RifleCount = 0) => ({ player: { x: 0.3, z: 2 },
-    squad: { count, tier2RifleCount, rocketCount: 0, formationSpacing: 0.45 },
+    squad: { count, tier2RifleCount, tier3RifleCount: 0, rocketCount: 0, formationSpacing: 0.45 },
     track: { halfWidth: 2.5, defenseLineZ: 0 }, enemies: [], boss: null, streamRewards: [],
     gates: [], pickups: [], projectiles: [] });
   const soldiers = (scene: THREE.Scene) => scene.children.filter(

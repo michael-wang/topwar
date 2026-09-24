@@ -4,20 +4,20 @@
 
 - Endless deterministic enemy stream. Enemies remain stationary in gameplay coordinates while the player advances; humanoid enemies visually walk toward the squad. The squad holds near the screen bottom, steers horizontally, and auto-fires.
 - Normal enemy tiers share one body size and radius (0.30). Color signals tier: Tier-1 is muted brick red (3 HP); Tier-2 is saturated red (300 HP), begins at row 48, and reaches full probability at row 144; Tier-3 is magenta (3000 HP), is guaranteed once at row 360, and fully saturates at row 1320.
-- Ten Tier-1 player rifles normalize into one Tier-2 rifle. Its 300-damage heavy shot pierces up to ten Tier-1 enemies and stops on Tier-2 or Tier-3. One Tier-2 rifle has ten Tier-1 defensive points; Tier-3 contact or breach currently costs ten points too.
+- Ten Tier-1 player rifles normalize into one Tier-2 rifle; ten Tier-2 rifles normalize into one Tier-3 rifle. Tier-3 has 100 defensive points and a 3000-damage shot that spends 100 penetration points across lower tiers, stopping on Tier-3 or Boss. Tier-3 enemy contact or breach currently costs ten points.
 - Every eight enemy rows offer one deterministic, random-looking side reward. Rewards materialize 30 units ahead while enemies extend 96 units ahead. Rewards are Tier-1 before row 144 and Tier-2 from row 144 onward.
 - A giant Tier-1 Boss replaces row 136, late in the first tier handoff. Its HP derives from Tier-1 HP × the authored 5000 multiplier, while enemy and reward streams continue behind it. Any rifle tier can progress either current reward tier.
-- Primitive humanoids use planted player firing poses, recoil and muzzle flashes, enemy walking, enemy hit flashes, and gray backward deaths. Audio is limited to reward acquisition and throttled enemy death yelps. Game Over leads directly to Retry.
+- Primitive humanoids use planted player firing poses, recoil and muzzle flashes, enemy walking, enemy hit flashes, and gray backward deaths. Quiet reward-hit ticks and throttled Boss-hit thuds join reward acquisition and enemy death yelps; gunfire remains silent. Game Over leads directly to Retry.
 
 ## NOW
 
-**Boss / first tier-handoff validation.** Test whether the faster Tier-2 transition and giant Tier-1 Boss are readable, threatening, and satisfying before extending progression.
+**Player Tier-3 pacing validation.** Playtest the Tier-3 rifle against current Tier-3 enemy pressure and locate the next unsustainable handoff.
 
 ## NEXT
 
-1. **Player Tier-3 response.** Design after playtesting where current Tier-3 or Boss pressure becomes unsustainable. Weapon stats remain undecided.
-2. **Later tier Boss generalization.** Extend Boss encounters only after the first prototype is validated.
-3. **Higher enemy progression.** Tier-4 and Tier-5 normal enemies follow color-not-size. Their values and timing remain unspecified until the preceding loop is validated.
+1. **Tier-2 to Tier-3 handoff.** Compress or retune it from observed playtest results.
+2. **First Tier-2 Boss.** Add only after that handoff is understood.
+3. **Tier-4 progression.** Extend enemy and player tiers only after the Tier-3 loop is validated; stats remain unspecified.
 
 ## LATER
 

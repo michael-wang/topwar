@@ -17,6 +17,8 @@
   "weapon": {
     "rifle": {
       "damage": 3,
+      "tier2DamageMultiplier": 100,
+      "tier3DamageMultiplier": 1000,
       "fireRate": 7,
       "projectileSpeed": 28,
       "range": 40

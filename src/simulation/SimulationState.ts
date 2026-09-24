@@ -7,6 +7,7 @@ export interface SquadSimulationState {
   count: number;
   rocketCount: number;
   tier2RifleCount: number;
+  tier3RifleCount: number;
 }
 
 export interface EnemySimulationState {
@@ -66,7 +67,7 @@ export interface UpgradePickupSimulationState {
 
 export interface ProjectileSimulationState {
   id: number;
-  kind: 'rifle' | 'heavyRifle' | 'rocket';
+  kind: 'rifle' | 'heavyRifle' | 'tier3Rifle' | 'rocket';
   x: number;
   z: number;
   speed: number;

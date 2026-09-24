@@ -1,14 +1,32 @@
-export type AudioCue = 'reward' | 'enemyDeath';
+export type AudioCue = 'reward' | 'rewardHit' | 'bossHit' | 'enemyDeath';
+
+interface ObservedReward { id: number; hitProgress: number }
+interface ObservedBoss { id: number; hp: number }
 
 // Presentation-only observation; enemy IDs restart on Retry.
 export class AudioCueObserver {
   private previousEnemyIds = new Set<number>();
+  private previousRewards = new Map<number, number>();
+  private previousBoss: ObservedBoss | null = null;
   private nextDeathCueMs = -Infinity;
+  private nextBossHitCueMs = -Infinity;
 
   observe(previousDefense: number, currentDefense: number,
-    enemies: readonly { id: number }[], nowMs = performance.now()): AudioCue[] {
+    enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
+    boss: ObservedBoss | null, nowMs = performance.now()): AudioCue[] {
     const cues = new Set<AudioCue>();
     if (currentDefense > previousDefense) cues.add('reward');
+    for (const reward of rewards) {
+      const previous = this.previousRewards.get(reward.id);
+      if (previous !== undefined && reward.hitProgress > previous) cues.add('rewardHit');
+    }
+    this.previousRewards = new Map(rewards.map((reward) => [reward.id, reward.hitProgress]));
+    if (boss && this.previousBoss?.id === boss.id && boss.hp < this.previousBoss.hp
+      && nowMs >= this.nextBossHitCueMs) {
+      cues.add('bossHit');
+      this.nextBossHitCueMs = nowMs + 100;
+    }
+    this.previousBoss = boss ? { ...boss } : null;
     const currentEnemyIds = new Set(enemies.map((enemy) => enemy.id));
     if (nowMs >= this.nextDeathCueMs) {
       for (const id of this.previousEnemyIds) {
@@ -25,13 +43,18 @@ export class AudioCueObserver {
 
   reset(): void {
     this.previousEnemyIds.clear();
+    this.previousRewards.clear();
+    this.previousBoss = null;
     this.nextDeathCueMs = -Infinity;
+    this.nextBossHitCueMs = -Infinity;
   }
 }
 
 const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number }> = {
   reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
+  rewardHit: { from: 760, to: 950, seconds: 0.045, wave: 'sine', volume: 0.025 },
+  bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.045 },
   enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.055 },
 };
 
@@ -49,8 +72,10 @@ export class GameAudio {
   }
 
   observe(previousDefense: number, currentDefense: number,
-    enemies: readonly { id: number }[], nowMs = performance.now()): void {
-    for (const cue of this.observer.observe(previousDefense, currentDefense, enemies, nowMs)) this.play(cue);
+    enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
+    boss: ObservedBoss | null, nowMs = performance.now()): void {
+    for (const cue of this.observer.observe(previousDefense, currentDefense, enemies,
+      rewards, boss, nowMs)) this.play(cue);
   }
 
   resetObservation(): void { this.observer.reset(); }

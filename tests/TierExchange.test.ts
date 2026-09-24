@@ -13,7 +13,7 @@ const level: LevelDefinition = { id: 'tier-exchange', length: 120, enemyGroups: 
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
   gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
-  rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 },
+  rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const create = (startSquad = 1) => new Simulation({ seed: 7, level, startSquad,
   startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
@@ -106,18 +106,18 @@ describe('Tier-2 heavy rifle traversal', () => {
       if (volley < 9) expect(after.streamRewards[0].hitProgress).toBe(volley + 1);
     }
     expect(simulation.getState().streamRewards).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 0, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
   });
 
   it('unlocks a Tier-1 reward at 9/10, normalizes nine Tier-1 bodies, and continues the shot', () => {
     const simulation = setup([grunt(1, 10.6)], [{ ...reward(1, 1, 10), hitProgress: 9 }]);
     const ready = simulation.getState();
-    ready.squad = { count: 9, tier2RifleCount: 0, rocketCount: 0 };
+    ready.squad = { count: 9, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 };
     simulation.restoreState(ready);
     advance(simulation);
     const after = simulation.getState();
     expect(after.streamRewards).toEqual([]);
-    expect(after.squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
+    expect(after.squad).toEqual({ count: 1, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
     expect(after.enemies).toEqual([]);
     expect(after.projectiles).toMatchObject([{ penetrationRemaining: 9, z: 20 }]);
     expect(after.weapons.nextProjectileId).toBe(2);
@@ -206,25 +206,25 @@ describe('Tier-2 heavy rifle traversal', () => {
 });
 
 describe('defensive Tier exchange', () => {
-  const t2 = { count: 1, tier2RifleCount: 1, rocketCount: 0 };
+  const t2 = { count: 1, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 };
   it('demotes one Tier-2 body to nine Tier-1 bodies, then loses them one by one', () => {
-    expect(afterCasualties(t2, 1)).toEqual({ count: 9, tier2RifleCount: 0, rocketCount: 0 });
+    expect(afterCasualties(t2, 1)).toEqual({ count: 9, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
     expect(afterCasualties(afterCasualties(t2, 1), 1)).toEqual({ count: 8,
-      tier2RifleCount: 0, rocketCount: 0 });
-    expect(afterCasualties(t2, 10)).toEqual({ count: 0, tier2RifleCount: 0, rocketCount: 0 });
+      tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
+    expect(afterCasualties(t2, 10)).toEqual({ count: 0, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
     expect(addRifleSoldiers(afterCasualties(t2, 1), 1, 1)).toEqual(t2);
   });
 
   it('charges ten points for Tier-2 and spends rifle value before rockets', () => {
-    expect(afterCasualties({ count: 15, tier2RifleCount: 0, rocketCount: 0 }, 10)).toMatchObject({ count: 5 });
-    expect(afterCasualties({ count: 2, tier2RifleCount: 2, rocketCount: 0 }, 10))
-      .toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
-    expect(afterCasualties({ count: 6, tier2RifleCount: 1, rocketCount: 0 }, 10))
-      .toEqual({ count: 5, tier2RifleCount: 0, rocketCount: 0 });
-    expect(afterCasualties({ count: 2, tier2RifleCount: 1, rocketCount: 1 }, 10))
-      .toEqual({ count: 1, tier2RifleCount: 0, rocketCount: 1 });
-    expect(afterCasualties({ count: 2, tier2RifleCount: 1, rocketCount: 1 }, 11))
-      .toEqual({ count: 0, tier2RifleCount: 0, rocketCount: 0 });
+    expect(afterCasualties({ count: 15, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 }, 10)).toMatchObject({ count: 5 });
+    expect(afterCasualties({ count: 2, tier2RifleCount: 2, tier3RifleCount: 0, rocketCount: 0 }, 10))
+      .toEqual({ count: 1, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
+    expect(afterCasualties({ count: 6, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 }, 10))
+      .toEqual({ count: 5, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
+    expect(afterCasualties({ count: 2, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 1 }, 10))
+      .toEqual({ count: 1, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 1 });
+    expect(afterCasualties({ count: 2, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 1 }, 11))
+      .toEqual({ count: 0, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
   });
 
   it('serializes a contact demotion and keeps Game Over tied to zero visible bodies', () => {
@@ -234,7 +234,7 @@ describe('defensive Tier exchange', () => {
     state.weapons.rifleCooldownRemainingSeconds = 100;
     simulation.restoreState(state);
     advance(simulation, 0.01);
-    expect(simulation.getState().squad).toEqual({ count: 9, tier2RifleCount: 0, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 9, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
     const restored = create();
     restored.restoreState(JSON.parse(JSON.stringify(simulation.getState())) as SimulationState);
     expect(restored.getState()).toEqual(simulation.getState());

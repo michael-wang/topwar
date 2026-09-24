@@ -7,6 +7,7 @@ export interface GameRenderState {
     count: number;
     rocketCount: number;
     tier2RifleCount: number;
+    tier3RifleCount: number;
     formationSpacing: number;
   };
   track: {
@@ -61,7 +62,7 @@ export interface UpgradePickupRenderState {
 
 export interface ProjectileRenderState {
   id: number;
-  kind: 'rifle' | 'heavyRifle' | 'rocket';
+  kind: 'rifle' | 'heavyRifle' | 'tier3Rifle' | 'rocket';
   x: number;
   z: number;
 }

@@ -22,6 +22,8 @@ export const GameConfigSchema = z.strictObject({
   weapon: z.strictObject({
     rifle: z.strictObject({
       damage: positive,
+      tier2DamageMultiplier: positive,
+      tier3DamageMultiplier: positive,
       fireRate: positive,
       projectileSpeed: positive,
       range: positive,

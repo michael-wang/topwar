@@ -16,7 +16,7 @@ const smallLevel: LevelDefinition = { id: 'short-endless', length: 3, enemyGroup
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
   bruteRadius: 0.3, tier3Radius: 0.3,
-  rifle: { damage: 3, fireRate: 0.1, projectileSpeed: 1, range: 1 },
+  rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 0.1, projectileSpeed: 1, range: 1 },
   rocket: { damage: 15, fireRate: 0.1, projectileSpeed: 1, range: 1, blastRadius: 1.25 } };
 const create = (level = smallLevel, count = 20) => new Simulation({ seed: 17, level,
   // Keep the stream lifecycle tests at the same visible squad size after 10:1 rifle compression.

@@ -25,25 +25,24 @@ Tier-3 takes precedence when both tier rolls would select the same slot. After r
 ## Player progression and combat
 
 - Level 001 starts with one Tier-1 rifle soldier. Each Tier-1 rifle projectile deals **3 damage**. The squad uses a compact circular formation and fires at the normal rifle cadence.
-- Every **10 Tier-1 rifles** automatically normalize into **one Tier-2 rifle**. A Tier-2 rifle is one larger visible squad body that fires one **300-damage** heavy rifle projectile at the same cadence.
+- Every **10 Tier-1 rifles** automatically normalize into **one Tier-2 rifle**; every **10 Tier-2 rifles** normalize into **one Tier-3 rifle**, including cascades from large Tier-1 gains. Tier-2 and Tier-3 rifles are larger visible bodies and fire one projectile at the same rifle cadence, dealing **300** and **3000** damage respectively.
 - A heavy rifle shot pierces up to **10 Tier-1 enemies**, spending one penetration point per enemy. A Tier-2 or Tier-3 enemy stops it; a full-health Tier-3 takes ten heavy hits. Tier-1 shots also damage higher tiers normally and stop on impact.
-- One Tier-2 rifle has **10 Tier-1-equivalent defensive points**. A one-point casualty can demote one Tier-2 rifle into nine Tier-1 bodies. Tier-2 and Tier-3 enemy contact or breach currently each costs ten defensive points; Tier-1 costs one. Rockets are consumed last under the current casualty policy.
-- Player Tier-3 does not exist yet. Rocket specialist combat exists as prototype infrastructure but is not a Level 001 progression route.
+- One Tier-2 rifle has **10 Tier-1-equivalent defensive points**; one Tier-3 rifle has **100**. Partial losses demote higher-tier rifles into the corresponding remaining lower-tier bodies. A Tier-3 shot has **100 Tier-1-equivalent penetration points**: it spends one per Tier-1 enemy or ten per Tier-2 enemy, and stops on Tier-3 or Boss. Tier-2 and Tier-3 enemy contact or breach currently each costs ten defensive points; Tier-1 costs one. Rockets are consumed last under the current casualty policy. Rocket specialist combat exists as prototype infrastructure but is not a Level 001 progression route.
 
 ## Stream rewards
 
 - Every eight-row block contains **exactly one** authored reward opportunity. Its row and left/right side look random but are deterministic. A reward sits at X = **±2.2**; all seven enemies remain in its row.
 - Rewards materialize only **30 world units** ahead, independent of the enemy lookahead of 96. Each target needs **10 valid rifle-tier hits**. Unlocking adds one soldier immediately; ignored targets expire harmlessly behind the defense line.
-- Before row 144, targets grant one Tier-1 rifle. From row 144 onward, they grant one Tier-2 rifle. No Tier-3 reward exists.
-- Any rifle tier progresses any current stream reward by one hit; the reward tier determines the soldier awarded, not the required rifle tier. Tier-1 shots are consumed by either reward tier. A Tier-2 heavy shot is consumed by a Tier-2 reward but continues through a Tier-1 reward without spending enemy penetration. Rockets pass through rewards without progress.
+- Before row 144, targets grant one Tier-1 rifle. From row 144 onward, they grant one Tier-2 rifle; ten of those Tier-2 rifles can form a player Tier-3. No Tier-3 reward exists.
+- Any rifle tier progresses any current stream reward by one hit; the reward tier determines the soldier awarded, not the required rifle tier. Tier-1 shots are consumed by either reward tier. Higher-tier shots continue through lower-tier rewards without spending enemy penetration; matching-tier shots stop. Rockets pass through rewards without progress.
 
 The player must notice a side target, steer, and spend fire on it while the full enemy row remains threatening. Generic side-armory code exists but is inactive in Level 001.
 
 ## Presentation and feel
 
-Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward with a brief tier-colored burst, reward hits pulse, removed rewards pop, newly recruited soldiers pop in, Tier-2 upgrades pulse with a ground ring, and player damage flashes the screen red. Audio intentionally plays only a reward-acquisition chime and throttled enemy-death yelps.
+Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward with a brief tier-colored burst, reward hits pulse, removed rewards pop, newly recruited soldiers pop in, Tier-2 and Tier-3 upgrades pulse with a ground ring, Boss hits briefly pulse its scale, and player damage flashes the screen red. Audio is limited to quiet reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps; gunfire stays silent.
 
-The next product pass focuses on the payoff of repeated actions: **enemy kill, reward acquisition, and player Tier-up**. Prove that a few seconds of shooting and destroying enemies feels satisfying before widening progression.
+The next product pass playtests player Tier-3 against the current Tier-3 enemy ramp before changing that handoff.
 
 ## First Boss encounter
 

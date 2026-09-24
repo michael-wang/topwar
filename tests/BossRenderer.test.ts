@@ -15,7 +15,7 @@ describe('BossRenderer', () => {
     expect(active.visible).toBe(true);
     expect(death.visible).toBe(false);
     expect(active.children).toHaveLength(8);
-    expect(active.scale.x).toBe(7);
+    expect(active.scale.x).toBeCloseTo(7);
     expect(active.position.x).toBe(-0.5);
     expect(active.position.z).toBe(576);
     expect(((active.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
@@ -30,12 +30,15 @@ describe('BossRenderer', () => {
     expect(active.children[2].rotation.x).not.toBeCloseTo(armAngle);
     expect(active.position.z).toBe(576);
     renderer.update({ ...boss, hp: 1500 }, 301);
+    expect(active.scale.x).toBeGreaterThan(7);
+    expect(active.scale.x).toBeLessThanOrEqual(7 * 1.04);
     expect((active.children[7] as THREE.Mesh).scale.x).toBeCloseTo(0.5);
     for (const part of active.children.slice(0, 6) as THREE.Mesh[]) {
       expect(((part.material as THREE.MeshStandardMaterial).color.getHexString()))
         .toBe(part === active.children[1] ? 'fff8d6' : 'ffe36e');
     }
-    renderer.update({ ...boss, hp: 1500 }, 400);
+    renderer.update({ ...boss, hp: 1500 }, 401);
+    expect(active.scale.x).toBe(7);
     expect(((active.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
       .color.getHexString()).toBe('9b6863');
     renderer.dispose();

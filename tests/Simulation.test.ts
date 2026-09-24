@@ -10,7 +10,7 @@ const create = () => new Simulation({ seed: 1, level, startSquad: 1, startRocket
 const still = { targetX: 0 };
 const combatTuning = { formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
   bruteRadius: 0.3, tier3Radius: 0.3,
-  rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
+  rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 7, projectileSpeed: 28, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const stillTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, ...combatTuning };
 
@@ -23,7 +23,7 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
-      squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
+      squad: { count: 1, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 },
       enemies: [],
       boss: null,
       enemyStream: null,
@@ -46,12 +46,12 @@ describe('Simulation', () => {
   it('validates and owns initial rocket composition', () => {
     const simulation = new Simulation({ seed: 1, level, startSquad: 2, startRocketCount: 1, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
     const exposed = simulation.getState();
-    expect(exposed.squad).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 0 });
+    expect(exposed.squad).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 0, tier3RifleCount: 0 });
     exposed.squad.rocketCount = 0;
     expect(simulation.getState().squad.rocketCount).toBe(1);
     const restored = create();
     restored.restoreState(JSON.parse(JSON.stringify(simulation.getState())) as SimulationState);
-    expect(restored.getState().squad).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 0 });
+    expect(restored.getState().squad).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 0, tier3RifleCount: 0 });
     for (const startRocketCount of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, 3]) {
       expect(() => new Simulation({ seed: 1, level, startSquad: 2, startRocketCount, gruntHp: 10, bruteHp: 300, tier3Hp: 3000}))
         .toThrow(/startRocketCount/);
@@ -69,7 +69,7 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
-      squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
+      squad: { count: 1, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 },
       enemies: [],
       enemyStream: null,
       streamRewards: [],

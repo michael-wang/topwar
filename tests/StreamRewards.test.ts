@@ -17,7 +17,7 @@ const level: LevelDefinition = { id: 'stream-reward-test', length: 20, enemyGrou
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
   gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
-  rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 },
+  rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 7,
   level: { ...source, enemyStream: source.enemyStream ? { ...source.enemyStream, boss: undefined } : undefined },
@@ -80,8 +80,8 @@ describe('endless stream reward placement', () => {
     expect(opportunities).toHaveLength(17);
     const availableTier1 = 1 + opportunities.length;
     expect(availableTier1).toBe(18);
-    expect(normalizeRifleSquad({ count: availableTier1, rocketCount: 0, tier2RifleCount: 0 }))
-      .toEqual({ count: 9, rocketCount: 0, tier2RifleCount: 1 });
+    expect(normalizeRifleSquad({ count: availableTier1, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 }))
+      .toEqual({ count: 9, rocketCount: 0, tier2RifleCount: 1, tier3RifleCount: 0 });
   });
 
   it('materializes nearby rewards independently of the long enemy horizon', () => {
@@ -238,11 +238,11 @@ describe('tiered reward combat and lifecycle', () => {
     prepare(simulation, Array.from({ length: 9 }, (_, index) => projectile(index + 3, 'rifle', rewardX, 900)));
     step(simulation);
     expect(simulation.getState().streamRewards[0].hitProgress).toBe(9);
-    expect(simulation.getState().squad).toMatchObject({ count: 9, tier2RifleCount: 0 });
+    expect(simulation.getState().squad).toMatchObject({ count: 9, tier2RifleCount: 0, tier3RifleCount: 0 });
     prepare(simulation, [projectile(12, 'rifle', rewardX)]);
     step(simulation);
     expect(simulation.getState().streamRewards).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
     const state = simulation.getState();
     state.weapons.rifleCooldownRemainingSeconds = 0;
     simulation.restoreState(state);
@@ -258,7 +258,7 @@ describe('tiered reward combat and lifecycle', () => {
     ready.weapons.rifleCooldownRemainingSeconds = 0;
     simulation.restoreState(ready);
     step(simulation, 0.1, { rifle: { ...tuning.rifle, projectileSpeed: 1 } });
-    expect(simulation.getState().squad).toMatchObject({ count: 1, tier2RifleCount: 1 });
+    expect(simulation.getState().squad).toMatchObject({ count: 1, tier2RifleCount: 1, tier3RifleCount: 0 });
     expect(simulation.getState().projectiles.filter((shot) => shot.kind === 'rifle')).toHaveLength(9);
     expect(simulation.getState().projectiles.filter((shot) => shot.kind === 'heavyRifle')).toHaveLength(0);
     step(simulation, 0.1, { rifle: { ...tuning.rifle, projectileSpeed: 1 } });
@@ -376,11 +376,11 @@ describe('tiered reward combat and lifecycle', () => {
     prepare(simulation, hits.slice(0, 9));
     step(simulation);
     expect(simulation.getState().streamRewards[0].hitProgress).toBe(9);
-    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 0, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
     prepare(simulation, [hits[9]]);
     step(simulation);
     expect(simulation.getState().streamRewards).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
     expect(simulation.getState().projectiles).toEqual([]);
   });
 
@@ -390,7 +390,7 @@ describe('tiered reward combat and lifecycle', () => {
     prepare(simulation, Array.from({ length: 20 }, (_, index) => projectile(index + 1, 'rifle', x)));
     step(simulation);
     expect(simulation.getState().streamRewards).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 });
   });
 
   it('expires ignored rewards without casualties and freezes them at Game Over', () => {
@@ -404,7 +404,7 @@ describe('tiered reward combat and lifecycle', () => {
     expect(simulation.getState().squad.count).toBe(1);
     const frozen = create();
     const lost = frozen.getState();
-    lost.squad = { count: 0, rocketCount: 0, tier2RifleCount: 0 };
+    lost.squad = { count: 0, rocketCount: 0, tier2RifleCount: 0, tier3RifleCount: 0 };
     frozen.restoreState(lost);
     step(frozen, 10, { forwardSpeed: 10 });
     expect(frozen.getState().streamRewards).toEqual(lost.streamRewards);

@@ -180,12 +180,14 @@ export class GameApp {
     const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
     if (feedback) this.damageFlash.flash(feedback === 'fatal');
     this.audio.observe(this.previousDefenseValue, currentDefenseValue,
-      state.boss ? [...state.enemies, state.boss] : state.enemies, timestampMs);
+      state.boss ? [...state.enemies, state.boss] : state.enemies,
+      state.streamRewards, state.boss, timestampMs);
     this.previousDefenseValue = currentDefenseValue;
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
         tier2RifleCount: state.squad.tier2RifleCount,
+        tier3RifleCount: state.squad.tier3RifleCount,
         formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth,
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },

@@ -13,7 +13,7 @@ const gameConfig = GameConfigSchema.parse(gameData);
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
   memberRadius: 0.22, gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
-  rifle: { damage: 3, fireRate: 2, projectileSpeed: 10, range: 18 },
+  rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 2, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
 const create = (count = 1, gruntHp = 10, authored = level, rocketCount = 0) =>
@@ -101,7 +101,7 @@ describe('Automatic rifle and projectile state', () => {
   it('captures shot tuning at creation; later tuning affects only new bullets', () => {
     const simulation = create();
     step(simulation);
-    const changed = { ...tuning, rifle: { damage: 7, fireRate: 2, projectileSpeed: 20, range: 9 } };
+    const changed = { ...tuning, rifle: { damage: 7, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 2, projectileSpeed: 20, range: 9 } };
     step(simulation, 0.4, changed);
     expect(simulation.getState().projectiles[0]).toMatchObject({ damage: 3, speed: 10, remainingRange: 13 });
     expect(simulation.getState().projectiles[1]).toMatchObject({ damage: 7, speed: 20 });
@@ -173,7 +173,7 @@ describe('Swept hits and enemy death', () => {
     const simulation = create(3, 3, LevelDefinitionSchema.parse(authoredLevel));
     const initialCount = simulation.getState().enemies.length;
     const configured = { ...tuning, forwardSpeed: 0,
-      rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 } };
+      rifle: { damage: 3, tier2DamageMultiplier: 100, tier3DamageMultiplier: 1000, fireRate: 7, projectileSpeed: 28, range: 40 } };
     for (let tick = 0; tick < 780; tick++) simulation.step(1 / 60, { targetX: 0 }, configured);
     expect(simulation.getState().enemies.length).toBeLessThan(initialCount);
     expect(simulation.getState().player.z).toBe(0);

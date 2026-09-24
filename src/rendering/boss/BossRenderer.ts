@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
 
 const HIT_FLASH_MS = 80;
+const HIT_PULSE_MS = 100;
 const DEATH_MS = 800;
 const IMPACT_MS = 90;
 const PARTS = ['torso', 'head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const;
@@ -36,6 +37,7 @@ export class BossRenderer {
   private readonly barFill = new THREE.Mesh(this.barGeometry, this.barFillMaterial);
   private previous: BossRenderState | null = null;
   private flashUntilMs = -Infinity;
+  private hitAtMs = -Infinity;
   private deathStartedAtMs = -Infinity;
   private deathStartZ = 0;
   private deathScale = 1;
@@ -64,12 +66,15 @@ export class BossRenderer {
     if (this.previous && !boss) this.startDeath(this.previous, nowMs);
     if (boss && this.previous?.id === boss.id && boss.hp < this.previous.hp) {
       this.flashUntilMs = nowMs + HIT_FLASH_MS;
+      this.hitAtMs = nowMs;
     }
     this.previous = boss ? { ...boss } : null;
     this.active.visible = boss !== null;
     if (boss) {
       this.active.position.set(-boss.x, 0, boss.z);
-      this.active.scale.setScalar(boss.visualScale);
+      const hitAgeMs = nowMs - this.hitAtMs;
+      this.active.scale.setScalar(boss.visualScale * (1 + 0.03
+        * Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS)));
       const pose = bossWalkPose(boss.id, nowMs);
       for (const part of PARTS) {
         const mesh = this.parts[part];
@@ -101,6 +106,7 @@ export class BossRenderer {
   reset(): void {
     this.previous = null;
     this.flashUntilMs = -Infinity;
+    this.hitAtMs = -Infinity;
     this.deathStartedAtMs = -Infinity;
     this.active.visible = false;
     this.death.visible = false;

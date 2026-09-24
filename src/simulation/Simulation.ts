@@ -6,7 +6,7 @@ import { tier2ProbabilityForRow, tier2RollForSlot, tier3ProbabilityForRow, tier3
 import { rewardPlacementForBlock, rewardTierForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
-import { TIER2_EXCHANGE_VALUE } from './tierExchange';
+import { TIER2_EXCHANGE_VALUE, TIER3_EXCHANGE_VALUE } from './tierExchange';
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
@@ -35,12 +35,17 @@ export interface SimulationTuning {
   bruteRadius: number;
   tier3Radius: number;
   bossRadius?: number;
-  rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
+  rifle: { damage: number; tier2DamageMultiplier: number; tier3DamageMultiplier: number;
+    fireRate: number; projectileSpeed: number; range: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
 
 function positiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function rifleTier(kind: ProjectileSimulationState['kind']): number {
+  return kind === 'rifle' ? 1 : kind === 'heavyRifle' ? 2 : kind === 'tier3Rifle' ? 3 : 0;
 }
 
 type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
@@ -96,7 +101,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const exitZ = reward.z + halfChord;
     // A penetrating shot counts only when it enters this reward, not again
     // on a later tick that starts while it is still inside the collision circle.
-    if (projectile.kind === 'heavyRifle' && reward.tier === 1 && projectile.z >= entryZ) continue;
+    if (rifleTier(projectile.kind) > reward.tier && projectile.z >= entryZ) continue;
     if (exitZ < minimumZ || entryZ > endZ) continue;
     const hitZ = Math.max(minimumZ, entryZ);
     const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
@@ -273,13 +278,16 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation squad must be a plain object');
   }
   const squad = state.squad;
-  if (Object.keys(squad).length !== 3 || !Object.hasOwn(squad, 'count')
-    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'tier2RifleCount')) {
-    throw new Error('Simulation squad must contain only count, rocketCount, and tier2RifleCount');
+  if (Object.keys(squad).length !== 4 || !Object.hasOwn(squad, 'count')
+    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'tier2RifleCount')
+    || !Object.hasOwn(squad, 'tier3RifleCount')) {
+    throw new Error('Simulation squad must contain count, rocketCount, tier2RifleCount, and tier3RifleCount');
   }
   if (!validSquadCount(squad.count) || !validSquadCount(squad.rocketCount)
     || !validSquadCount(squad.tier2RifleCount)
-    || (squad.rocketCount as number) + (squad.tier2RifleCount as number) > (squad.count as number)) {
+    || !validSquadCount(squad.tier3RifleCount)
+    || (squad.rocketCount as number) + (squad.tier2RifleCount as number)
+      + (squad.tier3RifleCount as number) > (squad.count as number)) {
     throw new Error('Simulation squad composition is invalid');
   }
 
@@ -441,7 +449,8 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       throw new Error(`Simulation projectile ${index} id must be unique and positive`);
     }
     projectileIds.add(value.id as number);
-    if (value.kind !== 'rifle' && value.kind !== 'heavyRifle' && value.kind !== 'rocket') {
+    if (value.kind !== 'rifle' && value.kind !== 'heavyRifle'
+      && value.kind !== 'tier3Rifle' && value.kind !== 'rocket') {
       throw new Error(`Simulation projectile ${index} kind is unsupported`);
     }
     if (typeof value.x !== 'number' || !Number.isFinite(value.x) || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
@@ -458,7 +467,9 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     if (!Number.isSafeInteger(value.penetrationRemaining)
       || (value.kind === 'heavyRifle' && ((value.penetrationRemaining as number) < 1
         || (value.penetrationRemaining as number) > TIER2_EXCHANGE_VALUE))
-      || (value.kind !== 'heavyRifle' && value.penetrationRemaining !== 0)) {
+      || (value.kind === 'tier3Rifle' && ((value.penetrationRemaining as number) < 1
+        || (value.penetrationRemaining as number) > TIER3_EXCHANGE_VALUE))
+      || ((value.kind === 'rifle' || value.kind === 'rocket') && value.penetrationRemaining !== 0)) {
       throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`);
     }
     return { id: value.id as number, kind: value.kind, x: value.x, z: value.z, speed: value.speed,
@@ -492,7 +503,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       rngState: rng.getState(),
       player: { x: player.x, z: player.z },
       squad: { count: squad.count, rocketCount: squad.rocketCount,
-        tier2RifleCount: squad.tier2RifleCount },
+        tier2RifleCount: squad.tier2RifleCount, tier3RifleCount: squad.tier3RifleCount },
       enemies,
       boss,
       enemyStream,
@@ -574,7 +585,7 @@ export class Simulation {
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
       squad: normalizeRifleSquad({ count: options.startSquad, rocketCount: options.startRocketCount,
-        tier2RifleCount: 0 }),
+        tier2RifleCount: 0, tier3RifleCount: 0 }),
       enemies,
       boss,
       enemyStream,
@@ -614,7 +625,10 @@ export class Simulation {
     if (this.enemyStreamDefinition?.boss && !positiveFinite(tuning.bossRadius)) {
       throw new Error('Simulation bossRadius must be positive and finite for a Boss level');
     }
-    if (!tuning.rifle || !positiveFinite(tuning.rifle.damage) || !positiveFinite(tuning.rifle.fireRate)
+    if (!tuning.rifle || !positiveFinite(tuning.rifle.damage)
+      || !positiveFinite(tuning.rifle.tier2DamageMultiplier)
+      || !positiveFinite(tuning.rifle.tier3DamageMultiplier)
+      || !positiveFinite(tuning.rifle.fireRate)
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
       throw new Error('Simulation rifle tuning must be positive and finite');
     }
@@ -664,11 +678,12 @@ export class Simulation {
     const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
     const rifleCount = tier1RifleCount(this.state.squad);
     const heavyEnd = rifleCount + this.state.squad.tier2RifleCount;
+    const rifleEnd = heavyEnd + this.state.squad.tier3RifleCount;
     const nextCooldowns = { rifle: this.state.weapons.rifleCooldownRemainingSeconds,
       rocket: this.state.weapons.rocketCooldownRemainingSeconds };
     // Fire before travel; projectiles created this tick travel for this full fixed step.
     for (const kind of ['rifle', 'rocket'] as const) {
-      const activeOffsets = kind === 'rifle' ? offsets.slice(0, heavyEnd) : offsets.slice(heavyEnd);
+      const activeOffsets = kind === 'rifle' ? offsets.slice(0, rifleEnd) : offsets.slice(rifleEnd);
       const weapon = tuning[kind];
       const interval = 1 / weapon.fireRate;
       if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
@@ -684,9 +699,13 @@ export class Simulation {
       while (cooldown <= 0) {
         for (let index = 0; index < activeOffsets.length; index++) {
           const offset = activeOffsets[index];
-          const projectileKind = kind === 'rifle' && index >= rifleCount ? 'heavyRifle' : kind;
-          const damage = projectileKind === 'heavyRifle' ? weapon.damage * 100 : weapon.damage;
-          if (!positiveFinite(damage)) throw new Error('Simulation heavy rifle damage exceeds the supported range');
+          const projectileKind = kind === 'rifle' && index >= heavyEnd ? 'tier3Rifle'
+            : kind === 'rifle' && index >= rifleCount ? 'heavyRifle' : kind;
+          const damage = projectileKind === 'tier3Rifle'
+            ? weapon.damage * tuning.rifle.tier3DamageMultiplier
+            : projectileKind === 'heavyRifle' ? weapon.damage * tuning.rifle.tier2DamageMultiplier
+              : weapon.damage;
+          if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
           if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
           const x = nextX + offset.x;
           const z = nextZ + offset.z;
@@ -694,7 +713,8 @@ export class Simulation {
           projectiles.push({ id: nextProjectileId++, kind: projectileKind, x, z, speed: weapon.projectileSpeed,
             damage, remainingRange: weapon.range,
             blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
-            penetrationRemaining: projectileKind === 'heavyRifle' ? TIER2_EXCHANGE_VALUE : 0 });
+            penetrationRemaining: projectileKind === 'tier3Rifle' ? TIER3_EXCHANGE_VALUE
+              : projectileKind === 'heavyRifle' ? TIER2_EXCHANGE_VALUE : 0 });
         }
         cooldown += interval;
         if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
@@ -713,8 +733,8 @@ export class Simulation {
       let penetrationRemaining = projectile.penetrationRemaining;
       let minimumFraction = 0;
       let consumed = false;
-      const piercedEnemyIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
-      const passedRewardIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
+      const piercedEnemyIds = rifleTier(projectile.kind) > 1 ? new Set<number>() : undefined;
+      const passedRewardIds = rifleTier(projectile.kind) > 1 ? new Set<number>() : undefined;
       while (true) {
         const hit = findFirstHit(projectile, endZ, enemies, boss, streamRewards, gates, tuning,
           tuning.bossRadius,
@@ -738,7 +758,7 @@ export class Simulation {
             streamRewards.splice(streamRewards.indexOf(hit.reward), 1);
             squad = addRifleSoldiers(squad, 1, hit.reward.tier);
           }
-          if (projectile.kind === 'heavyRifle' && hit.reward.tier === 1) {
+          if (rifleTier(projectile.kind) > hit.reward.tier) {
             // A higher-tier hit counts once, then continues without spending penetration.
             minimumFraction = hit.fraction;
             passedRewardIds!.add(hit.reward.id);
@@ -750,8 +770,11 @@ export class Simulation {
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
-          if (projectile.kind === 'heavyRifle' && hit.enemy.type === 'grunt') {
-            penetrationRemaining--;
+          const penetrationCost = projectile.kind === 'tier3Rifle'
+            ? hit.enemy.type === 'grunt' ? 1 : hit.enemy.type === 'brute' ? TIER2_EXCHANGE_VALUE : 0
+            : projectile.kind === 'heavyRifle' && hit.enemy.type === 'grunt' ? 1 : 0;
+          if (penetrationCost > 0) {
+            penetrationRemaining -= penetrationCost;
             if (penetrationRemaining > 0) {
               // The cursor keeps the original step time for moving gates. Skipping
               // this enemy also handles overlapping circles and exact-position ties.
@@ -829,7 +852,8 @@ export class Simulation {
       const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) =>
         segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
           nextX + offset.x, nextZ + offset.z, boss!.x, boss!.z, radius));
-      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0, tier2RifleCount: 0 };
+      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0,
+        tier2RifleCount: 0, tier3RifleCount: 0 };
     }
     // Only survivors can leak; contact and projectile kills have already removed their enemies.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {

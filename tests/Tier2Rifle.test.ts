@@ -45,11 +45,11 @@ describe('Tier-2 rifle compression', () => {
   it('keeps committed startup Tier-1 and normalizes temporary large starts', () => {
     expect(config.player).toMatchObject({ startSquad: 1, startRocketCount: 0 });
     expect(create(config.player.startSquad).getState().squad).toEqual({ count: 1,
-      tier2RifleCount: 0, rocketCount: 0 });
-    expect(create(9).getState().squad).toEqual({ count: 9, tier2RifleCount: 0, rocketCount: 0 });
-    expect(create(10).getState().squad).toEqual({ count: 1, tier2RifleCount: 1, rocketCount: 0 });
-    expect(create(11, 1).getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 1 });
-    expect(create(100).getState().squad).toEqual({ count: 10, tier2RifleCount: 10, rocketCount: 0 });
+      tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
+    expect(create(9).getState().squad).toEqual({ count: 9, tier2RifleCount: 0, tier3RifleCount: 0, rocketCount: 0 });
+    expect(create(10).getState().squad).toEqual({ count: 1, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 0 });
+    expect(create(11, 1).getState().squad).toEqual({ count: 2, tier2RifleCount: 1, tier3RifleCount: 0, rocketCount: 1 });
+    expect(create(100).getState().squad).toEqual({ count: 1, tier2RifleCount: 0, tier3RifleCount: 1, rocketCount: 0 });
   });
 
   it('fires one projectile per visible role using one shared rifle cooldown', () => {
@@ -127,7 +127,7 @@ describe('Tier-2 rifle compression', () => {
     state.weapons.rifleCooldownRemainingSeconds = 10;
     simulation.restoreState(state);
     step(simulation, 0.25);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 1 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 1, tier3RifleCount: 0 });
     expect(simulation.getState().projectiles).toEqual([]);
     const after = simulation.getState();
     after.weapons.rifleCooldownRemainingSeconds = 0;
@@ -145,7 +145,7 @@ describe('Tier-2 rifle compression', () => {
     state.weapons.rifleCooldownRemainingSeconds = 10;
     simulation.restoreState(state);
     step(simulation, 0.25);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 1 });
+    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 1, tier3RifleCount: 0 });
     const before = simulation.getState();
     for (const corrupt of [
       (candidate: SimulationState) => { candidate.squad.tier2RifleCount = -1; },
