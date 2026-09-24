@@ -23,7 +23,7 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
-      squad: { count: 1, rocketCount: 0 },
+      squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
       enemies: [],
       enemyStream: null,
       gates: [],
@@ -44,12 +44,12 @@ describe('Simulation', () => {
   it('validates and owns initial rocket composition', () => {
     const simulation = new Simulation({ seed: 1, level, startSquad: 2, startRocketCount: 1, gruntHp: 10, bruteHp: 300 });
     const exposed = simulation.getState();
-    expect(exposed.squad).toEqual({ count: 2, rocketCount: 1 });
+    expect(exposed.squad).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 0 });
     exposed.squad.rocketCount = 0;
     expect(simulation.getState().squad.rocketCount).toBe(1);
     const restored = create();
     restored.restoreState(JSON.parse(JSON.stringify(simulation.getState())) as SimulationState);
-    expect(restored.getState().squad).toEqual({ count: 2, rocketCount: 1 });
+    expect(restored.getState().squad).toEqual({ count: 2, rocketCount: 1, tier2RifleCount: 0 });
     for (const startRocketCount of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, 3]) {
       expect(() => new Simulation({ seed: 1, level, startSquad: 2, startRocketCount, gruntHp: 10, bruteHp: 300 }))
         .toThrow(/startRocketCount/);
@@ -66,7 +66,7 @@ describe('Simulation', () => {
       seed: 1,
       rngState: 1,
       player: { x: 0, z: 0 },
-      squad: { count: 1, rocketCount: 0 },
+      squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
       enemies: [],
       enemyStream: null,
       gates: [],

@@ -7,7 +7,7 @@ import type { EnemySimulationState, ProjectileSimulationState, SimulationState, 
 const left = { id: 'left', x: -1, zOffset: 5, width: 1.5, hp: 6,
   reward: { mode: 'pickup' as const, kind: 'rifle' as const, amount: 1, intervalSeconds: 1, dropSpeed: 4 } };
 const right = { id: 'right', x: 1, zOffset: 5, width: 1.5, hp: 9,
-  reward: { mode: 'pickup' as const, kind: 'rifle' as const, amount: 99, intervalSeconds: 1, dropSpeed: 4 } };
+  reward: { mode: 'pickup' as const, kind: 'tier2Rifle' as const, amount: 1, intervalSeconds: 1, dropSpeed: 4 } };
 const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [], upgradeGates: [left, right] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
@@ -138,7 +138,7 @@ describe('persistent advertisement-style armories', () => {
     step(simulation, 5);
     expect(simulation.getState().gates[0]).toMatchObject({ hp: 3,
       rewardCooldownRemainingSeconds: null });
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
     expect(simulation.getState().pickups).toEqual([]);
   });
 
@@ -146,7 +146,7 @@ describe('persistent advertisement-style armories', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, -1, 6)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
     expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
       rewardCooldownRemainingSeconds: 1 });
     expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'left',
@@ -212,7 +212,7 @@ describe('persistent advertisement-style armories', () => {
     simulation.restoreState(state);
     simulation.step(1, { targetX: -2 }, { ...tuning, moveSpeed: 2 });
     expect(simulation.getState().pickups).toEqual([]);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 0, tier2RifleCount: 0 });
     expect(simulation.getState().weapons.nextProjectileId).toBe(1);
     const afterCollection = simulation.getState();
     afterCollection.weapons.rifleCooldownRemainingSeconds = 0;
@@ -304,18 +304,18 @@ describe('persistent advertisement-style armories', () => {
     expect(create().getState().gates[0]).toMatchObject({ hp: 6, rewardCooldownRemainingSeconds: null });
   });
 
-  it('retains right-wall damage, emits +99 immediately, and grants only on collection', () => {
+  it('retains right-wall damage, emits Tier-2 immediately, and grants only on collection', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, 1)]);
     step(simulation);
     expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([6, 6]);
     setProjectiles(simulation, [rifle(2, 1, 9)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
     expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['left', 'right']);
     expect(simulation.getState().gates[1]).toMatchObject({ hp: 0, rewardCooldownRemainingSeconds: 1 });
     expect(simulation.getState().pickups).toMatchObject([{ id: 1, sourceGateId: 'right',
-      x: 1, zOffset: 5, rewardAmount: 99 }]);
+      x: 1, zOffset: 5, rewardAmount: 1, rewardKind: 'tier2Rifle' }]);
     expect(simulation.getState().weapons.nextProjectileId).toBe(3);
     step(simulation, 1);
     expect(simulation.getState().pickups.map((item) => item.id)).toEqual([1, 2]);
@@ -323,34 +323,35 @@ describe('persistent advertisement-style armories', () => {
     state.player.x = 1;
     simulation.restoreState(state);
     simulation.step(0.25, { targetX: 1 }, tuning);
-    expect(simulation.getState().squad.count).toBe(100);
+    expect(simulation.getState().squad.count).toBe(2);
     expect(simulation.getState().squad.rocketCount).toBe(0);
+    expect(simulation.getState().squad.tier2RifleCount).toBe(1);
     expect(simulation.getState().weapons.nextProjectileId).toBe(3);
     expect(simulation.getState().pickups.map((item) => item.id)).toEqual([2]);
     const grown = simulation.getState();
     grown.weapons.rifleCooldownRemainingSeconds = 0;
     simulation.restoreState(grown);
     step(simulation, 0.1);
-    expect(simulation.getState().weapons.nextProjectileId).toBe(103);
+    expect(simulation.getState().weapons.nextProjectileId).toBe(5);
   });
 
   it('spawns one immediate pickup when two projectiles cross the breaking wall', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, 1, 9), rifle(2, 1, 9)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
-    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([99]);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
+    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['tier2Rifle']);
     expect(simulation.getState().nextPickupId).toBe(2);
   });
 
-  it('misses a +99 plaque outside its lane and continues generating later plaques', () => {
+  it('misses a Tier-2 plaque outside its lane and continues generating later plaques', () => {
     const simulation = create();
     setProjectiles(simulation, [rifle(1, 1, 9)]);
     step(simulation);
     step(simulation, 1.25);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
     expect(simulation.getState().pickups).toMatchObject([{ id: 2,
-      sourceGateId: 'right', rewardAmount: 99, zOffset: 4 }]);
+      sourceGateId: 'right', rewardAmount: 1, rewardKind: 'tier2Rifle', zOffset: 4 }]);
     step(simulation, 1);
     expect(simulation.getState().pickups.map((item) => item.id)).toEqual([3]);
     expect(simulation.getState().gates[1].hp).toBe(0);
@@ -378,10 +379,10 @@ describe('persistent advertisement-style armories', () => {
     expect(simulation.getState().squad.count).toBe(1);
     expect(simulation.getState().gates[0]).toMatchObject({ hp: 0,
       rewardCooldownRemainingSeconds: 1 });
-    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([1, 99]);
+    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['rifle', 'tier2Rifle']);
     step(simulation, 1);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
-    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([1, 99, 1, 99]);
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
+    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['rifle', 'tier2Rifle', 'rifle', 'tier2Rifle']);
   });
 
   it('requires all 1000 authored jackpot HP and keeps left investment independent', () => {
@@ -391,9 +392,9 @@ describe('persistent advertisement-style armories', () => {
     expect(simulation.getState().gates.map((gate) => gate.hp)).toEqual([100, 1]);
     setProjectiles(simulation, [rifle(2, 2.5, 1)]);
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0 });
+    expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
     expect(simulation.getState().gates.map((gate) => gate.id)).toEqual(['rifle-generator', 'rifle-jackpot']);
-    expect(simulation.getState().pickups.map((item) => item.rewardAmount)).toEqual([99]);
+    expect(simulation.getState().pickups.map((item) => item.rewardKind)).toEqual(['tier2Rifle']);
     expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().gates[1].hp).toBe(1000);
   });
 
@@ -410,7 +411,7 @@ describe('persistent advertisement-style armories', () => {
     step(jackpot);
     expect(jackpot.getState().squad.count).toBe(1);
     expect(jackpot.getState().gates.map((gate) => gate.hp)).toEqual([6, 0]);
-    expect(jackpot.getState().pickups.map((item) => item.rewardAmount)).toEqual([99]);
+    expect(jackpot.getState().pickups.map((item) => item.rewardKind)).toEqual(['tier2Rifle']);
   });
 
   it('rejects unsafe pickup and instant growth without partially committing', () => {

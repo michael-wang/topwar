@@ -23,7 +23,8 @@ describe('UpgradeGateRenderer', () => {
     renderer.update([{ ...gate, hp: 0 }]);
     expect(panel.visible).toBe(true);
     expect(panel.scale.z).toBeLessThan(1);
-    renderer.update([gate, { ...gate, id: 'right', x: 2.7, rewardAmount: 99, hp: 1000, maxHp: 1000 }]);
+    renderer.update([gate, { ...gate, id: 'right', x: 2.7, rewardKind: 'tier2Rifle',
+      rewardAmount: 1, hp: 1000, maxHp: 1000 }]);
     const jackpot = scene.children.find((child) => child !== panel) as THREE.Mesh;
     expect((jackpot.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('efbd36');
     renderer.update([]);

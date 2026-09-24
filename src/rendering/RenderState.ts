@@ -6,6 +6,7 @@ export interface GameRenderState {
   squad: {
     count: number;
     rocketCount: number;
+    tier2RifleCount: number;
     formationSpacing: number;
   };
   track: {
@@ -26,7 +27,7 @@ export interface UpgradeGateRenderState {
   hp: number;
   maxHp: number;
   rewardMode: 'pickup' | 'instant';
-  rewardKind: 'rifle';
+  rewardKind: 'rifle' | 'tier2Rifle';
   rewardAmount: number;
   rewardIntervalSeconds: number | null;
 }
@@ -36,11 +37,12 @@ export interface UpgradePickupRenderState {
   x: number;
   z: number;
   rewardAmount: number;
+  rewardKind: 'rifle' | 'tier2Rifle';
 }
 
 export interface ProjectileRenderState {
   id: number;
-  kind: 'rifle' | 'rocket';
+  kind: 'rifle' | 'heavyRifle' | 'rocket';
   x: number;
   z: number;
 }

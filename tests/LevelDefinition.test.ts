@@ -28,7 +28,7 @@ describe('LevelDefinitionSchema', () => {
       { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
       { id: 'rifle-jackpot', x: 2.7, zOffset: 8, width: 0.9, hp: 1000,
-        reward: { mode: 'pickup', kind: 'rifle', amount: 99, intervalSeconds: 1, dropSpeed: 4 } },
+        reward: { mode: 'pickup', kind: 'tier2Rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
     ]);
   });
 

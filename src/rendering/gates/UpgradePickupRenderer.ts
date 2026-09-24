@@ -6,7 +6,7 @@ export class UpgradePickupRenderer {
   private readonly labelGeometry = new THREE.PlaneGeometry(0.65, 0.56);
   private readonly plaqueMaterial = new THREE.MeshBasicMaterial({ color: '#18b8e8' });
   private readonly jackpotMaterial = new THREE.MeshBasicMaterial({ color: '#efbd36' });
-  private readonly labelMaterials = new Map<number, THREE.MeshBasicMaterial>();
+  private readonly labelMaterials = new Map<string, THREE.MeshBasicMaterial>();
   private readonly visuals = new Map<number, THREE.Group>();
 
   constructor(private readonly scene: THREE.Scene) {}
@@ -24,8 +24,8 @@ export class UpgradePickupRenderer {
       if (!visual) {
         visual = new THREE.Group();
         visual.add(new THREE.Mesh(this.plaqueGeometry,
-          pickup.rewardAmount === 1 ? this.plaqueMaterial : this.jackpotMaterial));
-        const labelMaterial = this.getLabelMaterial(pickup.rewardAmount);
+          pickup.rewardKind === 'rifle' ? this.plaqueMaterial : this.jackpotMaterial));
+        const labelMaterial = this.getLabelMaterial(pickup.rewardKind, pickup.rewardAmount);
         if (labelMaterial) {
           const label = new THREE.Mesh(this.labelGeometry, labelMaterial);
           label.position.z = -0.06;
@@ -54,8 +54,9 @@ export class UpgradePickupRenderer {
     this.labelMaterials.clear();
   }
 
-  private getLabelMaterial(amount: number): THREE.MeshBasicMaterial | null {
-    const cached = this.labelMaterials.get(amount);
+  private getLabelMaterial(kind: UpgradePickupRenderState['rewardKind'], amount: number): THREE.MeshBasicMaterial | null {
+    const key = `${kind}:${amount}`;
+    const cached = this.labelMaterials.get(key);
     if (cached) return cached;
     if (typeof document === 'undefined') return null;
     const canvas = document.createElement('canvas');
@@ -67,11 +68,11 @@ export class UpgradePickupRenderer {
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillStyle = '#102030';
-    context.font = 'bold 104px sans-serif';
-    context.fillText(`+${amount}`, 128, 64);
+    context.font = kind === 'tier2Rifle' ? 'bold 68px sans-serif' : 'bold 104px sans-serif';
+    context.fillText(kind === 'tier2Rifle' ? `+${amount} T2` : `+${amount}`, 128, 64);
     const material = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true,
       side: THREE.DoubleSide, depthWrite: false });
-    this.labelMaterials.set(amount, material);
+    this.labelMaterials.set(key, material);
     return material;
   }
 }

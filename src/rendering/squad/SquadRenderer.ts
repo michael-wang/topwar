@@ -7,9 +7,11 @@ export class SquadRenderer {
   private readonly headGeometry = new THREE.SphereGeometry(0.18, 8, 6);
   private readonly bodyMaterial = new THREE.MeshStandardMaterial({ color: '#1769ee' });
   private readonly headMaterial = new THREE.MeshStandardMaterial({ color: '#4b91ff' });
+  private readonly heavyBodyMaterial = new THREE.MeshStandardMaterial({ color: '#10429b' });
+  private readonly heavyHeadMaterial = new THREE.MeshStandardMaterial({ color: '#3579d6' });
   private readonly launcherGeometry = new THREE.BoxGeometry(0.22, 0.17, 0.66);
   private readonly launcherMaterial = new THREE.MeshStandardMaterial({ color: '#173a77' });
-  private readonly members: { group: THREE.Group; launcher: THREE.Mesh }[] = [];
+  private readonly members: { group: THREE.Group; body: THREE.Mesh; head: THREE.Mesh; launcher: THREE.Mesh }[] = [];
 
   constructor(private readonly scene: THREE.Scene) {}
 
@@ -18,10 +20,15 @@ export class SquadRenderer {
     while (this.members.length < offsets.length) this.addMember();
 
     for (let index = 0; index < this.members.length; index++) {
-      const { group, launcher } = this.members[index];
+      const { group, body, head, launcher } = this.members[index];
       const offset = offsets[index];
       group.visible = offset !== undefined;
-      launcher.visible = index >= state.squad.count - state.squad.rocketCount;
+      const rocketStart = state.squad.count - state.squad.rocketCount;
+      const isHeavy = index >= rocketStart - state.squad.tier2RifleCount && index < rocketStart;
+      launcher.visible = index >= rocketStart;
+      group.scale.setScalar(isHeavy ? 1.85 : 1);
+      body.material = isHeavy ? this.heavyBodyMaterial : this.bodyMaterial;
+      head.material = isHeavy ? this.heavyHeadMaterial : this.headMaterial;
       // The camera looks along +Z, which mirrors X on screen. Flip visual X so drag right reads right.
       if (offset) group.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
     }
@@ -35,6 +42,8 @@ export class SquadRenderer {
     this.launcherGeometry.dispose();
     this.bodyMaterial.dispose();
     this.headMaterial.dispose();
+    this.heavyBodyMaterial.dispose();
+    this.heavyHeadMaterial.dispose();
     this.launcherMaterial.dispose();
   }
 
@@ -49,6 +58,6 @@ export class SquadRenderer {
     launcher.visible = false;
     member.add(body, head, launcher);
     this.scene.add(member);
-    this.members.push({ group: member, launcher });
+    this.members.push({ group: member, body, head, launcher });
   }
 }

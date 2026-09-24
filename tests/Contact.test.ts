@@ -32,10 +32,10 @@ describe('Enemy contact casualties', () => {
   it('preserves rocket specialists until rifle soldiers are gone', () => {
     const oneContact = simulationWith(2, [grunt(1, 0, 0)], [], 1);
     oneContact.step(0.1, { targetX: 0 }, tuning);
-    expect(oneContact.getState().squad).toEqual({ count: 1, rocketCount: 1 });
+    expect(oneContact.getState().squad).toEqual({ count: 1, rocketCount: 1, tier2RifleCount: 0 });
     const twoContacts = simulationWith(2, [grunt(1, 0, 0), grunt(2, 0, 0)], [], 1);
     twoContacts.step(0.1, { targetX: 0 }, tuning);
-    expect(twoContacts.getState().squad).toEqual({ count: 0, rocketCount: 0 });
+    expect(twoContacts.getState().squad).toEqual({ count: 0, rocketCount: 0, tier2RifleCount: 0 });
   });
   it('removes one contacting grunt and one soldier exactly once', () => {
     const simulation = simulationWith(3, [grunt(1, 0, 0)]);

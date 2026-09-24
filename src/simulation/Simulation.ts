@@ -3,7 +3,7 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition,
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
-import { afterCasualties } from './squad/composition';
+import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
@@ -184,12 +184,14 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation squad must be a plain object');
   }
   const squad = state.squad;
-  if (Object.keys(squad).length !== 2 || !Object.hasOwn(squad, 'count') || !Object.hasOwn(squad, 'rocketCount')) {
-    throw new Error('Simulation squad must contain only count and rocketCount');
+  if (Object.keys(squad).length !== 3 || !Object.hasOwn(squad, 'count')
+    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'tier2RifleCount')) {
+    throw new Error('Simulation squad must contain only count, rocketCount, and tier2RifleCount');
   }
   if (!validSquadCount(squad.count) || !validSquadCount(squad.rocketCount)
-    || (squad.rocketCount as number) > (squad.count as number)) {
-    throw new Error('Simulation squad count and rocketCount must be valid, with rocketCount <= count');
+    || !validSquadCount(squad.tier2RifleCount)
+    || (squad.rocketCount as number) + (squad.tier2RifleCount as number) > (squad.count as number)) {
+    throw new Error('Simulation squad composition is invalid');
   }
 
   if (!Array.isArray(state.enemies)) throw new Error('Simulation enemies must be an array');
@@ -282,13 +284,13 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     pickupIds.add(value.id as number);
     if (!validLevelId(value.sourceGateId) || typeof value.x !== 'number' || !Number.isFinite(value.x)
       || !positiveFinite(value.zOffset)
-      || !positiveFinite(value.width) || value.rewardKind !== 'rifle'
+      || !positiveFinite(value.width) || (value.rewardKind !== 'rifle' && value.rewardKind !== 'tier2Rifle')
       || !Number.isSafeInteger(value.rewardAmount) || (value.rewardAmount as number) <= 0
       || !positiveFinite(value.dropSpeed)) {
       throw new Error(`Simulation pickup ${index} has invalid position or reward`);
     }
     return { id: value.id as number, sourceGateId: value.sourceGateId, x: value.x,
-      zOffset: value.zOffset, width: value.width, rewardKind: 'rifle',
+      zOffset: value.zOffset, width: value.width, rewardKind: value.rewardKind,
       rewardAmount: value.rewardAmount as number, dropSpeed: value.dropSpeed };
   });
   if (!Number.isSafeInteger(state.nextPickupId) || (state.nextPickupId as number) <= 0
@@ -308,7 +310,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       throw new Error(`Simulation projectile ${index} id must be unique and positive`);
     }
     projectileIds.add(value.id as number);
-    if (value.kind !== 'rifle' && value.kind !== 'rocket') {
+    if (value.kind !== 'rifle' && value.kind !== 'heavyRifle' && value.kind !== 'rocket') {
       throw new Error(`Simulation projectile ${index} kind is unsupported`);
     }
     if (typeof value.x !== 'number' || !Number.isFinite(value.x) || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
@@ -318,7 +320,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       throw new Error(`Simulation projectile ${index} speed, damage, and remainingRange must be positive and finite`);
     }
     if (typeof value.blastRadius !== 'number' || !Number.isFinite(value.blastRadius)
-      || (value.kind === 'rifle' && value.blastRadius !== 0)
+      || (value.kind !== 'rocket' && value.blastRadius !== 0)
       || (value.kind === 'rocket' && value.blastRadius <= 0)) {
       throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
     }
@@ -351,7 +353,8 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       seed: state.seed as number,
       rngState: rng.getState(),
       player: { x: player.x, z: player.z },
-      squad: { count: squad.count, rocketCount: squad.rocketCount },
+      squad: { count: squad.count, rocketCount: squad.rocketCount,
+        tier2RifleCount: squad.tier2RifleCount },
       enemies,
       enemyStream,
       gates,
@@ -417,7 +420,8 @@ export class Simulation {
       seed: options.seed,
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
-      squad: { count: options.startSquad, rocketCount: options.startRocketCount },
+      squad: normalizeRifleSquad({ count: options.startSquad, rocketCount: options.startRocketCount,
+        tier2RifleCount: 0 }),
       enemies,
       enemyStream,
       gates: level.upgradeGates.map((gate) => gate.reward.mode === 'pickup'
@@ -501,12 +505,13 @@ export class Simulation {
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
     let nextProjectileId = this.state.weapons.nextProjectileId;
     const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
-    const rifleCount = this.state.squad.count - this.state.squad.rocketCount;
+    const rifleCount = tier1RifleCount(this.state.squad);
+    const heavyEnd = rifleCount + this.state.squad.tier2RifleCount;
     const nextCooldowns = { rifle: this.state.weapons.rifleCooldownRemainingSeconds,
       rocket: this.state.weapons.rocketCooldownRemainingSeconds };
     // Fire before travel; projectiles created this tick travel for this full fixed step.
     for (const kind of ['rifle', 'rocket'] as const) {
-      const activeOffsets = kind === 'rifle' ? offsets.slice(0, rifleCount) : offsets.slice(rifleCount);
+      const activeOffsets = kind === 'rifle' ? offsets.slice(0, heavyEnd) : offsets.slice(heavyEnd);
       const weapon = tuning[kind];
       const interval = 1 / weapon.fireRate;
       if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
@@ -520,13 +525,17 @@ export class Simulation {
         throw new Error('Simulation step requests too many weapon volleys');
       }
       while (cooldown <= 0) {
-        for (const offset of activeOffsets) {
+        for (let index = 0; index < activeOffsets.length; index++) {
+          const offset = activeOffsets[index];
+          const projectileKind = kind === 'rifle' && index >= rifleCount ? 'heavyRifle' : kind;
+          const damage = projectileKind === 'heavyRifle' ? weapon.damage * 100 : weapon.damage;
+          if (!positiveFinite(damage)) throw new Error('Simulation heavy rifle damage exceeds the supported range');
           if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
           const x = nextX + offset.x;
           const z = nextZ + offset.z;
           if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
-          projectiles.push({ id: nextProjectileId++, kind, x, z, speed: weapon.projectileSpeed,
-            damage: weapon.damage, remainingRange: weapon.range,
+          projectiles.push({ id: nextProjectileId++, kind: projectileKind, x, z, speed: weapon.projectileSpeed,
+            damage, remainingRange: weapon.range,
             blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0 });
         }
         cooldown += interval;
@@ -560,14 +569,10 @@ export class Simulation {
               rewardKind: hit.gate.reward.kind, rewardAmount: hit.gate.reward.amount,
               dropSpeed: hit.gate.reward.dropSpeed }, travelSeconds: 0 });
           } else if (hit.gate.hp === 0 && hit.gate.reward.mode === 'instant') {
-            const amount = hit.gate.reward.amount;
-            if (!Number.isSafeInteger(squad.count + amount)) {
-              throw new Error('Simulation squad reward exceeds the supported range');
-            }
-            squad.count += amount;
+            squad = addRifleSoldiers(squad, hit.gate.reward.amount, 1);
             gates.splice(gates.indexOf(hit.gate), 1);
           }
-        } else if (projectile.kind === 'rifle') {
+        } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
         }
@@ -624,10 +629,8 @@ export class Simulation {
       const crossingFraction = (dtSeconds - travelSeconds + pickup.zOffset / pickup.dropSpeed) / dtSeconds;
       const playerXAtCrossing = this.state.player.x + (nextX - this.state.player.x) * crossingFraction;
       if (Math.abs(playerXAtCrossing - pickup.x) <= pickup.width / 2) {
-        if (!Number.isSafeInteger(squad.count + pickup.rewardAmount)) {
-          throw new Error('Simulation squad reward exceeds the supported range');
-        }
-        squad.count += pickup.rewardAmount;
+        squad = addRifleSoldiers(squad, pickup.rewardAmount,
+          pickup.rewardKind === 'tier2Rifle' ? 2 : 1);
       }
       // Both a collected and a missed plaque disappear once it passes the player.
     }

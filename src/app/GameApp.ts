@@ -158,6 +158,7 @@ export class GameApp {
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
       squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
+        tier2RifleCount: state.squad.tier2RifleCount,
         formationSpacing: this.config.player.formationSpacing },
       track: { halfWidth: this.config.track.halfWidth,
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
@@ -167,7 +168,8 @@ export class GameApp {
         rewardAmount: gate.reward.amount,
         rewardIntervalSeconds: gate.reward.mode === 'pickup' ? gate.reward.intervalSeconds : null })),
       pickups: state.pickups.map((pickup) => ({ id: pickup.id, x: pickup.x,
-        z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount })),
+        z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount,
+        rewardKind: pickup.rewardKind })),
       projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
         x: projectile.x, z: projectile.z })),
     };

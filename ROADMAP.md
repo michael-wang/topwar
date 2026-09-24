@@ -50,11 +50,12 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 ## Current pivot slice
 1. Continuous irregular enemy stream — implemented.
 2. Rocket specialist combat — implemented.
-3. Persistent side armories: recurring collectible +1 and +99 rifle generators — implemented.
+3. Persistent side armories: recurring collectible +1 Tier-1 and +1 Tier-2 rifle generators — implemented.
 4. Endless enemy stream — implemented.
-5. Slow nonlinear deterministic Tier-2 spread through row 960 — implemented; playtest where it becomes unsustainable before designing a player upgrade.
-6. Squad and firepower visual compression for +99 — next.
-7. Tier-3 and Tier-4 escalation phases — future work.
+5. Slow nonlinear deterministic Tier-2 enemy spread through row 960 — implemented.
+6. Tier-1 to Tier-2 squad and firepower compression — implemented.
+7. Playtest player Tier-2 against enemy Tier-2 and locate the next failure point — next.
+8. Tier-3 and Tier-4 escalation phases — future work.
 
 ## 012 Recruitment gates — later milestone
 Data-driven +N gates, squad growth feedback.

@@ -6,6 +6,7 @@ export interface PlayerSimulationState {
 export interface SquadSimulationState {
   count: number;
   rocketCount: number;
+  tier2RifleCount: number;
 }
 
 export interface EnemySimulationState {
@@ -31,7 +32,7 @@ interface UpgradeGateBaseState {
 }
 
 export interface UpgradeGateSimulationState extends UpgradeGateBaseState {
-  reward: { mode: 'pickup'; kind: 'rifle'; amount: number; intervalSeconds: number; dropSpeed: number }
+  reward: { mode: 'pickup'; kind: 'rifle' | 'tier2Rifle'; amount: number; intervalSeconds: number; dropSpeed: number }
     | { mode: 'instant'; kind: 'rifle'; amount: number };
   // Present only for pickup armories; null until their wall breaks.
   rewardCooldownRemainingSeconds?: number | null;
@@ -43,14 +44,14 @@ export interface UpgradePickupSimulationState {
   x: number;
   zOffset: number;
   width: number;
-  rewardKind: 'rifle';
+  rewardKind: 'rifle' | 'tier2Rifle';
   rewardAmount: number;
   dropSpeed: number;
 }
 
 export interface ProjectileSimulationState {
   id: number;
-  kind: 'rifle' | 'rocket';
+  kind: 'rifle' | 'heavyRifle' | 'rocket';
   x: number;
   z: number;
   speed: number;

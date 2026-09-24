@@ -161,7 +161,9 @@ Examples:
 - +20
 - +99
 
-Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall immediately emits a physical +1 rifle plaque, then another every second. Breaking the right 1000 HP wall immediately emits a gold +99 rifle plaque, then another every second. The player must move into the matching lane to collect either reward; missed plaques grant nothing. Both generators remain available throughout the run. Wall HP and rewards are authored level data.
+Two independent armories persist beside the advancing player, and both walls retain damage while the player fights elsewhere. Breaking the left 100 HP wall immediately emits a physical +1 Tier-1 rifle plaque, then another every second. Breaking the right 1000 HP wall immediately emits a gold +1 Tier-2 rifle plaque, then another every second. The player must move into the matching lane to collect either reward; missed plaques grant nothing. Both generators remain available throughout the run. Wall HP and rewards are authored level data.
+
+Every 100 Tier-1 rifle soldiers automatically merge into one visibly larger Tier-2 rifle soldier. A Tier-2 soldier fires one direct, non-piercing projectile at the normal rifle cadence; its damage is 100 times current base rifle damage. This compresses both squad bodies and tracers. It is one physical squad life, with no special casualty durability. Rocket specialists remain a separate squad role. Future player tiers may follow this progression, but Tier-3 is not defined yet.
 
 Later we can test:
 
@@ -332,7 +334,7 @@ Examples:
 
 - save just before a 500-enemy crowd
 - save with 12 soldiers before boss
-- save immediately before a +99 gate
+- save immediately before opening the Tier-2 rifle armory
 - export a bug state for another developer
 - compare two balance variants from the same starting state
 
