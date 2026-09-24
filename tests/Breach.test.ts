@@ -18,7 +18,7 @@ const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
 
 function withState(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = []) {
-  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 100 });
+  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;
@@ -95,17 +95,17 @@ describe('moving defense-line breaches', () => {
 
   it('a fresh run restores authored enemies, squad size, and weapon allocator', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
-    const first = new Simulation({ seed: 1, level: authored, startSquad: 3, startRocketCount: 0, gruntHp: 3, bruteHp: 100 });
+    const first = new Simulation({ seed: 1, level: authored, startSquad: 3, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
     const authoredPositions = first.getState().enemies.map(({ id, x, z }) => ({ id, x, z }));
     first.step(0.1, { targetX: 0 }, { ...tuning, forwardSpeed: 3 });
-    const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, startRocketCount: 0, gruntHp: 4, bruteHp: 100 });
+    const fresh = new Simulation({ seed: 1, level: authored, startSquad: 5, startRocketCount: 0, gruntHp: 4, bruteHp: 300 });
     const state = fresh.getState();
     expect(state.player).toEqual({ x: 0, z: 0 });
     expect(state.squad.count).toBe(5);
     expect(state.enemies.length).toBeGreaterThan(700);
     expect(state.enemyStream).toEqual(first.getState().enemyStream);
     expect(state.enemies.map(({ id, x, z }) => ({ id, x, z }))).toEqual(authoredPositions);
-    expect(state.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 100 : 4))).toBe(true);
+    expect(state.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 4))).toBe(true);
     expect(state.projectiles).toEqual([]);
     expect(state.weapons).toEqual({ rifleCooldownRemainingSeconds: 0,
       rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 });

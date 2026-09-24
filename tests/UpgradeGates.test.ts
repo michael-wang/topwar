@@ -16,7 +16,7 @@ const tuning: SimulationTuning = {
   rifle: { damage: 3, fireRate: 1, projectileSpeed: 10, range: 20 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 10, range: 20, blastRadius: 1.25 },
 };
-const create = (source = level) => new Simulation({ seed: 1, level: source, startSquad: 1, startRocketCount: 0, gruntHp: 3, bruteHp: 100 });
+const create = (source = level) => new Simulation({ seed: 1, level: source, startSquad: 1, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
 const rifle = (id: number, x: number, damage = 3): ProjectileSimulationState =>
   ({ id, kind: 'rifle', x, z: 0, speed: 10, damage, remainingRange: 20, blastRadius: 0 });
 const rocket = (id: number, x: number): ProjectileSimulationState =>

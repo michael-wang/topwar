@@ -36,7 +36,7 @@
       "radius": 0.3
     },
     "brute": {
-      "hp": 100,
+      "hp": 300,
       "contactDamage": 1,
       "radius": 0.55
     }

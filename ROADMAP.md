@@ -52,9 +52,9 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 2. Rocket specialist combat — implemented.
 3. Persistent side armories: collectible +1 rifle generator and one-time +99 rifle jackpot — implemented.
 4. Endless enemy stream — implemented.
-5. First 100-HP Tier-2 brute milestone — implemented.
-6. Future brute frequency and tier progression — pending playtest.
-7. Squad visual compression for +99 — later pivot task.
+5. Tier-2 brute saturation ramp — implemented; playtest where it becomes unsustainable before designing a player upgrade.
+6. Squad visual compression for +99 — pending.
+7. Tier-3 and Tier-4 escalation phases — future work.
 
 ## 012 Recruitment gates — later milestone
 Data-driven +N gates, squad growth feedback.

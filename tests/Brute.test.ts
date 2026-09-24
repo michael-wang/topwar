@@ -13,7 +13,7 @@ const tuning: SimulationTuning = {
 };
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, type: 'grunt', x, z, hp: 3 });
-const brute = (id: number, x: number, z: number, hp = 100): EnemySimulationState =>
+const brute = (id: number, x: number, z: number, hp = 300): EnemySimulationState =>
   ({ id, type: 'brute', x, z, hp });
 const rifle = (id: number, x = 0): ProjectileSimulationState =>
   ({ id, kind: 'rifle', x, z: 0, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 });
@@ -23,7 +23,7 @@ const rocket = (id: number): ProjectileSimulationState =>
 
 function withState(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = []) {
   const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: 0,
-    gruntHp: 3, bruteHp: 100 });
+    gruntHp: 3, bruteHp: 300 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;
@@ -42,7 +42,7 @@ describe('first Tier-2 brute combat', () => {
     restored.restoreState(state);
     expect(restored.getState()).toEqual(simulation.getState());
     state.enemies[0].hp = 1;
-    expect(restored.getState().enemies[0].hp).toBe(100);
+    expect(restored.getState().enemies[0].hp).toBe(300);
     const invalid = restored.getState();
     invalid.enemies[0].type = 'unknown' as 'brute';
     expect(() => restored.restoreState(invalid)).toThrow(/unsupported/);
@@ -55,11 +55,17 @@ describe('first Tier-2 brute combat', () => {
     expect(fodder.getState().enemies).toEqual([]);
     const heavy = withState(1, [brute(1, 0, 5)], [rifle(1)]);
     heavy.step(1, { targetX: 0 }, tuning);
-    expect(heavy.getState().enemies).toEqual([brute(1, 0, 5, 97)]);
+    expect(heavy.getState().enemies).toEqual([brute(1, 0, 5, 297)]);
     const remaining = heavy.getState();
-    remaining.projectiles = Array.from({ length: 33 }, (_, index) => rifle(index + 2));
-    remaining.weapons.nextProjectileId = 35;
+    remaining.projectiles = Array.from({ length: 98 }, (_, index) => rifle(index + 2));
+    remaining.weapons.nextProjectileId = 100;
     heavy.restoreState(remaining);
+    heavy.step(1, { targetX: 0 }, tuning);
+    expect(heavy.getState().enemies).toEqual([brute(1, 0, 5, 3)]);
+    const last = heavy.getState();
+    last.projectiles = [rifle(100)];
+    last.weapons.nextProjectileId = 101;
+    heavy.restoreState(last);
     heavy.step(1, { targetX: 0 }, tuning);
     expect(heavy.getState().enemies).toEqual([]);
   });
@@ -68,11 +74,11 @@ describe('first Tier-2 brute combat', () => {
     for (const [x, hit] of [[0.54, true], [0.56, false]] as const) {
       const simulation = withState(1, [brute(1, x, 5)], [rifle(1)]);
       simulation.step(1, { targetX: 0 }, tuning);
-      expect(simulation.getState().enemies[0]?.hp).toBe(hit ? 97 : 100);
+      expect(simulation.getState().enemies[0]?.hp).toBe(hit ? 297 : 300);
     }
     const fast = withState(1, [brute(1, 0, 5)], [{ ...rifle(1), speed: 1000 }]);
     fast.step(0.01, { targetX: 0 }, tuning);
-    expect(fast.getState().enemies[0].hp).toBe(97);
+    expect(fast.getState().enemies[0].hp).toBe(297);
     const gruntMiss = withState(1, [grunt(1, 0.54, 5)], [rifle(1)]);
     gruntMiss.step(1, { targetX: 0 }, tuning);
     expect(gruntMiss.getState().enemies).toEqual([grunt(1, 0.54, 5)]);
@@ -81,7 +87,7 @@ describe('first Tier-2 brute combat', () => {
   it('applies rocket area damage to brute and removes a nearby grunt', () => {
     const simulation = withState(1, [grunt(1, 0, 5), brute(2, 0.8, 5)], [rocket(1)]);
     simulation.step(1, { targetX: 0 }, tuning);
-    expect(simulation.getState().enemies).toEqual([brute(2, 0.8, 5, 85)]);
+    expect(simulation.getState().enemies).toEqual([brute(2, 0.8, 5, 285)]);
   });
 
   it('charges one casualty and removes the brute on swept direct contact or breach', () => {

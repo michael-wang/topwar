@@ -8,6 +8,24 @@ const enemies: EnemyRenderState[] = Array.from({ length: 240 }, (_, index) => ({
 }));
 
 describe('EnemyRenderer instancing', () => {
+  it('reuses separate meshes as all-grunt and all-brute crowds alternate', () => {
+    const scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene);
+    renderer.update(enemies.slice(0, 7));
+    expect((scene.children as THREE.InstancedMesh[]).map((mesh) => mesh.count)).toEqual([0, 0, 7, 7]);
+    const brutes: EnemyRenderState[] = Array.from({ length: 900 }, (_, index) =>
+      ({ id: index + 1, type: 'brute', x: index % 7, z: index }));
+    renderer.update(brutes);
+    const meshes = scene.children as THREE.InstancedMesh[];
+    expect(meshes.map((mesh) => mesh.count)).toEqual([0, 0, 900, 900]);
+    expect(meshes[2].instanceMatrix.count).toBeGreaterThanOrEqual(900);
+    renderer.update([...enemies.slice(0, 6), brutes[0]]);
+    expect(scene.children).toEqual(meshes);
+    expect(meshes.map((mesh) => mesh.count)).toEqual([6, 6, 1, 1]);
+    renderer.dispose();
+    expect(scene.children).toHaveLength(0);
+  });
+
   it('keeps grunt and brute instances separate and disposes replaced and final resources', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene);

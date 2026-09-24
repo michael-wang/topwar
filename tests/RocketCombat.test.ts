@@ -16,7 +16,7 @@ const tuning: SimulationTuning = {
 };
 
 function create(count: number, rocketCount: number): Simulation {
-  return new Simulation({ seed: 17, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 100 });
+  return new Simulation({ seed: 17, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 300 });
 }
 
 function step(simulation: Simulation, seconds = 0.1, current = tuning): void {

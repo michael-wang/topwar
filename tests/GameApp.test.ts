@@ -112,7 +112,7 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
     controls: { mouseSensitivity: 1 },
     enemies: { grunt: { hp: 10, radius: 0.3, contactDamage: 1 },
-      brute: { hp: 100, radius: 0.55, contactDamage: 1 } },
+      brute: { hp: 300, radius: 0.55, contactDamage: 1 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
       rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } },
   } as GameConfig;
@@ -205,7 +205,7 @@ describe('GameApp config and frame lifecycle', () => {
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, gruntHp: 10, bruteHp: 100 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 300 });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -213,7 +213,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, gruntHp: 10, bruteHp: 100 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 300 });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -249,7 +249,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0 },
-      enemies: [{ id: 673, type: 'brute', x: 0.1, z: 81.6, hp: 100 }],
+      enemies: [{ id: 673, type: 'brute', x: 0.1, z: 81.6, hp: 300 }],
       gates: [], pickups: [], projectiles: [] });
     app.start();
     raf.frame(100);
@@ -265,7 +265,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, gruntHp: 10, bruteHp: 100 });
+      startRocketCount: 1, gruntHp: 10, bruteHp: 300 });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1 },
       enemies: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', x: 0.225, z: 3 }] });
     app.start();
@@ -513,7 +513,7 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 1, gruntHp: 4, bruteHp: 100 });
+      startRocketCount: 1, gruntHp: 4, bruteHp: 300 });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);
     const priorSteps = mock.step.mock.calls.length;

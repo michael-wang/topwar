@@ -120,19 +120,21 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     }
     const offsets = createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
       stream.spacing, stream.jitter, stream.seed);
-    let bruteColumn = 0;
-    if (cursor.nextRowIndex === stream.firstBruteRow) {
-      for (let column = 1; column < offsets.length; column++) {
-        if (Math.abs(offsets[column].x) < Math.abs(offsets[bruteColumn].x)) bruteColumn = column;
-      }
-    }
+    const { startRow, fullRow } = stream.bruteRamp;
+    const bruteCount = cursor.nextRowIndex < startRow ? 0
+      : cursor.nextRowIndex >= fullRow ? stream.columns
+        : 1 + Math.floor((cursor.nextRowIndex - startRow) / (fullRow - startRow) * (stream.columns - 1));
+    // Change only roles: authored geometry and ID order stay identical throughout the ramp.
+    const centerOutColumns = offsets.map((_, index) => index)
+      .sort((a, b) => Math.abs(offsets[a].x) - Math.abs(offsets[b].x) || a - b);
+    const bruteColumns = new Set(centerOutColumns.slice(0, bruteCount));
     for (let column = 0; column < offsets.length; column++) {
       const offset = offsets[column];
       const z = rowZ + offset.z;
       if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
         throw new Error('Simulation enemy stream produces a non-finite position');
       }
-      const isBrute = cursor.nextRowIndex === stream.firstBruteRow && column === bruteColumn;
+      const isBrute = bruteColumns.has(column);
       enemies.push({ id: cursor.nextEnemyId++, type: isBrute ? 'brute' : stream.enemy,
         x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
     }

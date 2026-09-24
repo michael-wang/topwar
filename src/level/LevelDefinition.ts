@@ -28,7 +28,11 @@ const EnemyStreamSchema = z.strictObject({
   spacing: z.number().finite().positive(),
   jitter: z.number().finite().nonnegative(),
   seed: z.number().int().min(0).max(0xffffffff),
-  firstBruteRow: nonnegativeSafeInteger.optional(),
+  bruteRamp: z.strictObject({
+    startRow: nonnegativeSafeInteger,
+    fullRow: nonnegativeSafeInteger,
+  }).refine((ramp) => ramp.fullRow > ramp.startRow,
+    { path: ['fullRow'], message: 'Full Tier-2 row must follow start row' }),
 }).superRefine((stream, context) => {
   if (stream.spawnAheadDistance <= stream.startZ) {
     context.addIssue({ code: 'custom', path: ['spawnAheadDistance'],

@@ -22,7 +22,8 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.length).toBe(112);
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
-      columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729, firstBruteRow: 96 });
+      columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
+      bruteRamp: { startRow: 96, fullRow: 160 } });
     expect(parsed.upgradeGates).toEqual([
       { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
@@ -72,12 +73,24 @@ describe('LevelDefinitionSchema', () => {
     }
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream, extra: true } })).toThrow(/extra/);
-    for (const firstBruteRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+      enemyStream: { ...authoredLevel.enemyStream, firstBruteRow: 96 } })).toThrow(/firstBruteRow/);
+    const { bruteRamp: _ramp, ...withoutRamp } = authoredLevel.enemyStream;
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+      enemyStream: withoutRamp })).toThrow(/bruteRamp/);
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+      enemyStream: { ...authoredLevel.enemyStream,
+        bruteRamp: { startRow: 96, fullRow: 160, chance: 0.5 } } })).toThrow(/chance/);
+    for (const startRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, firstBruteRow } })).toThrow(/firstBruteRow/);
+        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 160 } } }))
+        .toThrow(/startRow/);
     }
-    expect(LevelDefinitionSchema.parse({ ...authoredLevel,
-      enemyStream: { ...authoredLevel.enemyStream, firstBruteRow: 0 } }).enemyStream?.firstBruteRow).toBe(0);
+    for (const fullRow of [-1, 96, 95, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
+      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow: 96, fullRow } } }))
+        .toThrow(/fullRow/);
+    }
   });
 
   it('validates gate IDs, positions, HP, width, and strict rewards', () => {

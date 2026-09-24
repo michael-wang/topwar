@@ -17,7 +17,7 @@ const tuning: SimulationTuning = {
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
 const create = (count = 1, gruntHp = 10, authored = level, rocketCount = 0) =>
-  new Simulation({ seed: 17, level: authored, startSquad: count, startRocketCount: rocketCount, gruntHp, bruteHp: 100 });
+  new Simulation({ seed: 17, level: authored, startSquad: count, startRocketCount: rocketCount, gruntHp, bruteHp: 300 });
 const step = (simulation: Simulation, dt = 0.1, override: SimulationTuning = tuning) =>
   simulation.step(dt, { targetX: 0 }, override);
 

@@ -17,7 +17,7 @@ const shot = (id: number, x = 0, z = 0): ProjectileSimulationState =>
   ({ id, kind: 'rifle', x, z, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 });
 
 function simulationWith(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = [], rocketCount = 0) {
-  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 100 });
+  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 300 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;

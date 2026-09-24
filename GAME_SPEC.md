@@ -43,7 +43,7 @@ The player is forced forward toward stationary basic grunts. Pressure comes from
 
 Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. Slower forced progression gives the player time to invest in persistent side armories. This level deliberately embraces exaggerated advertisement-style squad growth.
 
-The opening is a long sea of one-shot grunts. One 100-HP Tier-2 brute appears later as a milestone, with a larger, darker silhouette; normal grunt rows resume afterward. Future Tier-2 frequency remains undecided.
+The opening is a long sea of one-shot Tier-1 grunts. Larger, darker Tier-2 brutes begin sparsely later, then replace more grunts until every new enemy is Tier-2. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Playtest where this pressure becomes unsustainable before designing the next player power upgrade. Future Tier-3 and Tier-4 phases should likewise begin sparse and gradually dominate the stream; their details remain undecided.
 
 ## 3. Controls
 

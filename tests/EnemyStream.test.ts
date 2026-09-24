@@ -8,7 +8,8 @@ import type { SimulationState } from '../src/simulation/SimulationState';
 const authored = LevelDefinitionSchema.parse(authoredLevel);
 const smallLevel: LevelDefinition = { id: 'short-endless', length: 3, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 2, spawnAheadDistance: 5,
-    columns: 2, spacing: 1, jitter: 0.2, seed: 42 } };
+    columns: 2, spacing: 1, jitter: 0.2, seed: 42,
+    bruteRamp: { startRow: 1000, fullRow: 1100 } } };
 const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
   gruntContactDamage: 1,
@@ -16,69 +17,100 @@ const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 1, trackHalfWidth
   rifle: { damage: 3, fireRate: 0.1, projectileSpeed: 1, range: 1 },
   rocket: { damage: 15, fireRate: 0.1, projectileSpeed: 1, range: 1, blastRadius: 1.25 } };
 const create = (level = smallLevel, count = 20) => new Simulation({ seed: 17, level,
-  startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 100 });
+  startSquad: count, startRocketCount: 0, gruntHp: 3, bruteHp: 300 });
 const advance = (simulation: Simulation, dt = 1, forwardSpeed = 1) =>
   simulation.step(dt, { targetX: 2.5 }, { ...tuning, forwardSpeed });
 
 describe('deterministic endless enemy stream', () => {
-  it('replaces only the center-nearest grunt in row 96 and resumes grunts afterward', () => {
-    const state = create(authored, 1).getState();
-    const stream = authored.enemyStream!;
-    const row = (index: number) => state.enemies.filter((enemy) =>
-      enemy.id >= index * stream.columns + 1 && enemy.id <= (index + 1) * stream.columns);
-    expect(row(95).every((enemy) => enemy.type === 'grunt')).toBe(true);
-    expect(row(96)).toHaveLength(7);
-    expect(row(96).filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
-    expect(row(97).every((enemy) => enemy.type === 'grunt')).toBe(true);
-    const offsets = createEnemyStreamRow(96, stream.columns, stream.spacing, stream.jitter, stream.seed);
-    const closest = offsets.reduce((best, offset, index) =>
-      Math.abs(offset.x) < Math.abs(offsets[best].x) ? index : best, 0);
-    const brute = row(96)[closest];
-    expect(brute).toMatchObject({ type: 'brute', hp: 100, id: 96 * 7 + closest + 1,
-      x: offsets[closest].x, z: stream.startZ + 96 * stream.spacing + offsets[closest].z });
-    expect(brute.z).toBeCloseTo(81.6, 0);
-    expect(row(96).map(({ x, z }) => ({ x, z }))).toEqual(offsets.map((offset) =>
-      ({ x: offset.x, z: stream.startZ + 96 * stream.spacing + offset.z })));
-    expect(state.enemies.filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
-    expect(create(authored, 1).getState().enemies).toEqual(state.enemies);
-  });
+  const rampLevel: LevelDefinition = { ...authored,
+    enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 200 } };
+  const rampState = create(rampLevel, 1).getState();
+  const row = (index: number) => rampState.enemies.filter((enemy) =>
+    enemy.id >= index * 7 + 1 && enemy.id <= (index + 1) * 7);
 
-  it('does not add another brute in later rows or change row geometry', () => {
-    const simulation = create(authored, 1);
-    advance(simulation, 100);
-    const state = simulation.getState();
+  it('keeps seven original positions per row while Tier-2 rises monotonically to full saturation', () => {
     const stream = authored.enemyStream!;
-    for (let index = 97; index <= 160; index++) {
-      const row = state.enemies.filter((enemy) =>
-        enemy.id >= index * stream.columns + 1 && enemy.id <= (index + 1) * stream.columns);
-      expect(row).toHaveLength(7);
-      expect(row.every((enemy) => enemy.type === 'grunt')).toBe(true);
-      expect(row.map(({ x, z }) => ({ x, z }))).toEqual(createEnemyStreamRow(index,
-        stream.columns, stream.spacing, stream.jitter, stream.seed).map((offset) =>
+    expect(row(95).filter((enemy) => enemy.type === 'brute')).toHaveLength(0);
+    expect(row(96).filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
+    let previousCount = 0;
+    for (let index = 96; index <= 160; index++) {
+      const enemies = row(index);
+      const count = enemies.filter((enemy) => enemy.type === 'brute').length;
+      expect(enemies).toHaveLength(7);
+      expect(count).toBeGreaterThanOrEqual(previousCount);
+      previousCount = count;
+      const offsets = createEnemyStreamRow(index, stream.columns, stream.spacing,
+        stream.jitter, stream.seed);
+      expect(enemies.map(({ x, z }) => ({ x, z }))).toEqual(offsets.map((offset) =>
         ({ x: offset.x, z: stream.startZ + index * stream.spacing + offset.z })));
     }
-    expect(state.enemies.filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
+    for (const [index, count] of [[96, 1], [107, 2], [128, 4], [149, 5], [159, 6],
+      [160, 7], [161, 7], [250, 7]] as const) {
+      expect(row(index).filter((enemy) => enemy.type === 'brute')).toHaveLength(count);
+    }
+    expect(rampState.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 3))).toBe(true);
   });
 
-  it('reproduces the milestone after restore despite earlier enemy deaths and on Retry', () => {
-    const futureLevel = { ...smallLevel, enemyStream: { ...smallLevel.enemyStream!, firstBruteRow: 6 } };
+  it('selects center-out roles with stable ties, without changing row IDs or geometry', () => {
+    const stream = authored.enemyStream!;
+    for (const index of [96, 128, 159, 160]) {
+      const enemies = row(index);
+      const count = enemies.filter((enemy) => enemy.type === 'brute').length;
+      const centerFirst = enemies.map((enemy, column) => ({ column, x: enemy.x }))
+        .sort((a, b) => Math.abs(a.x) - Math.abs(b.x) || a.column - b.column)
+        .slice(0, count).map(({ column }) => column);
+      expect(enemies.flatMap((enemy, column) => enemy.type === 'brute' ? [column] : [])
+        .sort((a, b) => a - b)).toEqual(centerFirst.sort((a, b) => a - b));
+      expect(enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 7 }, (_, column) =>
+        index * stream.columns + column + 1));
+    }
+    expect(create(rampLevel, 1).getState().enemies).toEqual(rampState.enemies);
+  });
+
+  it('breaks equal-distance center ties by the lower column index', () => {
+    const regular: LevelDefinition = { ...smallLevel, enemyStream: { ...smallLevel.enemyStream!,
+      columns: 4, jitter: 0, bruteRamp: { startRow: 0, fullRow: 3 } } };
+    expect(create(regular, 1).getState().enemies.slice(0, 4).map((enemy) => enemy.type))
+      .toEqual(['grunt', 'brute', 'grunt', 'grunt']);
+  });
+
+  it('reproduces the ramp before, during, and after transition despite earlier deaths', () => {
+    const futureLevel = { ...smallLevel, enemyStream: { ...smallLevel.enemyStream!,
+      bruteRamp: { startRow: 6, fullRow: 10 } } };
     const first = create(futureLevel);
     const second = create(futureLevel);
+    const before = JSON.parse(JSON.stringify(first.getState())) as SimulationState;
     const altered = second.getState();
     altered.enemies = [];
     second.restoreState(JSON.parse(JSON.stringify(altered)) as SimulationState);
     advance(first, 3);
     advance(second, 3);
-    const brute = (simulation: Simulation) => simulation.getState().enemies.find((enemy) => enemy.type === 'brute');
-    expect(brute(first)).toEqual(brute(second));
-    expect(brute(first)?.id).toBeGreaterThan(0);
-    const saved = JSON.parse(JSON.stringify(first.getState())) as SimulationState;
-    const restored = create(futureLevel);
-    restored.restoreState(saved);
-    expect(restored.getState()).toEqual(first.getState());
+    const afterId = before.enemyStream!.nextEnemyId;
+    const future = (simulation: Simulation) => simulation.getState().enemies
+      .filter((enemy) => enemy.id >= afterId);
+    expect(future(first)).toEqual(future(second));
+    const during = JSON.parse(JSON.stringify(first.getState())) as SimulationState;
+    const resumed = create(futureLevel);
+    resumed.restoreState(during);
+    advance(first, 5);
+    advance(resumed, 5);
+    expect(resumed.getState()).toEqual(first.getState());
+    const fullRows = first.getState().enemies.filter((enemy) => enemy.id >= 21);
+    expect(fullRows.length).toBeGreaterThan(0);
+    expect(fullRows.every((enemy) => enemy.type === 'brute')).toBe(true);
+    const saturated = create(futureLevel);
+    saturated.restoreState(JSON.parse(JSON.stringify(first.getState())) as SimulationState);
+    advance(first, 3);
+    advance(saturated, 3);
+    expect(saturated.getState()).toEqual(first.getState());
+    const laterRows = first.getState().enemies.filter((enemy) => enemy.id >= 25);
+    expect(laterRows.length).toBeGreaterThan(0);
+    expect(laterRows.every((enemy) => enemy.type === 'brute')).toBe(true);
     const retry = create(futureLevel);
+    expect(retry.getState()).toEqual(before);
     advance(retry, 3);
-    expect(brute(retry)).toEqual(brute(first));
+    expect(future(retry)).toEqual(future(second));
+    expect(first.getState().rngState).toBe(before.rngState);
   });
 
   it('starts at the authored horizon with unique IDs and no session RNG use', () => {
