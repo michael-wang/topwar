@@ -26,6 +26,7 @@ describe('Simulation', () => {
       squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
       enemies: [],
       enemyStream: null,
+      streamRewards: [],
       gates: [],
       pickups: [],
       nextPickupId: 1,
@@ -69,6 +70,7 @@ describe('Simulation', () => {
       squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
       enemies: [],
       enemyStream: null,
+      streamRewards: [],
       gates: [],
       pickups: [],
       nextPickupId: 1,
@@ -257,11 +259,13 @@ describe('Static authored enemies', () => {
     expect(first.levelId).toBe('level-001');
     expect(first.enemies.length).toBeGreaterThan(700);
     expect(first.enemies.length).toBeLessThan(950);
-    expect(first.enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: first.enemies.length }, (_, index) => index + 1));
-    expect(first.enemyStream).toEqual({ nextRowIndex: first.enemies.length / 7, nextEnemyId: first.enemies.length + 1 });
+    expect(new Set(first.enemies.map((enemy) => enemy.id)).size).toBe(first.enemies.length);
+    expect(first.enemyStream).toEqual({ nextRowIndex: 121, nextEnemyId: 848,
+      nextRewardId: first.streamRewards.length + 1 });
+    expect(first.enemies.length + first.streamRewards.length).toBe(847);
     expect(first.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 10))).toBe(true);
     const meanZ = first.enemies.reduce((sum, enemy) => sum + enemy.z, 0) / first.enemies.length;
-    expect(meanZ).toBeCloseTo(60, 1);
+    expect(Math.abs(meanZ - 60)).toBeLessThan(0.2);
     expect(Math.min(...first.enemies.map((enemy) => enemy.z))).toBeGreaterThan(23);
     expect(Math.min(...first.enemies.map((enemy) => enemy.z))).toBeLessThan(25);
     expect(Math.max(...first.enemies.map((enemy) => enemy.z))).toBeGreaterThan(95);

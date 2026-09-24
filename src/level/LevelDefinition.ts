@@ -34,6 +34,11 @@ const EnemyStreamSchema = z.strictObject({
     curvePower: z.number().finite().positive(),
   }).refine((ramp) => ramp.fullRow > ramp.startRow,
     { path: ['fullRow'], message: 'Full Tier-2 row must follow start row' }),
+  rewards: z.strictObject({
+    chancePerRow: z.number().finite().gt(0).lt(1),
+    hitsRequired: positiveSafeInteger,
+    seed: z.number().int().min(0).max(0xffffffff),
+  }).optional(),
 }).superRefine((stream, context) => {
   if (stream.spawnAheadDistance <= stream.startZ) {
     context.addIssue({ code: 'custom', path: ['spawnAheadDistance'],

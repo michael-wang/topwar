@@ -4,9 +4,16 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 
 const finiteGroup = { id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
   formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } };
+const testGates = [
+  { id: 'left', x: -2.7, zOffset: 8, width: 0.9,
+    reward: { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 } },
+  { id: 'right', x: 2.7, zOffset: 8, width: 0.9,
+    reward: { mode: 'hitPickup', kind: 'tier2Rifle', amount: 1, hitsRequired: 100, dropSpeed: 4 } },
+];
 
 function level() {
-  return { ...structuredClone(authoredLevel), enemyGroups: [structuredClone(finiteGroup)] };
+  return { ...structuredClone(authoredLevel), enemyGroups: [structuredClone(finiteGroup)],
+    upgradeGates: structuredClone(testGates) };
 }
 
 function twoGroups() {
@@ -16,20 +23,16 @@ function twoGroups() {
 }
 
 describe('LevelDefinitionSchema', () => {
-  it('validates the authored endless stream and unchanged armories', () => {
+  it('validates the authored endless stream and inactive side armories', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
     expect(parsed.length).toBe(112);
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
-      bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 } });
-    expect(parsed.upgradeGates).toEqual([
-      { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9,
-        reward: { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 } },
-      { id: 'tier2-generator', x: 2.7, zOffset: 8, width: 0.9,
-        reward: { mode: 'hitPickup', kind: 'tier2Rifle', amount: 1, hitsRequired: 100, dropSpeed: 4 } },
-    ]);
+      bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 },
+      rewards: { chancePerRow: 0.1, hitsRequired: 10, seed: 271828 } });
+    expect(parsed.upgradeGates).toEqual([]);
   });
 
   it('accepts finite levels without a stream and validates stream fields strictly', () => {
@@ -96,6 +99,32 @@ describe('LevelDefinitionSchema', () => {
         enemyStream: { ...authoredLevel.enemyStream,
           bruteRamp: { startRow: 48, fullRow: 960, curvePower } } })).toThrow(/curvePower/);
     }
+  });
+
+  it('validates strict deterministic stream reward authoring', () => {
+    for (const chancePerRow of [0, -0.1, 1, 1.1, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.rewards.chancePerRow = chancePerRow;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const hitsRequired of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.rewards.hitsRequired = hitsRequired;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const seed of [-1, 1.5, 4294967296, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.rewards.seed = seed;
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    }
+    for (const seed of [0, 4294967295]) {
+      const candidate = structuredClone(authoredLevel);
+      candidate.enemyStream.rewards.seed = seed;
+      expect(LevelDefinitionSchema.parse(candidate).enemyStream?.rewards?.seed).toBe(seed);
+    }
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
+      ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards, extra: true },
+    } })).toThrow(/extra/);
   });
 
   it('validates gate IDs, positions, width, and strict hit rewards', () => {

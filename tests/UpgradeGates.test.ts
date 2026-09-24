@@ -41,20 +41,21 @@ const step = (simulation: Simulation, dt = 0.1, targetX = 0,
   simulation.step(dt, { targetX }, { ...tuning, ...changes });
 
 describe('persistent hit-count armories', () => {
-  it('materializes authored generators at 0 progress and Retry restores them with the enemy field', () => {
+  it('keeps generic generators available for custom levels and Retry restores them', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
-    const run = create(authored);
+    expect(authored.upgradeGates).toEqual([]);
+    const run = create({ ...authored, upgradeGates: [left, right] });
     const first = run.getState();
     expect(first.enemies.length).toBeGreaterThan(700);
     expect(first.gates.map((gate) => [gate.id, gate.reward.kind, gate.reward.hitsRequired,
       gate.hitProgress])).toEqual([
-      ['rifle-generator', 'rifle', 10, 0], ['tier2-generator', 'tier2Rifle', 100, 0],
+      ['left', 'rifle', 10, 0], ['right', 'tier2Rifle', 100, 0],
     ]);
-    inject(run, [shot(1, -2.5)]);
+    inject(run, [shot(1, -1)]);
     step(run);
     expect(run.getState().gates[0].hitProgress).toBe(1);
-    expect(create(authored).getState().gates).toEqual(first.gates);
-    expect(create(authored).getState().enemies).toEqual(first.enemies);
+    expect(create({ ...authored, upgradeGates: [left, right] }).getState().gates).toEqual(first.gates);
+    expect(create({ ...authored, upgradeGates: [left, right] }).getState().enemies).toEqual(first.enemies);
   });
 
   it('owns JSON-serializable progress and rejects invalid restored values transactionally', () => {
@@ -124,7 +125,8 @@ describe('persistent hit-count armories', () => {
   });
 
   it('can hit the authored left target from the legal track edge', () => {
-    const simulation = create(LevelDefinitionSchema.parse(authoredLevel));
+    const simulation = create({ ...LevelDefinitionSchema.parse(authoredLevel),
+      upgradeGates: [{ ...left, x: -2.7, width: 0.9 }] });
     inject(simulation, [shot(1, -2.5)]);
     step(simulation);
     expect(simulation.getState().gates[0].hitProgress).toBe(1);

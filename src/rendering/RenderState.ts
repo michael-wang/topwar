@@ -14,9 +14,19 @@ export interface GameRenderState {
     defenseLineZ: number;
   };
   enemies: EnemyRenderState[];
+  streamRewards: StreamRewardRenderState[];
   gates: UpgradeGateRenderState[];
   pickups: UpgradePickupRenderState[];
   projectiles: ProjectileRenderState[];
+}
+
+export interface StreamRewardRenderState {
+  id: number;
+  tier: 1 | 2;
+  x: number;
+  z: number;
+  hitProgress: number;
+  hitsRequired: number;
 }
 
 export interface UpgradeGateRenderState {

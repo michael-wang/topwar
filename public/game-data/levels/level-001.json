@@ -1,12 +1,7 @@
 {
   "id": "level-001",
   "length": 112,
-  "upgradeGates": [
-    { "id": "rifle-generator", "x": -2.7, "zOffset": 8, "width": 0.9,
-      "reward": { "mode": "hitPickup", "kind": "rifle", "amount": 1, "hitsRequired": 10, "dropSpeed": 4 } },
-    { "id": "tier2-generator", "x": 2.7, "zOffset": 8, "width": 0.9,
-      "reward": { "mode": "hitPickup", "kind": "tier2Rifle", "amount": 1, "hitsRequired": 100, "dropSpeed": 4 } }
-  ],
+  "upgradeGates": [],
   "enemyGroups": [],
   "enemyStream": {
     "enemy": "grunt",
@@ -16,6 +11,7 @@
     "spacing": 0.60,
     "jitter": 0.16,
     "seed": 104729,
-    "bruteRamp": { "startRow": 48, "fullRow": 960, "curvePower": 2 }
+    "bruteRamp": { "startRow": 48, "fullRow": 960, "curvePower": 2 },
+    "rewards": { "chancePerRow": 0.10, "hitsRequired": 10, "seed": 271828 }
   }
 }

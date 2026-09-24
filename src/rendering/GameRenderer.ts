@@ -6,6 +6,7 @@ import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
 import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
 import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
+import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
 
 export class GameRenderer {
   private readonly scene = new THREE.Scene();
@@ -16,6 +17,7 @@ export class GameRenderer {
   private readonly projectileRenderer = new ProjectileRenderer(this.scene);
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
+  private readonly streamRewardRenderer = new StreamRewardRenderer(this.scene);
   private readonly ground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly road: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly markerGeometry = new THREE.PlaneGeometry(1, 0.08);
@@ -103,6 +105,7 @@ export class GameRenderer {
     }
     this.squadRenderer.update(state);
     this.enemyRenderer.update(state.enemies);
+    this.streamRewardRenderer.update(state.streamRewards);
     this.projectileRenderer.update(state.projectiles);
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
@@ -125,6 +128,7 @@ export class GameRenderer {
     this.projectileRenderer.dispose();
     this.gateRenderer.dispose();
     this.pickupRenderer.dispose();
+    this.streamRewardRenderer.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();

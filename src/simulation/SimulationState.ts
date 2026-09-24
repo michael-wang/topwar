@@ -20,6 +20,16 @@ export interface EnemySimulationState {
 export interface EnemyStreamSimulationState {
   nextRowIndex: number;
   nextEnemyId: number;
+  nextRewardId: number;
+}
+
+export interface StreamRewardSimulationState {
+  id: number;
+  tier: 1 | 2;
+  x: number;
+  z: number;
+  hitProgress: number;
+  hitsRequired: number;
 }
 
 export interface UpgradeGateSimulationState {
@@ -70,6 +80,7 @@ export interface SimulationState {
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
   enemyStream: EnemyStreamSimulationState | null;
+  streamRewards: StreamRewardSimulationState[];
   gates: UpgradeGateSimulationState[];
   pickups: UpgradePickupSimulationState[];
   nextPickupId: number;

@@ -162,13 +162,10 @@ describe('Tier-2 rifle compression', () => {
     expect(simulation.getState().squad.tier2RifleCount).toBe(1);
   });
 
-  it('keeps Level 001 enemy progression and both authored generator rewards', () => {
+  it('keeps Level 001 enemy progression and squad compression without active armories', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     expect(authored.enemyStream?.bruteRamp).toEqual({ startRow: 48, fullRow: 960, curvePower: 2 });
-    expect(authored.upgradeGates.map((gate) => [gate.id, gate.reward])).toEqual([
-      ['rifle-generator', { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 }],
-      ['tier2-generator', { mode: 'hitPickup', kind: 'tier2Rifle', amount: 1, hitsRequired: 100, dropSpeed: 4 }],
-    ]);
+    expect(authored.upgradeGates).toEqual([]);
     expect(create(1, 0, authored).getState().squad.tier2RifleCount).toBe(0);
   });
 });

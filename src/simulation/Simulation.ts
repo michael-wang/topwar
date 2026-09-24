@@ -3,9 +3,10 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition,
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
+import { rewardSlotForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
-import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
+import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
   seed: number;
@@ -40,10 +41,11 @@ function positiveFinite(value: unknown): value is number {
 }
 
 type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
+  | { kind: 'streamReward'; reward: StreamRewardSimulationState; fraction: number; z: number }
   | { kind: 'gate'; gate: UpgradeGateSimulationState; fraction: number; z: number };
 
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
-  enemies: EnemySimulationState[], gates: UpgradeGateSimulationState[],
+  enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
   radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius'>,
   currentPlayerZ: number, nextPlayerZ: number): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
@@ -63,6 +65,24 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
       first = { kind: 'enemy', enemy, fraction, z: hitZ };
     }
   }
+  for (const reward of rewards) {
+    if ((reward.tier === 1 && projectile.kind !== 'rifle')
+      || (reward.tier === 2 && projectile.kind !== 'heavyRifle')) continue;
+    const radius = reward.tier === 1 ? radii.gruntRadius : radii.bruteRadius;
+    const dx = projectile.x - reward.x;
+    if (Math.abs(dx) > radius) continue;
+    const halfChord = Math.sqrt(radius * radius - dx * dx);
+    const entryZ = reward.z - halfChord;
+    const exitZ = reward.z + halfChord;
+    if (exitZ < projectile.z || entryZ > endZ) continue;
+    const hitZ = Math.max(projectile.z, entryZ);
+    const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
+    if (!first || fraction < first.fraction
+      || (fraction === first.fraction && (first.kind === 'enemy'
+        || (first.kind === 'streamReward' && reward.id < first.reward.id)))) {
+      first = { kind: 'streamReward', reward, fraction, z: hitZ };
+    }
+  }
   for (const gate of gates) {
     if (Math.abs(projectile.x - gate.x) > gate.width / 2) continue;
     const gateStartZ = currentPlayerZ + gate.zOffset;
@@ -73,7 +93,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     const hitZ = projectile.z + travel * fraction;
     // A gate wins an exact-distance tie so it cannot be shot through.
     if (!first || fraction < first.fraction
-      || (fraction === first.fraction && (first.kind === 'enemy' || gate.id < first.gate.id))) {
+      || (fraction === first.fraction && (first.kind !== 'gate' || gate.id < first.gate.id))) {
       first = { kind: 'gate', gate, fraction, z: hitZ };
     }
   }
@@ -106,7 +126,8 @@ function validSquadCount(count: unknown): count is number {
   return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0;
 }
 
-function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
+function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[],
+  cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number): void {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
@@ -122,6 +143,11 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       stream.spacing, stream.jitter, stream.seed);
     const { startRow, fullRow } = stream.bruteRamp;
     const rowIndex = cursor.nextRowIndex;
+    const rewardSlot = stream.rewards
+      ? rewardSlotForRow(rowIndex, stream.columns, stream.rewards) : null;
+    if (rewardSlot !== null && !Number.isSafeInteger(cursor.nextRewardId + 1)) {
+      throw new Error('Simulation stream reward ID exceeds the supported range');
+    }
     const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
     let revealColumn = 0;
     if (rowIndex === startRow) {
@@ -138,8 +164,14 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       const isBrute = rowIndex === startRow ? column === revealColumn
         : rowIndex >= fullRow || (probability > 0
           && tier2RollForSlot(stream.seed, rowIndex, column) < probability);
-      enemies.push({ id: cursor.nextEnemyId++, type: isBrute ? 'brute' : stream.enemy,
-        x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
+      const enemyId = cursor.nextEnemyId++;
+      if (column === rewardSlot && stream.rewards) {
+        rewards.push({ id: cursor.nextRewardId++, tier: rowIndex >= fullRow ? 2 : 1,
+          x: offset.x, z, hitProgress: 0, hitsRequired: stream.rewards.hitsRequired });
+      } else {
+        enemies.push({ id: enemyId, type: isBrute ? 'brute' : stream.enemy,
+          x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
+      }
     }
     cursor.nextRowIndex++;
   }
@@ -150,7 +182,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'enemyStream', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -218,15 +250,46 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   let enemyStream: EnemyStreamSimulationState | null = null;
   if (state.enemyStream !== null) {
     const cursor = state.enemyStream;
-    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 2
+    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 3
       || !Object.hasOwn(cursor, 'nextRowIndex') || !Object.hasOwn(cursor, 'nextEnemyId')
+      || !Object.hasOwn(cursor, 'nextRewardId')
       || !Number.isSafeInteger(cursor.nextRowIndex) || (cursor.nextRowIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextEnemyId) || (cursor.nextEnemyId as number) <= 0
+      || !Number.isSafeInteger(cursor.nextRewardId) || (cursor.nextRewardId as number) <= 0
       || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))) {
       throw new Error('Simulation enemy stream cursor is invalid');
     }
     enemyStream = { nextRowIndex: cursor.nextRowIndex as number,
-      nextEnemyId: cursor.nextEnemyId as number };
+      nextEnemyId: cursor.nextEnemyId as number, nextRewardId: cursor.nextRewardId as number };
+  }
+
+  if (!Array.isArray(state.streamRewards)) throw new Error('Simulation streamRewards must be an array');
+  const rewardIds = new Set<number>();
+  const streamRewards: StreamRewardSimulationState[] = state.streamRewards.map((value: unknown, index: number) => {
+    if (!isPlainObject(value) || Object.keys(value).length !== 6
+      || ['id', 'tier', 'x', 'z', 'hitProgress', 'hitsRequired'].some((field) => !Object.hasOwn(value, field))) {
+      throw new Error(`Simulation stream reward ${index} has missing or unknown fields`);
+    }
+    if (!Number.isSafeInteger(value.id) || (value.id as number) <= 0 || rewardIds.has(value.id as number)) {
+      throw new Error(`Simulation stream reward ${index} id is invalid or duplicated`);
+    }
+    rewardIds.add(value.id as number);
+    if (value.tier !== 1 && value.tier !== 2) throw new Error(`Simulation stream reward ${index} tier is invalid`);
+    if (typeof value.x !== 'number' || !Number.isFinite(value.x)
+      || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
+      throw new Error(`Simulation stream reward ${index} position is invalid`);
+    }
+    if (!Number.isSafeInteger(value.hitsRequired) || (value.hitsRequired as number) <= 0
+      || !Number.isSafeInteger(value.hitProgress) || (value.hitProgress as number) < 0
+      || (value.hitProgress as number) >= (value.hitsRequired as number)) {
+      throw new Error(`Simulation stream reward ${index} hit progress is invalid`);
+    }
+    return { id: value.id as number, tier: value.tier, x: value.x, z: value.z,
+      hitProgress: value.hitProgress as number, hitsRequired: value.hitsRequired as number };
+  });
+  if ((!enemyStream && streamRewards.length > 0)
+    || (enemyStream && streamRewards.some((reward) => reward.id >= enemyStream.nextRewardId))) {
+    throw new Error('Simulation stream reward allocator is invalid');
   }
 
   if (!Array.isArray(state.gates)) throw new Error('Simulation gates must be an array');
@@ -343,6 +406,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
         tier2RifleCount: squad.tier2RifleCount },
       enemies,
       enemyStream,
+      streamRewards,
       gates,
       pickups,
       nextPickupId: state.nextPickupId as number,
@@ -393,11 +457,12 @@ export class Simulation {
         });
       }
     }
+    const streamRewards: StreamRewardSimulationState[] = [];
     const enemyStream = level.enemyStream
-      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1 }
+      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardId: 1 }
       : null;
     if (enemyStream && level.enemyStream) {
-      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp);
+      extendEnemyStream(enemies, streamRewards, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp);
     }
     this.state = {
       tick: 0,
@@ -410,6 +475,7 @@ export class Simulation {
         tier2RifleCount: 0 }),
       enemies,
       enemyStream,
+      streamRewards,
       gates: level.upgradeGates.map((gate) => ({ ...gate, reward: { ...gate.reward }, hitProgress: 0 })),
       projectiles: [],
       pickups: [],
@@ -480,9 +546,11 @@ export class Simulation {
       throw new Error('Simulation armory position exceeds the supported range');
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
+    const streamRewards = this.state.streamRewards.map((reward) => ({ ...reward }));
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
-      extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, nextZ, this.gruntHp, this.bruteHp);
+      extendEnemyStream(enemies, streamRewards, enemyStream, this.enemyStreamDefinition,
+        nextZ, this.gruntHp, this.bruteHp);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
@@ -536,7 +604,8 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      const hit = findFirstHit(projectile, endZ, enemies, gates, tuning, this.state.player.z, nextZ);
+      const hit = findFirstHit(projectile, endZ, enemies, streamRewards, gates, tuning,
+        this.state.player.z, nextZ);
       if (hit) {
         if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
@@ -550,11 +619,17 @@ export class Simulation {
               rewardKind: hit.gate.reward.kind, rewardAmount: hit.gate.reward.amount,
               dropSpeed: hit.gate.reward.dropSpeed }, travelSeconds: 0 });
           }
+        } else if (hit.kind === 'streamReward') {
+          hit.reward.hitProgress++;
+          if (hit.reward.hitProgress === hit.reward.hitsRequired) {
+            streamRewards.splice(streamRewards.indexOf(hit.reward), 1);
+            squad = addRifleSoldiers(squad, 1, hit.reward.tier);
+          }
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
         }
-        if (projectile.kind === 'rocket') {
+        if (projectile.kind === 'rocket' && hit.kind !== 'streamReward') {
           const radiusSquared = projectile.blastRadius * projectile.blastRadius;
           const blastX = hit.kind === 'gate' ? projectile.x : hit.enemy.x;
           const blastZ = hit.kind === 'gate' ? hit.z : hit.enemy.z;
@@ -622,7 +697,10 @@ export class Simulation {
         squad = afterCasualties(squad, enemy.type === 'brute' ? tuning.bruteContactDamage : 1);
       }
     }
+    // Stream rewards expire harmlessly behind the moving defense line.
+    const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
     this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, enemyStream, gates,
+      streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
@@ -637,6 +715,7 @@ export class Simulation {
       squad: { ...this.state.squad },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
       enemyStream: this.state.enemyStream ? { ...this.state.enemyStream } : null,
+      streamRewards: this.state.streamRewards.map((reward) => ({ ...reward })),
       gates: this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } })),
       pickups: this.state.pickups.map((pickup) => ({ ...pickup })),
       projectiles: this.state.projectiles.map((projectile) => ({ ...projectile })),
