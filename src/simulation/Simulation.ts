@@ -3,7 +3,7 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition,
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
-import { rewardPlacementForRow } from './enemies/streamRewards';
+import { rewardPlacementForRow, rewardTierForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { TIER2_EXCHANGE_VALUE } from './tierExchange';
@@ -174,7 +174,8 @@ function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewar
         x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
     }
     if (rewardPlacement !== null && stream.rewards) {
-      rewards.push({ id: cursor.nextRewardId++, tier: rowIndex >= fullRow ? 2 : 1,
+      rewards.push({ id: cursor.nextRewardId++,
+        tier: rewardTierForRow(stream.rewards.seed, rowIndex, probability),
         x: rewardPlacement.side * stream.rewards.sideX,
         z: rowZ + offsets[rewardPlacement.zSlot].z,
         hitProgress: 0, hitsRequired: stream.rewards.hitsRequired });

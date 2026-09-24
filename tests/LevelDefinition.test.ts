@@ -31,7 +31,7 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
       bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 },
-      rewards: { baseChancePerRow: 0.025, fullTierChancePerRow: 0.08,
+      rewards: { baseChancePerRow: 0.025, fullTierChancePerRow: 0.25,
         hitsRequired: 10, seed: 271828, sideX: 2.2 } });
     expect(parsed.upgradeGates).toEqual([]);
   });
