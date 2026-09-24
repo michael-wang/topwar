@@ -16,7 +16,9 @@ const tuning: SimulationTuning = {
   rifle: { ...config.weapon.rifle, fireRate: 0.1 }, rocket: { ...config.weapon.rocket },
 };
 const create = (count: number, rocketCount = 0, level = emptyLevel) => new Simulation({
-  seed: 7, level, startSquad: count, startRocketCount: rocketCount,
+  seed: 7, level: { ...level,
+    enemyStream: level.enemyStream ? { ...level.enemyStream, boss: undefined } : undefined },
+  startSquad: count, startRocketCount: rocketCount,
   gruntHp: config.enemies.grunt.hp, bruteHp: config.enemies.brute.hp, tier3Hp: 3000,
 });
 const step = (simulation: Simulation, seconds = 0.1, current = tuning) =>

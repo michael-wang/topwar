@@ -38,7 +38,7 @@ describe('enemy death burst', () => {
 describe('squad payoff', () => {
   const state = (count: number, tier2RifleCount = 0) => ({ player: { x: 0.3, z: 2 },
     squad: { count, tier2RifleCount, rocketCount: 0, formationSpacing: 0.45 },
-    track: { halfWidth: 2.5, defenseLineZ: 0 }, enemies: [], streamRewards: [],
+    track: { halfWidth: 2.5, defenseLineZ: 0 }, enemies: [], boss: null, streamRewards: [],
     gates: [], pickups: [], projectiles: [] });
   const soldiers = (scene: THREE.Scene) => scene.children.filter(
     (child): child is THREE.Group => child instanceof THREE.Group);

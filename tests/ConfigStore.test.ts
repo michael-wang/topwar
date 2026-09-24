@@ -229,8 +229,8 @@ describe('ConfigStore reload and subscriptions', () => {
     const previous = store.getConfig();
     const notify = vi.fn();
     store.subscribe(notify);
-    current = { ...base, bosses: { basic: { ...base.bosses.basic, hp: 0 } } };
-    await expect(store.reloadBase()).rejects.toThrow(/hp/);
+    current = { ...base, bosses: { basic: { ...base.bosses.basic, hpMultiplier: 0 } } };
+    await expect(store.reloadBase()).rejects.toThrow(/hpMultiplier/);
     expect(store.getConfig()).toEqual(previous);
     expect(store.getOverrides()).toEqual({ player: { moveSpeed: 8 } });
     expect(notify).not.toHaveBeenCalled();

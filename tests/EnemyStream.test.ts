@@ -6,7 +6,8 @@ import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
 import type { SimulationState } from '../src/simulation/SimulationState';
 
 const parsed = LevelDefinitionSchema.parse(authoredLevel);
-const authored: LevelDefinition = { ...parsed, enemyStream: { ...parsed.enemyStream!, rewards: undefined } };
+const authored: LevelDefinition = { ...parsed, enemyStream: { ...parsed.enemyStream!, rewards: undefined,
+  boss: undefined } };
 const smallLevel: LevelDefinition = { id: 'short-endless', length: 3, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 2, spawnAheadDistance: 5,
     columns: 2, spacing: 1, jitter: 0.2, seed: 42,
@@ -156,7 +157,7 @@ describe('deterministic endless enemy stream', () => {
   it('extends only when the moving horizon reaches another row and catches up after a large step', () => {
     const simulation = create();
     expect(simulation.getState().enemyStream).toEqual({ nextRowIndex: 4, nextEnemyId: 9,
-      nextRewardBlockIndex: 0, nextRewardId: 1 });
+      nextRewardBlockIndex: 0, nextRewardId: 1, bossSpawned: false });
     advance(simulation, 0.5);
     expect(simulation.getState().enemyStream?.nextRowIndex).toBe(4);
     advance(simulation, 0.5);

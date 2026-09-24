@@ -14,10 +14,21 @@ export interface GameRenderState {
     defenseLineZ: number;
   };
   enemies: EnemyRenderState[];
+  boss: BossRenderState | null;
   streamRewards: StreamRewardRenderState[];
   gates: UpgradeGateRenderState[];
   pickups: UpgradePickupRenderState[];
   projectiles: ProjectileRenderState[];
+}
+
+export interface BossRenderState {
+  id: number;
+  tier: 1;
+  x: number;
+  z: number;
+  hp: number;
+  maxHp: number;
+  visualScale: number;
 }
 
 export interface StreamRewardRenderState {

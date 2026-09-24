@@ -93,7 +93,8 @@ describe('moving defense-line breaches', () => {
   });
 
   it('a fresh run restores authored enemies, squad size, and weapon allocator', () => {
-    const authored = LevelDefinitionSchema.parse(authoredLevel);
+    const parsed = LevelDefinitionSchema.parse(authoredLevel);
+    const authored = { ...parsed, enemyStream: { ...parsed.enemyStream!, boss: undefined } };
     const first = new Simulation({ seed: 1, level: authored, startSquad: 3, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
     const authoredPositions = first.getState().enemies.map(({ id, x, z }) => ({ id, x, z }));
     first.step(0.1, { targetX: 0 }, { ...tuning, forwardSpeed: 3 });

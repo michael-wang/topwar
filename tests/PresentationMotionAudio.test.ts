@@ -12,7 +12,7 @@ describe('presentation-only motion', () => {
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
       tier2RifleCount: 0, formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
-      enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
+      enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state, 100);
     const soldiers = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     const positions = soldiers.map((member) => [member.position.x, member.position.z]);

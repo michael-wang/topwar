@@ -10,7 +10,7 @@ describe('rocket specialist rendering', () => {
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, tier2RifleCount: 0, formationSpacing: 0.45 },
-      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
+      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state);
     expect(soldiers(scene)).toHaveLength(2);
     const [rifle, rocket] = soldiers(scene);
@@ -54,7 +54,7 @@ describe('rocket specialist rendering', () => {
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0, z: 0 },
       squad: { count: 3, rocketCount: 1, tier2RifleCount: 1, formationSpacing: 0.45 },
-      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
+      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state);
     const [rifle, heavy, rocket] = soldiers(scene);
     expect(soldiers(scene)).toHaveLength(3);

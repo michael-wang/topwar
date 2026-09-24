@@ -50,8 +50,8 @@ export const GameConfigSchema = z.strictObject({
   }),
   bosses: z.strictObject({
     basic: z.strictObject({
-      hp: positive,
-      moveSpeed: nonnegative,
+      hpMultiplier: positive,
+      visualScale: z.number().finite().gt(1),
       radius: positive,
     }),
   }),

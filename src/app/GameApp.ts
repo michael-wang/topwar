@@ -44,6 +44,7 @@ export class GameApp {
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
       tier3Hp: this.config.enemies.tier3.hp,
+      bossHpMultiplier: this.config.bosses.basic.hpMultiplier,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
@@ -135,6 +136,7 @@ export class GameApp {
       gruntHp: this.config.enemies.grunt.hp,
       bruteHp: this.config.enemies.brute.hp,
       tier3Hp: this.config.enemies.tier3.hp,
+      bossHpMultiplier: this.config.bosses.basic.hpMultiplier,
     });
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
@@ -168,6 +170,7 @@ export class GameApp {
         gruntRadius: this.config.enemies.grunt.radius,
         bruteRadius: this.config.enemies.brute.radius,
         tier3Radius: this.config.enemies.tier3.radius,
+        bossRadius: this.config.bosses.basic.radius,
         rifle: { ...this.config.weapon.rifle },
         rocket: { ...this.config.weapon.rocket },
       },
@@ -176,7 +179,8 @@ export class GameApp {
     const currentDefenseValue = squadDefenseValue(state.squad);
     const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
     if (feedback) this.damageFlash.flash(feedback === 'fatal');
-    this.audio.observe(this.previousDefenseValue, currentDefenseValue, state.enemies, timestampMs);
+    this.audio.observe(this.previousDefenseValue, currentDefenseValue,
+      state.boss ? [...state.enemies, state.boss] : state.enemies, timestampMs);
     this.previousDefenseValue = currentDefenseValue;
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
@@ -187,6 +191,7 @@ export class GameApp {
         defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
       enemies: state.enemies.map((enemy) => ({ id: enemy.id, type: enemy.type,
         x: enemy.x, z: enemy.z, hp: enemy.hp })),
+      boss: state.boss ? { ...state.boss, visualScale: this.config.bosses.basic.visualScale } : null,
       streamRewards: state.streamRewards.map((reward) => ({ ...reward })),
       gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
         rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount,

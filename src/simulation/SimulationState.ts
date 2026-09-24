@@ -22,6 +22,16 @@ export interface EnemyStreamSimulationState {
   nextEnemyId: number;
   nextRewardBlockIndex: number;
   nextRewardId: number;
+  bossSpawned: boolean;
+}
+
+export interface BossSimulationState {
+  id: number;
+  tier: 1;
+  x: number;
+  z: number;
+  hp: number;
+  maxHp: number;
 }
 
 export interface StreamRewardSimulationState {
@@ -81,6 +91,7 @@ export interface SimulationState {
   player: PlayerSimulationState;
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
+  boss: BossSimulationState | null;
   enemyStream: EnemyStreamSimulationState | null;
   streamRewards: StreamRewardSimulationState[];
   gates: UpgradeGateSimulationState[];

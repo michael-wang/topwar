@@ -2,7 +2,7 @@
 
 ## Core fantasy
 
-Start with a tiny squad, steer horizontally, and auto-fire into endless dense enemy pressure. Divert fire toward risky side rewards to recruit soldiers and grow into stronger player tiers while increasingly dangerous, color-coded enemies enter the stream. Large Boss encounters are a selected future payoff, not part of the current playable loop.
+Start with a tiny squad, steer horizontally, and auto-fire into endless dense enemy pressure. Divert fire toward risky side rewards to recruit soldiers and grow into stronger player tiers while increasingly dangerous, color-coded enemies enter the stream. A giant Boss guards the first tier handoff.
 
 ## Current session model
 
@@ -45,9 +45,9 @@ Players and enemies use primitive humanoid silhouettes. Player soldiers hold a p
 
 The next product pass focuses on the payoff of repeated actions: **enemy kill, reward acquisition, and player Tier-up**. Prove that a few seconds of shooting and destroying enemies feels satisfying before widening progression.
 
-## Boss design rule
+## First Boss encounter
 
-A Boss is **not implemented yet**. One may appear near the end or handoff of a normal enemy tier without ending the run. Unlike normal tier changes, it is physically huge and may dominate most of the lane, while inheriting that tier's color identity. Boss HP derives from `normalTierHp * bossHpMultiplier`; the initial planned, authored and tunable multiplier is **100**. Validate one Boss before building variants. Exact rows and attacks remain undecided.
+Level 001 has one giant Tier-1-colored Boss at **row 44**, before the first Tier-2 enemy reveal at row 48. It has visual scale **7**, gameplay radius **2.0**, and HP derived from Tier-1 HP × the authored **100** multiplier (currently 300 HP). Normal rows from row 44 onward and rewards selected after row 44 wait while it lives. Boss contact is fatal; defeating it resumes the stream at row 45. The Boss has no attacks or reward. Later tier Bosses are not implemented and will be designed only after this encounter is validated.
 
 ## Development principles
 

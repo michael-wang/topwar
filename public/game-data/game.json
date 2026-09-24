@@ -45,9 +45,9 @@
   },
   "bosses": {
     "basic": {
-      "hp": 1000,
-      "moveSpeed": 0.7,
-      "radius": 1.2
+      "hpMultiplier": 100,
+      "visualScale": 7,
+      "radius": 2.0
     }
   }
 }

@@ -118,7 +118,7 @@ import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
 const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  bruteRadius: 0.3, tier3Radius: 0.3,
+  bruteRadius: 0.3, tier3Radius: 0.3, bossRadius: 2,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 
@@ -129,6 +129,7 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     controls: { mouseSensitivity: 1 },
     enemies: { grunt: { hp: 10, radius: 0.3 },
       brute: { hp: 300, radius: 0.3 }, tier3: { hp: 3000, radius: 0.3 } },
+    bosses: { basic: { hpMultiplier: 100, visualScale: 7, radius: 2 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
       rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } },
   } as GameConfig;
@@ -216,12 +217,12 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
       trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5,
-      bruteRadius: 0.7, tier3Radius: 0.3,
+      bruteRadius: 0.7, tier3Radius: 0.3, bossRadius: 2,
       rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 },
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 100 });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -229,7 +230,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 100 });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -239,6 +240,7 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 3, rocketCount: 0, tier2RifleCount: 0, formationSpacing: 0.8 },
       track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 }],
+      boss: null,
       streamRewards: [],
       gates: [],
       pickups: [],
@@ -252,6 +254,7 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 3, rocketCount: 0, tier2RifleCount: 0, formationSpacing: 1.2 },
       track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 }],
+      boss: null,
       streamRewards: [],
       gates: [],
       pickups: [],
@@ -283,20 +286,35 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
+  it('passes the active Boss as plain render data with authored visual scale', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const state = mock.getState();
+    const bossState = { ...state,
+      boss: { id: 309, tier: 1, x: 0, z: 50.4, hp: 297, maxHp: 300 } };
+    mock.getState.mockReturnValueOnce(bossState);
+    app.start();
+    raf.frame(100);
+    expect(mock.render.mock.lastCall![0].boss).toEqual({
+      id: 309, tier: 1, x: 0, z: 50.4, hp: 297, maxHp: 300, visualScale: 7,
+    });
+    app.dispose();
+  });
+
   it('passes mixed squad roles and rocket projectile kind through the render boundary', () => {
     const raf = createRaf();
     const config = createConfigStore(2);
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
+      startRocketCount: 1, gruntHp: 10, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 100 });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, tier2RifleCount: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', x: 0.225, z: 3 }] });
     app.start();
     raf.frame(100);
     expect(mock.render).toHaveBeenLastCalledWith({ player: { x: 0, z: 0 },
       squad: { count: 2, rocketCount: 1, tier2RifleCount: 0, formationSpacing: 0.45 },
-      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], streamRewards: [], gates: [], pickups: [],
+      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [],
       projectiles: [{ id: 4, kind: 'rocket', x: 0.225, z: 3 }] });
     app.dispose();
   });
@@ -378,6 +396,7 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 3, rocketCount: 0, tier2RifleCount: 0, formationSpacing: 0.9 },
       track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [{ id: 1, type: 'grunt', x: -0.4, z: 12, hp: 10 }],
+      boss: null,
       streamRewards: [],
       gates: [],
       pickups: [],
@@ -556,7 +575,7 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 1, gruntHp: 4, bruteHp: 300, tier3Hp: 3000 });
+      startRocketCount: 1, gruntHp: 4, bruteHp: 300, tier3Hp: 3000, bossHpMultiplier: 100 });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);
     const priorSteps = mock.step.mock.calls.length;

@@ -7,6 +7,7 @@ import { SquadRenderer } from './squad/SquadRenderer';
 import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
 import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
 import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
+import { BossRenderer } from './boss/BossRenderer';
 
 export class GameRenderer {
   private readonly scene = new THREE.Scene();
@@ -14,6 +15,7 @@ export class GameRenderer {
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer = new SquadRenderer(this.scene);
   private readonly enemyRenderer = new EnemyRenderer(this.scene);
+  private readonly bossRenderer = new BossRenderer(this.scene);
   private readonly projectileRenderer = new ProjectileRenderer(this.scene);
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
@@ -105,6 +107,7 @@ export class GameRenderer {
     }
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
+    this.bossRenderer.update(state.boss, nowMs);
     this.streamRewardRenderer.update(state.streamRewards, nowMs);
     this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);
@@ -115,6 +118,7 @@ export class GameRenderer {
   resetFeedback(): void {
     this.squadRenderer.reset();
     this.enemyRenderer.reset();
+    this.bossRenderer.reset();
     this.streamRewardRenderer.reset();
     this.projectileRenderer.reset();
   }
@@ -132,6 +136,7 @@ export class GameRenderer {
     this.defenseLine.material.dispose();
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();
+    this.bossRenderer.dispose();
     this.projectileRenderer.dispose();
     this.gateRenderer.dispose();
     this.pickupRenderer.dispose();

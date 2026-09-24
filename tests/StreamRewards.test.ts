@@ -18,7 +18,8 @@ const tuning: SimulationTuning = { moveSpeed: 5, forwardSpeed: 0, trackHalfWidth
   gruntRadius: 0.3, bruteRadius: 0.3, tier3Radius: 0.3,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 40 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
-const create = (source = level, startSquad = 1) => new Simulation({ seed: 7, level: source,
+const create = (source = level, startSquad = 1) => new Simulation({ seed: 7,
+  level: { ...source, enemyStream: source.enemyStream ? { ...source.enemyStream, boss: undefined } : undefined },
   startSquad, startRocketCount: 0, gruntHp: 3, bruteHp: 300, tier3Hp: 3000 });
 const projectile = (id: number, kind: ProjectileSimulationState['kind'], x: number,
   damage = kind === 'heavyRifle' ? 300 : 3): ProjectileSimulationState => ({ id, kind, x,
@@ -138,7 +139,7 @@ describe('endless stream reward placement', () => {
     expect(withReward.streamRewards).toHaveLength(1);
     expect(withoutReward.enemies).toHaveLength(3);
     expect(withReward.enemyStream).toEqual({ nextRowIndex: 1, nextEnemyId: 4,
-      nextRewardBlockIndex: 1, nextRewardId: 2 });
+      nextRewardBlockIndex: 1, nextRewardId: 2, bossSpawned: false });
     const reward = withReward.streamRewards[0];
     expect(reward).toMatchObject({ id: 1, tier: 1, hitProgress: 0, hitsRequired: 10 });
     expect(Math.abs(reward.x)).toBe(rewardConfig.sideX);

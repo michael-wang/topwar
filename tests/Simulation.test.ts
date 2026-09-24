@@ -25,6 +25,7 @@ describe('Simulation', () => {
       player: { x: 0, z: 0 },
       squad: { count: 1, rocketCount: 0, tier2RifleCount: 0 },
       enemies: [],
+      boss: null,
       enemyStream: null,
       streamRewards: [],
       gates: [],
@@ -63,6 +64,7 @@ describe('Simulation', () => {
     expect(simulation.getState()).toEqual({
       tick: 1,
       elapsedSeconds: 1 / 60,
+      boss: null,
       levelId: 'prototype',
       seed: 1,
       rngState: 1,
@@ -250,7 +252,9 @@ describe('Simulation movement', () => {
 });
 
 describe('Static authored enemies', () => {
-  const authored = LevelDefinitionSchema.parse(authoredLevel);
+  const parsedAuthored = LevelDefinitionSchema.parse(authoredLevel);
+  const authored = { ...parsedAuthored,
+    enemyStream: { ...parsedAuthored.enemyStream!, boss: undefined } };
   const createAuthored = () => new Simulation({ seed: 1, level: authored, startSquad: 1, startRocketCount: 0, gruntHp: 10, bruteHp: 300, tier3Hp: 3000 });
 
   it('materializes the same initial enemy horizon on every fresh run', () => {
@@ -263,7 +267,7 @@ describe('Static authored enemies', () => {
     expect(new Set(first.enemies.map((enemy) => enemy.id)).size).toBe(first.enemies.length);
     expect(first.enemyStream).toEqual({ nextRowIndex: 121, nextEnemyId: 848,
       nextRewardBlockIndex: first.streamRewards.length,
-      nextRewardId: first.streamRewards.length + 1 });
+      nextRewardId: first.streamRewards.length + 1, bossSpawned: false });
     expect(first.enemies).toHaveLength(847);
     expect(first.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 10))).toBe(true);
     const meanZ = first.enemies.reduce((sum, enemy) => sum + enemy.z, 0) / first.enemies.length;

@@ -28,6 +28,7 @@ const EnemyStreamSchema = z.strictObject({
   spacing: z.number().finite().positive(),
   jitter: z.number().finite().nonnegative(),
   seed: z.number().int().min(0).max(0xffffffff),
+  boss: z.strictObject({ row: nonnegativeSafeInteger, tier: z.literal(1) }).optional(),
   bruteRamp: z.strictObject({
     startRow: nonnegativeSafeInteger,
     fullRow: nonnegativeSafeInteger,

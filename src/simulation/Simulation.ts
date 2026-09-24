@@ -7,7 +7,7 @@ import { rewardPlacementForBlock, rewardTierForRow } from './enemies/streamRewar
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { TIER2_EXCHANGE_VALUE } from './tierExchange';
-import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
+import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
   seed: number;
@@ -17,6 +17,7 @@ export interface SimulationOptions {
   gruntHp: number;
   bruteHp: number;
   tier3Hp: number;
+  bossHpMultiplier?: number;
 }
 
 export interface SimulationInput {
@@ -33,6 +34,7 @@ export interface SimulationTuning {
   gruntRadius: number;
   bruteRadius: number;
   tier3Radius: number;
+  bossRadius?: number;
   rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
@@ -42,12 +44,15 @@ function positiveFinite(value: unknown): value is number {
 }
 
 type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
+  | { kind: 'boss'; boss: BossSimulationState; fraction: number; z: number }
   | { kind: 'streamReward'; reward: StreamRewardSimulationState; fraction: number; z: number }
   | { kind: 'gate'; gate: UpgradeGateSimulationState; fraction: number; z: number };
 
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
-  enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
+  enemies: EnemySimulationState[], boss: BossSimulationState | null,
+  rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
   radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius' | 'tier3Radius'>,
+  bossRadius: number | undefined,
   currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
   piercedEnemyIds?: ReadonlySet<number>, passedRewardIds?: ReadonlySet<number>): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
@@ -68,6 +73,17 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
     if (!first || fraction < first.fraction
       || (fraction === first.fraction && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
       first = { kind: 'enemy', enemy, fraction, z: hitZ };
+    }
+  }
+  if (boss && bossRadius !== undefined && Math.abs(projectile.x - boss.x) <= bossRadius) {
+    const dx = projectile.x - boss.x;
+    const halfChord = Math.sqrt(bossRadius * bossRadius - dx * dx);
+    const entryZ = boss.z - halfChord;
+    const exitZ = boss.z + halfChord;
+    if (exitZ >= minimumZ && entryZ <= endZ) {
+      const hitZ = Math.max(minimumZ, entryZ);
+      const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
+      if (!first || fraction <= first.fraction) first = { kind: 'boss', boss, fraction, z: hitZ };
     }
   }
   for (const reward of rewards) {
@@ -135,13 +151,25 @@ function validSquadCount(count: unknown): count is number {
 }
 
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number, tier3Hp: number): void {
+  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number, tier3Hp: number,
+  boss: BossSimulationState | null, bossHpMultiplier: number | undefined): BossSimulationState | null {
+  if (boss) return boss;
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
     const rowZ = stream.startZ + cursor.nextRowIndex * stream.spacing;
     if (!Number.isFinite(rowZ)) throw new Error('Simulation enemy stream row position is non-finite');
     if (rowZ > horizonZ) break;
+    if (stream.boss && !cursor.bossSpawned && cursor.nextRowIndex === stream.boss.row) {
+      const maxHp = gruntHp * bossHpMultiplier!;
+      if (!positiveFinite(maxHp) || !Number.isSafeInteger(cursor.nextEnemyId + 1)) {
+        throw new Error('Simulation Boss HP or ID exceeds the supported range');
+      }
+      boss = { id: cursor.nextEnemyId++, tier: 1, x: 0, z: rowZ, hp: maxHp, maxHp };
+      cursor.bossSpawned = true;
+      cursor.nextRowIndex++;
+      break;
+    }
     if (!Number.isSafeInteger(cursor.nextRowIndex + 1)
       || !Number.isSafeInteger(cursor.nextEnemyId + stream.columns)) {
       throw new Error('Simulation enemy stream exceeds the supported range');
@@ -177,16 +205,18 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     }
     cursor.nextRowIndex++;
   }
+  return boss;
 }
 
 function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number): void {
+  stream: EnemyStreamDefinition, playerZ: number, boss: BossSimulationState | null): void {
   const definition = stream.rewards;
   if (!definition) return;
   const horizonZ = playerZ + definition.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation reward stream horizon is non-finite');
   while (true) {
     const placement = rewardPlacementForBlock(cursor.nextRewardBlockIndex, stream.columns, definition);
+    if (boss && stream.boss && placement.rowIndex > stream.boss.row) break;
     const rowZ = stream.startZ + placement.rowIndex * stream.spacing;
     if (!Number.isFinite(rowZ)) throw new Error('Simulation reward row position is non-finite');
     if (rowZ > horizonZ) break;
@@ -213,7 +243,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     throw new Error('Simulation state must be a plain object');
   }
   const state = value;
-  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
+  const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'boss', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -278,24 +308,45 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     return { id, type: value.type, x: value.x, z: value.z, hp: value.hp };
   });
 
+  let boss: BossSimulationState | null = null;
+  if (state.boss !== null) {
+    const value = state.boss;
+    if (!isPlainObject(value) || Object.keys(value).length !== 6
+      || ['id', 'tier', 'x', 'z', 'hp', 'maxHp'].some((field) => !Object.hasOwn(value, field))
+      || !Number.isSafeInteger(value.id) || (value.id as number) <= 0
+      || enemyIds.has(value.id as number) || value.tier !== 1
+      || typeof value.x !== 'number' || !Number.isFinite(value.x)
+      || typeof value.z !== 'number' || !Number.isFinite(value.z)
+      || !positiveFinite(value.hp) || !positiveFinite(value.maxHp)
+      || value.hp > value.maxHp) {
+      throw new Error('Simulation Boss state is invalid');
+    }
+    boss = { id: value.id as number, tier: 1, x: value.x, z: value.z,
+      hp: value.hp, maxHp: value.maxHp };
+  }
+
   let enemyStream: EnemyStreamSimulationState | null = null;
   if (state.enemyStream !== null) {
     const cursor = state.enemyStream;
-    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 4
+    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 5
       || !Object.hasOwn(cursor, 'nextRowIndex') || !Object.hasOwn(cursor, 'nextEnemyId')
       || !Object.hasOwn(cursor, 'nextRewardBlockIndex') || !Object.hasOwn(cursor, 'nextRewardId')
+      || !Object.hasOwn(cursor, 'bossSpawned') || typeof cursor.bossSpawned !== 'boolean'
       || !Number.isSafeInteger(cursor.nextRowIndex) || (cursor.nextRowIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextEnemyId) || (cursor.nextEnemyId as number) <= 0
       || !Number.isSafeInteger(cursor.nextRewardBlockIndex) || (cursor.nextRewardBlockIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextRewardId) || (cursor.nextRewardId as number) <= 0
-      || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))) {
+      || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))
+      || (boss && (boss.id >= (cursor.nextEnemyId as number) || !cursor.bossSpawned))) {
       throw new Error('Simulation enemy stream cursor is invalid');
     }
     enemyStream = { nextRowIndex: cursor.nextRowIndex as number,
       nextEnemyId: cursor.nextEnemyId as number,
       nextRewardBlockIndex: cursor.nextRewardBlockIndex as number,
-      nextRewardId: cursor.nextRewardId as number };
+      nextRewardId: cursor.nextRewardId as number,
+      bossSpawned: cursor.bossSpawned as boolean };
   }
+  if (boss && !enemyStream) throw new Error('Simulation Boss requires an enemy stream');
 
   if (!Array.isArray(state.streamRewards)) throw new Error('Simulation streamRewards must be an array');
   const rewardIds = new Set<number>();
@@ -446,6 +497,7 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
       squad: { count: squad.count, rocketCount: squad.rocketCount,
         tier2RifleCount: squad.tier2RifleCount },
       enemies,
+      boss,
       enemyStream,
       streamRewards,
       gates,
@@ -467,6 +519,7 @@ export class Simulation {
   private readonly gruntHp: number;
   private readonly bruteHp: number;
   private readonly tier3Hp: number;
+  private readonly bossHpMultiplier: number | undefined;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -480,10 +533,14 @@ export class Simulation {
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
     if (!positiveFinite(options.bruteHp)) throw new Error('Simulation bruteHp must be positive and finite');
     if (!positiveFinite(options.tier3Hp)) throw new Error('Simulation tier3Hp must be positive and finite');
+    if (level.enemyStream?.boss && !positiveFinite(options.bossHpMultiplier)) {
+      throw new Error('Simulation bossHpMultiplier must be positive and finite for a Boss level');
+    }
     this.enemyStreamDefinition = level.enemyStream;
     this.gruntHp = options.gruntHp;
     this.bruteHp = options.bruteHp;
     this.tier3Hp = options.tier3Hp;
+    this.bossHpMultiplier = options.bossHpMultiplier;
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
       for (const offset of createEnemyFormation(group.count, group.formation.columns,
@@ -503,11 +560,14 @@ export class Simulation {
     }
     const streamRewards: StreamRewardSimulationState[] = [];
     const enemyStream = level.enemyStream
-      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0, nextRewardId: 1 }
+      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0,
+        nextRewardId: 1, bossSpawned: false }
       : null;
+    let boss: BossSimulationState | null = null;
     if (enemyStream && level.enemyStream) {
-      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp, options.tier3Hp);
-      extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
+      boss = extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp,
+        options.bruteHp, options.tier3Hp, boss, this.bossHpMultiplier);
+      extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0, boss);
     }
     this.state = {
       tick: 0,
@@ -519,6 +579,7 @@ export class Simulation {
       squad: normalizeRifleSquad({ count: options.startSquad, rocketCount: options.startRocketCount,
         tier2RifleCount: 0 }),
       enemies,
+      boss,
       enemyStream,
       streamRewards,
       gates: level.upgradeGates.map((gate) => ({ ...gate, reward: { ...gate.reward }, hitProgress: 0 })),
@@ -552,6 +613,9 @@ export class Simulation {
       || !positiveFinite(tuning.gruntRadius) || !positiveFinite(tuning.bruteRadius)
       || !positiveFinite(tuning.tier3Radius)) {
       throw new Error('Simulation formationSpacing, memberRadius, and enemy radii must be positive and finite');
+    }
+    if (this.enemyStreamDefinition?.boss && !positiveFinite(tuning.bossRadius)) {
+      throw new Error('Simulation bossRadius must be positive and finite for a Boss level');
     }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.damage) || !positiveFinite(tuning.rifle.fireRate)
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
@@ -588,12 +652,13 @@ export class Simulation {
       throw new Error('Simulation armory position exceeds the supported range');
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
+    let boss = this.state.boss ? { ...this.state.boss } : null;
     const streamRewards = this.state.streamRewards.map((reward) => ({ ...reward }));
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
-      extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.gruntHp, this.bruteHp, this.tier3Hp);
-      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
+      boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
+        nextZ, this.gruntHp, this.bruteHp, this.tier3Hp, boss, this.bossHpMultiplier);
+      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, boss);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
@@ -654,7 +719,8 @@ export class Simulation {
       const piercedEnemyIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
       const passedRewardIds = projectile.kind === 'heavyRifle' ? new Set<number>() : undefined;
       while (true) {
-        const hit = findFirstHit(projectile, endZ, enemies, streamRewards, gates, tuning,
+        const hit = findFirstHit(projectile, endZ, enemies, boss, streamRewards, gates, tuning,
+          tuning.bossRadius,
           this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, passedRewardIds);
         if (!hit) break;
         if (hit.kind === 'gate') {
@@ -681,6 +747,9 @@ export class Simulation {
             passedRewardIds!.add(hit.reward.id);
             continue;
           }
+        } else if (hit.kind === 'boss') {
+          hit.boss.hp -= projectile.damage;
+          if (hit.boss.hp <= 0) boss = null;
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
@@ -697,8 +766,8 @@ export class Simulation {
         }
         if (projectile.kind === 'rocket' && hit.kind !== 'streamReward') {
           const radiusSquared = projectile.blastRadius * projectile.blastRadius;
-          const blastX = hit.kind === 'gate' ? projectile.x : hit.enemy.x;
-          const blastZ = hit.kind === 'gate' ? hit.z : hit.enemy.z;
+          const blastX = hit.kind === 'gate' ? projectile.x : hit.kind === 'boss' ? hit.boss.x : hit.enemy.x;
+          const blastZ = hit.kind === 'gate' ? hit.z : hit.kind === 'boss' ? hit.boss.z : hit.enemy.z;
           // Only enemies receive blast damage; ID order makes multi-target resolution stable.
           for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
             const dx = enemy.x - blastX;
@@ -758,6 +827,13 @@ export class Simulation {
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
     if (!Number.isFinite(defenseLineZ)) throw new Error('Simulation defense line exceeds the supported range');
+    if (boss) {
+      const radius = tuning.memberRadius + tuning.bossRadius!;
+      const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) =>
+        segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
+          nextX + offset.x, nextZ + offset.z, boss!.x, boss!.z, radius));
+      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0, tier2RifleCount: 0 };
+    }
     // Only survivors can leak; contact and projectile kills have already removed their enemies.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
@@ -768,7 +844,7 @@ export class Simulation {
     }
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
-    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, enemyStream, gates,
+    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
@@ -783,6 +859,7 @@ export class Simulation {
       player: { ...this.state.player },
       squad: { ...this.state.squad },
       enemies: this.state.enemies.map((enemy) => ({ ...enemy })),
+      boss: this.state.boss ? { ...this.state.boss } : null,
       enemyStream: this.state.enemyStream ? { ...this.state.enemyStream } : null,
       streamRewards: this.state.streamRewards.map((reward) => ({ ...reward })),
       gates: this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } })),
@@ -796,6 +873,15 @@ export class Simulation {
     const candidate = validateState(state);
     if ((candidate.state.enemyStream !== null) !== (this.enemyStreamDefinition !== undefined)) {
       throw new Error('Simulation enemy stream state does not match the loaded level');
+    }
+    const encounter = this.enemyStreamDefinition?.boss;
+    const cursor = candidate.state.enemyStream;
+    const boss = candidate.state.boss;
+    if (cursor && (cursor.bossSpawned !== (encounter !== undefined && cursor.nextRowIndex > encounter.row))
+      || (!encounter && boss)
+      || (encounter && boss && (boss.z !== this.enemyStreamDefinition!.startZ
+        + encounter.row * this.enemyStreamDefinition!.spacing || boss.x !== 0))) {
+      throw new Error('Simulation Boss progression does not match the loaded level');
     }
     this.state = candidate.state;
     this.rng = candidate.rng;
