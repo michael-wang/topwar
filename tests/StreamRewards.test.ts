@@ -3,10 +3,12 @@ import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
-import { rewardPlacementForRow, rewardTierForRow } from '../src/simulation/enemies/streamRewards';
+import { rewardPlacementForBlock, rewardPlacementForRow,
+  rewardTierForRow } from '../src/simulation/enemies/streamRewards';
 import type { ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
-const rewardConfig = { rowsPerReward: 1, hitsRequired: 10, seed: 271828, sideX: 2.2 };
+const rewardConfig = { rowsPerReward: 1, spawnAheadDistance: 5.5,
+  hitsRequired: 10, seed: 271828, sideX: 2.2 };
 const level: LevelDefinition = { id: 'stream-reward-test', length: 20, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 5, spawnAheadDistance: 5.5, columns: 3,
     spacing: 100, jitter: 0, seed: 42, bruteRamp: { startRow: 1, fullRow: 2, curvePower: 2 },
@@ -40,30 +42,79 @@ describe('endless stream reward placement', () => {
   it('guarantees exactly one random-looking placement in every authored block', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
     const rewards = stream.rewards!;
-    expect(rewards).toEqual({ rowsPerReward: 4, hitsRequired: 10, seed: 271828, sideX: 2.2 });
-    const placements = Array.from({ length: 400 }, (_, row) =>
+    expect(rewards).toEqual({ rowsPerReward: 8, spawnAheadDistance: 30,
+      hitsRequired: 10, seed: 271828, sideX: 2.2 });
+    const placements = Array.from({ length: 800 }, (_, row) =>
       rewardPlacementForRow(row, stream.columns, rewards));
-    expect(placements).toEqual(Array.from({ length: 400 }, (_, row) =>
+    expect(placements).toEqual(Array.from({ length: 800 }, (_, row) =>
       rewardPlacementForRow(row, stream.columns, rewards)));
     for (let block = 0; block < 100; block++) {
-      expect(placements.slice(block * 4, block * 4 + 4).filter(Boolean)).toHaveLength(1);
+      expect(placements.slice(block * 8, block * 8 + 8).filter(Boolean)).toHaveLength(1);
     }
     const rewardRows = placements.flatMap((placement, row) => placement ? [row] : []);
-    expect(new Set(rewardRows.map((row) => row % 4)).size).toBeGreaterThan(1);
+    expect(new Set(rewardRows.map((row) => row % 8)).size).toBeGreaterThan(1);
     expect(new Set(placements.filter(Boolean).map((placement) => placement!.side)))
       .toEqual(new Set([-1, 1]));
-    expect(placements).not.toEqual(Array.from({ length: 400 }, (_, row) =>
+    expect(placements).not.toEqual(Array.from({ length: 800 }, (_, row) =>
       rewardPlacementForRow(row, stream.columns, { ...rewards, seed: rewards.seed + 1 })));
     expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().rngState).toBe(7);
   });
 
-  it('offers exactly twelve Tier-1 opportunities before the first brute row', () => {
+  it('offers six rewards before row 48 and twelve before row 96', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
-    const selected = Array.from({ length: 48 }, (_, row) => row).filter((row) =>
+    const selected = Array.from({ length: 96 }, (_, row) => row).filter((row) =>
       rewardPlacementForRow(row, stream.columns, stream.rewards!) !== null);
     expect(selected).toHaveLength(12);
+    expect(selected.filter((row) => row < 48)).toHaveLength(6);
     expect(selected.every((row) => rewardTierForRow(row, stream.bruteRamp.fullRow) === 1)).toBe(true);
     expect(stream.bruteRamp.startRow).toBe(48);
+  });
+
+  it('materializes nearby rewards independently of the long enemy horizon', () => {
+    const authored = LevelDefinitionSchema.parse(authoredLevel);
+    const stream = authored.enemyStream!;
+    const simulation = create(authored);
+    const initial = simulation.getState();
+    expect(initial.enemies.some((enemy) => enemy.z > 90)).toBe(true);
+    expect(initial.streamRewards.every((reward) => reward.z < 31)).toBe(true);
+    const eligibleBlocks = Array.from({ length: 50 }, (_, block) => block).filter((block) => {
+      const placement = rewardPlacementForBlock(block, stream.columns, stream.rewards!);
+      return stream.startZ + placement.rowIndex * stream.spacing <= 30;
+    });
+    expect(initial.streamRewards).toHaveLength(eligibleBlocks.length);
+    expect(initial.enemyStream?.nextRewardBlockIndex).toBe(eligibleBlocks.length);
+    expect(initial.enemyStream!.nextRowIndex).toBeGreaterThan(100);
+    const next = rewardPlacementForBlock(eligibleBlocks.length, stream.columns, stream.rewards!);
+    const nextRowZ = stream.startZ + next.rowIndex * stream.spacing;
+    prepare(simulation);
+    step(simulation, 1, { forwardSpeed: nextRowZ - 30 - 0.01 });
+    expect(simulation.getState().enemyStream?.nextRewardBlockIndex).toBe(eligibleBlocks.length);
+    step(simulation, 1, { forwardSpeed: 0.02 });
+    expect(simulation.getState().enemyStream?.nextRewardBlockIndex).toBe(eligibleBlocks.length + 1);
+    expect(simulation.getState().enemyStream?.nextRewardId).toBe(initial.enemyStream!.nextRewardId + 1);
+  });
+
+  it('catches up all eligible rewards on a large step without duplicate IDs or changing enemy rows', () => {
+    const authored = LevelDefinitionSchema.parse(authoredLevel);
+    const withRewards = create(authored, 100);
+    const withoutRewards = create({ ...authored,
+      enemyStream: { ...authored.enemyStream!, rewards: undefined } }, 100);
+    for (const simulation of [withRewards, withoutRewards]) {
+      prepare(simulation);
+      step(simulation, 1, { forwardSpeed: 25 });
+    }
+    const after = withRewards.getState();
+    const cursor = after.enemyStream!;
+    const stream = authored.enemyStream!;
+    const eligible = Array.from({ length: 100 }, (_, block) => block).filter((block) => {
+      const placement = rewardPlacementForBlock(block, stream.columns, stream.rewards!);
+      return stream.startZ + placement.rowIndex * stream.spacing <= 55;
+    }).length;
+    expect(cursor.nextRewardBlockIndex).toBe(eligible);
+    expect(cursor.nextRewardId).toBe(eligible + 1);
+    expect(new Set(after.streamRewards.map((reward) => reward.id)).size).toBe(after.streamRewards.length);
+    expect(cursor.nextRowIndex).toBe(withoutRewards.getState().enemyStream?.nextRowIndex);
+    expect(after.enemies).toEqual(withoutRewards.getState().enemies);
   });
 
   it('keeps Tier-1 rewards through mixed enemy rows and switches at full saturation', () => {
@@ -86,7 +137,8 @@ describe('endless stream reward placement', () => {
     expect(withReward.enemies).toHaveLength(3);
     expect(withReward.streamRewards).toHaveLength(1);
     expect(withoutReward.enemies).toHaveLength(3);
-    expect(withReward.enemyStream).toEqual({ nextRowIndex: 1, nextEnemyId: 4, nextRewardId: 2 });
+    expect(withReward.enemyStream).toEqual({ nextRowIndex: 1, nextEnemyId: 4,
+      nextRewardBlockIndex: 1, nextRewardId: 2 });
     const reward = withReward.streamRewards[0];
     expect(reward).toMatchObject({ id: 1, tier: 1, hitProgress: 0, hitsRequired: 10 });
     expect(Math.abs(reward.x)).toBe(rewardConfig.sideX);
@@ -102,7 +154,7 @@ describe('endless stream reward placement', () => {
     const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
     const oneRow: LevelDefinition = { ...level, enemyStream: { ...stream,
       startZ: 5, spacing: 100, spawnAheadDistance: 5.5,
-      rewards: { ...stream.rewards!, rowsPerReward: 1 } } };
+      rewards: { ...stream.rewards!, rowsPerReward: 1, spawnAheadDistance: 5.5 } } };
     const placement = rewardPlacementForRow(0, stream.columns, oneRow.enemyStream!.rewards!)!;
     const state = create(oneRow).getState();
     const offsets = createEnemyStreamRow(0, stream.columns, 100, stream.jitter, stream.seed);
@@ -115,18 +167,20 @@ describe('endless stream reward placement', () => {
   it('leaves all seven enemy slots in rows without a reward', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const rewards = authored.enemyStream!.rewards!;
-    expect(Array.from({ length: 4 }, (_, row) =>
+    expect(Array.from({ length: 8 }, (_, row) =>
       rewardPlacementForRow(row, 7, rewards)).filter(Boolean)).toHaveLength(1);
     const bare: LevelDefinition = { ...authored, enemyStream: { ...authored.enemyStream!,
-      startZ: 0, spawnAheadDistance: 3.5, spacing: 1 } };
+      startZ: 0, spawnAheadDistance: 7.5, spacing: 1,
+      rewards: { ...rewards, spawnAheadDistance: 7.5 } } };
     const state = create(bare).getState();
-    expect(state.enemies).toHaveLength(28);
+    expect(state.enemies).toHaveLength(56);
     expect(state.streamRewards).toHaveLength(1);
   });
 
   it('materializes selected reward tiers without changing enemies', () => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
-      spacing: 1, spawnAheadDistance: 8 } };
+      spacing: 1, spawnAheadDistance: 8,
+      rewards: { ...rewardConfig, spawnAheadDistance: 8 } } };
     const state = create(compact).getState();
     const noRewards = create({ ...compact, enemyStream: { ...compact.enemyStream!, rewards: undefined } }).getState();
     expect(state.streamRewards.map((reward) => [reward.z, reward.tier])).toEqual([
@@ -203,7 +257,8 @@ describe('tiered reward combat and lifecycle', () => {
     { tier: 2, kind: 'rocket' },
   ] as const)('lets $kind pass a Tier-$tier reward and hit the enemy behind it', ({ tier, kind }) => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
-      spacing: 1, spawnAheadDistance: 8 } };
+      spacing: 1, spawnAheadDistance: 8,
+      rewards: { ...rewardConfig, spawnAheadDistance: 8 } } };
     const simulation = create(compact);
     const state = simulation.getState();
     const reward = state.streamRewards.find((target) => target.tier === tier)!;
@@ -237,7 +292,8 @@ describe('tiered reward combat and lifecycle', () => {
     { tier: 2, kind: 'heavyRifle' },
   ] as const)('counts and consumes a matching $kind shot at Tier-$tier reward', ({ tier, kind }) => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
-      spacing: 1, spawnAheadDistance: 8 } };
+      spacing: 1, spawnAheadDistance: 8,
+      rewards: { ...rewardConfig, spawnAheadDistance: 8 } } };
     const simulation = create(compact);
     const state = simulation.getState();
     const reward = state.streamRewards.find((target) => target.tier === tier)!;
@@ -282,7 +338,8 @@ describe('tiered reward combat and lifecycle', () => {
 
   it('grants Tier-2 only after ten heavy hits and never consumes rifle or rocket hits', () => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
-      spacing: 1, spawnAheadDistance: 8 } };
+      spacing: 1, spawnAheadDistance: 8,
+      rewards: { ...rewardConfig, spawnAheadDistance: 8 } } };
     const simulation = create(compact);
     const state = simulation.getState();
     const tier2 = state.streamRewards.find((reward) => reward.tier === 2)!;
@@ -339,12 +396,14 @@ describe('tiered reward combat and lifecycle', () => {
     const exposed = simulation.getState();
     exposed.streamRewards[0].hitProgress = 9;
     exposed.enemyStream!.nextRewardId = 999;
+    exposed.enemyStream!.nextRewardBlockIndex = 999;
     expect(simulation.getState()).toEqual(before);
     for (const corrupt of [
       (candidate: SimulationState) => { candidate.streamRewards[0].hitProgress = 10; },
       (candidate: SimulationState) => { candidate.streamRewards[0].tier = 3 as 1; },
       (candidate: SimulationState) => { candidate.streamRewards[0].id = 0; },
       (candidate: SimulationState) => { candidate.enemyStream!.nextRewardId = 1; },
+      (candidate: SimulationState) => { candidate.enemyStream!.nextRewardBlockIndex = -1; },
       (candidate: SimulationState) => { Object.assign(candidate.streamRewards[0], { hp: 10 }); },
     ]) {
       const invalid = structuredClone(before);

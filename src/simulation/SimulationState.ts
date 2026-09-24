@@ -20,6 +20,7 @@ export interface EnemySimulationState {
 export interface EnemyStreamSimulationState {
   nextRowIndex: number;
   nextEnemyId: number;
+  nextRewardBlockIndex: number;
   nextRewardId: number;
 }
 

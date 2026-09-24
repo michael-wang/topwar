@@ -3,7 +3,7 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition,
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
-import { rewardPlacementForRow, rewardTierForRow } from './enemies/streamRewards';
+import { rewardPlacementForBlock, rewardTierForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { TIER2_EXCHANGE_VALUE } from './tierExchange';
@@ -131,8 +131,7 @@ function validSquadCount(count: unknown): count is number {
   return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0;
 }
 
-function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewardSimulationState[],
-  cursor: EnemyStreamSimulationState,
+function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number): void {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
@@ -149,11 +148,6 @@ function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewar
     const { startRow, fullRow } = stream.bruteRamp;
     const rowIndex = cursor.nextRowIndex;
     const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
-    const rewardPlacement = stream.rewards
-      ? rewardPlacementForRow(rowIndex, stream.columns, stream.rewards) : null;
-    if (rewardPlacement !== null && !Number.isSafeInteger(cursor.nextRewardId + 1)) {
-      throw new Error('Simulation stream reward ID exceeds the supported range');
-    }
     let revealColumn = 0;
     if (rowIndex === startRow) {
       for (let column = 1; column < offsets.length; column++) {
@@ -173,14 +167,36 @@ function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewar
       enemies.push({ id: enemyId, type: isBrute ? 'brute' : stream.enemy,
         x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
     }
-    if (rewardPlacement !== null && stream.rewards) {
-      rewards.push({ id: cursor.nextRewardId++,
-        tier: rewardTierForRow(rowIndex, fullRow),
-        x: rewardPlacement.side * stream.rewards.sideX,
-        z: rowZ + offsets[rewardPlacement.zSlot].z,
-        hitProgress: 0, hitsRequired: stream.rewards.hitsRequired });
-    }
     cursor.nextRowIndex++;
+  }
+}
+
+function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: EnemyStreamSimulationState,
+  stream: EnemyStreamDefinition, playerZ: number): void {
+  const definition = stream.rewards;
+  if (!definition) return;
+  const horizonZ = playerZ + definition.spawnAheadDistance;
+  if (!Number.isFinite(horizonZ)) throw new Error('Simulation reward stream horizon is non-finite');
+  while (true) {
+    const placement = rewardPlacementForBlock(cursor.nextRewardBlockIndex, stream.columns, definition);
+    const rowZ = stream.startZ + placement.rowIndex * stream.spacing;
+    if (!Number.isFinite(rowZ)) throw new Error('Simulation reward row position is non-finite');
+    if (rowZ > horizonZ) break;
+    const offsets = createEnemyStreamRow(placement.rowIndex, stream.columns,
+      stream.spacing, stream.jitter, stream.seed);
+    const z = rowZ + offsets[placement.zSlot].z;
+    if (!Number.isFinite(z)) throw new Error('Simulation reward position is non-finite');
+    if (placement.rowIndex >= cursor.nextRowIndex) {
+      throw new Error('Simulation reward row must be generated after its enemy row');
+    }
+    if (!Number.isSafeInteger(cursor.nextRewardId + 1)
+      || !Number.isSafeInteger(cursor.nextRewardBlockIndex + 1)) {
+      throw new Error('Simulation reward stream exceeds the supported range');
+    }
+    rewards.push({ id: cursor.nextRewardId++, tier: rewardTierForRow(placement.rowIndex, stream.bruteRamp.fullRow),
+      x: placement.side * definition.sideX, z,
+      hitProgress: 0, hitsRequired: definition.hitsRequired });
+    cursor.nextRewardBlockIndex++;
   }
 }
 
@@ -257,17 +273,20 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
   let enemyStream: EnemyStreamSimulationState | null = null;
   if (state.enemyStream !== null) {
     const cursor = state.enemyStream;
-    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 3
+    if (!isPlainObject(cursor) || Object.keys(cursor).length !== 4
       || !Object.hasOwn(cursor, 'nextRowIndex') || !Object.hasOwn(cursor, 'nextEnemyId')
-      || !Object.hasOwn(cursor, 'nextRewardId')
+      || !Object.hasOwn(cursor, 'nextRewardBlockIndex') || !Object.hasOwn(cursor, 'nextRewardId')
       || !Number.isSafeInteger(cursor.nextRowIndex) || (cursor.nextRowIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextEnemyId) || (cursor.nextEnemyId as number) <= 0
+      || !Number.isSafeInteger(cursor.nextRewardBlockIndex) || (cursor.nextRewardBlockIndex as number) < 0
       || !Number.isSafeInteger(cursor.nextRewardId) || (cursor.nextRewardId as number) <= 0
       || enemies.some((enemy) => enemy.id >= (cursor.nextEnemyId as number))) {
       throw new Error('Simulation enemy stream cursor is invalid');
     }
     enemyStream = { nextRowIndex: cursor.nextRowIndex as number,
-      nextEnemyId: cursor.nextEnemyId as number, nextRewardId: cursor.nextRewardId as number };
+      nextEnemyId: cursor.nextEnemyId as number,
+      nextRewardBlockIndex: cursor.nextRewardBlockIndex as number,
+      nextRewardId: cursor.nextRewardId as number };
   }
 
   if (!Array.isArray(state.streamRewards)) throw new Error('Simulation streamRewards must be an array');
@@ -473,10 +492,11 @@ export class Simulation {
     }
     const streamRewards: StreamRewardSimulationState[] = [];
     const enemyStream = level.enemyStream
-      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardId: 1 }
+      ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0, nextRewardId: 1 }
       : null;
     if (enemyStream && level.enemyStream) {
-      extendEnemyStream(enemies, streamRewards, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp);
+      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp);
+      extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
     }
     this.state = {
       tick: 0,
@@ -559,8 +579,9 @@ export class Simulation {
     const streamRewards = this.state.streamRewards.map((reward) => ({ ...reward }));
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
-      extendEnemyStream(enemies, streamRewards, enemyStream, this.enemyStreamDefinition,
+      extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.gruntHp, this.bruteHp);
+      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };

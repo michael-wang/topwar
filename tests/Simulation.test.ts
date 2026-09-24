@@ -262,6 +262,7 @@ describe('Static authored enemies', () => {
     expect(first.enemies.length).toBeLessThan(950);
     expect(new Set(first.enemies.map((enemy) => enemy.id)).size).toBe(first.enemies.length);
     expect(first.enemyStream).toEqual({ nextRowIndex: 121, nextEnemyId: 848,
+      nextRewardBlockIndex: first.streamRewards.length,
       nextRewardId: first.streamRewards.length + 1 });
     expect(first.enemies).toHaveLength(847);
     expect(first.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 10))).toBe(true);

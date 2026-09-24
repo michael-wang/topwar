@@ -154,7 +154,8 @@ describe('deterministic endless enemy stream', () => {
 
   it('extends only when the moving horizon reaches another row and catches up after a large step', () => {
     const simulation = create();
-    expect(simulation.getState().enemyStream).toEqual({ nextRowIndex: 4, nextEnemyId: 9, nextRewardId: 1 });
+    expect(simulation.getState().enemyStream).toEqual({ nextRowIndex: 4, nextEnemyId: 9,
+      nextRewardBlockIndex: 0, nextRewardId: 1 });
     advance(simulation, 0.5);
     expect(simulation.getState().enemyStream?.nextRowIndex).toBe(4);
     advance(simulation, 0.5);

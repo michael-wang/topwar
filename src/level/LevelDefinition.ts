@@ -36,6 +36,7 @@ const EnemyStreamSchema = z.strictObject({
     { path: ['fullRow'], message: 'Full Tier-2 row must follow start row' }),
   rewards: z.strictObject({
     rowsPerReward: positiveSafeInteger,
+    spawnAheadDistance: z.number().finite().positive(),
     hitsRequired: positiveSafeInteger,
     seed: z.number().int().min(0).max(0xffffffff),
     sideX: z.number().finite().positive(),
@@ -47,6 +48,10 @@ const EnemyStreamSchema = z.strictObject({
   }
   if (stream.jitter >= stream.spacing / 2) {
     context.addIssue({ code: 'custom', path: ['jitter'], message: 'Jitter must be less than half of spacing' });
+  }
+  if (stream.rewards && stream.rewards.spawnAheadDistance > stream.spawnAheadDistance) {
+    context.addIssue({ code: 'custom', path: ['rewards', 'spawnAheadDistance'],
+      message: 'Reward lookahead must not exceed enemy lookahead' });
   }
 });
 
