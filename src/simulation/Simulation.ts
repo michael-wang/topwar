@@ -148,12 +148,12 @@ function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewar
       stream.spacing, stream.jitter, stream.seed);
     const { startRow, fullRow } = stream.bruteRamp;
     const rowIndex = cursor.nextRowIndex;
+    const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
     const rewardPlacement = stream.rewards
-      ? rewardPlacementForRow(rowIndex, stream.columns, stream.rewards) : null;
+      ? rewardPlacementForRow(rowIndex, stream.columns, stream.rewards, probability) : null;
     if (rewardPlacement !== null && !Number.isSafeInteger(cursor.nextRewardId + 1)) {
       throw new Error('Simulation stream reward ID exceeds the supported range');
     }
-    const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
     let revealColumn = 0;
     if (rowIndex === startRow) {
       for (let column = 1; column < offsets.length; column++) {

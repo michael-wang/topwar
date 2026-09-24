@@ -31,7 +31,8 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
       bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 },
-      rewards: { chancePerRow: 0.025, hitsRequired: 10, seed: 271828, sideX: 2.2 } });
+      rewards: { baseChancePerRow: 0.025, fullTierChancePerRow: 0.08,
+        hitsRequired: 10, seed: 271828, sideX: 2.2 } });
     expect(parsed.upgradeGates).toEqual([]);
   });
 
@@ -102,11 +103,21 @@ describe('LevelDefinitionSchema', () => {
   });
 
   it('validates strict deterministic stream reward authoring', () => {
-    for (const chancePerRow of [0, -0.1, 1, 1.1, Infinity, NaN]) {
-      const candidate = structuredClone(authoredLevel);
-      candidate.enemyStream.rewards.chancePerRow = chancePerRow;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+    for (const key of ['baseChancePerRow', 'fullTierChancePerRow'] as const) {
+      for (const chance of [0, -0.1, 1, 1.1, Infinity, NaN]) {
+        const candidate = structuredClone(authoredLevel);
+        candidate.enemyStream.rewards[key] = chance;
+        expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
+      }
     }
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
+      ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards,
+        fullTierChancePerRow: 0.02 },
+    } })).toThrow(/fullTierChancePerRow/);
+    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
+      ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards,
+        chancePerRow: 0.025 },
+    } })).toThrow(/chancePerRow/);
     for (const hitsRequired of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
       const candidate = structuredClone(authoredLevel);
       candidate.enemyStream.rewards.hitsRequired = hitsRequired;
