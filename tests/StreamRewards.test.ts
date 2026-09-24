@@ -154,18 +154,59 @@ describe('matching-tier reward combat and lifecycle', () => {
     expect(simulation.getState().projectiles.filter((shot) => shot.kind === 'heavyRifle')).toHaveLength(1);
   });
 
-  it('lets heavy rifle and rocket shots pass through a Tier-1 reward to enemies behind it', () => {
-    for (const kind of ['heavyRifle', 'rocket'] as const) {
-      const simulation = create();
-      const state = simulation.getState();
-      const x = state.streamRewards[0].x;
-      state.enemies = [{ id: 1, type: 'grunt', x, z: 7, hp: 3 }];
-      simulation.restoreState(state);
-      prepare(simulation, [projectile(1, kind, x)]);
-      step(simulation);
-      expect(simulation.getState().enemies).toEqual([]);
-      expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
-    }
+  it.each([
+    { tier: 1, kind: 'heavyRifle' },
+    { tier: 1, kind: 'rocket' },
+    { tier: 2, kind: 'rifle' },
+    { tier: 2, kind: 'rocket' },
+  ] as const)('lets $kind pass a Tier-$tier reward and hit the enemy behind it', ({ tier, kind }) => {
+    const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
+      spacing: 1, spawnAheadDistance: 8 } };
+    const simulation = create(compact);
+    const state = simulation.getState();
+    const reward = state.streamRewards.find((target) => target.tier === tier)!;
+    state.streamRewards = [reward];
+    state.enemies = [{ id: 1, type: 'grunt', x: reward.x, z: reward.z + 1, hp: 3 }];
+    simulation.restoreState(state);
+    prepare(simulation, [projectile(1, kind, reward.x)]);
+    step(simulation);
+    const after = simulation.getState();
+    expect(after.streamRewards[0].hitProgress).toBe(0);
+    expect(after.enemies).toEqual([]);
+    expect(after.projectiles).toEqual([]);
+  });
+
+  it('keeps a mismatched shot in flight when no later target is hit', () => {
+    const simulation = create();
+    const state = simulation.getState();
+    state.enemies = [];
+    simulation.restoreState(state);
+    const x = state.streamRewards[0].x;
+    prepare(simulation, [projectile(1, 'heavyRifle', x)]);
+    step(simulation);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
+    expect(simulation.getState().projectiles).toMatchObject([
+      { id: 1, kind: 'heavyRifle', x, z: 10, remainingRange: 30 },
+    ]);
+  });
+
+  it.each([
+    { tier: 1, kind: 'rifle' },
+    { tier: 2, kind: 'heavyRifle' },
+  ] as const)('counts and consumes a matching $kind shot at Tier-$tier reward', ({ tier, kind }) => {
+    const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
+      spacing: 1, spawnAheadDistance: 8 } };
+    const simulation = create(compact);
+    const state = simulation.getState();
+    const reward = state.streamRewards.find((target) => target.tier === tier)!;
+    state.streamRewards = [reward];
+    state.enemies = [{ id: 1, type: 'grunt', x: reward.x, z: reward.z + 1, hp: 3 }];
+    simulation.restoreState(state);
+    prepare(simulation, [projectile(1, kind, reward.x)]);
+    step(simulation);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
+    expect(simulation.getState().projectiles).toEqual([]);
+    expect(simulation.getState().enemies[0].hp).toBe(3);
   });
 
   it('uses the nearest eligible enemy, reward, or generic gate', () => {
@@ -217,21 +258,6 @@ describe('matching-tier reward combat and lifecycle', () => {
     step(simulation);
     expect(simulation.getState().streamRewards).toEqual([]);
     expect(simulation.getState().squad).toEqual({ count: 2, tier2RifleCount: 1, rocketCount: 0 });
-  });
-
-  it('lets a rifle pass through a Tier-2 reward without blocking the enemy behind it', () => {
-    const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
-      spacing: 1, spawnAheadDistance: 8 } };
-    const simulation = create(compact);
-    const state = simulation.getState();
-    const tier2 = state.streamRewards.find((reward) => reward.tier === 2)!;
-    state.streamRewards = [tier2];
-    state.enemies = [{ id: 1, type: 'grunt', x: tier2.x, z: tier2.z + 1, hp: 3 }];
-    simulation.restoreState(state);
-    prepare(simulation, [projectile(1, 'rifle', tier2.x)]);
-    step(simulation);
-    expect(simulation.getState().streamRewards[0].hitProgress).toBe(0);
-    expect(simulation.getState().enemies).toEqual([]);
   });
 
   it('unlocks a target only once when extra same-tick shots cross its former position', () => {

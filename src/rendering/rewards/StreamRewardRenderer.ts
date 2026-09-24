@@ -10,8 +10,14 @@ interface RewardVisual {
 export class StreamRewardRenderer {
   private readonly panelGeometry = new THREE.BoxGeometry(0.65, 1.25, 0.22);
   private readonly labelGeometry = new THREE.PlaneGeometry(0.82, 0.9);
-  private readonly tier1Material = new THREE.MeshBasicMaterial({ color: '#1ac1ed' });
-  private readonly tier2Material = new THREE.MeshBasicMaterial({ color: '#edc242' });
+  // The panel sits across the firing lane. Blend it over tracers so shots that
+  // ignore this reward tier remain visible as they travel through the plaque.
+  private readonly tier1Material = new THREE.MeshBasicMaterial({
+    color: '#1ac1ed', transparent: true, opacity: 0.55, depthWrite: false,
+  });
+  private readonly tier2Material = new THREE.MeshBasicMaterial({
+    color: '#edc242', transparent: true, opacity: 0.55, depthWrite: false,
+  });
   private readonly visuals = new Map<number, RewardVisual>();
 
   constructor(private readonly scene: THREE.Scene) {}

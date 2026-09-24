@@ -15,6 +15,13 @@ describe('StreamRewardRenderer', () => {
     const [blue, gold] = scene.children as THREE.Mesh[];
     expect((blue.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('1ac1ed');
     expect((gold.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('edc242');
+    for (const panel of [blue, gold]) {
+      const material = panel.material as THREE.MeshBasicMaterial;
+      expect(material.transparent).toBe(true);
+      expect(material.opacity).toBeGreaterThan(0);
+      expect(material.opacity).toBeLessThan(1);
+      expect(material.depthWrite).toBe(false);
+    }
     expect(blue.position.x).toBe(0.6);
     expect(gold.scale.x).toBeGreaterThan(blue.scale.x);
     const geometryDispose = vi.spyOn(blue.geometry, 'dispose');
