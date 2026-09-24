@@ -105,7 +105,7 @@ export class GameRenderer {
     }
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
-    this.streamRewardRenderer.update(state.streamRewards);
+    this.streamRewardRenderer.update(state.streamRewards, nowMs);
     this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);

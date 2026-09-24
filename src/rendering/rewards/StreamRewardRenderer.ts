@@ -9,6 +9,7 @@ interface RewardVisual {
 }
 
 const PULSE_MS = 100;
+const POP_MS = 190;
 
 export class StreamRewardRenderer {
   private readonly panelGeometry = new THREE.BoxGeometry(0.65, 1.25, 0.22);
@@ -22,6 +23,8 @@ export class StreamRewardRenderer {
     color: '#edc242', transparent: true, opacity: 0.55, depthWrite: false,
   });
   private readonly visuals = new Map<number, RewardVisual>();
+  private readonly pops: { panel: RewardVisual['panel']; startedAtMs: number; baseScale: number;
+    startY: number }[] = [];
 
   constructor(private readonly scene: THREE.Scene) {}
 
@@ -29,8 +32,21 @@ export class StreamRewardRenderer {
     const active = new Set(rewards.map((reward) => reward.id));
     for (const [id, visual] of this.visuals) {
       if (!active.has(id)) {
-        this.remove(visual);
+        this.removeLabel(visual);
+        this.pops.push({ panel: visual.panel, startedAtMs: nowMs,
+          baseScale: visual.panel.scale.x, startY: visual.panel.position.y });
         this.visuals.delete(id);
+      }
+    }
+    for (let index = this.pops.length - 1; index >= 0; index--) {
+      const pop = this.pops[index];
+      const progress = Math.max(0, (nowMs - pop.startedAtMs) / POP_MS);
+      if (progress >= 1) {
+        this.scene.remove(pop.panel);
+        this.pops.splice(index, 1);
+      } else {
+        pop.panel.scale.setScalar(pop.baseScale * (1 + 0.75 * progress));
+        pop.panel.position.y = pop.startY + 0.25 * progress;
       }
     }
     for (const reward of rewards) {
@@ -67,6 +83,8 @@ export class StreamRewardRenderer {
   reset(): void {
     for (const visual of this.visuals.values()) this.remove(visual);
     this.visuals.clear();
+    for (const pop of this.pops) this.scene.remove(pop.panel);
+    this.pops.length = 0;
   }
 
   dispose(): void {

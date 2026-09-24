@@ -51,7 +51,9 @@ describe('StreamRewardRenderer', () => {
     renderer.update([{ ...tier1, z: 30, hitProgress: 1 }, tier2]);
     expect(scene.children[0]).toBe(blue);
     expect(blue.position.z).toBe(30);
-    renderer.update([]);
+    renderer.update([], 1000);
+    expect(scene.children).toHaveLength(2);
+    renderer.update([], 1200);
     expect(scene.children).toHaveLength(0);
     renderer.dispose();
     expect(geometryDispose).toHaveBeenCalledOnce();
@@ -77,5 +79,31 @@ describe('StreamRewardRenderer', () => {
     expect(textureDispose).toHaveBeenCalledOnce();
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
+  });
+
+  it('removes the label immediately and briefly pops the colored panel on disappearance', () => {
+    vi.stubGlobal('document', { createElement: () => ({ width: 0, height: 0,
+      getContext: () => ({ fillText: vi.fn() }) }) });
+    const scene = new THREE.Scene();
+    const renderer = new StreamRewardRenderer(scene);
+    const reward = { id: 8, tier: 2 as const, x: 2.2, z: 18,
+      hitProgress: 3, hitsRequired: 10 };
+    renderer.update([reward], 100);
+    const panel = scene.children[0] as THREE.Mesh;
+    const label = scene.children[1] as THREE.Mesh;
+    renderer.update([], 110);
+    expect(scene.children).toEqual([panel]);
+    expect(scene.children).not.toContain(label);
+    const initialScale = panel.scale.x;
+    renderer.update([], 200);
+    expect(panel.scale.x).toBeGreaterThan(initialScale);
+    expect(panel.position.y).toBeGreaterThan(0.7);
+    renderer.update([], 310);
+    expect(scene.children).toHaveLength(0);
+    renderer.update([reward], 400);
+    renderer.update([], 401);
+    renderer.reset();
+    expect(scene.children).toHaveLength(0);
+    renderer.dispose();
   });
 });

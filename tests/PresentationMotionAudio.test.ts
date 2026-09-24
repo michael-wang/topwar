@@ -14,8 +14,9 @@ describe('presentation-only motion', () => {
       tier2RifleCount: 0, formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state, 100);
-    const positions = scene.children.map((member) => [member.position.x, member.position.z]);
-    const soldier = scene.children[0] as THREE.Group;
+    const soldiers = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
+    const positions = soldiers.map((member) => [member.position.x, member.position.z]);
+    const soldier = soldiers[0];
     expect(soldier.children).toHaveLength(9);
     const legs = [soldier.children[4], soldier.children[5]];
     const legRotations = legs.map((leg) => leg.rotation.x);
@@ -23,8 +24,8 @@ describe('presentation-only motion', () => {
     const arms = [soldier.children[2], soldier.children[3]];
     const restingZ = rifle.position.z;
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 4 }] }, 400);
-    expect(scene.children.map((member) => [member.position.x, member.position.z])).toEqual(positions);
-    expect(scene.children.every((member) => member.position.y === 0)).toBe(true);
+    expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
+    expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
     expect(legs.map((leg) => leg.rotation.x)).toEqual(legRotations);
     expect(rifle.position.z).toBeLessThan(restingZ);
     expect(arms[0].rotation.x).toBeGreaterThan(-0.78);

@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
+import { DeathBurst } from './DeathBurst';
 
 const HIT_FLASH_MS = 80;
 const DEATH_MS = 450;
 const MAX_DEATH_VISUALS = 48;
+const IMPACT_MS = 90;
 const PARTS = ['torso', 'head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const;
 const TIERS = ['grunt', 'brute', 'tier3'] as const;
 type Part = typeof PARTS[number];
@@ -46,6 +48,7 @@ export class EnemyRenderer {
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
   private readonly deathVisuals: DeathVisual[] = [];
+  private readonly deathBurst: DeathBurst;
   private readonly capacity: Record<Tier, number> = { grunt: 1, brute: 1, tier3: 1 };
   private readonly meshes: Record<Tier, TierMeshes>;
 
@@ -53,6 +56,7 @@ export class EnemyRenderer {
     this.meshes = { grunt: this.createTier('grunt', 1), brute: this.createTier('brute', 1),
       tier3: this.createTier('tier3', 1) };
     for (const tier of TIERS) this.scene.add(...Object.values(this.meshes[tier]));
+    this.deathBurst = new DeathBurst(scene);
   }
 
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now()): void {
@@ -70,6 +74,7 @@ export class EnemyRenderer {
     }
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
     this.updateDeaths(nowMs);
+    this.deathBurst.update(nowMs);
 
     const counts: Record<Tier, number> = { grunt: 0, brute: 0, tier3: 0 };
     for (const enemy of enemies) counts[enemy.type]++;
@@ -105,6 +110,7 @@ export class EnemyRenderer {
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
     for (const visual of this.deathVisuals) visual.group.visible = false;
+    this.deathBurst.reset();
   }
 
   dispose(): void {
@@ -118,6 +124,7 @@ export class EnemyRenderer {
     this.deathVisuals.length = 0;
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
+    this.deathBurst.dispose();
     for (const geometry of [this.torsoGeometry, this.headGeometry, this.armGeometry, this.legGeometry]) geometry.dispose();
     for (const material of [this.gruntMaterial, this.bruteMaterial, this.tier3Material,
       this.deathBodyMaterial, this.deathHeadMaterial]) material.dispose();
@@ -148,6 +155,7 @@ export class EnemyRenderer {
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {
+    this.deathBurst.spawn(enemy, nowMs);
     let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
@@ -173,7 +181,7 @@ export class EnemyRenderer {
     visual.startedAtMs = nowMs;
     visual.startZ = enemy.z;
     visual.group.visible = true;
-    visual.group.scale.setScalar(1);
+    visual.group.scale.setScalar(1.15);
     visual.group.position.set(-enemy.x, 0, enemy.z);
     visual.group.rotation.set(0, 0, 0);
   }
@@ -187,6 +195,7 @@ export class EnemyRenderer {
         continue;
       }
       const progress = Math.max(0, elapsed / DEATH_MS);
+      visual.group.scale.setScalar(1 + 0.15 * Math.max(0, 1 - elapsed / IMPACT_MS));
       visual.group.rotation.x = Math.PI * progress;
       visual.group.position.y = Math.sin(Math.PI * progress) * 0.35;
       visual.group.position.z = visual.startZ + progress * 0.5;

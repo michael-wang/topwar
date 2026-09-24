@@ -41,7 +41,7 @@ The player must notice a side target, steer, and spend fire on it while the full
 
 ## Presentation and feel
 
-Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward, reward hits pulse, and player damage flashes the screen red. Audio intentionally plays only a reward-acquisition chime and throttled enemy-death yelps.
+Players and enemies use primitive humanoid silhouettes. Player soldiers hold a planted firing pose with recoil and a small muzzle flash; enemies visually walk while remaining stationary in simulation. Enemy hits flash yellow, deaths turn gray and flip backward with a brief tier-colored burst, reward hits pulse, removed rewards pop, newly recruited soldiers pop in, Tier-2 upgrades pulse with a ground ring, and player damage flashes the screen red. Audio intentionally plays only a reward-acquisition chime and throttled enemy-death yelps.
 
 The next product pass focuses on the payoff of repeated actions: **enemy kill, reward acquisition, and player Tier-up**. Prove that a few seconds of shooting and destroying enemies feels satisfying before widening progression.
 

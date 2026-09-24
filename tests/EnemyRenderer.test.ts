@@ -136,11 +136,15 @@ describe('EnemyRenderer instanced humanoids', () => {
     const deaths = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     expect(deaths).toHaveLength(3);
     expect(deaths[0].children).toHaveLength(6);
-    expect(deaths[1].scale.x).toBe(1);
-    expect(deaths[2].scale.x).toBe(1);
+    expect(deaths[0].scale.x).toBeGreaterThan(1);
+    expect(deaths[1].scale.x).toBe(deaths[0].scale.x);
+    expect(deaths[2].scale.x).toBe(deaths[0].scale.x);
     const grayMaterial = (deaths[0].children[0] as THREE.Mesh).material as THREE.Material;
     const disposeGray = vi.spyOn(grayMaterial, 'dispose');
     renderer.update([], 225);
+    expect(deaths[0].scale.x).toBe(1);
+    expect(deaths[1].scale.x).toBe(1);
+    expect(deaths[2].scale.x).toBe(1);
     expect(deaths[0].rotation.x).toBeGreaterThan(1);
     expect(deaths[0].position.z).toBeGreaterThan(1);
     expect(deaths[0].position.y).toBeGreaterThan(0);
