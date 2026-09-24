@@ -2,6 +2,7 @@ import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
+import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
 import { afterCasualties } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
@@ -121,20 +122,23 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     const offsets = createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
       stream.spacing, stream.jitter, stream.seed);
     const { startRow, fullRow } = stream.bruteRamp;
-    const bruteCount = cursor.nextRowIndex < startRow ? 0
-      : cursor.nextRowIndex >= fullRow ? stream.columns
-        : 1 + Math.floor((cursor.nextRowIndex - startRow) / (fullRow - startRow) * (stream.columns - 1));
-    // Change only roles: authored geometry and ID order stay identical throughout the ramp.
-    const centerOutColumns = offsets.map((_, index) => index)
-      .sort((a, b) => Math.abs(offsets[a].x) - Math.abs(offsets[b].x) || a - b);
-    const bruteColumns = new Set(centerOutColumns.slice(0, bruteCount));
+    const rowIndex = cursor.nextRowIndex;
+    const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
+    let revealColumn = 0;
+    if (rowIndex === startRow) {
+      for (let column = 1; column < offsets.length; column++) {
+        if (Math.abs(offsets[column].x) < Math.abs(offsets[revealColumn].x)) revealColumn = column;
+      }
+    }
     for (let column = 0; column < offsets.length; column++) {
       const offset = offsets[column];
       const z = rowZ + offset.z;
       if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
         throw new Error('Simulation enemy stream produces a non-finite position');
       }
-      const isBrute = bruteColumns.has(column);
+      const isBrute = rowIndex === startRow ? column === revealColumn
+        : rowIndex >= fullRow || (probability > 0
+          && tier2RollForSlot(stream.seed, rowIndex, column) < probability);
       enemies.push({ id: cursor.nextEnemyId++, type: isBrute ? 'brute' : stream.enemy,
         x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
     }

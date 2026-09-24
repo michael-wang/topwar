@@ -16,6 +16,6 @@
     "spacing": 0.60,
     "jitter": 0.16,
     "seed": 104729,
-    "bruteRamp": { "startRow": 96, "fullRow": 160 }
+    "bruteRamp": { "startRow": 96, "fullRow": 480 }
   }
 }

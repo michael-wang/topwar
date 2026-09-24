@@ -23,48 +23,74 @@ const advance = (simulation: Simulation, dt = 1, forwardSpeed = 1) =>
 
 describe('deterministic endless enemy stream', () => {
   const rampLevel: LevelDefinition = { ...authored,
-    enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 200 } };
+    enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 340 } };
   const rampState = create(rampLevel, 1).getState();
-  const row = (index: number) => rampState.enemies.filter((enemy) =>
-    enemy.id >= index * 7 + 1 && enemy.id <= (index + 1) * 7);
+  const row = (index: number) => rampState.enemies.slice(index * 7, (index + 1) * 7);
 
-  it('keeps seven original positions per row while Tier-2 rises monotonically to full saturation', () => {
+  it('keeps seven original positions and IDs per row while the long ramp eventually saturates', () => {
     const stream = authored.enemyStream!;
     expect(row(95).filter((enemy) => enemy.type === 'brute')).toHaveLength(0);
     expect(row(96).filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
-    let previousCount = 0;
-    for (let index = 96; index <= 160; index++) {
+    for (const index of [95, 96, 97, 160, 288, 384, 479, 480, 520]) {
       const enemies = row(index);
-      const count = enemies.filter((enemy) => enemy.type === 'brute').length;
       expect(enemies).toHaveLength(7);
-      expect(count).toBeGreaterThanOrEqual(previousCount);
-      previousCount = count;
       const offsets = createEnemyStreamRow(index, stream.columns, stream.spacing,
         stream.jitter, stream.seed);
       expect(enemies.map(({ x, z }) => ({ x, z }))).toEqual(offsets.map((offset) =>
         ({ x: offset.x, z: stream.startZ + index * stream.spacing + offset.z })));
+      expect(enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 7 }, (_, column) =>
+        index * 7 + column + 1));
     }
-    for (const [index, count] of [[96, 1], [107, 2], [128, 4], [149, 5], [159, 6],
-      [160, 7], [161, 7], [250, 7]] as const) {
-      expect(row(index).filter((enemy) => enemy.type === 'brute')).toHaveLength(count);
+    for (let index = 480; index <= 520; index++) {
+      expect(row(index).every((enemy) => enemy.type === 'brute')).toBe(true);
     }
     expect(rampState.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 3))).toBe(true);
   });
 
-  it('selects center-out roles with stable ties, without changing row IDs or geometry', () => {
+  it('keeps the first reveal center-most, then scatters brutes instead of forming bands', () => {
     const stream = authored.enemyStream!;
-    for (const index of [96, 128, 159, 160]) {
-      const enemies = row(index);
-      const count = enemies.filter((enemy) => enemy.type === 'brute').length;
-      const centerFirst = enemies.map((enemy, column) => ({ column, x: enemy.x }))
-        .sort((a, b) => Math.abs(a.x) - Math.abs(b.x) || a.column - b.column)
-        .slice(0, count).map(({ column }) => column);
-      expect(enemies.flatMap((enemy, column) => enemy.type === 'brute' ? [column] : [])
-        .sort((a, b) => a - b)).toEqual(centerFirst.sort((a, b) => a - b));
-      expect(enemies.map((enemy) => enemy.id)).toEqual(Array.from({ length: 7 }, (_, column) =>
-        index * stream.columns + column + 1));
-    }
+    const reveal = row(96);
+    const nearest = reveal.reduce((best, enemy, column) =>
+      Math.abs(enemy.x) < Math.abs(reveal[best].x) ? column : best, 0);
+    expect(reveal[nearest].type).toBe('brute');
+    expect(reveal.filter((enemy) => enemy.type === 'brute')).toHaveLength(1);
+    expect(reveal[nearest].z).toBeCloseTo(stream.startZ + 96 * stream.spacing, 0);
+    const counts = Array.from({ length: 384 }, (_, offset) => row(96 + offset)
+      .filter((enemy) => enemy.type === 'brute').length);
+    expect(counts.slice(1, 40)).toContain(0);
+    expect(counts.some((count, index) => index > 0 && count < counts[index - 1])).toBe(true);
     expect(create(rampLevel, 1).getState().enemies).toEqual(rampState.enemies);
+  });
+
+  it('raises the statistical brute share across broad bands without per-row monotonicity', () => {
+    const ratio = (start: number, end: number) => {
+      let brutes = 0;
+      for (let index = start; index <= end; index++) {
+        brutes += row(index).filter((enemy) => enemy.type === 'brute').length;
+      }
+      return brutes / ((end - start + 1) * 7);
+    };
+    const early = ratio(97, 160);
+    const middle = ratio(250, 320);
+    const late = ratio(400, 479);
+    expect(early).toBeLessThan(0.2);
+    expect(middle).toBeGreaterThan(0.3);
+    expect(middle).toBeLessThan(0.7);
+    expect(late).toBeGreaterThan(0.7);
+    expect(early).toBeLessThan(middle);
+    expect(middle).toBeLessThan(late);
+  });
+
+  it('repeats slot types for a seed and varies transition patterns with a new content seed', () => {
+    const alternate: LevelDefinition = { ...rampLevel,
+      enemyStream: { ...rampLevel.enemyStream!, seed: 104730 } };
+    const changed = create(alternate, 1).getState().enemies;
+    const types = (enemies: SimulationState['enemies']) => enemies.slice(250 * 7, 321 * 7)
+      .map((enemy) => enemy.type);
+    expect(types(changed)).not.toEqual(types(rampState.enemies));
+    expect(create(rampLevel, 1).getState().enemies).toEqual(rampState.enemies);
+    expect(create(alternate, 1).getState().enemies).toEqual(changed);
+    expect(rampState.rngState).toBe(17);
   });
 
   it('breaks equal-distance center ties by the lower column index', () => {

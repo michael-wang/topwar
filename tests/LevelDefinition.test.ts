@@ -23,7 +23,7 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
-      bruteRamp: { startRow: 96, fullRow: 160 } });
+      bruteRamp: { startRow: 96, fullRow: 480 } });
     expect(parsed.upgradeGates).toEqual([
       { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
@@ -80,10 +80,10 @@ describe('LevelDefinitionSchema', () => {
       enemyStream: withoutRamp })).toThrow(/bruteRamp/);
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream,
-        bruteRamp: { startRow: 96, fullRow: 160, chance: 0.5 } } })).toThrow(/chance/);
+        bruteRamp: { startRow: 96, fullRow: 480, chance: 0.5 } } })).toThrow(/chance/);
     for (const startRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
       expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 160 } } }))
+        enemyStream: { ...authoredLevel.enemyStream, bruteRamp: { startRow, fullRow: 480 } } }))
         .toThrow(/startRow/);
     }
     for (const fullRow of [-1, 96, 95, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
