@@ -1,13 +1,15 @@
 import type { ProjectileRenderState } from '../rendering/RenderState';
 
-export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'reward' | 'damage' | 'fatal';
+export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'reward' | 'damage' | 'fatal' | 'enemyDeath';
 
 // Visual/audio observation only. Projectile IDs may restart on Retry.
 export class AudioCueObserver {
   private lastSeenProjectileId = 0;
+  private previousEnemyIds = new Set<number>();
+  private nextDeathCueMs = -Infinity;
 
   observe(projectiles: readonly ProjectileRenderState[], previousDefense: number,
-    currentDefense: number): AudioCue[] {
+    currentDefense: number, enemies: readonly { id: number }[] = [], nowMs = performance.now()): AudioCue[] {
     const cues = new Set<AudioCue>();
     for (const projectile of projectiles) {
       if (projectile.id > this.lastSeenProjectileId) cues.add(projectile.kind);
@@ -15,10 +17,25 @@ export class AudioCueObserver {
     }
     if (currentDefense > previousDefense) cues.add('reward');
     if (currentDefense < previousDefense) cues.add(currentDefense === 0 ? 'fatal' : 'damage');
+    const currentEnemyIds = new Set(enemies.map((enemy) => enemy.id));
+    if (nowMs >= this.nextDeathCueMs) {
+      for (const id of this.previousEnemyIds) {
+        if (!currentEnemyIds.has(id)) {
+          cues.add('enemyDeath');
+          this.nextDeathCueMs = nowMs + 100;
+          break;
+        }
+      }
+    }
+    this.previousEnemyIds = currentEnemyIds;
     return [...cues];
   }
 
-  reset(): void { this.lastSeenProjectileId = 0; }
+  reset(): void {
+    this.lastSeenProjectileId = 0;
+    this.previousEnemyIds.clear();
+    this.nextDeathCueMs = -Infinity;
+  }
 }
 
 const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
@@ -29,6 +46,7 @@ const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
   reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
   damage: { from: 150, to: 70, seconds: 0.11, wave: 'triangle', volume: 0.11 },
   fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: 0.14 },
+  enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.055 },
 };
 
 export class GameAudio {
@@ -45,8 +63,8 @@ export class GameAudio {
   }
 
   observe(projectiles: readonly ProjectileRenderState[], previousDefense: number,
-    currentDefense: number): void {
-    for (const cue of this.observer.observe(projectiles, previousDefense, currentDefense)) this.play(cue);
+    currentDefense: number, enemies: readonly { id: number }[] = [], nowMs = performance.now()): void {
+    for (const cue of this.observer.observe(projectiles, previousDefense, currentDefense, enemies, nowMs)) this.play(cue);
   }
 
   resetObservation(): void { this.observer.reset(); }
@@ -65,6 +83,18 @@ export class GameAudio {
       gain.gain.setValueAtTime(shape.volume, start);
       gain.gain.exponentialRampToValueAtTime(0.001, start + shape.seconds);
       oscillator.connect(gain);
+      const overtone = cue === 'enemyDeath' ? context.createOscillator() : null;
+      if (overtone) {
+        overtone.type = 'triangle';
+        overtone.frequency.setValueAtTime(shape.from * 1.38, start);
+        overtone.frequency.exponentialRampToValueAtTime(shape.to * 1.18, start + shape.seconds);
+        overtone.connect(gain);
+        this.active.add(overtone);
+        overtone.onended = () => {
+          overtone.disconnect();
+          this.active.delete(overtone);
+        };
+      }
       gain.connect(this.master);
       oscillator.onended = () => {
         oscillator.disconnect();
@@ -74,6 +104,8 @@ export class GameAudio {
       this.active.add(oscillator);
       oscillator.start(start);
       oscillator.stop(start + shape.seconds);
+      overtone?.start(start);
+      overtone?.stop(start + shape.seconds);
     } catch {
       // Audio is optional presentation feedback.
     }

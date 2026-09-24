@@ -4,6 +4,10 @@ import type { EnemyRenderState } from '../RenderState';
 const HIT_FLASH_MS = 80;
 const DEATH_MS = 450;
 const MAX_DEATH_VISUALS = 48;
+const PARTS = ['torso', 'head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'] as const;
+type Part = typeof PARTS[number];
+type Tier = EnemyRenderState['type'];
+type TierMeshes = Record<Part, THREE.InstancedMesh>;
 
 interface DeathVisual {
   group: THREE.Group;
@@ -11,13 +15,21 @@ interface DeathVisual {
   startZ: number;
 }
 
+export function enemyWalkPose(id: number, nowMs: number): { leftArm: number; rightArm: number;
+  leftLeg: number; rightLeg: number; bob: number } {
+  const stride = Math.sin(nowMs * 0.014 + id * 2.399963229728653);
+  return { leftArm: stride * 0.45, rightArm: -stride * 0.45,
+    leftLeg: -stride * 0.40, rightLeg: stride * 0.40,
+    bob: Math.abs(stride) * 0.02 };
+}
+
 export class EnemyRenderer {
-  private readonly bodyGeometry = new THREE.CylinderGeometry(0.14, 0.21, 0.52, 8);
-  private readonly headGeometry = new THREE.SphereGeometry(0.18, 8, 6);
-  private readonly gruntBodyMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
-  private readonly gruntHeadMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
-  private readonly bruteBodyMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
-  private readonly bruteHeadMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly torsoGeometry = new THREE.BoxGeometry(0.31, 0.43, 0.23);
+  private readonly headGeometry = new THREE.SphereGeometry(0.17, 8, 6);
+  private readonly armGeometry = new THREE.BoxGeometry(0.10, 0.34, 0.11);
+  private readonly legGeometry = new THREE.BoxGeometry(0.12, 0.34, 0.13);
+  private readonly gruntMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
+  private readonly bruteMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
   private readonly deathBodyMaterial = new THREE.MeshStandardMaterial({ color: '#777b7c' });
   private readonly deathHeadMaterial = new THREE.MeshStandardMaterial({ color: '#a3a5a3' });
   private readonly gruntBodyColor = new THREE.Color('#c93332');
@@ -30,19 +42,12 @@ export class EnemyRenderer {
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
   private readonly deathVisuals: DeathVisual[] = [];
-  private gruntBody: THREE.InstancedMesh;
-  private gruntHead: THREE.InstancedMesh;
-  private bruteBody: THREE.InstancedMesh;
-  private bruteHead: THREE.InstancedMesh;
-  private gruntCapacity = 1;
-  private bruteCapacity = 1;
+  private readonly capacity: Record<Tier, number> = { grunt: 1, brute: 1 };
+  private readonly meshes: Record<Tier, TierMeshes>;
 
   constructor(private readonly scene: THREE.Scene) {
-    this.gruntBody = this.createMesh(this.bodyGeometry, this.gruntBodyMaterial, this.gruntCapacity);
-    this.gruntHead = this.createMesh(this.headGeometry, this.gruntHeadMaterial, this.gruntCapacity);
-    this.bruteBody = this.createMesh(this.bodyGeometry, this.bruteBodyMaterial, this.bruteCapacity);
-    this.bruteHead = this.createMesh(this.headGeometry, this.bruteHeadMaterial, this.bruteCapacity);
-    this.scene.add(this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead);
+    this.meshes = { grunt: this.createTier('grunt', 1), brute: this.createTier('brute', 1) };
+    this.scene.add(...Object.values(this.meshes.grunt), ...Object.values(this.meshes.brute));
   }
 
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now()): void {
@@ -64,36 +69,36 @@ export class EnemyRenderer {
     let gruntCount = 0;
     for (const enemy of enemies) if (enemy.type === 'grunt') gruntCount++;
     const bruteCount = enemies.length - gruntCount;
-    if (gruntCount > this.gruntCapacity) this.growGrunts(gruntCount);
-    if (bruteCount > this.bruteCapacity) this.growBrutes(bruteCount);
-    this.gruntBody.count = this.gruntHead.count = gruntCount;
-    this.bruteBody.count = this.bruteHead.count = bruteCount;
+    if (gruntCount > this.capacity.grunt) this.grow('grunt', gruntCount);
+    if (bruteCount > this.capacity.brute) this.grow('brute', bruteCount);
+    for (const part of PARTS) {
+      this.meshes.grunt[part].count = gruntCount;
+      this.meshes.brute[part].count = bruteCount;
+    }
     let gruntIndex = 0;
     let bruteIndex = 0;
     for (const enemy of enemies) {
       const isBrute = enemy.type === 'brute';
       const index = isBrute ? bruteIndex++ : gruntIndex++;
-      const body = isBrute ? this.bruteBody : this.gruntBody;
-      const head = isBrute ? this.bruteHead : this.gruntHead;
+      const meshes = this.meshes[enemy.type];
       const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
       if (!flashing) this.flashUntilMs.delete(enemy.id);
-      body.setColorAt(index, flashing ? this.flashBodyColor
-        : isBrute ? this.bruteBodyColor : this.gruntBodyColor);
-      head.setColorAt(index, flashing ? this.flashHeadColor
-        : isBrute ? this.bruteHeadColor : this.gruntHeadColor);
+      const bodyColor = flashing ? this.flashBodyColor : isBrute ? this.bruteBodyColor : this.gruntBodyColor;
+      const headColor = flashing ? this.flashHeadColor : isBrute ? this.bruteHeadColor : this.gruntHeadColor;
+      const pose = enemyWalkPose(enemy.id, nowMs);
       const scale = isBrute ? 1.9 : 1;
-      this.transform.scale.setScalar(scale);
-      // Match the squad's visual X flip for the camera that looks along +Z.
-      this.transform.position.set(-enemy.x, 0.32 * scale, enemy.z);
-      this.transform.updateMatrix();
-      body.setMatrixAt(index, this.transform.matrix);
-      this.transform.position.y = 0.75 * scale;
-      this.transform.updateMatrix();
-      head.setMatrixAt(index, this.transform.matrix);
+      for (const part of PARTS) {
+        const mesh = meshes[part];
+        mesh.setColorAt(index, part === 'head' ? headColor : bodyColor);
+        this.setPartMatrix(mesh, index, part, enemy, pose, scale);
+      }
     }
-    for (const mesh of [this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead]) {
-      mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    for (const tier of ['grunt', 'brute'] as const) {
+      for (const part of PARTS) {
+        const mesh = this.meshes[tier][part];
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      }
     }
   }
 
@@ -104,31 +109,62 @@ export class EnemyRenderer {
   }
 
   dispose(): void {
-    this.scene.remove(this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead);
+    for (const tier of ['grunt', 'brute'] as const) {
+      for (const mesh of Object.values(this.meshes[tier])) {
+        this.scene.remove(mesh);
+        mesh.dispose();
+      }
+    }
     for (const visual of this.deathVisuals) this.scene.remove(visual.group);
     this.deathVisuals.length = 0;
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
-    for (const mesh of [this.gruntBody, this.gruntHead, this.bruteBody, this.bruteHead]) mesh.dispose();
-    this.bodyGeometry.dispose();
-    this.headGeometry.dispose();
-    this.gruntBodyMaterial.dispose();
-    this.gruntHeadMaterial.dispose();
-    this.bruteBodyMaterial.dispose();
-    this.bruteHeadMaterial.dispose();
-    this.deathBodyMaterial.dispose();
-    this.deathHeadMaterial.dispose();
+    for (const geometry of [this.torsoGeometry, this.headGeometry, this.armGeometry, this.legGeometry]) geometry.dispose();
+    for (const material of [this.gruntMaterial, this.bruteMaterial,
+      this.deathBodyMaterial, this.deathHeadMaterial]) material.dispose();
+  }
+
+  private setPartMatrix(mesh: THREE.InstancedMesh, index: number, part: Part,
+    enemy: EnemyRenderState, pose: ReturnType<typeof enemyWalkPose>, scale: number): void {
+    const transform = this.transform;
+    transform.scale.setScalar(scale);
+    transform.rotation.set(0, 0, 0);
+    const x = -enemy.x;
+    const y = pose.bob;
+    const z = enemy.z;
+    switch (part) {
+      case 'torso': transform.position.set(x, (0.53 + y) * scale, z); break;
+      case 'head': transform.position.set(x, (0.90 + y) * scale, z - 0.065 * scale); break;
+      case 'leftArm': transform.position.set(x - 0.23 * scale, (0.51 + y) * scale, z);
+        transform.rotation.x = pose.leftArm; break;
+      case 'rightArm': transform.position.set(x + 0.23 * scale, (0.51 + y) * scale, z);
+        transform.rotation.x = pose.rightArm; break;
+      case 'leftLeg': transform.position.set(x - 0.10 * scale, (0.17 + y) * scale, z);
+        transform.rotation.x = pose.leftLeg; break;
+      case 'rightLeg': transform.position.set(x + 0.10 * scale, (0.17 + y) * scale, z);
+        transform.rotation.x = pose.rightLeg; break;
+    }
+    transform.updateMatrix();
+    mesh.setMatrixAt(index, transform.matrix);
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {
     let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
-      const body = new THREE.Mesh(this.bodyGeometry, this.deathBodyMaterial);
-      body.position.y = 0.32;
-      const head = new THREE.Mesh(this.headGeometry, this.deathHeadMaterial);
-      head.position.y = 0.75;
-      group.add(body, head);
+      for (const part of PARTS) {
+        const mesh = new THREE.Mesh(this.geometryFor(part),
+          part === 'head' ? this.deathHeadMaterial : this.deathBodyMaterial);
+        switch (part) {
+          case 'torso': mesh.position.y = 0.53; break;
+          case 'head': mesh.position.set(0, 0.90, -0.065); break;
+          case 'leftArm': mesh.position.set(-0.23, 0.51, 0); break;
+          case 'rightArm': mesh.position.set(0.23, 0.51, 0); break;
+          case 'leftLeg': mesh.position.set(-0.10, 0.17, 0); break;
+          case 'rightLeg': mesh.position.set(0.10, 0.17, 0); break;
+        }
+        group.add(mesh);
+      }
       this.scene.add(group);
       visual = { group, startedAtMs: nowMs, startZ: enemy.z };
       this.deathVisuals.push(visual);
@@ -158,31 +194,34 @@ export class EnemyRenderer {
     }
   }
 
-  private createMesh(geometry: THREE.BufferGeometry, material: THREE.Material, capacity: number): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(geometry, material, capacity);
-    mesh.count = 0;
-    mesh.frustumCulled = false;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    return mesh;
+  private geometryFor(part: Part): THREE.BufferGeometry {
+    if (part === 'head') return this.headGeometry;
+    if (part === 'torso') return this.torsoGeometry;
+    if (part === 'leftArm' || part === 'rightArm') return this.armGeometry;
+    return this.legGeometry;
   }
 
-  private growGrunts(required: number): void {
-    while (this.gruntCapacity < required) this.gruntCapacity *= 2;
-    this.scene.remove(this.gruntBody, this.gruntHead);
-    this.gruntBody.dispose();
-    this.gruntHead.dispose();
-    this.gruntBody = this.createMesh(this.bodyGeometry, this.gruntBodyMaterial, this.gruntCapacity);
-    this.gruntHead = this.createMesh(this.headGeometry, this.gruntHeadMaterial, this.gruntCapacity);
-    this.scene.add(this.gruntBody, this.gruntHead);
+  private createTier(tier: Tier, capacity: number): TierMeshes {
+    const material = tier === 'grunt' ? this.gruntMaterial : this.bruteMaterial;
+    const result = {} as TierMeshes;
+    for (const part of PARTS) {
+      const mesh = new THREE.InstancedMesh(this.geometryFor(part), material, capacity);
+      mesh.name = `${tier}-${part}`;
+      mesh.count = 0;
+      mesh.frustumCulled = false;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      result[part] = mesh;
+    }
+    return result;
   }
 
-  private growBrutes(required: number): void {
-    while (this.bruteCapacity < required) this.bruteCapacity *= 2;
-    this.scene.remove(this.bruteBody, this.bruteHead);
-    this.bruteBody.dispose();
-    this.bruteHead.dispose();
-    this.bruteBody = this.createMesh(this.bodyGeometry, this.bruteBodyMaterial, this.bruteCapacity);
-    this.bruteHead = this.createMesh(this.headGeometry, this.bruteHeadMaterial, this.bruteCapacity);
-    this.scene.add(this.bruteBody, this.bruteHead);
+  private grow(tier: Tier, required: number): void {
+    while (this.capacity[tier] < required) this.capacity[tier] *= 2;
+    for (const mesh of Object.values(this.meshes[tier])) {
+      this.scene.remove(mesh);
+      mesh.dispose();
+    }
+    this.meshes[tier] = this.createTier(tier, this.capacity[tier]);
+    this.scene.add(...Object.values(this.meshes[tier]));
   }
 }

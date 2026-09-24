@@ -12,12 +12,14 @@ describe('rocket specialist rendering', () => {
     renderer.update(state);
     expect(scene.children).toHaveLength(2);
     const [rifle, rocket] = scene.children as THREE.Group[];
-    expect(rifle.children[2].visible).toBe(false);
-    expect(rocket.children[2].visible).toBe(true);
+    expect(rifle.children[7].visible).toBe(false);
+    expect(rocket.children[7].visible).toBe(true);
+    expect(rifle.children[6].visible).toBe(true);
+    expect(rocket.children[6].visible).toBe(false);
     renderer.update({ ...state, squad: { count: 1, rocketCount: 1, tier2RifleCount: 0, formationSpacing: 0.45 } });
     expect(scene.children).toEqual([rifle, rocket]);
     expect(rifle.visible).toBe(true);
-    expect(rifle.children[2].visible).toBe(true);
+    expect(rifle.children[7].visible).toBe(true);
     expect(rocket.visible).toBe(false);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
@@ -56,7 +58,7 @@ describe('rocket specialist rendering', () => {
     expect(scene.children).toHaveLength(3);
     expect([rifle.scale.x, heavy.scale.x, rocket.scale.x]).toEqual([1, 1.85, 1]);
     expect((heavy.children[0] as THREE.Mesh).material).not.toBe((rifle.children[0] as THREE.Mesh).material);
-    expect([rifle.children[2].visible, heavy.children[2].visible, rocket.children[2].visible])
+    expect([rifle.children[7].visible, heavy.children[7].visible, rocket.children[7].visible])
       .toEqual([false, false, true]);
     renderer.update({ ...state, squad: { count: 1, rocketCount: 0, tier2RifleCount: 1,
       formationSpacing: 0.45 } });

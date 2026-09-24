@@ -1,153 +1,124 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
+import { EnemyRenderer, enemyWalkPose } from '../src/rendering/enemies/EnemyRenderer';
 import type { EnemyRenderState } from '../src/rendering/RenderState';
 
-const enemies: EnemyRenderState[] = Array.from({ length: 240 }, (_, index) => ({
-  id: index + 1, type: 'grunt', x: index === 0 ? 1 : 0, z: index, hp: 3,
-}));
+const grunt = (id: number): EnemyRenderState => ({ id, type: 'grunt', x: 1, z: id, hp: 3 });
+const brute = (id: number): EnemyRenderState => ({ id, type: 'brute', x: -1, z: id, hp: 300 });
+const meshes = (scene: THREE.Scene) => scene.children.filter(
+  (child): child is THREE.InstancedMesh => child instanceof THREE.InstancedMesh);
+const named = (scene: THREE.Scene, name: string) => meshes(scene).find((mesh) => mesh.name === name)!;
 
-const activeMeshes = (scene: THREE.Scene): THREE.InstancedMesh[] =>
-  scene.children.filter((child): child is THREE.InstancedMesh => (child as THREE.InstancedMesh).isInstancedMesh);
-
-describe('EnemyRenderer instancing', () => {
-  it('flashes only damaged instances and restores normal colors after 80ms', () => {
+describe('EnemyRenderer instanced humanoids', () => {
+  it('keeps six shared instanced parts per tier and grows brute capacity', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene);
-    const pair: EnemyRenderState[] = [enemies[0], { id: 500, type: 'brute', x: 0, z: 5, hp: 300 }];
-    const color = new THREE.Color();
-    renderer.update(pair, 1000);
-    const [gruntBody, , bruteBody] = activeMeshes(scene);
-    gruntBody.getColorAt(0, color);
-    expect(color.getHexString()).toBe('c93332');
-    renderer.update([{ ...pair[0], hp: 2 }, pair[1]], 1001);
-    gruntBody.getColorAt(0, color);
-    expect(color.getHexString()).toBe('ffe36e');
-    bruteBody.getColorAt(0, color);
-    expect(color.getHexString()).toBe('761a22');
-    renderer.update([{ ...pair[0], hp: 2 }, pair[1]], 1050);
-    gruntBody.getColorAt(0, color);
-    expect(color.getHexString()).toBe('ffe36e');
-    renderer.update([{ ...pair[0], hp: 2 }, { ...pair[1], hp: 299 }], 1082);
-    gruntBody.getColorAt(0, color);
-    expect(color.getHexString()).toBe('c93332');
-    bruteBody.getColorAt(0, color);
-    expect(color.getHexString()).toBe('ffe36e');
+    expect(meshes(scene)).toHaveLength(12);
+    renderer.update([grunt(1), brute(2)], 0);
+    const gruntMatrix = new THREE.Matrix4();
+    const bruteMatrix = new THREE.Matrix4();
+    named(scene, 'grunt-torso').getMatrixAt(0, gruntMatrix);
+    named(scene, 'brute-torso').getMatrixAt(0, bruteMatrix);
+    expect(bruteMatrix.elements[0]).toBeCloseTo(1.9);
+    expect(gruntMatrix.elements[0]).toBeCloseTo(1);
+    const bruteColor = new THREE.Color();
+    named(scene, 'brute-torso').getColorAt(0, bruteColor);
+    expect(bruteColor.getHexString()).toBe('761a22');
+    for (const tier of ['grunt', 'brute']) {
+      for (const part of ['torso', 'head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg']) {
+        expect(named(scene, `${tier}-${part}`).count).toBe(1);
+      }
+    }
+    const many = Array.from({ length: 900 }, (_, index) => brute(index + 1));
+    const oldBruteLeg = named(scene, 'brute-leftLeg');
+    const disposeOldBruteLeg = vi.spyOn(oldBruteLeg, 'dispose');
+    renderer.update(many, 100);
+    expect(disposeOldBruteLeg).toHaveBeenCalledOnce();
+    expect(meshes(scene)).toHaveLength(12);
+    expect(named(scene, 'brute-leftLeg').count).toBe(900);
+    expect(named(scene, 'brute-leftLeg').instanceMatrix.count).toBeGreaterThanOrEqual(900);
+    expect(named(scene, 'grunt-torso').count).toBe(0);
+    const currentLeg = named(scene, 'brute-leftLeg');
+    const disposeCurrentLeg = vi.spyOn(currentLeg, 'dispose');
+    const disposeGeometry = vi.spyOn(currentLeg.geometry, 'dispose');
+    const disposeMaterial = vi.spyOn(currentLeg.material as THREE.Material, 'dispose');
+    renderer.dispose();
+    expect(disposeCurrentLeg).toHaveBeenCalledOnce();
+    expect(disposeGeometry).toHaveBeenCalledOnce();
+    expect(disposeMaterial).toHaveBeenCalledOnce();
+    expect(scene.children).toHaveLength(0);
+  });
+
+  it('swings opposite limbs toward the player without moving enemy anchors', () => {
+    const pose = enemyWalkPose(7, 100);
+    expect(pose.leftArm).toBeCloseTo(-pose.rightArm);
+    expect(pose.leftLeg).toBeCloseTo(-pose.rightLeg);
+    expect(pose.leftArm).toBeCloseTo(-pose.leftLeg * 0.45 / 0.40);
+    const scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene);
+    renderer.update([grunt(7)], 100);
+    const matrixA = new THREE.Matrix4();
+    const matrixB = new THREE.Matrix4();
+    named(scene, 'grunt-leftArm').getMatrixAt(0, matrixA);
+    named(scene, 'grunt-rightArm').getMatrixAt(0, matrixB);
+    expect(matrixA.elements[6]).toBeCloseTo(-matrixB.elements[6]);
+    const firstSwing = matrixA.elements[6];
+    const torso = new THREE.Matrix4();
+    named(scene, 'grunt-torso').getMatrixAt(0, torso);
+    expect(torso.elements[12]).toBe(-1);
+    expect(torso.elements[14]).toBe(7);
+    named(scene, 'grunt-head').getMatrixAt(0, matrixA);
+    expect(matrixA.elements[14]).toBeLessThan(7); // Face protrudes toward the player (-Z).
+    renderer.update([grunt(7)], 300);
+    named(scene, 'grunt-leftArm').getMatrixAt(0, matrixA);
+    expect(matrixA.elements[6]).not.toBeCloseTo(firstSwing);
+    named(scene, 'grunt-torso').getMatrixAt(0, torso);
+    expect(torso.elements[12]).toBe(-1);
+    expect(torso.elements[14]).toBe(7);
     renderer.dispose();
   });
 
-  it('reuses gray flip bodies, scales brutes, and caps the death pool at 48', () => {
+  it('flashes every body part on damage and restores red afterward', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene);
-    const pair: EnemyRenderState[] = [enemies[0], { id: 500, type: 'brute', x: 0, z: 5, hp: 300 }];
-    renderer.update(pair, 0);
+    const color = new THREE.Color();
+    renderer.update([grunt(1), brute(2)], 1000);
+    renderer.update([{ ...grunt(1), hp: 2 }, brute(2)], 1001);
+    for (const part of ['torso', 'head', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg']) {
+      named(scene, `grunt-${part}`).getColorAt(0, color);
+      expect(color.getHexString()).toBe(part === 'head' ? 'fff8d6' : 'ffe36e');
+    }
+    named(scene, 'brute-torso').getColorAt(0, color);
+    expect(color.getHexString()).toBe('761a22');
+    renderer.update([{ ...grunt(1), hp: 2 }, brute(2)], 1082);
+    named(scene, 'grunt-leftLeg').getColorAt(0, color);
+    expect(color.getHexString()).toBe('c93332');
+    renderer.dispose();
+  });
+
+  it('uses rigid gray humanoid death visuals with backward knockback and a 48 pool cap', () => {
+    const scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene);
+    renderer.update([grunt(1), brute(2)], 0);
     renderer.update([], 1);
     const deaths = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     expect(deaths).toHaveLength(2);
-    expect(deaths[0].scale.x).toBe(1);
+    expect(deaths[0].children).toHaveLength(6);
     expect(deaths[1].scale.x).toBe(1.9);
-    expect((deaths[0].children[0] as THREE.Mesh).material).toBe((deaths[1].children[0] as THREE.Mesh).material);
-    renderer.update([], 225);
-    expect(deaths[0].rotation.x).toBeGreaterThan(1);
-    expect(deaths[0].position.z).toBeGreaterThan(pair[0].z);
-    expect(deaths[1].position.z).toBeGreaterThan(pair[1].z);
-    expect(deaths[0].position.y).toBeGreaterThan(0);
-    renderer.update([], 500);
-    expect(deaths.every((death) => !death.visible)).toBe(true);
-    renderer.update(enemies.slice(0, 60), 600);
-    renderer.update([], 601);
-    expect(scene.children.filter((child) => child instanceof THREE.Group)).toHaveLength(48);
     const grayMaterial = (deaths[0].children[0] as THREE.Mesh).material as THREE.Material;
     const disposeGray = vi.spyOn(grayMaterial, 'dispose');
+    renderer.update([], 225);
+    expect(deaths[0].rotation.x).toBeGreaterThan(1);
+    expect(deaths[0].position.z).toBeGreaterThan(1);
+    expect(deaths[0].position.y).toBeGreaterThan(0);
+    renderer.update([], 500);
+    renderer.update(Array.from({ length: 60 }, (_, index) => grunt(index + 1)), 600);
+    renderer.update([], 601);
+    expect(scene.children.filter((child) => child instanceof THREE.Group)).toHaveLength(48);
     renderer.reset();
     expect(deaths.every((death) => !death.visible)).toBe(true);
     renderer.dispose();
     expect(disposeGray).toHaveBeenCalledOnce();
     expect(scene.children).toHaveLength(0);
-  });
-
-  it('reuses separate meshes as all-grunt and all-brute crowds alternate', () => {
-    const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene);
-    renderer.update(enemies.slice(0, 7));
-    expect(activeMeshes(scene).map((mesh) => mesh.count)).toEqual([0, 0, 7, 7]);
-    const brutes: EnemyRenderState[] = Array.from({ length: 900 }, (_, index) =>
-      ({ id: index + 1, type: 'brute', x: index % 7, z: index, hp: 300 }));
-    renderer.update(brutes);
-    const meshes = activeMeshes(scene);
-    expect(meshes.map((mesh) => mesh.count)).toEqual([0, 0, 900, 900]);
-    expect(meshes[2].instanceMatrix.count).toBeGreaterThanOrEqual(900);
-    renderer.update([...enemies.slice(0, 6), brutes[0]]);
-    expect(activeMeshes(scene)).toEqual(meshes);
-    expect(meshes.map((mesh) => mesh.count)).toEqual([6, 6, 1, 1]);
-    renderer.dispose();
-    expect(scene.children).toHaveLength(0);
-  });
-
-  it('keeps grunt and brute instances separate and disposes replaced and final resources', () => {
-    const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene);
-    expect(scene.children).toHaveLength(4);
-    const initial = scene.children as THREE.InstancedMesh[];
-    const oldBodyDispose = vi.spyOn(initial[0], 'dispose');
-    const oldHeadDispose = vi.spyOn(initial[1], 'dispose');
-
-    renderer.update([...enemies, { id: 241, type: 'brute', x: -1, z: 5, hp: 300 }]);
-    expect(oldBodyDispose).toHaveBeenCalledOnce();
-    expect(oldHeadDispose).toHaveBeenCalledOnce();
-    expect(scene.children).toHaveLength(4);
-    const [bruteBody, bruteHead, body, head] = scene.children as THREE.InstancedMesh[];
-    expect(body.count).toBe(240);
-    expect(head.count).toBe(240);
-    expect(bruteBody.count).toBe(1);
-    expect(bruteHead.count).toBe(1);
-    expect(scene.children.every((child) => (child as THREE.InstancedMesh).isInstancedMesh)).toBe(true);
-    const matrix = new THREE.Matrix4();
-    body.getMatrixAt(0, matrix);
-    expect(matrix.elements[12]).toBe(-1);
-    expect(matrix.elements[13]).toBeCloseTo(0.32);
-    expect(matrix.elements[14]).toBe(0);
-    head.getMatrixAt(0, matrix);
-    expect(matrix.elements[12]).toBe(-1);
-    expect(matrix.elements[13]).toBeCloseTo(0.75);
-    expect(matrix.elements[14]).toBe(0);
-    bruteBody.getMatrixAt(0, matrix);
-    expect(matrix.elements[0]).toBeCloseTo(1.9);
-    expect(matrix.elements[12]).toBe(1);
-    expect(matrix.elements[13]).toBeCloseTo(0.32 * 1.9);
-    bruteHead.getMatrixAt(0, matrix);
-    expect(matrix.elements[13]).toBeCloseTo(0.75 * 1.9);
-
-    renderer.update(enemies.slice(0, 1));
-    expect(scene.children).toContain(body);
-    expect(scene.children).toContain(bruteBody);
-    expect(body.count).toBe(1);
-    expect(head.count).toBe(1);
-    expect(bruteBody.count).toBe(0);
-    const oldBruteBodyDispose = vi.spyOn(bruteBody, 'dispose');
-    const oldBruteHeadDispose = vi.spyOn(bruteHead, 'dispose');
-    renderer.update([{ id: 242, type: 'brute', x: 0, z: 4, hp: 300 },
-      { id: 243, type: 'brute', x: 0.5, z: 4, hp: 300 }]);
-    expect(oldBruteBodyDispose).toHaveBeenCalledOnce();
-    expect(oldBruteHeadDispose).toHaveBeenCalledOnce();
-    const currentBrutes = activeMeshes(scene).filter((mesh) =>
-      mesh !== body && mesh !== head);
-    expect(currentBrutes.map((mesh) => mesh.count)).toEqual([2, 2]);
-    expect(body.count).toBe(0);
-
-    const bodyDispose = vi.spyOn(body, 'dispose');
-    const headDispose = vi.spyOn(head, 'dispose');
-    const bodyGeometryDispose = vi.spyOn(body.geometry, 'dispose');
-    const headGeometryDispose = vi.spyOn(head.geometry, 'dispose');
-    const bodyMaterialDispose = vi.spyOn(body.material as THREE.Material, 'dispose');
-    const headMaterialDispose = vi.spyOn(head.material as THREE.Material, 'dispose');
-    const bruteDisposals = currentBrutes.map((mesh) => vi.spyOn(mesh, 'dispose'));
-    const bruteMaterials = currentBrutes.map((mesh) => vi.spyOn(mesh.material as THREE.Material, 'dispose'));
-    renderer.dispose();
-    expect(scene.children).toHaveLength(0);
-    for (const dispose of [bodyDispose, headDispose, bodyGeometryDispose, headGeometryDispose,
-      bodyMaterialDispose, headMaterialDispose, ...bruteDisposals, ...bruteMaterials]) {
-      expect(dispose).toHaveBeenCalledOnce();
-    }
   });
 });

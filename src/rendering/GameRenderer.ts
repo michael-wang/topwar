@@ -104,7 +104,7 @@ export class GameRenderer {
       marker.scale.x = state.track.halfWidth * 2;
     }
     this.squadRenderer.update(state, nowMs);
-    this.enemyRenderer.update(state.enemies);
+    this.enemyRenderer.update(state.enemies, nowMs);
     this.streamRewardRenderer.update(state.streamRewards);
     this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);
@@ -113,6 +113,7 @@ export class GameRenderer {
   }
 
   resetFeedback(): void {
+    this.squadRenderer.reset();
     this.enemyRenderer.reset();
     this.streamRewardRenderer.reset();
     this.projectileRenderer.reset();

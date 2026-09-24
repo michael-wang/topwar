@@ -1,17 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { squadBobOffset, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
+import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { ProjectilePulseTracker, ProjectileRenderer, projectilePulseScale } from '../src/rendering/projectiles/ProjectileRenderer';
 import { AudioCueObserver, GameAudio } from '../src/audio/GameAudio';
 
 describe('presentation-only motion', () => {
-  it('keeps a tiny staggered bob without shifting formation X/Z', () => {
-    for (const time of [0, 50, 250, 1_000]) {
-      for (let index = 0; index < 12; index++) {
-        expect(Math.abs(squadBobOffset(index, time))).toBeLessThanOrEqual(0.025);
-      }
-    }
-    expect(squadBobOffset(0, 100)).not.toBeCloseTo(squadBobOffset(1, 100));
+  it('keeps planted legs and gameplay X/Z while recoiling rifle and flashing muzzle', () => {
+    expect(firingRecoil(100, 100)).toBe(1);
+    expect(firingRecoil(200, 100)).toBe(0);
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene);
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
@@ -19,8 +15,23 @@ describe('presentation-only motion', () => {
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state, 100);
     const positions = scene.children.map((member) => [member.position.x, member.position.z]);
-    renderer.update(state, 400);
+    const soldier = scene.children[0] as THREE.Group;
+    expect(soldier.children).toHaveLength(9);
+    const legs = [soldier.children[4], soldier.children[5]];
+    const legRotations = legs.map((leg) => leg.rotation.x);
+    const rifle = soldier.children[6];
+    const arms = [soldier.children[2], soldier.children[3]];
+    const restingZ = rifle.position.z;
+    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 4 }] }, 400);
     expect(scene.children.map((member) => [member.position.x, member.position.z])).toEqual(positions);
+    expect(scene.children.every((member) => member.position.y === 0)).toBe(true);
+    expect(legs.map((leg) => leg.rotation.x)).toEqual(legRotations);
+    expect(rifle.position.z).toBeLessThan(restingZ);
+    expect(arms[0].rotation.x).toBeGreaterThan(-0.78);
+    expect(soldier.children[8].visible).toBe(true);
+    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', x: 0, z: 4 }] }, 500);
+    expect(rifle.position.z).toBeCloseTo(restingZ);
+    expect(soldier.children[8].visible).toBe(false);
     renderer.dispose();
   });
 
@@ -69,6 +80,19 @@ describe('audio cue observation and safety', () => {
     expect(observer.observe([], 9, 0)).toEqual(['fatal']);
     observer.reset();
     expect(observer.observe(shots.slice(0, 1), 1, 1)).toEqual(['rifle']);
+  });
+
+  it('requests one throttled yelp for removals and resets across Retry', () => {
+    const observer = new AudioCueObserver();
+    const alive = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    expect(observer.observe([], 1, 1, alive, 0)).toEqual([]);
+    expect(observer.observe([], 1, 1, [{ id: 3 }], 10)).toEqual(['enemyDeath']);
+    expect(observer.observe([], 1, 1, [], 50)).toEqual([]);
+    expect(observer.observe([], 1, 1, [{ id: 4 }], 100)).toEqual([]);
+    expect(observer.observe([], 1, 1, [], 111)).toEqual(['enemyDeath']);
+    observer.reset();
+    expect(observer.observe([], 1, 1, alive, 0)).toEqual([]);
+    expect(observer.observe([], 1, 1, [], 1)).toEqual(['enemyDeath']);
   });
 
   it('safely ignores playback without an unlocked AudioContext', () => {
