@@ -66,42 +66,45 @@ describe('presentation-only motion', () => {
 
 describe('audio cue observation and safety', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it('aggregates projectiles by kind and classifies defense changes', () => {
+  it('plays for defense gain, never for projectiles, damage, or Game Over', () => {
     const observer = new AudioCueObserver();
-    const shots = [{ id: 1, kind: 'rifle' as const, x: 0, z: 0 },
-      { id: 2, kind: 'rifle' as const, x: 0, z: 0 },
-      { id: 3, kind: 'heavyRifle' as const, x: 0, z: 0 },
-      { id: 4, kind: 'heavyRifle' as const, x: 0, z: 0 },
-      { id: 5, kind: 'rocket' as const, x: 0, z: 0 }];
-    expect(observer.observe(shots, 1, 1)).toEqual(['rifle', 'heavyRifle', 'rocket']);
-    expect(observer.observe(shots, 1, 1)).toEqual([]);
-    expect(observer.observe([], 9, 10)).toEqual(['reward']);
-    expect(observer.observe([], 10, 9)).toEqual(['damage']);
-    expect(observer.observe([], 9, 0)).toEqual(['fatal']);
+    expect(observer.observe(1, 1, [])).toEqual([]);
+    expect(observer.observe(9, 10, [])).toEqual(['reward']);
+    expect(observer.observe(10, 9, [])).toEqual([]);
+    expect(observer.observe(9, 0, [])).toEqual([]);
     observer.reset();
-    expect(observer.observe(shots.slice(0, 1), 1, 1)).toEqual(['rifle']);
+    expect(observer.observe(1, 1, [])).toEqual([]);
   });
 
   it('requests one throttled yelp for removals and resets across Retry', () => {
     const observer = new AudioCueObserver();
     const alive = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    expect(observer.observe([], 1, 1, alive, 0)).toEqual([]);
-    expect(observer.observe([], 1, 1, [{ id: 3 }], 10)).toEqual(['enemyDeath']);
-    expect(observer.observe([], 1, 1, [], 50)).toEqual([]);
-    expect(observer.observe([], 1, 1, [{ id: 4 }], 100)).toEqual([]);
-    expect(observer.observe([], 1, 1, [], 111)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, alive, 0)).toEqual([]);
+    expect(observer.observe(1, 1, [{ id: 3 }], 10)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, [], 50)).toEqual([]);
+    expect(observer.observe(1, 1, [{ id: 4 }], 100)).toEqual([]);
+    expect(observer.observe(1, 1, [], 111)).toEqual(['enemyDeath']);
     observer.reset();
-    expect(observer.observe([], 1, 1, alive, 0)).toEqual([]);
-    expect(observer.observe([], 1, 1, [], 1)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, alive, 0)).toEqual([]);
+    expect(observer.observe(1, 1, [], 1)).toEqual(['enemyDeath']);
+  });
+
+  it('collapses many same-frame removals to one cue and throttles consecutive mass removals', () => {
+    const observer = new AudioCueObserver();
+    const crowd = Array.from({ length: 50 }, (_, index) => ({ id: index + 1 }));
+    expect(observer.observe(1, 1, crowd, 0)).toEqual([]);
+    expect(observer.observe(1, 1, crowd.slice(25), 10)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, crowd.slice(40), 20)).toEqual([]);
+    expect(observer.observe(1, 1, [], 120)).toEqual(['enemyDeath']);
   });
 
   it('safely ignores playback without an unlocked AudioContext', () => {
     const viewport = new EventTarget();
     const keys = new EventTarget();
     const audio = new GameAudio(viewport as HTMLElement, keys as Window);
-    expect(() => audio.play('rifle')).not.toThrow();
+    expect(() => audio.play('reward')).not.toThrow();
     expect(() => viewport.dispatchEvent(new Event('pointerdown'))).not.toThrow();
-    expect(() => audio.observe([{ id: 1, kind: 'rifle', x: 0, z: 0 }], 1, 0)).not.toThrow();
+    expect(() => audio.observe(1, 0, [])).not.toThrow();
     const removeViewport = vi.spyOn(viewport, 'removeEventListener');
     const removeKeys = vi.spyOn(keys, 'removeEventListener');
     audio.dispose();
@@ -127,15 +130,25 @@ describe('audio cue observation and safety', () => {
     const audio = new GameAudio(viewport as HTMLElement, keys as Window);
     viewport.dispatchEvent(new Event('pointerdown'));
     await Promise.resolve();
-    audio.play('rifle');
+    audio.play('reward');
     expect(starts).not.toHaveBeenCalled();
     context.state = 'running';
     keys.dispatchEvent(new Event('keydown'));
     await Promise.resolve();
     expect(constructor).toHaveBeenCalledTimes(1);
-    audio.play('rifle');
+    audio.play('reward');
     expect(starts).toHaveBeenCalledOnce();
     audio.resetObservation();
+    audio.observe(1, 1, [{ id: 1 }], 0);
+    audio.observe(1, 0, [{ id: 1 }], 10);
+    expect(starts).toHaveBeenCalledTimes(1);
+    audio.observe(0, 1, [{ id: 1 }], 20);
+    expect(starts).toHaveBeenCalledTimes(2);
+    audio.observe(1, 1, [], 30);
+    expect(starts).toHaveBeenCalledTimes(4); // Two-oscillator death yelp, once for the frame.
+    audio.observe(1, 1, [{ id: 2 }], 40);
+    audio.observe(1, 1, [], 50);
+    expect(starts).toHaveBeenCalledTimes(4);
     expect(constructor).toHaveBeenCalledTimes(1);
     audio.dispose();
     expect(stops).toHaveBeenCalled();
