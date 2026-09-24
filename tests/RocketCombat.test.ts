@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import gameData from '../public/game-data/game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
+import { createSquadFormation } from '../src/simulation/squad/formation';
 import type { EnemySimulationState, ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
 const config = GameConfigSchema.parse(gameData);
@@ -51,17 +52,19 @@ describe('rocket specialist firing', () => {
     expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0, tier2RifleCount: 0 });
   });
 
-  it('assigns the rear formation offset to the rocket and fires one projectile per role', () => {
+  it('assigns the final formation offset to the rocket and fires one projectile per role', () => {
     const simulation = create(2, 1);
     step(simulation);
+    const offsets = createSquadFormation(2, tuning.formationSpacing);
     expect(simulation.getState().projectiles.map(({ id, kind, x }) => ({ id, kind, x }))).toEqual([
-      { id: 1, kind: 'rifle', x: -0.225 }, { id: 2, kind: 'rocket', x: 0.225 },
+      { id: 1, kind: 'rifle', x: offsets[0].x }, { id: 2, kind: 'rocket', x: offsets[1].x },
     ]);
     expect(simulation.getState().rngState).toBe(17);
     const rocketsOnly = create(2, 2);
     step(rocketsOnly);
     expect(rocketsOnly.getState().projectiles.map((projectile) => projectile.kind)).toEqual(['rocket', 'rocket']);
-    expect(rocketsOnly.getState().projectiles.map((projectile) => projectile.x)).toEqual([-0.225, 0.225]);
+    expect(rocketsOnly.getState().projectiles.map((projectile) => projectile.x))
+      .toEqual(offsets.map((offset) => offset.x));
   });
 
   it('schedules rifle and rocket volleys independently and restores future firing exactly', () => {

@@ -8,6 +8,7 @@ const MAX_DEATH_VISUALS = 48;
 interface DeathVisual {
   group: THREE.Group;
   startedAtMs: number;
+  startZ: number;
 }
 
 export class EnemyRenderer {
@@ -129,12 +130,13 @@ export class EnemyRenderer {
       head.position.y = 0.75;
       group.add(body, head);
       this.scene.add(group);
-      visual = { group, startedAtMs: nowMs };
+      visual = { group, startedAtMs: nowMs, startZ: enemy.z };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     visual.startedAtMs = nowMs;
+    visual.startZ = enemy.z;
     visual.group.visible = true;
     visual.group.scale.setScalar(enemy.type === 'brute' ? 1.9 : 1);
     visual.group.position.set(-enemy.x, 0, enemy.z);
@@ -150,8 +152,9 @@ export class EnemyRenderer {
         continue;
       }
       const progress = Math.max(0, elapsed / DEATH_MS);
-      visual.group.rotation.x = -Math.PI * progress;
+      visual.group.rotation.x = Math.PI * progress;
       visual.group.position.y = Math.sin(Math.PI * progress) * 0.35;
+      visual.group.position.z = visual.startZ + progress * 0.5;
     }
   }
 

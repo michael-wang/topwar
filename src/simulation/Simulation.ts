@@ -3,7 +3,7 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition,
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { tier2ProbabilityForRow, tier2RollForSlot } from './enemies/bruteRamp';
-import { rewardSlotForRow } from './enemies/streamRewards';
+import { rewardPlacementForRow } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, tier1RifleCount } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { TIER2_EXCHANGE_VALUE } from './tierExchange';
@@ -148,9 +148,9 @@ function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewar
       stream.spacing, stream.jitter, stream.seed);
     const { startRow, fullRow } = stream.bruteRamp;
     const rowIndex = cursor.nextRowIndex;
-    const rewardSlot = stream.rewards
-      ? rewardSlotForRow(rowIndex, stream.columns, stream.rewards) : null;
-    if (rewardSlot !== null && !Number.isSafeInteger(cursor.nextRewardId + 1)) {
+    const rewardPlacement = stream.rewards
+      ? rewardPlacementForRow(rowIndex, stream.columns, stream.rewards) : null;
+    if (rewardPlacement !== null && !Number.isSafeInteger(cursor.nextRewardId + 1)) {
       throw new Error('Simulation stream reward ID exceeds the supported range');
     }
     const probability = tier2ProbabilityForRow(rowIndex, stream.bruteRamp);
@@ -170,13 +170,14 @@ function extendEnemyStream(enemies: EnemySimulationState[], rewards: StreamRewar
         : rowIndex >= fullRow || (probability > 0
           && tier2RollForSlot(stream.seed, rowIndex, column) < probability);
       const enemyId = cursor.nextEnemyId++;
-      if (column === rewardSlot && stream.rewards) {
-        rewards.push({ id: cursor.nextRewardId++, tier: rowIndex >= fullRow ? 2 : 1,
-          x: offset.x, z, hitProgress: 0, hitsRequired: stream.rewards.hitsRequired });
-      } else {
-        enemies.push({ id: enemyId, type: isBrute ? 'brute' : stream.enemy,
-          x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
-      }
+      enemies.push({ id: enemyId, type: isBrute ? 'brute' : stream.enemy,
+        x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
+    }
+    if (rewardPlacement !== null && stream.rewards) {
+      rewards.push({ id: cursor.nextRewardId++, tier: rowIndex >= fullRow ? 2 : 1,
+        x: rewardPlacement.side * stream.rewards.sideX,
+        z: rowZ + offsets[rewardPlacement.zSlot].z,
+        hitProgress: 0, hitsRequired: stream.rewards.hitsRequired });
     }
     cursor.nextRowIndex++;
   }

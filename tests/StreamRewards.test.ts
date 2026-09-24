@@ -3,10 +3,10 @@ import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
-import { rewardSlotForRow } from '../src/simulation/enemies/streamRewards';
+import { rewardPlacementForRow } from '../src/simulation/enemies/streamRewards';
 import type { ProjectileSimulationState, SimulationState } from '../src/simulation/SimulationState';
 
-const rewardConfig = { chancePerRow: 0.99, hitsRequired: 10, seed: 271828 };
+const rewardConfig = { chancePerRow: 0.99, hitsRequired: 10, seed: 271828, sideX: 2.2 };
 const level: LevelDefinition = { id: 'stream-reward-test', length: 20, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 5, spawnAheadDistance: 5.5, columns: 3,
     spacing: 100, jitter: 0, seed: 42, bruteRamp: { startRow: 1, fullRow: 2, curvePower: 2 },
@@ -40,46 +40,61 @@ describe('endless stream reward placement', () => {
   it('uses authored chance and independent row rolls without consuming gameplay RNG', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     expect(authored.upgradeGates).toEqual([]);
-    expect(authored.enemyStream?.rewards).toEqual({ chancePerRow: 0.1,
-      hitsRequired: 10, seed: 271828 });
+    expect(authored.enemyStream?.rewards).toEqual({ chancePerRow: 0.025,
+      hitsRequired: 10, seed: 271828, sideX: 2.2 });
     const rewards = authored.enemyStream!.rewards!;
-    const pattern = Array.from({ length: 100 }, (_, row) => rewardSlotForRow(row, 7, rewards));
-    expect(pattern).toEqual(Array.from({ length: 100 }, (_, row) => rewardSlotForRow(row, 7, rewards)));
-    expect(pattern.filter((slot) => slot !== null).length).toBeGreaterThan(3);
-    expect(pattern.filter((slot) => slot !== null).length).toBeLessThan(20);
-    expect(new Set(pattern.filter((slot) => slot !== null)).size).toBeGreaterThan(1);
-    expect(pattern).not.toEqual(Array.from({ length: 100 }, (_, row) =>
-      rewardSlotForRow(row, 7, { ...rewards, seed: rewards.seed + 1 })));
+    const pattern = Array.from({ length: 1000 }, (_, row) => rewardPlacementForRow(row, 7, rewards));
+    expect(pattern).toEqual(Array.from({ length: 1000 }, (_, row) => rewardPlacementForRow(row, 7, rewards)));
+    expect(pattern.filter((placement) => placement !== null).length).toBeGreaterThan(10);
+    expect(pattern.filter((placement) => placement !== null).length).toBeLessThan(40);
+    expect(new Set(pattern.filter((placement) => placement !== null)
+      .map((placement) => placement!.side))).toEqual(new Set([-1, 1]));
+    expect(pattern).not.toEqual(Array.from({ length: 1000 }, (_, row) =>
+      rewardPlacementForRow(row, 7, { ...rewards, seed: rewards.seed + 1 })));
     expect(create(LevelDefinitionSchema.parse(authoredLevel)).getState().rngState).toBe(7);
   });
 
-  it('replaces exactly one slot, reserving its enemy ID and retaining geometry and Tier-2 rolls', () => {
+  it('adds one side reward without removing an enemy or changing row geometry, IDs, and tier rolls', () => {
     const withReward = create().getState();
     const withoutReward = create({ ...level, enemyStream: { ...level.enemyStream!, rewards: undefined } }).getState();
-    expect(withReward.enemies).toHaveLength(2);
+    expect(withReward.enemies).toHaveLength(3);
     expect(withReward.streamRewards).toHaveLength(1);
     expect(withoutReward.enemies).toHaveLength(3);
     expect(withReward.enemyStream).toEqual({ nextRowIndex: 1, nextEnemyId: 4, nextRewardId: 2 });
     const reward = withReward.streamRewards[0];
     expect(reward).toMatchObject({ id: 1, tier: 1, hitProgress: 0, hitsRequired: 10 });
-    const replaced = withoutReward.enemies.find((enemy) => enemy.x === reward.x && enemy.z === reward.z);
-    expect(replaced).toBeDefined();
-    expect(withReward.enemies).toEqual(withoutReward.enemies.filter((enemy) => enemy.id !== replaced!.id));
+    expect(Math.abs(reward.x)).toBe(rewardConfig.sideX);
+    expect(withReward.enemies).toEqual(withoutReward.enemies);
     expect(create().getState().streamRewards).toEqual(withReward.streamRewards);
     const row = createEnemyStreamRow(0, 3, 100, 0, 42);
-    expect([...withReward.enemies.map(({ x, z }) => ({ x, z })), { x: reward.x, z: reward.z }]
-      .sort((a, b) => a.x - b.x)).toEqual(row.map((offset) => ({ x: offset.x, z: 5 + offset.z })));
+    expect(withReward.enemies.map(({ x, z }) => ({ x, z })))
+      .toEqual(row.map((offset) => ({ x: offset.x, z: 5 + offset.z })));
+    expect(reward.z).toBe(5);
+  });
+
+  it('keeps all seven authored enemy positions in a reward row and uses seeded Z jitter', () => {
+    const stream = LevelDefinitionSchema.parse(authoredLevel).enemyStream!;
+    const oneRow: LevelDefinition = { ...level, enemyStream: { ...stream,
+      startZ: 5, spacing: 100, spawnAheadDistance: 5.5,
+      rewards: { ...stream.rewards!, chancePerRow: 0.99 } } };
+    const placement = rewardPlacementForRow(0, stream.columns, oneRow.enemyStream!.rewards!)!;
+    const state = create(oneRow).getState();
+    const offsets = createEnemyStreamRow(0, stream.columns, 100, stream.jitter, stream.seed);
+    expect(state.enemies).toHaveLength(7);
+    expect(state.streamRewards).toHaveLength(1);
+    expect(state.streamRewards[0].x).toBe(placement.side * stream.rewards!.sideX);
+    expect(state.streamRewards[0].z).toBe(5 + offsets[placement.zSlot].z);
   });
 
   it('leaves all seven enemy slots in rows whose reward roll misses', () => {
     const authored = LevelDefinitionSchema.parse(authoredLevel);
     const rewards = authored.enemyStream!.rewards!;
     const missingRow = Array.from({ length: 100 }, (_, index) => index)
-      .find((index) => rewardSlotForRow(index, 7, rewards) === null)!;
+      .find((index) => rewardPlacementForRow(index, 7, rewards) === null)!;
     const bare: LevelDefinition = { ...authored, enemyStream: { ...authored.enemyStream!,
       startZ: 0, spawnAheadDistance: 1, spacing: 1, rewards: { ...rewards, chancePerRow: 0.01 } } };
     const state = create(bare).getState();
-    expect(rewardSlotForRow(0, 7, bare.enemyStream!.rewards!)).toBeNull();
+    expect(rewardPlacementForRow(0, 7, bare.enemyStream!.rewards!)).toBeNull();
     expect(missingRow).toBeGreaterThanOrEqual(0);
     expect(state.streamRewards).toEqual([]);
     expect(state.enemies).toHaveLength(14);
@@ -89,11 +104,14 @@ describe('endless stream reward placement', () => {
     const compact: LevelDefinition = { ...level, enemyStream: { ...level.enemyStream!,
       spacing: 1, spawnAheadDistance: 8 } };
     const state = create(compact).getState();
+    const noRewards = create({ ...compact, enemyStream: { ...compact.enemyStream!, rewards: undefined } }).getState();
     expect(state.streamRewards.map((reward) => [reward.z, reward.tier])).toEqual([
       [5, 1], [6, 1], [7, 2], [8, 2],
     ]);
     expect(state.enemyStream?.nextEnemyId).toBe(13);
-    expect(state.enemies.length + state.streamRewards.length).toBe(12);
+    expect(state.enemies).toHaveLength(12);
+    expect(state.enemies).toEqual(noRewards.enemies);
+    expect(state.streamRewards).toHaveLength(4);
   });
 
   it('restores the cursor so future rewards ignore kills and Retry repeats the sequence', () => {

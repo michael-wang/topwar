@@ -38,6 +38,7 @@ const EnemyStreamSchema = z.strictObject({
     chancePerRow: z.number().finite().gt(0).lt(1),
     hitsRequired: positiveSafeInteger,
     seed: z.number().int().min(0).max(0xffffffff),
+    sideX: z.number().finite().positive(),
   }).optional(),
 }).superRefine((stream, context) => {
   if (stream.spawnAheadDistance <= stream.startZ) {

@@ -41,7 +41,7 @@ The advertisement is a visual and opening-pacing reference. The player starts sm
 
 The player is forced forward toward stationary basic grunts. Pressure comes from visible enemy mass ahead and from the risk of reaching enemies before clearing them. The enemy field begins relatively close and extends deep into the level. It should read as an irregular, continuous mob with breathing room between grunts, not orderly ranks.
 
-Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. Occasional deterministic random-looking +1 reward targets replace one enemy slot in a row, giving the player a reason to divert fire while surviving the stream.
+Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. Rare deterministic +1 reward targets appear beside intact enemy rows, asking the player to steer and divert fire without reducing enemy pressure.
 
 The opening is a long sea of one-shot Tier-1 grunts. The first larger, darker Tier-2 brute is guaranteed at row 48; afterward each enemy independently becomes Tier-2 through deterministic rolls against a quadratic probability curve. Row-to-row density fluctuates, while the long-term frequency rises slowly to full Tier-2 saturation at row 960. A brute currently takes about 100 base-rifle hits (300 HP at 3 damage per hit). Playtest where this pressure becomes unsustainable before designing the next player power upgrade. Future Tier-3 and Tier-4 phases should likewise begin sparse and gradually dominate the stream; their details remain undecided.
 
@@ -65,7 +65,7 @@ Initial prototype:
 - adding soldiers changes the visual formation quickly
 - losing soldiers visibly shrinks the formation
 
-The precise formation algorithm is an implementation detail, but it must be tunable.
+The squad uses a compact centered golden-angle disk rather than a square grid, reducing overlapping firing columns. Formation spacing remains tunable.
 
 Important tunables:
 
@@ -161,7 +161,7 @@ Examples:
 - +20
 - +99
 
-Level 001 no longer uses permanent side armories as its active reward economy. A deterministic row roll occasionally replaces one enemy with a stationary +1 reward target. It takes 10 rifle hits at or above the reward tier to unlock and immediately add one soldier; projectile damage does not change progress. During mixed Tier-1/Tier-2 enemy rows, rewards remain Tier-1. Once all new enemies are Tier-2, new rewards become Tier-2. Ignored targets expire harmlessly behind the defense line. Generic side-armory code remains available for custom levels but is inactive in Level 001.
+Level 001 no longer uses permanent side armories as its active reward economy. A rare deterministic row roll adds a stationary +1 reward target at the left or right edge while all seven enemies remain. Pursuing it trades movement and firepower against survival. It takes 10 rifle hits at or above the reward tier to unlock and immediately add one soldier; projectile damage does not change progress. During mixed Tier-1/Tier-2 enemy rows, rewards remain Tier-1. Once all new enemies are Tier-2, new rewards become Tier-2. Ignored targets expire harmlessly behind the defense line. Generic side-armory code remains available for custom levels but is inactive in Level 001.
 
 Every 10 Tier-1 rifle soldiers automatically merge into one visibly larger Tier-2 rifle soldier. Its projectile fires at the normal rifle cadence, deals 100 times base rifle damage, and pierces up to ten Tier-1 grunts at one penetration point each. A Tier-1 reward gains one hit from it without stopping the shot or spending penetration; a matching Tier-2 reward consumes it, as does a Tier-2 brute after taking its damage. The 10:1 conversion compresses bodies and tracers. A Tier-2 rifle soldier has ten Tier-1 defensive points: one grunt casualty can demote it into nine Tier-1 bodies, and a later Tier-1 reward can merge them again. Rocket specialists remain a separate squad role.
 

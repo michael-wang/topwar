@@ -31,7 +31,7 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
       bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 },
-      rewards: { chancePerRow: 0.1, hitsRequired: 10, seed: 271828 } });
+      rewards: { chancePerRow: 0.025, hitsRequired: 10, seed: 271828, sideX: 2.2 } });
     expect(parsed.upgradeGates).toEqual([]);
   });
 
@@ -121,6 +121,11 @@ describe('LevelDefinitionSchema', () => {
       const candidate = structuredClone(authoredLevel);
       candidate.enemyStream.rewards.seed = seed;
       expect(LevelDefinitionSchema.parse(candidate).enemyStream?.rewards?.seed).toBe(seed);
+    }
+    for (const sideX of [undefined, 0, -1, Infinity, NaN]) {
+      const candidate = structuredClone(authoredLevel);
+      Object.assign(candidate.enemyStream.rewards, { sideX });
+      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
       ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards, extra: true },

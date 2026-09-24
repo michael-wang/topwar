@@ -48,7 +48,9 @@ describe('EnemyRenderer instancing', () => {
     expect(deaths[1].scale.x).toBe(1.9);
     expect((deaths[0].children[0] as THREE.Mesh).material).toBe((deaths[1].children[0] as THREE.Mesh).material);
     renderer.update([], 225);
-    expect(deaths[0].rotation.x).toBeLessThan(-1);
+    expect(deaths[0].rotation.x).toBeGreaterThan(1);
+    expect(deaths[0].position.z).toBeGreaterThan(pair[0].z);
+    expect(deaths[1].position.z).toBeGreaterThan(pair[1].z);
     expect(deaths[0].position.y).toBeGreaterThan(0);
     renderer.update([], 500);
     expect(deaths.every((death) => !death.visible)).toBe(true);

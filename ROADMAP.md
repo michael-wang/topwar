@@ -50,7 +50,7 @@ Measure hundreds of units, introduce instancing/pooling only where needed.
 ## Current pivot slice
 1. Continuous irregular enemy stream — implemented.
 2. Rocket specialist combat — implemented.
-3. Stream reward targets replacing occasional enemy slots — implemented; generic side armories are inactive in Level 001.
+3. Rare side stream reward targets beside intact enemy rows — implemented; generic side armories are inactive in Level 001.
 4. Endless enemy stream — implemented.
 5. Slow nonlinear deterministic Tier-2 enemy spread through row 960 — implemented.
 6. Tier-1 to Tier-2 squad and firepower compression at 10:1 — implemented.

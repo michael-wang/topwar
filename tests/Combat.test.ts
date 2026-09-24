@@ -5,6 +5,7 @@ import type { LevelDefinition } from '../src/level/LevelDefinition';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
+import { createSquadFormation } from '../src/simulation/squad/formation';
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
 const level: LevelDefinition = { id: 'test', length: 30, enemyGroups: [], upgradeGates: [] };
@@ -68,7 +69,8 @@ describe('Automatic rifle and projectile state', () => {
   it('uses one shot per member and squad formation X positions without spread or RNG', () => {
     const simulation = create(3);
     step(simulation);
-    expect(simulation.getState().projectiles.map((p) => p.x)).toEqual([-0.225, 0.225, 0]);
+    expect(simulation.getState().projectiles.map((p) => p.x))
+      .toEqual(createSquadFormation(3, tuning.formationSpacing).map((offset) => offset.x));
     expect(simulation.getState().projectiles.map((p) => p.id)).toEqual([1, 2, 3]);
     expect(simulation.getState().rngState).toBe(17);
     const empty = create(0);

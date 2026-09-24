@@ -263,7 +263,7 @@ describe('Static authored enemies', () => {
     expect(new Set(first.enemies.map((enemy) => enemy.id)).size).toBe(first.enemies.length);
     expect(first.enemyStream).toEqual({ nextRowIndex: 121, nextEnemyId: 848,
       nextRewardId: first.streamRewards.length + 1 });
-    expect(first.enemies.length + first.streamRewards.length).toBe(847);
+    expect(first.enemies).toHaveLength(847);
     expect(first.enemies.every((enemy) => enemy.hp === (enemy.type === 'brute' ? 300 : 10))).toBe(true);
     const meanZ = first.enemies.reduce((sum, enemy) => sum + enemy.z, 0) / first.enemies.length;
     expect(Math.abs(meanZ - 60)).toBeLessThan(0.2);

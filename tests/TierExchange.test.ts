@@ -8,7 +8,7 @@ import type { EnemySimulationState, ProjectileSimulationState, SimulationState,
 const level: LevelDefinition = { id: 'tier-exchange', length: 120, enemyGroups: [], upgradeGates: [],
   enemyStream: { enemy: 'grunt', startZ: 5, spawnAheadDistance: 5.5, columns: 1,
     spacing: 100, jitter: 0, seed: 1, bruteRamp: { startRow: 48, fullRow: 960, curvePower: 2 },
-    rewards: { chancePerRow: 0.1, hitsRequired: 10, seed: 2 } } };
+    rewards: { chancePerRow: 0.1, hitsRequired: 10, seed: 2, sideX: 2.2 } } };
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5,
   defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
   gruntRadius: 0.3, bruteRadius: 0.55,

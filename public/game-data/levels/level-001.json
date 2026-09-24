@@ -12,6 +12,6 @@
     "jitter": 0.16,
     "seed": 104729,
     "bruteRamp": { "startRow": 48, "fullRow": 960, "curvePower": 2 },
-    "rewards": { "chancePerRow": 0.10, "hitsRequired": 10, "seed": 271828 }
+    "rewards": { "chancePerRow": 0.025, "hitsRequired": 10, "seed": 271828, "sideX": 2.2 }
   }
 }
