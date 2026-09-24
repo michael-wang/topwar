@@ -38,6 +38,7 @@ describe('GameConfigSchema and loading', () => {
     expect(store.getConfig().weapon.rocket).toEqual({ damage: 15, fireRate: 0.6,
       projectileSpeed: 18, range: 40, blastRadius: 1.25 });
     expect(store.getConfig().enemies.grunt.hp).toBe(3);
+    expect(store.getConfig().enemies.brute).toEqual({ hp: 100, contactDamage: 1, radius: 0.55 });
   });
 
   it('rejects invalid base values, string coercion, and unknown keys', async () => {
@@ -75,13 +76,25 @@ describe('GameConfigSchema and loading', () => {
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: Infinity } })).toThrow();
     expect(() => GameConfigSchema.parse({ ...base, player: { ...base.player, memberRadius: 0.22 } })).not.toThrow();
     for (const obsolete of [{ moveSpeed: 2.5 }, { activationDistance: 10 }]) {
-      expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, ...obsolete } } })).toThrow();
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies, grunt: { ...base.enemies.grunt, ...obsolete } } })).toThrow();
     }
     for (const contactDamage of [0, -1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
-      expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, contactDamage } } })).toThrow();
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies, grunt: { ...base.enemies.grunt, contactDamage } } })).toThrow();
     }
-    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, contactDamage: 2 } } })).not.toThrow();
-    expect(() => GameConfigSchema.parse({ ...base, enemies: { grunt: { ...base.enemies.grunt, hp: Infinity } } })).toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies, grunt: { ...base.enemies.grunt, contactDamage: 2 } } })).not.toThrow();
+    expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies, grunt: { ...base.enemies.grunt, hp: Infinity } } })).toThrow();
+    for (const hp of [0, -1, Infinity, NaN]) {
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies,
+        brute: { ...base.enemies.brute, hp } } })).toThrow();
+    }
+    for (const contactDamage of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies,
+        brute: { ...base.enemies.brute, contactDamage } } })).toThrow();
+    }
+    for (const radius of [0, -1, Infinity, NaN]) {
+      expect(() => GameConfigSchema.parse({ ...base, enemies: { ...base.enemies,
+        brute: { ...base.enemies.brute, radius } } })).toThrow();
+    }
     expect(() => GameConfigSchema.parse({ ...base, bosses: { basic: { ...base.bosses.basic, radius: -1 } } })).toThrow();
   });
 

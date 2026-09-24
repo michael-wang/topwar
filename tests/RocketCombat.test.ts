@@ -11,11 +11,12 @@ const tuning: SimulationTuning = {
   defenseLineOffset: config.track.defenseLineOffset,
   formationSpacing: config.player.formationSpacing, memberRadius: config.player.memberRadius,
   gruntRadius: config.enemies.grunt.radius, gruntContactDamage: config.enemies.grunt.contactDamage,
+  bruteRadius: config.enemies.brute.radius, bruteContactDamage: config.enemies.brute.contactDamage,
   rifle: { ...config.weapon.rifle }, rocket: { ...config.weapon.rocket },
 };
 
 function create(count: number, rocketCount: number): Simulation {
-  return new Simulation({ seed: 17, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3 });
+  return new Simulation({ seed: 17, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 100 });
 }
 
 function step(simulation: Simulation, seconds = 0.1, current = tuning): void {

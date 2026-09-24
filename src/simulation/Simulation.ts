@@ -12,6 +12,7 @@ export interface SimulationOptions {
   startSquad: number;
   startRocketCount: number;
   gruntHp: number;
+  bruteHp: number;
 }
 
 export interface SimulationInput {
@@ -27,6 +28,8 @@ export interface SimulationTuning {
   memberRadius: number;
   gruntRadius: number;
   gruntContactDamage: number;
+  bruteRadius: number;
+  bruteContactDamage: number;
   rifle: { damage: number; fireRate: number; projectileSpeed: number; range: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
@@ -39,11 +42,13 @@ type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: num
   | { kind: 'gate'; gate: UpgradeGateSimulationState; fraction: number; z: number };
 
 function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
-  enemies: EnemySimulationState[], gates: UpgradeGateSimulationState[], radius: number,
+  enemies: EnemySimulationState[], gates: UpgradeGateSimulationState[],
+  radii: Pick<SimulationTuning, 'gruntRadius' | 'bruteRadius'>,
   currentPlayerZ: number, nextPlayerZ: number): ProjectileHit | undefined {
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
   for (const enemy of enemies) {
+    const radius = enemy.type === 'brute' ? radii.bruteRadius : radii.gruntRadius;
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
     const halfChord = Math.sqrt(radius * radius - dx * dx);
@@ -102,7 +107,7 @@ function validSquadCount(count: unknown): count is number {
 }
 
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number): void {
+  stream: EnemyStreamDefinition, playerZ: number, gruntHp: number, bruteHp: number): void {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
@@ -113,13 +118,23 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       || !Number.isSafeInteger(cursor.nextEnemyId + stream.columns)) {
       throw new Error('Simulation enemy stream exceeds the supported range');
     }
-    for (const offset of createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
-      stream.spacing, stream.jitter, stream.seed)) {
+    const offsets = createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
+      stream.spacing, stream.jitter, stream.seed);
+    let bruteColumn = 0;
+    if (cursor.nextRowIndex === stream.firstBruteRow) {
+      for (let column = 1; column < offsets.length; column++) {
+        if (Math.abs(offsets[column].x) < Math.abs(offsets[bruteColumn].x)) bruteColumn = column;
+      }
+    }
+    for (let column = 0; column < offsets.length; column++) {
+      const offset = offsets[column];
       const z = rowZ + offset.z;
       if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
         throw new Error('Simulation enemy stream produces a non-finite position');
       }
-      enemies.push({ id: cursor.nextEnemyId++, type: stream.enemy, x: offset.x, z, hp: gruntHp });
+      const isBrute = cursor.nextRowIndex === stream.firstBruteRow && column === bruteColumn;
+      enemies.push({ id: cursor.nextEnemyId++, type: isBrute ? 'brute' : stream.enemy,
+        x: offset.x, z, hp: isBrute ? bruteHp : gruntHp });
     }
     cursor.nextRowIndex++;
   }
@@ -184,13 +199,13 @@ function validateState(value: unknown): { state: SimulationState; rng: SeededRng
     const id = value.id as number;
     if (enemyIds.has(id)) throw new Error(`Simulation enemy id ${id} is duplicated`);
     enemyIds.add(id);
-    if (value.type !== 'grunt') throw new Error(`Simulation enemy ${index} type is unsupported`);
+    if (value.type !== 'grunt' && value.type !== 'brute') throw new Error(`Simulation enemy ${index} type is unsupported`);
     if (typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
       throw new Error(`Simulation enemy ${index} position must be finite`);
     }
     if (!positiveFinite(value.hp)) throw new Error(`Simulation enemy ${index} hp must be positive and finite`);
-    return { id, type: 'grunt', x: value.x, z: value.z, hp: value.hp };
+    return { id, type: value.type, x: value.x, z: value.z, hp: value.hp };
   });
 
   let enemyStream: EnemyStreamSimulationState | null = null;
@@ -350,6 +365,7 @@ export class Simulation {
   private state: SimulationState;
   private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
   private readonly gruntHp: number;
+  private readonly bruteHp: number;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -361,8 +377,10 @@ export class Simulation {
       throw new Error('Simulation startRocketCount must be a non-negative safe integer within startSquad');
     }
     if (!positiveFinite(options.gruntHp)) throw new Error('Simulation gruntHp must be positive and finite');
+    if (!positiveFinite(options.bruteHp)) throw new Error('Simulation bruteHp must be positive and finite');
     this.enemyStreamDefinition = level.enemyStream;
     this.gruntHp = options.gruntHp;
+    this.bruteHp = options.bruteHp;
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
       for (const offset of createEnemyFormation(group.count, group.formation.columns,
@@ -384,7 +402,7 @@ export class Simulation {
       ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1 }
       : null;
     if (enemyStream && level.enemyStream) {
-      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp);
+      extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, options.gruntHp, options.bruteHp);
     }
     this.state = {
       tick: 0,
@@ -426,11 +444,12 @@ export class Simulation {
       throw new Error('Simulation defenseLineOffset must be finite and greater than zero');
     }
     if (!positiveFinite(tuning.formationSpacing) || !positiveFinite(tuning.memberRadius)
-      || !positiveFinite(tuning.gruntRadius)) {
-      throw new Error('Simulation formationSpacing, memberRadius, and gruntRadius must be positive and finite');
+      || !positiveFinite(tuning.gruntRadius) || !positiveFinite(tuning.bruteRadius)) {
+      throw new Error('Simulation formationSpacing, memberRadius, and enemy radii must be positive and finite');
     }
-    if (!Number.isSafeInteger(tuning.gruntContactDamage) || tuning.gruntContactDamage <= 0) {
-      throw new Error('Simulation gruntContactDamage must be a positive safe integer');
+    if (!Number.isSafeInteger(tuning.gruntContactDamage) || tuning.gruntContactDamage <= 0
+      || !Number.isSafeInteger(tuning.bruteContactDamage) || tuning.bruteContactDamage <= 0) {
+      throw new Error('Simulation enemy contact damage must be a positive safe integer');
     }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.damage) || !positiveFinite(tuning.rifle.fireRate)
       || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
@@ -469,7 +488,7 @@ export class Simulation {
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition) {
-      extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, nextZ, this.gruntHp);
+      extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, nextZ, this.gruntHp, this.bruteHp);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
@@ -518,8 +537,7 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      const hit = findFirstHit(projectile, endZ, enemies, gates, tuning.gruntRadius,
-        this.state.player.z, nextZ);
+      const hit = findFirstHit(projectile, endZ, enemies, gates, tuning, this.state.player.z, nextZ);
       if (hit) {
         if (hit.kind === 'gate') {
           hit.gate.hp = Math.max(0, hit.gate.hp - projectile.damage);
@@ -600,11 +618,12 @@ export class Simulation {
       }
       // Both a collected and a missed plaque disappear once it passes the player.
     }
-    const contactRadius = tuning.memberRadius + tuning.gruntRadius;
-    if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
+      const contactRadius = tuning.memberRadius
+        + (enemy.type === 'brute' ? tuning.bruteRadius : tuning.gruntRadius);
+      if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
       // Sweep each moving squad member against the stationary enemy.
       const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) => {
         const startX = this.state.player.x + offset.x;
@@ -618,7 +637,8 @@ export class Simulation {
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, tuning.gruntContactDamage);
+        squad = afterCasualties(squad, enemy.type === 'brute'
+          ? tuning.bruteContactDamage : tuning.gruntContactDamage);
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
@@ -628,7 +648,7 @@ export class Simulation {
       if (squad.count === 0) break;
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
-        squad = afterCasualties(squad, 1);
+        squad = afterCasualties(squad, enemy.type === 'brute' ? tuning.bruteContactDamage : 1);
       }
     }
     this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, enemyStream, gates,

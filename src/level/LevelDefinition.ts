@@ -3,6 +3,8 @@ import { z } from 'zod';
 const nonEmptyId = z.string().refine((value) => value.trim().length > 0, 'Must be a non-empty string');
 const positiveSafeInteger = z.number().finite().int().positive()
   .refine(Number.isSafeInteger, 'Must be a safe integer');
+const nonnegativeSafeInteger = z.number().finite().int().nonnegative()
+  .refine(Number.isSafeInteger, 'Must be a safe integer');
 
 const EnemyGroupSchema = z.strictObject({
   id: nonEmptyId,
@@ -26,6 +28,7 @@ const EnemyStreamSchema = z.strictObject({
   spacing: z.number().finite().positive(),
   jitter: z.number().finite().nonnegative(),
   seed: z.number().int().min(0).max(0xffffffff),
+  firstBruteRow: nonnegativeSafeInteger.optional(),
 }).superRefine((stream, context) => {
   if (stream.spawnAheadDistance <= stream.startZ) {
     context.addIssue({ code: 'custom', path: ['spawnAheadDistance'],

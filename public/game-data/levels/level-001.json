@@ -15,6 +15,7 @@
     "columns": 7,
     "spacing": 0.60,
     "jitter": 0.16,
-    "seed": 104729
+    "seed": 104729,
+    "firstBruteRow": 96
   }
 }

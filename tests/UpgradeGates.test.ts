@@ -12,10 +12,11 @@ const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [],
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+  bruteRadius: 0.55, bruteContactDamage: 1,
   rifle: { damage: 3, fireRate: 1, projectileSpeed: 10, range: 20 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 10, range: 20, blastRadius: 1.25 },
 };
-const create = (source = level) => new Simulation({ seed: 1, level: source, startSquad: 1, startRocketCount: 0, gruntHp: 3 });
+const create = (source = level) => new Simulation({ seed: 1, level: source, startSquad: 1, startRocketCount: 0, gruntHp: 3, bruteHp: 100 });
 const rifle = (id: number, x: number, damage = 3): ProjectileSimulationState =>
   ({ id, kind: 'rifle', x, z: 0, speed: 10, damage, remainingRange: 20, blastRadius: 0 });
 const rocket = (id: number, x: number): ProjectileSimulationState =>

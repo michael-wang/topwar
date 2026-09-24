@@ -36,6 +36,7 @@ export class GameApp {
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
       gruntHp: this.config.enemies.grunt.hp,
+      bruteHp: this.config.enemies.brute.hp,
     });
     this.targetX = this.simulation.getState().player.x;
     this.renderer = new GameRenderer(viewport);
@@ -119,6 +120,7 @@ export class GameApp {
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
       gruntHp: this.config.enemies.grunt.hp,
+      bruteHp: this.config.enemies.brute.hp,
     });
     this.targetX = this.simulation.getState().player.x;
     this.dragStartPlayerX = this.targetX;
@@ -146,6 +148,8 @@ export class GameApp {
         memberRadius: this.config.player.memberRadius,
         gruntRadius: this.config.enemies.grunt.radius,
         gruntContactDamage: this.config.enemies.grunt.contactDamage,
+        bruteRadius: this.config.enemies.brute.radius,
+        bruteContactDamage: this.config.enemies.brute.contactDamage,
         rifle: { ...this.config.weapon.rifle },
         rocket: { ...this.config.weapon.rocket },
       },

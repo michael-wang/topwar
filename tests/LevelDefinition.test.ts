@@ -22,7 +22,7 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.length).toBe(112);
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
-      columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 });
+      columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729, firstBruteRow: 96 });
     expect(parsed.upgradeGates).toEqual([
       { id: 'rifle-generator', x: -2.7, zOffset: 8, width: 0.9, hp: 100,
         reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1, dropSpeed: 4 } },
@@ -72,6 +72,12 @@ describe('LevelDefinitionSchema', () => {
     }
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream, extra: true } })).toThrow(/extra/);
+    for (const firstBruteRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
+      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+        enemyStream: { ...authoredLevel.enemyStream, firstBruteRow } })).toThrow(/firstBruteRow/);
+    }
+    expect(LevelDefinitionSchema.parse({ ...authoredLevel,
+      enemyStream: { ...authoredLevel.enemyStream, firstBruteRow: 0 } }).enemyStream?.firstBruteRow).toBe(0);
   });
 
   it('validates gate IDs, positions, HP, width, and strict rewards', () => {

@@ -10,7 +10,7 @@ export interface SquadSimulationState {
 
 export interface EnemySimulationState {
   id: number;
-  type: 'grunt';
+  type: 'grunt' | 'brute';
   x: number;
   z: number;
   hp: number;

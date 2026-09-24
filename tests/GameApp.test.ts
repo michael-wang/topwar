@@ -14,7 +14,7 @@ const mock = vi.hoisted(() => ({
   getState: vi.fn(() => ({
     player: { x: 2, z: 3 },
     squad: { count: 3, rocketCount: 0 },
-    enemies: [{ id: 1, type: 'grunt' as const, x: -0.4, z: 12, hp: 10 }],
+    enemies: [{ id: 1, type: 'grunt' as 'grunt' | 'brute', x: -0.4, z: 12, hp: 10 }],
     gates: [] as UpgradeGateSimulationState[],
     pickups: [] as { id: number; x: number; zOffset: number; rewardAmount: number }[],
     projectiles: [{ id: 1, kind: 'rifle' as 'rifle' | 'rocket', x: 2, z: 5 }],
@@ -102,7 +102,7 @@ import { GameApp } from '../src/app/GameApp';
 
 const level = LevelDefinitionSchema.parse(authoredLevel);
 const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22, gruntRadius: 0.3,
-  gruntContactDamage: 1,
+  gruntContactDamage: 1, bruteRadius: 0.55, bruteContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 
@@ -111,7 +111,8 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     player: { startSquad, startRocketCount: 0, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
     controls: { mouseSensitivity: 1 },
-    enemies: { grunt: { hp: 10, radius: 0.3, contactDamage: 1 } },
+    enemies: { grunt: { hp: 10, radius: 0.3, contactDamage: 1 },
+      brute: { hp: 100, radius: 0.55, contactDamage: 1 } },
     weapon: { rifle: { damage: 3, fireRate: 7, projectileSpeed: 28, range: 18 },
       rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } },
   } as GameConfig;
@@ -145,7 +146,11 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
       for (const listener of listeners) listener(config);
     },
     changeGrunt: (changes: Partial<GameConfig['enemies']['grunt']>) => {
-      config = { ...config, enemies: { grunt: { ...config.enemies.grunt, ...changes } } };
+      config = { ...config, enemies: { ...config.enemies, grunt: { ...config.enemies.grunt, ...changes } } };
+      for (const listener of listeners) listener(config);
+    },
+    changeBrute: (changes: Partial<GameConfig['enemies']['brute']>) => {
+      config = { ...config, enemies: { ...config.enemies, brute: { ...config.enemies.brute, ...changes } } };
       for (const listener of listeners) listener(config);
     },
     listenerCount: () => listeners.size,
@@ -191,15 +196,16 @@ describe('GameApp config and frame lifecycle', () => {
     config.changeRocket({ damage: 25, blastRadius: 2 });
     config.changePlayer({ memberRadius: 0.3 });
     config.changeGrunt({ hp: 99, radius: 0.5, contactDamage: 2 });
+    config.changeBrute({ hp: 110, radius: 0.7, contactDamage: 2 });
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
       trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.3, gruntRadius: 0.5,
-      gruntContactDamage: 2,
+      gruntContactDamage: 2, bruteRadius: 0.7, bruteContactDamage: 2,
       rifle: { damage: 9, fireRate: 4, projectileSpeed: 28, range: 18 },
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, gruntHp: 10 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 100 });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -207,7 +213,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, gruntHp: 10 });
+      startRocketCount: 0, gruntHp: 10, bruteHp: 100 });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -238,13 +244,28 @@ describe('GameApp config and frame lifecycle', () => {
     expect(config.listenerCount()).toBe(0);
   });
 
+  it('passes brute identity and position through plain render state without HP', () => {
+    const raf = createRaf();
+    const config = createConfigStore();
+    const app = new GameApp({} as HTMLElement, config.store, level);
+    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0 },
+      enemies: [{ id: 673, type: 'brute', x: 0.1, z: 81.6, hp: 100 }],
+      gates: [], pickups: [], projectiles: [] });
+    app.start();
+    raf.frame(100);
+    expect(mock.render.mock.lastCall![0].enemies).toEqual([
+      { id: 673, type: 'brute', x: 0.1, z: 81.6 },
+    ]);
+    app.dispose();
+  });
+
   it('passes mixed squad roles and rocket projectile kind through the render boundary', () => {
     const raf = createRaf();
     const config = createConfigStore(2);
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, gruntHp: 10 });
+      startRocketCount: 1, gruntHp: 10, bruteHp: 100 });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1 },
       enemies: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', x: 0.225, z: 3 }] });
     app.start();
@@ -492,7 +513,7 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 1, gruntHp: 4 });
+      startRocketCount: 1, gruntHp: 4, bruteHp: 100 });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);
     const priorSteps = mock.step.mock.calls.length;

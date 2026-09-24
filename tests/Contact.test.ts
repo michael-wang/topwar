@@ -7,6 +7,7 @@ const level: LevelDefinition = { id: 'contact-test', length: 20, enemyGroups: []
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45,
   memberRadius: 0.22, gruntRadius: 0.3, gruntContactDamage: 1,
+  bruteRadius: 0.55, bruteContactDamage: 1,
   rifle: { damage: 3, fireRate: 7, projectileSpeed: 10, range: 18 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 },
 };
@@ -16,7 +17,7 @@ const shot = (id: number, x = 0, z = 0): ProjectileSimulationState =>
   ({ id, kind: 'rifle', x, z, speed: 10, damage: 3, remainingRange: 18, blastRadius: 0 });
 
 function simulationWith(count: number, enemies: EnemySimulationState[], projectiles: ProjectileSimulationState[] = [], rocketCount = 0) {
-  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3 });
+  const simulation = new Simulation({ seed: 7, level, startSquad: count, startRocketCount: rocketCount, gruntHp: 3, bruteHp: 100 });
   const state = simulation.getState();
   state.enemies = enemies;
   state.projectiles = projectiles;

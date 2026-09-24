@@ -43,6 +43,8 @@ The player is forced forward toward stationary basic grunts. Pressure comes from
 
 Level 001 uses an endless deterministic spatial enemy stream. New rows are generated only ahead of the advancing player; grunts stay stationary, and uncleared enemies cause contact or defense-line casualties until the run ends. The stream is not a huge preallocated enemy list and may continue beyond the level's current length metadata. Slower forced progression gives the player time to invest in persistent side armories. This level deliberately embraces exaggerated advertisement-style squad growth.
 
+The opening is a long sea of one-shot grunts. One 100-HP Tier-2 brute appears later as a milestone, with a larger, darker silhouette; normal grunt rows resume afterward. Future Tier-2 frequency remains undecided.
+
 ## 3. Controls
 
 Desktop is mouse-first: moving inside the gameplay viewport steers relatively without a button. The cursor stays visible for boundary awareness and indicates left or right steering, returning to neutral when movement stops. A/D and Left/Right arrows are equivalent alternatives. Mobile is touch-first: drag from any comfortable point without a jump on touch-down. Switching controls should be frictionless; Pointer Lock is not required for the first playable prototype.
