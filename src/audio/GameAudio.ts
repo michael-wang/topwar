@@ -20,6 +20,10 @@ export class AudioCueObserver {
       const previous = this.previousRewards.get(reward.id);
       if (previous !== undefined && reward.hitProgress > previous) cues.add('rewardHit');
     }
+    if (currentDefense > previousDefense
+      && [...this.previousRewards.keys()].some((id) => !rewards.some((reward) => reward.id === id))) {
+      cues.add('rewardHit');
+    }
     this.previousRewards = new Map(rewards.map((reward) => [reward.id, reward.hitProgress]));
     if (boss && this.previousBoss?.id === boss.id && boss.hp < this.previousBoss.hp
       && nowMs >= this.nextBossHitCueMs) {
@@ -53,7 +57,7 @@ export class AudioCueObserver {
 const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number }> = {
   reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
-  rewardHit: { from: 760, to: 950, seconds: 0.045, wave: 'sine', volume: 0.025 },
+  rewardHit: { from: 760, to: 950, seconds: 0.06, wave: 'sine', volume: 0.05 },
   bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.045 },
   enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.055 },
 };

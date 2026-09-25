@@ -6,7 +6,7 @@ import { rewardPlacementForBlock } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, validateSquad } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
-  powerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
+  enemyPowerForTier, riflePowerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 
 export interface SimulationOptions {
@@ -15,6 +15,13 @@ export interface SimulationOptions {
   startSquad: number;
   startRocketCount: number;
   tiers: TierPower;
+  rewardRowsPerReward?: number;
+}
+
+export interface RuntimeBalance {
+  rewardRowsPerReward: number;
+  enemyHigherTierPowerMultiplier: number;
+  rifleHigherTierPowerMultiplier: number;
 }
 
 export interface SimulationInput {
@@ -181,7 +188,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       }
       const tier = enemyTierForRow(rowIndex, column, revealColumn, stream.seed, stream.tierProgression);
       const enemyId = cursor.nextEnemyId++;
-      enemies.push({ id: enemyId, tier, x: offset.x, z, hp: powerForTier(tier, power) });
+      enemies.push({ id: enemyId, tier, x: offset.x, z, hp: enemyPowerForTier(tier, power) });
     }
     cursor.nextRowIndex++;
   }
@@ -499,7 +506,7 @@ export class Simulation {
   private rng: SeededRng;
   private state: SimulationState;
   private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
-  private readonly tiers: TierPower;
+  private tiers: TierPower;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -512,10 +519,18 @@ export class Simulation {
     }
     if (!options.tiers || !Number.isSafeInteger(options.tiers.mergeCount) || options.tiers.mergeCount < 2
       || !positiveFinite(options.tiers.tier1Power) || !positiveFinite(options.tiers.tier2Power)
-      || !Number.isFinite(options.tiers.higherTierPowerMultiplier)
-      || options.tiers.higherTierPowerMultiplier <= 1
+      || !Number.isFinite(options.tiers.enemyHigherTierPowerMultiplier)
+      || options.tiers.enemyHigherTierPowerMultiplier <= 1
+      || !Number.isFinite(options.tiers.rifleHigherTierPowerMultiplier)
+      || options.tiers.rifleHigherTierPowerMultiplier <= 1
       || !positiveFinite(options.tiers.normalEnemyRadius)) throw new Error('Simulation tiers are invalid');
-    this.enemyStreamDefinition = level.enemyStream;
+    if (options.rewardRowsPerReward !== undefined
+      && (!Number.isSafeInteger(options.rewardRowsPerReward) || options.rewardRowsPerReward <= 0)) {
+      throw new Error('Simulation reward rows per reward must be a positive safe integer');
+    }
+    this.enemyStreamDefinition = level.enemyStream ? { ...level.enemyStream,
+      rewards: level.enemyStream.rewards ? { ...level.enemyStream.rewards,
+        rowsPerReward: options.rewardRowsPerReward ?? level.enemyStream.rewards.rowsPerReward } : undefined } : undefined;
     this.tiers = { ...options.tiers };
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
@@ -530,7 +545,7 @@ export class Simulation {
           tier: 1,
           x: offset.x,
           z,
-          hp: powerForTier(1, this.tiers),
+          hp: enemyPowerForTier(1, this.tiers),
         });
       }
     }
@@ -540,9 +555,9 @@ export class Simulation {
         nextRewardId: 1, nextBossTier: 1 }
       : null;
     let boss: BossSimulationState | null = null;
-    if (enemyStream && level.enemyStream) {
-      boss = extendEnemyStream(enemies, enemyStream, level.enemyStream, 0, this.tiers, boss);
-      extendRewardStream(streamRewards, enemyStream, level.enemyStream, 0);
+    if (enemyStream && this.enemyStreamDefinition) {
+      boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, 0, this.tiers, boss);
+      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, 0);
     }
     this.state = {
       tick: 0,
@@ -563,6 +578,57 @@ export class Simulation {
       nextPickupId: 1,
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
+  }
+
+  setRuntimeBalance(balance: RuntimeBalance): void {
+    if (!Number.isSafeInteger(balance.rewardRowsPerReward) || balance.rewardRowsPerReward <= 0
+      || !Number.isFinite(balance.enemyHigherTierPowerMultiplier)
+      || balance.enemyHigherTierPowerMultiplier <= 1
+      || !Number.isFinite(balance.rifleHigherTierPowerMultiplier)
+      || balance.rifleHigherTierPowerMultiplier <= 1) {
+      throw new Error('Simulation runtime balance is invalid');
+    }
+    const nextTiers = { ...this.tiers,
+      enemyHigherTierPowerMultiplier: balance.enemyHigherTierPowerMultiplier,
+      rifleHigherTierPowerMultiplier: balance.rifleHigherTierPowerMultiplier };
+    const rescaleHp = nextTiers.enemyHigherTierPowerMultiplier
+      !== this.tiers.enemyHigherTierPowerMultiplier;
+    const enemies = !rescaleHp ? this.state.enemies : this.state.enemies.map((enemy) => {
+      const oldMax = enemyPowerForTier(enemy.tier, this.tiers);
+      const nextMax = enemyPowerForTier(enemy.tier, nextTiers);
+      return { ...enemy, hp: Math.min(nextMax, Math.max(0, enemy.hp / oldMax * nextMax)) };
+    });
+    const boss = rescaleHp && this.state.boss && this.enemyStreamDefinition
+      ? (() => {
+        const nextMax = bossMaxHpForTier(this.state.boss!.tier,
+          this.enemyStreamDefinition!.tierProgression, nextTiers);
+        return { ...this.state.boss!, maxHp: nextMax,
+          hp: Math.min(nextMax, Math.max(0, this.state.boss!.hp / this.state.boss!.maxHp * nextMax)) };
+      })() : this.state.boss;
+    const rewards = this.enemyStreamDefinition?.rewards;
+    const cursor = this.state.enemyStream;
+    let nextRewardBlockIndex = cursor?.nextRewardBlockIndex;
+    if (rewards && cursor && rewards.rowsPerReward !== balance.rewardRowsPerReward) {
+      const previousRow = cursor.nextRewardBlockIndex === 0 ? -1
+        : rewardPlacementForBlock(cursor.nextRewardBlockIndex - 1,
+          this.enemyStreamDefinition!.columns, rewards).rowIndex;
+      const playerRow = Math.max(-1, Math.floor((this.state.player.z
+        - this.enemyStreamDefinition!.startZ) / this.enemyStreamDefinition!.spacing));
+      const activeRow = this.state.streamRewards.reduce((furthest, reward) => Math.max(furthest,
+        Math.round((reward.z - this.enemyStreamDefinition!.startZ)
+          / this.enemyStreamDefinition!.spacing)), -1);
+      const processedRow = Math.max(previousRow, playerRow, activeRow);
+      const nextDefinition = { ...rewards, rowsPerReward: balance.rewardRowsPerReward };
+      nextRewardBlockIndex = Math.floor((processedRow + 1) / balance.rewardRowsPerReward);
+      while (rewardPlacementForBlock(nextRewardBlockIndex,
+        this.enemyStreamDefinition!.columns, nextDefinition).rowIndex <= processedRow) {
+        nextRewardBlockIndex++;
+      }
+    }
+    this.tiers = nextTiers;
+    if (rewards) rewards.rowsPerReward = balance.rewardRowsPerReward;
+    this.state = { ...this.state, enemies, boss,
+      enemyStream: cursor ? { ...cursor, nextRewardBlockIndex: nextRewardBlockIndex! } : null };
   }
 
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
@@ -668,7 +734,7 @@ export class Simulation {
               if (roleIndex < 0) { tier = tierIndex + 1; break; }
             }
           }
-          const damage = kind === 'rifle' ? powerForTier(tier, this.tiers) : tuning.rocket.damage;
+          const damage = kind === 'rifle' ? riflePowerForTier(tier, this.tiers) : tuning.rocket.damage;
           if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
           if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
           const x = nextX + offset.x;

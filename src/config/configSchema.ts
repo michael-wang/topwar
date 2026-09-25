@@ -16,9 +16,6 @@ export const GameConfigSchema = z.strictObject({
     halfWidth: positive,
     defenseLineOffset: positive,
   }),
-  controls: z.strictObject({
-    mouseSensitivity: positive,
-  }),
   weapon: z.strictObject({
     rifle: z.strictObject({
       fireRate: positive,
@@ -37,7 +34,8 @@ export const GameConfigSchema = z.strictObject({
     mergeCount: z.number().int().safe().min(2),
     tier1Power: positive,
     tier2Power: positive,
-    higherTierPowerMultiplier: z.number().finite().gt(1),
+    enemyHigherTierPowerMultiplier: z.number().finite().gt(1),
+    rifleHigherTierPowerMultiplier: z.number().finite().gt(1),
     normalEnemyRadius: positive,
   }),
   bosses: z.strictObject({

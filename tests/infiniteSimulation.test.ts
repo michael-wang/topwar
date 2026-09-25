@@ -6,7 +6,7 @@ import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelD
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import type { EnemySimulationState, ProjectileSimulationState, SimulationState,
   StreamRewardSimulationState } from '../src/simulation/SimulationState';
-import { powerForTier, bossRowForTier, rewardTierForRow } from '../src/simulation/tiers/tierRules';
+import { enemyPowerForTier, bossRowForTier, rewardTierForRow } from '../src/simulation/tiers/tierRules';
 import { rewardPlacementForBlock } from '../src/simulation/enemies/streamRewards';
 import { squadDefenseValue, damageFeedback } from '../src/app/combatFeedback';
 import { compactRifleValue } from '../src/simulation/squad/composition';
@@ -24,12 +24,12 @@ const idle = { targetX: 0 };
 const create = (selectedLevel = stillLevel) => new Simulation({ seed: 17, level: selectedLevel,
   startSquad: 1, startRocketCount: 0, tiers: config.tiers });
 const enemy = (id: number, tier: number, z: number, x = 0): EnemySimulationState =>
-  ({ id, tier, x, z, hp: powerForTier(tier, config.tiers) });
+  ({ id, tier, x, z, hp: enemyPowerForTier(tier, config.tiers) });
 const reward = (id: number, tier: number, z: number, hitProgress = 0): StreamRewardSimulationState =>
   ({ id, tier, x: 0, z, hitProgress, hitsRequired: 10 });
 const shot = (id: number, tier: number, z = 0): ProjectileSimulationState => ({
   id, kind: 'rifle', tier, x: 0, z, speed: 100,
-  damage: powerForTier(tier, config.tiers), remainingRange: 100, blastRadius: 0,
+  damage: enemyPowerForTier(tier, config.tiers), remainingRange: 100, blastRadius: 0,
   penetrationRemaining: tier === 1 ? 0 : 10 ** (tier - 1),
 });
 function restoreWith(simulation: Simulation, change: (state: SimulationState) => void): void {
@@ -121,7 +121,7 @@ describe('unbounded enemy and Boss stream', () => {
       simulation.step(0.2, idle, { ...tuning, forwardSpeed: 1, rifle: { ...tuning.rifle, fireRate: 0.01 } });
       const spawned = simulation.getState();
       expect(spawned.boss?.tier).toBe(tier);
-      expect(spawned.boss?.maxHp).toBe(powerForTier(tier, config.tiers) * 1000);
+      expect(spawned.boss?.maxHp).toBe(enemyPowerForTier(tier, config.tiers) * 1000);
       expect(spawned.enemyStream?.nextBossTier).toBe(tier + 1);
       expect(spawned.enemyStream!.nextRowIndex).toBeGreaterThan(row);
       expect(spawned.rngState).toBe(current.rngState);
@@ -206,7 +206,7 @@ describe('generic projectile exchange and rewards', () => {
         rifleCounts: [...Array(tier - 1).fill(0), 1], rifleRemainder: 0 }; });
       simulation.step(0.01, idle, tuning);
       expect(simulation.getState().projectiles[0]).toMatchObject({ kind: 'rifle', tier,
-        damage: powerForTier(tier, config.tiers),
+        damage: enemyPowerForTier(tier, config.tiers),
         penetrationRemaining: tier === 1 ? 0 : 10 ** (tier - 1) });
     }
   });
@@ -387,7 +387,7 @@ describe('generic projectile exchange and rewards', () => {
       });
       step(simulation);
       expect(simulation.getState().projectiles).toHaveLength(0);
-      expect(simulation.getState().boss?.hp ?? 0).toBe(Math.max(0, boss.hp - powerForTier(tier, config.tiers)));
+      expect(simulation.getState().boss?.hp ?? 0).toBe(Math.max(0, boss.hp - enemyPowerForTier(tier, config.tiers)));
     }
     const simulation = create(nearFirst);
     const bossZ = simulation.getState().boss!.z;

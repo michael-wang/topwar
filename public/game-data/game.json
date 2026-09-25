@@ -11,9 +11,6 @@
     "halfWidth": 2.5,
     "defenseLineOffset": 1.5
   },
-  "controls": {
-    "mouseSensitivity": 1
-  },
   "weapon": {
     "rifle": {
       "fireRate": 7,
@@ -32,7 +29,8 @@
     "mergeCount": 10,
     "tier1Power": 3,
     "tier2Power": 300,
-    "higherTierPowerMultiplier": 10,
+    "enemyHigherTierPowerMultiplier": 10,
+    "rifleHigherTierPowerMultiplier": 10,
     "normalEnemyRadius": 0.3
   },
   "bosses": {

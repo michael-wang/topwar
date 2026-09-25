@@ -20,7 +20,7 @@ describe('runtime config with generic tiers', () => {
     await config.load();
     expect(config.getConfig()).toEqual(base);
     expect(config.getConfig().tiers).toEqual({ mergeCount: 10, tier1Power: 3,
-      tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 });
+      tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 });
     expect(config.getConfig().weapon.rifle).toEqual({ fireRate: 7, projectileSpeed: 28, range: 40 });
   });
 

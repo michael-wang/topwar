@@ -12,7 +12,8 @@ export interface TierPower {
   mergeCount: number;
   tier1Power: number;
   tier2Power: number;
-  higherTierPowerMultiplier: number;
+  enemyHigherTierPowerMultiplier: number;
+  rifleHigherTierPowerMultiplier: number;
   normalEnemyRadius: number;
 }
 
@@ -76,12 +77,20 @@ export function rewardTierForRow(row: number, rule: TierProgression): number {
   return establishedTierForRow(row, rule);
 }
 
-export function powerForTier(tier: number, rule: TierPower): number {
+function powerForTierWithGrowth(tier: number, rule: TierPower, growth: number): number {
   if (!validTier(tier)) throw new Error('Tier must be a positive safe integer');
   const power = tier === 1 ? rule.tier1Power
-    : rule.tier2Power * rule.higherTierPowerMultiplier ** (tier - 2);
+    : rule.tier2Power * growth ** (tier - 2);
   if (!Number.isFinite(power) || power <= 0) throw new Error('Tier power exceeds the supported range');
   return power;
+}
+
+export function enemyPowerForTier(tier: number, rule: TierPower): number {
+  return powerForTierWithGrowth(tier, rule, rule.enemyHigherTierPowerMultiplier);
+}
+
+export function riflePowerForTier(tier: number, rule: TierPower): number {
+  return powerForTierWithGrowth(tier, rule, rule.rifleHigherTierPowerMultiplier);
 }
 
 export function exchangeValueForTier(tier: number, mergeCount: number): number {
@@ -93,7 +102,7 @@ export function exchangeValueForTier(tier: number, mergeCount: number): number {
 
 export function bossMaxHpForTier(tier: number, progression: TierProgression, power: TierPower): number {
   const multiplier = tier === 1 ? progression.firstBossHpMultiplier : progression.laterBossHpMultiplier;
-  const hp = powerForTier(tier, power) * multiplier;
+  const hp = enemyPowerForTier(tier, power) * multiplier;
   if (!Number.isFinite(hp) || hp <= 0) throw new Error('Boss HP exceeds the supported range');
   return hp;
 }

@@ -79,7 +79,7 @@ describe('audio cue observation and safety', () => {
       { id: 9, hp: 80 }, 50)).toEqual([]);
     expect(observer.observe(1, 1, [{ id: 9 }], [{ id: 1, hitProgress: 2 }],
       { id: 9, hp: 70 }, 111)).toEqual(['rewardHit', 'bossHit']);
-    expect(observer.observe(1, 2, [], [], null, 220)).toEqual(['reward', 'enemyDeath']);
+    expect(observer.observe(1, 2, [], [], null, 220)).toEqual(['reward', 'rewardHit', 'enemyDeath']);
     observer.reset();
     expect(observer.observe(1, 1, [], [{ id: 1, hitProgress: 5 }], boss, 0)).toEqual([]);
   });
@@ -91,6 +91,11 @@ describe('audio cue observation and safety', () => {
     expect(observer.observe(9, 0, [], [], null)).toEqual([]);
     observer.reset();
     expect(observer.observe(1, 1, [], [], null)).toEqual([]);
+  });
+  it('does not tick when an ignored reward expires without squad growth', () => {
+    const observer = new AudioCueObserver();
+    expect(observer.observe(1, 1, [], [{ id: 4, hitProgress: 2 }], null, 0)).toEqual([]);
+    expect(observer.observe(1, 1, [], [], null, 50)).toEqual([]);
   });
 
   it('requests one throttled yelp for removals and resets across Retry', () => {

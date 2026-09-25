@@ -18,7 +18,7 @@ const tuning: SimulationTuning = {
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 1,
   level: source,
   startSquad, startRocketCount: 0, tiers: { mergeCount: 10, tier1Power: 3,
-    tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+    tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
 const shot = (id: number, x: number, kind: 'rifle' | 'heavyRifle' | 'rocket' = 'rifle',
   damage = 3): ProjectileSimulationState => ({ id, kind: kind === 'rocket' ? 'rocket' : 'rifle',
   tier: kind === 'rocket' ? 0 : kind === 'heavyRifle' ? 2 : 1, x, z: 0, speed: 100,

@@ -10,7 +10,7 @@ if (!viewport) {
 }
 const gameViewport = viewport;
 
-const configStore = new ConfigStore({ storage: window.localStorage });
+const configStore = new ConfigStore();
 async function startGame(): Promise<void> {
   let level: LevelDefinition;
   try {

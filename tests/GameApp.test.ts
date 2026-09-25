@@ -4,13 +4,13 @@ import type { GameConfig } from '../src/config/configSchema';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import type { PointerDragCallbacks } from '../src/input/PointerDragInput';
-import type { MouseSteeringCallbacks } from '../src/input/MouseSteeringInput';
 import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInput';
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
   step: vi.fn(),
+  setRuntimeBalance: vi.fn(),
   getState: vi.fn((): any => ({
     player: { x: 2, z: 3 },
     squad: { count: 3, rocketCount: 0, rifleCounts: [3], rifleRemainder: 0 },
@@ -35,14 +35,16 @@ const mock = vi.hoisted(() => ({
   damageDispose: vi.fn(),
   tierHudSet: vi.fn(),
   tierHudDispose: vi.fn(),
+  pauseVisible: vi.fn(),
+  pauseDispose: vi.fn(),
+  hintDispose: vi.fn(),
+  panelConstructedWith: vi.fn(),
+  panelSetValues: vi.fn(),
+  panelDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
   inputStop: vi.fn(),
   inputDispose: vi.fn(),
-  mouseConstructedWith: vi.fn(),
-  mouseStart: vi.fn(),
-  mouseStop: vi.fn(),
-  mouseDispose: vi.fn(),
   keyboardConstructedWith: vi.fn(),
   keyboardStart: vi.fn(),
   keyboardStop: vi.fn(),
@@ -53,6 +55,7 @@ vi.mock('../src/simulation/Simulation', () => ({
   Simulation: class {
     constructor(options: unknown) { mock.constructedWith(options); }
     step = mock.step;
+    setRuntimeBalance = mock.setRuntimeBalance;
     getState = mock.getState;
   },
 }));
@@ -90,6 +93,21 @@ vi.mock('../src/ui/TierHud', () => ({
   },
 }));
 
+vi.mock('../src/ui/PauseOverlay', () => ({ PauseOverlay: class {
+  setVisible = mock.pauseVisible;
+  dispose = mock.pauseDispose;
+} }));
+vi.mock('../src/ui/ControlHint', () => ({ ControlHint: class {
+  dispose = mock.hintDispose;
+} }));
+vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
+  constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown) {
+    mock.panelConstructedWith(defaults, onChange);
+  }
+  setValues = mock.panelSetValues;
+  dispose = mock.panelDispose;
+} }));
+
 vi.mock('../src/input/PointerDragInput', () => ({
   PointerDragInput: class {
     constructor(_viewport: HTMLElement, callbacks: PointerDragCallbacks) {
@@ -98,17 +116,6 @@ vi.mock('../src/input/PointerDragInput', () => ({
     start = mock.inputStart;
     stop = mock.inputStop;
     dispose = mock.inputDispose;
-  },
-}));
-
-vi.mock('../src/input/MouseSteeringInput', () => ({
-  MouseSteeringInput: class {
-    constructor(_viewport: HTMLElement, callbacks: MouseSteeringCallbacks) {
-      mock.mouseConstructedWith(callbacks);
-    }
-    start = mock.mouseStart;
-    stop = mock.mouseStop;
-    dispose = mock.mouseDispose;
   },
 }));
 
@@ -135,9 +142,8 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
   let config = {
     player: { startSquad, startRocketCount: 0, formationSpacing, memberRadius: 0.22, moveSpeed: 5, forwardSpeed: 3 },
     track: { halfWidth: 2.5, defenseLineOffset: 1.5 },
-    controls: { mouseSensitivity: 1 },
     tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300,
-      higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 },
+      enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 },
     bosses: { basic: { visualScale: 7, radius: 2 } },
     weapon: { rifle: { fireRate: 7, projectileSpeed: 28, range: 18 },
       rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } },
@@ -159,10 +165,6 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
       config = { ...config, track: { ...config.track, ...changes } };
       for (const listener of listeners) listener(config);
     },
-    changeControls: (changes: Partial<GameConfig['controls']>) => {
-      config = { ...config, controls: { ...config.controls, ...changes } };
-      for (const listener of listeners) listener(config);
-    },
     changeRifle: (changes: Partial<GameConfig['weapon']['rifle']>) => {
       config = { ...config, weapon: { ...config.weapon, rifle: { ...config.weapon.rifle, ...changes } } };
       for (const listener of listeners) listener(config);
@@ -180,7 +182,8 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
 }
 
 function createRaf() {
-  vi.stubGlobal('window', {});
+  const windowTarget = new EventTarget();
+  vi.stubGlobal('window', windowTarget);
   const pending = new Map<number, FrameRequestCallback>();
   let nextId = 1;
   const request = vi.fn((callback: FrameRequestCallback) => {
@@ -194,6 +197,12 @@ function createRaf() {
   return {
     pending,
     cancel,
+    key: (key: string, repeat = false) => {
+      const event = new Event('keydown');
+      Object.defineProperties(event, { key: { value: key }, repeat: { value: repeat } });
+      windowTarget.dispatchEvent(event);
+    },
+    mouseMove: () => windowTarget.dispatchEvent(new Event('mousemove')),
     frame: (timestampMs: number) => {
       const [id, callback] = pending.entries().next().value!;
       pending.delete(id);
@@ -214,7 +223,9 @@ describe('GameApp config and frame lifecycle', () => {
     const app = new GameApp({} as HTMLElement, config.store, level);
     app.start();
     raf.frame(100);
-    config.changeRifle({ fireRate: 4 });
+    const defaults = mock.panelConstructedWith.mock.calls[0][0];
+    const tune = mock.panelConstructedWith.mock.calls[0][1] as (values: typeof defaults) => void;
+    tune({ ...defaults, fireRate: 4 });
     config.changeRocket({ damage: 25, blastRadius: 2 });
     config.changePlayer({ memberRadius: 0.3 });
     config.changeTiers({ tier1Power: 99, normalEnemyRadius: 0.5 });
@@ -226,7 +237,7 @@ describe('GameApp config and frame lifecycle', () => {
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 0, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -234,7 +245,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 0, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -249,7 +260,7 @@ describe('GameApp config and frame lifecycle', () => {
       gates: [],
       pickups: [],
       projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5 }],
-    });
+    }, expect.any(Number));
 
     config.changePlayer({ startSquad: 9, formationSpacing: 1.2 });
     raf.frame(110);
@@ -263,7 +274,7 @@ describe('GameApp config and frame lifecycle', () => {
       gates: [],
       pickups: [],
       projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5 }],
-    });
+    }, expect.any(Number));
     expect(mock.constructedWith).toHaveBeenCalledTimes(1);
     app.dispose();
     expect(config.listenerCount()).toBe(0);
@@ -311,7 +322,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 1, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] });
     app.start();
@@ -319,7 +330,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.render).toHaveBeenLastCalledWith({ player: { x: 0, z: 0 },
       squad: { count: 2, rocketCount: 1, rifleCounts: [1], formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [],
-      projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] });
+      projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] }, expect.any(Number));
     app.dispose();
   });
 
@@ -368,7 +379,6 @@ describe('GameApp config and frame lifecycle', () => {
     expect(raf.pending.size).toBe(1);
     expect(mock.startResizeHandling).toHaveBeenCalledTimes(1);
     expect(mock.inputStart).toHaveBeenCalledTimes(1);
-    expect(mock.mouseStart).toHaveBeenCalledTimes(1);
     expect(mock.keyboardStart).toHaveBeenCalledTimes(1);
 
     raf.frame(100);
@@ -388,7 +398,6 @@ describe('GameApp config and frame lifecycle', () => {
     expect(raf.cancel).toHaveBeenCalledTimes(1);
     expect(config.listenerCount()).toBe(1);
     expect(mock.inputStop).toHaveBeenCalledTimes(1);
-    expect(mock.mouseStop).toHaveBeenCalledTimes(1);
     expect(mock.keyboardStop).toHaveBeenCalledTimes(1);
 
     config.changePlayer({ formationSpacing: 0.9 });
@@ -405,7 +414,7 @@ describe('GameApp config and frame lifecycle', () => {
       gates: [],
       pickups: [],
       projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5 }],
-    });
+    }, expect.any(Number));
     raf.frame(300_000 + 1000 / 60);
     expect(mock.step).toHaveBeenCalledTimes(2);
 
@@ -416,9 +425,6 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.inputStart).toHaveBeenCalledTimes(2);
     expect(mock.inputStop).toHaveBeenCalledTimes(2);
     expect(mock.inputDispose).toHaveBeenCalledTimes(1);
-    expect(mock.mouseStart).toHaveBeenCalledTimes(2);
-    expect(mock.mouseStop).toHaveBeenCalledTimes(2);
-    expect(mock.mouseDispose).toHaveBeenCalledTimes(1);
     expect(mock.keyboardStart).toHaveBeenCalledTimes(2);
     expect(mock.keyboardStop).toHaveBeenCalledTimes(2);
     expect(mock.keyboardDispose).toHaveBeenCalledTimes(1);
@@ -451,7 +457,9 @@ describe('GameApp config and frame lifecycle', () => {
       { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
     );
 
-    config.changePlayer({ moveSpeed: 8, forwardSpeed: 1.5 });
+    const defaults = mock.panelConstructedWith.mock.calls[0][0];
+    const tune = mock.panelConstructedWith.mock.calls[0][1] as (values: typeof defaults) => void;
+    tune({ ...defaults, moveSpeed: 8, forwardSpeed: 1.5 });
     config.changeTrack({ halfWidth: 3.5, defenseLineOffset: 2 });
     raf.frame(100 + 3 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
@@ -476,47 +484,82 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
-  it('accumulates mouse deltas with live sensitivity and track width', () => {
+  it('does not steer from ordinary mouse movement', () => {
     const raf = createRaf();
-    const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
-    const mouse = mock.mouseConstructedWith.mock.calls[0][0] as MouseSteeringCallbacks;
-    const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
     app.start();
     raf.frame(100);
-
-    mouse.onMove(0.1);
+    raf.mouseMove();
     raf.frame(100 + 1000 / 60);
-    expect(mock.step).toHaveBeenLastCalledWith(
-      1 / 60,
-      { targetX: 2.5 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
-    );
-
-    config.changeControls({ mouseSensitivity: 2 });
-    mouse.onMove(-0.05);
-    raf.frame(100 + 2 * 1000 / 60);
-    expect(mock.step).toHaveBeenLastCalledWith(
-      1 / 60,
-      { targetX: 2 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
-    );
-
-    config.changeTrack({ halfWidth: 3.5 });
-    mouse.onMove(-0.05);
-    raf.frame(100 + 3 * 1000 / 60);
-    const [dtSeconds, input, tuning] = mock.step.mock.lastCall!;
-    expect(dtSeconds).toBe(1 / 60);
-    expect((input as { targetX: number }).targetX).toBeCloseTo(1.3);
-    expect(tuning).toEqual({ moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning });
-
-    keyboard.onAxisChange(1);
-    mouse.onMove(-0.05);
-    raf.frame(100 + 4 * 1000 / 60);
-    expect((mock.step.mock.lastCall![1] as { targetX: number }).targetX).toBeCloseTo(1.3);
+    expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 2 });
     app.dispose();
   });
 
+  it('pauses on P or Escape, freezes presentation time, clears steering, and resumes without catch-up', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
+    app.start();
+    raf.frame(100);
+    keyboard.onAxisChange(1);
+    raf.frame(100 + 1000 / 60);
+    const stepCount = mock.step.mock.calls.length;
+    const presentationTime = mock.render.mock.lastCall![1];
+    raf.key('p');
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    expect(mock.keyboardStop).toHaveBeenCalledOnce();
+    expect(mock.inputStop).toHaveBeenCalledOnce();
+    raf.key('p', true);
+    raf.frame(100_000);
+    raf.frame(101_000);
+    expect(mock.step).toHaveBeenCalledTimes(stepCount);
+    expect(mock.render.mock.lastCall![1]).toBe(presentationTime);
+    raf.key('Escape');
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    raf.frame(200_000);
+    expect(mock.step).toHaveBeenCalledTimes(stepCount);
+    raf.frame(200_000 + 1000 / 60);
+    expect(mock.step).toHaveBeenCalledTimes(stepCount + 1);
+    expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 2 });
+    expect(mock.render.mock.lastCall![1]).toBeGreaterThan(presentationTime);
+    app.dispose();
+  });
+
+  it('applies eight runtime values immediately and retains them for Retry', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const defaults = mock.panelConstructedWith.mock.calls[0][0];
+    const tune = mock.panelConstructedWith.mock.calls[0][1] as (values: typeof defaults) => void;
+    const edited = { ...defaults, bulletSpeed: 52, bulletRange: 65,
+      rewardRowsPerReward: 3, enemyHigherTierPowerMultiplier: 12,
+      rifleHigherTierPowerMultiplier: 8, fireRate: 10, moveSpeed: 9, forwardSpeed: 1.2 };
+    tune(edited);
+    expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 3,
+      enemyHigherTierPowerMultiplier: 12, rifleHigherTierPowerMultiplier: 8 });
+    app.start();
+    raf.frame(100);
+    raf.frame(100 + 1000 / 60);
+    expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 9, forwardSpeed: 1.2,
+      rifle: { fireRate: 10, projectileSpeed: 52, range: 65 } });
+    raf.key('p');
+    const retry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
+    retry();
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    expect(mock.constructedWith).toHaveBeenLastCalledWith(expect.objectContaining({
+      rewardRowsPerReward: 3, tiers: expect.objectContaining({
+        enemyHigherTierPowerMultiplier: 12, rifleHigherTierPowerMultiplier: 8 }),
+    }));
+    raf.frame(100_000);
+    raf.frame(100_000 + 1000 / 60);
+    expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 9, forwardSpeed: 1.2 });
+    tune(defaults);
+    expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 8,
+      enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10 });
+    raf.frame(100_000 + 2 * 1000 / 60);
+    expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 5, forwardSpeed: 3,
+      rifle: { fireRate: 7, projectileSpeed: 28, range: 18 } });
+    app.dispose();
+  });
   it('maps keyboard edges and neutral release to the current player position', () => {
     const raf = createRaf();
     const config = createConfigStore();
@@ -579,8 +622,8 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 1, tiers: { mergeCount: 10, tier1Power: 4,
-        tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 1, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 4,
+        tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);
     const priorSteps = mock.step.mock.calls.length;

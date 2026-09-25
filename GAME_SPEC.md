@@ -8,7 +8,7 @@ Steer a tiny auto-firing squad through an endless deterministic enemy stream. Si
 
 Level 001 authors a first transition start at row **48**, **96** transition rows, **96** stable rows, and quadratic probability. The cycle is 192 rows: the transition into Tier N starts at `48 + (N - 2) × 192` and fully saturates 96 rows later. During a transition only the established tier and its next tier coexist. The center-most slot guarantees a reveal on the exact start row. Slot rolls use deterministic content inputs, independently of gameplay RNG. There is no authored tier maximum.
 
-Normal enemy HP and player rifle damage share one power rule: Tier-1 = **3**, Tier-2 = **300**, and each tier after Tier-2 multiplies power by **10**. Thus a same-tier rifle shot kills a full-health normal enemy. Normal enemies all use radius **0.30** and the same humanoid body size. Tier is color, not size. Enemy body/head colors cycle through six palettes: muted brick red, saturated red, magenta, violet, orange, and olive. Player rifle bodies cycle through five separate cool-color palettes; all use the same normal body scale. Weapon and projectile visuals stay bounded rather than growing forever.
+Normal enemy HP and player rifle damage use the same committed bootstrap: Tier-1 = **3**, Tier-2 = **300**. Above Tier-2, enemy HP and rifle power each multiply by **10** per tier by default; the two multipliers can be tuned independently at runtime. Normal enemies all use radius **0.30** and the same humanoid body size. Tier is color, not size. Enemy body/head colors cycle through six palettes: muted brick red, saturated red, magenta, violet, orange, and olive. Player rifle bodies cycle through five separate cool-color palettes; all use the same normal body scale. Weapon and projectile visuals stay bounded rather than growing forever.
 
 ## Player combat and defense
 
@@ -16,7 +16,7 @@ Level 001 starts with one Tier-1 rifle soldier. Every **10** rifle soldiers of a
 
 ## Rewards
 
-Every eight-row block has exactly one deterministic, random-looking side reward at X = **±2.7**. Reward lookahead is **30** world units; enemy lookahead remains **96**. Rewards do not replace enemies. A reward's tier follows the highest fully saturated enemy tier: Tier-1 before row 144, Tier-2 from row 144, Tier-3 from row 336, and so on by formula. Every rifle tier can progress every reward tier by one hit; each valid hit consumes the projectile, making reward pursuit an offensive tradeoff. Ten hits grant one soldier of the reward tier and normalize the squad. Rockets pass through without reward progress. Ignored rewards expire harmlessly. Generic side-armory code exists but is inactive in Level 001.
+Every eight-row block has exactly one deterministic, random-looking side reward at X = **±2.7**. The live panel may temporarily change this to one per N rows; it remains guaranteed block placement, never a Bernoulli chance. Reward lookahead is **30** world units; enemy lookahead remains **96**. Rewards do not replace enemies. A reward's tier follows the highest fully saturated enemy tier: Tier-1 before row 144, Tier-2 from row 144, Tier-3 from row 336, and so on by formula. Every rifle tier can progress every reward tier by one hit; each valid hit consumes the projectile, making reward pursuit an offensive tradeoff. Ten hits grant one soldier of the reward tier and normalize the squad. Rockets pass through without reward progress. Ignored rewards expire harmlessly. Generic side-armory code exists but is inactive in Level 001.
 
 ## Boss handoffs
 
@@ -24,9 +24,9 @@ A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully satura
 
 ## Presentation
 
-The top HUD displays the highest enemy tier introduced at the player's current progression row.
+The top HUD displays the highest enemy tier introduced at the player's current progression row. Desktop steering uses A/D or Left/Right; touch and pen use dragging. P or Escape pauses and resumes gameplay and presentation animation. A compact desktop tuning panel exposes bullet speed, bullet range, reward density, enemy HP growth, rifle power growth, fire rate, horizontal move speed, and forward speed. Its values are temporary: Retry keeps them, Reset Defaults restores authored values, and page reload starts from the JSON defaults.
 
-Primitive humanoid players hold a planted firing pose with recoil and muzzle flashes. Enemies use a visual walking cycle, a yellow hit flash, tier-colored death burst, and gray backward death motion. Reward hits pulse, reward removal and recruited soldiers pop, and tier-ups glow with a short ring. Boss hits pulse, and player damage flashes red. Audio remains sparse: quiet reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps. Automatic gunfire is silent.
+Primitive humanoid players hold a planted firing pose with recoil and muzzle flashes. Enemies use a visual walking cycle, a yellow hit flash, tier-colored death burst, and gray backward death motion. Reward hits pulse, reward removal and recruited soldiers pop, and tier-ups glow with a short ring. Boss hits pulse, and player damage flashes red. Audio remains sparse: audible reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps. A completed reward produces both a hit tick and acquisition chime. Automatic gunfire is silent.
 
 ## Development principles
 

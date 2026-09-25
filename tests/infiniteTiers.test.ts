@@ -7,7 +7,7 @@ import { addRifleSoldiers, afterCasualties, compactRifleValue, normalizeRifleSqu
   rifleDefenseValue, validateSquad } from '../src/simulation/squad/composition';
 import { rewardPlacementForBlock, rewardPlacementForRow } from '../src/simulation/enemies/streamRewards';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
-  fullSaturationRow, highestIntroducedTierForRow, powerForTier, rewardTierForRow, tierProbabilityForRow, tierRollForSlot,
+  fullSaturationRow, highestIntroducedTierForRow, enemyPowerForTier, rewardTierForRow, tierProbabilityForRow, tierRollForSlot,
   transitionStartRow } from '../src/simulation/tiers/tierRules';
 import { SeededRng } from '../src/core/Rng';
 
@@ -22,7 +22,7 @@ describe('formula-driven tier data', () => {
     expect(rule).toEqual({ firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
       curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000, laterBossHpMultiplier: 1000 });
     expect(power).toEqual({ mergeCount: 10, tier1Power: 3, tier2Power: 300,
-      higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 });
+      enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 });
     expect(() => LevelDefinitionSchema.parse({ ...level, enemyStream: { ...stream,
       bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2 } } })).toThrow();
     expect(() => LevelDefinitionSchema.parse({ ...level, enemyStream: { ...stream,
@@ -40,7 +40,7 @@ describe('formula-driven tier data', () => {
         tierProgression: { ...rule, ...patch } } })).toThrow();
     }
     for (const patch of [{ mergeCount: 1 }, { tier1Power: 0 }, { tier2Power: Infinity },
-      { higherTierPowerMultiplier: 1 }, { normalEnemyRadius: 0 }]) {
+      { enemyHigherTierPowerMultiplier: 1 }, { normalEnemyRadius: 0 }]) {
       expect(() => GameConfigSchema.parse({ ...game, tiers: { ...power, ...patch } })).toThrow();
     }
   });
@@ -63,7 +63,7 @@ describe('formula-driven tier data', () => {
 
   it('derives unbounded power, exchange value, and Boss HP', () => {
     for (const [tier, value] of [[1, 3], [2, 300], [3, 3000], [4, 30000], [5, 300000], [10, 30000000000]]) {
-      expect(powerForTier(tier, power)).toBe(value);
+      expect(enemyPowerForTier(tier, power)).toBe(value);
     }
     expect([1, 2, 3, 4, 7, 10].map((tier) => exchangeValueForTier(tier, 10)))
       .toEqual([1, 10, 100, 1000, 1000000, 1000000000]);
@@ -71,7 +71,7 @@ describe('formula-driven tier data', () => {
       .toEqual([12000, 300000, 3000000, 30000000]);
     expect(bossMaxHpForTier(1, rule, { ...power, tier1Power: 6 })).toBe(24000);
     expect(bossMaxHpForTier(2, rule, { ...power, tier2Power: 600 })).toBe(600000);
-    expect(() => powerForTier(400, power)).toThrow(/range/);
+    expect(() => enemyPowerForTier(400, power)).toThrow(/range/);
     expect(() => exchangeValueForTier(30, 10)).toThrow(/range/);
   });
 

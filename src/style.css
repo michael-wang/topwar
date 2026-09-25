@@ -27,7 +27,7 @@ body {
 .game-over-overlay:not([hidden]) {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 4;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -37,6 +37,51 @@ body {
   font-family: sans-serif;
   text-align: center;
 }
+
+.pause-overlay:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgb(18 24 30 / 45%);
+  color: white;
+  font: bold 2rem sans-serif;
+  pointer-events: none;
+}
+
+.control-hint {
+  position: absolute;
+  z-index: 1;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.35rem;
+  background: rgb(18 24 30 / 70%);
+  color: white;
+  font: 600 0.68rem/1.45 sans-serif;
+  pointer-events: none;
+}
+
+.tuning-panel {
+  position: absolute;
+  z-index: 3;
+  top: 0.6rem;
+  right: 0.5rem;
+  width: min(10rem, 38%);
+  box-sizing: border-box;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.4rem;
+  background: rgb(18 24 30 / 86%);
+  color: white;
+  font: 0.66rem/1.25 sans-serif;
+}
+
+.tuning-panel summary { cursor: pointer; font-weight: bold; text-align: right; }
+.tuning-panel label { display: block; margin-top: 0.35rem; }
+.tuning-panel input { display: block; width: 100%; margin: 0.1rem 0; }
+.tuning-panel output { display: block; text-align: right; }
+.tuning-panel button { width: 100%; margin-top: 0.45rem; cursor: pointer; }
 
 .damage-flash-overlay {
   position: absolute;
@@ -71,6 +116,8 @@ body {
   background: #a90d16;
   animation: damage-flash-fatal 220ms ease-out forwards;
 }
+
+.game-paused .damage-flash-overlay { animation-play-state: paused; }
 
 @keyframes damage-flash-normal {
   from { opacity: 0.34; }
@@ -110,12 +157,6 @@ body {
   text-align: center;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  #game-viewport[data-mouse-direction='left'] {
-    cursor: url('/cursors/steer-left.svg') 12 12, auto;
-  }
-
-  #game-viewport[data-mouse-direction='right'] {
-    cursor: url('/cursors/steer-right.svg') 12 12, auto;
-  }
+@media (hover: none), (pointer: coarse) {
+  .control-hint, .tuning-panel { display: none; }
 }

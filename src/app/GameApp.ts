@@ -2,7 +2,6 @@ import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
 import type { GameConfig } from '../config/configSchema';
 import { KeyboardSteeringInput } from '../input/KeyboardSteeringInput';
-import { MouseSteeringInput } from '../input/MouseSteeringInput';
 import { PointerDragInput } from '../input/PointerDragInput';
 import type { LevelDefinition } from '../level/LevelDefinition';
 import { GameRenderer } from '../rendering/GameRenderer';
@@ -14,6 +13,10 @@ import { GameOverOverlay } from '../ui/GameOverOverlay';
 import { GameAudio } from '../audio/GameAudio';
 import { TierHud } from '../ui/TierHud';
 import { highestIntroducedTierForRow } from '../simulation/tiers/tierRules';
+import { defaultRuntimeTuning, type RuntimeTuning } from './runtimeTuning';
+import { PauseOverlay } from '../ui/PauseOverlay';
+import { ControlHint } from '../ui/ControlHint';
+import { TuningPanel } from '../ui/TuningPanel';
 
 export class GameApp {
   private readonly renderer: GameRenderer;
@@ -23,56 +26,54 @@ export class GameApp {
   private readonly damageFlash: DamageFlashOverlay;
   private readonly audio: GameAudio;
   private readonly tierHud: TierHud;
+  private readonly pauseOverlay: PauseOverlay;
+  private readonly controlHint: ControlHint;
+  private readonly tuningPanel: TuningPanel;
   private readonly dragInput: PointerDragInput;
-  private readonly mouseInput: MouseSteeringInput;
   private readonly keyboardInput: KeyboardSteeringInput;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
   private dragStartPlayerX = 0;
-  private rebaseMouseTarget = false;
+  private readonly runtimeDefaults: RuntimeTuning;
+  private runtimeTuning: RuntimeTuning;
   private frameId: number | null = null;
   private previousFrameTimestampMs: number | null = null;
+  private presentationMs = 0;
   private previousDefenseValue: number;
+  private paused = false;
   private running = false;
   private disposed = false;
 
-  constructor(viewport: HTMLElement, configStore: ConfigStore, private readonly level: LevelDefinition) {
+  constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
+    private readonly level: LevelDefinition) {
     this.config = configStore.getConfig();
-    this.simulation = new Simulation({
-      seed: 1,
-      level,
-      startSquad: this.config.player.startSquad,
-      startRocketCount: this.config.player.startRocketCount,
-      tiers: this.config.tiers,
-    });
+    this.runtimeDefaults = defaultRuntimeTuning(this.config, level);
+    this.runtimeTuning = { ...this.runtimeDefaults };
+    this.simulation = this.createSimulation();
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.renderer = new GameRenderer(viewport);
     this.audio = new GameAudio(viewport);
     this.tierHud = new TierHud(viewport);
+    this.pauseOverlay = new PauseOverlay(viewport);
+    this.controlHint = new ControlHint(viewport);
+    this.tuningPanel = new TuningPanel(viewport, this.runtimeDefaults, (values) => {
+      this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
+        enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
+        rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier });
+      this.runtimeTuning = values;
+    });
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
       onDragStart: () => {
         this.dragStartPlayerX = this.simulation.getState().player.x;
         this.targetX = this.dragStartPlayerX;
-        this.rebaseMouseTarget = true;
       },
       onDrag: (normalizedDeltaX) => {
         this.targetX = this.dragStartPlayerX + normalizedDeltaX * (this.config.track.halfWidth * 2);
-      },
-    });
-    this.mouseInput = new MouseSteeringInput(viewport, {
-      onMove: (normalizedDeltaX) => {
-        if (this.rebaseMouseTarget) {
-          this.targetX = this.simulation.getState().player.x;
-          this.rebaseMouseTarget = false;
-        }
-        const halfWidth = this.config.track.halfWidth;
-        const deltaX = normalizedDeltaX * (halfWidth * 2) * this.config.controls.mouseSensitivity;
-        this.targetX = Math.max(-halfWidth, Math.min(halfWidth, this.targetX + deltaX));
       },
     });
     this.keyboardInput = new KeyboardSteeringInput(window, {
@@ -80,7 +81,6 @@ export class GameApp {
         this.targetX = axis === 0
           ? this.simulation.getState().player.x
           : axis * this.config.track.halfWidth;
-        this.rebaseMouseTarget = true;
       },
     });
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
@@ -94,8 +94,8 @@ export class GameApp {
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
     this.dragInput.start();
-    this.mouseInput.start();
     this.keyboardInput.start();
+    window.addEventListener?.('keydown', this.onPauseKeyDown);
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
 
@@ -107,9 +107,12 @@ export class GameApp {
     this.frameId = null;
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
+    window.removeEventListener?.('keydown', this.onPauseKeyDown);
     this.keyboardInput.stop();
-    this.mouseInput.stop();
     this.dragInput.stop();
+    this.paused = false;
+    this.pauseOverlay.setVisible(false);
+    this.viewport.classList?.remove('game-paused');
     this.renderer.stopResizeHandling();
   }
 
@@ -118,9 +121,11 @@ export class GameApp {
     this.stop();
     this.unsubscribeConfig();
     this.dragInput.dispose();
-    this.mouseInput.dispose();
     this.keyboardInput.dispose();
     this.gameOverOverlay.dispose();
+    this.tuningPanel.dispose();
+    this.controlHint.dispose();
+    this.pauseOverlay.dispose();
     this.tierHud.dispose();
     this.damageFlash.dispose();
     this.audio.dispose();
@@ -130,20 +135,21 @@ export class GameApp {
 
   private retry(): void {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
-    this.simulation = new Simulation({
-      seed: 1,
-      level: this.level,
-      startSquad: this.config.player.startSquad,
-      startRocketCount: this.config.player.startRocketCount,
-      tiers: this.config.tiers,
-    });
+    this.simulation = this.createSimulation();
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.dragStartPlayerX = this.targetX;
-    this.rebaseMouseTarget = true;
+    this.paused = false;
+    this.viewport.classList?.remove('game-paused');
+    if (this.running) {
+      this.dragInput.start();
+      this.keyboardInput.start();
+    }
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
+    this.presentationMs = 0;
+    this.pauseOverlay.setVisible(false);
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
     this.audio.resetObservation();
@@ -151,28 +157,59 @@ export class GameApp {
     this.tierHud.setTier(1);
   }
 
+  private createSimulation(): Simulation {
+    return new Simulation({ seed: 1, level: this.level,
+      startSquad: this.config.player.startSquad,
+      startRocketCount: this.config.player.startRocketCount,
+      tiers: { ...this.config.tiers,
+        enemyHigherTierPowerMultiplier: this.runtimeTuning.enemyHigherTierPowerMultiplier,
+        rifleHigherTierPowerMultiplier: this.runtimeTuning.rifleHigherTierPowerMultiplier },
+      rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward });
+  }
+
+  private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
+    if (event.repeat || (event.key.toLowerCase() !== 'p' && event.key !== 'Escape')) return;
+    this.paused = !this.paused;
+    this.viewport.classList?.toggle('game-paused', this.paused);
+    this.previousFrameTimestampMs = null;
+    this.fixedStepLoop.reset();
+    if (this.paused) {
+      this.keyboardInput.stop();
+      this.dragInput.stop();
+      this.targetX = this.simulation.getState().player.x;
+    } else {
+      this.keyboardInput.start();
+      this.dragInput.start();
+    }
+    this.pauseOverlay.setVisible(this.paused);
+  };
+
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
     const elapsedSeconds = this.previousFrameTimestampMs === null
       ? 0
       : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
     this.previousFrameTimestampMs = timestampMs;
-    this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
+    if (!this.paused) {
+      this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
+      this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
       dtSeconds,
       { targetX: this.targetX },
       {
-        moveSpeed: this.config.player.moveSpeed,
-        forwardSpeed: this.config.player.forwardSpeed,
+        moveSpeed: this.runtimeTuning.moveSpeed,
+        forwardSpeed: this.runtimeTuning.forwardSpeed,
         trackHalfWidth: this.config.track.halfWidth,
         defenseLineOffset: this.config.track.defenseLineOffset,
         formationSpacing: this.config.player.formationSpacing,
         memberRadius: this.config.player.memberRadius,
         normalEnemyRadius: this.config.tiers.normalEnemyRadius,
         bossRadius: this.config.bosses.basic.radius,
-        rifle: { ...this.config.weapon.rifle },
+        rifle: { fireRate: this.runtimeTuning.fireRate,
+          projectileSpeed: this.runtimeTuning.bulletSpeed, range: this.runtimeTuning.bulletRange },
         rocket: { ...this.config.weapon.rocket },
       },
-    ));
+      ));
+    }
     const state = this.simulation.getState();
     const stream = this.level.enemyStream;
     if (stream) {
@@ -184,7 +221,7 @@ export class GameApp {
     if (feedback) this.damageFlash.flash(feedback === 'fatal');
     this.audio.observe(this.previousDefenseValue, currentDefenseValue,
       state.boss ? [...state.enemies, state.boss] : state.enemies,
-      state.streamRewards, state.boss, timestampMs);
+      state.streamRewards, state.boss, this.presentationMs);
     this.previousDefenseValue = currentDefenseValue;
     const renderState: GameRenderState = {
       player: { x: state.player.x, z: state.player.z },
@@ -207,7 +244,7 @@ export class GameApp {
         tier: projectile.tier,
         x: projectile.x, z: projectile.z })),
     };
-    this.renderer.render(renderState);
+    this.renderer.render(renderState, this.presentationMs);
     this.gameOverOverlay.setVisible(state.squad.count === 0);
     this.frameId = requestAnimationFrame(this.renderFrame);
   };

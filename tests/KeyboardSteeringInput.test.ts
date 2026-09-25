@@ -93,6 +93,8 @@ describe('KeyboardSteeringInput', () => {
     ]) {
       const event = fakeWindow.emit('keydown', 'ArrowRight', target);
       expect(event.preventDefault).not.toHaveBeenCalled();
+      fakeWindow.emit('keydown', 'a', target);
+      fakeWindow.emit('keydown', 'D', target);
     }
     expect(onAxisChange).not.toHaveBeenCalled();
     const other = fakeWindow.emit('keydown', 'Escape');

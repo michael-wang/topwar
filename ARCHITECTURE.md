@@ -232,13 +232,13 @@ Examples:
 - weapon damage: next shot uses new value
 - fire rate: next fire scheduling uses new value
 - default enemy HP: newly spawned enemies use new value
-- current enemy HP: separate explicit dev command if we want to mutate existing enemies
+- current enemy HP: explicit runtime tuning command preserves each active health fraction
 
 This distinction avoids spooky implicit state mutation.
 
 ### Development persistence
 
-Runtime overrides can be persisted in localStorage.
+The current eight-slider tuning panel keeps overrides in memory only. Retry retains them; reload returns to authored JSON defaults. Persistence infrastructure may be used by later development tools, but is not used by this panel.
 
 Later, local development may add a Vite-only dev endpoint that writes approved config changes back to disk. That endpoint must never exist in production.
 
@@ -410,14 +410,14 @@ Build this incrementally. Never add non-functional controls.
 
 Mobile:
 
-- pointer/touch horizontal drag
+- touch/pen horizontal drag
 
 Desktop development:
 
-- relative mouse steering
 - A/D or arrow keys
+- P or Escape to pause/resume
 
-Use Pointer Events so touch and mouse share one path.
+Mouse movement does not steer. Range inputs retain keyboard focus so arrows adjust sliders without steering.
 
 Input is converted into a simulation-friendly command/state.
 
