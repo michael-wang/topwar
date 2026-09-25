@@ -1,5 +1,6 @@
 import { GameConfigSchema, type GameConfig } from './configSchema';
 import type { DeepPartial } from './configTypes';
+import { publicAssetUrl } from '../core/publicAssetUrl';
 
 export interface ConfigStorage {
   getItem(key: string): string | null;
@@ -68,7 +69,7 @@ export class ConfigStore {
   private overrides: DeepPartial<GameConfig> = {};
 
   constructor(options: ConfigStoreOptions = {}) {
-    this.sourceUrl = options.sourceUrl ?? '/game-data/game.json';
+    this.sourceUrl = options.sourceUrl ?? publicAssetUrl('game-data/game.json');
     this.storage = options.storage ?? null;
     this.storageKey = options.storageKey ?? 'topwar:config-overrides:v1';
     this.fetchJson = options.fetchJson ?? fetchConfigJson;
