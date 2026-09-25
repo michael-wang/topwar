@@ -54,6 +54,13 @@ export function establishedTierForRow(row: number, rule: TierProgression): numbe
   return validTier(tier) ? tier : (() => { throw new Error('Tier exceeds the supported range'); })();
 }
 
+export function highestIntroducedTierForRow(row: number, rule: TierProgression): number {
+  const established = establishedTierForRow(row, rule);
+  const nextTier = established + 1;
+  if (!validTier(nextTier)) throw new Error('Tier exceeds the supported range');
+  return row >= transitionStartRow(nextTier, rule) ? nextTier : established;
+}
+
 export function enemyTierForRow(row: number, column: number, centerColumn: number,
   seed: number, rule: TierProgression): number {
   const established = establishedTierForRow(row, rule);

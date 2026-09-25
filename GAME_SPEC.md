@@ -16,13 +16,15 @@ Level 001 starts with one Tier-1 rifle soldier. Every **10** rifle soldiers of a
 
 ## Rewards
 
-Every eight-row block has exactly one deterministic, random-looking side reward at X = **±2.2**. Reward lookahead is **30** world units; enemy lookahead remains **96**. Rewards do not replace enemies. A reward's tier follows the highest fully saturated enemy tier: Tier-1 before row 144, Tier-2 from row 144, Tier-3 from row 336, and so on by formula. Every rifle tier can progress every reward tier by one hit; ten hits grant one soldier of the reward tier and normalize the squad. Higher-tier rifle shots continue through lower-tier rewards without losing penetration. Other rifle hits stop; rockets pass through without reward progress. Ignored rewards expire harmlessly. Generic side-armory code exists but is inactive in Level 001.
+Every eight-row block has exactly one deterministic, random-looking side reward at X = **±2.7**. Reward lookahead is **30** world units; enemy lookahead remains **96**. Rewards do not replace enemies. A reward's tier follows the highest fully saturated enemy tier: Tier-1 before row 144, Tier-2 from row 144, Tier-3 from row 336, and so on by formula. Every rifle tier can progress every reward tier by one hit; each valid hit consumes the projectile, making reward pursuit an offensive tradeoff. Ten hits grant one soldier of the reward tier and normalize the squad. Rockets pass through without reward progress. Ignored rewards expire harmlessly. Generic side-armory code exists but is inactive in Level 001.
 
 ## Boss handoffs
 
-A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 4500 = 13,500`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Enemy and reward streams continue behind a living Boss. Boss contact or defense-line crossing is fatal. Bosses have no attacks or special rewards.
+A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 4000 = 12,000`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Enemy and reward streams continue behind a living Boss. Boss contact or defense-line crossing is fatal. Bosses have no attacks or special rewards.
 
 ## Presentation
+
+The top HUD displays the highest enemy tier introduced at the player's current progression row.
 
 Primitive humanoid players hold a planted firing pose with recoil and muzzle flashes. Enemies use a visual walking cycle, a yellow hit flash, tier-colored death burst, and gray backward death motion. Reward hits pulse, reward removal and recruited soldiers pop, and tier-ups glow with a short ring. Boss hits pulse, and player damage flashes red. Audio remains sparse: quiet reward-hit ticks, reward-acquisition chimes, throttled Boss-hit thuds, and throttled enemy-death yelps. Automatic gunfire is silent.
 

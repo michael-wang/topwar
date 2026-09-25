@@ -94,7 +94,7 @@ describe('unbounded enemy and Boss stream', () => {
     const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 110 } };
     const simulation = create(nearFirst);
     const state = simulation.getState();
-    expect(state.boss).toMatchObject({ tier: 1, maxHp: 13500,
+    expect(state.boss).toMatchObject({ tier: 1, maxHp: 12000,
       z: stream.startZ + bossRowForTier(1, stream.tierProgression) * stream.spacing });
     expect(state.enemyStream?.nextBossTier).toBe(2);
     expect(state.enemies.some((entry) => entry.id === state.boss?.id)).toBe(false);
@@ -252,7 +252,7 @@ describe('generic projectile exchange and rewards', () => {
       expect(simulation.getState().projectiles).toHaveLength(0);
     });
 
-  it('any rifle progresses any reward; only a higher tier continues without spending budget', () => {
+  it('any rifle progresses any reward and stops, including an unlocking high-tier shot', () => {
     const simulation = create(level);
     restoreWith(simulation, (state) => {
       state.streamRewards = [reward(1, 4, 5, 0)];
@@ -271,17 +271,18 @@ describe('generic projectile exchange and rewards', () => {
     step(simulation);
     expect(simulation.getState().streamRewards.find((entry) => entry.id === 1)).toBeUndefined();
     expect(simulation.getState().squad.rifleCounts[0]).toBe(2);
-    expect(simulation.getState().projectiles[0].penetrationRemaining).toBe(1000);
+    expect(simulation.getState().projectiles).toHaveLength(0);
   });
 
   it.each([
-    { projectileTier: 1, rewardTier: 1, survives: false },
-    { projectileTier: 1, rewardTier: 4, survives: false },
-    { projectileTier: 4, rewardTier: 4, survives: false },
-    { projectileTier: 4, rewardTier: 3, survives: true },
-    { projectileTier: 7, rewardTier: 4, survives: true },
-  ])('applies generic rifle/reward ordering $projectileTier → $rewardTier',
-    ({ projectileTier, rewardTier, survives }) => {
+    { projectileTier: 1, rewardTier: 1 },
+    { projectileTier: 1, rewardTier: 4 },
+    { projectileTier: 4, rewardTier: 4 },
+    { projectileTier: 4, rewardTier: 3 },
+    { projectileTier: 7, rewardTier: 4 },
+    { projectileTier: 10, rewardTier: 9 },
+  ])('consumes every rifle tier at reward $projectileTier → $rewardTier',
+    ({ projectileTier, rewardTier }) => {
       const simulation = create(level);
       restoreWith(simulation, (state) => {
         state.streamRewards = [reward(1, rewardTier, 5)];
@@ -291,10 +292,42 @@ describe('generic projectile exchange and rewards', () => {
       });
       step(simulation);
       expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
-      expect(simulation.getState().projectiles.length > 0).toBe(survives);
-      if (survives) expect(simulation.getState().projectiles[0].penetrationRemaining)
-        .toBe(10 ** (projectileTier - 1));
+      expect(simulation.getState().projectiles).toHaveLength(0);
     });
+
+  it('spends high-tier fire on the reward instead of clearing an enemy behind it', () => {
+    const simulation = create(level);
+    restoreWith(simulation, (state) => {
+      state.streamRewards = [reward(1, 2, 5)];
+      state.enemies = [enemy(1, 1, 5.6)];
+      state.projectiles = [shot(1, 10)];
+      state.weapons.nextProjectileId = 2;
+      state.weapons.rifleCooldownRemainingSeconds = 100;
+    });
+    step(simulation);
+    expect(simulation.getState().streamRewards[0].hitProgress).toBe(1);
+    expect(simulation.getState().enemies).toHaveLength(1);
+    expect(simulation.getState().projectiles).toHaveLength(0);
+  });
+
+  it('unlocks exactly one soldier of the reward tier after ten mixed rifle hits', () => {
+    const simulation = create(level);
+    restoreWith(simulation, (state) => {
+      state.streamRewards = [reward(1, 2, 5)];
+      state.weapons.rifleCooldownRemainingSeconds = 100;
+    });
+    for (let hit = 0; hit < 10; hit++) {
+      restoreWith(simulation, (state) => {
+        state.projectiles = [shot(hit + 1, hit % 2 ? 10 : 1)];
+        state.weapons.nextProjectileId = hit + 2;
+      });
+      step(simulation);
+      expect(simulation.getState().projectiles).toHaveLength(0);
+      if (hit < 9) expect(simulation.getState().streamRewards[0].hitProgress).toBe(hit + 1);
+    }
+    expect(simulation.getState().streamRewards.find((entry) => entry.id === 1)).toBeUndefined();
+    expect(simulation.getState().squad.rifleCounts).toEqual([1, 1]);
+  });
 
   it('leaves rewards transparent to rocket fire', () => {
     const simulation = create(level);

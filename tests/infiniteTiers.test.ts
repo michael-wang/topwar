@@ -7,7 +7,7 @@ import { addRifleSoldiers, afterCasualties, compactRifleValue, normalizeRifleSqu
   rifleDefenseValue, validateSquad } from '../src/simulation/squad/composition';
 import { rewardPlacementForBlock, rewardPlacementForRow } from '../src/simulation/enemies/streamRewards';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
-  fullSaturationRow, powerForTier, rewardTierForRow, tierProbabilityForRow, tierRollForSlot,
+  fullSaturationRow, highestIntroducedTierForRow, powerForTier, rewardTierForRow, tierProbabilityForRow, tierRollForSlot,
   transitionStartRow } from '../src/simulation/tiers/tierRules';
 import { SeededRng } from '../src/core/Rng';
 
@@ -20,7 +20,7 @@ const power = game.tiers;
 describe('formula-driven tier data', () => {
   it('retains committed inputs and rejects obsolete authored tiers', () => {
     expect(rule).toEqual({ firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
-      curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4500, laterBossHpMultiplier: 1000 });
+      curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000, laterBossHpMultiplier: 1000 });
     expect(power).toEqual({ mergeCount: 10, tier1Power: 3, tier2Power: 300,
       higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 });
     expect(() => LevelDefinitionSchema.parse({ ...level, enemyStream: { ...stream,
@@ -68,8 +68,8 @@ describe('formula-driven tier data', () => {
     expect([1, 2, 3, 4, 7, 10].map((tier) => exchangeValueForTier(tier, 10)))
       .toEqual([1, 10, 100, 1000, 1000000, 1000000000]);
     expect([1, 2, 3, 4].map((tier) => bossMaxHpForTier(tier, rule, power)))
-      .toEqual([13500, 300000, 3000000, 30000000]);
-    expect(bossMaxHpForTier(1, rule, { ...power, tier1Power: 6 })).toBe(27000);
+      .toEqual([12000, 300000, 3000000, 30000000]);
+    expect(bossMaxHpForTier(1, rule, { ...power, tier1Power: 6 })).toBe(24000);
     expect(bossMaxHpForTier(2, rule, { ...power, tier2Power: 600 })).toBe(600000);
     expect(() => powerForTier(400, power)).toThrow(/range/);
     expect(() => exchangeValueForTier(30, 10)).toThrow(/range/);
@@ -107,9 +107,25 @@ describe('formula-driven tier data', () => {
       const rows = Array.from({ length: rewards.rowsPerReward }, (_, offset) =>
         rewardPlacementForRow(block * rewards.rowsPerReward + offset, stream.columns, rewards));
       expect(rows.filter(Boolean)).toHaveLength(1);
-      expect(Math.abs(selected.side * rewards.sideX)).toBe(2.2);
+      expect(Math.abs(selected.side * rewards.sideX)).toBe(2.7);
     }
     expect(rng.getState()).toBe(rngState);
+  });
+
+  it('keeps side rewards reachable but separate from outer enemy lanes', () => {
+    const radius = power.normalEnemyRadius;
+    expect(stream.rewards!.sideX).toBe(2.7);
+    expect(stream.rewards!.sideX - game.track.halfWidth).toBeLessThan(radius);
+    const outerEnemyCenter = 3 * stream.spacing + stream.spacing / 6 + stream.jitter;
+    expect(stream.rewards!.sideX - outerEnemyCenter).toBeGreaterThan(2 * radius);
+  });
+
+  it('introduces the HUD tier at each transition start without a tier cap', () => {
+    expect([0, 47, 48, 143, 239, 240, 431, 432, transitionStartRow(10, rule)]
+      .map((row) => highestIntroducedTierForRow(row, rule)))
+      .toEqual([1, 1, 2, 2, 2, 3, 3, 4, 10]);
+    expect(rewardTierForRow(fullSaturationRow(10, rule), rule)).toBe(10);
+    expect(bossRowForTier(10, rule)).toBe(fullSaturationRow(11, rule) - rule.bossLeadRows);
   });
 });
 

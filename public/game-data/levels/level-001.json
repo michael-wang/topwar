@@ -17,9 +17,9 @@
       "stableRows": 96,
       "curvePower": 2,
       "bossLeadRows": 8,
-      "firstBossHpMultiplier": 4500,
+      "firstBossHpMultiplier": 4000,
       "laterBossHpMultiplier": 1000
     },
-    "rewards": { "rowsPerReward": 8, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 2.2 }
+    "rewards": { "rowsPerReward": 8, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 2.7 }
   }
 }

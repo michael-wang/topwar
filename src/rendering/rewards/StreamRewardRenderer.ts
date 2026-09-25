@@ -15,8 +15,7 @@ const POP_MS = 190;
 export class StreamRewardRenderer {
   private readonly panelGeometry = new THREE.BoxGeometry(0.65, 1.25, 0.22);
   private readonly labelGeometry = new THREE.PlaneGeometry(0.82, 0.9);
-  // The panel sits across the firing lane. Blend it over tracers so shots that
-  // ignore this reward tier remain visible as they travel through the plaque.
+  // Blend the plaque over tracers so the firing lane stays readable.
   private readonly panelMaterials = REWARD_PALETTE.map((color) => new THREE.MeshBasicMaterial({
     color, transparent: true, opacity: 0.55, depthWrite: false,
   }));

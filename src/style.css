@@ -46,6 +46,22 @@ body {
   opacity: 0;
 }
 
+.tier-hud {
+  position: absolute;
+  z-index: 1;
+  top: max(0.75rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.35rem 0.7rem;
+  border: 2px solid;
+  border-radius: 999px;
+  background: rgb(18 24 30 / 75%);
+  color: white;
+  font: bold 0.8rem/1 sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .damage-flash-overlay--normal {
   background: #ef2929;
   animation: damage-flash-normal 120ms ease-out forwards;

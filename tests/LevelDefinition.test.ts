@@ -31,10 +31,10 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
       tierProgression: { firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
-        curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4500,
+        curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000,
         laterBossHpMultiplier: 1000 },
       rewards: { rowsPerReward: 8, spawnAheadDistance: 30,
-        hitsRequired: 10, seed: 271828, sideX: 2.2 } });
+        hitsRequired: 10, seed: 271828, sideX: 2.7 } });
     expect(parsed.upgradeGates).toEqual([]);
   });
 

@@ -33,6 +33,8 @@ const mock = vi.hoisted(() => ({
   damageFlash: vi.fn(),
   damageReset: vi.fn(),
   damageDispose: vi.fn(),
+  tierHudSet: vi.fn(),
+  tierHudDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
   inputStop: vi.fn(),
@@ -78,6 +80,13 @@ vi.mock('../src/ui/GameOverOverlay', () => ({
     constructor(_viewport: HTMLElement, onRetry: () => void) { mock.overlayConstructedWith(onRetry); }
     setVisible = mock.overlayVisible;
     dispose = mock.overlayDispose;
+  },
+}));
+
+vi.mock('../src/ui/TierHud', () => ({
+  TierHud: class {
+    setTier = mock.tierHudSet;
+    dispose = mock.tierHudDispose;
   },
 }));
 
@@ -613,5 +622,27 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.damageFlash).toHaveBeenCalledTimes(2);
     app.dispose();
     expect(mock.damageDispose).toHaveBeenCalledOnce();
+  });
+
+  it('uses the player row for the enemy HUD and resets it on Retry', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const frameState = (row: number) => ({ ...mock.getState(),
+      player: { x: 0, z: level.enemyStream!.startZ + row * level.enemyStream!.spacing } });
+    app.start();
+    mock.getState.mockReturnValueOnce(frameState(47));
+    raf.frame(100);
+    expect(mock.tierHudSet).toHaveBeenLastCalledWith(1);
+    mock.getState.mockReturnValueOnce(frameState(48));
+    raf.frame(120);
+    expect(mock.tierHudSet).toHaveBeenLastCalledWith(2);
+    mock.getState.mockReturnValueOnce(frameState(240));
+    raf.frame(140);
+    expect(mock.tierHudSet).toHaveBeenLastCalledWith(3);
+    const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
+    onRetry();
+    expect(mock.tierHudSet).toHaveBeenLastCalledWith(1);
+    app.dispose();
+    expect(mock.tierHudDispose).toHaveBeenCalledOnce();
   });
 });

@@ -12,6 +12,8 @@ import { damageFeedback, squadDefenseValue } from './combatFeedback';
 import { DamageFlashOverlay } from '../ui/DamageFlashOverlay';
 import { GameOverOverlay } from '../ui/GameOverOverlay';
 import { GameAudio } from '../audio/GameAudio';
+import { TierHud } from '../ui/TierHud';
+import { highestIntroducedTierForRow } from '../simulation/tiers/tierRules';
 
 export class GameApp {
   private readonly renderer: GameRenderer;
@@ -20,6 +22,7 @@ export class GameApp {
   private readonly gameOverOverlay: GameOverOverlay;
   private readonly damageFlash: DamageFlashOverlay;
   private readonly audio: GameAudio;
+  private readonly tierHud: TierHud;
   private readonly dragInput: PointerDragInput;
   private readonly mouseInput: MouseSteeringInput;
   private readonly keyboardInput: KeyboardSteeringInput;
@@ -48,6 +51,7 @@ export class GameApp {
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.renderer = new GameRenderer(viewport);
     this.audio = new GameAudio(viewport);
+    this.tierHud = new TierHud(viewport);
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
@@ -117,6 +121,7 @@ export class GameApp {
     this.mouseInput.dispose();
     this.keyboardInput.dispose();
     this.gameOverOverlay.dispose();
+    this.tierHud.dispose();
     this.damageFlash.dispose();
     this.audio.dispose();
     this.renderer.dispose();
@@ -143,6 +148,7 @@ export class GameApp {
     this.damageFlash.reset();
     this.audio.resetObservation();
     this.renderer.resetFeedback();
+    this.tierHud.setTier(1);
   }
 
   private readonly renderFrame = (timestampMs: number): void => {
@@ -168,6 +174,11 @@ export class GameApp {
       },
     ));
     const state = this.simulation.getState();
+    const stream = this.level.enemyStream;
+    if (stream) {
+      const row = Math.max(0, Math.floor((state.player.z - stream.startZ) / stream.spacing));
+      this.tierHud.setTier(highestIntroducedTierForRow(row, stream.tierProgression));
+    }
     const currentDefenseValue = squadDefenseValue(state.squad, this.config.tiers.mergeCount);
     const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
     if (feedback) this.damageFlash.flash(feedback === 'fatal');
