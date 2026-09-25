@@ -7,6 +7,7 @@ export interface SquadSimulationState {
   count: number;
   rocketCount: number;
   rifleCounts: number[];
+  rifleRemainder: number;
 }
 
 export interface EnemySimulationState {

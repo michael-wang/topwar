@@ -258,14 +258,12 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     throw new Error('Simulation squad must be a plain object');
   }
   const squad = state.squad;
-  if (Object.keys(squad).length !== 3 || !Object.hasOwn(squad, 'count')
-    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'rifleCounts')) {
+  if (Object.keys(squad).length !== 4 || !Object.hasOwn(squad, 'count')
+    || !Object.hasOwn(squad, 'rocketCount') || !Object.hasOwn(squad, 'rifleCounts')
+    || !Object.hasOwn(squad, 'rifleRemainder')) {
     throw new Error('Simulation squad has missing or unknown fields');
   }
-  validateSquad(squad as unknown as SimulationState['squad']);
-  if ((squad.rifleCounts as number[]).some((count) => count >= mergeCount)) {
-    throw new Error('Simulation squad rifle counts must be normalized');
-  }
+  validateSquad(squad as unknown as SimulationState['squad'], mergeCount);
 
   if (!Array.isArray(state.enemies)) throw new Error('Simulation enemies must be an array');
   const enemyIds = new Set<number>();
@@ -483,7 +481,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       rngState: rng.getState(),
       player: { x: player.x as number, z: player.z as number },
       squad: { count: squad.count as number, rocketCount: squad.rocketCount as number,
-        rifleCounts: [...(squad.rifleCounts as number[])] },
+        rifleCounts: [...(squad.rifleCounts as number[])], rifleRemainder: squad.rifleRemainder as number },
       enemies,
       boss,
       enemyStream,
@@ -557,7 +555,7 @@ export class Simulation {
       rngState: this.rng.getState(),
       player: { x: 0, z: 0 },
       squad: normalizeRifleSquad({ count: options.startSquad, rocketCount: options.startRocketCount,
-        rifleCounts: [options.startSquad - options.startRocketCount] }, this.tiers.mergeCount),
+        rifleCounts: [options.startSquad - options.startRocketCount], rifleRemainder: 0 }, this.tiers.mergeCount),
       enemies,
       boss,
       enemyStream,
@@ -819,7 +817,7 @@ export class Simulation {
       const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) =>
         segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
           nextX + offset.x, nextZ + offset.z, boss!.x, boss!.z, radius));
-      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0, rifleCounts: [] };
+      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 };
     }
     // Only survivors can leak; contact and projectile kills have already removed their enemies.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {

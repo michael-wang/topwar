@@ -13,7 +13,7 @@ const mock = vi.hoisted(() => ({
   step: vi.fn(),
   getState: vi.fn((): any => ({
     player: { x: 2, z: 3 },
-    squad: { count: 3, rocketCount: 0, rifleCounts: [3] },
+    squad: { count: 3, rocketCount: 0, rifleCounts: [3], rifleRemainder: 0 },
     enemies: [{ id: 1, tier: 1, x: -0.4, z: 12, hp: 10 }],
     streamRewards: [] as { id: number; tier: number; x: number; z: number;
       hitProgress: number; hitsRequired: number }[],
@@ -264,7 +264,7 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
-    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1] },
+    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [{ id: 673, tier: 2, x: 0.1, z: 81.6, hp: 300 },
         { id: 2524, tier: 3, x: 0, z: 240, hp: 3000 }],
       streamRewards: [{ id: 2, tier: 1, x: -0.8, z: 30, hitProgress: 3, hitsRequired: 10 }],
@@ -303,7 +303,7 @@ describe('GameApp config and frame lifecycle', () => {
     const app = new GameApp({} as HTMLElement, config.store, level);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
       startRocketCount: 1, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, higherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
-    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1] },
+    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] });
     app.start();
     raf.frame(100);
@@ -318,7 +318,7 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level);
-    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1] },
+    mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], projectiles: [], pickups: [{ id: 4, x: -2.7, zOffset: 2, rewardAmount: 1,
         rewardKind: 'rifle' }], gates: [{ id: 'rifle-generator',
         x: -2.7, zOffset: 8, width: 0.9, hitProgress: 7,
@@ -336,7 +336,7 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 },
-      squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1] },
+      squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [],
       pickups: [{ id: 7, x: 2.7, zOffset: 4, rewardKind: 'tier2Rifle', rewardAmount: 1 }],
       projectiles: [{ id: 8, kind: 'rifle', tier: 2, x: 0, z: 6 }] });
@@ -556,7 +556,7 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(108);
     expect(mock.step).not.toHaveBeenCalled();
     mock.getState.mockReturnValueOnce({
-      player: { x: 2, z: 3 }, squad: { count: 0, rocketCount: 0, rifleCounts: [] }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
+      player: { x: 2, z: 3 }, squad: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
     });
     raf.frame(116);
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(true);
@@ -565,7 +565,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changePlayer({ startSquad: 5, startRocketCount: 1 });
     config.changeTiers({ tier1Power: 4 });
     mock.getState.mockReturnValueOnce({
-      player: { x: 0, z: 0 }, squad: { count: 5, rocketCount: 1, rifleCounts: [4] }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
+      player: { x: 0, z: 0 }, squad: { count: 5, rocketCount: 1, rifleCounts: [4], rifleRemainder: 0 }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
     });
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
@@ -589,7 +589,7 @@ describe('GameApp config and frame lifecycle', () => {
     const stateWith = (count: number, tier2RifleCount: number) => ({
       player: { x: 0, z: 0 }, squad: { count, rocketCount: 0,
         rifleCounts: tier2RifleCount ? [count - tier2RifleCount, tier2RifleCount]
-          : count ? [count] : [] },
+          : count ? [count] : [], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
     });
     app.start();

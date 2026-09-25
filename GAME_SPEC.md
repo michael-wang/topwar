@@ -12,7 +12,7 @@ Normal enemy HP and player rifle damage share one power rule: Tier-1 = **3**, Ti
 
 ## Player combat and defense
 
-Level 001 starts with one Tier-1 rifle soldier. Every **10** rifle soldiers of a tier automatically merge into one of the next tier, cascading as needed. All tiers share the authored rifle fire rate, projectile speed, and range. A Tier N soldier has `10^(N - 1)` Tier-1-equivalent defense points. A Tier N projectile has the same penetration budget: each lower-tier normal enemy costs its tier's defense value, then the shot continues while budget remains. Same-tier or higher-tier normal enemies stop the shot; every Boss stops it. Casualties consume rifle defense first and can demote a high-tier body into lower-tier bodies. Rocket specialists remain last-loss prototype infrastructure and are not Level 001's current progression route.
+Level 001 starts with one Tier-1 rifle soldier. Every **10** rifle soldiers of a tier automatically merge into one of the next tier, cascading as needed. Only the highest two adjacent rifle tiers remain active, visible, and firing. Lower-tier leftover exchange value is preserved exactly as a non-firing rifle remainder: it contributes to defense and future normalization, but not visible count or offense. If casualties lower the highest active tier, lower-tier bodies may become visible again. All tiers share the authored rifle fire rate, projectile speed, and range. A Tier N soldier has `10^(N - 1)` Tier-1-equivalent defense points. A Tier N projectile has the same penetration budget: each lower-tier normal enemy costs its tier's defense value, then the shot continues while budget remains. Same-tier or higher-tier normal enemies stop the shot; every Boss stops it. Casualties consume rifle defense first and can demote a high-tier body into lower-tier bodies. Rocket specialists remain last-loss prototype infrastructure and are not Level 001's current progression route.
 
 ## Rewards
 
@@ -20,7 +20,7 @@ Every eight-row block has exactly one deterministic, random-looking side reward 
 
 ## Boss handoffs
 
-A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 5000 = 15,000`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Enemy and reward streams continue behind a living Boss. Boss contact or defense-line crossing is fatal. Bosses have no attacks or special rewards.
+A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 4500 = 13,500`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Enemy and reward streams continue behind a living Boss. Boss contact or defense-line crossing is fatal. Bosses have no attacks or special rewards.
 
 ## Presentation
 

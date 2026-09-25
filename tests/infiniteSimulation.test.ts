@@ -9,6 +9,7 @@ import type { EnemySimulationState, ProjectileSimulationState, SimulationState,
 import { powerForTier, bossRowForTier, rewardTierForRow } from '../src/simulation/tiers/tierRules';
 import { rewardPlacementForBlock } from '../src/simulation/enemies/streamRewards';
 import { squadDefenseValue, damageFeedback } from '../src/app/combatFeedback';
+import { compactRifleValue } from '../src/simulation/squad/composition';
 
 const config = GameConfigSchema.parse(configData);
 const level = LevelDefinitionSchema.parse(levelData);
@@ -75,6 +76,10 @@ describe('unbounded enemy and Boss stream', () => {
       (state: SimulationState) => { state.enemies[0].tier = 0; },
       (state: SimulationState) => { state.streamRewards[0].tier = -1; },
       (state: SimulationState) => { state.squad.rifleCounts = [10]; state.squad.count = 10; },
+      (state: SimulationState) => { state.squad.rifleRemainder = -1; },
+      (state: SimulationState) => { state.squad.rifleCounts = [1, 0, 1]; state.squad.count = 2; },
+      (state: SimulationState) => { state.squad.rifleCounts = [0, 0, 1]; state.squad.rifleRemainder = 10; },
+      (state: SimulationState) => { state.squad.rifleCounts = []; state.squad.count = 0; state.squad.rifleRemainder = 1; },
       (state: SimulationState) => { state.enemyStream!.nextBossTier = 10; },
     ]) {
       const candidate = simulation.getState();
@@ -89,7 +94,7 @@ describe('unbounded enemy and Boss stream', () => {
     const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 110 } };
     const simulation = create(nearFirst);
     const state = simulation.getState();
-    expect(state.boss).toMatchObject({ tier: 1, maxHp: 15000,
+    expect(state.boss).toMatchObject({ tier: 1, maxHp: 13500,
       z: stream.startZ + bossRowForTier(1, stream.tierProgression) * stream.spacing });
     expect(state.enemyStream?.nextBossTier).toBe(2);
     expect(state.enemies.some((entry) => entry.id === state.boss?.id)).toBe(false);
@@ -108,7 +113,7 @@ describe('unbounded enemy and Boss stream', () => {
     const simulation = create(accelerated);
     const target = [2, 3, 4];
     for (const tier of target) {
-      restoreWith(simulation, (state) => { state.boss = null; state.squad = { count: 1, rocketCount: 0, rifleCounts: [1] }; });
+      restoreWith(simulation, (state) => { state.boss = null; state.squad = { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 }; });
       const row = bossRowForTier(tier, stream.tierProgression);
       const current = simulation.getState();
       const neededZ = stream.startZ + row * stream.spacing - accelerated.enemyStream.spawnAheadDistance;
@@ -130,7 +135,7 @@ describe('unbounded enemy and Boss stream', () => {
     state.enemyStream!.nextEnemyId = 100000;
     state.streamRewards = [reward(999, 4, 45, 6)];
     state.enemyStream!.nextRewardId = 1000;
-    state.squad = { count: 1, rocketCount: 0, rifleCounts: [0, 0, 0, 1] };
+    state.squad = { count: 1, rocketCount: 0, rifleCounts: [0, 0, 0, 1], rifleRemainder: 6 };
     // A high cursor requires a corresponding generated row cursor.
     state.enemyStream!.nextRowIndex = bossRowForTier(3, level.enemyStream!.tierProgression) + 1;
     state.enemyStream!.nextBossTier = 4;
@@ -138,6 +143,9 @@ describe('unbounded enemy and Boss stream', () => {
     expect(simulation.getState()).toEqual(state);
     const replay = create(level);
     replay.restoreState(state);
+    expect(replay.getState()).toEqual(simulation.getState());
+    step(simulation);
+    step(replay);
     expect(replay.getState()).toEqual(simulation.getState());
   });
 
@@ -178,11 +186,24 @@ describe('unbounded enemy and Boss stream', () => {
 });
 
 describe('generic projectile exchange and rewards', () => {
+  it('fires only visible adjacent tiers and leaves remainder without a firing lane', () => {
+    const simulation = create();
+    restoreWith(simulation, (state) => { state.squad = compactRifleValue(176, 10); });
+    simulation.step(0.01, idle, tuning);
+    const state = simulation.getState();
+    expect(state.squad).toEqual({ count: 8, rocketCount: 0, rifleCounts: [0, 7, 1], rifleRemainder: 6 });
+    expect(state.projectiles).toHaveLength(8);
+    expect(state.projectiles.filter((projectile) => projectile.tier === 1)).toHaveLength(0);
+    expect(state.projectiles.filter((projectile) => projectile.tier === 2)).toHaveLength(7);
+    expect(state.projectiles.filter((projectile) => projectile.tier === 3)).toHaveLength(1);
+    expect(squadDefenseValue(state.squad, 10)).toBe(176);
+  });
+
   it('fires one generic rifle kind with formula damage and captured penetration', () => {
     for (const tier of [1, 2, 3, 4, 7]) {
       const simulation = create();
       restoreWith(simulation, (state) => { state.squad = { count: 1, rocketCount: 0,
-        rifleCounts: [...Array(tier - 1).fill(0), 1] }; });
+        rifleCounts: [...Array(tier - 1).fill(0), 1], rifleRemainder: 0 }; });
       simulation.step(0.01, idle, tuning);
       expect(simulation.getState().projectiles[0]).toMatchObject({ kind: 'rifle', tier,
         damage: powerForTier(tier, config.tiers),
@@ -292,12 +313,12 @@ describe('generic projectile exchange and rewards', () => {
   it('generic contact cost demotes Tier-4 and rocket defense remains last', () => {
     const simulation = create();
     restoreWith(simulation, (state) => {
-      state.squad = { count: 2, rocketCount: 1, rifleCounts: [0, 0, 0, 1] };
+      state.squad = { count: 2, rocketCount: 1, rifleCounts: [0, 0, 0, 1], rifleRemainder: 0 };
       state.enemies = [enemy(1, 3, 0)];
       state.weapons.rifleCooldownRemainingSeconds = 100;
     });
     step(simulation);
-    expect(simulation.getState().squad).toEqual({ count: 10, rocketCount: 1, rifleCounts: [0, 0, 9] });
+    expect(simulation.getState().squad).toEqual({ count: 10, rocketCount: 1, rifleCounts: [0, 0, 9], rifleRemainder: 0 });
     expect(squadDefenseValue(simulation.getState().squad, 10)).toBe(901);
     expect(damageFeedback(1001, 901)).toBe('normal');
   });
@@ -305,7 +326,7 @@ describe('generic projectile exchange and rewards', () => {
   it('awards Tier-4 from ten Tier-3 rewards and preserves a Tier-4 snapshot', () => {
     const simulation = create(level);
     restoreWith(simulation, (state) => {
-      state.squad = { count: 9, rocketCount: 0, rifleCounts: [0, 0, 9] };
+      state.squad = { count: 9, rocketCount: 0, rifleCounts: [0, 0, 9], rifleRemainder: 0 };
       state.streamRewards = [reward(1, 3, 5, 9)];
       state.projectiles = [shot(1, 4)];
       state.weapons.nextProjectileId = 2;
@@ -313,7 +334,7 @@ describe('generic projectile exchange and rewards', () => {
     });
     step(simulation);
     expect(simulation.getState().squad).toEqual({ count: 1, rocketCount: 0,
-      rifleCounts: [0, 0, 0, 1] });
+      rifleCounts: [0, 0, 0, 1], rifleRemainder: 0 });
     const replay = create(level);
     replay.restoreState(simulation.getState());
     expect(replay.getState()).toEqual(simulation.getState());
