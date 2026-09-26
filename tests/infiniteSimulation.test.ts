@@ -186,6 +186,33 @@ describe('unbounded enemy and Boss stream', () => {
 });
 
 describe('generic projectile exchange and rewards', () => {
+  it('keeps Tier-20 penetration exact in JSON snapshots and through a Tier-17 hit', () => {
+    const simulation = create();
+    restoreWith(simulation, (state) => {
+      state.squad = compactRifleValue(10n ** 19n, 10);
+      state.enemies = [enemy(1, 17, 4)];
+      state.weapons.rifleCooldownRemainingSeconds = 0;
+    });
+    simulation.step(0.2, idle, { ...tuning, rifle: { ...tuning.rifle, fireRate: 0.01, range: 100 } });
+    const saved = simulation.getState();
+    expect(saved.projectiles[0].penetrationRemaining).toBe((10n ** 19n - 10n ** 16n).toString());
+    const copy = create();
+    copy.restoreState(JSON.parse(JSON.stringify(saved)));
+    expect(copy.getState()).toEqual(saved);
+  });
+  it('freezes all gameplay state after Game Over, including a surviving Boss', () => {
+    const nearFirst = { ...level, enemyStream: { ...level.enemyStream!, spawnAheadDistance: 110 } };
+    const simulation = create(nearFirst);
+    const before = simulation.getState();
+    before.squad = { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 };
+    simulation.restoreState(before);
+    const frozen = simulation.getState();
+    for (let index = 0; index < 2000; index++) {
+      simulation.step(0.2, idle, { ...tuning, forwardSpeed: 45 });
+    }
+    expect(simulation.getState()).toEqual(frozen);
+    expect(simulation.getState().boss?.tier).toBe(1);
+  });
   it('fires only visible adjacent tiers and leaves remainder without a firing lane', () => {
     const simulation = create();
     restoreWith(simulation, (state) => { state.squad = compactRifleValue(176, 10); });
@@ -196,7 +223,7 @@ describe('generic projectile exchange and rewards', () => {
     expect(state.projectiles.filter((projectile) => projectile.tier === 1)).toHaveLength(0);
     expect(state.projectiles.filter((projectile) => projectile.tier === 2)).toHaveLength(7);
     expect(state.projectiles.filter((projectile) => projectile.tier === 3)).toHaveLength(1);
-    expect(squadDefenseValue(state.squad, 10)).toBe(176);
+    expect(squadDefenseValue(state.squad, 10)).toBe(176n);
   });
 
   it('fires one generic rifle kind with formula damage and captured penetration', () => {
@@ -352,7 +379,7 @@ describe('generic projectile exchange and rewards', () => {
     });
     step(simulation);
     expect(simulation.getState().squad).toEqual({ count: 10, rocketCount: 1, rifleCounts: [0, 0, 9], rifleRemainder: 0 });
-    expect(squadDefenseValue(simulation.getState().squad, 10)).toBe(901);
+    expect(squadDefenseValue(simulation.getState().squad, 10)).toBe(901n);
     expect(damageFeedback(1001, 901)).toBe('normal');
   });
 

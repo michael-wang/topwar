@@ -218,6 +218,40 @@ afterEach(() => {
 });
 
 describe('GameApp config and frame lifecycle', () => {
+  it('shows a runtime error and stops scheduling frames when rendering throws', () => {
+    const raf = createRaf();
+    const notice = { className: '', textContent: '', setAttribute: vi.fn() };
+    vi.stubGlobal('document', { createElement: () => notice });
+    const viewport = { append: vi.fn(), classList: { remove: vi.fn() } } as unknown as HTMLElement;
+    const originalError = new Error('render failure');
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mock.render.mockImplementationOnce(() => { throw originalError; });
+    const app = new GameApp(viewport, createConfigStore().store, level, {} as CharacterAssets);
+    app.start();
+    raf.frame(100);
+    expect(reported).toHaveBeenCalledWith('TopWar game loop stopped after an unexpected error', originalError);
+    expect(raf.pending.size).toBe(0);
+    expect(viewport.append).toHaveBeenCalledWith(notice);
+    expect(notice.textContent).toMatch(/Reload to retry/);
+    app.dispose();
+    reported.mockRestore();
+  });
+  it('reports the original simulation exception instead of leaving a frozen frame', () => {
+    const raf = createRaf();
+    vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn() }) });
+    const viewport = { append: vi.fn(), classList: { remove: vi.fn() } } as unknown as HTMLElement;
+    const originalError = new Error('simulation failure');
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const app = new GameApp(viewport, createConfigStore().store, level, {} as CharacterAssets);
+    app.start();
+    raf.frame(100);
+    mock.step.mockImplementationOnce(() => { throw originalError; });
+    raf.frame(100 + 1000 / 60);
+    expect(reported).toHaveBeenCalledWith('TopWar game loop stopped after an unexpected error', originalError);
+    expect(raf.pending.size).toBe(0);
+    app.dispose();
+    reported.mockRestore();
+  });
   it('passes live rifle/radius tuning without reconstructing or healing the simulation', () => {
     const raf = createRaf();
     const config = createConfigStore();

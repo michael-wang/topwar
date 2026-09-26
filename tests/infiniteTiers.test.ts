@@ -10,6 +10,7 @@ import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier
   fullSaturationRow, highestIntroducedTierForRow, enemyPowerForTier, rewardTierForRow, tierProbabilityForRow, tierRollForSlot,
   transitionStartRow } from '../src/simulation/tiers/tierRules';
 import { SeededRng } from '../src/core/Rng';
+import type { SquadSimulationState } from '../src/simulation/SimulationState';
 
 const game = GameConfigSchema.parse(gameData);
 const level = LevelDefinitionSchema.parse(levelData);
@@ -66,13 +67,13 @@ describe('formula-driven tier data', () => {
       expect(enemyPowerForTier(tier, power)).toBe(value);
     }
     expect([1, 2, 3, 4, 7, 10].map((tier) => exchangeValueForTier(tier, 10)))
-      .toEqual([1, 10, 100, 1000, 1000000, 1000000000]);
+      .toEqual([1n, 10n, 100n, 1000n, 1000000n, 1000000000n]);
     expect([1, 2, 3, 4].map((tier) => bossMaxHpForTier(tier, rule, power)))
       .toEqual([12000, 300000, 3000000, 30000000]);
     expect(bossMaxHpForTier(1, rule, { ...power, tier1Power: 6 })).toBe(24000);
     expect(bossMaxHpForTier(2, rule, { ...power, tier2Power: 600 })).toBe(600000);
     expect(() => enemyPowerForTier(400, power)).toThrow(/range/);
-    expect(() => exchangeValueForTier(30, 10)).toThrow(/range/);
+    expect(exchangeValueForTier(30, 10)).toBe(10n ** 29n);
   });
 
   it('keeps only adjacent enemy tiers in each cycle', () => {
@@ -130,7 +131,7 @@ describe('formula-driven tier data', () => {
 });
 
 describe('generic rifle composition and defense', () => {
-  const empty = { count: 0, rocketCount: 0, rifleCounts: [] as number[], rifleRemainder: 0 };
+  const empty: SquadSimulationState = { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 };
   it('cascades merges through Tier 7 without a tier branch', () => {
     expect(normalizeRifleSquad({ count: 10, rocketCount: 0, rifleCounts: [10], rifleRemainder: 0 }, 10).rifleCounts).toEqual([0, 1]);
     expect(normalizeRifleSquad({ count: 100, rocketCount: 0, rifleCounts: [100], rifleRemainder: 0 }, 10).rifleCounts).toEqual([0, 0, 1]);
@@ -148,7 +149,7 @@ describe('generic rifle composition and defense', () => {
     expect(compactRifleValue(1006, 10)).toEqual({ count: 1, rocketCount: 0, rifleCounts: [0, 0, 0, 1], rifleRemainder: 6 });
     expect(compactRifleValue(1000006, 10)).toEqual({ count: 1, rocketCount: 0,
       rifleCounts: [0, 0, 0, 0, 0, 0, 1], rifleRemainder: 6 });
-    expect(rifleDefenseValue(compactRifleValue(1000006, 10), 10)).toBe(1000006);
+    expect(rifleDefenseValue(compactRifleValue(1000006, 10), 10)).toBe(1000006n);
   });
 
   it('lets low-tier rewards cross hidden thresholds and cascade exactly', () => {
@@ -163,7 +164,7 @@ describe('generic rifle composition and defense', () => {
 
   it('demotes arbitrary high tiers by equivalent defense value, preserving rockets last', () => {
     const t4 = { count: 1, rocketCount: 0, rifleCounts: [0, 0, 0, 1], rifleRemainder: 0 };
-    expect(rifleDefenseValue(t4, 10)).toBe(1000);
+    expect(rifleDefenseValue(t4, 10)).toBe(1000n);
     expect(afterCasualties(t4, 1, 10)).toEqual({ count: 18, rocketCount: 0, rifleCounts: [0, 9, 9], rifleRemainder: 9 });
     expect(afterCasualties(t4, 100, 10)).toEqual({ count: 9, rocketCount: 0, rifleCounts: [0, 0, 9], rifleRemainder: 0 });
     expect(afterCasualties(t4, 1000, 10)).toEqual(empty);
@@ -192,5 +193,28 @@ describe('generic rifle composition and defense', () => {
     expect(() => validateSquad({ count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 1 }, 10)).toThrow();
     expect(() => validateSquad({ count: 1, rocketCount: 0, rifleCounts: [0, 0, 1], rifleRemainder: 10 }, 10)).toThrow();
     expect(() => validateSquad({ count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 1 }, 10)).toThrow();
+  });
+
+  it('merges and demotes exactly through Tier 20 with JSON-safe hidden remainder', () => {
+    expect(exchangeValueForTier(17, 10)).toBe(10n ** 16n);
+    expect(exchangeValueForTier(20, 10)).toBe(10n ** 19n);
+    let squad = addRifleSoldiers(empty, 9, 16, 10);
+    squad = addRifleSoldiers(squad, 1, 16, 10);
+    expect(squad.rifleCounts[16]).toBe(1);
+    squad = addRifleSoldiers(squad, 1, 20, 10);
+    const hugeRemainder = 10n ** 17n - 1n;
+    squad = compactRifleValue(10n ** 19n + hugeRemainder, 10);
+    expect(squad.rifleCounts[19]).toBe(1);
+    expect(squad.rifleCounts.slice(0, 18).every((count) => count === 0)).toBe(true);
+    expect(squad.rifleRemainder).toBe(hugeRemainder.toString());
+    expect(rifleDefenseValue(squad, 10)).toBe(10n ** 19n + hugeRemainder);
+    validateSquad(squad, 10);
+    expect(JSON.parse(JSON.stringify(squad))).toEqual(squad);
+    const demoted = afterCasualties(squad, 10n ** 19n, 10);
+    expect(rifleDefenseValue(demoted, 10)).toBe(hugeRemainder);
+    expect(demoted.rifleCounts[16]).toBe(9);
+    expect(afterCasualties(demoted, hugeRemainder, 10)).toEqual(empty);
+    expect(() => compactRifleValue(Number.MAX_SAFE_INTEGER + 1, 10)).toThrow(/exact/);
+    expect(() => validateSquad({ ...squad, rifleRemainder: Number.MAX_SAFE_INTEGER + 1 }, 10)).toThrow(/exact/);
   });
 });

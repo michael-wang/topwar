@@ -5,6 +5,7 @@ import { createEnemyStreamRow } from './enemies/streamRow';
 import { rewardPlacementForBlock } from './enemies/streamRewards';
 import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, validateSquad } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
+import { readExactValue, storeExactValue } from './tiers/exactValue';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
   enemyPowerForTier, riflePowerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
@@ -445,18 +446,20 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       || (value.kind === 'rocket' && value.blastRadius <= 0)) {
       throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
     }
-    if (!Number.isSafeInteger(value.penetrationRemaining)
-      || (value.kind === 'rocket' && value.penetrationRemaining !== 0)
-      || (value.kind === 'rifle' && ((value.tier === 1 && value.penetrationRemaining !== 0)
-        || (value.tier !== 1 && ((value.penetrationRemaining as number) < 1
-          || (value.penetrationRemaining as number) > exchangeValueForTier(value.tier as number, mergeCount)))))) {
+    let penetrationRemaining: bigint;
+    try { penetrationRemaining = readExactValue(value.penetrationRemaining, 'Projectile penetration'); }
+    catch { throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`); }
+    if ((value.kind === 'rocket' && penetrationRemaining !== 0n)
+      || (value.kind === 'rifle' && ((value.tier === 1 && penetrationRemaining !== 0n)
+        || (value.tier !== 1 && (penetrationRemaining < 1n
+          || penetrationRemaining > exchangeValueForTier(value.tier as number, mergeCount)))))) {
       throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`);
     }
     return { id: value.id as number, kind: value.kind as ProjectileSimulationState['kind'],
       tier: value.tier as number,
       x: value.x, z: value.z, speed: value.speed,
       damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius,
-      penetrationRemaining: value.penetrationRemaining as number };
+      penetrationRemaining: storeExactValue(penetrationRemaining) };
   });
   const weapons = state.weapons;
   if (!isPlainObject(weapons) || Object.keys(weapons).length !== 3
@@ -485,7 +488,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       rngState: rng.getState(),
       player: { x: player.x as number, z: player.z as number },
       squad: { count: squad.count as number, rocketCount: squad.rocketCount as number,
-        rifleCounts: [...(squad.rifleCounts as number[])], rifleRemainder: squad.rifleRemainder as number },
+        rifleCounts: [...(squad.rifleCounts as number[])],
+        rifleRemainder: storeExactValue(readExactValue(squad.rifleRemainder, 'Squad rifle remainder')) },
       enemies,
       boss,
       enemyStream,
@@ -666,13 +670,10 @@ export class Simulation {
       || !positiveFinite(tuning.rocket.blastRadius)) {
       throw new Error('Simulation rocket tuning must be positive and finite');
     }
+    if (this.state.squad.count === 0) return;
     const nextElapsedSeconds = this.state.elapsedSeconds + dtSeconds;
     if (!Number.isFinite(nextElapsedSeconds) || !Number.isSafeInteger(this.state.tick + 1)) {
       throw new Error('Simulation time or tick exceeds the supported range');
-    }
-    if (this.state.squad.count === 0) {
-      this.state = { ...this.state, tick: this.state.tick + 1, elapsedSeconds: nextElapsedSeconds };
-      return;
     }
 
     const halfWidth = tuning.trackHalfWidth;
@@ -743,7 +744,8 @@ export class Simulation {
           projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
             damage, remainingRange: weapon.range,
             blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
-            penetrationRemaining: tier > 1 ? exchangeValueForTier(tier, this.tiers.mergeCount) : 0 });
+            penetrationRemaining: tier > 1
+              ? storeExactValue(exchangeValueForTier(tier, this.tiers.mergeCount)) : 0 });
         }
         cooldown += interval;
         if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
@@ -759,7 +761,7 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      let penetrationRemaining = projectile.penetrationRemaining;
+      let penetrationRemaining = readExactValue(projectile.penetrationRemaining, 'Projectile penetration');
       let minimumFraction = 0;
       let consumed = false;
       const piercedEnemyIds = projectile.tier > 1 ? new Set<number>() : undefined;
@@ -794,10 +796,10 @@ export class Simulation {
           hit.enemy.hp -= projectile.damage;
           if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
           const penetrationCost = projectile.tier > hit.enemy.tier
-            ? exchangeValueForTier(hit.enemy.tier, this.tiers.mergeCount) : 0;
-          if (penetrationCost > 0) {
+            ? exchangeValueForTier(hit.enemy.tier, this.tiers.mergeCount) : 0n;
+          if (penetrationCost > 0n) {
             penetrationRemaining -= penetrationCost;
-            if (penetrationRemaining > 0) {
+            if (penetrationRemaining > 0n) {
               // The cursor keeps the original step time for moving gates. Skipping
               // this enemy also handles overlapping circles and exact-position ties.
               minimumFraction = hit.fraction;
@@ -825,7 +827,8 @@ export class Simulation {
       }
       const remainingRange = projectile.remainingRange - travel;
       if (!consumed && remainingRange > 0) {
-        survivingProjectiles.push({ ...projectile, z: endZ, remainingRange, penetrationRemaining });
+        survivingProjectiles.push({ ...projectile, z: endZ, remainingRange,
+          penetrationRemaining: storeExactValue(penetrationRemaining > 0n ? penetrationRemaining : 0n) });
       }
     }
     const survivingPickups: UpgradePickupSimulationState[] = [];

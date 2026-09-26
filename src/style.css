@@ -147,6 +147,19 @@ body {
   height: 100%;
 }
 
+.runtime-error-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(18 24 30 / 88%);
+  color: white;
+  font: 600 1rem/1.5 sans-serif;
+  text-align: center;
+}
+
 #game-viewport.game-viewport-error {
   display: grid;
   place-items: center;

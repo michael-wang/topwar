@@ -3,11 +3,13 @@ export interface PlayerSimulationState {
   z: number;
 }
 
+import type { ExactValue } from './tiers/exactValue';
+
 export interface SquadSimulationState {
   count: number;
   rocketCount: number;
   rifleCounts: number[];
-  rifleRemainder: number;
+  rifleRemainder: ExactValue;
 }
 
 export interface EnemySimulationState {
@@ -75,7 +77,7 @@ export interface ProjectileSimulationState {
   damage: number;
   remainingRange: number;
   blastRadius: number;
-  penetrationRemaining: number;
+  penetrationRemaining: ExactValue;
 }
 
 export interface WeaponSimulationState {

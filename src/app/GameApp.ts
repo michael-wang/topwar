@@ -41,7 +41,7 @@ export class GameApp {
   private frameId: number | null = null;
   private previousFrameTimestampMs: number | null = null;
   private presentationMs = 0;
-  private previousDefenseValue: number;
+  private previousDefenseValue: bigint;
   private paused = false;
   private running = false;
   private disposed = false;
@@ -187,66 +187,76 @@ export class GameApp {
 
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
-    const elapsedSeconds = this.previousFrameTimestampMs === null
-      ? 0
-      : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
-    this.previousFrameTimestampMs = timestampMs;
-    if (!this.paused) {
-      this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
-      this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
-      dtSeconds,
-      { targetX: this.targetX },
-      {
-        moveSpeed: this.runtimeTuning.moveSpeed,
-        forwardSpeed: this.runtimeTuning.forwardSpeed,
-        trackHalfWidth: this.config.track.halfWidth,
-        defenseLineOffset: this.config.track.defenseLineOffset,
-        formationSpacing: this.config.player.formationSpacing,
-        memberRadius: this.config.player.memberRadius,
-        normalEnemyRadius: this.config.tiers.normalEnemyRadius,
-        bossRadius: this.config.bosses.basic.radius,
-        rifle: { fireRate: this.runtimeTuning.fireRate,
-          projectileSpeed: this.runtimeTuning.bulletSpeed, range: this.runtimeTuning.bulletRange },
-        rocket: { ...this.config.weapon.rocket },
-      },
-      ));
+    try {
+      const elapsedSeconds = this.previousFrameTimestampMs === null
+        ? 0
+        : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
+      this.previousFrameTimestampMs = timestampMs;
+      if (!this.paused) {
+        this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
+        this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
+        dtSeconds,
+        { targetX: this.targetX },
+        {
+          moveSpeed: this.runtimeTuning.moveSpeed,
+          forwardSpeed: this.runtimeTuning.forwardSpeed,
+          trackHalfWidth: this.config.track.halfWidth,
+          defenseLineOffset: this.config.track.defenseLineOffset,
+          formationSpacing: this.config.player.formationSpacing,
+          memberRadius: this.config.player.memberRadius,
+          normalEnemyRadius: this.config.tiers.normalEnemyRadius,
+          bossRadius: this.config.bosses.basic.radius,
+          rifle: { fireRate: this.runtimeTuning.fireRate,
+            projectileSpeed: this.runtimeTuning.bulletSpeed, range: this.runtimeTuning.bulletRange },
+          rocket: { ...this.config.weapon.rocket },
+        },
+        ));
+      }
+      const state = this.simulation.getState();
+      const stream = this.level.enemyStream;
+      if (stream) {
+        const row = Math.max(0, Math.floor((state.player.z - stream.startZ) / stream.spacing));
+        this.tierHud.setTier(highestIntroducedTierForRow(row, stream.tierProgression));
+      }
+      const currentDefenseValue = squadDefenseValue(state.squad, this.config.tiers.mergeCount);
+      const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
+      if (feedback) this.damageFlash.flash(feedback === 'fatal');
+      this.audio.observe(this.previousDefenseValue, currentDefenseValue,
+        state.boss ? [...state.enemies, state.boss] : state.enemies,
+        state.streamRewards, state.boss, this.presentationMs);
+      this.previousDefenseValue = currentDefenseValue;
+      const renderState: GameRenderState = {
+        player: { x: state.player.x, z: state.player.z },
+        squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
+          rifleCounts: [...state.squad.rifleCounts],
+          formationSpacing: this.config.player.formationSpacing },
+        track: { halfWidth: this.config.track.halfWidth,
+          defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
+        enemies: state.enemies.map((enemy) => ({ id: enemy.id, tier: enemy.tier,
+          x: enemy.x, z: enemy.z, hp: enemy.hp })),
+        boss: state.boss ? { ...state.boss, visualScale: this.config.bosses.basic.visualScale } : null,
+        streamRewards: state.streamRewards.map((reward) => ({ ...reward })),
+        gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
+          rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount,
+          hitProgress: gate.hitProgress, hitsRequired: gate.reward.hitsRequired })),
+        pickups: state.pickups.map((pickup) => ({ id: pickup.id, x: pickup.x,
+          z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount,
+          rewardKind: pickup.rewardKind })),
+        projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
+          tier: projectile.tier,
+          x: projectile.x, z: projectile.z })),
+      };
+      this.renderer.render(renderState, this.presentationMs);
+      this.gameOverOverlay.setVisible(state.squad.count === 0);
+      this.frameId = requestAnimationFrame(this.renderFrame);
+    } catch (error) {
+      console.error('TopWar game loop stopped after an unexpected error', error);
+      this.stop();
+      const notice = document.createElement('div');
+      notice.className = 'runtime-error-overlay';
+      notice.setAttribute('role', 'alert');
+      notice.textContent = 'Game stopped unexpectedly. Reload to retry.';
+      this.viewport.append(notice);
     }
-    const state = this.simulation.getState();
-    const stream = this.level.enemyStream;
-    if (stream) {
-      const row = Math.max(0, Math.floor((state.player.z - stream.startZ) / stream.spacing));
-      this.tierHud.setTier(highestIntroducedTierForRow(row, stream.tierProgression));
-    }
-    const currentDefenseValue = squadDefenseValue(state.squad, this.config.tiers.mergeCount);
-    const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
-    if (feedback) this.damageFlash.flash(feedback === 'fatal');
-    this.audio.observe(this.previousDefenseValue, currentDefenseValue,
-      state.boss ? [...state.enemies, state.boss] : state.enemies,
-      state.streamRewards, state.boss, this.presentationMs);
-    this.previousDefenseValue = currentDefenseValue;
-    const renderState: GameRenderState = {
-      player: { x: state.player.x, z: state.player.z },
-      squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
-        rifleCounts: [...state.squad.rifleCounts],
-        formationSpacing: this.config.player.formationSpacing },
-      track: { halfWidth: this.config.track.halfWidth,
-        defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
-      enemies: state.enemies.map((enemy) => ({ id: enemy.id, tier: enemy.tier,
-        x: enemy.x, z: enemy.z, hp: enemy.hp })),
-      boss: state.boss ? { ...state.boss, visualScale: this.config.bosses.basic.visualScale } : null,
-      streamRewards: state.streamRewards.map((reward) => ({ ...reward })),
-      gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
-        rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount,
-        hitProgress: gate.hitProgress, hitsRequired: gate.reward.hitsRequired })),
-      pickups: state.pickups.map((pickup) => ({ id: pickup.id, x: pickup.x,
-        z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount,
-        rewardKind: pickup.rewardKind })),
-      projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
-        tier: projectile.tier,
-        x: projectile.x, z: projectile.z })),
-    };
-    this.renderer.render(renderState, this.presentationMs);
-    this.gameOverOverlay.setVisible(state.squad.count === 0);
-    this.frameId = requestAnimationFrame(this.renderFrame);
   };
 }

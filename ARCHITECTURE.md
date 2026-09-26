@@ -286,6 +286,10 @@ interface GameSnapshotV1 {
 ```
 
 The exact `SimulationState` evolves with gameplay systems.
+Squad `rifleRemainder` and projectile `penetrationRemaining` are JSON numbers
+while safely representable, then canonical decimal strings above
+`Number.MAX_SAFE_INTEGER`. Simulation converts them to `bigint` for exact
+exchange arithmetic; snapshots never contain a JavaScript `bigint`.
 
 ### Snapshot invariant
 

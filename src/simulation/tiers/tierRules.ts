@@ -93,11 +93,10 @@ export function riflePowerForTier(tier: number, rule: TierPower): number {
   return powerForTierWithGrowth(tier, rule, rule.rifleHigherTierPowerMultiplier);
 }
 
-export function exchangeValueForTier(tier: number, mergeCount: number): number {
+export function exchangeValueForTier(tier: number, mergeCount: number): bigint {
   if (!validTier(tier)) throw new Error('Tier must be a positive safe integer');
-  const value = mergeCount ** (tier - 1);
-  if (!Number.isSafeInteger(value)) throw new Error('Tier exchange value exceeds the supported range');
-  return value;
+  if (!Number.isSafeInteger(mergeCount) || mergeCount < 2) throw new Error('Invalid rifle merge count');
+  return BigInt(mergeCount) ** BigInt(tier - 1);
 }
 
 export function bossMaxHpForTier(tier: number, progression: TierProgression, power: TierPower): number {

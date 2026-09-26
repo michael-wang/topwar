@@ -11,7 +11,7 @@ export class AudioCueObserver {
   private nextDeathCueMs = -Infinity;
   private nextBossHitCueMs = -Infinity;
 
-  observe(previousDefense: number, currentDefense: number,
+  observe(previousDefense: number | bigint, currentDefense: number | bigint,
     enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
     boss: ObservedBoss | null, nowMs = performance.now()): AudioCue[] {
     const cues = new Set<AudioCue>();
@@ -75,7 +75,7 @@ export class GameAudio {
     keyTarget.addEventListener?.('keydown', this.unlock);
   }
 
-  observe(previousDefense: number, currentDefense: number,
+  observe(previousDefense: number | bigint, currentDefense: number | bigint,
     enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
     boss: ObservedBoss | null, nowMs = performance.now()): void {
     for (const cue of this.observer.observe(previousDefense, currentDefense, enemies,
