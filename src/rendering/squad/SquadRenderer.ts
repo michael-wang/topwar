@@ -23,12 +23,7 @@ export function firingRecoil(nowMs: number, firedAtMs: number): number {
 
 interface SoldierVisual {
   group: THREE.Group;
-  torso: THREE.Mesh;
-  head: THREE.Mesh;
-  leftArm: THREE.Mesh;
-  rightArm: THREE.Mesh;
-  leftLeg: THREE.Mesh;
-  rightLeg: THREE.Mesh;
+  body: THREE.Mesh;
   rifle: THREE.Mesh;
   launcher: THREE.Mesh;
   muzzle: THREE.Mesh;
@@ -36,21 +31,13 @@ interface SoldierVisual {
 }
 
 export class SquadRenderer {
-  private readonly torsoGeometry = new THREE.BoxGeometry(0.32, 0.43, 0.23);
-  private readonly headGeometry = new THREE.SphereGeometry(0.17, 8, 6);
-  private readonly armGeometry = new THREE.BoxGeometry(0.10, 0.35, 0.12);
-  private readonly legGeometry = new THREE.BoxGeometry(0.12, 0.34, 0.14);
   private readonly rifleGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.58);
   private readonly launcherGeometry = new THREE.BoxGeometry(0.22, 0.17, 0.66);
   private readonly muzzleGeometry = new THREE.SphereGeometry(0.085, 6, 4);
-  private readonly bodyMaterials = PLAYER_PALETTE.map((entry) =>
-    new THREE.MeshStandardMaterial({ color: entry.body }));
-  private readonly headMaterials = PLAYER_PALETTE.map((entry) =>
-    new THREE.MeshStandardMaterial({ color: entry.head }));
-  private readonly rifleMaterial = new THREE.MeshStandardMaterial({ color: '#173a77' });
+  private readonly tierMaterials: THREE.Material[][];
+  private readonly upgradeMaterials: THREE.Material[];
+  private readonly rifleMaterial = new THREE.MeshStandardMaterial({ color: '#252a30' });
   private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#ffe26b' });
-  private readonly upgradeBodyMaterial = new THREE.MeshStandardMaterial({ color: '#fff0a4' });
-  private readonly upgradeHeadMaterial = new THREE.MeshStandardMaterial({ color: '#fff9d8' });
   private readonly ringGeometry = new THREE.RingGeometry(0.42, 0.55, 32);
   private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#fff0a4',
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
@@ -63,7 +50,19 @@ export class SquadRenderer {
   private readonly rifleFiredAtMs = new Map<number, number>();
   private rocketFiredAtMs = -Infinity;
 
-  constructor(private readonly scene: THREE.Scene) {
+  constructor(private readonly scene: THREE.Scene,
+    private readonly model: THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>) {
+    const source = Array.isArray(model.material) ? model.material : [model.material];
+    const colored = (body: string, head: string): THREE.Material[] => source.map((original) => {
+      const material = original.clone();
+      if (material instanceof THREE.MeshStandardMaterial) {
+        if (material.name === 'Character_Main' || material.name === 'Pants') material.color.set(body);
+        if (material.name === 'Grey') material.color.set(head);
+      }
+      return material;
+    });
+    this.tierMaterials = PLAYER_PALETTE.map((entry) => colored(entry.body, entry.head));
+    this.upgradeMaterials = colored('#b9eaff', '#e1f8ff');
     this.tierRing.rotation.x = -Math.PI / 2;
     this.tierRing.position.y = 0.035;
     this.tierRing.visible = false;
@@ -122,19 +121,14 @@ export class SquadRenderer {
       const upgrading = tierActive && tier === this.tierUpTier;
       member.group.scale.setScalar(upgrading ? tierUpScale(tierAgeMs) : spawnScale);
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
-      for (const part of [member.torso, member.leftArm, member.rightArm, member.leftLeg, member.rightLeg]) {
-        part.material = glowing ? this.upgradeBodyMaterial
-          : this.bodyMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
-      }
-      member.head.material = glowing ? this.upgradeHeadMaterial
-        : this.headMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
+      member.body.material = glowing ? this.upgradeMaterials
+        : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
+      member.body.rotation.x = -0.06 * recoil;
       member.rifle.visible = !isRocket;
       member.rifle.scale.setScalar(tier >= 3 ? 1.25 : tier === 2 ? 1.12 : 1);
       member.rifle.position.z = 0.38 - (tier >= 3 ? 0.16 : 0.11) * recoil;
       member.launcher.visible = isRocket;
       member.launcher.position.z = 0.12 - 0.09 * recoil;
-      member.leftArm.rotation.x = -0.78 + 0.20 * recoil;
-      member.rightArm.rotation.x = -0.78 + 0.20 * recoil;
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
       member.muzzle.position.z = member.rifle.position.z + (tier >= 3 ? 0.48 : tier === 2 ? 0.40 : 0.32);
       // The camera looks along +Z, which mirrors X on screen.
@@ -163,11 +157,9 @@ export class SquadRenderer {
     this.scene.remove(this.tierRing);
     this.ringGeometry.dispose();
     this.ringMaterial.dispose();
-    for (const geometry of [this.torsoGeometry, this.headGeometry, this.armGeometry, this.legGeometry,
-      this.rifleGeometry, this.launcherGeometry, this.muzzleGeometry]) geometry.dispose();
-    for (const material of [...this.bodyMaterials, ...this.headMaterials,
-      this.rifleMaterial, this.muzzleMaterial,
-      this.upgradeBodyMaterial, this.upgradeHeadMaterial]) material.dispose();
+    for (const geometry of [this.rifleGeometry, this.launcherGeometry, this.muzzleGeometry]) geometry.dispose();
+    for (const material of [...this.tierMaterials.flat(), ...this.upgradeMaterials,
+      this.rifleMaterial, this.muzzleMaterial]) material.dispose();
   }
 
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
@@ -182,18 +174,7 @@ export class SquadRenderer {
 
   private addMember(): void {
     const group = new THREE.Group();
-    const torso = new THREE.Mesh(this.torsoGeometry, this.bodyMaterials[0]);
-    torso.position.y = 0.53;
-    const head = new THREE.Mesh(this.headGeometry, this.headMaterials[0]);
-    head.position.y = 0.90;
-    const leftArm = new THREE.Mesh(this.armGeometry, this.bodyMaterials[0]);
-    leftArm.position.set(-0.23, 0.49, 0.09);
-    const rightArm = new THREE.Mesh(this.armGeometry, this.bodyMaterials[0]);
-    rightArm.position.set(0.23, 0.49, 0.09);
-    const leftLeg = new THREE.Mesh(this.legGeometry, this.bodyMaterials[0]);
-    leftLeg.position.set(-0.10, 0.17, 0);
-    const rightLeg = new THREE.Mesh(this.legGeometry, this.bodyMaterials[0]);
-    rightLeg.position.set(0.10, 0.17, 0);
+    const body = new THREE.Mesh(this.model.geometry, this.tierMaterials[0]);
     const rifle = new THREE.Mesh(this.rifleGeometry, this.rifleMaterial);
     rifle.position.set(0.20, 0.54, 0.38);
     const launcher = new THREE.Mesh(this.launcherGeometry, this.rifleMaterial);
@@ -202,10 +183,10 @@ export class SquadRenderer {
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
     muzzle.position.set(0.20, 0.54, 0.70);
     muzzle.visible = false;
-    group.add(torso, head, leftArm, rightArm, leftLeg, rightLeg, rifle, launcher, muzzle);
+    group.add(body, rifle, launcher, muzzle);
     this.scene.add(group);
     group.visible = false;
-    this.members.push({ group, torso, head, leftArm, rightArm, leftLeg, rightLeg, rifle, launcher, muzzle,
+    this.members.push({ group, body, rifle, launcher, muzzle,
       appearedAtMs: -Infinity });
   }
 }

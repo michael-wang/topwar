@@ -5,6 +5,7 @@ import { KeyboardSteeringInput } from '../input/KeyboardSteeringInput';
 import { PointerDragInput } from '../input/PointerDragInput';
 import type { LevelDefinition } from '../level/LevelDefinition';
 import { GameRenderer } from '../rendering/GameRenderer';
+import type { CharacterAssets } from '../rendering/CharacterAssets';
 import type { GameRenderState } from '../rendering/RenderState';
 import { Simulation } from '../simulation/Simulation';
 import { damageFeedback, squadDefenseValue } from './combatFeedback';
@@ -46,7 +47,7 @@ export class GameApp {
   private disposed = false;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
-    private readonly level: LevelDefinition) {
+    private readonly level: LevelDefinition, assets: CharacterAssets) {
     this.config = configStore.getConfig();
     this.runtimeDefaults = defaultRuntimeTuning(this.config, level);
     this.runtimeTuning = { ...this.runtimeDefaults };
@@ -54,7 +55,7 @@ export class GameApp {
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
-    this.renderer = new GameRenderer(viewport);
+    this.renderer = new GameRenderer(viewport, assets);
     this.audio = new GameAudio(viewport);
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);

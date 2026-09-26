@@ -1,3 +1,4 @@
+import type { CharacterAssets } from '../src/rendering/CharacterAssets';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigStore, ConfigListener } from '../src/config/ConfigStore';
 import type { GameConfig } from '../src/config/configSchema';
@@ -220,7 +221,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('passes live rifle/radius tuning without reconstructing or healing the simulation', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     app.start();
     raf.frame(100);
     const defaults = mock.panelConstructedWith.mock.calls[0][0];
@@ -243,7 +244,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('starts the simulation from config and sends plain live state to the renderer', () => {
     const raf = createRaf();
     const config = createConfigStore(5, 0.8);
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
       startRocketCount: 0, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(config.listenerCount()).toBe(1);
@@ -283,7 +284,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('passes normal enemy tier and HP through plain render state for hit feedback', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [{ id: 673, tier: 2, x: 0.1, z: 81.6, hp: 300 },
         { id: 2524, tier: 3, x: 0, z: 240, hp: 3000 }],
@@ -303,7 +304,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('passes the active Boss as plain render data with authored visual scale', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const state = mock.getState();
     const bossState = { ...state,
       boss: { id: 6441, tier: 1, x: 0, z: 576, hp: 2997, maxHp: 3000 } };
@@ -320,7 +321,7 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const config = createConfigStore(2);
     config.changePlayer({ startRocketCount: 1 });
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
       startRocketCount: 1, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
@@ -337,7 +338,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('passes active gate hit progress and reward as plain render data', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], projectiles: [], pickups: [{ id: 4, x: -2.7, zOffset: 2, rewardAmount: 1,
         rewardKind: 'rifle' }], gates: [{ id: 'rifle-generator',
@@ -354,7 +355,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('passes Tier-2 squad, heavy shot, and pickup identity through the render boundary', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 },
       squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [],
@@ -373,7 +374,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('uses one RAF loop and keeps its config listener across stop/start without catch-up', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     app.start();
     app.start();
     expect(raf.pending.size).toBe(1);
@@ -436,7 +437,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('maps relative drag from current player X and uses live movement tuning per tick', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     const callbacks = mock.inputConstructedWith.mock.calls[0][0] as PointerDragCallbacks;
     app.start();
     raf.frame(100);
@@ -486,7 +487,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('does not steer from ordinary mouse movement', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     app.start();
     raf.frame(100);
     raf.mouseMove();
@@ -497,7 +498,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('pauses on P or Escape, freezes presentation time, clears steering, and resumes without catch-up', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
     app.start();
     raf.frame(100);
@@ -527,7 +528,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('applies eight runtime values immediately and retains them for Retry', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const defaults = mock.panelConstructedWith.mock.calls[0][0];
     const tune = mock.panelConstructedWith.mock.calls[0][1] as (values: typeof defaults) => void;
     const edited = { ...defaults, bulletSpeed: 52, bulletRange: 65,
@@ -563,7 +564,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('maps keyboard edges and neutral release to the current player position', () => {
     const raf = createRaf();
     const config = createConfigStore();
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
     const drag = mock.inputConstructedWith.mock.calls[0][0] as PointerDragCallbacks;
     app.start();
@@ -602,7 +603,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('derives Game Over from zero squad and retries with current config in the same RAF loop', () => {
     const raf = createRaf();
     const config = createConfigStore(3);
-    const app = new GameApp({} as HTMLElement, config.store, level);
+    const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     app.start();
     raf.frame(100);
     raf.frame(108);
@@ -637,7 +638,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('flashes on Tier-2 demotion and fatal loss, ignores growth, and resets on Retry', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const stateWith = (count: number, tier2RifleCount: number) => ({
       player: { x: 0, z: 0 }, squad: { count, rocketCount: 0,
         rifleCounts: tier2RifleCount ? [count - tier2RifleCount, tier2RifleCount]
@@ -669,7 +670,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('uses the player row for the enemy HUD and resets it on Retry', () => {
     const raf = createRaf();
-    const app = new GameApp({} as HTMLElement, createConfigStore().store, level);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const frameState = (row: number) => ({ ...mock.getState(),
       player: { x: 0, z: level.enemyStream!.startZ + row * level.enemyStream!.spacing } });
     app.start();

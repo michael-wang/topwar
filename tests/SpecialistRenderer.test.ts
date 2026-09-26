@@ -1,3 +1,4 @@
+import { soldierModel } from './characterModel';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
@@ -8,7 +9,7 @@ const soldiers = (scene: THREE.Scene) => scene.children.filter(
 describe('rocket specialist rendering', () => {
   it('renders equally sized rifle tiers with modestly increasing weapons and one pooled Tier-3 tracer', () => {
     const scene = new THREE.Scene();
-    const squad = new SquadRenderer(scene);
+    const squad = new SquadRenderer(scene, soldierModel());
     const state = { player: { x: 0, z: 0 }, squad: { count: 4, rocketCount: 1,
       rifleCounts: [1, 1, 1], formationSpacing: 0.45 },
     track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null,
@@ -19,17 +20,17 @@ describe('rocket specialist rendering', () => {
     expect([t1.scale.x, t2.scale.x, t3.scale.x]).toEqual([1, 1, 1]);
     expect((t3.children[0] as THREE.Mesh).material).not.toBe((t2.children[0] as THREE.Mesh).material);
     expect((t1.children[0] as THREE.Mesh).material).not.toBe((t2.children[0] as THREE.Mesh).material);
-    expect([t1.children[6].scale.x, t2.children[6].scale.x, t3.children[6].scale.x])
+    expect([t1.children[1].scale.x, t2.children[1].scale.x, t3.children[1].scale.x])
       .toEqual([1, 1.12, 1.25]);
     const anchors = [t1, t2, t3, rocket].map((member) => [member.position.x, member.position.z]);
     squad.update({ ...state, squad: { ...state.squad, rifleCounts: [3] } }, 410);
     expect([t1, t2, t3, rocket].map((member) => [member.position.x, member.position.z]))
       .toEqual(anchors);
     squad.update(state, 420);
-    expect(rocket.children[7].visible).toBe(true);
+    expect(rocket.children[2].visible).toBe(true);
     squad.update({ ...state, projectiles: [{ id: 1, kind: 'rifle' as const, tier: 3, x: 0, z: 1 }] }, 500);
-    expect(t3.children[8].visible).toBe(true);
-    expect((t3.children[6] as THREE.Mesh).position.z).toBeLessThan(0.38);
+    expect(t3.children[3].visible).toBe(true);
+    expect((t3.children[1] as THREE.Mesh).position.z).toBeLessThan(0.38);
     squad.dispose();
 
     const projectileScene = new THREE.Scene();
@@ -47,20 +48,20 @@ describe('rocket specialist rendering', () => {
   });
   it('reuses squad pawns and shows a launcher only on the final rocket-role offsets', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     const state = { player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
     renderer.update(state, 0);
     expect(soldiers(scene)).toHaveLength(2);
     const [rifle, rocket] = soldiers(scene);
-    expect(rifle.children[7].visible).toBe(false);
-    expect(rocket.children[7].visible).toBe(true);
-    expect(rifle.children[6].visible).toBe(true);
-    expect(rocket.children[6].visible).toBe(false);
+    expect(rifle.children[2].visible).toBe(false);
+    expect(rocket.children[2].visible).toBe(true);
+    expect(rifle.children[1].visible).toBe(true);
+    expect(rocket.children[1].visible).toBe(false);
     renderer.update({ ...state, squad: { count: 1, rocketCount: 1, rifleCounts: [], formationSpacing: 0.45 } });
     expect(soldiers(scene)).toEqual([rifle, rocket]);
     expect(rifle.visible).toBe(true);
-    expect(rifle.children[7].visible).toBe(true);
+    expect(rifle.children[2].visible).toBe(true);
     expect(rocket.visible).toBe(false);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
@@ -90,7 +91,7 @@ describe('rocket specialist rendering', () => {
 
   it('renders Tier-2 color and rifle identity in deterministic role order', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     const state = { player: { x: 0, z: 0 },
       squad: { count: 3, rocketCount: 1, rifleCounts: [1, 1], formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
@@ -100,16 +101,16 @@ describe('rocket specialist rendering', () => {
     renderer.update(state, 400);
     expect([rifle.scale.x, heavy.scale.x, rocket.scale.x]).toEqual([1, 1, 1]);
     expect((heavy.children[0] as THREE.Mesh).material).not.toBe((rifle.children[0] as THREE.Mesh).material);
-    expect([rifle.children[7].visible, heavy.children[7].visible, rocket.children[7].visible])
+    expect([rifle.children[2].visible, heavy.children[2].visible, rocket.children[2].visible])
       .toEqual([false, false, true]);
     renderer.update({ ...state, squad: { count: 1, rocketCount: 0, rifleCounts: [0, 1],
       formationSpacing: 0.45 } }, 500);
     expect(soldiers(scene)).toHaveLength(3);
     expect(rifle.scale.x).toBe(1);
-    expect(rifle.children[6].scale.x).toBe(1.12);
+    expect(rifle.children[1].scale.x).toBe(1.12);
     expect(heavy.visible).toBe(false);
     expect(rocket.visible).toBe(false);
-    const disposeHeavy = vi.spyOn((rifle.children[0] as THREE.Mesh).material as THREE.Material, 'dispose');
+    const disposeHeavy = vi.spyOn(((rifle.children[0] as THREE.Mesh).material as THREE.Material[])[0], 'dispose');
     renderer.dispose();
     expect(disposeHeavy).toHaveBeenCalledOnce();
     expect(scene.children).toHaveLength(0);

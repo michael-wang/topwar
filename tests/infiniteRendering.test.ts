@@ -1,3 +1,4 @@
+import { zombieModel, giantModel, soldierModel } from './characterModel';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { ENEMY_PALETTE, PLAYER_PALETTE, REWARD_PALETTE, paletteIndex } from '../src/rendering/tierPalettes';
@@ -29,14 +30,14 @@ describe('bounded palette rendering', () => {
 
   it('keeps exactly six enemy instanced mesh families through Tier 20', () => {
     const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene);
+    const renderer = new EnemyRenderer(scene, zombieModel());
     const meshCount = () => scene.children.filter((child) => child instanceof THREE.InstancedMesh).length;
-    expect(meshCount()).toBe(36);
+    expect(meshCount()).toBe(6);
     for (let tier = 1; tier <= 20; tier++) {
       renderer.update([{ id: tier, tier, x: 0, z: 10, hp: 3 }], tier * 1000);
-      expect(meshCount()).toBe(36);
+      expect(meshCount()).toBe(6);
       expect(scene.children.filter((child) => child instanceof THREE.InstancedMesh
-        && child.count === 1)).toHaveLength(6);
+        && child.count === 1)).toHaveLength(1);
     }
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
@@ -62,7 +63,7 @@ describe('bounded palette rendering', () => {
 
   it('uses six Boss palettes at a constant role scale', () => {
     const scene = new THREE.Scene();
-    const renderer = new BossRenderer(scene);
+    const renderer = new BossRenderer(scene, giantModel());
     const active = scene.children[0] as THREE.Group;
     const bodyMaterials = new Set<THREE.Material>();
     for (let tier = 1; tier <= 20; tier++) {
@@ -80,7 +81,7 @@ describe('bounded palette rendering', () => {
 
   it('cycles player palettes at one body scale and retains tier-up ring', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     const materials = new Set<THREE.Material>();
     for (let tier = 1; tier <= 20; tier++) {
       renderer.update(renderState(tier), tier * 1000);
@@ -88,7 +89,7 @@ describe('bounded palette rendering', () => {
       expect(soldier.scale.x).toBe(tier === 1 ? 1.35 : 1.25);
       renderer.update(renderState(tier), tier * 1000 + 400);
       expect(soldier.scale.x).toBe(1);
-      const material = (soldier.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      const material = ((soldier.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial[])[0];
       materials.add(material);
       expect(material.color.getHexString()).toBe(PLAYER_PALETTE[paletteIndex(tier, 5)].body.slice(1));
     }
@@ -99,7 +100,7 @@ describe('bounded palette rendering', () => {
 
   it('does not present high-tier casualty demotion as a tier-up', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     renderer.update(renderState(4), 0);
     renderer.update(renderState(4), 400);
     const demoted = renderState(4);

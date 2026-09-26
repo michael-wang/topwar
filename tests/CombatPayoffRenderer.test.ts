@@ -1,3 +1,4 @@
+import { soldierModel } from './characterModel';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { DeathBurst, DEATH_PARTICLE_CAPACITY, DEATH_PARTICLE_LIFETIME_MS,
@@ -38,7 +39,7 @@ describe('enemy death burst', () => {
 describe('squad payoff', () => {
   it('uses the existing ring and glow for Tier-3 compression, then resets', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     const state = { player: { x: 0, z: 0 }, squad: { count: 10, rocketCount: 0,
       rifleCounts: [0, 10], formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null,
@@ -74,7 +75,7 @@ describe('squad payoff', () => {
     expect(soldierSpawnScale(0)).toBeCloseTo(1.35);
     expect(soldierSpawnScale(190)).toBe(1);
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     renderer.update(state(1), 100);
     const [first] = soldiers(scene);
     const x = first.position.x;
@@ -96,7 +97,7 @@ describe('squad payoff', () => {
     expect(tierUpScale(0)).toBeCloseTo(1.25);
     expect(tierUpScale(360)).toBe(1);
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     renderer.update(state(9), 0);
     expect(ring(scene).visible).toBe(false);
     renderer.update(state(1, 1), 500);

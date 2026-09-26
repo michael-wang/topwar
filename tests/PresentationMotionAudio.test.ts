@@ -1,3 +1,4 @@
+import { soldierModel } from './characterModel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
@@ -5,11 +6,11 @@ import { ProjectilePulseTracker, ProjectileRenderer, projectilePulseScale } from
 import { AudioCueObserver, GameAudio } from '../src/audio/GameAudio';
 
 describe('presentation-only motion', () => {
-  it('keeps planted legs and gameplay X/Z while recoiling rifle and flashing muzzle', () => {
+  it('keeps gameplay X/Z while recoiling rifle and flashing muzzle', () => {
     expect(firingRecoil(100, 100)).toBe(1);
     expect(firingRecoil(200, 100)).toBe(0);
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene);
+    const renderer = new SquadRenderer(scene, soldierModel());
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
       rifleCounts: [2], formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
@@ -17,22 +18,19 @@ describe('presentation-only motion', () => {
     const soldiers = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     const positions = soldiers.map((member) => [member.position.x, member.position.z]);
     const soldier = soldiers[0];
-    expect(soldier.children).toHaveLength(9);
-    const legs = [soldier.children[4], soldier.children[5]];
-    const legRotations = legs.map((leg) => leg.rotation.x);
-    const rifle = soldier.children[6];
-    const arms = [soldier.children[2], soldier.children[3]];
+    expect(soldier.children).toHaveLength(4);
+    const body = soldier.children[0];
+    const rifle = soldier.children[1];
     const restingZ = rifle.position.z;
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 400);
     expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
     expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
-    expect(legs.map((leg) => leg.rotation.x)).toEqual(legRotations);
     expect(rifle.position.z).toBeLessThan(restingZ);
-    expect(arms[0].rotation.x).toBeGreaterThan(-0.78);
-    expect(soldier.children[8].visible).toBe(true);
+    expect(body.rotation.x).toBeLessThan(0);
+    expect(soldier.children[3].visible).toBe(true);
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 500);
     expect(rifle.position.z).toBeCloseTo(restingZ);
-    expect(soldier.children[8].visible).toBe(false);
+    expect(soldier.children[3].visible).toBe(false);
     renderer.dispose();
   });
 

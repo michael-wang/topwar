@@ -8,14 +8,15 @@ import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
 import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
 import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
 import { BossRenderer } from './boss/BossRenderer';
+import type { CharacterAssets } from './CharacterAssets';
 
 export class GameRenderer {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(55, 9 / 16, 0.1, 100);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
-  private readonly squadRenderer = new SquadRenderer(this.scene);
-  private readonly enemyRenderer = new EnemyRenderer(this.scene);
-  private readonly bossRenderer = new BossRenderer(this.scene);
+  private readonly squadRenderer: SquadRenderer;
+  private readonly enemyRenderer: EnemyRenderer;
+  private readonly bossRenderer: BossRenderer;
   private readonly projectileRenderer = new ProjectileRenderer(this.scene);
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
@@ -32,7 +33,10 @@ export class GameRenderer {
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
 
-  constructor(private readonly viewport: HTMLElement) {
+  constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
+    this.squadRenderer = new SquadRenderer(this.scene, assets.soldier);
+    this.enemyRenderer = new EnemyRenderer(this.scene, assets.zombie);
+    this.bossRenderer = new BossRenderer(this.scene, assets.giant);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
     this.scene.background = new THREE.Color('#a8c4aa');
@@ -141,6 +145,7 @@ export class GameRenderer {
     this.gateRenderer.dispose();
     this.pickupRenderer.dispose();
     this.streamRewardRenderer.dispose();
+    this.assets.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
