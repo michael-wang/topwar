@@ -240,11 +240,44 @@ def join_parts(parts):
             np.concatenate([part[2] + offset for part, offset in zip(parts, offsets)]))
 
 
+def without_rear_archer_accessory(piece):
+    """Remove the six isolated shaft/cap islands behind the player's right ear."""
+    positions, normals, uv, indices = piece
+    parents = np.arange(len(positions))
+
+    def root(index):
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    for a, b, c in indices.reshape(-1, 3):
+        parents[root(a)] = root(b)
+        parents[root(b)] = root(c)
+    islands = {}
+    for index in range(len(positions)):
+        islands.setdefault(root(index), []).append(index)
+    unwanted = np.zeros(len(positions), dtype=bool)
+    for vertices in islands.values():
+        bounds = positions[vertices]
+        if (bounds[:, 0].min() > .095 and bounds[:, 1].min() > .69
+                and bounds[:, 1].max() > .90 and bounds[:, 2].max() < -.05):
+            unwanted[vertices] = True
+    if np.count_nonzero(unwanted) != 32:
+        raise ValueError("Kenney rear accessory islands changed; inspect before baking")
+    triangles = indices.reshape(-1, 3)
+    kept = triangles[~unwanted[triangles].any(axis=1)].ravel()
+    used = np.unique(kept)
+    remap = np.full(len(positions), -1, dtype=np.int32)
+    remap[used] = np.arange(len(used))
+    return positions[used], normals[used], uv[used], remap[kept]
+
+
 def helmet_parts(boss=False):
     # Hard rounded shell with a continuous flared steel rim above the face.
     radius = .39 if boss else .29
-    levels = ((.80, radius), (.90, radius), (1.01, radius * .78),
-              (1.07 if boss else 1.055, radius * .38))
+    levels = ((.75, radius), (.85, radius), (.96, radius * .78),
+              (1.02 if boss else 1.005, radius * .38))
     sides = 12
     vertices = np.array([[np.sin(i * 2*np.pi/sides) * r, y,
                           np.cos(i * 2*np.pi/sides) * r]
@@ -259,13 +292,13 @@ def helmet_parts(boss=False):
         indices.extend(((len(levels)-1)*sides+i,
                         (len(levels)-1)*sides+(i+1)%sides, len(vertices)-1))
     normals = vertices.copy()
-    normals[:, 1] -= .84
+    normals[:, 1] -= .79
     normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-12)
     rim_outer = radius * 1.18
     rim_inner = radius * .84
     rim_vertices = []
-    for y, r in ((.79, rim_outer), (.84, rim_outer),
-                 (.84, rim_inner), (.79, rim_inner)):
+    for y, r in ((.74, rim_outer), (.79, rim_outer),
+                 (.79, rim_inner), (.74, rim_inner)):
         for i in range(sides):
             angle = i * 2*np.pi/sides
             rim_vertices.append([np.sin(angle)*r, y, np.cos(angle)*r])
@@ -307,7 +340,7 @@ def rifle_parts():
 
 def bullet_parts():
     # One narrow, short tracer aligned with +Z. Runtime uses unlit pale gold.
-    return join_parts([box((0, 0, 0), (.052, .052, .32))])
+    return join_parts([box((0, 0, 0), (.052, .052, .52))])
 
 
 def prepare_toy_soldier(inputs, outputs):
@@ -361,7 +394,8 @@ def prepare_toy_soldier(inputs, outputs):
                 atlas[row, col, :3] = np.clip(np.array([23, 105, 238]) * lightness, 0, 255)
     stream = BytesIO()
     Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
-    write_mesh(outputs / "toy-soldier-player-body.glb", [body], textured, stream.getvalue())
+    write_mesh(outputs / "toy-soldier-player-body.glb",
+               [without_rear_archer_accessory(body)], textured, stream.getvalue())
     for name, piece in (("helmet", helmet_parts()), ("boss-helmet", helmet_parts(True)),
                         ("vest", vest_parts()), ("boss-vest", vest_parts(True))):
         write_mesh(outputs / f"toy-soldier-{name}.glb", [piece], neutral)

@@ -21,8 +21,11 @@ export class ProjectilePulseTracker {
 export class ProjectileRenderer {
   private readonly pulse = new ProjectilePulseTracker();
   private readonly members: THREE.Mesh[] = [];
-  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fff5ad',
+  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1',
     toneMapped: false });
+  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: '#ffc84a',
+    transparent: true, opacity: 0.28, depthWrite: false,
+    blending: THREE.AdditiveBlending, toneMapped: false });
 
   constructor(private readonly scene: THREE.Scene,
     private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {}
@@ -31,6 +34,10 @@ export class ProjectileRenderer {
     while (this.members.length < projectiles.length) {
       const mesh = new THREE.Mesh(this.bullet.geometry, this.tracerMaterial);
       mesh.name = 'rifle-tracer';
+      const glow = new THREE.Mesh(this.bullet.geometry, this.glowMaterial);
+      glow.name = 'tracer-glow';
+      glow.scale.set(2.4, 2.4, 1.12);
+      mesh.add(glow);
       this.scene.add(mesh);
       this.members.push(mesh);
     }
@@ -56,5 +63,6 @@ export class ProjectileRenderer {
     for (const member of this.members) this.scene.remove(member);
     this.members.length = 0;
     this.tracerMaterial.dispose();
+    this.glowMaterial.dispose();
   }
 }

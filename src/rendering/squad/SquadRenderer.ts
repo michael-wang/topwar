@@ -34,10 +34,12 @@ interface SoldierVisual {
 }
 
 export class SquadRenderer {
-  private readonly muzzleGeometry = new THREE.ConeGeometry(0.085, 0.19, 5);
+  private readonly muzzleGeometry = new THREE.ConeGeometry(0.11, 0.24, 5);
+  private readonly muzzleCoreGeometry = new THREE.ConeGeometry(0.048, 0.15, 5);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
-  private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#fff1a0' });
+  private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#ffd15b', toneMapped: false });
+  private readonly muzzleCoreMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1', toneMapped: false });
   private readonly ringGeometry = new THREE.RingGeometry(0.42, 0.55, 32);
   private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#fff0a4',
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
@@ -168,8 +170,9 @@ export class SquadRenderer {
     this.ringGeometry.dispose();
     this.ringMaterial.dispose();
     this.muzzleGeometry.dispose();
+    this.muzzleCoreGeometry.dispose();
     for (const material of [...this.tierMaterials, this.upgradeMaterial,
-      this.muzzleMaterial]) material.dispose();
+      this.muzzleMaterial, this.muzzleCoreMaterial]) material.dispose();
   }
 
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
@@ -197,6 +200,7 @@ export class SquadRenderer {
     muzzle.name = 'muzzle-flash';
     muzzle.rotation.x = Math.PI / 2;
     muzzle.position.set(.38, .46, .93);
+    muzzle.add(new THREE.Mesh(this.muzzleCoreGeometry, this.muzzleCoreMaterial));
     muzzle.visible = false;
     group.add(body, helmet, vest, rifle, muzzle);
     this.scene.add(group);

@@ -104,12 +104,13 @@ describe('Kenney texture and toy soldier gear bake', () => {
     for (const name of ['helmet', 'boss-helmet']) {
       const { document } = glb(name);
       const position = document.meshes[0].primitives[0].attributes.POSITION;
-      expect(document.accessors[position].min[1]).toBeGreaterThan(.77);
-      expect(document.accessors[position].max[1]).toBeLessThan(1.15);
+      expect(document.accessors[position].min[1]).toBeGreaterThan(.73);
+      expect(document.accessors[position].min[1]).toBeLessThan(.76);
+      expect(document.accessors[position].max[1]).toBeLessThan(1.08);
       expect(document.images).toBeUndefined();
     }
     const helmet = positions('helmet');
-    expect(helmet.filter((point) => Math.abs(point[1] - .79) < .001).length).toBeGreaterThan(10);
+    expect(helmet.filter((point) => Math.abs(point[1] - .74) < .001).length).toBeGreaterThan(10);
     expect(Math.max(...helmet.map((point) => Math.abs(point[0])))).toBeGreaterThan(.32);
     for (const name of ['vest', 'boss-vest']) {
       const { document } = glb(name);
@@ -121,11 +122,13 @@ describe('Kenney texture and toy soldier gear bake', () => {
     const bullet = glb('bullet').document;
     const bulletBounds = bullet.accessors[bullet.meshes[0].primitives[0].attributes.POSITION];
     expect(bulletBounds.max[0] - bulletBounds.min[0]).toBeLessThan(.06);
-    expect(bulletBounds.max[2] - bulletBounds.min[2]).toBeGreaterThan(.3);
+    expect(bulletBounds.max[2] - bulletBounds.min[2]).toBeGreaterThan(.5);
   });
 
   it('aims rifle along +Z and bakes four different sprint poses', () => {
     const rifle = positions('rifle');
+    const player = positions('player-body');
+    expect(player.some((point) => point[0] > .1 && point[1] > .98 && point[2] < -.05)).toBe(false);
     const rear = rifle.filter((point) => point[2] < 0);
     const muzzle = rifle.filter((point) => point[2] > .8);
     const averageX = (points) => points.reduce((sum, point) => sum + point[0], 0) / points.length;

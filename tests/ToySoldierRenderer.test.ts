@@ -195,6 +195,9 @@ describe('Modern Toy Soldier presentation', () => {
       const mesh = scene.children[0] as THREE.Mesh;
       expect(mesh.name).toBe('rifle-tracer');
       expect(mesh.geometry).toBe(bullet.geometry);
+      const glow = mesh.getObjectByName('tracer-glow') as THREE.Mesh;
+      expect(glow.geometry).toBe(bullet.geometry);
+      expect((glow.material as THREE.MeshBasicMaterial).blending).toBe(THREE.AdditiveBlending);
       expect(mesh.scale.x).toBe(1);
       expect(mesh.scale.z).toBeLessThanOrEqual(1.35 * 1.35);
     }

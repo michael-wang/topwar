@@ -4,14 +4,14 @@ Source: [Kenney Mini Forest 1.0](https://kenney.nl/assets/mini-forest), official
 
 Exact source files: `Models/GLB format/character-archer.glb` and `Textures/colormap.png`. No other character or weapon source is used. `scripts/prepare_character_models.py` generates the toy steel helmets, compact vests, rifle, and tracer from low-poly primitives. Run it with `python scripts/prepare_character_models.py SOURCE_DIR public/models` after placing those two source files in `SOURCE_DIR`; it requires NumPy and Pillow.
 
-The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and bake both skinned meshes into one rigid, centered, grounded, one-unit body. Enemy run frames sample the original `sprint` clip at 0.0625, 0.1875, 0.3125, and 0.4375 seconds. Runtime GLBs have no skeletons or animations. The four run geometries use the original body's shared texture/material in the renderer.
+The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and bake both skinned meshes into one rigid, centered, grounded, one-unit body. Enemy run frames sample the original `sprint` clip at 0.0625, 0.1875, 0.3125, and 0.4375 seconds. Runtime GLBs have no skeletons or animations. The four run geometries use the original body's shared texture/material in the renderer. The player bake removes six isolated rear archer accessory islands that protruded beside the helmet; the face, hair, clothes, and rifle are retained.
 
-`toy-soldier-body.glb` embeds Kenney `colormap.png` without pixel changes (PNG SHA-256 `319F1087D8ED50A8794F9A8179F64671D5595F2365FDF3E47EC2D4EB74DBA20F`). The player variant changes only the UV-identified main tunic swatch at U=0.96875, V=0.775..0.975. Skin, face, hair, leather, and footwear stay intact. The death body has a grayscale copy of the same atlas. The helmet has a hard dome and a continuous thick rim above the face. The rifle barrel points along local +Z, matching projectile travel. The narrow tracer is rendered with an unlit pale-gold runtime material.
+`toy-soldier-body.glb` embeds Kenney `colormap.png` without pixel changes (PNG SHA-256 `319F1087D8ED50A8794F9A8179F64671D5595F2365FDF3E47EC2D4EB74DBA20F`). The player variant changes only the UV-identified main tunic swatch at U=0.96875, V=0.775..0.975. Skin, face, hair, leather, and footwear stay intact. The death body has a grayscale copy of the same atlas. The helmet's hard dome and continuous thick rim now sit 0.05 body units lower. The rifle barrel points along local +Z, matching projectile travel. The thin tracer is 0.52 body units long, rendered with a bright unlit core and one shared translucent glow layer.
 
 | Runtime file | Bytes | Use |
 | --- | ---: | --- |
 | `toy-soldier-body.glb` | 55,808 | Original Kenney body and texture; Boss and shared enemy material |
-| `toy-soldier-player-body.glb` | 49,988 | Blue tunic player body |
+| `toy-soldier-player-body.glb` | 43,616 | Blue tunic player body, rear accessory removed |
 | `toy-soldier-gray-body.glb` | 48,388 | Grayscale body for brief enemy fade |
 | `toy-soldier-run-0.glb` through `toy-soldier-run-3.glb` | 45,100 each | Four static enemy running poses |
 | `toy-soldier-helmet.glb` | 5,504 | Tier-colored rimmed helmet |
