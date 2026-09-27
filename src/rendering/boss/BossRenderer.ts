@@ -7,14 +7,31 @@ const HIT_FLASH_RETRIGGER_MS = 210;
 const HIT_PULSE_MS = 100;
 const DEATH_MS = 800;
 const IMPACT_MS = 90;
-const HELMET_SCALE = 0.8;
+const HELMET_SCALE = 0.92;
 const HELMET_PIVOT_Y = 0.82;
-const HELMET_DROP = 0.03;
+const HELMET_SEAT_OFFSET_Y = 0.035;
+
+function tierArmorGeometry(source: THREE.BufferGeometry, tierColor: THREE.Color): THREE.BufferGeometry {
+  const geometry = source.clone();
+  const markers = source.getAttribute('color');
+  const positions = source.getAttribute('position');
+  const charcoal = new THREE.Color('#303238');
+  const colors = new Float32Array(positions.count * 3);
+  for (let index = 0; index < positions.count; index++) {
+    const isDetail = markers !== undefined && markers.getX(index) < .75;
+    const offset = index * 3;
+    colors[offset] = isDetail ? Math.min(1, charcoal.r / tierColor.r) : 1;
+    colors[offset + 1] = isDetail ? Math.min(1, charcoal.g / tierColor.g) : 1;
+    colors[offset + 2] = isDetail ? Math.min(1, charcoal.b / tierColor.b) : 1;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
 
 function fitCommanderHelmet(helmet: THREE.Mesh): void {
-  // Scale around the head instead of the character's feet, then seat it lower.
+  // Scale around the head, then seat the rim on the upper forehead.
   helmet.scale.setScalar(HELMET_SCALE);
-  helmet.position.y = HELMET_PIVOT_Y * (1 - HELMET_SCALE) - HELMET_DROP;
+  helmet.position.y = HELMET_PIVOT_Y * (1 - HELMET_SCALE) + HELMET_SEAT_OFFSET_Y;
 }
 
 export function bossWalkPose(id: number, nowMs: number): { frame: number; bob: number;
@@ -32,6 +49,7 @@ export class BossRenderer {
   private readonly barFillGeometry = new THREE.PlaneGeometry(1.04, .09);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly vestMaterials: THREE.MeshStandardMaterial[];
+  private readonly vestGeometries: THREE.BufferGeometry[];
   private readonly hitWashMaterial = new THREE.MeshBasicMaterial({ color: '#fff4df',
     transparent: true, opacity: .2, depthWrite: false, toneMapped: false,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
@@ -85,18 +103,20 @@ export class BossRenderer {
     });
     this.vestMaterials = this.tierMaterials.map((tierMaterial) => {
       const material = tierMaterial.clone();
-      material.color.lerp(new THREE.Color('#576168'), .88);
+      material.vertexColors = true;
       return material;
     });
+    this.vestGeometries = this.tierMaterials.map((material) =>
+      tierArmorGeometry(vestModel.geometry, material.color));
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.helmet);
-    this.vest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
+    this.vest = new THREE.Mesh(this.vestGeometries[0], this.vestMaterials[0]);
     this.bodyMesh = new THREE.Mesh(bodyModel.geometry, bodyModel.material);
     this.bodyHitWash = new THREE.Mesh(bodyModel.geometry, this.hitWashMaterial);
     this.helmetHitWash = new THREE.Mesh(helmetModel.geometry, this.hitWashMaterial);
     this.helmetHitWash.position.copy(this.helmet.position);
     this.helmetHitWash.scale.copy(this.helmet.scale).multiplyScalar(1.005);
-    this.vestHitWash = new THREE.Mesh(vestModel.geometry, this.hitWashMaterial);
+    this.vestHitWash = new THREE.Mesh(this.vestGeometries[0], this.hitWashMaterial);
     for (const mesh of [this.bodyHitWash, this.helmetHitWash, this.vestHitWash]) {
       mesh.renderOrder = 10;
       mesh.visible = false;
@@ -106,7 +126,7 @@ export class BossRenderer {
     this.active.add(this.body);
     this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.deathHelmet);
-    this.deathVest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
+    this.deathVest = new THREE.Mesh(this.vestGeometries[0], this.vestMaterials[0]);
     this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
     this.death.rotation.y = Math.PI;
     // The framed red bar rides the head but compensates for the giant's 7× scale.
@@ -138,7 +158,7 @@ export class BossRenderer {
       this.slamAtMs = nowMs;
     }
     if (boss && this.previous?.id === boss.id && boss.hp < this.previous.hp) {
-      // Sustained automatic fire still shows the armor between white pulses.
+      // Sustained automatic fire still shows the Tier color between warm pulses.
       if (nowMs - this.lastFlashAtMs >= HIT_FLASH_RETRIGGER_MS) {
         this.flashUntilMs = nowMs + HIT_FLASH_MS;
         this.lastFlashAtMs = nowMs;
@@ -171,8 +191,11 @@ export class BossRenderer {
       this.bodyHitWash.visible = flashing;
       this.helmetHitWash.visible = flashing;
       this.vestHitWash.visible = flashing;
-      this.helmet.material = this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
-      this.vest.material = this.vestMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
+      const tierIndex = paletteIndex(boss.tier, ENEMY_PALETTE.length);
+      this.helmet.material = this.tierMaterials[tierIndex];
+      this.vest.material = this.vestMaterials[tierIndex];
+      this.vest.geometry = this.vestGeometries[tierIndex];
+      this.vestHitWash.geometry = this.vest.geometry;
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
       this.barFill.position.x = -.52 * (1 - ratio);
@@ -209,6 +232,7 @@ export class BossRenderer {
     this.scene.remove(this.active, this.death);
     this.barFrameGeometry.dispose();
     this.barFillGeometry.dispose();
+    for (const geometry of this.vestGeometries) geometry.dispose();
     for (const material of [...this.tierMaterials, ...this.vestMaterials, this.hitWashMaterial,
       this.barBackgroundMaterial, this.barFillMaterial]) material.dispose();
   }
@@ -218,8 +242,10 @@ export class BossRenderer {
     this.deathStartedAtMs = nowMs;
     this.deathStartZ = boss.z;
     this.deathScale = boss.visualScale;
-    this.deathHelmet.material = this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
-    this.deathVest.material = this.vestMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
+    const tierIndex = paletteIndex(boss.tier, ENEMY_PALETTE.length);
+    this.deathHelmet.material = this.tierMaterials[tierIndex];
+    this.deathVest.material = this.vestMaterials[tierIndex];
+    this.deathVest.geometry = this.vestGeometries[tierIndex];
     this.death.position.set(-boss.x, 0, boss.z);
     this.death.rotation.set(0, Math.PI, 0);
   }

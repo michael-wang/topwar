@@ -238,13 +238,14 @@ describe('Modern Toy Soldier presentation', () => {
         engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
       renderer.update(boss, tier * 1000);
       const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
-      expect(helmet.scale.x).toBeCloseTo(.8);
-      expect(helmet.position.y).toBeCloseTo(.82 * .2 - .03);
+      expect(helmet.scale.x).toBeCloseTo(.92);
+      expect(helmet.position.y).toBeCloseTo(.82 * .08 + .035);
       expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString())
         .toBe(ENEMY_PALETTE[paletteIndex(tier, 6)].body.slice(1));
       const vest = (active.children[0] as THREE.Group).children[2] as THREE.Mesh;
-      expect((vest.material as THREE.MeshStandardMaterial).color.r)
-        .toBeLessThan((helmet.material as THREE.MeshStandardMaterial).color.r);
+      expect((vest.material as THREE.MeshStandardMaterial).color.getHexString())
+        .toBe((helmet.material as THREE.MeshStandardMaterial).color.getHexString());
+      expect((vest.material as THREE.MeshStandardMaterial).vertexColors).toBe(true);
       expect((active.children[0] as THREE.Group).children[0]).toHaveProperty('material', body.material);
       expect(active.scale.x).toBe(7);
     }
@@ -262,6 +263,9 @@ describe('Modern Toy Soldier presentation', () => {
     const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
     const pose = active.children[0] as THREE.Group;
     const washes = pose.children.slice(4, 7) as THREE.Mesh[];
+    expect(washes[1].position.y).toBeCloseTo(helmet.position.y);
+    expect(washes[1].scale.x).toBeCloseTo(helmet.scale.x * 1.005);
+    expect(washes[2].geometry).toBe((pose.children[2] as THREE.Mesh).geometry);
     expect(washes.every((mesh) => mesh.visible)).toBe(true);
     expect((washes[0].material as THREE.MeshBasicMaterial).color.getHexString()).toBe('fff4df');
     expect((washes[0].material as THREE.MeshBasicMaterial).opacity).toBeCloseTo(.2);
@@ -283,6 +287,33 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(null, 21000);
     expect(death.visible).toBe(false);
     renderer.reset();
+    renderer.dispose();
+  });
+
+  it('keeps ballistic plates Tier-colored and tactical details charcoal in one Boss mesh', () => {
+    const scene = new THREE.Scene();
+    const body = bodyModel();
+    const vest = vestModel();
+    const factors = new Float32Array(vest.geometry.getAttribute('position').count * 3).fill(1);
+    factors.fill(.6, 0, 3);
+    vest.geometry.setAttribute('color', new THREE.BufferAttribute(factors, 3));
+    const renderer = new BossRenderer(scene, body, helmetModel(), vest, runFrames(), runFrames());
+    const pose = ((scene.children[0] as THREE.Group).children[0] as THREE.Group);
+    const armor = pose.children[2] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    const charcoal = new THREE.Color('#303238');
+    const geometries = new Set<THREE.BufferGeometry>();
+    for (let tier = 1; tier <= 20; tier++) {
+      renderer.update({ id: 1, tier, x: 0, z: 10, hp: 100, maxHp: 100,
+        visualScale: 7, engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 }, tier * 1000);
+      geometries.add(armor.geometry);
+      const vertexColor = armor.geometry.getAttribute('color');
+      expect(armor.material.color.getHexString()).toBe(ENEMY_PALETTE[paletteIndex(tier, 6)].body.slice(1));
+      expect(vertexColor.getX(1)).toBe(1); // main plate uses full Tier color
+      expect(armor.material.color.r * vertexColor.getX(0)).toBeCloseTo(charcoal.r);
+      expect(armor.material.color.g * vertexColor.getY(0)).toBeCloseTo(charcoal.g);
+      expect(armor.material.color.b * vertexColor.getZ(0)).toBeCloseTo(charcoal.b);
+    }
+    expect(geometries.size).toBe(6);
     renderer.dispose();
   });
 
