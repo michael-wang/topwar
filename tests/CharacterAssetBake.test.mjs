@@ -27,6 +27,12 @@ function positions(name) {
     [0, 1, 2].map((axis) => bytes.getFloat32(vertex * 12 + axis * 4, true)));
 }
 
+function triangles(name) {
+  const { document } = glb(name);
+  const entry = document.accessors[document.meshes[0].primitives[0].indices];
+  return entry.count / 3;
+}
+
 function uvs(name) {
   const { document, binary } = glb(name);
   const entry = document.accessors[document.meshes[0].primitives[0].attributes.TEXCOORD_0];
@@ -106,6 +112,7 @@ describe('Kenney texture and toy soldier gear bake', () => {
     for (const name of ['body', 'player-body', 'helmet', 'vest',
       'boss-vest', 'rifle', 'bullet', 'gray-body',
       'run-0', 'run-1', 'run-2', 'run-3',
+      'boss-body', 'boss-run-0', 'boss-run-1', 'boss-run-2', 'boss-run-3',
       'boss-slam-0', 'boss-slam-1', 'boss-slam-2', 'boss-slam-3']) {
       const { document } = glb(name);
       expect(document.skins).toBeUndefined();
@@ -155,6 +162,24 @@ describe('Kenney texture and toy soldier gear bake', () => {
       expect(frames[index].some((point, vertex) => point.some((axis, coordinate) =>
         Math.abs(axis - frames[index - 1][vertex][coordinate]) > .01))).toBe(true);
     }
+  });
+
+  it('bakes helmet-occluded head geometry for every Boss pose family', () => {
+    expect(triangles('body') - triangles('boss-body')).toBe(4);
+    const bossRunCounts = [471, 458, 458, 471];
+    for (let index = 0; index < 4; index++) {
+      expect(triangles(`boss-run-${index}`)).toBe(bossRunCounts[index]);
+      expect(triangles(`boss-slam-${index}`)).toBe(triangles('body') - 14);
+    }
+    expect(image('boss-body')).toEqual(image('body'));
+    const normal = positions('body');
+    const boss = positions('boss-body');
+    // The lower hair, facial details and neck remain present in the Boss mesh.
+    expect(boss.filter(([x, y, z]) => Math.abs(x) > .18 && y < .7 && z > -.15).length)
+      .toBeGreaterThan(0);
+    expect(uvs('boss-body').some(([u], index) => Math.abs(u - .09375) < 1e-5
+      && boss[index][1] > .726)).toBe(false);
+    expect(boss.length).toBeLessThan(normal.length);
   });
 
   it('aims rifle along +Z and bakes four different sprint poses', () => {

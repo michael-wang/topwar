@@ -324,6 +324,93 @@ def without_rear_archer_accessory(piece, unwanted):
     return positions[used], normals[used], uv[used], remap[kept]
 
 
+def without_boss_helmet_occluded_head(piece, idle, moving_head=False):
+    """Clip only the upper Archer hair and hidden side-scalp in Boss poses.
+
+    The idle UV islands identify hair (U=.09375) and skin (U=.21875). Hair
+    triangles crossing the helmet rim are cut in each baked pose at the same
+    model-space rim height. Lower side/back hair stays even when a long
+    triangle spans the rim. All pose topology and facial/ear triangles remain stable.
+    """
+    positions, normals, uv, indices = piece
+    idle_positions, _, idle_uv, idle_indices = idle
+    triangles = indices.reshape(-1, 3)
+    idle_triangles = idle_indices.reshape(-1, 3)
+    if (len(positions) != len(idle_positions)
+            or not np.array_equal(triangles, idle_triangles)
+            or not np.array_equal(uv, idle_uv)):
+        raise ValueError("Kenney Boss pose topology or UVs changed")
+    hair_cut_y = .725
+    tri_u = uv[triangles][:, :, 0]
+    idle_y = idle_positions[triangles][:, :, 1]
+    idle_x = idle_positions[triangles][:, :, 0]
+    idle_z = idle_positions[triangles][:, :, 2]
+    hair = np.all(np.isclose(tri_u, .09375), axis=1)
+    side_scalp = (np.all(np.isclose(tri_u, .21875), axis=1)
+                  & ((np.all(idle_z > .13, axis=1) & np.any(idle_y > .68, axis=1))
+                     | (np.all(idle_x > .10, axis=1) & np.all(idle_y > .68, axis=1))))
+    if (np.count_nonzero(hair & np.all(idle_y > .68, axis=1)) != 21
+            or np.count_nonzero(hair & np.any(idle_y > .68, axis=1)
+                                   & np.any(idle_y <= .68, axis=1)) != 17
+            or np.count_nonzero(side_scalp) != 15):
+        raise ValueError("Kenney helmet-hidden hair/scalp changed; inspect Boss mask")
+
+    if moving_head:
+        # During the melee clip the head pitches ahead of the fixed helmet.
+        # Only the closed top cap stays hidden in every pose; the side hair
+        # and scalp below the rim must remain to avoid an exposed hole.
+        hidden_cap = hair & np.all(idle_y >= .74, axis=1)
+        if np.count_nonzero(hidden_cap) != 14:
+            raise ValueError("Kenney Boss slam top-hair cap changed")
+        kept = triangles[~hidden_cap].ravel()
+        used = np.unique(kept)
+        remap = np.full(len(positions), -1, dtype=np.int32)
+        remap[used] = np.arange(len(used))
+        return positions[used], normals[used], uv[used], remap[kept]
+
+    out_positions = positions.tolist()
+    out_normals = normals.tolist()
+    out_uv = uv.tolist()
+    out_indices = []
+
+    def intersection(a, b):
+        fraction = ((hair_cut_y - positions[a, 1])
+                    / (positions[b, 1] - positions[a, 1]))
+        point = positions[a] + fraction * (positions[b] - positions[a])
+        normal = normals[a] + fraction * (normals[b] - normals[a])
+        normal /= max(np.linalg.norm(normal), 1e-12)
+        texcoord = uv[a] + fraction * (uv[b] - uv[a])
+        out_positions.append(point.tolist())
+        out_normals.append(normal.tolist())
+        out_uv.append(texcoord.tolist())
+        return len(out_positions) - 1
+
+    for face, triangle in enumerate(triangles):
+        if not hair[face] and not side_scalp[face]:
+            out_indices.extend(triangle)
+            continue
+        polygon = []
+        for edge in range(3):
+            a, b = int(triangle[edge - 1]), int(triangle[edge])
+            a_inside = positions[a, 1] <= hair_cut_y
+            b_inside = positions[b, 1] <= hair_cut_y
+            if a_inside != b_inside:
+                polygon.append(intersection(a, b))
+            if b_inside:
+                polygon.append(b)
+        for corner in range(1, len(polygon) - 1):
+            out_indices.extend((polygon[0], polygon[corner], polygon[corner + 1]))
+
+    kept = np.asarray(out_indices, dtype=np.int32)
+    all_positions = np.asarray(out_positions, dtype=positions.dtype)
+    all_normals = np.asarray(out_normals, dtype=normals.dtype)
+    all_uv = np.asarray(out_uv, dtype=uv.dtype)
+    used = np.unique(kept)
+    remap = np.full(len(all_positions), -1, dtype=np.int32)
+    remap[used] = np.arange(len(used))
+    return all_positions[used], all_normals[used], all_uv[used], remap[kept]
+
+
 def helmet_parts():
     # Hard rounded shell with a continuous flared steel rim above the face.
     radius = .29
@@ -428,12 +515,19 @@ def prepare_toy_soldier(inputs, outputs):
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
     write_mesh(outputs / "toy-soldier-body.glb", [body], textured, original)
+    boss_body = without_boss_helmet_occluded_head(body, body)
+    write_mesh(outputs / "toy-soldier-boss-body.glb", [boss_body], textured, original)
     for frame in range(4):
         run = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125)
         p, n, texcoords, idx = run
         run = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
         # Runtime reuses the original body's material and texture.
         write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [run],
+                   {"name": "shared-body-material", "pbrMetallicRoughness": {
+                       "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
+                       "roughnessFactor": 1}})
+        boss_run = without_boss_helmet_occluded_head(run, body)
+        write_mesh(outputs / f"toy-soldier-boss-run-{frame}.glb", [boss_run],
                    {"name": "shared-body-material", "pbrMetallicRoughness": {
                        "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
                        "roughnessFactor": 1}})
@@ -444,6 +538,7 @@ def prepare_toy_soldier(inputs, outputs):
                            two_handed=True)
         p, n, texcoords, idx = slam
         slam = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
+        slam = without_boss_helmet_occluded_head(slam, body, moving_head=True)
         write_mesh(outputs / f"toy-soldier-boss-slam-{frame}.glb", [slam],
                    {"name": "shared-body-material", "pbrMetallicRoughness": {
                        "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,

@@ -31,8 +31,8 @@ export class GameRenderer {
     this.squadRenderer = new SquadRenderer(this.scene, assets.playerBody, assets.helmet, assets.vest, assets.rifle);
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet,
       assets.vest, assets.runFrames, assets.grayBody);
-    this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.helmet, assets.bossVest,
-      assets.runFrames, assets.bossSlamFrames);
+    this.bossRenderer = new BossRenderer(this.scene, assets.bossBody, assets.helmet, assets.bossVest,
+      assets.bossRunFrames, assets.bossSlamFrames);
     this.streamRewardRenderer = new StreamRewardRenderer(this.scene, assets.helmet);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
