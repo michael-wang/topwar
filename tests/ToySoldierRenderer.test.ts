@@ -167,8 +167,9 @@ describe('Modern Toy Soldier presentation', () => {
       expect(helmet.position.y).toBeCloseTo(.82 * .2 - .03);
       expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString())
         .toBe(ENEMY_PALETTE[paletteIndex(tier, 6)].body.slice(1));
-      expect(((active.children[0] as THREE.Group).children[2] as THREE.Mesh).material)
-        .toBe(helmet.material);
+      const vest = (active.children[0] as THREE.Group).children[2] as THREE.Mesh;
+      expect((vest.material as THREE.MeshStandardMaterial).color.r)
+        .toBeLessThan((helmet.material as THREE.MeshStandardMaterial).color.r);
       expect((active.children[0] as THREE.Group).children[0]).toHaveProperty('material', body.material);
       expect(active.scale.x).toBe(7);
     }

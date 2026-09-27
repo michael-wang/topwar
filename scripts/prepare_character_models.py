@@ -351,6 +351,10 @@ def helmet_parts():
 
 def vest_parts(boss=False):
     # A compact chest plate leaves the arms, lower tunic and boots exposed.
+    if boss:
+        # One low, shallow commander chest band replaces the two hanging front tabs.
+        return join_parts([box((0, .35, .29), (.44, .07, .035)),
+                           box((0, .35, -.29), (.44, .07, .035))])
     width = .44 if boss else .36
     y = .47
     height = .16

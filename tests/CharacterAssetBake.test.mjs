@@ -127,6 +127,9 @@ describe('Kenney texture and toy soldier gear bake', () => {
       const position = document.meshes[0].primitives[0].attributes.POSITION;
       expect(document.accessors[position].max[1]).toBeLessThan(.7);
     }
+    const bossVest = positions('boss-vest');
+    expect(Math.min(...bossVest.map((point) => point[1]))).toBeGreaterThan(.3);
+    expect(Math.max(...bossVest.map((point) => point[1]))).toBeLessThan(.4);
     const rifle = glb('rifle').document;
     expect(rifle.materials[0].pbrMetallicRoughness.baseColorFactor[0]).toBeLessThan(.3);
     const bullet = glb('bullet').document;

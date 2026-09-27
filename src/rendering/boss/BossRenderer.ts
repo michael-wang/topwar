@@ -27,6 +27,7 @@ export function bossWalkPose(id: number, nowMs: number): { leftArm: number; righ
 export class BossRenderer {
   private readonly barGeometry = new THREE.PlaneGeometry(0.8, 0.065);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
+  private readonly vestMaterials: THREE.MeshStandardMaterial[];
   private readonly flashMaterial: THREE.MeshStandardMaterial;
   private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#27313a', side: THREE.DoubleSide });
   private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ffe36e', side: THREE.DoubleSide });
@@ -57,17 +58,22 @@ export class BossRenderer {
       material.color.set(entry.body);
       return material;
     });
+    this.vestMaterials = this.tierMaterials.map((tierMaterial) => {
+      const material = tierMaterial.clone();
+      material.color.lerp(new THREE.Color('#3c4147'), .7);
+      return material;
+    });
     this.flashMaterial = source.clone();
     this.flashMaterial.color.set('#ffe36e');
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.helmet);
-    this.vest = new THREE.Mesh(vestModel.geometry, this.tierMaterials[0]);
+    this.vest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
     this.body.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
     this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.deathHelmet);
-    this.deathVest = new THREE.Mesh(vestModel.geometry, this.tierMaterials[0]);
+    this.deathVest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
     this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
     this.death.rotation.y = Math.PI;
     this.barBackground.position.set(0, 1.25, -0.14);
@@ -102,7 +108,8 @@ export class BossRenderer {
       this.body.scale.y = 1 - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
       this.helmet.material = nowMs < this.flashUntilMs ? this.flashMaterial
         : this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
-      this.vest.material = this.helmet.material;
+      this.vest.material = nowMs < this.flashUntilMs ? this.flashMaterial
+        : this.vestMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
       this.barFill.position.x = -0.4 * (1 - ratio);
@@ -133,7 +140,7 @@ export class BossRenderer {
   dispose(): void {
     this.scene.remove(this.active, this.death);
     this.barGeometry.dispose();
-    for (const material of [...this.tierMaterials, this.flashMaterial,
+    for (const material of [...this.tierMaterials, ...this.vestMaterials, this.flashMaterial,
       this.barBackgroundMaterial, this.barFillMaterial]) material.dispose();
   }
 
@@ -143,7 +150,7 @@ export class BossRenderer {
     this.deathStartZ = boss.z;
     this.deathScale = boss.visualScale;
     this.deathHelmet.material = this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
-    this.deathVest.material = this.deathHelmet.material;
+    this.deathVest.material = this.vestMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
     this.death.position.set(-boss.x, 0, boss.z);
     this.death.rotation.set(0, Math.PI, 0);
   }

@@ -1,108 +1,75 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { StreamRewardRenderer } from '../src/rendering/rewards/StreamRewardRenderer';
 
+const reward = { id: 1, tier: 1, x: 0, z: 10, hitProgress: 0, hitsRequired: 10 };
+
+function part(group: THREE.Group, name: string): THREE.Mesh {
+  const mesh = group.getObjectByName(name);
+  expect(mesh).toBeInstanceOf(THREE.Mesh);
+  return mesh as THREE.Mesh;
+}
+
 describe('StreamRewardRenderer', () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  it('pulses only when progress rises and settles without rebuilding unchanged labels', () => {
+  it('shows a soldier crate with icon and a shrinking durability bar instead of hit-count text', () => {
     const scene = new THREE.Scene();
     const renderer = new StreamRewardRenderer(scene);
-    const reward = { id: 1, tier: 1 as const, x: 0, z: 10, hitProgress: 0, hitsRequired: 10 };
     renderer.update([reward], 1000);
-    const panel = scene.children[0] as THREE.Mesh;
-    expect(panel.scale.x).toBe(1);
-    renderer.update([{ ...reward, hitProgress: 1 }], 1010);
-    expect(panel.scale.x).toBeCloseTo(1.12);
-    renderer.update([{ ...reward, hitProgress: 1 }], 1060);
-    expect(panel.scale.x).toBeCloseTo(1.06);
-    renderer.update([{ ...reward, hitProgress: 1 }], 1120);
-    expect(panel.scale.x).toBe(1);
-    renderer.update([{ ...reward, hitProgress: 1 }], 1130);
-    expect(panel.scale.x).toBe(1);
-    renderer.update([{ ...reward, hitProgress: 2 }], 1140);
-    expect(panel.scale.x).toBeCloseTo(1.12);
-    renderer.reset();
-    expect(scene.children).toHaveLength(0);
-    renderer.dispose();
-  });
-
-  it('renders distinct stationary Tier-1 and Tier-2 panels and reuses them by ID', () => {
-    const scene = new THREE.Scene();
-    const renderer = new StreamRewardRenderer(scene);
-    const tier1 = { id: 1, tier: 1 as const, x: -0.6, z: 24, hitProgress: 0, hitsRequired: 10 };
-    const tier2 = { id: 2, tier: 2 as const, x: 0.6, z: 25, hitProgress: 3, hitsRequired: 10 };
-    renderer.update([tier1, tier2]);
-    expect(scene.children).toHaveLength(2);
-    const [blue, gold] = scene.children as THREE.Mesh[];
-    expect((blue.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('1ac1ed');
-    expect((gold.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('edc242');
-    for (const panel of [blue, gold]) {
-      const material = panel.material as THREE.MeshBasicMaterial;
-      expect(material.transparent).toBe(true);
-      expect(material.opacity).toBeGreaterThan(0);
-      expect(material.opacity).toBeLessThan(1);
-      expect(material.depthWrite).toBe(false);
-    }
-    expect(blue.position.x).toBe(0.6);
-    expect(gold.scale.x).toBeGreaterThan(blue.scale.x);
-    const geometryDispose = vi.spyOn(blue.geometry, 'dispose');
-    const materialDispose = vi.spyOn(blue.material as THREE.Material, 'dispose');
-    renderer.update([{ ...tier1, z: 30, hitProgress: 1 }, tier2]);
-    expect(scene.children[0]).toBe(blue);
-    expect(blue.position.z).toBe(30);
-    renderer.update([], 1000);
-    expect(scene.children).toHaveLength(2);
-    renderer.update([], 1200);
-    expect(scene.children).toHaveLength(0);
-    renderer.dispose();
-    expect(geometryDispose).toHaveBeenCalledOnce();
-    expect(materialDispose).toHaveBeenCalledOnce();
-  });
-
-  it('updates the progress texture only when progress changes and disposes it', () => {
-    const fillText = vi.fn();
-    vi.stubGlobal('document', { createElement: () => ({ width: 0, height: 0,
-      getContext: () => ({ fillText }) }) });
-    const scene = new THREE.Scene();
-    const renderer = new StreamRewardRenderer(scene);
-    const reward = { id: 2, tier: 2 as const, x: 0, z: 20, hitProgress: 0, hitsRequired: 10 };
-    renderer.update([reward]);
-    expect(fillText.mock.calls.map((call) => call[0])).toEqual(['+1 T2', '0/10']);
-    const label = scene.children[1] as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
-    const textureDispose = vi.spyOn(label.material.map!, 'dispose');
-    renderer.update([{ ...reward, z: 21 }]);
-    expect(scene.children[1]).toBe(label);
-    expect(fillText).toHaveBeenCalledTimes(2);
-    renderer.update([{ ...reward, hitProgress: 1 }]);
-    expect(fillText.mock.calls.map((call) => call[0])).toEqual(['+1 T2', '0/10', '+1 T2', '1/10']);
-    expect(textureDispose).toHaveBeenCalledOnce();
+    const crate = scene.children[0] as THREE.Group;
+    expect(crate.name).toBe('soldier-reward-crate');
+    expect(part(crate, 'crate-body')).toBeDefined();
+    expect(part(crate, 'soldier-plus-icon')).toBeDefined();
+    const fill = part(crate, 'remaining-durability');
+    expect(fill.scale.x).toBe(1);
+    expect(crate.children.some((child) => (child as THREE.Mesh).material
+      && ((child as THREE.Mesh).material as THREE.Material).type === 'MeshBasicMaterial')).toBe(true);
+    renderer.update([{ ...reward, hitProgress: 5 }], 1010);
+    expect(fill.scale.x).toBeCloseTo(.5);
+    expect(crate.scale.x).toBeGreaterThan(1);
+    expect((crate.children.at(-2) as THREE.LineSegments).visible).toBe(true);
+    expect((crate.children.at(-1) as THREE.LineSegments).visible).toBe(false);
+    renderer.update([{ ...reward, hitProgress: 9 }], 1260);
+    expect(fill.scale.x).toBeCloseTo(.1);
+    expect((crate.children.at(-1) as THREE.LineSegments).visible).toBe(true);
+    const lid = part(crate, 'crate-lid');
+    expect((lid.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('fff0a0');
+    expect((part(crate, 'crate-body').material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('96938a');
+    renderer.update([{ ...reward, hitProgress: 9 }], 1350);
+    expect((lid.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ff9b4a');
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
   });
 
-  it('removes the label immediately and briefly pops the colored panel on disappearance', () => {
-    vi.stubGlobal('document', { createElement: () => ({ width: 0, height: 0,
-      getContext: () => ({ fillText: vi.fn() }) }) });
+  it('keeps tier accent colors and reuses crate resources across hit updates', () => {
     const scene = new THREE.Scene();
     const renderer = new StreamRewardRenderer(scene);
-    const reward = { id: 8, tier: 2 as const, x: 2.2, z: 18,
-      hitProgress: 3, hitsRequired: 10 };
+    renderer.update([reward, { ...reward, id: 2, tier: 2, x: .6 }], 0);
+    const [first, second] = scene.children as THREE.Group[];
+    expect((part(first, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('1ac1ed');
+    expect((part(second, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('edc242');
+    const geometry = part(first, 'crate-body').geometry;
+    const dispose = vi.spyOn(geometry, 'dispose');
+    renderer.update([{ ...reward, z: 20, hitProgress: 3 }, { ...reward, id: 2, tier: 2, x: .6 }], 100);
+    expect(scene.children[0]).toBe(first);
+    expect(first.position.z).toBe(20);
+    expect(part(first, 'crate-body').geometry).toBe(geometry);
+    expect(part(second, 'crate-body').geometry).toBe(geometry);
+    renderer.dispose();
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it('briefly pops upward when acquired, then removes the crate', () => {
+    const scene = new THREE.Scene();
+    const renderer = new StreamRewardRenderer(scene);
     renderer.update([reward], 100);
-    const panel = scene.children[0] as THREE.Mesh;
-    const label = scene.children[1] as THREE.Mesh;
+    const crate = scene.children[0] as THREE.Group;
     renderer.update([], 110);
-    expect(scene.children).toEqual([panel]);
-    expect(scene.children).not.toContain(label);
-    const initialScale = panel.scale.x;
+    expect(scene.children).toEqual([crate]);
     renderer.update([], 200);
-    expect(panel.scale.x).toBeGreaterThan(initialScale);
-    expect(panel.position.y).toBeGreaterThan(0.7);
+    expect(crate.position.y).toBeGreaterThan(.39);
+    expect(crate.scale.x).toBeGreaterThan(1);
     renderer.update([], 310);
-    expect(scene.children).toHaveLength(0);
-    renderer.update([reward], 400);
-    renderer.update([], 401);
-    renderer.reset();
     expect(scene.children).toHaveLength(0);
     renderer.dispose();
   });

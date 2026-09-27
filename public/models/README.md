@@ -19,7 +19,7 @@ The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and b
 | `toy-soldier-run-3.glb` | 33,596 | Fourth static enemy running pose |
 | `toy-soldier-helmet.glb` | 5,504 | Tier-colored rimmed helmet |
 | `toy-soldier-vest.glb` | 3,156 | Compact tier-colored vest |
-| `toy-soldier-boss-vest.glb` | 3,156 | Broader Boss vest |
+| `toy-soldier-boss-vest.glb` | 2,432 | Low, shallow single-band Boss vest; no hanging front tabs |
 | `toy-soldier-rifle.glb` | 4,600 | Fixed charcoal forward-pointing rifle |
 | `toy-soldier-bullet.glb` | 1,720 | Slim tracer geometry |
 
