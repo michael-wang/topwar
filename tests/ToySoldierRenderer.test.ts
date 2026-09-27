@@ -159,10 +159,12 @@ describe('Modern Toy Soldier presentation', () => {
   it('colors giant soldier helmet and vest by enemy tier and keeps HP, hit and death presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel());
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
+      [body, body, body, body]);
     const [active, death] = scene.children as THREE.Group[];
     for (let tier = 1; tier <= 20; tier++) {
-      const boss = { id: tier, tier, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7 };
+      const boss = { id: tier, tier, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
+        engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
       renderer.update(boss, tier * 1000);
       const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
       expect(helmet.scale.x).toBeCloseTo(.8);
@@ -175,7 +177,8 @@ describe('Modern Toy Soldier presentation', () => {
       expect((active.children[0] as THREE.Group).children[0]).toHaveProperty('material', body.material);
       expect(active.scale.x).toBe(7);
     }
-    const last = { id: 20, tier: 20, x: 0, z: 10, hp: 50, maxHp: 100, visualScale: 7 };
+    const last = { id: 20, tier: 20, x: 0, z: 10, hp: 50, maxHp: 100, visualScale: 7,
+      engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
     renderer.update(last, 20010);
     expect((active.children[2] as THREE.Mesh).scale.x).toBeCloseTo(.5);
     const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
@@ -191,6 +194,34 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(null, 21000);
     expect(death.visible).toBe(false);
     renderer.reset();
+    renderer.dispose();
+  });
+
+  it('renders Boss wind-up, two-handed impact and recovery from simulation slam state', () => {
+    const scene = new THREE.Scene();
+    const body = bodyModel();
+    const frames = [0, 1, 2, 3].map(() => bodyModel());
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), frames);
+    const active = scene.children[0] as THREE.Group;
+    const pose = active.children[0] as THREE.Group;
+    const mesh = pose.children[0] as THREE.Mesh;
+    const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
+      engaged: true, slamCooldownRemainingSeconds: .5, slamCount: 0 };
+    renderer.update(boss, 100);
+    expect(mesh.geometry).toBe(frames[0].geometry);
+    renderer.update({ ...boss, slamCooldownRemainingSeconds: .2 }, 200);
+    expect(mesh.geometry).toBe(frames[1].geometry);
+    renderer.update({ ...boss, slamCount: 1, slamCooldownRemainingSeconds: 2 }, 300);
+    expect(mesh.geometry).toBe(frames[2].geometry);
+    expect(pose.scale.y).toBeLessThan(1);
+    renderer.update({ ...boss, slamCount: 1, slamCooldownRemainingSeconds: 1.8 }, 500);
+    expect(mesh.geometry).toBe(frames[3].geometry);
+    renderer.reset();
+    renderer.update({ ...boss, slamCount: 1, slamCooldownRemainingSeconds: 2 }, 700);
+    expect(mesh.geometry).toBe(frames[2].geometry);
+    renderer.reset();
+    renderer.update({ ...boss, engaged: false, slamCooldownRemainingSeconds: 0 }, 800);
+    expect(mesh.geometry).toBe(body.geometry);
     renderer.dispose();
   });
 

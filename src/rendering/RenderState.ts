@@ -29,6 +29,9 @@ export interface BossRenderState {
   hp: number;
   maxHp: number;
   visualScale: number;
+  engaged: boolean;
+  slamCooldownRemainingSeconds: number;
+  slamCount: number;
 }
 
 export interface StreamRewardRenderState {

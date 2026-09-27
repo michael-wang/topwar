@@ -165,7 +165,8 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       if (!Number.isSafeInteger(cursor.nextEnemyId + 1)) {
         throw new Error('Simulation Boss ID exceeds the supported range');
       }
-      boss = { id: cursor.nextEnemyId++, tier: bossTier, x: 0, z: rowZ, hp: maxHp, maxHp };
+      boss = { id: cursor.nextEnemyId++, tier: bossTier, x: 0, z: rowZ, hp: maxHp, maxHp,
+        engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
       cursor.nextBossTier++;
       cursor.nextRowIndex++;
       continue;
@@ -295,18 +296,26 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   let boss: BossSimulationState | null = null;
   if (state.boss !== null) {
     const value = state.boss;
-    if (!isPlainObject(value) || Object.keys(value).length !== 6
-      || ['id', 'tier', 'x', 'z', 'hp', 'maxHp'].some((field) => !Object.hasOwn(value, field))
+    if (!isPlainObject(value) || Object.keys(value).length !== 9
+      || ['id', 'tier', 'x', 'z', 'hp', 'maxHp', 'engaged', 'slamCooldownRemainingSeconds', 'slamCount']
+        .some((field) => !Object.hasOwn(value, field))
       || !Number.isSafeInteger(value.id) || (value.id as number) <= 0
       || enemyIds.has(value.id as number) || !validTier(value.tier as number)
       || typeof value.x !== 'number' || !Number.isFinite(value.x)
       || typeof value.z !== 'number' || !Number.isFinite(value.z)
       || !positiveFinite(value.hp) || !positiveFinite(value.maxHp)
-      || value.hp > value.maxHp) {
+      || value.hp > value.maxHp || typeof value.engaged !== 'boolean'
+      || typeof value.slamCooldownRemainingSeconds !== 'number'
+      || !Number.isFinite(value.slamCooldownRemainingSeconds)
+      || value.slamCooldownRemainingSeconds < 0
+      || (!value.engaged && (value.slamCooldownRemainingSeconds !== 0 || value.slamCount !== 0))
+      || !Number.isSafeInteger(value.slamCount) || (value.slamCount as number) < 0) {
       throw new Error('Simulation Boss state is invalid');
     }
     boss = { id: value.id as number, tier: value.tier as number, x: value.x, z: value.z,
-      hp: value.hp, maxHp: value.maxHp };
+      hp: value.hp, maxHp: value.maxHp, engaged: value.engaged,
+      slamCooldownRemainingSeconds: value.slamCooldownRemainingSeconds,
+      slamCount: value.slamCount as number };
   }
 
   let enemyStream: EnemyStreamSimulationState | null = null;
@@ -684,7 +693,16 @@ export class Simulation {
     const nextX = Math.abs(difference) <= maxHorizontalDelta
       ? targetX
       : currentX + Math.sign(difference) * maxHorizontalDelta;
-    const nextZ = this.state.player.z + tuning.forwardSpeed * dtSeconds;
+    const proposedNextZ = this.state.player.z + tuning.forwardSpeed * dtSeconds;
+    const currentBoss = this.state.boss;
+    const bossContact = currentBoss && !currentBoss.engaged && (
+      currentBoss.z <= proposedNextZ - tuning.defenseLineOffset
+      || createSquadFormation(this.state.squad.count, tuning.formationSpacing).some((offset) =>
+        segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
+          nextX + offset.x, proposedNextZ + offset.z, currentBoss.x, currentBoss.z,
+          tuning.memberRadius + tuning.bossRadius!)));
+    const justEngaged = Boolean(bossContact);
+    const nextZ = currentBoss?.engaged || bossContact ? this.state.player.z : proposedNextZ;
     if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) {
       throw new Error('Simulation movement exceeds the supported range');
     }
@@ -694,9 +712,13 @@ export class Simulation {
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
     let boss = this.state.boss ? { ...this.state.boss } : null;
+    if (boss && justEngaged) {
+      boss.engaged = true;
+      boss.slamCooldownRemainingSeconds = 0.6;
+    }
     const streamRewards = this.state.streamRewards.map((reward) => ({ ...reward }));
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
-    if (enemyStream && this.enemyStreamDefinition) {
+    if (enemyStream && this.enemyStreamDefinition && !boss?.engaged) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.tiers, boss);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
@@ -871,13 +893,6 @@ export class Simulation {
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
     if (!Number.isFinite(defenseLineZ)) throw new Error('Simulation defense line exceeds the supported range');
-    if (boss) {
-      const radius = tuning.memberRadius + tuning.bossRadius!;
-      const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) =>
-        segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
-          nextX + offset.x, nextZ + offset.z, boss!.x, boss!.z, radius));
-      if (contact || boss.z <= defenseLineZ) squad = { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 };
-    }
     // Only survivors can leak; contact and projectile kills have already removed their enemies.
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
@@ -887,6 +902,17 @@ export class Simulation {
           this.tiers.mergeCount);
       }
     }
+    if (boss?.engaged && !justEngaged && squad.count > 0) {
+      boss.slamCooldownRemainingSeconds -= dtSeconds;
+      while (boss.slamCooldownRemainingSeconds <= 1e-9 && squad.count > 0) {
+        squad = afterCasualties(squad,
+          exchangeValueForTier(boss.tier + 1, this.tiers.mergeCount), this.tiers.mergeCount);
+        boss.slamCount++;
+        boss.slamCooldownRemainingSeconds += 2;
+      }
+      if (boss.slamCooldownRemainingSeconds < 0) boss.slamCooldownRemainingSeconds = 0;
+    }
+    if (squad.count === 0 && boss?.engaged) survivingProjectiles.length = 0;
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
     this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,

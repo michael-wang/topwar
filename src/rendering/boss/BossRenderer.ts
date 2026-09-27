@@ -34,6 +34,9 @@ export class BossRenderer {
   private readonly active = new THREE.Group();
   private readonly death = new THREE.Group();
   private readonly body = new THREE.Group();
+  private readonly bodyMesh: THREE.Mesh;
+  private readonly defaultBodyGeometry: THREE.BufferGeometry;
+  private readonly slamGeometries: readonly THREE.BufferGeometry[];
   private readonly helmet: THREE.Mesh;
   private readonly vest: THREE.Mesh;
   private readonly deathHelmet: THREE.Mesh;
@@ -46,11 +49,16 @@ export class BossRenderer {
   private deathStartedAtMs = -Infinity;
   private deathStartZ = 0;
   private deathScale = 1;
+  private slamAtMs = -Infinity;
 
   constructor(private readonly scene: THREE.Scene,
     bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    slamFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[]) {
+    if (slamFrames.length !== 4) throw new Error('Boss slam requires four baked poses');
+    this.slamGeometries = slamFrames.map((frame) => frame.geometry);
+    this.defaultBodyGeometry = bodyModel.geometry;
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     this.tierMaterials = ENEMY_PALETTE.map((entry) => {
@@ -68,7 +76,8 @@ export class BossRenderer {
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.helmet);
     this.vest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
-    this.body.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.helmet, this.vest);
+    this.bodyMesh = new THREE.Mesh(bodyModel.geometry, bodyModel.material);
+    this.body.add(this.bodyMesh, this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
     this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
@@ -90,6 +99,12 @@ export class BossRenderer {
       this.flashUntilMs = -Infinity;
       this.hitAtMs = -Infinity;
       this.death.visible = false;
+      this.slamAtMs = boss.engaged && boss.slamCount > 0
+        && boss.slamCooldownRemainingSeconds > 1.62
+        ? nowMs - (2 - boss.slamCooldownRemainingSeconds) * 1000 : -Infinity;
+    }
+    if (boss && this.previous?.id === boss.id && boss.slamCount > this.previous.slamCount) {
+      this.slamAtMs = nowMs;
     }
     if (boss && this.previous?.id === boss.id && boss.hp < this.previous.hp) {
       this.flashUntilMs = nowMs + HIT_FLASH_MS;
@@ -103,9 +118,17 @@ export class BossRenderer {
       this.active.scale.setScalar(boss.visualScale * (1 + 0.03
         * Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS)));
       const pose = bossWalkPose(boss.id, nowMs);
-      this.body.position.y = pose.bob * 2;
-      this.body.rotation.z = pose.leftArm * 0.10;
-      this.body.scale.y = 1 - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
+      const slamAgeMs = nowMs - this.slamAtMs;
+      const impact = slamAgeMs >= 0 && slamAgeMs < 140;
+      const recovering = slamAgeMs >= 140 && slamAgeMs < 380;
+      const windingUp = boss.engaged && boss.slamCooldownRemainingSeconds <= 0.6;
+      const frame = impact ? 2 : recovering ? 3
+        : windingUp ? (boss.slamCooldownRemainingSeconds > 0.25 ? 0 : 1) : -1;
+      this.bodyMesh.geometry = frame < 0 ? this.defaultBodyGeometry : this.slamGeometries[frame];
+      this.body.position.y = impact ? -0.085 : boss.engaged ? 0 : pose.bob * 2;
+      this.body.rotation.z = boss.engaged ? 0 : pose.leftArm * 0.10;
+      this.body.scale.y = 1 - (impact ? 0.16 : 0)
+        - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
       this.helmet.material = nowMs < this.flashUntilMs ? this.flashMaterial
         : this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
       this.vest.material = nowMs < this.flashUntilMs ? this.flashMaterial
@@ -133,6 +156,7 @@ export class BossRenderer {
     this.flashUntilMs = -Infinity;
     this.hitAtMs = -Infinity;
     this.deathStartedAtMs = -Infinity;
+    this.slamAtMs = -Infinity;
     this.active.visible = false;
     this.death.visible = false;
   }

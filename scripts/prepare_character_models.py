@@ -196,9 +196,25 @@ def write_mesh(path, pieces, material, image=None):
     print(f"{path.name}: {path.stat().st_size} bytes")
 
 
-def rigid_piece(source, clip=None, seconds=0):
+def rigid_piece(source, clip=None, seconds=0, two_handed=False):
     document, binary = read_glb(source)
     overrides = sample_animation(document, binary, clip, seconds) if clip else {}
+    if two_handed:
+        if clip != "attack-melee-right":
+            raise ValueError("Two-handed Boss pose requires the right melee clip")
+        left = sample_animation(document, binary, "attack-melee-left", seconds)
+        arms = {node["name"]: index for index, node in enumerate(document["nodes"])
+                if node.get("name") in ("arm-left", "arm-right")}
+        if set(arms) != {"arm-left", "arm-right"} or "rotation" not in left.get(arms["arm-left"], {}):
+            raise ValueError("Kenney Archer arm rig changed")
+        overrides[arms["arm-left"]]["rotation"] = left[arms["arm-left"]]["rotation"]
+        # Pull the overhead fists just ahead of the face so the wind-up is
+        # legible from the game's low portrait camera, not hidden by the head.
+        if seconds < .25:
+            for index in arms.values():
+                position = np.asarray(document["nodes"][index]["translation"], dtype=np.float64).copy()
+                position += [0, .025, .07]
+                overrides[index]["translation"] = position
     worlds = world_matrices(document, overrides)
     pieces = []
     expected_meshes = {"body-mesh", "head-mesh"}
@@ -402,6 +418,17 @@ def prepare_toy_soldier(inputs, outputs):
         run = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
         # Runtime reuses the original body's material and texture.
         write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [run],
+                   {"name": "shared-body-material", "pbrMetallicRoughness": {
+                       "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
+                       "roughnessFactor": 1}})
+    # The right and left melee clips supply matching overhead arm swings.
+    # Bake their respective arm bones together, with the right clip's torso/legs.
+    for frame, seconds in enumerate((.18, .29, .34, .40)):
+        slam = rigid_piece(inputs / "character-archer.glb", "attack-melee-right", seconds,
+                           two_handed=True)
+        p, n, texcoords, idx = slam
+        slam = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
+        write_mesh(outputs / f"toy-soldier-boss-slam-{frame}.glb", [slam],
                    {"name": "shared-body-material", "pbrMetallicRoughness": {
                        "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
                        "roughnessFactor": 1}})

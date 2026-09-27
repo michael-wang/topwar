@@ -291,6 +291,9 @@ Squad `rifleRemainder` and projectile `penetrationRemaining` are JSON numbers
 while safely representable, then canonical decimal strings above
 `Number.MAX_SAFE_INTEGER`. Simulation converts them to `bigint` for exact
 exchange arithmetic; snapshots never contain a JavaScript `bigint`.
+An active Boss stores `engaged`, `slamCooldownRemainingSeconds`, and `slamCount`
+as plain JSON data. Simulation alone advances the cooldown and applies casualties;
+the renderer uses these fields only to select baked attack poses and impact feedback.
 
 ### Snapshot invariant
 

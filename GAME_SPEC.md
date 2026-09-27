@@ -20,7 +20,7 @@ Every eight-row block has exactly one deterministic, random-looking side reward 
 
 ## Boss handoffs
 
-A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 4000 = 12,000`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Enemy and reward streams continue behind a living Boss. Boss contact or defense-line crossing is fatal. Bosses have no attacks or special rewards.
+A Boss of Tier N replaces one normal row eight rows before Tier N+1 fully saturates. The Tier-1 Boss is row **136**, with HP `3 × 4000 = 12,000`. Each later Boss has HP equal to its tier's normal power times **1000**. Bosses share visual scale **7** and collision radius **2.0** at every tier, using the same cycling enemy palette as their normal tier. Boss contact or defense-line crossing engages a stationary showdown: forward progression and both streams stop, while steering and auto-fire continue. After a 0.6-second wind-up, the Boss slams for exactly one Tier N+1 soldier's exchange value, then repeats every 2 seconds until it dies or the squad reaches zero. Boss death resumes progression on the next tick. Bosses have no special rewards.
 
 ## Presentation
 

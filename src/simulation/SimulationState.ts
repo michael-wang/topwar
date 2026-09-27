@@ -35,6 +35,9 @@ export interface BossSimulationState {
   z: number;
   hp: number;
   maxHp: number;
+  engaged: boolean;
+  slamCooldownRemainingSeconds: number;
+  slamCount: number;
 }
 
 export interface StreamRewardSimulationState {

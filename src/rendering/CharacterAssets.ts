@@ -6,6 +6,7 @@ export interface CharacterAssets {
   body: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   grayBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   runFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[];
+  bossSlamFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[];
   playerBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   helmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   vest: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
@@ -16,7 +17,8 @@ export interface CharacterAssets {
 }
 
 const files = ['body', 'gray-body', 'run-0', 'run-1', 'run-2', 'run-3',
-  'player-body', 'helmet', 'vest', 'boss-vest', 'rifle', 'bullet'] as const;
+  'player-body', 'helmet', 'vest', 'boss-vest', 'rifle', 'bullet',
+  'boss-slam-0', 'boss-slam-1', 'boss-slam-2', 'boss-slam-3'] as const;
 
 export async function loadCharacterAssets(): Promise<CharacterAssets> {
   const loader = new GLTFLoader();
@@ -40,6 +42,7 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
   });
   return {
     body: meshes[0], grayBody: meshes[1], runFrames: meshes.slice(2, 6),
+    bossSlamFrames: meshes.slice(12, 16),
     playerBody: meshes[6], helmet: meshes[7],
     vest: meshes[8], bossVest: meshes[9], rifle: meshes[10], bullet: meshes[11],
     dispose(): void {

@@ -105,7 +105,8 @@ describe('Kenney texture and toy soldier gear bake', () => {
   it('keeps a hard helmet rim above the face and strips runtime skeletons', () => {
     for (const name of ['body', 'player-body', 'helmet', 'vest',
       'boss-vest', 'rifle', 'bullet', 'gray-body',
-      'run-0', 'run-1', 'run-2', 'run-3']) {
+      'run-0', 'run-1', 'run-2', 'run-3',
+      'boss-slam-0', 'boss-slam-1', 'boss-slam-2', 'boss-slam-3']) {
       const { document } = glb(name);
       expect(document.skins).toBeUndefined();
       expect(document.animations).toBeUndefined();
@@ -136,6 +137,15 @@ describe('Kenney texture and toy soldier gear bake', () => {
     const bulletBounds = bullet.accessors[bullet.meshes[0].primitives[0].attributes.POSITION];
     expect(bulletBounds.max[0] - bulletBounds.min[0]).toBeLessThan(.06);
     expect(bulletBounds.max[2] - bulletBounds.min[2]).toBeGreaterThan(.5);
+  });
+
+  it('bakes four distinct Boss attack poses without runtime rig data', () => {
+    const frames = [0, 1, 2, 3].map((index) => positions(`boss-slam-${index}`));
+    expect(frames.every((frame) => frame.length === frames[0].length)).toBe(true);
+    for (let index = 1; index < frames.length; index++) {
+      expect(frames[index].some((point, vertex) => point.some((axis, coordinate) =>
+        Math.abs(axis - frames[index - 1][vertex][coordinate]) > .01))).toBe(true);
+    }
   });
 
   it('aims rifle along +Z and bakes four different sprint poses', () => {

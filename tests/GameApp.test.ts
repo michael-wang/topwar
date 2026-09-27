@@ -343,12 +343,14 @@ describe('GameApp config and frame lifecycle', () => {
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const state = mock.getState();
     const bossState = { ...state,
-      boss: { id: 6441, tier: 1, x: 0, z: 576, hp: 2997, maxHp: 3000 } };
+      boss: { id: 6441, tier: 1, x: 0, z: 576, hp: 2997, maxHp: 3000,
+        engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 } };
     mock.getState.mockReturnValueOnce(bossState);
     app.start();
     raf.frame(100);
     expect(mock.render.mock.lastCall![0].boss).toEqual({
       id: 6441, tier: 1, x: 0, z: 576, hp: 2997, maxHp: 3000, visualScale: 7,
+      engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0,
     });
     app.dispose();
   });

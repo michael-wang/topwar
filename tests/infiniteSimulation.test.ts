@@ -400,7 +400,7 @@ describe('generic projectile exchange and rewards', () => {
     expect(replay.getState()).toEqual(simulation.getState());
   });
 
-  it('all rifle tiers stop on Boss and Boss contact remains fatal', () => {
+  it('all rifle tiers stop on Boss and Boss contact starts a showdown', () => {
     const stream = level.enemyStream!;
     const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 110 } };
     for (const tier of [1, 2, 3, 4]) {
@@ -421,6 +421,7 @@ describe('generic projectile exchange and rewards', () => {
     restoreWith(simulation, (state) => { state.player.z = bossZ - 2.1; state.enemies = []; });
     simulation.step(0.2, idle, { ...tuning, forwardSpeed: 1,
       rifle: { ...tuning.rifle, fireRate: 0.01 } });
-    expect(simulation.getState().squad.count).toBe(0);
+    expect(simulation.getState().squad.count).toBe(1);
+    expect(simulation.getState().boss?.engaged).toBe(true);
   });
 });
