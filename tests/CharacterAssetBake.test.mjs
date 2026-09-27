@@ -129,9 +129,17 @@ describe('Kenney texture and toy soldier gear bake', () => {
       expect(document.accessors[position].max[1]).toBeLessThan(.7);
     }
     const bossVest = positions('boss-vest');
-    expect(Math.min(...bossVest.map((point) => point[1]))).toBeGreaterThan(.25);
+    const bossVestGlb = glb('boss-vest').document;
+    const bossVestColors = bossVestGlb.accessors[
+      bossVestGlb.meshes[0].primitives[0].attributes.COLOR_0];
+    expect(bossVestColors.count).toBe(bossVest.length);
+    expect(bossVestColors.min[0]).toBeCloseTo(.6);
+    expect(bossVestColors.max[0]).toBe(1);
+    expect(Math.min(...bossVest.map((point) => point[1]))).toBeGreaterThan(.26);
     expect(Math.max(...bossVest.map((point) => point[1]))).toBeLessThan(.65);
-    expect(Math.max(...bossVest.map((point) => Math.abs(point[0])))).toBeGreaterThan(.37);
+    expect(Math.max(...bossVest.map((point) => Math.abs(point[0])))).toBeGreaterThan(.3);
+    expect(Math.max(...bossVest.map((point) => Math.abs(point[0])))).toBeLessThan(.35);
+    expect(bossVest.filter((point) => point[1] > .55 && Math.abs(point[0]) > .3)).toHaveLength(0);
     const rifle = glb('rifle').document;
     expect(rifle.materials[0].pbrMetallicRoughness.baseColorFactor[0]).toBeLessThan(.3);
     const bullet = glb('bullet').document;

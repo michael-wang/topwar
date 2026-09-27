@@ -297,7 +297,7 @@ the renderer uses these fields only to select baked attack poses and impact feed
 Simulation also owns a bounded transient queue of contact/slam presentation events.
 GameApp consumes it once per render; events are excluded from snapshots and cleared
 when a state is restored or a run is restarted. Runtime Boss HP scale defaults to
-5 in GameApp and rescales a living Boss by its remaining HP ratio.
+3 in GameApp and rescales a living Boss by its remaining HP ratio.
 Contact/slam events carry ordered affected old roster indices; rifle casualty
 presentation consumes low-tier members before higher tiers. The exact result
 still comes from BigInt exchange-value subtraction. Initial runs and Retry draw

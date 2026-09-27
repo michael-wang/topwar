@@ -10,7 +10,7 @@ The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and b
 
 The four Boss-only slam geometries sample `attack-melee-right` at 0.18, 0.29, 0.34, and 0.40 seconds. At each sample, the `arm-left` bone rotation comes from `attack-melee-left`; the `arm-right` bone and torso/legs come from `attack-melee-right`. The first frame moves both arm bones slightly up and forward to make the wind-up readable from the gameplay camera. This combines the source rig's two one-handed attacks into raised hands, downward strike, impact, and recovery poses. The same green cap triangles and rear archer accessory are excluded. Runtime shares the original body material, with no animation system.
 
-`toy-soldier-body.glb` embeds Kenney `colormap.png` without pixel changes (PNG SHA-256 `319F1087D8ED50A8794F9A8179F64671D5595F2365FDF3E47EC2D4EB74DBA20F`). The player variant changes only the UV-identified main tunic swatch at U=0.96875, V=0.775..0.975. Skin, face, hair, leather, and footwear stay intact. The death body has a grayscale copy of the same atlas. Player, enemy, and Boss share the same helmet geometry; the Boss renderer scales its helmet locally to 0.80 around the head and seats it 0.03 model units lower while retaining the existing whole-body `visualScale`. The rifle barrel points along local +Z, matching projectile travel. The thin tracer is 0.52 body units long, rendered with a bright unlit core and one shared translucent glow layer.
+`toy-soldier-body.glb` embeds Kenney `colormap.png` without pixel changes (PNG SHA-256 `319F1087D8ED50A8794F9A8179F64671D5595F2365FDF3E47EC2D4EB74DBA20F`). The player variant changes only the UV-identified main tunic swatch at U=0.96875, V=0.775..0.975. Skin, face, hair, leather, and footwear stay intact. The death body has a grayscale copy of the same atlas. Player, enemy, and Boss share the same helmet geometry; the Boss renderer scales its helmet locally to 0.80 around the head and seats it 0.03 model units lower while retaining the existing whole-body `visualScale`. The Boss plate carrier has one mesh with vertex-color shading for darker straps, side plates, and pouches; its runtime material blends each Tier color 88% toward charcoal gunmetal. The rifle barrel points along local +Z, matching projectile travel. The thin tracer is 0.52 body units long, rendered with a bright unlit core and one shared translucent glow layer.
 
 | Runtime file | Bytes | Use |
 | --- | ---: | --- |
@@ -25,7 +25,7 @@ The four Boss-only slam geometries sample `attack-melee-right` at 0.18, 0.29, 0.
 | `toy-soldier-boss-slam-3.glb` | 33,556 | Recovery |
 | `toy-soldier-helmet.glb` | 5,504 | Tier-colored rimmed helmet |
 | `toy-soldier-vest.glb` | 3,156 | Compact tier-colored vest |
-| `toy-soldier-boss-vest.glb` | 5,800 | Chamfered front/back breastplates and two shoulder guards in one rigid mesh; no hanging front tabs |
+| `toy-soldier-boss-vest.glb` | 10,276 | Boxy front/back ballistic plates, shoulder straps, rib plates, and three compact front pouches in one shaded rigid mesh; no pauldrons or hanging chest strip |
 | `toy-soldier-rifle.glb` | 4,600 | Fixed charcoal forward-pointing rifle |
 | `toy-soldier-bullet.glb` | 1,720 | Slim tracer geometry |
 

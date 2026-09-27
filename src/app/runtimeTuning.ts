@@ -23,6 +23,6 @@ export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelD
     fireRate: config.weapon.rifle.fireRate,
     moveSpeed: config.player.moveSpeed,
     forwardSpeed: config.player.forwardSpeed,
-    bossHpScale: 5,
+    bossHpScale: 3,
   };
 }

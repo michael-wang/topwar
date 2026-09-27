@@ -34,7 +34,7 @@ class ElementStub extends EventTarget {
 
 const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 8,
   enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10,
-  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 5 };
+  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3 };
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -49,7 +49,7 @@ describe('temporary tuning panel', () => {
     expect(inputs.every((input) => input.type === 'range')).toBe(true);
     const bossScale = root.findAll('select')[0];
     expect(bossScale.findAll('option').map((option) => option.value))
-      .toEqual(['0.25', '0.5', '1', '2', '5', '10', '20', '50', '100']);
+      .toEqual(['0.25', '0.5', '1', '2', '3', '5', '10', '20', '50', '100']);
     bossScale.value = '20';
     bossScale.dispatchEvent(new Event('input'));
     expect(onChange).toHaveBeenLastCalledWith({ ...defaults, bossHpScale: 20 });
@@ -63,7 +63,7 @@ describe('temporary tuning panel', () => {
     root.querySelector('button')!.dispatchEvent(new Event('click'));
     expect(onChange).toHaveBeenLastCalledWith(defaults);
     expect(density.value).toBe('8');
-    expect(bossScale.value).toBe('5');
+    expect(bossScale.value).toBe('3');
     panel.toggle();
     expect(root.open).toBe(true);
     panel.toggle();

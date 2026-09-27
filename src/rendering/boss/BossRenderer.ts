@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 
-const HIT_FLASH_MS = 90;
-const HIT_FLASH_RETRIGGER_MS = 170;
+const HIT_FLASH_MS = 60;
+const HIT_FLASH_RETRIGGER_MS = 210;
 const HIT_PULSE_MS = 100;
 const DEATH_MS = 800;
 const IMPACT_MS = 90;
@@ -32,8 +32,9 @@ export class BossRenderer {
   private readonly barFillGeometry = new THREE.PlaneGeometry(1.04, .09);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly vestMaterials: THREE.MeshStandardMaterial[];
-  private readonly flashMaterial = new THREE.MeshBasicMaterial({ color: '#ffffff',
-    side: THREE.DoubleSide, toneMapped: false });
+  private readonly hitWashMaterial = new THREE.MeshBasicMaterial({ color: '#fff4df',
+    transparent: true, opacity: .2, depthWrite: false, toneMapped: false,
+    polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#250b12',
     side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ff3b30',
@@ -43,11 +44,13 @@ export class BossRenderer {
   private readonly body = new THREE.Group();
   private readonly bodyMesh: THREE.Mesh;
   private readonly defaultBodyGeometry: THREE.BufferGeometry;
-  private readonly defaultBodyMaterial: THREE.Material;
   private readonly walkGeometries: readonly THREE.BufferGeometry[];
   private readonly slamGeometries: readonly THREE.BufferGeometry[];
   private readonly helmet: THREE.Mesh;
   private readonly vest: THREE.Mesh;
+  private readonly bodyHitWash: THREE.Mesh;
+  private readonly helmetHitWash: THREE.Mesh;
+  private readonly vestHitWash: THREE.Mesh;
   private readonly deathHelmet: THREE.Mesh;
   private readonly deathVest: THREE.Mesh;
   private readonly barBackground = new THREE.Mesh(this.barFrameGeometry, this.barBackgroundMaterial);
@@ -73,7 +76,6 @@ export class BossRenderer {
     this.walkGeometries = walkFrames.map((frame) => frame.geometry);
     this.slamGeometries = slamFrames.map((frame) => frame.geometry);
     this.defaultBodyGeometry = bodyModel.geometry;
-    this.defaultBodyMaterial = bodyModel.material;
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     this.tierMaterials = ENEMY_PALETTE.map((entry) => {
@@ -83,13 +85,22 @@ export class BossRenderer {
     });
     this.vestMaterials = this.tierMaterials.map((tierMaterial) => {
       const material = tierMaterial.clone();
-      material.color.lerp(new THREE.Color('#3c4147'), .45);
+      material.color.lerp(new THREE.Color('#576168'), .88);
       return material;
     });
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.helmet);
     this.vest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
     this.bodyMesh = new THREE.Mesh(bodyModel.geometry, bodyModel.material);
+    this.bodyHitWash = new THREE.Mesh(bodyModel.geometry, this.hitWashMaterial);
+    this.helmetHitWash = new THREE.Mesh(helmetModel.geometry, this.hitWashMaterial);
+    this.helmetHitWash.position.copy(this.helmet.position);
+    this.helmetHitWash.scale.copy(this.helmet.scale).multiplyScalar(1.005);
+    this.vestHitWash = new THREE.Mesh(vestModel.geometry, this.hitWashMaterial);
+    for (const mesh of [this.bodyHitWash, this.helmetHitWash, this.vestHitWash]) {
+      mesh.renderOrder = 10;
+      mesh.visible = false;
+    }
     this.body.add(this.bodyMesh, this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
@@ -106,7 +117,7 @@ export class BossRenderer {
     this.barBackground.renderOrder = 20;
     this.barFill.renderOrder = 21;
     this.barAnchor.add(this.barBackground, this.barFill);
-    this.body.add(this.barAnchor);
+    this.body.add(this.barAnchor, this.bodyHitWash, this.helmetHitWash, this.vestHitWash);
     this.active.visible = false;
     this.death.visible = false;
     this.scene.add(this.active, this.death);
@@ -150,17 +161,18 @@ export class BossRenderer {
         : windingUp ? (boss.slamCooldownRemainingSeconds > 0.25 ? 0 : 1) : -1;
       this.bodyMesh.geometry = frame >= 0 ? this.slamGeometries[frame]
         : boss.engaged ? this.defaultBodyGeometry : this.walkGeometries[pose.frame];
+      this.bodyHitWash.geometry = this.bodyMesh.geometry;
       this.body.position.y = impact ? -0.085 : boss.engaged ? 0 : pose.bob;
       this.body.rotation.x = boss.engaged ? 0 : -.10;
       this.body.rotation.z = boss.engaged ? 0 : pose.roll;
       this.body.scale.y = 1 - (impact ? 0.16 : 0)
         - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
       const flashing = nowMs < this.flashUntilMs;
-      this.bodyMesh.material = flashing ? this.flashMaterial : this.defaultBodyMaterial;
-      this.helmet.material = flashing ? this.flashMaterial
-        : this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
-      this.vest.material = flashing ? this.flashMaterial
-        : this.vestMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
+      this.bodyHitWash.visible = flashing;
+      this.helmetHitWash.visible = flashing;
+      this.vestHitWash.visible = flashing;
+      this.helmet.material = this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
+      this.vest.material = this.vestMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
       this.barFill.position.x = -.52 * (1 - ratio);
@@ -188,13 +200,16 @@ export class BossRenderer {
     this.slamAtMs = -Infinity;
     this.active.visible = false;
     this.death.visible = false;
+    this.bodyHitWash.visible = false;
+    this.helmetHitWash.visible = false;
+    this.vestHitWash.visible = false;
   }
 
   dispose(): void {
     this.scene.remove(this.active, this.death);
     this.barFrameGeometry.dispose();
     this.barFillGeometry.dispose();
-    for (const material of [...this.tierMaterials, ...this.vestMaterials, this.flashMaterial,
+    for (const material of [...this.tierMaterials, ...this.vestMaterials, this.hitWashMaterial,
       this.barBackgroundMaterial, this.barFillMaterial]) material.dispose();
   }
 

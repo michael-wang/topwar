@@ -261,10 +261,16 @@ describe('Modern Toy Soldier presentation', () => {
       .depthTest).toBe(false);
     const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
     const pose = active.children[0] as THREE.Group;
-    expect((helmet.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
-    expect((pose.children[0] as THREE.Mesh).material).toBe(helmet.material);
-    expect((pose.children[2] as THREE.Mesh).material).toBe(helmet.material);
-    renderer.update(last, 20101);
+    const washes = pose.children.slice(4, 7) as THREE.Mesh[];
+    expect(washes.every((mesh) => mesh.visible)).toBe(true);
+    expect((washes[0].material as THREE.MeshBasicMaterial).color.getHexString()).toBe('fff4df');
+    expect((washes[0].material as THREE.MeshBasicMaterial).opacity).toBeCloseTo(.2);
+    expect((washes[0].material as THREE.MeshBasicMaterial).blending).toBe(THREE.NormalBlending);
+    expect((pose.children[0] as THREE.Mesh).material).toBe(body.material);
+    expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe(ENEMY_PALETTE[paletteIndex(20, 6)].body.slice(1));
+    renderer.update(last, 20071);
+    expect(washes.every((mesh) => !mesh.visible)).toBe(true);
     expect((pose.children[0] as THREE.Mesh).material).toBe(body.material);
     renderer.update(null, 20020);
     expect(death.visible).toBe(true);
@@ -329,20 +335,28 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('shows white hit pulses with visible armor gaps under sustained fire', () => {
+  it('shows brief warm transparent hit washes with gaps under sustained fire', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), runFrames(), runFrames());
     const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
+    const pose = (scene.children[0] as THREE.Group).children[0] as THREE.Group;
+    const washes = pose.children.slice(4, 7) as THREE.Mesh[];
     const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
     renderer.update(boss, 0);
     renderer.update({ ...boss, hp: 90 }, 10);
-    expect((mesh.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
+    expect(washes.every((wash) => wash.visible)).toBe(true);
+    expect(washes[0].geometry).toBe(mesh.geometry);
+    expect(mesh.material).toBe(body.material);
     renderer.update({ ...boss, hp: 80 }, 100);
+    expect(washes.every((wash) => !wash.visible)).toBe(true);
     expect(mesh.material).toBe(body.material);
     renderer.update({ ...boss, hp: 70 }, 180);
-    expect((mesh.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
+    expect(washes.every((wash) => !wash.visible)).toBe(true);
+    renderer.update({ ...boss, hp: 60, engaged: true, slamCooldownRemainingSeconds: .2 }, 230);
+    expect(washes.every((wash) => wash.visible)).toBe(true);
+    expect(washes[0].geometry).toBe(mesh.geometry);
     renderer.dispose();
   });
 

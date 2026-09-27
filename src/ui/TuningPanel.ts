@@ -12,7 +12,7 @@ const controls: readonly Control[] = [
   { key: 'fireRate', label: 'Fire rate', min: 1, max: 15, step: 0.5 },
   { key: 'moveSpeed', label: 'Move speed', min: 1, max: 10, step: 0.5 },
   { key: 'forwardSpeed', label: 'Forward speed', min: 0.5, max: 3, step: 0.1 },
-  { key: 'bossHpScale', label: 'Boss HP scale', choices: [.25, .5, 1, 2, 5, 10, 20, 50, 100] },
+  { key: 'bossHpScale', label: 'Boss HP scale', choices: [.25, .5, 1, 2, 3, 5, 10, 20, 50, 100] },
 ];
 
 export class TuningPanel {
