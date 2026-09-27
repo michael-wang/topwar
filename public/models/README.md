@@ -6,7 +6,7 @@ Exact source files: `Models/GLB format/character-archer.glb` and `Models/GLB for
 
 Source GLB mesh nodes are `body-mesh` (mesh `body-mesh`) and `head-mesh` (mesh `head-mesh`); its other nodes are the rig root, legs, torso, arms, and head bones. The green archer headgear is **not** a separate named node: it is 74 triangles within `head-mesh`, mapped to the colormap swatch at U=0.21875, V≥0.824. The bake explicitly accepts those two mesh nodes and omits those headgear triangles from the idle body, player/gray variants, and all four sprint poses. The 32-vertex rear archer shaft is also excluded from every pose using a mask identified from the idle geometry. Face, brown hair, skin, clothing, hands, and footwear remain. No atlas pixels are repainted to hide the headgear.
 
-The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and bake both skinned meshes into one rigid, centered, grounded, one-unit body. Enemy run frames sample the original `sprint` clip at 0.0625, 0.1875, 0.3125, and 0.4375 seconds. Runtime GLBs have no skeletons or animations. The four run geometries use the original body's shared texture/material in the renderer.
+The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and bake both skinned meshes into one rigid, centered, grounded, one-unit body. Enemy run frames sample the original `sprint` clip at 0.0625, 0.1875, 0.3125, and 0.4375 seconds. Runtime GLBs have no skeletons or animations. The four run geometries use the original body's shared texture/material in the renderer; the Boss reuses these same frames at a slower 1.1-second cycle until it engages, then uses its melee poses.
 
 The four Boss-only slam geometries sample `attack-melee-right` at 0.18, 0.29, 0.34, and 0.40 seconds. At each sample, the `arm-left` bone rotation comes from `attack-melee-left`; the `arm-right` bone and torso/legs come from `attack-melee-right`. The first frame moves both arm bones slightly up and forward to make the wind-up readable from the gameplay camera. This combines the source rig's two one-handed attacks into raised hands, downward strike, impact, and recovery poses. The same green cap triangles and rear archer accessory are excluded. Runtime shares the original body material, with no animation system.
 
@@ -25,7 +25,7 @@ The four Boss-only slam geometries sample `attack-melee-right` at 0.18, 0.29, 0.
 | `toy-soldier-boss-slam-3.glb` | 33,556 | Recovery |
 | `toy-soldier-helmet.glb` | 5,504 | Tier-colored rimmed helmet |
 | `toy-soldier-vest.glb` | 3,156 | Compact tier-colored vest |
-| `toy-soldier-boss-vest.glb` | 2,432 | Low, shallow single-band Boss vest; no hanging front tabs |
+| `toy-soldier-boss-vest.glb` | 5,800 | Chamfered front/back breastplates and two shoulder guards in one rigid mesh; no hanging front tabs |
 | `toy-soldier-rifle.glb` | 4,600 | Fixed charcoal forward-pointing rifle |
 | `toy-soldier-bullet.glb` | 1,720 | Slim tracer geometry |
 

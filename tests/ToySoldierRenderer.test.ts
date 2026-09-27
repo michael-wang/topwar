@@ -231,7 +231,7 @@ describe('Modern Toy Soldier presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      [body, body, body, body]);
+      runFrames(), [body, body, body, body]);
     const [active, death] = scene.children as THREE.Group[];
     for (let tier = 1; tier <= 20; tier++) {
       const boss = { id: tier, tier, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
@@ -252,11 +252,20 @@ describe('Modern Toy Soldier presentation', () => {
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
     renderer.update(last, 20010);
     const barAnchor = (active.children[0] as THREE.Group).children[3] as THREE.Group;
-    expect(barAnchor.position.y).toBeCloseTo(.92);
-    expect(barAnchor.scale.x).toBeCloseTo(.3);
+    expect(barAnchor.position.y).toBeCloseTo(1);
+    expect(barAnchor.scale.x).toBeCloseTo(.31);
     expect((barAnchor.children[1] as THREE.Mesh).scale.x).toBeCloseTo(.5);
+    expect(((barAnchor.children[1] as THREE.Mesh).material as THREE.MeshBasicMaterial)
+      .color.getHexString()).toBe('ff3b30');
+    expect(((barAnchor.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
+      .depthTest).toBe(false);
     const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
-    expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffe36e');
+    const pose = active.children[0] as THREE.Group;
+    expect((helmet.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
+    expect((pose.children[0] as THREE.Mesh).material).toBe(helmet.material);
+    expect((pose.children[2] as THREE.Mesh).material).toBe(helmet.material);
+    renderer.update(last, 20101);
+    expect((pose.children[0] as THREE.Mesh).material).toBe(body.material);
     renderer.update(null, 20020);
     expect(death.visible).toBe(true);
     const deathHelmet = death.children[1] as THREE.Mesh;
@@ -275,7 +284,8 @@ describe('Modern Toy Soldier presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const frames = [0, 1, 2, 3].map(() => bodyModel());
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), frames);
+    const walks = runFrames();
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks, frames);
     const active = scene.children[0] as THREE.Group;
     const pose = active.children[0] as THREE.Group;
     const mesh = pose.children[0] as THREE.Mesh;
@@ -295,7 +305,44 @@ describe('Modern Toy Soldier presentation', () => {
     expect(mesh.geometry).toBe(frames[2].geometry);
     renderer.reset();
     renderer.update({ ...boss, engaged: false, slamCooldownRemainingSeconds: 0 }, 800);
+    expect(walks.map((frame) => frame.geometry)).toContain(mesh.geometry);
+    expect(pose.rotation.x).toBeCloseTo(-.10);
+    renderer.dispose();
+  });
+
+  it('cycles four deliberate baked locomotion poses before melee', () => {
+    const scene = new THREE.Scene();
+    const body = bodyModel();
+    const walks = runFrames();
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks,
+      runFrames());
+    const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
+    const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
+      engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
+    const sampled = [0, 300, 600, 900].map((time) => {
+      renderer.update(boss, time);
+      return mesh.geometry;
+    });
+    expect(new Set(sampled).size).toBe(4);
+    renderer.update({ ...boss, engaged: true, slamCooldownRemainingSeconds: 1 }, 1000);
     expect(mesh.geometry).toBe(body.geometry);
+    renderer.dispose();
+  });
+
+  it('shows white hit pulses with visible armor gaps under sustained fire', () => {
+    const scene = new THREE.Scene();
+    const body = bodyModel();
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), runFrames(), runFrames());
+    const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
+    const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
+      engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
+    renderer.update(boss, 0);
+    renderer.update({ ...boss, hp: 90 }, 10);
+    expect((mesh.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
+    renderer.update({ ...boss, hp: 80 }, 100);
+    expect(mesh.material).toBe(body.material);
+    renderer.update({ ...boss, hp: 70 }, 180);
+    expect((mesh.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffffff');
     renderer.dispose();
   });
 

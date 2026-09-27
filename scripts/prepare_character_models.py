@@ -365,12 +365,46 @@ def helmet_parts():
                        (rim_vertices, rim_normals, np.asarray(rim_indices))])
 
 
+def boss_breastplate(z_sign):
+    # Chamfered toy breastplate: the angled edge reads as armor rather than a bar.
+    outline = [(-.18, .46), (.18, .46), (.26, .39), (.22, .27),
+               (-.22, .27), (-.26, .39)]
+    front_z, back_z = z_sign * .335, z_sign * .275
+    vertices, normals, indices = [], [], []
+
+    def triangle(a, b, c):
+        normal = np.cross(np.subtract(b, a), np.subtract(c, a))
+        normal = normal / np.linalg.norm(normal)
+        start = len(vertices)
+        vertices.extend((a, b, c))
+        normals.extend((normal, normal, normal))
+        indices.extend((start, start + 1, start + 2))
+
+    for index in range(1, len(outline) - 1):
+        a = [*outline[0], front_z]
+        b = [*outline[index], front_z]
+        c = [*outline[index + 1], front_z]
+        triangle(a, c, b) if z_sign > 0 else triangle(a, b, c)
+        a[2], b[2], c[2] = back_z, back_z, back_z
+        triangle(a, b, c) if z_sign > 0 else triangle(a, c, b)
+    for index in range(len(outline)):
+        x0, y0 = outline[index]
+        x1, y1 = outline[(index + 1) % len(outline)]
+        a, b = [x0, y0, front_z], [x1, y1, front_z]
+        c, d = [x1, y1, back_z], [x0, y0, back_z]
+        triangle(a, c, b) if z_sign > 0 else triangle(a, b, c)
+        triangle(a, d, c) if z_sign > 0 else triangle(a, c, d)
+    return np.asarray(vertices), np.asarray(normals), np.asarray(indices)
+
+
 def vest_parts(boss=False):
     # A compact chest plate leaves the arms, lower tunic and boots exposed.
     if boss:
-        # One low, shallow commander chest band replaces the two hanging front tabs.
-        return join_parts([box((0, .35, .29), (.44, .07, .035)),
-                           box((0, .35, -.29), (.44, .07, .035))])
+        # The commander wears a broad breastplate and two shoulder guards.
+        # All pieces remain one rigid mesh/material and stop below the face.
+        return join_parts([boss_breastplate(1), boss_breastplate(-1),
+                           box((-.31, .55, 0), (.14, .12, .29)),
+                           box((.31, .55, 0), (.14, .12, .29))])
     width = .44 if boss else .36
     y = .47
     height = .16

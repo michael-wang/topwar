@@ -32,7 +32,7 @@ export class GameRenderer {
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet,
       assets.vest, assets.runFrames, assets.grayBody);
     this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.helmet, assets.bossVest,
-      assets.bossSlamFrames);
+      assets.runFrames, assets.bossSlamFrames);
     this.streamRewardRenderer = new StreamRewardRenderer(this.scene, assets.helmet);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));

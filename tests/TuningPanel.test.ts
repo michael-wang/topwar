@@ -34,7 +34,7 @@ class ElementStub extends EventTarget {
 
 const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 8,
   enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10,
-  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 1 };
+  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 5 };
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -63,7 +63,7 @@ describe('temporary tuning panel', () => {
     root.querySelector('button')!.dispatchEvent(new Event('click'));
     expect(onChange).toHaveBeenLastCalledWith(defaults);
     expect(density.value).toBe('8');
-    expect(bossScale.value).toBe('1');
+    expect(bossScale.value).toBe('5');
     panel.toggle();
     expect(root.open).toBe(true);
     panel.toggle();
