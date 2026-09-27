@@ -192,10 +192,11 @@ export class SquadRenderer {
     vest.name = 'toy-soldier-vest';
     const rifle = new THREE.Mesh(this.rifleModel.geometry, this.rifleModel.material);
     rifle.name = 'toy-rifle';
+    rifle.position.x = .13;
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
     muzzle.name = 'muzzle-flash';
     muzzle.rotation.x = Math.PI / 2;
-    muzzle.position.set(.67, .46, .87);
+    muzzle.position.set(.38, .46, .93);
     muzzle.visible = false;
     group.add(body, helmet, vest, rifle, muzzle);
     this.scene.add(group);

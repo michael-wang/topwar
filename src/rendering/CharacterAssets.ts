@@ -4,6 +4,8 @@ import { publicAssetUrl } from '../core/publicAssetUrl';
 
 export interface CharacterAssets {
   body: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  grayBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  runFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[];
   playerBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   helmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   bossHelmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
@@ -14,7 +16,8 @@ export interface CharacterAssets {
   dispose(): void;
 }
 
-const files = ['body', 'player-body', 'helmet', 'boss-helmet', 'vest', 'boss-vest', 'rifle', 'bullet'] as const;
+const files = ['body', 'gray-body', 'run-0', 'run-1', 'run-2', 'run-3',
+  'player-body', 'helmet', 'boss-helmet', 'vest', 'boss-vest', 'rifle', 'bullet'] as const;
 
 export async function loadCharacterAssets(): Promise<CharacterAssets> {
   const loader = new GLTFLoader();
@@ -37,8 +40,9 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
     return mesh;
   });
   return {
-    body: meshes[0], playerBody: meshes[1], helmet: meshes[2], bossHelmet: meshes[3],
-    vest: meshes[4], bossVest: meshes[5], rifle: meshes[6], bullet: meshes[7],
+    body: meshes[0], grayBody: meshes[1], runFrames: meshes.slice(2, 6),
+    playerBody: meshes[6], helmet: meshes[7], bossHelmet: meshes[8],
+    vest: meshes[9], bossVest: meshes[10], rifle: meshes[11], bullet: meshes[12],
     dispose(): void {
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();

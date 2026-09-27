@@ -5,6 +5,13 @@ export function bodyModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   material.name = 'fixed-body';
   return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
 }
+export function grayBodyModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
+  return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: '#aeb4b7' }));
+}
+export function runFrames(): THREE.Mesh<THREE.BufferGeometry, THREE.Material>[] {
+  return Array.from({ length: 4 }, () => bodyModel());
+}
 export function helmetModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   const material = new THREE.MeshStandardMaterial({ color: 'white' });
   material.name = 'armor';

@@ -103,8 +103,8 @@ export class BossRenderer {
         const progress = Math.max(0, elapsed / DEATH_MS);
         this.death.scale.setScalar(this.deathScale
           * (1 + 0.15 * Math.max(0, 1 - elapsed / IMPACT_MS)));
-        this.death.rotation.z = Math.PI * 0.8 * progress;
-        this.death.position.y = Math.sin(Math.PI * progress) * 0.6;
+        this.death.rotation.z = Math.PI * 0.42 * progress;
+        this.death.position.y = Math.sin(Math.PI * progress) * 0.35;
         this.death.position.z = this.deathStartZ + progress * 1.5;
       }
     }

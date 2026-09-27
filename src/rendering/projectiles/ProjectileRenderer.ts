@@ -21,14 +21,16 @@ export class ProjectilePulseTracker {
 export class ProjectileRenderer {
   private readonly pulse = new ProjectilePulseTracker();
   private readonly members: THREE.Mesh[] = [];
+  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fff5ad',
+    toneMapped: false });
 
   constructor(private readonly scene: THREE.Scene,
     private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {}
 
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
     while (this.members.length < projectiles.length) {
-      const mesh = new THREE.Mesh(this.bullet.geometry, this.bullet.material);
-      mesh.name = 'toy-bullet';
+      const mesh = new THREE.Mesh(this.bullet.geometry, this.tracerMaterial);
+      mesh.name = 'rifle-tracer';
       this.scene.add(mesh);
       this.members.push(mesh);
     }
@@ -39,9 +41,11 @@ export class ProjectileRenderer {
       member.visible = projectile !== undefined;
       if (!projectile) continue;
       activeIds.add(projectile.id);
-      const size = projectile.kind === 'rocket' ? 1.8 : Math.min(1.6, 1 + 0.12 * (projectile.tier - 1));
+      const length = Math.min(1.35, 1 + 0.025 * (projectile.tier - 1));
       member.position.set(-projectile.x, projectile.kind === 'rocket' ? 0.66 : 0.64, projectile.z);
-      member.scale.setScalar(size * this.pulse.scaleFor(projectile.id, nowMs));
+      const pulse = this.pulse.scaleFor(projectile.id, nowMs);
+      if (projectile.kind === 'rocket') member.scale.setScalar(1.8 * pulse);
+      else member.scale.set(1, 1, length * pulse);
     }
     this.pulse.prune(activeIds);
   }
@@ -51,5 +55,6 @@ export class ProjectileRenderer {
     this.pulse.reset();
     for (const member of this.members) this.scene.remove(member);
     this.members.length = 0;
+    this.tracerMaterial.dispose();
   }
 }

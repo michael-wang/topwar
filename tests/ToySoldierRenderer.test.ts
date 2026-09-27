@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { bodyModel, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
+import { bodyModel, grayBodyModel, runFrames, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
 import { ENEMY_PALETTE, PLAYER_PALETTE, paletteIndex } from '../src/rendering/tierPalettes';
 import { PLAYER_VISUAL_SCALE, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
-import { ENEMY_VISUAL_SCALE, EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
+import { ENEMY_VISUAL_SCALE, EnemyRenderer, enemyRunFrame, enemyWalkPose } from '../src/rendering/enemies/EnemyRenderer';
 import { BossRenderer } from '../src/rendering/boss/BossRenderer';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
 import { ProjectilePulseTracker } from '../src/rendering/projectiles/ProjectileRenderer';
@@ -20,6 +20,13 @@ const soldier = (scene: THREE.Scene) => scene.children.find((child) =>
 const helmetOf = (group: THREE.Group) => group.getObjectByName('toy-soldier-helmet') as THREE.Mesh;
 
 describe('Modern Toy Soldier presentation', () => {
+  it('cycles baked running poses by enemy id while preserving gentle body motion', () => {
+    expect(new Set([0, 125, 250, 375].map((time) => enemyRunFrame(7, time))).size).toBe(4);
+    expect(enemyRunFrame(7, 0)).not.toBe(enemyRunFrame(8, 0));
+    expect(enemyWalkPose(7, 0).bob).toBeGreaterThanOrEqual(0);
+    expect(enemyWalkPose(7, 125).leftArm).not.toBe(enemyWalkPose(7, 0).leftArm);
+  });
+
   it('keeps helmet and vest blue through Tier 20 while rifle stays charcoal', () => {
     expect(PLAYER_PALETTE.map((entry) => entry.body)).toEqual([
       '#1769ee', '#10429b', '#2938c7', '#1b8fd6', '#5d5ee8',
@@ -80,18 +87,20 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('keeps one fixed body and six helmet/vest InstancedMesh pairs through Tier 20', () => {
+  it('keeps four running body poses and six helmet/vest InstancedMesh pairs through Tier 20', () => {
     expect(ENEMY_PALETTE.map((entry) => entry.body)).toEqual([
       '#ef5b52', '#f47a3c', '#e6b83f', '#a66be8', '#e94f8a', '#9fbe45',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new EnemyRenderer(scene, body, helmetModel(), vestModel());
+    const renderer = new EnemyRenderer(scene, body, helmetModel(), vestModel(),
+      runFrames(), grayBodyModel());
     const families = () => scene.children.filter((child): child is THREE.InstancedMesh =>
       child instanceof THREE.InstancedMesh);
-    expect(families()).toHaveLength(13);
-    const bodyMesh = scene.getObjectByName('toy-soldier-body') as THREE.InstancedMesh;
-    expect(bodyMesh.material).toBe(body.material);
+    expect(families()).toHaveLength(16);
+    const bodyMeshes = Array.from({ length: 4 }, (_, frame) =>
+      scene.getObjectByName(`toy-soldier-run-${frame}`) as THREE.InstancedMesh);
+    expect(bodyMeshes.every((mesh) => mesh.material === body.material)).toBe(true);
     for (let tier = 1; tier <= 20; tier++) {
       renderer.update([{ id: tier, tier, x: 0, z: 10, hp: 3 }], tier * 1000);
       const bucket = paletteIndex(tier, 6);
@@ -102,18 +111,19 @@ describe('Modern Toy Soldier presentation', () => {
       const vest = scene.getObjectByName(`${bucket}-toy-soldier-vest`) as THREE.InstancedMesh;
       vest.getColorAt(0, color);
       expect(color.getHexString()).toBe(ENEMY_PALETTE[bucket].body.slice(1));
-      expect(bodyMesh.count).toBe(1);
+      expect(bodyMeshes.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(1);
       const matrix = new THREE.Matrix4();
-      bodyMesh.getMatrixAt(0, matrix);
+      bodyMeshes[enemyRunFrame(tier, tier * 1000)].getMatrixAt(0, matrix);
       expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(ENEMY_VISUAL_SCALE);
-      expect(families()).toHaveLength(13);
+      expect(families()).toHaveLength(16);
     }
     renderer.dispose();
   });
 
   it('grows crowd capacity, flashes gear, and pops out fallen grunts', () => {
     const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel());
+    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(),
+      runFrames(), grayBodyModel());
     const enemies = Array.from({ length: 900 }, (_, index) =>
       ({ id: index + 1, tier: 5, x: index % 20, z: 10, hp: 3 }));
     renderer.update(enemies, 0);
@@ -128,7 +138,18 @@ describe('Modern Toy Soldier presentation', () => {
     helmet.getColorAt(1, color);
     expect(color.getHexString()).toBe('e94f8a');
     renderer.update(damaged.slice(1), 100);
-    expect(scene.children.some((child) => child instanceof THREE.Group && child.visible)).toBe(true);
+    const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
+    expect(death).toBeDefined();
+    expect(death.rotation.z).toBe(0);
+    renderer.update(damaged.slice(1), 180);
+    expect(death.position.y).toBeGreaterThan(0);
+    const gray = (death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+    expect(gray.color.getHexString()).toBe('aeb4b7');
+    expect(gray.opacity).toBeLessThan(1);
+    expect(((death.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color
+      .getHexString()).toBe('adb4b8');
+    renderer.update(damaged.slice(1), 500);
+    expect(death.visible).toBe(false);
     renderer.reset();
     renderer.dispose();
   });
@@ -156,6 +177,8 @@ describe('Modern Toy Soldier presentation', () => {
     expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffe36e');
     renderer.update(null, 20020);
     expect(death.visible).toBe(true);
+    renderer.update(null, 20420);
+    expect(death.rotation.z).toBeLessThan(Math.PI / 2);
     renderer.update(null, 21000);
     expect(death.visible).toBe(false);
     renderer.reset();
@@ -170,9 +193,10 @@ describe('Modern Toy Soldier presentation', () => {
       renderer.update([{ id: tier, kind: 'rifle', tier, x: 0, z: 10 }], tier * 1000);
       expect(scene.children).toHaveLength(1);
       const mesh = scene.children[0] as THREE.Mesh;
-      expect(mesh.name).toBe('toy-bullet');
+      expect(mesh.name).toBe('rifle-tracer');
       expect(mesh.geometry).toBe(bullet.geometry);
-      expect(mesh.scale.x).toBeLessThanOrEqual(1.6 * 1.35);
+      expect(mesh.scale.x).toBe(1);
+      expect(mesh.scale.z).toBeLessThanOrEqual(1.35 * 1.35);
     }
     renderer.update([], 21000);
     expect((scene.children[0] as THREE.Mesh).visible).toBe(false);

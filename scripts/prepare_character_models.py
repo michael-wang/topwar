@@ -241,11 +241,11 @@ def join_parts(parts):
 
 
 def helmet_parts(boss=False):
-    # Low-poly rounded dome, small brim. Its open face retains Kenney expressions.
-    radius = .34 if boss else .265
-    levels = ((.835, radius), (.91, radius * 1.08), (1.005, radius * .88),
-              (1.075 if boss else 1.055, radius * .42))
-    sides = 10
+    # Hard rounded shell with a continuous flared steel rim above the face.
+    radius = .39 if boss else .29
+    levels = ((.80, radius), (.90, radius), (1.01, radius * .78),
+              (1.07 if boss else 1.055, radius * .38))
+    sides = 12
     vertices = np.array([[np.sin(i * 2*np.pi/sides) * r, y,
                           np.cos(i * 2*np.pi/sides) * r]
                          for y, r in levels for i in range(sides)] +
@@ -261,8 +261,27 @@ def helmet_parts(boss=False):
     normals = vertices.copy()
     normals[:, 1] -= .84
     normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-12)
-    brim = box((0, .84, radius*.78), (radius*1.7, .045, radius*.65))
-    return join_parts([(vertices, normals, np.asarray(indices)), brim])
+    rim_outer = radius * 1.18
+    rim_inner = radius * .84
+    rim_vertices = []
+    for y, r in ((.79, rim_outer), (.84, rim_outer),
+                 (.84, rim_inner), (.79, rim_inner)):
+        for i in range(sides):
+            angle = i * 2*np.pi/sides
+            rim_vertices.append([np.sin(angle)*r, y, np.cos(angle)*r])
+    rim_vertices = np.asarray(rim_vertices)
+    rim_indices = []
+    for ring in range(4):
+        following = (ring + 1) % 4
+        for i in range(sides):
+            a, b = ring*sides+i, ring*sides+(i+1)%sides
+            c, d = following*sides+i, following*sides+(i+1)%sides
+            rim_indices.extend((a, b, d, a, d, c))
+    rim_normals = rim_vertices.copy()
+    rim_normals[:, 1] = 0
+    rim_normals /= np.maximum(np.linalg.norm(rim_normals, axis=1, keepdims=True), 1e-12)
+    return join_parts([(vertices, normals, np.asarray(indices)),
+                       (rim_vertices, rim_normals, np.asarray(rim_indices))])
 
 
 def vest_parts(boss=False):
@@ -277,25 +296,18 @@ def vest_parts(boss=False):
 
 
 def rifle_parts():
-    # Exaggerated, forward-pointing toy rifle in the archer's weapon hand.
-    positions, normals, uv, indices = join_parts([
-        box((.35, .46, .32), (.12, .13, .67)),
-        box((.35, .46, .74), (.085, .085, .29)),
-        box((.35, .55, .18), (.18, .055, .16)),
-        box((.35, .32, .25), (.08, .19, .11)),
-        box((.35, .43, -.10), (.18, .13, .21))])
-    # Angle the barrel sideways enough to retain its silhouette from behind.
-    angle = .45
-    rotation = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0],
-                         [-np.sin(angle), 0, np.cos(angle)]])
-    pivot = np.array([.35, 0, .2])
-    return (positions - pivot) @ rotation.T + pivot, normals @ rotation.T, uv, indices
+    # The barrel runs exactly along +Z, the simulation projectile direction.
+    return join_parts([
+        box((.25, .46, .32), (.13, .13, .67)),
+        box((.25, .46, .74), (.08, .08, .29)),
+        box((.25, .55, .18), (.18, .055, .16)),
+        box((.25, .32, .25), (.08, .19, .11)),
+        box((.25, .43, -.10), (.18, .13, .21))])
 
 
 def bullet_parts():
-    # Broad enough to read head-on at the portrait camera, with finite tier scaling.
-    return join_parts([box((0, 0, 0), (.14, .14, .42)),
-                       box((0, 0, .24), (.18, .18, .09))])
+    # One narrow, short tracer aligned with +Z. Runtime uses unlit pale gold.
+    return join_parts([box((0, 0, 0), (.052, .052, .32))])
 
 
 def prepare_toy_soldier(inputs, outputs):
@@ -313,6 +325,22 @@ def prepare_toy_soldier(inputs, outputs):
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
     write_mesh(outputs / "toy-soldier-body.glb", [body], textured, original)
+    for frame in range(4):
+        run = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125)
+        p, n, texcoords, idx = run
+        run = ((p-center)/height, n, texcoords, idx)
+        # Runtime reuses the original body's material and texture.
+        write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [run],
+                   {"name": "shared-body-material", "pbrMetallicRoughness": {
+                       "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
+                       "roughnessFactor": 1}})
+    gray = np.asarray(Image.open(BytesIO(original)).convert("RGBA")).copy()
+    luminance = np.dot(gray[:, :, :3], [.299, .587, .114]).astype(np.uint8)
+    gray[:, :, :3] = luminance[:, :, None]
+    gray_stream = BytesIO()
+    Image.fromarray(gray).save(gray_stream, format="PNG", optimize=True)
+    write_mesh(outputs / "toy-soldier-gray-body.glb", [body], textured,
+               gray_stream.getvalue())
     # The main tunic swatch is used by body-mesh vertices at U=0.96875,
     # V=0.775..0.975. Paint only texels touched by that UV line. The source
     # atlas remains byte-for-byte unchanged in the enemy/Boss body GLB.
@@ -338,7 +366,7 @@ def prepare_toy_soldier(inputs, outputs):
                         ("vest", vest_parts()), ("boss-vest", vest_parts(True))):
         write_mesh(outputs / f"toy-soldier-{name}.glb", [piece], neutral)
     for name, piece, color in (("rifle", rifle_parts(), [.17, .20, .22, 1]),
-                               ("bullet", bullet_parts(), [.95, .78, .31, 1])):
+                               ("bullet", bullet_parts(), [1, .95, .70, 1])):
         write_mesh(outputs / f"toy-soldier-{name}.glb", [piece],
                    {"name": name, "pbrMetallicRoughness": {
                        "baseColorFactor": color, "metallicFactor": 0,

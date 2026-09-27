@@ -35,7 +35,8 @@ export class GameRenderer {
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
     this.squadRenderer = new SquadRenderer(this.scene, assets.playerBody, assets.helmet, assets.vest, assets.rifle);
-    this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet, assets.vest);
+    this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet,
+      assets.vest, assets.runFrames, assets.grayBody);
     this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.bossHelmet, assets.bossVest);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));

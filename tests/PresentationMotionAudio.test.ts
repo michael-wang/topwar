@@ -52,14 +52,16 @@ describe('presentation-only motion', () => {
     renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1 },
       { id: 2, kind: 'rifle', tier: 2, x: 0, z: 1 },
       { id: 3, kind: 'rocket', tier: 0, x: 0, z: 1 }], 100);
-    expect(scene.children[0].scale.x).toBeCloseTo(1.35);
-    expect(scene.children[1].scale.x).toBeCloseTo(1.512);
+    expect(scene.children[0].scale.x).toBe(1);
+    expect(scene.children[0].scale.z).toBeCloseTo(1.35);
+    expect(scene.children[1].scale.x).toBe(1);
+    expect(scene.children[1].scale.z).toBeCloseTo(1.35 * 1.025);
     expect(scene.children[2].scale.x).toBeCloseTo(2.43);
     renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2 }], 200);
     expect(scene.children[0].scale.x).toBe(1);
     renderer.reset();
     renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2 }], 210);
-    expect(scene.children[0].scale.x).toBeCloseTo(1.35);
+    expect(scene.children[0].scale.z).toBeCloseTo(1.35);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
   });
