@@ -4,14 +4,15 @@ import { publicAssetUrl } from '../core/publicAssetUrl';
 
 export interface CharacterAssets {
   body: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-  armor: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-  bossArmor: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  playerBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  helmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  bossHelmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   bow: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   arrow: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   dispose(): void;
 }
 
-const files = ['body', 'armor', 'boss-armor', 'bow', 'arrow'] as const;
+const files = ['body', 'player-body', 'helmet', 'boss-helmet', 'bow', 'arrow'] as const;
 
 export async function loadCharacterAssets(): Promise<CharacterAssets> {
   const loader = new GLTFLoader();
@@ -34,7 +35,8 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
     return mesh;
   });
   return {
-    body: meshes[0], armor: meshes[1], bossArmor: meshes[2], bow: meshes[3], arrow: meshes[4],
+    body: meshes[0], playerBody: meshes[1], helmet: meshes[2], bossHelmet: meshes[3],
+    bow: meshes[4], arrow: meshes[5],
     dispose(): void {
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();

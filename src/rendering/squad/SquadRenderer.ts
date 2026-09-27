@@ -8,6 +8,8 @@ const FLASH_MS = 50;
 const SPAWN_MS = 190;
 const TIER_UP_MS = 360;
 const TIER_GLOW_MS = 150;
+export const PLAYER_VISUAL_SCALE = 0.85;
+const VISUAL_FORMATION_SPREAD = 2;
 
 export function soldierSpawnScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / SPAWN_MS);
@@ -24,7 +26,7 @@ export function firingRecoil(nowMs: number, firedAtMs: number): number {
 interface SoldierVisual {
   group: THREE.Group;
   body: THREE.Mesh;
-  armor: THREE.Mesh;
+  helmet: THREE.Mesh;
   bow: THREE.Mesh;
   muzzle: THREE.Mesh;
   appearedAtMs: number;
@@ -49,10 +51,10 @@ export class SquadRenderer {
 
   constructor(private readonly scene: THREE.Scene,
     private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly armorModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     private readonly bowModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
-    const source = armorModel.material;
-    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai armor needs a standard material');
+    const source = helmetModel.material;
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai helmet needs a standard material');
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
       const material = source.clone();
       material.color.set(entry.body);
@@ -93,6 +95,10 @@ export class SquadRenderer {
       this.tierRing.scale.setScalar(0.5 + 1.8 * progress);
     }
     const offsets = createSquadFormation(state.squad.count, state.squad.formationSpacing);
+    const maxOffsetX = offsets.reduce((max, offset) => Math.max(max, Math.abs(offset.x)), 0);
+    // Only the rendered anchors spread out; simulation formation and collision stay unchanged.
+    const visualSpread = maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
+      (state.track.halfWidth - 0.4) / maxOffsetX));
     while (this.members.length < offsets.length) this.addMember();
 
     const rocketStart = state.squad.count - state.squad.rocketCount;
@@ -116,20 +122,22 @@ export class SquadRenderer {
       const recoil = firingRecoil(nowMs, firedAt);
       const spawnScale = soldierSpawnScale(nowMs - member.appearedAtMs);
       const upgrading = tierActive && tier === this.tierUpTier;
-      member.group.scale.setScalar(upgrading ? tierUpScale(tierAgeMs) : spawnScale);
+      member.group.scale.setScalar(PLAYER_VISUAL_SCALE
+        * (upgrading ? tierUpScale(tierAgeMs) : spawnScale));
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
-      member.armor.material = glowing ? this.upgradeMaterial
+      member.helmet.material = glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       member.body.scale.y = 1 - 0.09 * recoil;
-      member.armor.scale.y = 1 - 0.09 * recoil;
+      member.helmet.scale.y = 1 - 0.09 * recoil;
       member.body.rotation.x = -0.09 * recoil;
-      member.armor.rotation.x = -0.09 * recoil;
+      member.helmet.rotation.x = -0.09 * recoil;
       member.bow.rotation.x = -0.18 * recoil;
       member.bow.position.z = -0.08 * recoil;
       member.bow.scale.setScalar(isRocket ? 1.15 : 1);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
       // The camera looks along +Z, which mirrors X on screen.
-      member.group.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
+      member.group.position.set(-(state.player.x + offset.x * visualSpread), 0,
+        state.player.z + offset.z * visualSpread);
     }
   }
 
@@ -173,18 +181,18 @@ export class SquadRenderer {
     const group = new THREE.Group();
     const body = new THREE.Mesh(this.bodyModel.geometry, this.bodyModel.material);
     body.name = 'samurai-body';
-    const armor = new THREE.Mesh(this.armorModel.geometry, this.tierMaterials[0]);
-    armor.name = 'samurai-armor';
+    const helmet = new THREE.Mesh(this.helmetModel.geometry, this.tierMaterials[0]);
+    helmet.name = 'samurai-helmet';
     const bow = new THREE.Mesh(this.bowModel.geometry, this.bowModel.material);
     bow.name = 'wooden-bow';
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
     muzzle.name = 'bow-release-glint';
     muzzle.position.set(0.20, 0.57, 0.05);
     muzzle.visible = false;
-    group.add(body, armor, bow, muzzle);
+    group.add(body, helmet, bow, muzzle);
     this.scene.add(group);
     group.visible = false;
-    this.members.push({ group, body, armor, bow, muzzle,
+    this.members.push({ group, body, helmet, bow, muzzle,
       appearedAtMs: -Infinity });
   }
 }

@@ -245,22 +245,38 @@ def bar_between(a, b, width, depth):
     return vertices @ rotation.T + (a+b)/2, normals @ rotation.T, indices
 
 
-def armor_parts(boss=False):
-    # The body is 1 unit high, with a large head. All parts share one armor material.
-    pieces = [box((0, .89, 0), (.60, .24, .48)),              # kabuto
-              box((0, .72, -.19), (.65, .14, .17)),          # shikoro
-              box((0, .48, -.20), (.49, .23, .13)),          # chest plate
-              box((0, .48, .18), (.49, .20, .10))]
-    for side in (-1, 1):
-        pieces += [box((side*.34, .58, 0), (.23 if not boss else .30, .17, .38)),
-                   box((side*.39, .38, -.02), (.14, .16, .19)),
-                   box((side*.17, .10, -.04), (.25, .19, .31))]
-    crest = .30 if not boss else .43
-    pieces += [bar_between((0, .92, -.30), (-crest, 1.19 if not boss else 1.30, -.30), .085, .10),
-               bar_between((0, .92, -.30), (crest, 1.19 if not boss else 1.30, -.30), .085, .10)]
-    if boss:
-        pieces += [box((0, .91, 0), (.72, .28, .55)),
-                   box((0, .54, -.23), (.59, .26, .16))]
+def helmet_parts(boss=False):
+    # Open-faced, shallow kabuto: the Kenney face, clothing, arms and shoes stay visible.
+    radius = .38 if boss else .25
+    bottom = .85
+    top = 1.09 if boss else 1.05
+    sides = 8
+    crown_vertices = []
+    for y, r in ((bottom, radius), (top, radius * .72)):
+        for index in range(sides):
+            angle = index * 2 * np.pi / sides
+            crown_vertices.append([np.sin(angle) * r, y, np.cos(angle) * r])
+    crown_vertices = np.asarray(crown_vertices)
+    crown_indices = []
+    for index in range(sides):
+        next_index = (index + 1) % sides
+        crown_indices.extend([index, next_index, sides + next_index,
+                              index, sides + next_index, sides + index])
+        crown_indices.extend([sides + index, sides + next_index, sides * 2])
+    crown_vertices = np.vstack((crown_vertices, [0, top + .025, 0]))
+    crown_normals = crown_vertices.copy()
+    crown_normals[:, 1] = .25
+    crown_normals /= np.linalg.norm(crown_normals, axis=1, keepdims=True)
+    pieces = [(crown_vertices, crown_normals, np.asarray(crown_indices))]
+    # A small rear/side brim suggests shikoro without obscuring the face.
+    pieces += [box((0, .82, -.24), (radius * 1.65, .075, .13)),
+               box((-radius, .82, -.10), (.08, .075, .24)),
+               box((radius, .82, -.10), (.08, .075, .24))]
+    crest = .45 if boss else .25
+    crest_top = 1.35 if boss else 1.18
+    front = radius + .025
+    pieces += [bar_between((0, 1.00, front), (-crest, crest_top, front), .075, .075),
+               bar_between((0, 1.00, front), (crest, crest_top, front), .075, .075)]
     offsets = np.cumsum([0] + [len(part[0]) for part in pieces[:-1]])
     return (np.concatenate([part[0] for part in pieces]),
             np.concatenate([part[1] for part in pieces]), None,
@@ -268,7 +284,7 @@ def armor_parts(boss=False):
 
 
 def prepare_toy_samurai(inputs, outputs):
-    neutral = {"name": "armor", "pbrMetallicRoughness": {
+    neutral = {"name": "kabuto", "pbrMetallicRoughness": {
         "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0, "roughnessFactor": 1}}
     body = rigid_piece(inputs / "character-archer.glb", "idle", .2)
     positions, normals, uv, indices = body
@@ -278,24 +294,34 @@ def prepare_toy_samurai(inputs, outputs):
     center = (minimum + maximum) / 2
     center[1] = minimum[1]
     body = ((positions-center)/height, normals, uv, indices)
-    # Kenney's atlas is a color swatch sheet. Keep facial darks/skin and replace
-    # the other swatches with warm neutral underclothes for every army and tier.
-    atlas = np.asarray(Image.open(inputs / "colormap.png").convert("RGBA")).copy()
-    h, w = atlas.shape[:2]
-    skin = (np.arange(h)[:, None] >= h*.5) & (np.arange(h)[:, None] < h*.75) & \
-           (np.arange(w)[None, :] >= w*.22) & (np.arange(w)[None, :] < w*.5)
-    dark = atlas[:, :, :3].mean(axis=2) < 38
-    atlas[:, :, :3] = [94, 81, 74]
-    atlas[skin, :3] = [216, 162, 117]
-    atlas[dark, :3] = [35, 31, 30]
-    stream = BytesIO()
-    Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
+    original = (inputs / "colormap.png").read_bytes()
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
-    write_mesh(outputs / "toy-samurai-body.glb", [body], textured, stream.getvalue())
-    write_mesh(outputs / "toy-samurai-armor.glb", [armor_parts()], neutral)
-    write_mesh(outputs / "toy-samurai-boss-armor.glb", [armor_parts(True)], neutral)
-    for name, scale in (("weapon-bow", 1.5), ("weapon-arrow", 1.0)):
+    write_mesh(outputs / "toy-samurai-body.glb", [body], textured, original)
+    # The main tunic swatch is used by body-mesh vertices at U=0.96875,
+    # V=0.775..0.975. Paint only texels touched by that UV line. The source
+    # atlas remains byte-for-byte unchanged in the enemy/Boss body GLB.
+    cloth_uv = uv[np.isclose(uv[:, 0], .96875)]
+    if len(cloth_uv) < 150 or not (.77 < cloth_uv[:, 1].min() < .78):
+        raise ValueError("Kenney archer cloth UV swatch changed")
+    atlas = np.asarray(Image.open(BytesIO(original)).convert("RGBA")).copy()
+    height_px, width_px = atlas.shape[:2]
+    x = int(round(.96875 * (width_px - 1)))
+    y0 = int(np.floor(cloth_uv[:, 1].min() * (height_px - 1)))
+    y1 = int(np.ceil(cloth_uv[:, 1].max() * (height_px - 1)))
+    # Four texels either side account for bilinear sampling/mip generation.
+    for row in range(y0 - 4, y1 + 5):
+        for col in range(x - 4, x + 5):
+            if 0 <= row < height_px and 0 <= col < width_px:
+                source = atlas[row, col, :3].astype(np.float64)
+                lightness = np.clip(source.mean() / 150, .65, 1.3)
+                atlas[row, col, :3] = np.clip(np.array([23, 105, 238]) * lightness, 0, 255)
+    stream = BytesIO()
+    Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
+    write_mesh(outputs / "toy-samurai-player-body.glb", [body], textured, stream.getvalue())
+    write_mesh(outputs / "toy-samurai-helmet.glb", [helmet_parts()], neutral)
+    write_mesh(outputs / "toy-samurai-boss-helmet.glb", [helmet_parts(True)], neutral)
+    for name, scale in (("weapon-bow", 1.2), ("weapon-arrow", 1.0)):
         part = rigid_piece(inputs / f"{name}.glb")
         p, n, uv, idx = part
         p = p * scale

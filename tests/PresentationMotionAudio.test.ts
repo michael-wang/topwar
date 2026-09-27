@@ -1,4 +1,4 @@
-import { bodyModel, armorModel, bowModel, arrowModel } from './characterModel';
+import { bodyModel, helmetModel, bowModel, arrowModel } from './characterModel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
@@ -10,7 +10,7 @@ describe('presentation-only motion', () => {
     expect(firingRecoil(100, 100)).toBe(1);
     expect(firingRecoil(200, 100)).toBe(0);
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene, bodyModel(), armorModel(), bowModel());
+    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), bowModel());
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
       rifleCounts: [2], formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };

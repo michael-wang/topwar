@@ -34,9 +34,9 @@ export class GameRenderer {
   private disposed = false;
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
-    this.squadRenderer = new SquadRenderer(this.scene, assets.body, assets.armor, assets.bow);
-    this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.armor);
-    this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.bossArmor);
+    this.squadRenderer = new SquadRenderer(this.scene, assets.playerBody, assets.helmet, assets.bow);
+    this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet);
+    this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.bossHelmet);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.arrow);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);

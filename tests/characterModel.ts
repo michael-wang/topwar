@@ -5,7 +5,7 @@ export function bodyModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   material.name = 'fixed-body';
   return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
 }
-export function armorModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
+export function helmetModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   const material = new THREE.MeshStandardMaterial({ color: 'white' });
   material.name = 'armor';
   return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
