@@ -1,21 +1,40 @@
-export type AudioCue = 'reward' | 'rewardHit' | 'bossHit' | 'enemyDeath';
+export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
+  | 'reward' | 'rewardHit' | 'bossHit' | 'enemyDeath';
 
 interface ObservedReward { id: number; hitProgress: number }
 interface ObservedBoss { id: number; hp: number }
+interface ObservedProjectile { id: number; kind: 'rifle' | 'rocket'; tier: number }
 
 // Presentation-only observation; enemy IDs restart on Retry.
 export class AudioCueObserver {
   private previousEnemyIds = new Set<number>();
   private previousRewards = new Map<number, number>();
   private previousBoss: ObservedBoss | null = null;
+  private lastSeenProjectileId = 0;
+  private nextShotCueMs = -Infinity;
   private nextDeathCueMs = -Infinity;
   private nextBossHitCueMs = -Infinity;
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
     enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
-    boss: ObservedBoss | null, nowMs = performance.now()): AudioCue[] {
+    boss: ObservedBoss | null, nowMs = performance.now(),
+    projectiles: readonly ObservedProjectile[] = []): AudioCue[] {
     const cues = new Set<AudioCue>();
+    let highestNewRifleTier = 0;
+    const previousProjectileId = this.lastSeenProjectileId;
+    for (const projectile of projectiles) {
+      if (projectile.id > previousProjectileId) {
+        if (projectile.kind === 'rocket') cues.add('rocket');
+        else highestNewRifleTier = Math.max(highestNewRifleTier, projectile.tier);
+      }
+      this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
+    }
+    if (highestNewRifleTier > 0 && nowMs >= this.nextShotCueMs) {
+      cues.add(highestNewRifleTier > 1 ? 'heavyRifle' : 'rifle');
+      this.nextShotCueMs = nowMs + 220;
+    }
     if (currentDefense > previousDefense) cues.add('reward');
+    if (currentDefense < previousDefense) cues.add(currentDefense === 0n || currentDefense === 0 ? 'fatal' : 'damage');
     for (const reward of rewards) {
       const previous = this.previousRewards.get(reward.id);
       if (previous !== undefined && reward.hitProgress > previous) cues.add('rewardHit');
@@ -49,6 +68,8 @@ export class AudioCueObserver {
     this.previousEnemyIds.clear();
     this.previousRewards.clear();
     this.previousBoss = null;
+    this.lastSeenProjectileId = 0;
+    this.nextShotCueMs = -Infinity;
     this.nextDeathCueMs = -Infinity;
     this.nextBossHitCueMs = -Infinity;
   }
@@ -56,7 +77,12 @@ export class AudioCueObserver {
 
 const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number }> = {
+  rifle: { from: 440, to: 160, seconds: 0.055, wave: 'triangle', volume: 0.07 },
+  heavyRifle: { from: 220, to: 75, seconds: 0.13, wave: 'triangle', volume: 0.11 },
+  rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.065 },
   reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
+  damage: { from: 150, to: 70, seconds: 0.11, wave: 'triangle', volume: 0.11 },
+  fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: 0.14 },
   rewardHit: { from: 760, to: 950, seconds: 0.06, wave: 'sine', volume: 0.05 },
   bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.045 },
   enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.055 },
@@ -71,15 +97,16 @@ export class GameAudio {
   private disposed = false;
 
   constructor(private readonly viewport: HTMLElement, private readonly keyTarget: Window = window) {
-    viewport.addEventListener?.('pointerdown', this.unlock);
+    viewport.addEventListener?.('pointerdown', this.unlock, true);
     keyTarget.addEventListener?.('keydown', this.unlock);
   }
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
     enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
-    boss: ObservedBoss | null, nowMs = performance.now()): void {
+    boss: ObservedBoss | null, nowMs = performance.now(),
+    projectiles: readonly ObservedProjectile[] = []): void {
     for (const cue of this.observer.observe(previousDefense, currentDefense, enemies,
-      rewards, boss, nowMs)) this.play(cue);
+      rewards, boss, nowMs, projectiles)) this.play(cue);
   }
 
   resetObservation(): void { this.observer.reset(); }
@@ -142,18 +169,19 @@ export class GameAudio {
   }
 
   private readonly unlock = (): void => {
-    if (this.disposed || this.unlocked) return;
+    if (this.disposed || (this.unlocked && this.context?.state === 'running')) return;
     const Constructor = globalThis.AudioContext;
     if (!Constructor) return;
     try {
       this.context ??= new Constructor();
-      this.master ??= this.context.createGain();
-      this.master.gain.value = 0.35;
-      this.master.connect(this.context.destination);
+      if (!this.master) {
+        this.master = this.context.createGain();
+        this.master.gain.value = 0.35;
+        this.master.connect(this.context.destination);
+      }
       void this.context.resume().then(() => {
         if (this.context?.state === 'running') {
           this.unlocked = true;
-          this.removeUnlockListeners();
         }
       }).catch(() => {});
     } catch {
@@ -162,7 +190,7 @@ export class GameAudio {
   };
 
   private removeUnlockListeners(): void {
-    this.viewport.removeEventListener?.('pointerdown', this.unlock);
+    this.viewport.removeEventListener?.('pointerdown', this.unlock, true);
     this.keyTarget.removeEventListener?.('keydown', this.unlock);
   }
 }

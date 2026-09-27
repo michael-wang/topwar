@@ -85,14 +85,23 @@ describe('audio cue observation and safety', () => {
     observer.reset();
     expect(observer.observe(1, 1, [], [{ id: 1, hitProgress: 5 }], boss, 0)).toEqual([]);
   });
-  it('plays for defense gain, never for projectiles, damage, or Game Over', () => {
+  it('restores throttled firing and defense-loss cues without replaying old projectiles', () => {
     const observer = new AudioCueObserver();
     expect(observer.observe(1, 1, [], [], null)).toEqual([]);
+    const rifle = [{ id: 1, kind: 'rifle' as const, tier: 1 }];
+    expect(observer.observe(1, 1, [], [], null, 0, rifle)).toEqual(['rifle']);
+    expect(observer.observe(1, 1, [], [], null, 10, rifle)).toEqual([]);
+    expect(observer.observe(1, 1, [], [], null, 100,
+      [{ id: 2, kind: 'rifle', tier: 1 }])).toEqual([]);
+    expect(observer.observe(1, 1, [], [], null, 221,
+      [{ id: 3, kind: 'rifle', tier: 2 }])).toEqual(['heavyRifle']);
+    expect(observer.observe(1, 1, [], [], null, 222,
+      [{ id: 4, kind: 'rocket', tier: 1 }])).toEqual(['rocket']);
     expect(observer.observe(9, 10, [], [], null)).toEqual(['reward']);
-    expect(observer.observe(10, 9, [], [], null)).toEqual([]);
-    expect(observer.observe(9, 0, [], [], null)).toEqual([]);
+    expect(observer.observe(10, 9, [], [], null)).toEqual(['damage']);
+    expect(observer.observe(9, 0n, [], [], null)).toEqual(['fatal']);
     observer.reset();
-    expect(observer.observe(1, 1, [], [], null)).toEqual([]);
+    expect(observer.observe(1, 1, [], [], null, 0, rifle)).toEqual(['rifle']);
   });
   it('does not tick when an ignored reward expires without squad growth', () => {
     const observer = new AudioCueObserver();
@@ -125,14 +134,16 @@ describe('audio cue observation and safety', () => {
   it('safely ignores playback without an unlocked AudioContext', () => {
     const viewport = new EventTarget();
     const keys = new EventTarget();
+    const addViewport = vi.spyOn(viewport, 'addEventListener');
     const audio = new GameAudio(viewport as HTMLElement, keys as Window);
+    expect(addViewport).toHaveBeenCalledWith('pointerdown', expect.any(Function), true);
     expect(() => audio.play('reward')).not.toThrow();
     expect(() => viewport.dispatchEvent(new Event('pointerdown'))).not.toThrow();
     expect(() => audio.observe(1, 0, [], [], null)).not.toThrow();
     const removeViewport = vi.spyOn(viewport, 'removeEventListener');
     const removeKeys = vi.spyOn(keys, 'removeEventListener');
     audio.dispose();
-    expect(removeViewport).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(removeViewport).toHaveBeenCalledWith('pointerdown', expect.any(Function), true);
     expect(removeKeys).toHaveBeenCalledWith('keydown', expect.any(Function));
   });
 
@@ -165,14 +176,14 @@ describe('audio cue observation and safety', () => {
     audio.resetObservation();
     audio.observe(1, 1, [{ id: 1 }], [], null, 0);
     audio.observe(1, 0, [{ id: 1 }], [], null, 10);
-    expect(starts).toHaveBeenCalledTimes(1);
-    audio.observe(0, 1, [{ id: 1 }], [], null, 20);
     expect(starts).toHaveBeenCalledTimes(2);
+    audio.observe(0, 1, [{ id: 1 }], [], null, 20);
+    expect(starts).toHaveBeenCalledTimes(3);
     audio.observe(1, 1, [], [], null, 30);
-    expect(starts).toHaveBeenCalledTimes(4); // Two-oscillator death yelp, once for the frame.
+    expect(starts).toHaveBeenCalledTimes(5); // Two-oscillator death yelp, once for the frame.
     audio.observe(1, 1, [{ id: 2 }], [], null, 40);
     audio.observe(1, 1, [], [], null, 50);
-    expect(starts).toHaveBeenCalledTimes(4);
+    expect(starts).toHaveBeenCalledTimes(5);
     expect(constructor).toHaveBeenCalledTimes(1);
     audio.dispose();
     expect(stops).toHaveBeenCalled();

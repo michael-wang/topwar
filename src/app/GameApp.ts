@@ -223,7 +223,7 @@ export class GameApp {
       if (feedback) this.damageFlash.flash(feedback === 'fatal');
       this.audio.observe(this.previousDefenseValue, currentDefenseValue,
         state.boss ? [...state.enemies, state.boss] : state.enemies,
-        state.streamRewards, state.boss, this.presentationMs);
+        state.streamRewards, state.boss, this.presentationMs, state.projectiles);
       this.previousDefenseValue = currentDefenseValue;
       const renderState: GameRenderState = {
         player: { x: state.player.x, z: state.player.z },
