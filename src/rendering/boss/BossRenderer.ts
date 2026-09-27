@@ -9,7 +9,8 @@ const DEATH_MS = 800;
 const IMPACT_MS = 90;
 const HELMET_SCALE = 0.92;
 const HELMET_PIVOT_Y = 0.82;
-const HELMET_SEAT_OFFSET_Y = 0.035;
+const HELMET_SEAT_OFFSET_Y = -0.025;
+const HELMET_FORWARD_OFFSET_Z = 0.10;
 
 function tierArmorGeometry(source: THREE.BufferGeometry, tierColor: THREE.Color): THREE.BufferGeometry {
   const geometry = source.clone();
@@ -29,9 +30,11 @@ function tierArmorGeometry(source: THREE.BufferGeometry, tierColor: THREE.Color)
 }
 
 function fitCommanderHelmet(helmet: THREE.Mesh): void {
-  // Scale around the head, then seat the rim on the upper forehead.
+  // Seat the rim on the upper forehead; the small forward shift covers hair
+  // that otherwise intersects the shell in the baked sprint poses.
   helmet.scale.setScalar(HELMET_SCALE);
   helmet.position.y = HELMET_PIVOT_Y * (1 - HELMET_SCALE) + HELMET_SEAT_OFFSET_Y;
+  helmet.position.z = HELMET_FORWARD_OFFSET_Z;
 }
 
 export function bossWalkPose(id: number, nowMs: number): { frame: number; bob: number;

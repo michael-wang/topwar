@@ -239,7 +239,8 @@ describe('Modern Toy Soldier presentation', () => {
       renderer.update(boss, tier * 1000);
       const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
       expect(helmet.scale.x).toBeCloseTo(.92);
-      expect(helmet.position.y).toBeCloseTo(.82 * .08 + .035);
+      expect(helmet.position.y).toBeCloseTo(.82 * .08 - .025);
+      expect(helmet.position.z).toBeCloseTo(.10);
       expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString())
         .toBe(ENEMY_PALETTE[paletteIndex(tier, 6)].body.slice(1));
       const vest = (active.children[0] as THREE.Group).children[2] as THREE.Mesh;
@@ -264,6 +265,7 @@ describe('Modern Toy Soldier presentation', () => {
     const pose = active.children[0] as THREE.Group;
     const washes = pose.children.slice(4, 7) as THREE.Mesh[];
     expect(washes[1].position.y).toBeCloseTo(helmet.position.y);
+    expect(washes[1].position.z).toBeCloseTo(helmet.position.z);
     expect(washes[1].scale.x).toBeCloseTo(helmet.scale.x * 1.005);
     expect(washes[2].geometry).toBe((pose.children[2] as THREE.Mesh).geometry);
     expect(washes.every((mesh) => mesh.visible)).toBe(true);
@@ -282,6 +284,7 @@ describe('Modern Toy Soldier presentation', () => {
     expect(deathHelmet.geometry).toBe(helmet.geometry);
     expect(deathHelmet.scale.x).toBeCloseTo(helmet.scale.x);
     expect(deathHelmet.position.y).toBeCloseTo(helmet.position.y);
+    expect(deathHelmet.position.z).toBeCloseTo(helmet.position.z);
     renderer.update(null, 20420);
     expect(death.rotation.z).toBeLessThan(Math.PI / 2);
     renderer.update(null, 21000);
