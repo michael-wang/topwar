@@ -4,7 +4,7 @@ import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
-import { compactRifleValue, rifleDefenseValue } from '../src/simulation/squad/composition';
+import { afterCasualtiesWithBreakdown, compactRifleValue, rifleDefenseValue } from '../src/simulation/squad/composition';
 import { bossMaxHpForTier, bossRowForTier, exchangeValueForTier } from '../src/simulation/tiers/tierRules';
 
 const config = GameConfigSchema.parse(configData);
@@ -40,6 +40,31 @@ function advance(simulation: Simulation, ticks: number): void {
 }
 
 describe('Boss melee showdown', () => {
+  it('removes ten Tier N+1 soldiers of exact value, then leaves one of eleven', () => {
+    for (const tier of [1, 20]) {
+      const soldierValue = exchangeValueForTier(tier + 1, 10);
+      const slamDamage = 10n * soldierValue;
+      const ten = afterCasualtiesWithBreakdown(compactRifleValue(slamDamage, 10), slamDamage, 10);
+      expect(rifleDefenseValue(ten.squad, 10)).toBe(0n);
+      const eleven = afterCasualtiesWithBreakdown(
+        compactRifleValue(11n * soldierValue, 10), slamDamage, 10);
+      expect(eleven.squad.rifleCounts[tier]).toBe(1);
+      expect(rifleDefenseValue(eleven.squad, 10)).toBe(soldierValue);
+    }
+  });
+
+  it('spends low-tier members first and demotes a partly damaged high-tier member', () => {
+    const before = compactRifleValue(120n, 10);
+    const casualty = afterCasualtiesWithBreakdown(before, 100n, 10);
+    expect(casualty.affectedMembers.map((member) => member.tier)).toEqual([2, 2, 3]);
+    expect(casualty.affectedMembers.map((member) => member.index)).toEqual([0, 1, 2]);
+    expect(rifleDefenseValue(casualty.squad, 10)).toBe(20n);
+    expect(casualty.squad.rifleCounts).toEqual([0, 2]);
+    const lower = afterCasualtiesWithBreakdown(compactRifleValue(12n, 10), 11n, 10);
+    expect(lower.affectedMembers.map((member) => member.tier)).toEqual([1, 1, 2]);
+    expect(rifleDefenseValue(lower.squad, 10)).toBe(1n);
+  });
+
   it('engages without instant wipe, freezes forward stream, and allows horizontal movement and fire', () => {
     const simulation = setup(100n);
     const before = simulation.getState();
@@ -59,7 +84,7 @@ describe('Boss melee showdown', () => {
   });
 
   it('waits for wind-up, removes an exact Tier-equivalent value, then repeats every two seconds', () => {
-    const loss = exchangeValueForTier(2, config.tiers.mergeCount);
+    const loss = 10n * exchangeValueForTier(2, config.tiers.mergeCount);
     const simulation = setup(3n * loss);
     advance(simulation, 35);
     expect(rifleDefenseValue(simulation.getState().squad, 10)).toBe(3n * loss);
@@ -75,22 +100,22 @@ describe('Boss melee showdown', () => {
   });
 
   it('demotes higher tiers and preserves mixed exact remainder and rockets', () => {
-    const simulation = setup(100n + 13n, 2);
+    const simulation = setup(1000n + 13n, 2);
     advance(simulation, 36);
     const squad = simulation.getState().squad;
-    expect(rifleDefenseValue(squad, 10)).toBe(103n);
+    expect(rifleDefenseValue(squad, 10)).toBe(913n);
     expect(squad.rocketCount).toBe(2);
     const higher = setup(exchangeValueForTier(20, 10) + 7n);
     advance(higher, 36);
     expect(rifleDefenseValue(higher.getState().squad, 10))
-      .toBe(exchangeValueForTier(20, 10) - 3n);
+      .toBe(exchangeValueForTier(20, 10) - 93n);
   });
 
   it('uses exact Tier 20 Boss damage and never advances a second Boss while engaged', () => {
     const simulation = setup(20n);
     const state = simulation.getState();
     const tier = 20;
-    const loss = exchangeValueForTier(tier + 1, 10);
+    const loss = 10n * exchangeValueForTier(tier + 1, 10);
     state.squad = compactRifleValue(2n * loss + 7n, 10);
     state.boss!.tier = tier;
     state.boss!.z = level.enemyStream.startZ
@@ -111,7 +136,7 @@ describe('Boss melee showdown', () => {
   it('uses existing last-loss rocket casualty semantics', () => {
     const simulation = setup(0n, 12);
     advance(simulation, 36);
-    expect(simulation.getState().squad).toEqual({ count: 2, rocketCount: 2,
+    expect(simulation.getState().squad).toEqual({ count: 0, rocketCount: 0,
       rifleCounts: [], rifleRemainder: 0 });
   });
 

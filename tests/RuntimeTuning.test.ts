@@ -6,12 +6,14 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { rewardPlacementForBlock } from '../src/simulation/enemies/streamRewards';
+import { effectiveSeed } from '../src/simulation/enemies/effectiveSeed';
 import { enemyPowerForTier, riflePowerForTier } from '../src/simulation/tiers/tierRules';
 import { bossMaxHpForTier } from '../src/simulation/tiers/tierRules';
 
 const config = GameConfigSchema.parse(gameData);
 const level = LevelDefinitionSchema.parse(levelData);
 const stream = level.enemyStream!;
+const seededRewards = { ...stream.rewards!, seed: effectiveSeed(1, stream.rewards!.seed) };
 const make = (rewardRowsPerReward = 8) => new Simulation({ seed: 1, level,
   startSquad: 1, startRocketCount: 0, tiers: config.tiers, rewardRowsPerReward });
 const baseline = { rewardRowsPerReward: 8, enemyHigherTierPowerMultiplier: 10,
@@ -156,12 +158,12 @@ describe('temporary runtime tuning', () => {
     const active = before.streamRewards.map((reward) => ({ ...reward }));
     const previousId = before.enemyStream!.nextRewardId;
     const oldLastBlock = before.enemyStream!.nextRewardBlockIndex - 1;
-    const oldLastRow = rewardPlacementForBlock(oldLastBlock, stream.columns, stream.rewards!).rowIndex;
+    const oldLastRow = rewardPlacementForBlock(oldLastBlock, stream.columns, seededRewards).rowIndex;
     simulation.setRuntimeBalance({ ...baseline, rewardRowsPerReward: 2 });
     const changed = simulation.getState();
     expect(changed.streamRewards).toEqual(active);
     expect(changed.enemyStream!.nextRewardId).toBe(previousId);
-    const twoRowConfig = { ...stream.rewards!, rowsPerReward: 2 };
+    const twoRowConfig = { ...seededRewards, rowsPerReward: 2 };
     const next = rewardPlacementForBlock(changed.enemyStream!.nextRewardBlockIndex,
       stream.columns, twoRowConfig);
     expect(next.rowIndex).toBeGreaterThan(oldLastRow);
@@ -172,7 +174,7 @@ describe('temporary runtime tuning', () => {
     simulation.setRuntimeBalance(baseline);
     const reset = simulation.getState();
     const resetNext = rewardPlacementForBlock(reset.enemyStream!.nextRewardBlockIndex,
-      stream.columns, stream.rewards!);
+      stream.columns, seededRewards);
     expect(resetNext.rowIndex).toBeGreaterThan(next.rowIndex);
     expect(reset.streamRewards).toEqual(active);
   });
@@ -182,7 +184,7 @@ describe('temporary runtime tuning', () => {
     simulation.setRuntimeBalance({ ...baseline, rewardRowsPerReward: 2 });
     const changed = simulation.getState();
     const next = rewardPlacementForBlock(changed.enemyStream!.nextRewardBlockIndex,
-      stream.columns, { ...stream.rewards!, rowsPerReward: 2 });
+      stream.columns, { ...seededRewards, rowsPerReward: 2 });
     changed.player.z = stream.startZ + next.rowIndex * stream.spacing
       - stream.rewards!.spawnAheadDistance + 0.1;
     simulation.restoreState(changed);

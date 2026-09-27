@@ -8,6 +8,7 @@ import type { EnemySimulationState, ProjectileSimulationState, SimulationState,
   StreamRewardSimulationState } from '../src/simulation/SimulationState';
 import { enemyPowerForTier, bossRowForTier, rewardTierForRow } from '../src/simulation/tiers/tierRules';
 import { rewardPlacementForBlock } from '../src/simulation/enemies/streamRewards';
+import { effectiveSeed } from '../src/simulation/enemies/effectiveSeed';
 import { squadDefenseValue, damageFeedback } from '../src/app/combatFeedback';
 import { compactRifleValue } from '../src/simulation/squad/composition';
 
@@ -42,6 +43,40 @@ function step(simulation: Simulation, override: Partial<SimulationTuning> = {}):
 }
 
 describe('unbounded enemy and Boss stream', () => {
+  it('mixes the run seed with authored stream and reward salts, including after restore', () => {
+    const first = create(level);
+    const same = create(level);
+    const other = new Simulation({ seed: 18, level, startSquad: 1,
+      startRocketCount: 0, tiers: config.tiers });
+    expect(same.getState()).toEqual(first.getState());
+    expect(other.getState().enemies.slice(0, 30)).not.toEqual(first.getState().enemies.slice(0, 30));
+    expect(other.getState().streamRewards.map((entry) => [entry.x, entry.z]))
+      .not.toEqual(first.getState().streamRewards.map((entry) => [entry.x, entry.z]));
+    const saltedLevel = { ...level, enemyStream: { ...level.enemyStream!,
+      seed: level.enemyStream!.seed + 1,
+      rewards: { ...level.enemyStream!.rewards!, seed: level.enemyStream!.rewards!.seed + 1 } } };
+    const salted = create(saltedLevel);
+    expect(salted.getState().enemies.slice(0, 30)).not.toEqual(first.getState().enemies.slice(0, 30));
+    expect(salted.getState().streamRewards.map((entry) => [entry.x, entry.z]))
+      .not.toEqual(first.getState().streamRewards.map((entry) => [entry.x, entry.z]));
+    const snapshot = JSON.parse(JSON.stringify(first.getState()));
+    other.restoreState(snapshot);
+    expect(other.getState()).toEqual(first.getState());
+    const nextBlock = first.getState().enemyStream!.nextRewardBlockIndex;
+    const stream = level.enemyStream!;
+    const rewardSeed = effectiveSeed(17, stream.rewards!.seed);
+    const placement = rewardPlacementForBlock(nextBlock, stream.columns,
+      { ...stream.rewards!, seed: rewardSeed });
+    const playerZ = stream.startZ + placement.rowIndex * stream.spacing
+      - stream.rewards!.spawnAheadDistance + .1;
+    for (const simulation of [first, other]) {
+      const state = simulation.getState();
+      state.player.z = playerZ;
+      simulation.restoreState(state);
+      simulation.step(.01, idle, tuning);
+    }
+    expect(other.getState()).toEqual(first.getState());
+  });
   it('starts with the same T1 stream geometry and gameplay RNG', () => {
     const simulation = create(level);
     const state = simulation.getState();
@@ -60,7 +95,8 @@ describe('unbounded enemy and Boss stream', () => {
     expect(initial.enemies.some((entry) => entry.z > stream.rewards!.spawnAheadDistance + 30)).toBe(true);
     expect(initial.streamRewards.every((entry) => entry.z < stream.rewards!.spawnAheadDistance + 1)).toBe(true);
     const nextBlock = initial.enemyStream!.nextRewardBlockIndex;
-    const placement = rewardPlacementForBlock(nextBlock, stream.columns, stream.rewards!);
+    const placement = rewardPlacementForBlock(nextBlock, stream.columns,
+      { ...stream.rewards!, seed: effectiveSeed(17, stream.rewards!.seed) });
     const nextRowZ = stream.startZ + placement.rowIndex * stream.spacing;
     restoreWith(simulation, (state) => { state.player.z = nextRowZ - stream.rewards!.spawnAheadDistance + 0.1; });
     simulation.step(0.01, idle, tuning);

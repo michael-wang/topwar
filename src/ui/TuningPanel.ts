@@ -84,6 +84,10 @@ export class TuningPanel {
     this.updateDisplay();
   }
 
+  toggle(): void {
+    this.element.open = !this.element.open;
+  }
+
   dispose(): void {
     for (const input of this.inputs.values()) input.removeEventListener('input', this.onInput);
     this.element.removeEventListener('pointerdown', this.onPointerDown);

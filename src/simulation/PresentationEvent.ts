@@ -1,4 +1,5 @@
 import type { SquadSimulationState } from './SimulationState';
+import type { CasualtyMember } from './squad/composition';
 
 export type PresentationEvent = {
   kind: 'normalEnemyContact';
@@ -10,6 +11,7 @@ export type PresentationEvent = {
   playerZ: number;
   before: SquadSimulationState;
   after: SquadSimulationState;
+  affectedMembers?: CasualtyMember[];
 } | {
   kind: 'bossSlam';
   bossId: number;
@@ -21,6 +23,7 @@ export type PresentationEvent = {
   playerZ: number;
   before: SquadSimulationState;
   after: SquadSimulationState;
+  affectedMembers?: CasualtyMember[];
 };
 
 export function copySquadForPresentation(squad: SquadSimulationState): SquadSimulationState {

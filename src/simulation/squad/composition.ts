@@ -103,3 +103,36 @@ export function afterCasualties(squad: SquadSimulationState, casualties: number 
     ? 0 : squad.rocketCount - Number(rocketLoss);
   return compactRifleValue(remainingRifleValue, mergeCount, remainingRockets);
 }
+
+export interface CasualtyMember { index: number; tier: number; rocket: boolean }
+const MAX_PRESENTED_CASUALTIES = 48;
+
+export function afterCasualtiesWithBreakdown(squad: SquadSimulationState,
+  casualties: number | bigint, mergeCount: number): {
+    squad: SquadSimulationState; affectedMembers: CasualtyMember[] } {
+  const result = afterCasualties(squad, casualties, mergeCount);
+  let remaining = readExactValue(casualties, 'Casualty count');
+  const remainder = readExactValue(squad.rifleRemainder, 'Squad rifle remainder');
+  remaining = remaining > remainder ? remaining - remainder : 0n;
+  const affectedMembers: CasualtyMember[] = [];
+  let index = 0;
+  // Consume the old visible roster from its lowest rifle tier upward. A partial
+  // higher-tier loss still affects that old body, which reappears as demoted tiers.
+  for (let tier = 1; tier <= squad.rifleCounts.length; tier++) {
+    const count = squad.rifleCounts[tier - 1];
+    const value = exchangeValueForTier(tier, mergeCount);
+    const affected = Number((remaining + value - 1n) / value > BigInt(count)
+      ? BigInt(count) : (remaining + value - 1n) / value);
+    for (let local = 0; local < affected && affectedMembers.length < MAX_PRESENTED_CASUALTIES; local++) {
+      affectedMembers.push({ index: index + local, tier, rocket: false });
+    }
+    const capacity = BigInt(count) * value;
+    remaining = remaining > capacity ? remaining - capacity : 0n;
+    index += count;
+  }
+  const rocketLoss = Math.min(squad.rocketCount, Number(remaining));
+  for (let local = 0; local < rocketLoss && affectedMembers.length < MAX_PRESENTED_CASUALTIES; local++) {
+    affectedMembers.push({ index: index + local, tier: 0, rocket: true });
+  }
+  return { squad: result, affectedMembers };
+}

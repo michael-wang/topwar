@@ -53,6 +53,7 @@ export class GameApp {
   private previousFrameTimestampMs: number | null = null;
   private presentationMs = 0;
   private previousDefenseValue: bigint;
+  private lastRunSeed: number | null = null;
   private fatalPresentationUntilMs = -Infinity;
   private paused = false;
   private running = false;
@@ -173,7 +174,12 @@ export class GameApp {
   }
 
   private createSimulation(): Simulation {
-    return new Simulation({ seed: 1, level: this.level,
+    const randomWord = new Uint32Array(1);
+    crypto.getRandomValues(randomWord);
+    const seed = randomWord[0] === this.lastRunSeed
+      ? (randomWord[0] + 1) >>> 0 : randomWord[0];
+    this.lastRunSeed = seed;
+    return new Simulation({ seed, level: this.level,
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
       tiers: { ...this.config.tiers,
@@ -185,6 +191,13 @@ export class GameApp {
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
+    if (key === 'escape') {
+      if (!event.repeat) {
+        event.preventDefault();
+        this.tuningPanel.toggle();
+      }
+      return;
+    }
     const isSpace = key === ' ' || key === 'space' || key === 'spacebar';
     if (event.repeat || (key !== 'p' && !isSpace) || isInteractivePauseTarget(event.target)) return;
     if (isSpace) event.preventDefault();

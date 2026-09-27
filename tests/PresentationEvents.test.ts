@@ -86,7 +86,7 @@ describe('transient combat presentation events', () => {
     state.player.z = state.boss!.z - 2.1;
     state.enemies = [];
     state.streamRewards = [];
-    state.squad = compactRifleValue(3n * exchangeValueForTier(2, 10), 10);
+    state.squad = compactRifleValue(30n * exchangeValueForTier(2, 10), 10);
     state.weapons.rifleCooldownRemainingSeconds = 100;
     simulation.restoreState(state);
     simulation.step(1 / 60, { targetX: 0 }, { ...tuning, forwardSpeed: 2 });
@@ -95,9 +95,27 @@ describe('transient combat presentation events', () => {
     const events = simulation.consumePresentationEvents();
     expect(events.map((event) => event.kind)).toEqual(['bossSlam', 'bossSlam']);
     expect(events.map((event) => event.kind === 'bossSlam' && event.slamCount)).toEqual([1, 2]);
-    expect(events[0].before).toMatchObject({ count: 3, rifleCounts: [0, 3] });
-    expect(events[0].after).toMatchObject({ count: 2, rifleCounts: [0, 2] });
+    expect(events[0].before).toMatchObject({ count: 3, rifleCounts: [0, 0, 3] });
+    expect(events[0].after).toMatchObject({ count: 2, rifleCounts: [0, 0, 2] });
     expect(simulation.consumePresentationEvents()).toEqual([]);
+  });
+
+  it('reports low-tier visible casualties before high-tier demotion for a Boss slam', () => {
+    const simulation = make(bossLevel);
+    const state = simulation.getState();
+    state.player.z = state.boss!.z - 2.1;
+    state.enemies = [];
+    state.streamRewards = [];
+    state.squad = compactRifleValue(120n, 10);
+    state.weapons.rifleCooldownRemainingSeconds = 100;
+    simulation.restoreState(state);
+    simulation.step(1 / 60, { targetX: 0 }, { ...tuning, forwardSpeed: 2 });
+    step(simulation, 36);
+    const events = simulation.consumePresentationEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0].kind).toBe('bossSlam');
+    expect(events[0].affectedMembers?.map((member) => member.tier)).toEqual([2, 2, 3]);
+    expect(rifleDefenseValue(simulation.getState().squad, 10)).toBe(20n);
   });
 
   it('bounds pending events and clears them on snapshot restore', () => {

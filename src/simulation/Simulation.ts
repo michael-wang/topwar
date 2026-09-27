@@ -3,7 +3,8 @@ import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition,
 import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { rewardPlacementForBlock } from './enemies/streamRewards';
-import { addRifleSoldiers, afterCasualties, normalizeRifleSquad, validateSquad } from './squad/composition';
+import { effectiveSeed } from './enemies/effectiveSeed';
+import { addRifleSoldiers, afterCasualtiesWithBreakdown, normalizeRifleSquad, validateSquad } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { readExactValue, storeExactValue } from './tiers/exactValue';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
@@ -522,7 +523,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
 export class Simulation {
   private rng: SeededRng;
   private state: SimulationState;
-  private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
+  private enemyStreamDefinition: EnemyStreamDefinition | undefined;
+  private readonly authoredEnemyStreamDefinition: EnemyStreamDefinition | undefined;
   private tiers: TierPower;
   private bossHpScale: number;
   private presentationEvents: PresentationEvent[] = [];
@@ -552,9 +554,9 @@ export class Simulation {
     if (!Number.isFinite(this.bossHpScale) || this.bossHpScale < .25 || this.bossHpScale > 100) {
       throw new Error('Simulation Boss HP scale must be between 0.25 and 100');
     }
-    this.enemyStreamDefinition = level.enemyStream ? { ...level.enemyStream,
-      rewards: level.enemyStream.rewards ? { ...level.enemyStream.rewards,
-        rowsPerReward: options.rewardRowsPerReward ?? level.enemyStream.rewards.rowsPerReward } : undefined } : undefined;
+    this.authoredEnemyStreamDefinition = level.enemyStream;
+    this.enemyStreamDefinition = this.effectiveStreamDefinition(options.seed,
+      options.rewardRowsPerReward);
     this.tiers = { ...options.tiers };
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
@@ -908,11 +910,12 @@ export class Simulation {
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
         const before = copySquadForPresentation(squad);
-        squad = afterCasualties(squad, exchangeValueForTier(enemy.tier, this.tiers.mergeCount),
-          this.tiers.mergeCount);
+        const casualty = afterCasualtiesWithBreakdown(squad,
+          exchangeValueForTier(enemy.tier, this.tiers.mergeCount), this.tiers.mergeCount);
+        squad = casualty.squad;
         stepEvents.push({ kind: 'normalEnemyContact', enemyId: enemy.id, enemyTier: enemy.tier,
           attackerX: enemy.x, attackerZ: enemy.z, playerX: nextX, playerZ: nextZ,
-          before, after: copySquadForPresentation(squad) });
+          before, after: copySquadForPresentation(squad), affectedMembers: casualty.affectedMembers });
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
@@ -923,23 +926,28 @@ export class Simulation {
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
         const before = copySquadForPresentation(squad);
-        squad = afterCasualties(squad, exchangeValueForTier(enemy.tier, this.tiers.mergeCount),
-          this.tiers.mergeCount);
+        const casualty = afterCasualtiesWithBreakdown(squad,
+          exchangeValueForTier(enemy.tier, this.tiers.mergeCount), this.tiers.mergeCount);
+        squad = casualty.squad;
         stepEvents.push({ kind: 'normalEnemyContact', enemyId: enemy.id, enemyTier: enemy.tier,
           attackerX: enemy.x, attackerZ: enemy.z, playerX: nextX, playerZ: nextZ,
-          before, after: copySquadForPresentation(squad) });
+          before, after: copySquadForPresentation(squad), affectedMembers: casualty.affectedMembers });
       }
     }
     if (boss?.engaged && !justEngaged && squad.count > 0) {
       boss.slamCooldownRemainingSeconds -= dtSeconds;
       while (boss.slamCooldownRemainingSeconds <= 1e-9 && squad.count > 0) {
         const before = copySquadForPresentation(squad);
-        squad = afterCasualties(squad,
-          exchangeValueForTier(boss.tier + 1, this.tiers.mergeCount), this.tiers.mergeCount);
+        // A Tier N slam removes ten Tier N+1 soldiers' exact exchange value.
+        const casualty = afterCasualtiesWithBreakdown(squad,
+          10n * exchangeValueForTier(boss.tier + 1, this.tiers.mergeCount),
+          this.tiers.mergeCount);
+        squad = casualty.squad;
         boss.slamCount++;
         stepEvents.push({ kind: 'bossSlam', bossId: boss.id, bossTier: boss.tier,
           slamCount: boss.slamCount, attackerX: boss.x, attackerZ: boss.z,
-          playerX: nextX, playerZ: nextZ, before, after: copySquadForPresentation(squad) });
+          playerX: nextX, playerZ: nextZ, before, after: copySquadForPresentation(squad),
+          affectedMembers: casualty.affectedMembers });
         boss.slamCooldownRemainingSeconds += 2;
       }
       if (boss.slamCooldownRemainingSeconds < 0) boss.slamCooldownRemainingSeconds = 0;
@@ -1005,6 +1013,18 @@ export class Simulation {
     }
     this.state = candidate.state;
     this.rng = candidate.rng;
+    this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed,
+      this.enemyStreamDefinition?.rewards?.rowsPerReward);
     this.presentationEvents = [];
+  }
+
+  private effectiveStreamDefinition(runSeed: number,
+    rowsPerReward?: number): EnemyStreamDefinition | undefined {
+    const authored = this.authoredEnemyStreamDefinition;
+    if (!authored) return undefined;
+    return { ...authored, seed: effectiveSeed(runSeed, authored.seed),
+      rewards: authored.rewards ? { ...authored.rewards,
+        seed: effectiveSeed(runSeed, authored.rewards.seed),
+        rowsPerReward: rowsPerReward ?? authored.rewards.rowsPerReward } : undefined };
   }
 }

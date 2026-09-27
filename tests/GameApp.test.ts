@@ -43,6 +43,7 @@ const mock = vi.hoisted(() => ({
   hintDispose: vi.fn(),
   panelConstructedWith: vi.fn(),
   panelSetValues: vi.fn(),
+  panelToggle: vi.fn(),
   panelDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
@@ -110,6 +111,7 @@ vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
     mock.panelConstructedWith(defaults, onChange);
   }
   setValues = mock.panelSetValues;
+  toggle = mock.panelToggle;
   dispose = mock.panelDispose;
 } }));
 
@@ -189,6 +191,11 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
 function createRaf() {
   const windowTarget = new EventTarget();
   vi.stubGlobal('window', windowTarget);
+  let nextSeed = 1;
+  vi.stubGlobal('crypto', { getRandomValues: (values: Uint32Array) => {
+    values[0] = nextSeed++;
+    return values;
+  } });
   const pending = new Map<number, FrameRequestCallback>();
   let nextId = 1;
   const request = vi.fn((callback: FrameRequestCallback) => {
@@ -538,7 +545,7 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
-  it('pauses on P or Space, ignores Escape and controls, and resumes without catch-up', () => {
+  it('pauses on P or Space and toggles TUNE with Escape without pausing', () => {
     const raf = createRaf();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
@@ -553,7 +560,8 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.keyboardStop).toHaveBeenCalledOnce();
     expect(mock.inputStop).toHaveBeenCalledOnce();
     raf.key('p', true);
-    expect(raf.key('Escape')).toBe(false);
+    expect(raf.key('Escape')).toBe(true);
+    expect(mock.panelToggle).toHaveBeenCalledTimes(1);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
     for (const tagName of ['INPUT', 'BUTTON', 'SUMMARY']) {
       expect(raf.key(' ', false, { tagName })).toBe(false);
@@ -568,7 +576,8 @@ describe('GameApp config and frame lifecycle', () => {
     expect(raf.key(' ')).toBe(true);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     expect(raf.key(' ', false, { tagName: 'INPUT' })).toBe(false);
-    expect(raf.key('Escape')).toBe(false);
+    expect(raf.key('Escape')).toBe(true);
+    expect(mock.panelToggle).toHaveBeenCalledTimes(2);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     raf.key('p');
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
@@ -684,7 +693,7 @@ describe('GameApp config and frame lifecycle', () => {
     });
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
-    expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
+    expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 2, level, startSquad: 5,
       startRocketCount: 1, rewardRowsPerReward: 8, bossHpScale: 1, tiers: { mergeCount: 10, tier1Power: 4,
         tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
@@ -695,6 +704,8 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(124 + 1000 / 60);
     expect(mock.step).toHaveBeenCalledTimes(priorSteps + 1);
     expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 0 });
+    onRetry();
+    expect(mock.constructedWith.mock.lastCall![0].seed).toBe(3);
     app.dispose();
   });
 

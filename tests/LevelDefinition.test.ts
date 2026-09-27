@@ -4,6 +4,7 @@ import gameData from '../public/game-data/game.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
+import { effectiveSeed } from '../src/simulation/enemies/effectiveSeed';
 
 const finiteGroup = { id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
   formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } };
@@ -49,14 +50,15 @@ describe('LevelDefinitionSchema', () => {
       startRocketCount: 0, tiers: gameData.tiers }).getState();
     const first = legacy.enemies.slice(0, 7);
     const second = legacy.enemies.slice(7, 14);
-    const expected = createEnemyStreamRow(0, 7, .6, .16, legacyStream.seed!);
+    const streamSeed = effectiveSeed(1, legacyStream.seed!);
+    const expected = createEnemyStreamRow(0, 7, .6, .16, streamSeed);
     first.forEach((enemy, index) => {
       expect(enemy.x).toBe(expected[index].x);
       expect(enemy.z - legacyStream.startZ!).toBeCloseTo(expected[index].z);
     });
     expect(second[0].z - first[0].z).toBeCloseTo(.6
-      + createEnemyStreamRow(1, 7, .6, .16, legacyStream.seed!)[0].z
-      - createEnemyStreamRow(0, 7, .6, .16, legacyStream.seed!)[0].z);
+      + createEnemyStreamRow(1, 7, .6, .16, streamSeed)[0].z
+      - createEnemyStreamRow(0, 7, .6, .16, streamSeed)[0].z);
   });
 
   it('accepts finite levels without a stream and validates stream fields strictly', () => {

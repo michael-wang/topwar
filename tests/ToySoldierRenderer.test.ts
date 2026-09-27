@@ -251,7 +251,10 @@ describe('Modern Toy Soldier presentation', () => {
     const last = { id: 20, tier: 20, x: 0, z: 10, hp: 50, maxHp: 100, visualScale: 7,
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
     renderer.update(last, 20010);
-    expect((active.children[2] as THREE.Mesh).scale.x).toBeCloseTo(.5);
+    const barAnchor = (active.children[0] as THREE.Group).children[3] as THREE.Group;
+    expect(barAnchor.position.y).toBeCloseTo(.92);
+    expect(barAnchor.scale.x).toBeCloseTo(.3);
+    expect((barAnchor.children[1] as THREE.Mesh).scale.x).toBeCloseTo(.5);
     const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
     expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffe36e');
     renderer.update(null, 20020);

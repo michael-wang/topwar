@@ -94,7 +94,7 @@ export class SquadRenderer {
   present(events: readonly PresentationEvent[], nowMs: number,
     trackHalfWidth: number, formationSpacing: number): void {
     for (const event of events) {
-      const removed = removedVisualMembers(event.before, event.after);
+      const removed = event.affectedMembers ?? removedVisualMembers(event.before, event.after);
       const offsets = createSquadFormation(event.before.count, formationSpacing);
       const maxOffsetX = offsets.reduce((max, offset) => Math.max(max, Math.abs(offset.x)), 0);
       const visualSpread = maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,

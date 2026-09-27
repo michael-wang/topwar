@@ -12,6 +12,7 @@ class ElementStub extends EventTarget {
   max = '';
   step = '';
   value = '';
+  open = false;
   removed = false;
   constructor(readonly tagName: string) { super(); }
   append(...children: ElementStub[]): void { this.children.push(...children); }
@@ -63,6 +64,10 @@ describe('temporary tuning panel', () => {
     expect(onChange).toHaveBeenLastCalledWith(defaults);
     expect(density.value).toBe('8');
     expect(bossScale.value).toBe('1');
+    panel.toggle();
+    expect(root.open).toBe(true);
+    panel.toggle();
+    expect(root.open).toBe(false);
     panel.dispose();
     expect(root.removed).toBe(true);
   });

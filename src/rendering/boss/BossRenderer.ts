@@ -29,8 +29,10 @@ export class BossRenderer {
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly vestMaterials: THREE.MeshStandardMaterial[];
   private readonly flashMaterial: THREE.MeshStandardMaterial;
-  private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#27313a', side: THREE.DoubleSide });
-  private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ffe36e', side: THREE.DoubleSide });
+  private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#27313a',
+    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ffe36e',
+    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   private readonly active = new THREE.Group();
   private readonly death = new THREE.Group();
   private readonly body = new THREE.Group();
@@ -43,6 +45,7 @@ export class BossRenderer {
   private readonly deathVest: THREE.Mesh;
   private readonly barBackground = new THREE.Mesh(this.barGeometry, this.barBackgroundMaterial);
   private readonly barFill = new THREE.Mesh(this.barGeometry, this.barFillMaterial);
+  private readonly barAnchor = new THREE.Group();
   private previous: BossRenderState | null = null;
   private flashUntilMs = -Infinity;
   private hitAtMs = -Infinity;
@@ -85,9 +88,16 @@ export class BossRenderer {
     this.deathVest = new THREE.Mesh(vestModel.geometry, this.vestMaterials[0]);
     this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
     this.death.rotation.y = Math.PI;
-    this.barBackground.position.set(0, 1.25, -0.14);
-    this.barFill.position.set(0, 1.25, -0.15);
-    this.active.add(this.barBackground, this.barFill);
+    // The bar rides the head's bob/slam, but its local scale compensates for
+    // the giant's 7× world scale so it stays legible at melee range.
+    this.barAnchor.position.set(0, 0.92, 0.34);
+    this.barAnchor.scale.setScalar(0.3);
+    this.barBackground.position.z = 0;
+    this.barFill.position.z = 0.01;
+    this.barBackground.renderOrder = 20;
+    this.barFill.renderOrder = 21;
+    this.barAnchor.add(this.barBackground, this.barFill);
+    this.body.add(this.barAnchor);
     this.active.visible = false;
     this.death.visible = false;
     this.scene.add(this.active, this.death);
