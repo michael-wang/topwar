@@ -53,6 +53,7 @@ export class GameApp {
   private previousFrameTimestampMs: number | null = null;
   private presentationMs = 0;
   private previousDefenseValue: bigint;
+  private fatalPresentationUntilMs = -Infinity;
   private paused = false;
   private running = false;
   private disposed = false;
@@ -74,7 +75,8 @@ export class GameApp {
     this.tuningPanel = new TuningPanel(viewport, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
-        rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier });
+        rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,
+        bossHpScale: values.bossHpScale });
       this.runtimeTuning = values;
     });
     this.damageFlash = new DamageFlashOverlay(viewport);
@@ -161,6 +163,7 @@ export class GameApp {
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.presentationMs = 0;
+    this.fatalPresentationUntilMs = -Infinity;
     this.pauseOverlay.setVisible(false);
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
@@ -176,7 +179,8 @@ export class GameApp {
       tiers: { ...this.config.tiers,
         enemyHigherTierPowerMultiplier: this.runtimeTuning.enemyHigherTierPowerMultiplier,
         rifleHigherTierPowerMultiplier: this.runtimeTuning.rifleHigherTierPowerMultiplier },
-      rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward });
+      rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward,
+      bossHpScale: this.runtimeTuning.bossHpScale });
   }
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
@@ -227,6 +231,10 @@ export class GameApp {
         ));
       }
       const state = this.simulation.getState();
+      const presentationEvents = this.simulation.consumePresentationEvents();
+      if (state.squad.count === 0 && presentationEvents.some((event) => event.after.count === 0)) {
+        this.fatalPresentationUntilMs = this.presentationMs + 360;
+      }
       const stream = this.level.enemyStream;
       if (stream) {
         const row = Math.max(0, Math.floor((state.player.z - stream.startZ) / stream.spacing));
@@ -260,8 +268,11 @@ export class GameApp {
           tier: projectile.tier,
           x: projectile.x, z: projectile.z })),
       };
+      if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
+        this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
-      this.gameOverOverlay.setVisible(state.squad.count === 0);
+      this.gameOverOverlay.setVisible(state.squad.count === 0
+        && this.presentationMs >= this.fatalPresentationUntilMs);
       this.frameId = requestAnimationFrame(this.renderFrame);
     } catch (error) {
       console.error('TopWar game loop stopped after an unexpected error', error);

@@ -294,6 +294,14 @@ exchange arithmetic; snapshots never contain a JavaScript `bigint`.
 An active Boss stores `engaged`, `slamCooldownRemainingSeconds`, and `slamCount`
 as plain JSON data. Simulation alone advances the cooldown and applies casualties;
 the renderer uses these fields only to select baked attack poses and impact feedback.
+Simulation also owns a bounded transient queue of contact/slam presentation events.
+GameApp consumes it once per render; events are excluded from snapshots and cleared
+when a state is restored or a run is restarted. Runtime Boss HP scale defaults to
+1 and rescales a living Boss by its remaining HP ratio.
+Simulation also owns a bounded transient queue of contact/slam presentation events.
+GameApp consumes it once per render; events are excluded from snapshots and cleared
+when a state is restored or a run is restarted. Runtime Boss HP scale defaults to
+1 and rescales a living Boss by its remaining HP ratio.
 
 ### Snapshot invariant
 

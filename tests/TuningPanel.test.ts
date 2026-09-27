@@ -33,11 +33,11 @@ class ElementStub extends EventTarget {
 
 const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 8,
   enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10,
-  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5 };
+  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 1 };
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it('offers exactly eight sliders, shows density, and Reset restores authored defaults', () => {
+  it('offers eight sliders and a Boss HP selector, and Reset restores authored defaults', () => {
     vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });
     const viewport = new ElementStub('div');
     const onChange = vi.fn();
@@ -46,15 +46,23 @@ describe('temporary tuning panel', () => {
     const inputs = root.findAll('input');
     expect(inputs).toHaveLength(8);
     expect(inputs.every((input) => input.type === 'range')).toBe(true);
+    const bossScale = root.findAll('select')[0];
+    expect(bossScale.findAll('option').map((option) => option.value))
+      .toEqual(['0.25', '0.5', '1', '2', '5', '10', '20', '50', '100']);
+    bossScale.value = '20';
+    bossScale.dispatchEvent(new Event('input'));
+    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, bossHpScale: 20 });
     expect(root.findAll('output')[2].textContent).toContain('1 / 8 rows (≈12.5%)');
     const density = inputs[2];
     density.value = '4';
     density.dispatchEvent(new Event('input'));
-    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4 });
+    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4,
+      bossHpScale: 20 });
     expect(root.findAll('output')[2].textContent).toContain('1 / 4 rows (≈25%)');
     root.querySelector('button')!.dispatchEvent(new Event('click'));
     expect(onChange).toHaveBeenLastCalledWith(defaults);
     expect(density.value).toBe('8');
+    expect(bossScale.value).toBe('1');
     panel.dispose();
     expect(root.removed).toBe(true);
   });

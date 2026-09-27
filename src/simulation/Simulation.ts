@@ -9,6 +9,7 @@ import { readExactValue, storeExactValue } from './tiers/exactValue';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
   enemyPowerForTier, riflePowerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
+import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
 
 export interface SimulationOptions {
   seed: number;
@@ -17,12 +18,14 @@ export interface SimulationOptions {
   startRocketCount: number;
   tiers: TierPower;
   rewardRowsPerReward?: number;
+  bossHpScale?: number;
 }
 
 export interface RuntimeBalance {
   rewardRowsPerReward: number;
   enemyHigherTierPowerMultiplier: number;
   rifleHigherTierPowerMultiplier: number;
+  bossHpScale?: number;
 }
 
 export interface SimulationInput {
@@ -150,7 +153,7 @@ function validSquadCount(count: unknown): count is number {
 
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
-  boss: BossSimulationState | null): BossSimulationState | null {
+  boss: BossSimulationState | null, bossHpScale: number): BossSimulationState | null {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
@@ -161,7 +164,8 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     if (cursor.nextRowIndex === bossRowForTier(bossTier, stream.tierProgression)) {
       // One active Boss is supported; authored encounters must not overlap in play.
       if (boss) throw new Error('Simulation cannot spawn a Boss while another Boss is active');
-      const maxHp = bossMaxHpForTier(bossTier, stream.tierProgression, power);
+      const maxHp = bossMaxHpForTier(bossTier, stream.tierProgression, power) * bossHpScale;
+      if (!positiveFinite(maxHp)) throw new Error('Scaled Boss HP exceeds the supported range');
       if (!Number.isSafeInteger(cursor.nextEnemyId + 1)) {
         throw new Error('Simulation Boss ID exceeds the supported range');
       }
@@ -520,6 +524,9 @@ export class Simulation {
   private state: SimulationState;
   private readonly enemyStreamDefinition: EnemyStreamDefinition | undefined;
   private tiers: TierPower;
+  private bossHpScale: number;
+  private presentationEvents: PresentationEvent[] = [];
+  private static readonly MAX_PRESENTATION_EVENTS = 256;
 
   constructor(options: SimulationOptions) {
     this.rng = new SeededRng(options.seed);
@@ -540,6 +547,10 @@ export class Simulation {
     if (options.rewardRowsPerReward !== undefined
       && (!Number.isSafeInteger(options.rewardRowsPerReward) || options.rewardRowsPerReward <= 0)) {
       throw new Error('Simulation reward rows per reward must be a positive safe integer');
+    }
+    this.bossHpScale = options.bossHpScale ?? 1;
+    if (!Number.isFinite(this.bossHpScale) || this.bossHpScale < .25 || this.bossHpScale > 100) {
+      throw new Error('Simulation Boss HP scale must be between 0.25 and 100');
     }
     this.enemyStreamDefinition = level.enemyStream ? { ...level.enemyStream,
       rewards: level.enemyStream.rewards ? { ...level.enemyStream.rewards,
@@ -569,7 +580,8 @@ export class Simulation {
       : null;
     let boss: BossSimulationState | null = null;
     if (enemyStream && this.enemyStreamDefinition) {
-      boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, 0, this.tiers, boss);
+      boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
+        0, this.tiers, boss, this.bossHpScale);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, 0);
     }
     this.state = {
@@ -601,6 +613,10 @@ export class Simulation {
       || balance.rifleHigherTierPowerMultiplier <= 1) {
       throw new Error('Simulation runtime balance is invalid');
     }
+    const nextBossHpScale = balance.bossHpScale ?? this.bossHpScale;
+    if (!Number.isFinite(nextBossHpScale) || nextBossHpScale < .25 || nextBossHpScale > 100) {
+      throw new Error('Simulation Boss HP scale must be between 0.25 and 100');
+    }
     const nextTiers = { ...this.tiers,
       enemyHigherTierPowerMultiplier: balance.enemyHigherTierPowerMultiplier,
       rifleHigherTierPowerMultiplier: balance.rifleHigherTierPowerMultiplier };
@@ -611,10 +627,12 @@ export class Simulation {
       const nextMax = enemyPowerForTier(enemy.tier, nextTiers);
       return { ...enemy, hp: Math.min(nextMax, Math.max(0, enemy.hp / oldMax * nextMax)) };
     });
-    const boss = rescaleHp && this.state.boss && this.enemyStreamDefinition
+    const boss = (rescaleHp || nextBossHpScale !== this.bossHpScale)
+      && this.state.boss && this.enemyStreamDefinition
       ? (() => {
         const nextMax = bossMaxHpForTier(this.state.boss!.tier,
-          this.enemyStreamDefinition!.tierProgression, nextTiers);
+          this.enemyStreamDefinition!.tierProgression, nextTiers) * nextBossHpScale;
+        if (!positiveFinite(nextMax)) throw new Error('Scaled Boss HP exceeds the supported range');
         return { ...this.state.boss!, maxHp: nextMax,
           hp: Math.min(nextMax, Math.max(0, this.state.boss!.hp / this.state.boss!.maxHp * nextMax)) };
       })() : this.state.boss;
@@ -639,6 +657,7 @@ export class Simulation {
       }
     }
     this.tiers = nextTiers;
+    this.bossHpScale = nextBossHpScale;
     if (rewards) rewards.rowsPerReward = balance.rewardRowsPerReward;
     this.state = { ...this.state, enemies, boss,
       enemyStream: cursor ? { ...cursor, nextRewardBlockIndex: nextRewardBlockIndex! } : null };
@@ -711,6 +730,7 @@ export class Simulation {
       throw new Error('Simulation armory position exceeds the supported range');
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
+    const stepEvents: PresentationEvent[] = [];
     let boss = this.state.boss ? { ...this.state.boss } : null;
     if (boss && justEngaged) {
       boss.engaged = true;
@@ -720,7 +740,7 @@ export class Simulation {
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition && !boss?.engaged) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.tiers, boss);
+        nextZ, this.tiers, boss, this.bossHpScale);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
@@ -887,8 +907,12 @@ export class Simulation {
       });
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
+        const before = copySquadForPresentation(squad);
         squad = afterCasualties(squad, exchangeValueForTier(enemy.tier, this.tiers.mergeCount),
           this.tiers.mergeCount);
+        stepEvents.push({ kind: 'normalEnemyContact', enemyId: enemy.id, enemyTier: enemy.tier,
+          attackerX: enemy.x, attackerZ: enemy.z, playerX: nextX, playerZ: nextZ,
+          before, after: copySquadForPresentation(squad) });
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
@@ -898,21 +922,29 @@ export class Simulation {
       if (squad.count === 0) break;
       if (enemy.z <= defenseLineZ) {
         enemies.splice(enemies.indexOf(enemy), 1);
+        const before = copySquadForPresentation(squad);
         squad = afterCasualties(squad, exchangeValueForTier(enemy.tier, this.tiers.mergeCount),
           this.tiers.mergeCount);
+        stepEvents.push({ kind: 'normalEnemyContact', enemyId: enemy.id, enemyTier: enemy.tier,
+          attackerX: enemy.x, attackerZ: enemy.z, playerX: nextX, playerZ: nextZ,
+          before, after: copySquadForPresentation(squad) });
       }
     }
     if (boss?.engaged && !justEngaged && squad.count > 0) {
       boss.slamCooldownRemainingSeconds -= dtSeconds;
       while (boss.slamCooldownRemainingSeconds <= 1e-9 && squad.count > 0) {
+        const before = copySquadForPresentation(squad);
         squad = afterCasualties(squad,
           exchangeValueForTier(boss.tier + 1, this.tiers.mergeCount), this.tiers.mergeCount);
         boss.slamCount++;
+        stepEvents.push({ kind: 'bossSlam', bossId: boss.id, bossTier: boss.tier,
+          slamCount: boss.slamCount, attackerX: boss.x, attackerZ: boss.z,
+          playerX: nextX, playerZ: nextZ, before, after: copySquadForPresentation(squad) });
         boss.slamCooldownRemainingSeconds += 2;
       }
       if (boss.slamCooldownRemainingSeconds < 0) boss.slamCooldownRemainingSeconds = 0;
     }
-    if (squad.count === 0 && boss?.engaged) survivingProjectiles.length = 0;
+    if (squad.count === 0 && stepEvents.length > 0) survivingProjectiles.length = 0;
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
     this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
@@ -921,6 +953,19 @@ export class Simulation {
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
+    if (stepEvents.length > 0) {
+      this.presentationEvents.push(...stepEvents);
+      if (this.presentationEvents.length > Simulation.MAX_PRESENTATION_EVENTS) {
+        this.presentationEvents.splice(0,
+          this.presentationEvents.length - Simulation.MAX_PRESENTATION_EVENTS);
+      }
+    }
+  }
+
+  consumePresentationEvents(): PresentationEvent[] {
+    const events = this.presentationEvents;
+    this.presentationEvents = [];
+    return events;
   }
 
   getState(): SimulationState {
@@ -955,10 +1000,11 @@ export class Simulation {
       || (boss && (boss.tier !== cursor.nextBossTier - 1
         || boss.z !== this.enemyStreamDefinition!.startZ
           + bossRowForTier(boss.tier, progression!) * this.enemyStreamDefinition!.spacing || boss.x !== 0
-        || boss.maxHp !== bossMaxHpForTier(boss.tier, progression!, this.tiers))))) {
+        || boss.maxHp !== bossMaxHpForTier(boss.tier, progression!, this.tiers) * this.bossHpScale)))) {
       throw new Error('Simulation Boss progression does not match the loaded level');
     }
     this.state = candidate.state;
     this.rng = candidate.rng;
+    this.presentationEvents = [];
   }
 }

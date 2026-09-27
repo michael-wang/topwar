@@ -10,6 +10,7 @@ export interface RuntimeTuning {
   fireRate: number;
   moveSpeed: number;
   forwardSpeed: number;
+  bossHpScale: number;
 }
 
 export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelDefinition): RuntimeTuning {
@@ -22,5 +23,6 @@ export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelD
     fireRate: config.weapon.rifle.fireRate,
     moveSpeed: config.player.moveSpeed,
     forwardSpeed: config.player.forwardSpeed,
+    bossHpScale: 1,
   };
 }

@@ -9,6 +9,7 @@ import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
 import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
 import { BossRenderer } from './boss/BossRenderer';
 import type { CharacterAssets } from './CharacterAssets';
+import type { PresentationEvent } from '../simulation/PresentationEvent';
 
 export class GameRenderer {
   private readonly scene = new THREE.Scene();
@@ -95,6 +96,12 @@ export class GameRenderer {
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  present(events: readonly PresentationEvent[], nowMs: number,
+    trackHalfWidth: number, formationSpacing: number): void {
+    this.squadRenderer.present(events, nowMs, trackHalfWidth, formationSpacing);
+    this.enemyRenderer.present(events, nowMs);
   }
 
   resetFeedback(): void {

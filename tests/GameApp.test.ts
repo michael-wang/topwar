@@ -23,7 +23,9 @@ const mock = vi.hoisted(() => ({
       rewardKind: 'rifle' | 'tier2Rifle' }[],
     projectiles: [{ id: 1, kind: 'rifle' as const, tier: 1, x: 2, z: 5 }],
   })),
+  consumePresentationEvents: vi.fn((): any[] => []),
   render: vi.fn(),
+  present: vi.fn(),
   resetFeedback: vi.fn(),
   startResizeHandling: vi.fn(),
   stopResizeHandling: vi.fn(),
@@ -58,12 +60,14 @@ vi.mock('../src/simulation/Simulation', () => ({
     step = mock.step;
     setRuntimeBalance = mock.setRuntimeBalance;
     getState = mock.getState;
+    consumePresentationEvents = mock.consumePresentationEvents;
   },
 }));
 
 vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
+    present = mock.present;
     resetFeedback = mock.resetFeedback;
     startResizeHandling = mock.startResizeHandling;
     stopResizeHandling = mock.stopResizeHandling;
@@ -274,7 +278,7 @@ describe('GameApp config and frame lifecycle', () => {
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 0, rewardRowsPerReward: 8, bossHpScale: 1, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -282,7 +286,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 0, rewardRowsPerReward: 8, bossHpScale: 1, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -361,7 +365,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 1, rewardRowsPerReward: 8, bossHpScale: 1, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] });
     app.start();
@@ -583,17 +587,18 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
-  it('applies eight runtime values immediately and retains them for Retry', () => {
+  it('applies runtime values including Boss HP scale and retains them for Retry', () => {
     const raf = createRaf();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const defaults = mock.panelConstructedWith.mock.calls[0][0];
     const tune = mock.panelConstructedWith.mock.calls[0][1] as (values: typeof defaults) => void;
     const edited = { ...defaults, bulletSpeed: 52, bulletRange: 65,
       rewardRowsPerReward: 3, enemyHigherTierPowerMultiplier: 12,
-      rifleHigherTierPowerMultiplier: 8, fireRate: 10, moveSpeed: 9, forwardSpeed: 1.2 };
+      rifleHigherTierPowerMultiplier: 8, fireRate: 10, moveSpeed: 9, forwardSpeed: 1.2,
+      bossHpScale: 20 };
     tune(edited);
     expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 3,
-      enemyHigherTierPowerMultiplier: 12, rifleHigherTierPowerMultiplier: 8 });
+      enemyHigherTierPowerMultiplier: 12, rifleHigherTierPowerMultiplier: 8, bossHpScale: 20 });
     app.start();
     raf.frame(100);
     raf.frame(100 + 1000 / 60);
@@ -604,7 +609,7 @@ describe('GameApp config and frame lifecycle', () => {
     retry();
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     expect(mock.constructedWith).toHaveBeenLastCalledWith(expect.objectContaining({
-      rewardRowsPerReward: 3, tiers: expect.objectContaining({
+      rewardRowsPerReward: 3, bossHpScale: 20, tiers: expect.objectContaining({
         enemyHigherTierPowerMultiplier: 12, rifleHigherTierPowerMultiplier: 8 }),
     }));
     raf.frame(100_000);
@@ -612,7 +617,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 9, forwardSpeed: 1.2 });
     tune(defaults);
     expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 8,
-      enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10 });
+      enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, bossHpScale: 1 });
     raf.frame(100_000 + 2 * 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 5, forwardSpeed: 3,
       rifle: { fireRate: 7, projectileSpeed: 28, range: 18 } });
@@ -680,7 +685,7 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 1, rewardRowsPerReward: 8, tiers: { mergeCount: 10, tier1Power: 4,
+      startRocketCount: 1, rewardRowsPerReward: 8, bossHpScale: 1, tiers: { mergeCount: 10, tier1Power: 4,
         tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);
@@ -723,6 +728,50 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.damageFlash).toHaveBeenCalledTimes(2);
     app.dispose();
     expect(mock.damageDispose).toHaveBeenCalledOnce();
+  });
+
+  it('forwards transient contact events once and clears renderer feedback on Retry', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level,
+      {} as CharacterAssets);
+    const event = { kind: 'normalEnemyContact', enemyId: 4, enemyTier: 1,
+      attackerX: 0, attackerZ: 2, playerX: 0, playerZ: 0,
+      before: { count: 2, rocketCount: 0, rifleCounts: [2], rifleRemainder: 0 },
+      after: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 } };
+    mock.consumePresentationEvents.mockReturnValueOnce([event]);
+    app.start();
+    raf.frame(100);
+    expect(mock.present).toHaveBeenCalledExactlyOnceWith([event], 0, 2.5, .45);
+    raf.frame(100 + 1000 / 60);
+    expect(mock.present).toHaveBeenCalledTimes(1);
+    const retry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
+    retry();
+    expect(mock.resetFeedback).toHaveBeenCalledOnce();
+    app.dispose();
+  });
+
+  it('lets fatal knockout feedback finish before showing Game Over', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level,
+      {} as CharacterAssets);
+    const zero = { player: { x: 0, z: 0 },
+      squad: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 },
+      enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
+    mock.consumePresentationEvents.mockReturnValueOnce([{ kind: 'bossSlam', bossId: 1,
+      bossTier: 1, slamCount: 1, attackerX: 0, attackerZ: 2,
+      playerX: 0, playerZ: 0,
+      before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
+      after: zero.squad }]);
+    app.start();
+    mock.getState.mockReturnValueOnce(zero);
+    raf.frame(100);
+    expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
+    for (let frame = 1; frame <= 23; frame++) {
+      mock.getState.mockReturnValueOnce(zero);
+      raf.frame(100 + frame * (1000 / 60));
+    }
+    expect(mock.overlayVisible).toHaveBeenLastCalledWith(true);
+    app.dispose();
   });
 
   it('uses the player row for the enemy HUD and resets it on Retry', () => {

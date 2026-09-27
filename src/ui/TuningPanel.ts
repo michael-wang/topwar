@@ -1,7 +1,9 @@
 import type { RuntimeTuning } from '../app/runtimeTuning';
 
 type Key = keyof RuntimeTuning;
-const controls: readonly { key: Key; label: string; min: number; max: number; step: number }[] = [
+type Control = { key: Key; label: string; min: number; max: number; step: number }
+  | { key: 'bossHpScale'; label: string; choices: readonly number[] };
+const controls: readonly Control[] = [
   { key: 'bulletSpeed', label: 'Bullet speed', min: 10, max: 60, step: 1 },
   { key: 'bulletRange', label: 'Bullet range', min: 10, max: 80, step: 1 },
   { key: 'rewardRowsPerReward', label: 'Reward density', min: 2, max: 20, step: 1 },
@@ -10,15 +12,16 @@ const controls: readonly { key: Key; label: string; min: number; max: number; st
   { key: 'fireRate', label: 'Fire rate', min: 1, max: 15, step: 0.5 },
   { key: 'moveSpeed', label: 'Move speed', min: 1, max: 10, step: 0.5 },
   { key: 'forwardSpeed', label: 'Forward speed', min: 0.5, max: 3, step: 0.1 },
+  { key: 'bossHpScale', label: 'Boss HP scale', choices: [.25, .5, 1, 2, 5, 10, 20, 50, 100] },
 ];
 
 export class TuningPanel {
   private readonly element: HTMLDetailsElement;
-  private readonly inputs = new Map<Key, HTMLInputElement>();
+  private readonly inputs = new Map<Key, HTMLInputElement | HTMLSelectElement>();
   private readonly outputs = new Map<Key, HTMLOutputElement>();
   private readonly onPointerDown = (event: PointerEvent): void => { event.stopPropagation(); };
   private readonly onInput = (event: Event): void => {
-    const input = event.target as HTMLInputElement;
+    const input = event.target as HTMLInputElement | HTMLSelectElement;
     const key = input.dataset.key as Key;
     this.values = { ...this.values, [key]: Number(input.value) };
     this.updateDisplay();
@@ -41,11 +44,22 @@ export class TuningPanel {
     for (const control of controls) {
       const label = document.createElement('label');
       label.textContent = control.label;
-      const input = document.createElement('input');
-      input.type = 'range';
-      input.min = String(control.min);
-      input.max = String(control.max);
-      input.step = String(control.step);
+      const input = control.key === 'bossHpScale'
+        ? document.createElement('select') : document.createElement('input');
+      if ('choices' in control) {
+        for (const value of control.choices) {
+          const option = document.createElement('option');
+          option.value = String(value);
+          option.textContent = `${value}×`;
+          input.append(option);
+        }
+      } else {
+        const slider = input as HTMLInputElement;
+        slider.type = 'range';
+        slider.min = String(control.min);
+        slider.max = String(control.max);
+        slider.step = String(control.step);
+      }
       input.dataset.key = control.key;
       const output = document.createElement('output');
       label.append(input, output);
@@ -81,7 +95,8 @@ export class TuningPanel {
     for (const [key, output] of this.outputs) {
       const value = this.values[key];
       output.textContent = key === 'rewardRowsPerReward'
-        ? `1 / ${value} rows (≈${Number((100 / value).toFixed(1))}%)` : String(value);
+        ? `1 / ${value} rows (≈${Number((100 / value).toFixed(1))}%)`
+        : key === 'bossHpScale' ? `${value}×` : String(value);
     }
   }
 }

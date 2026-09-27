@@ -8,6 +8,8 @@ import { BossRenderer } from '../src/rendering/boss/BossRenderer';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
 import { ProjectilePulseTracker } from '../src/rendering/projectiles/ProjectileRenderer';
 import type { GameRenderState } from '../src/rendering/RenderState';
+import type { PresentationEvent } from '../src/simulation/PresentationEvent';
+import { removedVisualMembers } from '../src/rendering/squad/casualtyVisuals';
 
 const state = (tier: number): GameRenderState => ({
   player: { x: 0, z: 0 },
@@ -89,6 +91,43 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
+  it('maps exact demotion to old visible members and shows a red player knockout', () => {
+    expect(removedVisualMembers(
+      { count: 1, rocketCount: 0, rifleCounts: [0, 0, 1], rifleRemainder: 0 },
+      { count: 9, rocketCount: 0, rifleCounts: [9], rifleRemainder: 0 },
+    )).toEqual([{ index: 0, tier: 3, rocket: false }]);
+    expect(removedVisualMembers(
+      { count: 3, rocketCount: 1, rifleCounts: [1, 1], rifleRemainder: 0 },
+      { count: 1, rocketCount: 1, rifleCounts: [], rifleRemainder: 0 },
+    )).toEqual([{ index: 1, tier: 2, rocket: false },
+      { index: 0, tier: 1, rocket: false }]);
+    const scene = new THREE.Scene();
+    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+    const before = { ...state(1), squad: { count: 2, rocketCount: 0,
+      rifleCounts: [2], formationSpacing: .45 } };
+    renderer.update(before, 0);
+    const event: PresentationEvent = { kind: 'normalEnemyContact', enemyId: 5,
+      enemyTier: 1, attackerX: 0, attackerZ: .2, playerX: 0, playerZ: 0,
+      before: { count: 2, rocketCount: 0, rifleCounts: [2], rifleRemainder: 0 },
+      after: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 } };
+    renderer.present([event], 100, 3, .45);
+    const casualty = scene.getObjectByName('player-casualty') as THREE.Group;
+    expect(casualty.visible).toBe(true);
+    renderer.update({ ...state(1), track: { halfWidth: 3, defenseLineZ: -1.5 } }, 100);
+    expect(((casualty.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
+      .color.getHexString()).toBe('ff3030');
+    renderer.update(state(1), 280);
+    expect(casualty.position.y).toBeGreaterThan(0);
+    expect(((casualty.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
+      .opacity).toBeLessThan(1);
+    renderer.reset();
+    expect(casualty.visible).toBe(false);
+    renderer.present(Array(100).fill(event), 500, 3, .45);
+    expect(scene.children.filter((child) => child.name === 'player-casualty'))
+      .toHaveLength(48);
+    renderer.dispose();
+  });
+
   it('keeps four running body poses and six helmet/vest InstancedMesh pairs through Tier 20', () => {
     expect(ENEMY_PALETTE.map((entry) => entry.body)).toEqual([
       '#ef5b52', '#f47a3c', '#e6b83f', '#a66be8', '#e94f8a', '#9fbe45',
@@ -153,6 +192,38 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(damaged.slice(1), 500);
     expect(death.visible).toBe(false);
     renderer.reset();
+    renderer.dispose();
+  });
+
+  it('uses a distinct contact exchange for only the attacking grunt', () => {
+    const scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(),
+      runFrames(), grayBodyModel());
+    const enemies = [{ id: 1, tier: 1, x: 0, z: 2, hp: 3 },
+      { id: 2, tier: 1, x: 1, z: 2, hp: 3 }];
+    renderer.update(enemies, 0);
+    renderer.present([{ kind: 'normalEnemyContact', enemyId: 1, enemyTier: 1,
+      attackerX: 0, attackerZ: 2, playerX: 0, playerZ: 0,
+      before: { count: 2, rocketCount: 0, rifleCounts: [2], rifleRemainder: 0 },
+      after: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 } }], 100);
+    renderer.update(enemies.slice(1), 100);
+    const contact = scene.getObjectByName('enemy-contact-exchange') as THREE.Group;
+    expect(contact.visible).toBe(true);
+    expect(((contact.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
+      .color.getHexString()).toBe('fff47d');
+    renderer.update([], 200);
+    expect(contact.visible).toBe(true);
+    const otherDeath = scene.children.find((child) => child instanceof THREE.Group
+      && child !== contact && child.visible) as THREE.Group;
+    expect(otherDeath).toBeDefined();
+    renderer.reset();
+    expect(contact.visible).toBe(false);
+    renderer.present(Array(100).fill({ kind: 'normalEnemyContact', enemyId: 1,
+      enemyTier: 1, attackerX: 0, attackerZ: 2, playerX: 0, playerZ: 0,
+      before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
+      after: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 } } as PresentationEvent), 500);
+    expect(scene.children.filter((child) => child.name === 'enemy-contact-exchange'))
+      .toHaveLength(48);
     renderer.dispose();
   });
 

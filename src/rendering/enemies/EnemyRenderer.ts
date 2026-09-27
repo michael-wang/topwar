@@ -2,10 +2,14 @@ import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import { DeathBurst } from './DeathBurst';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
+import type { PresentationEvent } from '../../simulation/PresentationEvent';
 
 const HIT_FLASH_MS = 80;
 const DEATH_MS = 320;
 const MAX_DEATH_VISUALS = 48;
+export const ENEMY_CONTACT_MS = 240;
+const MAX_CONTACT_VISUALS = 48;
+const CONTACT_FLASH_MS = 150;
 export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
@@ -14,6 +18,15 @@ interface DeathVisual {
   bodyMaterial: THREE.MeshStandardMaterial;
   gearMaterial: THREE.MeshStandardMaterial;
   startedAtMs: number;
+}
+
+interface ContactVisual {
+  group: THREE.Group;
+  materials: THREE.MeshStandardMaterial[];
+  startedAtMs: number;
+  x: number;
+  z: number;
+  direction: number;
 }
 
 export function enemyWalkPose(id: number, nowMs: number): { leftArm: number; rightArm: number;
@@ -37,6 +50,10 @@ export class EnemyRenderer {
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
   private readonly deathVisuals: DeathVisual[] = [];
+  private readonly contactVisuals: ContactVisual[] = [];
+  private readonly contactIds = new Set<number>();
+  private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
+    color: '#fff47d', toneMapped: false });
   private readonly deathBurst: DeathBurst;
   private readonly capacity = PALETTES.map(() => 1);
   private readonly bodyCapacity = [1, 1, 1, 1];
@@ -66,11 +83,20 @@ export class EnemyRenderer {
     this.deathBurst = new DeathBurst(scene);
   }
 
+  present(events: readonly PresentationEvent[], nowMs: number): void {
+    for (const event of events) {
+      if (event.kind !== 'normalEnemyContact') continue;
+      this.contactIds.add(event.enemyId);
+      this.spawnContact(event.enemyTier, event.attackerX, event.attackerZ,
+        event.enemyId, nowMs);
+    }
+  }
+
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now()): void {
     const currentIds = new Set(enemies.map((enemy) => enemy.id));
     for (const previous of this.previousEnemies.values()) {
       if (!currentIds.has(previous.id)) {
-        this.spawnDeath(previous, nowMs);
+        if (!this.contactIds.has(previous.id)) this.spawnDeath(previous, nowMs);
         this.flashUntilMs.delete(previous.id);
       }
     }
@@ -80,7 +106,9 @@ export class EnemyRenderer {
       this.previousEnemies.set(enemy.id, { ...enemy });
     }
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
+    this.contactIds.clear();
     this.updateDeaths(nowMs);
+    this.updateContacts(nowMs);
     this.deathBurst.update(nowMs);
 
     const counts = PALETTES.map(() => 0);
@@ -134,7 +162,9 @@ export class EnemyRenderer {
   reset(): void {
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
+    this.contactIds.clear();
     for (const visual of this.deathVisuals) visual.group.visible = false;
+    for (const visual of this.contactVisuals) visual.group.visible = false;
     this.deathBurst.reset();
   }
 
@@ -149,10 +179,71 @@ export class EnemyRenderer {
       visual.gearMaterial.dispose();
     }
     this.deathVisuals.length = 0;
+    for (const visual of this.contactVisuals) {
+      this.scene.remove(visual.group);
+      for (const material of visual.materials) material.dispose();
+    }
+    this.contactVisuals.length = 0;
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
     this.deathBurst.dispose();
     this.helmetMaterial.dispose();
+    this.contactFlashMaterial.dispose();
+  }
+
+  private spawnContact(tier: number, x: number, z: number, id: number, nowMs: number): void {
+    let visual = this.contactVisuals.find((candidate) => !candidate.group.visible);
+    if (!visual && this.contactVisuals.length < MAX_CONTACT_VISUALS) {
+      const models = [this.bodyModel, this.helmetModel, this.vestModel];
+      const group = new THREE.Group();
+      group.name = 'enemy-contact-exchange';
+      const materials = models.map((model) => {
+        if (!(model.material instanceof THREE.MeshStandardMaterial)) {
+          throw new Error('Enemy contact visuals require standard materials');
+        }
+        const material = model.material.clone();
+        material.transparent = true;
+        material.depthWrite = false;
+        return material;
+      });
+      models.forEach((model, index) => group.add(new THREE.Mesh(model.geometry, materials[index])));
+      this.scene.add(group);
+      visual = { group, materials, startedAtMs: nowMs, x, z, direction: 1 };
+      this.contactVisuals.push(visual);
+    }
+    if (!visual) visual = this.contactVisuals.reduce((oldest, candidate) =>
+      candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+    visual.startedAtMs = nowMs;
+    visual.x = x;
+    visual.z = z;
+    visual.direction = id % 2 === 0 ? -1 : 1;
+    visual.group.visible = true;
+    visual.group.rotation.set(0, Math.PI, 0);
+    visual.group.position.set(-x, 0, z);
+    visual.group.scale.setScalar(ENEMY_VISUAL_SCALE);
+    for (const material of visual.materials) material.opacity = 1;
+    const color = this.helmetColors[paletteIndex(tier, PALETTES.length)];
+    visual.materials[1].color.copy(color);
+    visual.materials[2].color.copy(color);
+  }
+
+  private updateContacts(nowMs: number): void {
+    for (const visual of this.contactVisuals) {
+      if (!visual.group.visible) continue;
+      const age = nowMs - visual.startedAtMs;
+      if (age >= ENEMY_CONTACT_MS) { visual.group.visible = false; continue; }
+      const progress = Math.max(0, age / ENEMY_CONTACT_MS);
+      const flashing = age < CONTACT_FLASH_MS;
+      visual.group.children.forEach((part, index) => {
+        (part as THREE.Mesh).material = flashing ? this.contactFlashMaterial : visual.materials[index];
+        visual.materials[index].opacity = flashing ? 1 : Math.max(0,
+          1 - (age - CONTACT_FLASH_MS) / (ENEMY_CONTACT_MS - CONTACT_FLASH_MS));
+      });
+      visual.group.position.set(-visual.x + visual.direction * .8 * progress,
+        .5 * Math.sin(Math.PI * progress), visual.z + .9 * progress);
+      visual.group.rotation.z = visual.direction * .45 * progress;
+      visual.group.scale.setScalar(ENEMY_VISUAL_SCALE * (1.12 - .26 * progress));
+    }
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {

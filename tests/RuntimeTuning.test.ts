@@ -7,6 +7,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { rewardPlacementForBlock } from '../src/simulation/enemies/streamRewards';
 import { enemyPowerForTier, riflePowerForTier } from '../src/simulation/tiers/tierRules';
+import { bossMaxHpForTier } from '../src/simulation/tiers/tierRules';
 
 const config = GameConfigSchema.parse(gameData);
 const level = LevelDefinitionSchema.parse(levelData);
@@ -26,8 +27,32 @@ describe('temporary runtime tuning', () => {
   it('starts from the committed eight authored defaults and rejects obsolete mouse sensitivity', () => {
     expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 60, bulletRange: 80,
       rewardRowsPerReward: 8, enemyHigherTierPowerMultiplier: 10,
-      rifleHigherTierPowerMultiplier: 10, fireRate: 10, moveSpeed: 5, forwardSpeed: 2 });
+      rifleHigherTierPowerMultiplier: 10, fireRate: 10, moveSpeed: 5, forwardSpeed: 2,
+      bossHpScale: 1 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();
+  });
+
+  it('scales Boss HP at runtime while retaining the live health ratio', () => {
+    const nearBoss = LevelDefinitionSchema.parse({ ...level,
+      enemyStream: { ...stream, spawnAheadDistance: 110 } });
+    const authoredHp = bossMaxHpForTier(1, stream.tierProgression, config.tiers);
+    const normal = new Simulation({ seed: 1, level: nearBoss, startSquad: 1,
+      startRocketCount: 0, tiers: config.tiers });
+    const scaled = new Simulation({ seed: 1, level: nearBoss, startSquad: 1,
+      startRocketCount: 0, tiers: config.tiers, bossHpScale: 10 });
+    expect(normal.getState().boss?.maxHp).toBe(authoredHp);
+    expect(scaled.getState().boss?.maxHp).toBe(authoredHp * 10);
+    const state = scaled.getState();
+    state.boss!.hp = state.boss!.maxHp * .4;
+    scaled.restoreState(state);
+    scaled.setRuntimeBalance({ ...baseline, bossHpScale: 20 });
+    expect(scaled.getState().boss?.maxHp).toBe(authoredHp * 20);
+    expect(scaled.getState().boss?.hp).toBe(authoredHp * 20 * .4);
+    scaled.setRuntimeBalance({ ...baseline, bossHpScale: 100 });
+    expect(scaled.getState().boss?.maxHp).toBe(authoredHp * 100);
+    expect(Number.isFinite(scaled.getState().boss!.maxHp)).toBe(true);
+    scaled.setRuntimeBalance({ ...baseline, bossHpScale: 1 });
+    expect(scaled.getState().boss?.maxHp).toBe(authoredHp);
   });
 
   it('splits enemy and rifle growth above the unchanged Tier-1/Tier-2 bootstrap', () => {

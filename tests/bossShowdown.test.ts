@@ -141,7 +141,9 @@ describe('Boss melee showdown', () => {
     expect(dead.squad).toEqual({ count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 });
     expect(dead.boss?.slamCount).toBe(1);
     expect(dead.projectiles).toHaveLength(0);
+    expect(simulation.consumePresentationEvents().map((event) => event.kind)).toEqual(['bossSlam']);
     advance(simulation, 10_000);
     expect(simulation.getState()).toEqual(dead);
+    expect(simulation.consumePresentationEvents()).toEqual([]);
   });
 });

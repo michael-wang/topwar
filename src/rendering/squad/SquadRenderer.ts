@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { createSquadFormation } from '../../simulation/squad/formation';
 import type { GameRenderState, ProjectileRenderState } from '../RenderState';
 import { PLAYER_PALETTE, paletteIndex } from '../tierPalettes';
+import type { PresentationEvent } from '../../simulation/PresentationEvent';
+import { removedVisualMembers } from './casualtyVisuals';
 
 const RECOIL_MS = 85;
 const FLASH_MS = 50;
@@ -10,6 +12,9 @@ const TIER_UP_MS = 360;
 const TIER_GLOW_MS = 150;
 export const PLAYER_VISUAL_SCALE = 0.85;
 const VISUAL_FORMATION_SPREAD = 2;
+export const PLAYER_HIT_FLASH_MS = 130;
+export const PLAYER_KNOCKOUT_MS = 360;
+export const MAX_PLAYER_CASUALTY_VISUALS = 48;
 
 export function soldierSpawnScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / SPAWN_MS);
@@ -33,11 +38,22 @@ interface SoldierVisual {
   appearedAtMs: number;
 }
 
+interface CasualtyVisual {
+  group: THREE.Group;
+  materials: THREE.MeshStandardMaterial[];
+  tier: number;
+  startedAtMs: number;
+  spread: number;
+  originX: number;
+  originZ: number;
+}
+
 export class SquadRenderer {
   private readonly muzzleGeometry = new THREE.ConeGeometry(0.11, 0.24, 5);
   private readonly muzzleCoreGeometry = new THREE.ConeGeometry(0.048, 0.15, 5);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
+  private readonly hitMaterial = new THREE.MeshBasicMaterial({ color: '#ff3030', toneMapped: false });
   private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#ffd15b', toneMapped: false });
   private readonly muzzleCoreMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1', toneMapped: false });
   private readonly ringGeometry = new THREE.RingGeometry(0.42, 0.55, 32);
@@ -45,6 +61,9 @@ export class SquadRenderer {
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
   private readonly tierRing = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
   private readonly members: SoldierVisual[] = [];
+  private readonly casualtyVisuals: CasualtyVisual[] = [];
+  private readonly hitMemberIndices = new Map<number, number>();
+  private lastRenderedSquadCount = 0;
   private previousRifleCounts: number[] = [];
   private tierUpTier: number | null = null;
   private tierUpAtMs = -Infinity;
@@ -70,6 +89,34 @@ export class SquadRenderer {
     this.tierRing.position.y = 0.035;
     this.tierRing.visible = false;
     this.scene.add(this.tierRing);
+  }
+
+  present(events: readonly PresentationEvent[], nowMs: number,
+    trackHalfWidth: number, formationSpacing: number): void {
+    for (const event of events) {
+      const removed = removedVisualMembers(event.before, event.after);
+      const offsets = createSquadFormation(event.before.count, formationSpacing);
+      const maxOffsetX = offsets.reduce((max, offset) => Math.max(max, Math.abs(offset.x)), 0);
+      const visualSpread = maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
+        (trackHalfWidth - .4) / maxOffsetX));
+      for (const affected of removed) {
+        const offset = offsets[affected.index];
+        if (!offset) continue;
+        const prior = this.members[affected.index];
+        const useRendered = this.lastRenderedSquadCount === event.before.count && prior?.group.visible;
+        const x = useRendered ? prior.group.position.x
+          : -(event.playerX + offset.x * visualSpread);
+        const z = useRendered ? prior.group.position.z
+          : event.playerZ + offset.z * visualSpread;
+        this.spawnCasualty(affected.tier, x, z, affected.index,
+          event.attackerX - event.playerX, nowMs);
+      }
+      // Exact remainder damage can reduce defense without removing a visible body.
+      if (removed.length === 0 && event.before.count > 0) {
+        const target = Math.min(event.after.count - 1, event.before.count - 1);
+        if (target >= 0) this.hitMemberIndices.set(target, nowMs + PLAYER_HIT_FLASH_MS);
+      }
+    }
   }
 
   update(state: GameRenderState, nowMs = performance.now()): void {
@@ -129,7 +176,9 @@ export class SquadRenderer {
       member.group.scale.setScalar(PLAYER_VISUAL_SCALE
         * (upgrading ? tierUpScale(tierAgeMs) : spawnScale));
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
-      member.helmet.material = glowing ? this.upgradeMaterial
+      const hit = (this.hitMemberIndices.get(index) ?? -Infinity) > nowMs;
+      member.body.material = hit ? this.hitMaterial : this.bodyModel.material;
+      member.helmet.material = hit ? this.hitMaterial : glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       member.vest.material = member.helmet.material;
       member.rifle.rotation.x = -0.18 * recoil;
@@ -140,6 +189,11 @@ export class SquadRenderer {
       member.group.position.set(-(state.player.x + offset.x * visualSpread), 0,
         state.player.z + offset.z * visualSpread);
     }
+    this.lastRenderedSquadCount = state.squad.count;
+    for (const [index, until] of this.hitMemberIndices) {
+      if (until <= nowMs) this.hitMemberIndices.delete(index);
+    }
+    this.updateCasualties(nowMs);
   }
 
   reset(): void {
@@ -150,6 +204,9 @@ export class SquadRenderer {
     this.tierUpTier = null;
     this.tierUpAtMs = -Infinity;
     this.tierRing.visible = false;
+    this.hitMemberIndices.clear();
+    this.lastRenderedSquadCount = 0;
+    for (const visual of this.casualtyVisuals) visual.group.visible = false;
     for (const member of this.members) {
       member.group.visible = false;
       member.appearedAtMs = -Infinity;
@@ -160,12 +217,17 @@ export class SquadRenderer {
   dispose(): void {
     for (const member of this.members) this.scene.remove(member.group);
     this.members.length = 0;
+    for (const visual of this.casualtyVisuals) {
+      this.scene.remove(visual.group);
+      for (const material of visual.materials) material.dispose();
+    }
+    this.casualtyVisuals.length = 0;
     this.scene.remove(this.tierRing);
     this.ringGeometry.dispose();
     this.ringMaterial.dispose();
     this.muzzleGeometry.dispose();
     this.muzzleCoreGeometry.dispose();
-    for (const material of [...this.tierMaterials, this.upgradeMaterial,
+    for (const material of [...this.tierMaterials, this.upgradeMaterial, this.hitMaterial,
       this.muzzleMaterial, this.muzzleCoreMaterial]) material.dispose();
   }
 
@@ -176,6 +238,67 @@ export class SquadRenderer {
         if (projectile.kind === 'rocket') this.rocketFiredAtMs = nowMs;
       }
       this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
+    }
+  }
+
+  private spawnCasualty(tier: number, x: number, z: number, index: number,
+    attackerDeltaX: number, nowMs: number): void {
+    let visual = this.casualtyVisuals.find((candidate) => !candidate.group.visible);
+    if (!visual && this.casualtyVisuals.length < MAX_PLAYER_CASUALTY_VISUALS) {
+      const sources = [this.bodyModel, this.helmetModel, this.vestModel, this.rifleModel];
+      const group = new THREE.Group();
+      group.name = 'player-casualty';
+      const materials = sources.map((source) => {
+        if (!(source.material instanceof THREE.MeshStandardMaterial)) {
+          throw new Error('Player casualty visuals require standard materials');
+        }
+        const material = source.material.clone();
+        material.transparent = true;
+        material.depthWrite = false;
+        return material;
+      });
+      sources.forEach((source, part) => group.add(new THREE.Mesh(source.geometry, materials[part])));
+      (group.children[3] as THREE.Mesh).position.x = .13;
+      group.visible = false;
+      this.scene.add(group);
+      visual = { group, materials, tier, startedAtMs: nowMs,
+        spread: 0, originX: x, originZ: z };
+      this.casualtyVisuals.push(visual);
+    }
+    if (!visual) visual = this.casualtyVisuals.reduce((oldest, candidate) =>
+      candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+    visual.tier = tier;
+    visual.startedAtMs = nowMs;
+    visual.originX = x;
+    visual.originZ = z;
+    visual.spread = (index % 2 === 0 ? -.24 : .24) + Math.sign(attackerDeltaX) * .16;
+    visual.group.visible = true;
+    visual.group.position.set(x, 0, z);
+    visual.group.rotation.set(0, 0, 0);
+    visual.group.scale.setScalar(PLAYER_VISUAL_SCALE);
+    const color = PLAYER_PALETTE[paletteIndex(tier || 1, PLAYER_PALETTE.length)].body;
+    for (const material of visual.materials) material.opacity = 1;
+    visual.materials[1].color.set(color);
+    visual.materials[2].color.set(color);
+  }
+
+  private updateCasualties(nowMs: number): void {
+    for (const visual of this.casualtyVisuals) {
+      if (!visual.group.visible) continue;
+      const age = nowMs - visual.startedAtMs;
+      if (age >= PLAYER_KNOCKOUT_MS) { visual.group.visible = false; continue; }
+      const progress = Math.max(0, age / PLAYER_KNOCKOUT_MS);
+      const flashing = age < PLAYER_HIT_FLASH_MS;
+      visual.group.children.forEach((part, index) => {
+        (part as THREE.Mesh).material = flashing ? this.hitMaterial : visual.materials[index];
+        visual.materials[index].opacity = flashing ? 1
+          : Math.max(0, 1 - (age - PLAYER_HIT_FLASH_MS)
+            / (PLAYER_KNOCKOUT_MS - PLAYER_HIT_FLASH_MS));
+      });
+      visual.group.position.set(visual.originX + visual.spread * progress,
+        .38 * Math.sin(Math.PI * progress) + .24 * progress,
+        visual.originZ - .65 * progress);
+      visual.group.rotation.set(-.65 * progress, 0, visual.spread * 1.8 * progress);
     }
   }
 
