@@ -420,7 +420,7 @@ Mobile:
 Desktop development:
 
 - A/D or arrow keys
-- P or Escape to pause/resume
+- P or Space to pause/resume
 
 Mouse movement does not steer. Range inputs retain keyboard focus so arrows adjust sliders without steering.
 

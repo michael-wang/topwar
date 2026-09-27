@@ -19,6 +19,17 @@ import { PauseOverlay } from '../ui/PauseOverlay';
 import { ControlHint } from '../ui/ControlHint';
 import { TuningPanel } from '../ui/TuningPanel';
 
+function isInteractivePauseTarget(target: EventTarget | null): boolean {
+  const element = target as { tagName?: string; isContentEditable?: boolean;
+    closest?: (selector: string) => Element | null } | null;
+  if (!element) return false;
+  if (element.isContentEditable) return true;
+  if (['input', 'button', 'select', 'textarea', 'summary', 'option'].includes(
+    element.tagName?.toLowerCase() ?? '')) return true;
+  return Boolean(element.closest?.('button,input,select,textarea,summary,a[href],'
+    + '[contenteditable]:not([contenteditable="false"]),[role="button"],[role="slider"]'));
+}
+
 export class GameApp {
   private readonly renderer: GameRenderer;
   private readonly fixedStepLoop = new FixedStepLoop();
@@ -169,7 +180,10 @@ export class GameApp {
   }
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
-    if (event.repeat || (event.key.toLowerCase() !== 'p' && event.key !== 'Escape')) return;
+    const key = event.key.toLowerCase();
+    const isSpace = key === ' ' || key === 'space' || key === 'spacebar';
+    if (event.repeat || (key !== 'p' && !isSpace) || isInteractivePauseTarget(event.target)) return;
+    if (isSpace) event.preventDefault();
     this.paused = !this.paused;
     this.viewport.classList?.toggle('game-paused', this.paused);
     this.previousFrameTimestampMs = null;

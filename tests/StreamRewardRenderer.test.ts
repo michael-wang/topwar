@@ -13,17 +13,24 @@ function part(group: THREE.Group, name: string): THREE.Mesh {
 }
 
 describe('StreamRewardRenderer', () => {
-  it('shows a player helmet on the crate and a shrinking durability bar instead of hit-count text', () => {
+  it('shows a tier-colored player helmet on a gold crate with a shrinking durability bar', () => {
     const scene = new THREE.Scene();
     const sourceHelmet = helmetModel();
     const renderer = new StreamRewardRenderer(scene, sourceHelmet);
     renderer.update([reward], 1000);
     const crate = scene.children[0] as THREE.Group;
     expect(crate.name).toBe('soldier-reward-crate');
-    expect(part(crate, 'crate-body')).toBeDefined();
+    expect((part(crate, 'crate-body').material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('f2c94c');
+    expect((part(crate, 'crate-lid').material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('ffd86a');
+    expect((part(crate, 'crate-strap').material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('c98c28');
     const helmet = part(crate, 'reward-soldier-helmet');
     expect(helmet.geometry).toBe(sourceHelmet.geometry);
     expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('1769ee');
+    expect(helmet.position.z).toBeLessThan(-.2);
+    expect(helmet.scale.z).toBeLessThan(helmet.scale.x);
     const fill = part(crate, 'remaining-durability');
     expect(fill.scale.x).toBe(1);
     expect(crate.children.some((child) => (child as THREE.Mesh).material
@@ -37,23 +44,31 @@ describe('StreamRewardRenderer', () => {
     expect(fill.scale.x).toBeCloseTo(.1);
     expect((crate.children.at(-1) as THREE.LineSegments).visible).toBe(true);
     const lid = part(crate, 'crate-lid');
-    expect((lid.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('fff0a0');
+    const warning = part(crate, 'near-break-warning');
+    expect(warning.visible).toBe(true);
+    expect((warning.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ff9545');
+    expect((lid.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffd86a');
     expect((part(crate, 'crate-body').material as THREE.MeshStandardMaterial).color.getHexString())
-      .toBe('96938a');
+      .toBe('f2c94c');
     renderer.update([{ ...reward, hitProgress: 9 }], 1350);
-    expect((lid.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ff9b4a');
+    expect((warning.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ff553b');
+    expect((lid.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffd86a');
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
   });
 
-  it('keeps tier accent colors and reuses crate resources across hit updates', () => {
+  it('keeps crate gold across tiers and reuses resources across hit updates', () => {
     const scene = new THREE.Scene();
     const sourceHelmet = helmetModel();
     const renderer = new StreamRewardRenderer(scene, sourceHelmet);
     renderer.update([reward, { ...reward, id: 2, tier: 2, x: .6 }], 0);
     const [first, second] = scene.children as THREE.Group[];
-    expect((part(first, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('1769ee');
-    expect((part(second, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('10429b');
+    expect(part(first, 'crate-lid').material).toBe(part(second, 'crate-lid').material);
+    expect((part(first, 'crate-lid').material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffd86a');
+    expect((part(first, 'reward-soldier-helmet').material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('1769ee');
+    expect((part(second, 'reward-soldier-helmet').material as THREE.MeshStandardMaterial).color.getHexString())
+      .toBe('10429b');
     const geometry = part(first, 'crate-body').geometry;
     const dispose = vi.spyOn(geometry, 'dispose');
     renderer.update([{ ...reward, z: 20, hitProgress: 3 }, { ...reward, id: 2, tier: 2, x: .6 }], 100);

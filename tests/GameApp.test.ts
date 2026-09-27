@@ -198,10 +198,12 @@ function createRaf() {
   return {
     pending,
     cancel,
-    key: (key: string, repeat = false) => {
-      const event = new Event('keydown');
+    key: (key: string, repeat = false, target?: object) => {
+      const event = new Event('keydown', { cancelable: true });
       Object.defineProperties(event, { key: { value: key }, repeat: { value: repeat } });
+      if (target) Object.defineProperty(event, 'target', { value: target });
       windowTarget.dispatchEvent(event);
+      return event.defaultPrevented;
     },
     mouseMove: () => windowTarget.dispatchEvent(new Event('mousemove')),
     frame: (timestampMs: number) => {
@@ -530,7 +532,7 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
-  it('pauses on P or Escape, freezes presentation time, clears steering, and resumes without catch-up', () => {
+  it('pauses on P or Space, ignores Escape and controls, and resumes without catch-up', () => {
     const raf = createRaf();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
@@ -545,11 +547,30 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.keyboardStop).toHaveBeenCalledOnce();
     expect(mock.inputStop).toHaveBeenCalledOnce();
     raf.key('p', true);
+    expect(raf.key('Escape')).toBe(false);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    for (const tagName of ['INPUT', 'BUTTON', 'SUMMARY']) {
+      expect(raf.key(' ', false, { tagName })).toBe(false);
+      expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    }
+    expect(raf.key(' ', false, { tagName: 'SPAN', closest: () => ({ tagName: 'BUTTON' }) })).toBe(false);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
     raf.frame(100_000);
     raf.frame(101_000);
     expect(mock.step).toHaveBeenCalledTimes(stepCount);
     expect(mock.render.mock.lastCall![1]).toBe(presentationTime);
-    raf.key('Escape');
+    expect(raf.key(' ')).toBe(true);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    expect(raf.key(' ', false, { tagName: 'INPUT' })).toBe(false);
+    expect(raf.key('Escape')).toBe(false);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    raf.key('p');
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    raf.key('p');
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    expect(raf.key(' ')).toBe(true);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    expect(raf.key(' ')).toBe(true);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     raf.frame(200_000);
     expect(mock.step).toHaveBeenCalledTimes(stepCount);

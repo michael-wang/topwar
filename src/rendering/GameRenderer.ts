@@ -12,7 +12,7 @@ import type { CharacterAssets } from './CharacterAssets';
 
 export class GameRenderer {
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(55, 9 / 16, 0.1, 100);
+  private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 100);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
   private readonly enemyRenderer: EnemyRenderer;
@@ -57,8 +57,8 @@ export class GameRenderer {
     sunlight.position.set(-3, 8, -5);
     this.scene.add(sunlight);
 
-    this.camera.position.set(0, 8, -10);
-    this.camera.lookAt(0, 0, 11);
+    this.camera.position.set(0, 6.5, -10);
+    this.camera.lookAt(0, 0, 12.5);
     this.resize();
   }
 
@@ -80,9 +80,9 @@ export class GameRenderer {
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     const cameraDistance = 10;
-    this.camera.position.y = cameraDistance * 0.8;
+    this.camera.position.y = 6.5;
     this.camera.position.z = state.player.z - cameraDistance;
-    this.camera.lookAt(0, 0, state.player.z + cameraDistance * 1.1);
+    this.camera.lookAt(0, 0, state.player.z + 12.5);
     this.ground.position.z = state.player.z;
     this.road.position.z = state.player.z;
     this.road.scale.x = state.track.halfWidth * 2 + 0.5;

@@ -4,7 +4,7 @@ export class ControlHint {
   constructor(viewport: HTMLElement) {
     this.element = document.createElement('div');
     this.element.className = 'control-hint';
-    this.element.innerHTML = 'A / D or ← / → &nbsp; MOVE<br>P / ESC &nbsp; PAUSE';
+    this.element.innerHTML = 'A / D or ← / → &nbsp; MOVE<br>P / SPACE &nbsp; PAUSE';
     viewport.append(this.element);
   }
 
