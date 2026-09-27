@@ -1,8 +1,8 @@
-"""Bake Kenney Mini Forest archer, bow and arrow into static Toy Samurai assets.
+"""Bake the Kenney Mini Forest archer into static Modern Toy Soldier assets.
 
 Usage: python scripts/prepare_character_models.py SOURCE_DIR public/models
-SOURCE_DIR contains character-archer.glb, weapon-bow.glb, weapon-arrow.glb,
-and colormap.png from the official Kenney Mini Forest 1.0 archive.
+SOURCE_DIR contains character-archer.glb and colormap.png from the official
+Kenney Mini Forest 1.0 archive. Gear is generated from simple rigid geometry.
 """
 
 from __future__ import annotations
@@ -233,58 +233,73 @@ def box(center, size):
     return np.asarray(vertices), np.asarray(normals), np.asarray(indices)
 
 
-def bar_between(a, b, width, depth):
-    # A chunky four-sided crest bar, built by rotating a narrow box in the XY plane.
-    a, b = np.asarray(a), np.asarray(b)
-    delta = b - a
-    length = np.linalg.norm(delta[:2])
-    vertices, normals, indices = box((0, 0, 0), (width, length, depth))
-    direction = delta[:2] / length
-    rotation = np.array([[direction[1], direction[0], 0],
-                         [-direction[0], direction[1], 0], [0, 0, 1]])
-    return vertices @ rotation.T + (a+b)/2, normals @ rotation.T, indices
+def join_parts(parts):
+    offsets = np.cumsum([0] + [len(part[0]) for part in parts[:-1]])
+    return (np.concatenate([part[0] for part in parts]),
+            np.concatenate([part[1] for part in parts]), None,
+            np.concatenate([part[2] + offset for part, offset in zip(parts, offsets)]))
 
 
 def helmet_parts(boss=False):
-    # Open-faced, shallow kabuto: the Kenney face, clothing, arms and shoes stay visible.
-    radius = .38 if boss else .25
-    bottom = .85
-    top = 1.09 if boss else 1.05
-    sides = 8
-    crown_vertices = []
-    for y, r in ((bottom, radius), (top, radius * .72)):
-        for index in range(sides):
-            angle = index * 2 * np.pi / sides
-            crown_vertices.append([np.sin(angle) * r, y, np.cos(angle) * r])
-    crown_vertices = np.asarray(crown_vertices)
-    crown_indices = []
-    for index in range(sides):
-        next_index = (index + 1) % sides
-        crown_indices.extend([index, next_index, sides + next_index,
-                              index, sides + next_index, sides + index])
-        crown_indices.extend([sides + index, sides + next_index, sides * 2])
-    crown_vertices = np.vstack((crown_vertices, [0, top + .025, 0]))
-    crown_normals = crown_vertices.copy()
-    crown_normals[:, 1] = .25
-    crown_normals /= np.linalg.norm(crown_normals, axis=1, keepdims=True)
-    pieces = [(crown_vertices, crown_normals, np.asarray(crown_indices))]
-    # A small rear/side brim suggests shikoro without obscuring the face.
-    pieces += [box((0, .82, -.24), (radius * 1.65, .075, .13)),
-               box((-radius, .82, -.10), (.08, .075, .24)),
-               box((radius, .82, -.10), (.08, .075, .24))]
-    crest = .45 if boss else .25
-    crest_top = 1.35 if boss else 1.18
-    front = radius + .025
-    pieces += [bar_between((0, 1.00, front), (-crest, crest_top, front), .075, .075),
-               bar_between((0, 1.00, front), (crest, crest_top, front), .075, .075)]
-    offsets = np.cumsum([0] + [len(part[0]) for part in pieces[:-1]])
-    return (np.concatenate([part[0] for part in pieces]),
-            np.concatenate([part[1] for part in pieces]), None,
-            np.concatenate([part[2] + offset for part, offset in zip(pieces, offsets)]))
+    # Low-poly rounded dome, small brim. Its open face retains Kenney expressions.
+    radius = .34 if boss else .265
+    levels = ((.835, radius), (.91, radius * 1.08), (1.005, radius * .88),
+              (1.075 if boss else 1.055, radius * .42))
+    sides = 10
+    vertices = np.array([[np.sin(i * 2*np.pi/sides) * r, y,
+                          np.cos(i * 2*np.pi/sides) * r]
+                         for y, r in levels for i in range(sides)] +
+                        [[0, levels[-1][0] + .02, 0]], dtype=float)
+    indices = []
+    for ring in range(len(levels)-1):
+        for i in range(sides):
+            a, b = ring*sides+i, ring*sides+(i+1)%sides
+            indices.extend((a, b, b+sides, a, b+sides, a+sides))
+    for i in range(sides):
+        indices.extend(((len(levels)-1)*sides+i,
+                        (len(levels)-1)*sides+(i+1)%sides, len(vertices)-1))
+    normals = vertices.copy()
+    normals[:, 1] -= .84
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-12)
+    brim = box((0, .84, radius*.78), (radius*1.7, .045, radius*.65))
+    return join_parts([(vertices, normals, np.asarray(indices)), brim])
 
 
-def prepare_toy_samurai(inputs, outputs):
-    neutral = {"name": "kabuto", "pbrMetallicRoughness": {
+def vest_parts(boss=False):
+    # A compact chest plate leaves the arms, lower tunic and boots exposed.
+    width = .44 if boss else .36
+    y = .47
+    height = .16
+    depth = .29
+    return join_parts([box((-width*.27, y, depth), (width*.42, height, .075)),
+                       box((width*.27, y, depth), (width*.42, height, .075)),
+                       box((0, y, -depth), (width, height, .055))])
+
+
+def rifle_parts():
+    # Exaggerated, forward-pointing toy rifle in the archer's weapon hand.
+    positions, normals, uv, indices = join_parts([
+        box((.35, .46, .32), (.12, .13, .67)),
+        box((.35, .46, .74), (.085, .085, .29)),
+        box((.35, .55, .18), (.18, .055, .16)),
+        box((.35, .32, .25), (.08, .19, .11)),
+        box((.35, .43, -.10), (.18, .13, .21))])
+    # Angle the barrel sideways enough to retain its silhouette from behind.
+    angle = .45
+    rotation = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0],
+                         [-np.sin(angle), 0, np.cos(angle)]])
+    pivot = np.array([.35, 0, .2])
+    return (positions - pivot) @ rotation.T + pivot, normals @ rotation.T, uv, indices
+
+
+def bullet_parts():
+    # Broad enough to read head-on at the portrait camera, with finite tier scaling.
+    return join_parts([box((0, 0, 0), (.14, .14, .42)),
+                       box((0, 0, .24), (.18, .18, .09))])
+
+
+def prepare_toy_soldier(inputs, outputs):
+    neutral = {"name": "tier-equipment", "pbrMetallicRoughness": {
         "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0, "roughnessFactor": 1}}
     body = rigid_piece(inputs / "character-archer.glb", "idle", .2)
     positions, normals, uv, indices = body
@@ -297,7 +312,7 @@ def prepare_toy_samurai(inputs, outputs):
     original = (inputs / "colormap.png").read_bytes()
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
-    write_mesh(outputs / "toy-samurai-body.glb", [body], textured, original)
+    write_mesh(outputs / "toy-soldier-body.glb", [body], textured, original)
     # The main tunic swatch is used by body-mesh vertices at U=0.96875,
     # V=0.775..0.975. Paint only texels touched by that UV line. The source
     # atlas remains byte-for-byte unchanged in the enemy/Boss body GLB.
@@ -318,21 +333,16 @@ def prepare_toy_samurai(inputs, outputs):
                 atlas[row, col, :3] = np.clip(np.array([23, 105, 238]) * lightness, 0, 255)
     stream = BytesIO()
     Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
-    write_mesh(outputs / "toy-samurai-player-body.glb", [body], textured, stream.getvalue())
-    write_mesh(outputs / "toy-samurai-helmet.glb", [helmet_parts()], neutral)
-    write_mesh(outputs / "toy-samurai-boss-helmet.glb", [helmet_parts(True)], neutral)
-    for name, scale in (("weapon-bow", 1.2), ("weapon-arrow", 1.0)):
-        part = rigid_piece(inputs / f"{name}.glb")
-        p, n, uv, idx = part
-        p = p * scale
-        if name == "weapon-bow":
-            # Kenney's bow lies in YZ; turn its curve toward the portrait camera.
-            p = np.column_stack((p[:, 2] - .15, p[:, 1], -p[:, 0])) + [.43, .35, -.28]
-            n = np.column_stack((n[:, 2], n[:, 1], -n[:, 0]))
-        write_mesh(outputs / f"toy-samurai-{name[7:]}.glb", [(p, n, None, idx)],
-                   {"name": "wood" if name == "weapon-bow" else "arrow", "pbrMetallicRoughness": {
-                       "baseColorFactor": [.30, .17, .08, 1] if name == "weapon-bow" else [.67, .43, .20, 1],
-                       "metallicFactor": 0, "roughnessFactor": 1}})
+    write_mesh(outputs / "toy-soldier-player-body.glb", [body], textured, stream.getvalue())
+    for name, piece in (("helmet", helmet_parts()), ("boss-helmet", helmet_parts(True)),
+                        ("vest", vest_parts()), ("boss-vest", vest_parts(True))):
+        write_mesh(outputs / f"toy-soldier-{name}.glb", [piece], neutral)
+    for name, piece, color in (("rifle", rifle_parts(), [.17, .20, .22, 1]),
+                               ("bullet", bullet_parts(), [.95, .78, .31, 1])):
+        write_mesh(outputs / f"toy-soldier-{name}.glb", [piece],
+                   {"name": name, "pbrMetallicRoughness": {
+                       "baseColorFactor": color, "metallicFactor": 0,
+                       "roughnessFactor": .8}})
 
 
 if __name__ == "__main__":
@@ -340,4 +350,4 @@ if __name__ == "__main__":
         raise SystemExit("Usage: prepare_character_models.py SOURCE_DIR OUTPUT_DIR")
     inputs, outputs = Path(sys.argv[1]), Path(sys.argv[2])
     outputs.mkdir(parents=True, exist_ok=True)
-    prepare_toy_samurai(inputs, outputs)
+    prepare_toy_soldier(inputs, outputs)

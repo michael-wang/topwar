@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
 
 function glb(name) {
-  const data = readFileSync(new URL(`../public/models/toy-samurai-${name}.glb`, import.meta.url));
+  const data = readFileSync(new URL(`../public/models/toy-soldier-${name}.glb`, import.meta.url));
   expect(data.toString('utf8', 0, 4)).toBe('glTF');
   const jsonLength = data.readUInt32LE(12);
   const document = JSON.parse(data.toString('utf8', 20, 20 + jsonLength));
@@ -58,7 +58,7 @@ function rgba(png) {
     at(x, y) { return [...pixels.subarray((y * width + x) * 4, (y * width + x) * 4 + 4)]; } };
 }
 
-describe('Kenney texture and kabuto bake', () => {
+describe('Kenney texture and toy soldier gear bake', () => {
   it('embeds the original Kenney colormap unchanged for enemy and Boss bodies', () => {
     expect(createHash('sha256').update(image('body')).digest('hex'))
       .toBe('319f1087d8ed50a8794f9a8179f64671d5595f2365fdf3e47ec2d4eb74dba20f');
@@ -84,8 +84,9 @@ describe('Kenney texture and kabuto bake', () => {
     expect(changed).toBeLessThan(1200); // under 0.5% of the original atlas
   });
 
-  it('keeps helmet geometry above the face and strips runtime skeletons', () => {
-    for (const name of ['body', 'player-body', 'helmet', 'boss-helmet', 'bow', 'arrow']) {
+  it('keeps a rounded helmet above the face and strips runtime skeletons', () => {
+    for (const name of ['body', 'player-body', 'helmet', 'boss-helmet', 'vest',
+      'boss-vest', 'rifle', 'bullet']) {
       const { document } = glb(name);
       expect(document.skins).toBeUndefined();
       expect(document.animations).toBeUndefined();
@@ -96,5 +97,14 @@ describe('Kenney texture and kabuto bake', () => {
       expect(document.accessors[position].min[1]).toBeGreaterThan(.77);
       expect(document.images).toBeUndefined();
     }
+    for (const name of ['vest', 'boss-vest']) {
+      const { document } = glb(name);
+      const position = document.meshes[0].primitives[0].attributes.POSITION;
+      expect(document.accessors[position].max[1]).toBeLessThan(.7);
+    }
+    const rifle = glb('rifle').document;
+    expect(rifle.materials[0].pbrMetallicRoughness.baseColorFactor[0]).toBeLessThan(.3);
+    const bullet = glb('bullet').document;
+    expect(bullet.meshes[0].primitives[0].attributes.POSITION).toBeDefined();
   });
 });

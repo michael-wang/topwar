@@ -7,17 +7,19 @@ export interface CharacterAssets {
   playerBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   helmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   bossHelmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-  bow: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-  arrow: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  vest: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  bossVest: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  rifle: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
   dispose(): void;
 }
 
-const files = ['body', 'player-body', 'helmet', 'boss-helmet', 'bow', 'arrow'] as const;
+const files = ['body', 'player-body', 'helmet', 'boss-helmet', 'vest', 'boss-vest', 'rifle', 'bullet'] as const;
 
 export async function loadCharacterAssets(): Promise<CharacterAssets> {
   const loader = new GLTFLoader();
   const loaded = await Promise.all(files.map((name) =>
-    loader.loadAsync(publicAssetUrl(`models/toy-samurai-${name}.glb`))));
+    loader.loadAsync(publicAssetUrl(`models/toy-soldier-${name}.glb`))));
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
@@ -36,7 +38,7 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
   });
   return {
     body: meshes[0], playerBody: meshes[1], helmet: meshes[2], bossHelmet: meshes[3],
-    bow: meshes[4], arrow: meshes[5],
+    vest: meshes[4], bossVest: meshes[5], rifle: meshes[6], bullet: meshes[7],
     dispose(): void {
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();

@@ -1,4 +1,4 @@
-import { bodyModel, helmetModel, bowModel, arrowModel } from './characterModel';
+import { bodyModel, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
@@ -6,11 +6,11 @@ import { ProjectilePulseTracker, ProjectileRenderer, projectilePulseScale } from
 import { AudioCueObserver, GameAudio } from '../src/audio/GameAudio';
 
 describe('presentation-only motion', () => {
-  it('keeps gameplay X/Z while releasing the bow and showing its glint', () => {
+  it('keeps gameplay X/Z while firing the rifle and showing its muzzle flash', () => {
     expect(firingRecoil(100, 100)).toBe(1);
     expect(firingRecoil(200, 100)).toBe(0);
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), bowModel());
+    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
       rifleCounts: [2], formationSpacing: 0.45 }, track: { halfWidth: 2.5, defenseLineZ: 1.5 },
       enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
@@ -18,19 +18,19 @@ describe('presentation-only motion', () => {
     const soldiers = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     const positions = soldiers.map((member) => [member.position.x, member.position.z]);
     const soldier = soldiers[0];
-    expect(soldier.children).toHaveLength(4);
+    expect(soldier.children).toHaveLength(5);
     const body = soldier.children[0];
-    const bow = soldier.getObjectByName('wooden-bow') as THREE.Mesh;
-    const restingZ = bow.position.z;
+    const rifle = soldier.getObjectByName('toy-rifle') as THREE.Mesh;
+    const restingZ = rifle.position.z;
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 400);
     expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
     expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
-    expect(bow.position.z).toBeLessThan(restingZ);
+    expect(rifle.position.z).toBeLessThan(restingZ);
     expect(body.rotation.x).toBeLessThan(0);
-    expect(soldier.children[3].visible).toBe(true);
+    expect(soldier.children[4].visible).toBe(true);
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 500);
-    expect(bow.position.z).toBeCloseTo(restingZ);
-    expect(soldier.children[3].visible).toBe(false);
+    expect(rifle.position.z).toBeCloseTo(restingZ);
+    expect(soldier.children[4].visible).toBe(false);
     renderer.dispose();
   });
 
@@ -48,7 +48,7 @@ describe('presentation-only motion', () => {
     expect(tracker.size).toBe(0);
 
     const scene = new THREE.Scene();
-    const renderer = new ProjectileRenderer(scene, arrowModel());
+    const renderer = new ProjectileRenderer(scene, bulletModel());
     renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1 },
       { id: 2, kind: 'rifle', tier: 2, x: 0, z: 1 },
       { id: 3, kind: 'rocket', tier: 0, x: 0, z: 1 }], 100);

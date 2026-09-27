@@ -6,12 +6,13 @@ import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 const HIT_FLASH_MS = 80;
 const DEATH_MS = 360;
 const MAX_DEATH_VISUALS = 48;
-export const ENEMY_VISUAL_SCALE = 0.78;
+export const ENEMY_VISUAL_SCALE = 0.74;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
   group: THREE.Group;
   helmet: THREE.Mesh;
+  vest: THREE.Mesh;
   startedAtMs: number;
   startZ: number;
 }
@@ -38,12 +39,14 @@ export class EnemyRenderer {
   private bodyCapacity = 1;
   private bodyMesh: THREE.InstancedMesh;
   private readonly helmetMeshes: THREE.InstancedMesh[];
+  private readonly vestMeshes: THREE.InstancedMesh[];
 
   constructor(private readonly scene: THREE.Scene,
     private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    private readonly vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
     const source = helmetModel.material;
-    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai helmet needs a standard material');
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     this.helmetMaterial = source.clone();
     this.helmetMaterial.color.set('white');
     this.deathMaterials = ENEMY_PALETTE.map((entry) => {
@@ -53,7 +56,8 @@ export class EnemyRenderer {
     });
     this.bodyMesh = this.createBody(1);
     this.helmetMeshes = PALETTES.map((palette) => this.createTier(palette, 1));
-    this.scene.add(this.bodyMesh, ...this.helmetMeshes);
+    this.vestMeshes = PALETTES.map((palette) => this.createTier(palette, 1, true));
+    this.scene.add(this.bodyMesh, ...this.helmetMeshes, ...this.vestMeshes);
     this.deathBurst = new DeathBurst(scene);
   }
 
@@ -81,6 +85,7 @@ export class EnemyRenderer {
     for (const palette of PALETTES) {
       if (counts[palette] > this.capacity[palette]) this.growTier(palette, counts[palette]);
       this.helmetMeshes[palette].count = counts[palette];
+      this.vestMeshes[palette].count = counts[palette];
     }
     const indices = PALETTES.map(() => 0);
     for (let bodyIndex = 0; bodyIndex < enemies.length; bodyIndex++) {
@@ -96,14 +101,19 @@ export class EnemyRenderer {
       this.bodyMesh.setMatrixAt(bodyIndex, transform.matrix);
       const helmet = this.helmetMeshes[palette];
       helmet.setMatrixAt(index, transform.matrix);
+      const vest = this.vestMeshes[palette];
+      vest.setMatrixAt(index, transform.matrix);
       const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
       if (!flashing) this.flashUntilMs.delete(enemy.id);
       helmet.setColorAt(index, flashing ? this.flashColor : this.helmetColors[palette]);
+      vest.setColorAt(index, flashing ? this.flashColor : this.helmetColors[palette]);
     }
     this.bodyMesh.instanceMatrix.needsUpdate = true;
     for (const palette of PALETTES) {
       this.helmetMeshes[palette].instanceMatrix.needsUpdate = true;
       if (this.helmetMeshes[palette].instanceColor) this.helmetMeshes[palette].instanceColor.needsUpdate = true;
+      this.vestMeshes[palette].instanceMatrix.needsUpdate = true;
+      if (this.vestMeshes[palette].instanceColor) this.vestMeshes[palette].instanceColor.needsUpdate = true;
     }
   }
 
@@ -115,7 +125,7 @@ export class EnemyRenderer {
   }
 
   dispose(): void {
-    for (const mesh of [this.bodyMesh, ...this.helmetMeshes]) {
+    for (const mesh of [this.bodyMesh, ...this.helmetMeshes, ...this.vestMeshes]) {
       this.scene.remove(mesh);
       mesh.dispose();
     }
@@ -135,9 +145,10 @@ export class EnemyRenderer {
       const group = new THREE.Group();
       const body = new THREE.Mesh(this.bodyModel.geometry, this.bodyModel.material);
       const helmet = new THREE.Mesh(this.helmetModel.geometry, this.deathMaterials[0]);
-      group.add(body, helmet);
+      const vest = new THREE.Mesh(this.vestModel.geometry, this.deathMaterials[0]);
+      group.add(body, helmet, vest);
       this.scene.add(group);
-      visual = { group, helmet, startedAtMs: nowMs, startZ: enemy.z };
+      visual = { group, helmet, vest, startedAtMs: nowMs, startZ: enemy.z };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
@@ -145,6 +156,7 @@ export class EnemyRenderer {
     visual.startedAtMs = nowMs;
     visual.startZ = enemy.z;
     visual.helmet.material = this.deathMaterials[paletteIndex(enemy.tier, PALETTES.length)];
+    visual.vest.material = visual.helmet.material;
     visual.group.visible = true;
     visual.group.scale.set(ENEMY_VISUAL_SCALE * 1.15,
       ENEMY_VISUAL_SCALE * .8, ENEMY_VISUAL_SCALE * 1.15);
@@ -168,16 +180,17 @@ export class EnemyRenderer {
 
   private createBody(capacity: number): THREE.InstancedMesh {
     const mesh = new THREE.InstancedMesh(this.bodyModel.geometry, this.bodyModel.material, capacity);
-    mesh.name = 'samurai-body';
+    mesh.name = 'toy-soldier-body';
     mesh.count = 0;
     mesh.frustumCulled = false;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     return mesh;
   }
 
-  private createTier(tier: number, capacity: number): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(this.helmetModel.geometry, this.helmetMaterial, capacity);
-    mesh.name = `${tier}-samurai-helmet`;
+  private createTier(tier: number, capacity: number, vest = false): THREE.InstancedMesh {
+    const mesh = new THREE.InstancedMesh(vest ? this.vestModel.geometry : this.helmetModel.geometry,
+      this.helmetMaterial, capacity);
+    mesh.name = `${tier}-toy-soldier-${vest ? 'vest' : 'helmet'}`;
     mesh.count = 0;
     mesh.frustumCulled = false;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -198,5 +211,9 @@ export class EnemyRenderer {
     this.helmetMeshes[tier].dispose();
     this.helmetMeshes[tier] = this.createTier(tier, this.capacity[tier]);
     this.scene.add(this.helmetMeshes[tier]);
+    this.scene.remove(this.vestMeshes[tier]);
+    this.vestMeshes[tier].dispose();
+    this.vestMeshes[tier] = this.createTier(tier, this.capacity[tier], true);
+    this.scene.add(this.vestMeshes[tier]);
   }
 }

@@ -23,12 +23,12 @@ export class ProjectileRenderer {
   private readonly members: THREE.Mesh[] = [];
 
   constructor(private readonly scene: THREE.Scene,
-    private readonly arrow: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {}
+    private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {}
 
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
     while (this.members.length < projectiles.length) {
-      const mesh = new THREE.Mesh(this.arrow.geometry, this.arrow.material);
-      mesh.name = 'wooden-arrow';
+      const mesh = new THREE.Mesh(this.bullet.geometry, this.bullet.material);
+      mesh.name = 'toy-bullet';
       this.scene.add(mesh);
       this.members.push(mesh);
     }

@@ -27,13 +27,14 @@ interface SoldierVisual {
   group: THREE.Group;
   body: THREE.Mesh;
   helmet: THREE.Mesh;
-  bow: THREE.Mesh;
+  vest: THREE.Mesh;
+  rifle: THREE.Mesh;
   muzzle: THREE.Mesh;
   appearedAtMs: number;
 }
 
 export class SquadRenderer {
-  private readonly muzzleGeometry = new THREE.SphereGeometry(0.055, 6, 4);
+  private readonly muzzleGeometry = new THREE.ConeGeometry(0.085, 0.19, 5);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
   private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#fff1a0' });
@@ -52,9 +53,10 @@ export class SquadRenderer {
   constructor(private readonly scene: THREE.Scene,
     private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly bowModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    private readonly vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    private readonly rifleModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
     const source = helmetModel.material;
-    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai helmet needs a standard material');
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
       const material = source.clone();
       material.color.set(entry.body);
@@ -127,13 +129,16 @@ export class SquadRenderer {
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
       member.helmet.material = glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
+      member.vest.material = member.helmet.material;
       member.body.scale.y = 1 - 0.09 * recoil;
       member.helmet.scale.y = 1 - 0.09 * recoil;
+      member.vest.scale.y = 1 - 0.09 * recoil;
       member.body.rotation.x = -0.09 * recoil;
       member.helmet.rotation.x = -0.09 * recoil;
-      member.bow.rotation.x = -0.18 * recoil;
-      member.bow.position.z = -0.08 * recoil;
-      member.bow.scale.setScalar(isRocket ? 1.15 : 1);
+      member.vest.rotation.x = -0.09 * recoil;
+      member.rifle.rotation.x = -0.18 * recoil;
+      member.rifle.position.z = -0.08 * recoil;
+      member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
       // The camera looks along +Z, which mirrors X on screen.
       member.group.position.set(-(state.player.x + offset.x * visualSpread), 0,
@@ -180,19 +185,22 @@ export class SquadRenderer {
   private addMember(): void {
     const group = new THREE.Group();
     const body = new THREE.Mesh(this.bodyModel.geometry, this.bodyModel.material);
-    body.name = 'samurai-body';
+    body.name = 'toy-soldier-body';
     const helmet = new THREE.Mesh(this.helmetModel.geometry, this.tierMaterials[0]);
-    helmet.name = 'samurai-helmet';
-    const bow = new THREE.Mesh(this.bowModel.geometry, this.bowModel.material);
-    bow.name = 'wooden-bow';
+    helmet.name = 'toy-soldier-helmet';
+    const vest = new THREE.Mesh(this.vestModel.geometry, this.tierMaterials[0]);
+    vest.name = 'toy-soldier-vest';
+    const rifle = new THREE.Mesh(this.rifleModel.geometry, this.rifleModel.material);
+    rifle.name = 'toy-rifle';
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
-    muzzle.name = 'bow-release-glint';
-    muzzle.position.set(0.20, 0.57, 0.05);
+    muzzle.name = 'muzzle-flash';
+    muzzle.rotation.x = Math.PI / 2;
+    muzzle.position.set(.67, .46, .87);
     muzzle.visible = false;
-    group.add(body, helmet, bow, muzzle);
+    group.add(body, helmet, vest, rifle, muzzle);
     this.scene.add(group);
     group.visible = false;
-    this.members.push({ group, body, helmet, bow, muzzle,
+    this.members.push({ group, body, helmet, vest, rifle, muzzle,
       appearedAtMs: -Infinity });
   }
 }

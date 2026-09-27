@@ -10,12 +10,15 @@ export function helmetModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> 
   material.name = 'armor';
   return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
 }
-export function bowModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
-  const material = new THREE.MeshStandardMaterial({ color: '#4d2b14' });
-  material.name = 'wood';
+export function vestModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
+  return helmetModel();
+}
+export function rifleModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
+  const material = new THREE.MeshStandardMaterial({ color: '#30353a' });
+  material.name = 'rifle';
   return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
 }
-export function arrowModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
+export function bulletModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   return new THREE.Mesh(new THREE.ConeGeometry(.1, .5, 5),
-    new THREE.MeshStandardMaterial({ color: '#ab6e33' }));
+    new THREE.MeshStandardMaterial({ color: '#f2c750' }));
 }

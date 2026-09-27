@@ -25,7 +25,9 @@ export class BossRenderer {
   private readonly death = new THREE.Group();
   private readonly body = new THREE.Group();
   private readonly helmet: THREE.Mesh;
+  private readonly vest: THREE.Mesh;
   private readonly deathHelmet: THREE.Mesh;
+  private readonly deathVest: THREE.Mesh;
   private readonly barBackground = new THREE.Mesh(this.barGeometry, this.barBackgroundMaterial);
   private readonly barFill = new THREE.Mesh(this.barGeometry, this.barFillMaterial);
   private previous: BossRenderState | null = null;
@@ -37,9 +39,10 @@ export class BossRenderer {
 
   constructor(private readonly scene: THREE.Scene,
     bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
     const source = helmetModel.material;
-    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai helmet needs a standard material');
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     this.tierMaterials = ENEMY_PALETTE.map((entry) => {
       const material = source.clone();
       material.color.set(entry.body);
@@ -48,11 +51,13 @@ export class BossRenderer {
     this.flashMaterial = source.clone();
     this.flashMaterial.color.set('#ffe36e');
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
-    this.body.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.helmet);
+    this.vest = new THREE.Mesh(vestModel.geometry, this.tierMaterials[0]);
+    this.body.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
     this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
-    this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet);
+    this.deathVest = new THREE.Mesh(vestModel.geometry, this.tierMaterials[0]);
+    this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
     this.death.rotation.y = Math.PI;
     this.barBackground.position.set(0, 1.25, -0.14);
     this.barFill.position.set(0, 1.25, -0.15);
@@ -86,6 +91,7 @@ export class BossRenderer {
       this.body.scale.y = 1 - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
       this.helmet.material = nowMs < this.flashUntilMs ? this.flashMaterial
         : this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
+      this.vest.material = this.helmet.material;
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
       this.barFill.position.x = -0.4 * (1 - ratio);
@@ -126,6 +132,7 @@ export class BossRenderer {
     this.deathStartZ = boss.z;
     this.deathScale = boss.visualScale;
     this.deathHelmet.material = this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
+    this.deathVest.material = this.deathHelmet.material;
     this.death.position.set(-boss.x, 0, boss.z);
     this.death.rotation.set(0, Math.PI, 0);
   }
