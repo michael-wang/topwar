@@ -26,7 +26,10 @@ describe('presentation-only motion', () => {
     expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
     expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
     expect(rifle.position.z).toBeLessThan(restingZ);
-    expect(body.rotation.x).toBeLessThan(0);
+    expect(body.rotation.x).toBe(0);
+    expect(body.scale.y).toBe(1);
+    expect((soldier.getObjectByName('toy-soldier-helmet') as THREE.Mesh).rotation.x).toBe(0);
+    expect((soldier.getObjectByName('toy-soldier-vest') as THREE.Mesh).scale.y).toBe(1);
     expect(soldier.children[4].visible).toBe(true);
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 500);
     expect(rifle.position.z).toBeCloseTo(restingZ);

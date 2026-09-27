@@ -26,6 +26,7 @@ const EnemyStreamSchema = z.strictObject({
   spawnAheadDistance: z.number().finite().positive(),
   columns: positiveSafeInteger,
   spacing: z.number().finite().positive(),
+  columnSpacing: z.number().finite().positive().optional(),
   jitter: z.number().finite().nonnegative(),
   seed: z.number().int().min(0).max(0xffffffff),
   tierProgression: z.strictObject({
@@ -50,8 +51,8 @@ const EnemyStreamSchema = z.strictObject({
     context.addIssue({ code: 'custom', path: ['spawnAheadDistance'],
       message: 'Spawn-ahead distance must exceed stream start Z' });
   }
-  if (stream.jitter >= stream.spacing / 2) {
-    context.addIssue({ code: 'custom', path: ['jitter'], message: 'Jitter must be less than half of spacing' });
+  if (stream.jitter >= (stream.columnSpacing ?? stream.spacing) / 2) {
+    context.addIssue({ code: 'custom', path: ['jitter'], message: 'Jitter must be less than half of column spacing' });
   }
   if (stream.rewards && stream.rewards.spawnAheadDistance > stream.spawnAheadDistance) {
     context.addIssue({ code: 'custom', path: ['rewards', 'spawnAheadDistance'],

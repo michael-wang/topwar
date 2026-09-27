@@ -6,7 +6,7 @@ import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 const HIT_FLASH_MS = 80;
 const DEATH_MS = 320;
 const MAX_DEATH_VISUALS = 48;
-export const ENEMY_VISUAL_SCALE = 0.74;
+export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {

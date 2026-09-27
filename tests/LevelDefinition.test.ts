@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
+import gameData from '../public/game-data/game.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
+import { Simulation } from '../src/simulation/Simulation';
+import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
 
 const finiteGroup = { id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
   formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } };
@@ -29,16 +32,42 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.length).toBe(112);
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
-      columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729,
+      columns: 7, spacing: 0.60, columnSpacing: 0.72, jitter: 0.16, seed: 104729,
       tierProgression: { firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
         curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000,
         laterBossHpMultiplier: 1000 },
       rewards: { rowsPerReward: 8, spawnAheadDistance: 30,
-        hitsRequired: 10, seed: 271828, sideX: 2.7 } });
+        hitsRequired: 10, seed: 271828, sideX: 3.2 } });
     expect(parsed.upgradeGates).toEqual([]);
   });
 
+  it('keeps row Z spacing and falls back to spacing for legacy column positions', () => {
+    const legacyStream = structuredClone(authoredLevel.enemyStream) as Partial<typeof authoredLevel.enemyStream>;
+    delete legacyStream.columnSpacing;
+    const legacyLevel = LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: legacyStream });
+    const legacy = new Simulation({ seed: 1, level: legacyLevel, startSquad: 1,
+      startRocketCount: 0, tiers: gameData.tiers }).getState();
+    const first = legacy.enemies.slice(0, 7);
+    const second = legacy.enemies.slice(7, 14);
+    const expected = createEnemyStreamRow(0, 7, .6, .16, legacyStream.seed!);
+    first.forEach((enemy, index) => {
+      expect(enemy.x).toBe(expected[index].x);
+      expect(enemy.z - legacyStream.startZ!).toBeCloseTo(expected[index].z);
+    });
+    expect(second[0].z - first[0].z).toBeCloseTo(.6
+      + createEnemyStreamRow(1, 7, .6, .16, legacyStream.seed!)[0].z
+      - createEnemyStreamRow(0, 7, .6, .16, legacyStream.seed!)[0].z);
+  });
+
   it('accepts finite levels without a stream and validates stream fields strictly', () => {
+    const legacyStream = structuredClone(authoredLevel.enemyStream) as Partial<typeof authoredLevel.enemyStream>;
+    delete legacyStream.columnSpacing;
+    expect(LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: legacyStream })
+      .enemyStream?.columnSpacing).toBeUndefined();
+    for (const columnSpacing of [0, -1, Infinity, NaN]) {
+      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
+        enemyStream: { ...authoredLevel.enemyStream, columnSpacing } })).toThrow();
+    }
     const finite = level();
     const { enemyStream: _stream, ...finiteOnly } = finite;
     expect(LevelDefinitionSchema.parse(finiteOnly).enemyStream).toBeUndefined();
@@ -52,7 +81,7 @@ describe('LevelDefinitionSchema', () => {
       candidate.enemyStream.spacing = spacing;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
     }
-    for (const jitter of [-1, 0.30, Infinity, NaN]) {
+    for (const jitter of [-1, 0.36, Infinity, NaN]) {
       const candidate = structuredClone(authoredLevel);
       candidate.enemyStream.jitter = jitter;
       expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();

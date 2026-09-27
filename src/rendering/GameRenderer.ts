@@ -20,7 +20,7 @@ export class GameRenderer {
   private readonly projectileRenderer: ProjectileRenderer;
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
-  private readonly streamRewardRenderer = new StreamRewardRenderer(this.scene);
+  private readonly streamRewardRenderer: StreamRewardRenderer;
   private readonly ground: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private readonly road: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
   private resizeObserver: ResizeObserver | null = null;
@@ -31,6 +31,7 @@ export class GameRenderer {
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet,
       assets.vest, assets.runFrames, assets.grayBody);
     this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.helmet, assets.bossVest);
+    this.streamRewardRenderer = new StreamRewardRenderer(this.scene, assets.helmet);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
@@ -78,7 +79,7 @@ export class GameRenderer {
 
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
-    const cameraDistance = Math.max(10, state.track.halfWidth * 4);
+    const cameraDistance = 10;
     this.camera.position.y = cameraDistance * 0.8;
     this.camera.position.z = state.player.z - cameraDistance;
     this.camera.lookAt(0, 0, state.player.z + cameraDistance * 1.1);

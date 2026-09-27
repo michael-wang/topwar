@@ -175,7 +175,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       throw new Error('Simulation enemy stream exceeds the supported range');
     }
     const offsets = createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
-      stream.spacing, stream.jitter, stream.seed);
+      stream.columnSpacing ?? stream.spacing, stream.jitter, stream.seed);
     const rowIndex = cursor.nextRowIndex;
     let revealColumn = 0;
     for (let column = 1; column < offsets.length; column++) {
@@ -208,7 +208,7 @@ function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: Enem
     if (!Number.isFinite(rowZ)) throw new Error('Simulation reward row position is non-finite');
     if (rowZ > horizonZ) break;
     const offsets = createEnemyStreamRow(placement.rowIndex, stream.columns,
-      stream.spacing, stream.jitter, stream.seed);
+      stream.columnSpacing ?? stream.spacing, stream.jitter, stream.seed);
     const z = rowZ + offsets[placement.zSlot].z;
     if (!Number.isFinite(z)) throw new Error('Simulation reward position is non-finite');
     if (placement.rowIndex >= cursor.nextRowIndex) {

@@ -71,7 +71,7 @@ describe('createEnemyFormation', () => {
 describe('createEnemyStreamRow', () => {
   const stream = authoredLevel.enemyStream;
   const row = (index: number) => createEnemyStreamRow(index, stream.columns,
-    stream.spacing, stream.jitter, stream.seed);
+    stream.columnSpacing, stream.jitter, stream.seed);
 
   it('generates an independent, centered irregular row inside the track envelope', () => {
     const first = row(0);
@@ -85,6 +85,8 @@ describe('createEnemyStreamRow', () => {
     expect(first.every((offset) => Math.abs(offset.z) <= stream.jitter)).toBe(true);
     expect((stream.startZ + 1 * stream.spacing) - (stream.startZ + 0 * stream.spacing))
       .toBeCloseTo(stream.spacing);
+    const regular = createEnemyStreamRow(0, 7, stream.columnSpacing, 0, stream.seed);
+    expect(regular.map((slot) => slot.x)).toEqual([-2.16, -1.44, -.72, 0, .72, 1.44, 2.16]);
     const gameplayRng = new SeededRng(17);
     row(100);
     expect(gameplayRng.getState()).toBe(17);

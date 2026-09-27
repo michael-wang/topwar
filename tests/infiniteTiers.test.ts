@@ -108,16 +108,17 @@ describe('formula-driven tier data', () => {
       const rows = Array.from({ length: rewards.rowsPerReward }, (_, offset) =>
         rewardPlacementForRow(block * rewards.rowsPerReward + offset, stream.columns, rewards));
       expect(rows.filter(Boolean)).toHaveLength(1);
-      expect(Math.abs(selected.side * rewards.sideX)).toBe(2.7);
+      expect(Math.abs(selected.side * rewards.sideX)).toBe(3.2);
     }
     expect(rng.getState()).toBe(rngState);
   });
 
   it('keeps side rewards reachable but separate from outer enemy lanes', () => {
     const radius = power.normalEnemyRadius;
-    expect(stream.rewards!.sideX).toBe(2.7);
+    expect(stream.rewards!.sideX).toBe(3.2);
     expect(stream.rewards!.sideX - game.track.halfWidth).toBeLessThan(radius);
-    const outerEnemyCenter = 3 * stream.spacing + stream.spacing / 6 + stream.jitter;
+    const columnSpacing = stream.columnSpacing ?? stream.spacing;
+    const outerEnemyCenter = 3 * columnSpacing + columnSpacing / 6 + stream.jitter;
     expect(stream.rewards!.sideX - outerEnemyCenter).toBeGreaterThan(2 * radius);
   });
 

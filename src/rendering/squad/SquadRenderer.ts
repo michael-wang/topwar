@@ -132,12 +132,6 @@ export class SquadRenderer {
       member.helmet.material = glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       member.vest.material = member.helmet.material;
-      member.body.scale.y = 1 - 0.09 * recoil;
-      member.helmet.scale.y = 1 - 0.09 * recoil;
-      member.vest.scale.y = 1 - 0.09 * recoil;
-      member.body.rotation.x = -0.09 * recoil;
-      member.helmet.rotation.x = -0.09 * recoil;
-      member.vest.rotation.x = -0.09 * recoil;
       member.rifle.rotation.x = -0.18 * recoil;
       member.rifle.position.z = -0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);

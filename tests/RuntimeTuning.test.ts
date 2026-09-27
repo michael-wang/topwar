@@ -24,9 +24,9 @@ const movement = { moveSpeed: 5, forwardSpeed: 1.5, trackHalfWidth: 2.5,
 
 describe('temporary runtime tuning', () => {
   it('starts from the committed eight authored defaults and rejects obsolete mouse sensitivity', () => {
-    expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 28, bulletRange: 40,
+    expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 60, bulletRange: 80,
       rewardRowsPerReward: 8, enemyHigherTierPowerMultiplier: 10,
-      rifleHigherTierPowerMultiplier: 10, fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5 });
+      rifleHigherTierPowerMultiplier: 10, fireRate: 10, moveSpeed: 5, forwardSpeed: 2 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();
   });
 

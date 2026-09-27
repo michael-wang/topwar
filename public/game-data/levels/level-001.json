@@ -9,6 +9,7 @@
     "spawnAheadDistance": 96,
     "columns": 7,
     "spacing": 0.60,
+    "columnSpacing": 0.72,
     "jitter": 0.16,
     "seed": 104729,
     "tierProgression": {
@@ -20,6 +21,6 @@
       "firstBossHpMultiplier": 4000,
       "laterBossHpMultiplier": 1000
     },
-    "rewards": { "rowsPerReward": 8, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 2.7 }
+    "rewards": { "rowsPerReward": 8, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 3.2 }
   }
 }

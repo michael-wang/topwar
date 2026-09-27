@@ -15,8 +15,6 @@ export const PLAYER_PALETTE = [
   { body: '#5d5ee8', head: '#8575e0' },
 ] as const;
 
-export const REWARD_PALETTE = ['#1ac1ed', '#edc242', '#69d36f', '#a783ff'] as const;
-
 export function paletteIndex(tier: number, length: number): number {
   if (!Number.isSafeInteger(tier) || tier < 1) throw new Error('Palette tier must be positive');
   return (tier - 1) % length;

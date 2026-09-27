@@ -3,19 +3,19 @@
     "startSquad": 1,
     "startRocketCount": 0,
     "moveSpeed": 5,
-    "forwardSpeed": 1.5,
+    "forwardSpeed": 2,
     "formationSpacing": 0.45,
     "memberRadius": 0.22
   },
   "track": {
-    "halfWidth": 2.5,
+    "halfWidth": 3.0,
     "defenseLineOffset": 1.5
   },
   "weapon": {
     "rifle": {
-      "fireRate": 7,
-      "projectileSpeed": 28,
-      "range": 40
+      "fireRate": 10,
+      "projectileSpeed": 60,
+      "range": 80
     },
     "rocket": {
       "damage": 15,

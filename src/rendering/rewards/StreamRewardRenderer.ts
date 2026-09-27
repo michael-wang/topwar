@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { StreamRewardRenderState } from '../RenderState';
-import { REWARD_PALETTE, paletteIndex } from '../tierPalettes';
+import { PLAYER_PALETTE, paletteIndex } from '../tierPalettes';
 
 interface RewardVisual {
   group: THREE.Group;
@@ -25,23 +25,11 @@ function crackGeometry(points: number[]): THREE.BufferGeometry {
   return geometry;
 }
 
-function soldierIcon(): THREE.ShapeGeometry {
-  const shape = new THREE.Shape();
-  shape.moveTo(-.18, -.06);
-  for (const [x, y] of [[.18, -.06], [.18, -.025], [.145, -.025], [.13, .09],
-    [.08, .15], [0, .17], [-.08, .15], [-.13, .09], [-.145, -.025],
-    [-.18, -.025]] as const) shape.lineTo(x, y);
-  shape.closePath();
-  return new THREE.ShapeGeometry(shape);
-}
-
 export class StreamRewardRenderer {
   private readonly crateGeometry = new THREE.BoxGeometry(.78, .68, .34);
   private readonly lidGeometry = new THREE.BoxGeometry(.84, .13, .4);
   private readonly strapGeometry = new THREE.BoxGeometry(.08, .68, .025);
   private readonly plaqueGeometry = new THREE.BoxGeometry(.47, .38, .025);
-  private readonly iconGeometry = soldierIcon();
-  private readonly plusGeometry = new THREE.PlaneGeometry(.08, .08);
   private readonly barGeometry = new THREE.PlaneGeometry(.53, .1);
   private readonly crackGeometries = [
     crackGeometry([-.33, .22, -.25, .12, -.3, .04, -.2, -.04]),
@@ -50,16 +38,25 @@ export class StreamRewardRenderer {
   private readonly crateMaterial = new THREE.MeshStandardMaterial({ color: '#405864', roughness: .85 });
   private readonly damagedMaterial = new THREE.MeshStandardMaterial({ color: '#96938a', roughness: .9 });
   private readonly plaqueMaterial = new THREE.MeshBasicMaterial({ color: '#20353c' });
-  private readonly iconMaterial = new THREE.MeshBasicMaterial({ color: '#fff4d5', side: THREE.DoubleSide });
   private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#172b30' });
   private readonly crackMaterial = new THREE.LineBasicMaterial({ color: '#ffe4a8' });
   private readonly warningMaterial = new THREE.MeshBasicMaterial({ color: '#fff0a0' });
   private readonly warningFlashMaterial = new THREE.MeshBasicMaterial({ color: '#ff9b4a' });
-  private readonly accents = REWARD_PALETTE.map((color) => new THREE.MeshBasicMaterial({ color }));
+  private readonly accents = PLAYER_PALETTE.map((entry) => new THREE.MeshBasicMaterial({ color: entry.body }));
+  private readonly helmetMaterials: THREE.MeshStandardMaterial[];
   private readonly visuals = new Map<number, RewardVisual>();
   private readonly pops: { group: THREE.Group; startedAtMs: number; scale: number; y: number }[] = [];
 
-  constructor(private readonly scene: THREE.Scene) {}
+  constructor(private readonly scene: THREE.Scene,
+    private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    const source = helmetModel.material;
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Reward helmet needs a standard material');
+    this.helmetMaterials = PLAYER_PALETTE.map((entry) => {
+      const material = source.clone();
+      material.color.set(entry.body);
+      return material;
+    });
+  }
 
   update(rewards: readonly StreamRewardRenderState[], nowMs = performance.now()): void {
     const active = new Set(rewards.map((reward) => reward.id));
@@ -121,17 +118,18 @@ export class StreamRewardRenderer {
   dispose(): void {
     this.reset();
     for (const geometry of [this.crateGeometry, this.lidGeometry, this.strapGeometry,
-      this.plaqueGeometry, this.iconGeometry, this.plusGeometry, this.barGeometry,
+      this.plaqueGeometry, this.barGeometry,
       ...this.crackGeometries]) geometry.dispose();
-    for (const material of [this.crateMaterial, this.damagedMaterial, this.plaqueMaterial, this.iconMaterial,
+    for (const material of [this.crateMaterial, this.damagedMaterial, this.plaqueMaterial,
       this.barBackgroundMaterial, this.crackMaterial, this.warningMaterial, this.warningFlashMaterial,
-      ...this.accents]) material.dispose();
+      ...this.accents, ...this.helmetMaterials]) material.dispose();
   }
 
   private createVisual(tier: number): RewardVisual {
     const group = new THREE.Group();
     group.name = 'soldier-reward-crate';
-    const accent = this.accents[paletteIndex(tier, this.accents.length)];
+    const tierIndex = paletteIndex(tier, this.accents.length);
+    const accent = this.accents[tierIndex];
     const body = new THREE.Mesh(this.crateGeometry, this.crateMaterial);
     body.name = 'crate-body';
     const lid = new THREE.Mesh(this.lidGeometry, accent);
@@ -146,16 +144,12 @@ export class StreamRewardRenderer {
     const plaque = new THREE.Mesh(this.plaqueGeometry, this.plaqueMaterial);
     plaque.position.set(0, .015, -.196);
     group.add(plaque);
-    const icon = new THREE.Mesh(this.iconGeometry, this.iconMaterial);
-    icon.name = 'soldier-plus-icon';
-    icon.position.set(-.035, .04, -.212);
-    group.add(icon);
-    for (const [width, height] of [[.09, .025], [.025, .09]]) {
-      const plus = new THREE.Mesh(this.plusGeometry, this.iconMaterial);
-      plus.position.set(.145, .055, -.214);
-      plus.scale.set(width / .08, height / .08, 1);
-      group.add(plus);
-    }
+    const helmet = new THREE.Mesh(this.helmetModel.geometry, this.helmetMaterials[tierIndex]);
+    helmet.name = 'reward-soldier-helmet';
+    helmet.scale.setScalar(.85);
+    helmet.position.set(0, -.2, 0);
+    helmet.rotation.y = Math.PI;
+    group.add(helmet);
     const background = new THREE.Mesh(this.barGeometry, this.barBackgroundMaterial);
     background.position.set(0, -.255, -.201);
     group.add(background);

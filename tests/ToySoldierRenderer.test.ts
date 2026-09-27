@@ -60,7 +60,9 @@ describe('Modern Toy Soldier presentation', () => {
     const member = soldier(scene);
     expect(member.getObjectByName('muzzle-flash')?.visible).toBe(true);
     expect((member.getObjectByName('toy-rifle') as THREE.Mesh).rotation.x).toBeLessThan(0);
-    expect((member.getObjectByName('toy-soldier-body') as THREE.Mesh).scale.y).toBeLessThan(1);
+    expect((member.getObjectByName('toy-soldier-body') as THREE.Mesh).scale.y).toBe(1);
+    expect((member.getObjectByName('toy-soldier-helmet') as THREE.Mesh).scale.y).toBe(1);
+    expect((member.getObjectByName('toy-soldier-vest') as THREE.Mesh).scale.y).toBe(1);
     renderer.update(state(1), 700);
     expect(member.getObjectByName('muzzle-flash')?.visible).toBe(false);
     renderer.update(state(2), 800);

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { StreamRewardRenderer } from '../src/rendering/rewards/StreamRewardRenderer';
+import { helmetModel } from './characterModel';
+import { PLAYER_PALETTE } from '../src/rendering/tierPalettes';
 
 const reward = { id: 1, tier: 1, x: 0, z: 10, hitProgress: 0, hitsRequired: 10 };
 
@@ -11,14 +13,17 @@ function part(group: THREE.Group, name: string): THREE.Mesh {
 }
 
 describe('StreamRewardRenderer', () => {
-  it('shows a soldier crate with icon and a shrinking durability bar instead of hit-count text', () => {
+  it('shows a player helmet on the crate and a shrinking durability bar instead of hit-count text', () => {
     const scene = new THREE.Scene();
-    const renderer = new StreamRewardRenderer(scene);
+    const sourceHelmet = helmetModel();
+    const renderer = new StreamRewardRenderer(scene, sourceHelmet);
     renderer.update([reward], 1000);
     const crate = scene.children[0] as THREE.Group;
     expect(crate.name).toBe('soldier-reward-crate');
     expect(part(crate, 'crate-body')).toBeDefined();
-    expect(part(crate, 'soldier-plus-icon')).toBeDefined();
+    const helmet = part(crate, 'reward-soldier-helmet');
+    expect(helmet.geometry).toBe(sourceHelmet.geometry);
+    expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('1769ee');
     const fill = part(crate, 'remaining-durability');
     expect(fill.scale.x).toBe(1);
     expect(crate.children.some((child) => (child as THREE.Mesh).material
@@ -43,11 +48,12 @@ describe('StreamRewardRenderer', () => {
 
   it('keeps tier accent colors and reuses crate resources across hit updates', () => {
     const scene = new THREE.Scene();
-    const renderer = new StreamRewardRenderer(scene);
+    const sourceHelmet = helmetModel();
+    const renderer = new StreamRewardRenderer(scene, sourceHelmet);
     renderer.update([reward, { ...reward, id: 2, tier: 2, x: .6 }], 0);
     const [first, second] = scene.children as THREE.Group[];
-    expect((part(first, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('1ac1ed');
-    expect((part(second, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('edc242');
+    expect((part(first, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('1769ee');
+    expect((part(second, 'crate-lid').material as THREE.MeshBasicMaterial).color.getHexString()).toBe('10429b');
     const geometry = part(first, 'crate-body').geometry;
     const dispose = vi.spyOn(geometry, 'dispose');
     renderer.update([{ ...reward, z: 20, hitProgress: 3 }, { ...reward, id: 2, tier: 2, x: .6 }], 100);
@@ -59,9 +65,24 @@ describe('StreamRewardRenderer', () => {
     expect(dispose).toHaveBeenCalledOnce();
   });
 
+  it('matches the player helmet palette through Tier 20 with bounded shared geometry', () => {
+    const scene = new THREE.Scene();
+    const sourceHelmet = helmetModel();
+    const renderer = new StreamRewardRenderer(scene, sourceHelmet);
+    for (let tier = 1; tier <= 20; tier++) {
+      renderer.update([{ ...reward, id: tier, tier }], tier * 1000);
+      const helmet = part(scene.children[0] as THREE.Group, 'reward-soldier-helmet');
+      expect(helmet.geometry).toBe(sourceHelmet.geometry);
+      expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString())
+        .toBe(PLAYER_PALETTE[(tier - 1) % PLAYER_PALETTE.length].body.slice(1));
+      renderer.reset();
+    }
+    renderer.dispose();
+  });
+
   it('briefly pops upward when acquired, then removes the crate', () => {
     const scene = new THREE.Scene();
-    const renderer = new StreamRewardRenderer(scene);
+    const renderer = new StreamRewardRenderer(scene, helmetModel());
     renderer.update([reward], 100);
     const crate = scene.children[0] as THREE.Group;
     renderer.update([], 110);

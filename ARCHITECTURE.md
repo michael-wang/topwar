@@ -204,11 +204,12 @@ Examples:
 
 ```json
 {
-  "rifle": {
-    "damage": 3,
-    "fireRate": 7,
-    "projectileSpeed": 28,
-    "range": 18
+  "weapon": {
+    "rifle": {
+      "fireRate": 10,
+      "projectileSpeed": 60,
+      "range": 80
+    }
   }
 }
 ```
