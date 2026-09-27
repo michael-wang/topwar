@@ -1,48 +1,36 @@
-# Character assets
+# Toy Samurai Army assets
 
-These three models are by Quaternius and are published as CC0. The playable files
-are baked derivatives of only the selected characters. No source animation,
-skeleton, or unused kit character/weapon is shipped at runtime.
+Source: [Kenney Mini Forest 1.0](https://kenney.nl/assets/mini-forest),
+official archive `kenney_mini-forest_1.0.zip`. Its included `License.txt`
+states Creative Commons Zero (CC0). No paid assets or other source family is used.
+Archive SHA-256: `8691614018075A66458E35915B8C358C2E6178648AEDADAFCDF313B924AA6581`.
 
-| Runtime file | Selected source | Creator's CC0 model page | Original Quaternius kit |
-| --- | --- | --- | --- |
-| `soldier.glb` | Character Soldier | [Character Soldier](https://poly.pizza/m/PpLF4rt4ah) | [Toon Shooter Game Kit](https://quaternius.com/packs/toonshootergamekit.html) |
-| `zombie-basic-static.glb` | Zombie Basic | [Zombie](https://poly.pizza/m/VlXjG0N8Eg) | [Zombie Apocalypse Kit](https://quaternius.com/packs/zombieapocalypsekit.html) |
-| `giant.glb` | Giant | [Giant](https://poly.pizza/m/BldaiPtyJa) | [Cube World Kit](https://quaternius.com/packs/cubeworldkit.html) |
+Selected exact source files from `Models/GLB format/`:
 
-The kit pages state CC0, and each linked individual model page identifies
-Quaternius as creator and marks that model CC0. The official kit Drive folders
-list the exact files `Character_Soldier.gltf`, `Zombie_Basic.gltf`, and
-`Giant.gltf`. The Drive downloads returned a quota error during preparation,
-so the input GLBs came from Quaternius's individual model pages linked above.
-The individual Zombie page labels the model `Zombie`; its identification as
-the kit's Basic variant follows the official folder listing and the source
-model's plain `Zombie` mesh name. It was not byte-compared with the Drive file.
-Do not use the license of a multi-model bundle in place of these individual
-CC0 pages; bundles can mix licenses.
+- `character-archer.glb`
+- `weapon-bow.glb`
+- `weapon-arrow.glb`
+- `Textures/colormap.png`
 
-Source GLBs, in `soldier.glb`, `zombie.glb`, `giant.glb` order, were downloaded
-from the individual pages' model files. Their SHA-256 hashes are:
+Run `python scripts/prepare_character_models.py SOURCE_DIR public/models` with
+these four files in SOURCE_DIR. The script needs NumPy and Pillow. It samples
+the archer's `idle` animation at 0.2 seconds, bakes the two skinned meshes into
+one rigid mesh, places feet at Y=0, centers X/Z, and normalizes body height to
+one game unit. It remaps the Kenney swatch texture to fixed warm skin and
+neutral underclothes. Chunky kabuto, shikoro, V crest, chest/shoulder/forearm
+armor and boots are made from low-poly boxes in the offline script. The boss
+uses the same archer body with a broader armor and crest variant. Kenney's bow
+and arrow meshes are baked to rigid geometry with dark wood materials.
 
-```text
-06597E2CD20840EEE8BED03790F32138E379BA3D6C7F61EB87E29F0C672D4D54
-3AFD2837B117F264AFD037A350759B96D6F837FC9B381CCA35CF6796B4BAB09D
-09F2FC7A7D8E9504BEA781DF0730DE0F9E479D04BE10AF134AE618A158F7ABB1
-```
+| Runtime file | Bytes | Use |
+| --- | ---: | --- |
+| `toy-samurai-body.glb` | 47,008 | Shared fixed body and skin |
+| `toy-samurai-armor.glb` | 9,636 | Player and enemy tier armor |
+| `toy-samurai-boss-armor.glb` | 11,076 | Broader boss armor |
+| `toy-samurai-bow.glb` | 5,252 | Player bow |
+| `toy-samurai-arrow.glb` | 4,320 | Projectile arrow |
 
-To reproduce, place those input files in a temporary directory with the names
-above and run `python scripts/prepare_character_models.py SOURCE_DIR public/models`.
-The script needs NumPy and Pillow. It samples `Idle_Shoot` for Soldier,
-`Run_Attack` at 0.22 seconds for Zombie, and `Idle` for Giant; bakes skin
-deformation into rigid geometry; strips animations, skins, joints, and unused
-mesh parts; centers X/Z; places the lowest vertex on the ground; normalizes
-height to one game unit; and rotates Zombie and Giant to face the player. The
-Zombie and Giant atlases are converted to grayscale so tier color can come from
-the existing enemy palette. Soldier keeps its material regions so body and
-head can use blue tier colors while skin and weapon colors stay separate.
-
-The runtime loader shares geometry and source textures. Normal Zombies use one
-`InstancedMesh` per tier palette bucket with per-instance color and transform;
-they do not use a skeleton or `AnimationMixer`. Soldier instances share one
-geometry and a set of materials per blue tier. Giant shares one geometry and
-uses a material derived from the active Boss tier.
+Runtime files contain no skins or animations. Normal enemies use two shared
+`InstancedMesh` layers per palette bucket, one fixed body and one tintable armor,
+so there is no mesh or animation mixer per enemy. The bow and arrow use the
+original Kenney geometry, while their materials stay neutral across tiers.

@@ -24,20 +24,17 @@ export function firingRecoil(nowMs: number, firedAtMs: number): number {
 interface SoldierVisual {
   group: THREE.Group;
   body: THREE.Mesh;
-  rifle: THREE.Mesh;
-  launcher: THREE.Mesh;
+  armor: THREE.Mesh;
+  bow: THREE.Mesh;
   muzzle: THREE.Mesh;
   appearedAtMs: number;
 }
 
 export class SquadRenderer {
-  private readonly rifleGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.58);
-  private readonly launcherGeometry = new THREE.BoxGeometry(0.22, 0.17, 0.66);
-  private readonly muzzleGeometry = new THREE.SphereGeometry(0.085, 6, 4);
-  private readonly tierMaterials: THREE.Material[][];
-  private readonly upgradeMaterials: THREE.Material[];
-  private readonly rifleMaterial = new THREE.MeshStandardMaterial({ color: '#252a30' });
-  private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#ffe26b' });
+  private readonly muzzleGeometry = new THREE.SphereGeometry(0.055, 6, 4);
+  private readonly tierMaterials: THREE.MeshStandardMaterial[];
+  private readonly upgradeMaterial: THREE.MeshStandardMaterial;
+  private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#fff1a0' });
   private readonly ringGeometry = new THREE.RingGeometry(0.42, 0.55, 32);
   private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#fff0a4',
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
@@ -51,18 +48,18 @@ export class SquadRenderer {
   private rocketFiredAtMs = -Infinity;
 
   constructor(private readonly scene: THREE.Scene,
-    private readonly model: THREE.Mesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>) {
-    const source = Array.isArray(model.material) ? model.material : [model.material];
-    const colored = (body: string, head: string): THREE.Material[] => source.map((original) => {
-      const material = original.clone();
-      if (material instanceof THREE.MeshStandardMaterial) {
-        if (material.name === 'Character_Main' || material.name === 'Pants') material.color.set(body);
-        if (material.name === 'Grey') material.color.set(head);
-      }
+    private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    private readonly armorModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    private readonly bowModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    const source = armorModel.material;
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai armor needs a standard material');
+    this.tierMaterials = PLAYER_PALETTE.map((entry) => {
+      const material = source.clone();
+      material.color.set(entry.body);
       return material;
     });
-    this.tierMaterials = PLAYER_PALETTE.map((entry) => colored(entry.body, entry.head));
-    this.upgradeMaterials = colored('#b9eaff', '#e1f8ff');
+    this.upgradeMaterial = source.clone();
+    this.upgradeMaterial.color.set('#b9eaff');
     this.tierRing.rotation.x = -Math.PI / 2;
     this.tierRing.position.y = 0.035;
     this.tierRing.visible = false;
@@ -121,16 +118,16 @@ export class SquadRenderer {
       const upgrading = tierActive && tier === this.tierUpTier;
       member.group.scale.setScalar(upgrading ? tierUpScale(tierAgeMs) : spawnScale);
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
-      member.body.material = glowing ? this.upgradeMaterials
+      member.armor.material = glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
-      member.body.rotation.x = -0.06 * recoil;
-      member.rifle.visible = !isRocket;
-      member.rifle.scale.setScalar(tier >= 3 ? 1.25 : tier === 2 ? 1.12 : 1);
-      member.rifle.position.z = 0.38 - (tier >= 3 ? 0.16 : 0.11) * recoil;
-      member.launcher.visible = isRocket;
-      member.launcher.position.z = 0.12 - 0.09 * recoil;
+      member.body.scale.y = 1 - 0.09 * recoil;
+      member.armor.scale.y = 1 - 0.09 * recoil;
+      member.body.rotation.x = -0.09 * recoil;
+      member.armor.rotation.x = -0.09 * recoil;
+      member.bow.rotation.x = -0.18 * recoil;
+      member.bow.position.z = -0.08 * recoil;
+      member.bow.scale.setScalar(isRocket ? 1.15 : 1);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
-      member.muzzle.position.z = member.rifle.position.z + (tier >= 3 ? 0.48 : tier === 2 ? 0.40 : 0.32);
       // The camera looks along +Z, which mirrors X on screen.
       member.group.position.set(-(state.player.x + offset.x), 0, state.player.z + offset.z);
     }
@@ -157,9 +154,9 @@ export class SquadRenderer {
     this.scene.remove(this.tierRing);
     this.ringGeometry.dispose();
     this.ringMaterial.dispose();
-    for (const geometry of [this.rifleGeometry, this.launcherGeometry, this.muzzleGeometry]) geometry.dispose();
-    for (const material of [...this.tierMaterials.flat(), ...this.upgradeMaterials,
-      this.rifleMaterial, this.muzzleMaterial]) material.dispose();
+    this.muzzleGeometry.dispose();
+    for (const material of [...this.tierMaterials, this.upgradeMaterial,
+      this.muzzleMaterial]) material.dispose();
   }
 
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
@@ -174,19 +171,20 @@ export class SquadRenderer {
 
   private addMember(): void {
     const group = new THREE.Group();
-    const body = new THREE.Mesh(this.model.geometry, this.tierMaterials[0]);
-    const rifle = new THREE.Mesh(this.rifleGeometry, this.rifleMaterial);
-    rifle.position.set(0.20, 0.54, 0.38);
-    const launcher = new THREE.Mesh(this.launcherGeometry, this.rifleMaterial);
-    launcher.position.set(-0.22, 0.67, 0.12);
-    launcher.visible = false;
+    const body = new THREE.Mesh(this.bodyModel.geometry, this.bodyModel.material);
+    body.name = 'samurai-body';
+    const armor = new THREE.Mesh(this.armorModel.geometry, this.tierMaterials[0]);
+    armor.name = 'samurai-armor';
+    const bow = new THREE.Mesh(this.bowModel.geometry, this.bowModel.material);
+    bow.name = 'wooden-bow';
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
-    muzzle.position.set(0.20, 0.54, 0.70);
+    muzzle.name = 'bow-release-glint';
+    muzzle.position.set(0.20, 0.57, 0.05);
     muzzle.visible = false;
-    group.add(body, rifle, launcher, muzzle);
+    group.add(body, armor, bow, muzzle);
     this.scene.add(group);
     group.visible = false;
-    this.members.push({ group, body, rifle, launcher, muzzle,
+    this.members.push({ group, body, armor, bow, muzzle,
       appearedAtMs: -Infinity });
   }
 }

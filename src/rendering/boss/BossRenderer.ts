@@ -19,12 +19,13 @@ export class BossRenderer {
   private readonly barGeometry = new THREE.PlaneGeometry(0.8, 0.065);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly flashMaterial: THREE.MeshStandardMaterial;
-  private readonly deathMaterial: THREE.MeshStandardMaterial;
   private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#27313a', side: THREE.DoubleSide });
   private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ffe36e', side: THREE.DoubleSide });
   private readonly active = new THREE.Group();
   private readonly death = new THREE.Group();
-  private readonly body: THREE.Mesh;
+  private readonly body = new THREE.Group();
+  private readonly armor: THREE.Mesh;
+  private readonly deathArmor: THREE.Mesh;
   private readonly barBackground = new THREE.Mesh(this.barGeometry, this.barBackgroundMaterial);
   private readonly barFill = new THREE.Mesh(this.barGeometry, this.barFillMaterial);
   private previous: BossRenderState | null = null;
@@ -35,9 +36,10 @@ export class BossRenderer {
   private deathScale = 1;
 
   constructor(private readonly scene: THREE.Scene,
-    model: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
-    const source = model.material;
-    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Giant needs a standard material');
+    bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    armorModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    const source = armorModel.material;
+    if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Samurai armor needs a standard material');
     this.tierMaterials = ENEMY_PALETTE.map((entry) => {
       const material = source.clone();
       material.color.set(entry.body);
@@ -45,11 +47,11 @@ export class BossRenderer {
     });
     this.flashMaterial = source.clone();
     this.flashMaterial.color.set('#ffe36e');
-    this.deathMaterial = source.clone();
-    this.deathMaterial.color.set('#999999');
-    this.body = new THREE.Mesh(model.geometry, this.tierMaterials[0]);
+    this.armor = new THREE.Mesh(armorModel.geometry, this.tierMaterials[0]);
+    this.body.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.armor);
     this.active.add(this.body);
-    this.death.add(new THREE.Mesh(model.geometry, this.deathMaterial));
+    this.deathArmor = new THREE.Mesh(armorModel.geometry, this.tierMaterials[0]);
+    this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathArmor);
     this.barBackground.position.set(0, 1.25, -0.14);
     this.barFill.position.set(0, 1.25, -0.15);
     this.active.add(this.barBackground, this.barFill);
@@ -77,9 +79,10 @@ export class BossRenderer {
       this.active.scale.setScalar(boss.visualScale * (1 + 0.03
         * Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS)));
       const pose = bossWalkPose(boss.id, nowMs);
-      this.body.position.y = pose.bob;
-      this.body.rotation.x = pose.leftLeg * 0.06;
-      this.body.material = nowMs < this.flashUntilMs ? this.flashMaterial
+      this.body.position.y = pose.bob * 2;
+      this.body.rotation.z = pose.leftArm * 0.10;
+      this.body.scale.y = 1 - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
+      this.armor.material = nowMs < this.flashUntilMs ? this.flashMaterial
         : this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
@@ -92,7 +95,7 @@ export class BossRenderer {
         const progress = Math.max(0, elapsed / DEATH_MS);
         this.death.scale.setScalar(this.deathScale
           * (1 + 0.15 * Math.max(0, 1 - elapsed / IMPACT_MS)));
-        this.death.rotation.x = Math.PI * progress;
+        this.death.rotation.z = Math.PI * 0.8 * progress;
         this.death.position.y = Math.sin(Math.PI * progress) * 0.6;
         this.death.position.z = this.deathStartZ + progress * 1.5;
       }
@@ -111,7 +114,7 @@ export class BossRenderer {
   dispose(): void {
     this.scene.remove(this.active, this.death);
     this.barGeometry.dispose();
-    for (const material of [...this.tierMaterials, this.flashMaterial, this.deathMaterial,
+    for (const material of [...this.tierMaterials, this.flashMaterial,
       this.barBackgroundMaterial, this.barFillMaterial]) material.dispose();
   }
 
@@ -120,6 +123,7 @@ export class BossRenderer {
     this.deathStartedAtMs = nowMs;
     this.deathStartZ = boss.z;
     this.deathScale = boss.visualScale;
+    this.deathArmor.material = this.tierMaterials[paletteIndex(boss.tier, ENEMY_PALETTE.length)];
     this.death.position.set(-boss.x, 0, boss.z);
     this.death.rotation.set(0, 0, 0);
   }

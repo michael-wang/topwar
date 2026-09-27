@@ -1,14 +1,13 @@
-"""Bake the selected Quaternius characters into small, rigid glTF binaries.
+"""Bake Kenney Mini Forest archer, bow and arrow into static Toy Samurai assets.
 
 Usage: python scripts/prepare_character_models.py SOURCE_DIR public/models
-SOURCE_DIR contains soldier.glb, zombie.glb, and giant.glb downloaded from the
-Quaternius creator's individual CC0 model pages (see public/models/README.md).
+SOURCE_DIR contains character-archer.glb, weapon-bow.glb, weapon-arrow.glb,
+and colormap.png from the official Kenney Mini Forest 1.0 archive.
 """
 
 from __future__ import annotations
 
 import json
-import math
 import struct
 import sys
 from io import BytesIO
@@ -182,76 +181,132 @@ class GlbWriter:
                          + struct.pack("<II", len(self.binary), 0x004E4942) + self.binary)
 
 
-def prepare(source, destination, names, clip, at_seconds, facing_rotation):
+def write_mesh(path, pieces, material, image=None):
+    writer = GlbWriter()
+    primitives = []
+    for positions, normals, uv, indices in pieces:
+        attrs = {"POSITION": writer.add_array(np.asarray(positions, dtype="<f4"), "VEC3", 5126, 34962),
+                 "NORMAL": writer.add_array(np.asarray(normals, dtype="<f4"), "VEC3", 5126, 34962)}
+        if uv is not None:
+            attrs["TEXCOORD_0"] = writer.add_array(np.asarray(uv, dtype="<f4"), "VEC2", 5126, 34962)
+        primitives.append({"attributes": attrs,
+                           "indices": writer.add_array(np.asarray(indices, dtype="<u4"), "SCALAR", 5125, 34963),
+                           "material": 0})
+    writer.save(path, primitives, [material], image)
+    print(f"{path.name}: {path.stat().st_size} bytes")
+
+
+def rigid_piece(source, clip=None, seconds=0):
     document, binary = read_glb(source)
-    overrides = sample_animation(document, binary, clip, at_seconds)
+    overrides = sample_animation(document, binary, clip, seconds) if clip else {}
     worlds = world_matrices(document, overrides)
     pieces = []
     for index, node in enumerate(document["nodes"]):
-        if node.get("name") not in names or "mesh" not in node:
+        if "mesh" not in node:
             continue
         for primitive in document["meshes"][node["mesh"]]["primitives"]:
-            positions, normals, uv, indices = bake_primitive(document, binary, primitive, index, worlds)
-            pieces.append((positions, normals, uv, indices, primitive["material"]))
-    if not pieces:
-        raise ValueError(f"No selected mesh in {source}")
-    grouped = {}
-    for positions, normals, uv, indices, material in pieces:
-        grouped.setdefault(material, []).append((positions, normals, uv, indices))
-    pieces = []
-    for material, parts in grouped.items():
-        offsets = np.cumsum([0] + [len(part[0]) for part in parts[:-1]])
-        pieces.append((np.concatenate([part[0] for part in parts]),
-                       np.concatenate([part[1] for part in parts]),
-                       np.concatenate([part[2] for part in parts]) if parts[0][2] is not None else None,
-                       np.concatenate([part[3] + offset for part, offset in zip(parts, offsets)]),
-                       material))
-    all_positions = np.concatenate([piece[0] for piece in pieces])
-    height = float(all_positions[:, 1].max() - all_positions[:, 1].min())
-    if not math.isfinite(height) or height <= 0:
-        raise ValueError("Invalid model height")
-    center = (all_positions[:, 0].min() + all_positions[:, 0].max()) / 2
-    zcenter = (all_positions[:, 2].min() + all_positions[:, 2].max()) / 2
-    minimum_y = all_positions[:, 1].min()
-    rotation = np.array([[math.cos(facing_rotation), 0, math.sin(facing_rotation)],
-                         [0, 1, 0], [-math.sin(facing_rotation), 0, math.cos(facing_rotation)]])
-    writer = GlbWriter()
-    output = []
-    material_ids = {}
-    materials = []
-    for positions, normals, uv, indices, old_material in pieces:
-        positions = ((positions - [center, minimum_y, zcenter]) @ rotation.T / height).astype("<f4")
-        normals = (normals @ rotation.T).astype("<f4")
-        attributes = {"POSITION": writer.add_array(positions, "VEC3", 5126, 34962),
-                      "NORMAL": writer.add_array(normals, "VEC3", 5126, 34962)}
-        if uv is not None:
-            attributes["TEXCOORD_0"] = writer.add_array(uv.astype("<f4"), "VEC2", 5126, 34962)
-        if old_material not in material_ids:
-            original = document["materials"][old_material]
-            material = {"name": original.get("name", "part"), "pbrMetallicRoughness": {
-                "baseColorFactor": original.get("pbrMetallicRoughness", {}).get("baseColorFactor", [1, 1, 1, 1]),
-                "metallicFactor": 0, "roughnessFactor": 1}}
-            if "baseColorTexture" in original.get("pbrMetallicRoughness", {}):
-                material["pbrMetallicRoughness"]["baseColorTexture"] = {"index": 0}
-            material_ids[old_material] = len(materials)
-            materials.append(material)
-        output.append({"attributes": attributes,
-                       "indices": writer.add_array(indices.astype("<u4"), "SCALAR", 5125, 34963),
-                       "material": material_ids[old_material]})
-    image = None
-    if document.get("images"):
-        view = document["bufferViews"][document["images"][0]["bufferView"]]
-        start = view.get("byteOffset", 0)
-        raw = binary[start:start + view["byteLength"]]
-        # Neutral texture detail lets instanceColor represent every enemy tier.
-        picture = Image.open(BytesIO(raw)).convert("RGBA")
-        gray = Image.fromarray(np.asarray(picture.convert("L")))
-        picture = Image.merge("RGBA", (gray, gray, gray, picture.getchannel("A")))
-        stream = BytesIO()
-        picture.save(stream, format="PNG", optimize=True)
-        image = stream.getvalue()
-    writer.save(destination, output, materials, image)
-    print(f"{destination.name}: {destination.stat().st_size} bytes, {sum(len(p[0]) for p in pieces)} vertices, {len(output)} primitives")
+            pieces.append(bake_primitive(document, binary, primitive, index, worlds))
+    positions = np.concatenate([piece[0] for piece in pieces])
+    normals = np.concatenate([piece[1] for piece in pieces])
+    uv = np.concatenate([piece[2] for piece in pieces])
+    offsets = np.cumsum([0] + [len(piece[0]) for piece in pieces[:-1]])
+    indices = np.concatenate([piece[3] + offset for piece, offset in zip(pieces, offsets)])
+    return positions, normals, uv, indices
+
+
+def box(center, size):
+    cx, cy, cz = center
+    sx, sy, sz = np.asarray(size) / 2
+    corners = np.array([[cx-sx, cy-sy, cz-sz], [cx+sx, cy-sy, cz-sz],
+                        [cx+sx, cy+sy, cz-sz], [cx-sx, cy+sy, cz-sz],
+                        [cx-sx, cy-sy, cz+sz], [cx+sx, cy-sy, cz+sz],
+                        [cx+sx, cy+sy, cz+sz], [cx-sx, cy+sy, cz+sz]])
+    faces = [([0, 1, 2, 3], [0, 0, -1]), ([5, 4, 7, 6], [0, 0, 1]),
+             ([4, 0, 3, 7], [-1, 0, 0]), ([1, 5, 6, 2], [1, 0, 0]),
+             ([3, 2, 6, 7], [0, 1, 0]), ([4, 5, 1, 0], [0, -1, 0])]
+    vertices, normals, indices = [], [], []
+    for face, normal in faces:
+        start = len(vertices)
+        vertices.extend(corners[face])
+        normals.extend([normal] * 4)
+        indices.extend([start, start+1, start+2, start, start+2, start+3])
+    return np.asarray(vertices), np.asarray(normals), np.asarray(indices)
+
+
+def bar_between(a, b, width, depth):
+    # A chunky four-sided crest bar, built by rotating a narrow box in the XY plane.
+    a, b = np.asarray(a), np.asarray(b)
+    delta = b - a
+    length = np.linalg.norm(delta[:2])
+    vertices, normals, indices = box((0, 0, 0), (width, length, depth))
+    direction = delta[:2] / length
+    rotation = np.array([[direction[1], direction[0], 0],
+                         [-direction[0], direction[1], 0], [0, 0, 1]])
+    return vertices @ rotation.T + (a+b)/2, normals @ rotation.T, indices
+
+
+def armor_parts(boss=False):
+    # The body is 1 unit high, with a large head. All parts share one armor material.
+    pieces = [box((0, .89, 0), (.60, .24, .48)),              # kabuto
+              box((0, .72, -.19), (.65, .14, .17)),          # shikoro
+              box((0, .48, -.20), (.49, .23, .13)),          # chest plate
+              box((0, .48, .18), (.49, .20, .10))]
+    for side in (-1, 1):
+        pieces += [box((side*.34, .58, 0), (.23 if not boss else .30, .17, .38)),
+                   box((side*.39, .38, -.02), (.14, .16, .19)),
+                   box((side*.17, .10, -.04), (.25, .19, .31))]
+    crest = .30 if not boss else .43
+    pieces += [bar_between((0, .92, -.30), (-crest, 1.19 if not boss else 1.30, -.30), .085, .10),
+               bar_between((0, .92, -.30), (crest, 1.19 if not boss else 1.30, -.30), .085, .10)]
+    if boss:
+        pieces += [box((0, .91, 0), (.72, .28, .55)),
+                   box((0, .54, -.23), (.59, .26, .16))]
+    offsets = np.cumsum([0] + [len(part[0]) for part in pieces[:-1]])
+    return (np.concatenate([part[0] for part in pieces]),
+            np.concatenate([part[1] for part in pieces]), None,
+            np.concatenate([part[2] + offset for part, offset in zip(pieces, offsets)]))
+
+
+def prepare_toy_samurai(inputs, outputs):
+    neutral = {"name": "armor", "pbrMetallicRoughness": {
+        "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0, "roughnessFactor": 1}}
+    body = rigid_piece(inputs / "character-archer.glb", "idle", .2)
+    positions, normals, uv, indices = body
+    minimum = positions.min(axis=0)
+    maximum = positions.max(axis=0)
+    height = maximum[1] - minimum[1]
+    center = (minimum + maximum) / 2
+    center[1] = minimum[1]
+    body = ((positions-center)/height, normals, uv, indices)
+    # Kenney's atlas is a color swatch sheet. Keep facial darks/skin and replace
+    # the other swatches with warm neutral underclothes for every army and tier.
+    atlas = np.asarray(Image.open(inputs / "colormap.png").convert("RGBA")).copy()
+    h, w = atlas.shape[:2]
+    skin = (np.arange(h)[:, None] >= h*.5) & (np.arange(h)[:, None] < h*.75) & \
+           (np.arange(w)[None, :] >= w*.22) & (np.arange(w)[None, :] < w*.5)
+    dark = atlas[:, :, :3].mean(axis=2) < 38
+    atlas[:, :, :3] = [94, 81, 74]
+    atlas[skin, :3] = [216, 162, 117]
+    atlas[dark, :3] = [35, 31, 30]
+    stream = BytesIO()
+    Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
+    textured = {"name": "fixed-body", "pbrMetallicRoughness": {
+        "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
+    write_mesh(outputs / "toy-samurai-body.glb", [body], textured, stream.getvalue())
+    write_mesh(outputs / "toy-samurai-armor.glb", [armor_parts()], neutral)
+    write_mesh(outputs / "toy-samurai-boss-armor.glb", [armor_parts(True)], neutral)
+    for name, scale in (("weapon-bow", 1.5), ("weapon-arrow", 1.0)):
+        part = rigid_piece(inputs / f"{name}.glb")
+        p, n, uv, idx = part
+        p = p * scale
+        if name == "weapon-bow":
+            # Kenney's bow lies in YZ; turn its curve toward the portrait camera.
+            p = np.column_stack((p[:, 2] - .15, p[:, 1], -p[:, 0])) + [.43, .35, -.28]
+            n = np.column_stack((n[:, 2], n[:, 1], -n[:, 0]))
+        write_mesh(outputs / f"toy-samurai-{name[7:]}.glb", [(p, n, None, idx)],
+                   {"name": "wood" if name == "weapon-bow" else "arrow", "pbrMetallicRoughness": {
+                       "baseColorFactor": [.30, .17, .08, 1] if name == "weapon-bow" else [.67, .43, .20, 1],
+                       "metallicFactor": 0, "roughnessFactor": 1}})
 
 
 if __name__ == "__main__":
@@ -259,8 +314,4 @@ if __name__ == "__main__":
         raise SystemExit("Usage: prepare_character_models.py SOURCE_DIR OUTPUT_DIR")
     inputs, outputs = Path(sys.argv[1]), Path(sys.argv[2])
     outputs.mkdir(parents=True, exist_ok=True)
-    prepare(inputs / "soldier.glb", outputs / "soldier.glb",
-            {"Body", "Head", "ShoulderPad.L", "ShoulderPad.R"}, "Idle_Shoot", 0.2, 0)
-    prepare(inputs / "zombie.glb", outputs / "zombie-basic-static.glb",
-            {"Zombie", "Eyelid"}, "CharacterArmature|Run_Attack", 0.22, math.pi)
-    prepare(inputs / "giant.glb", outputs / "giant.glb", {"Giant"}, "Idle", 0.2, math.pi)
+    prepare_toy_samurai(inputs, outputs)

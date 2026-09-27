@@ -17,7 +17,7 @@ export class GameRenderer {
   private readonly squadRenderer: SquadRenderer;
   private readonly enemyRenderer: EnemyRenderer;
   private readonly bossRenderer: BossRenderer;
-  private readonly projectileRenderer = new ProjectileRenderer(this.scene);
+  private readonly projectileRenderer: ProjectileRenderer;
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
   private readonly streamRewardRenderer = new StreamRewardRenderer(this.scene);
@@ -34,9 +34,10 @@ export class GameRenderer {
   private disposed = false;
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
-    this.squadRenderer = new SquadRenderer(this.scene, assets.soldier);
-    this.enemyRenderer = new EnemyRenderer(this.scene, assets.zombie);
-    this.bossRenderer = new BossRenderer(this.scene, assets.giant);
+    this.squadRenderer = new SquadRenderer(this.scene, assets.body, assets.armor, assets.bow);
+    this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.armor);
+    this.bossRenderer = new BossRenderer(this.scene, assets.body, assets.bossArmor);
+    this.projectileRenderer = new ProjectileRenderer(this.scene, assets.arrow);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
     this.scene.background = new THREE.Color('#a8c4aa');

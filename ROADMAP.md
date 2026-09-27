@@ -7,7 +7,7 @@
 - Enemy HP and player rifle damage are 3 at Tier-1, 300 at Tier-2, then multiply by 10 per tier by default. Enemy and rifle growth can be tuned independently during a run. Ten rifle soldiers merge into one at the next tier. Only the highest two adjacent player rifle tiers remain active; exact lower-tier remainder value contributes to defense and future merges without firing. Player colors cycle through five cool palettes without permanent body growth.
 - One deterministic side reward appears per eight-row block at X = ±2.7, 30 units ahead against a 96-unit enemy horizon. Each rifle hit consumes its shot; ten hits grant the fully established enemy tier. Enemies remain in reward rows.
 - A giant Boss replaces one row eight rows before each next-tier saturation. Tier-1 Boss is row 136 with 12,000 HP; later Boss HP uses 1000 times its normal tier power. Enemy and reward streams continue behind Bosses. A small HUD shows the highest enemy tier introduced at the player's current row.
-- Humanoid recoil, muzzle flash, walking, hit/death feedback, reward and tier-up payoff remain. Audio is limited to reward ticks/chimes, Boss hit thuds, and throttled enemy death yelps; gunfire is silent. An eight-slider runtime panel provides temporary tuning with Reset Defaults.
+- Toy Samurai archer recoil and bow-release glint, unarmed grunt waddling, hit/death feedback, reward and tier-up payoff remain. Audio is limited to reward ticks/chimes, Boss hit thuds, and throttled enemy death yelps; firing is silent. An eight-slider runtime panel provides temporary tuning with Reset Defaults.
 
 ## NOW
 
