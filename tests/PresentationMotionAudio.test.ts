@@ -155,8 +155,13 @@ describe('audio cue observation and safety', () => {
     const oscillator = () => ({ type: 'sine', frequency: { setValueAtTime: vi.fn(),
       exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn(),
       start: starts, stop: stops, onended: null });
-    const gain = () => ({ gain: { value: 0, setValueAtTime: vi.fn(),
-      exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() });
+    const gains: { gain: { value: number; setValueAtTime: ReturnType<typeof vi.fn> } }[] = [];
+    function gain() {
+      const node = { gain: { value: 0, setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() };
+      gains.push(node);
+      return node;
+    }
     const context = { state: 'suspended', currentTime: 0, destination: {},
       createOscillator: vi.fn(oscillator), createGain: vi.fn(gain),
       resume: vi.fn(async () => {}), close: vi.fn(async () => {}) };
@@ -165,6 +170,7 @@ describe('audio cue observation and safety', () => {
     const audio = new GameAudio(viewport as HTMLElement, keys as Window);
     viewport.dispatchEvent(new Event('pointerdown'));
     await Promise.resolve();
+    expect(gains[0].gain.value).toBe(.70);
     audio.play('reward');
     expect(starts).not.toHaveBeenCalled();
     context.state = 'running';
@@ -185,6 +191,8 @@ describe('audio cue observation and safety', () => {
     audio.observe(1, 1, [], [], null, 50);
     expect(starts).toHaveBeenCalledTimes(5);
     expect(constructor).toHaveBeenCalledTimes(1);
+    audio.play('rifle');
+    expect(gains.at(-1)?.gain.setValueAtTime).toHaveBeenCalledWith(.09, 0);
     audio.dispose();
     expect(stops).toHaveBeenCalled();
     expect(context.close).toHaveBeenCalledOnce();

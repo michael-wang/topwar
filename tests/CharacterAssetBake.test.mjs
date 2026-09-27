@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
 
@@ -25,6 +25,15 @@ function positions(name) {
   const bytes = new DataView(binary.buffer, binary.byteOffset + view.byteOffset + (entry.byteOffset ?? 0));
   return Array.from({ length: entry.count }, (_, vertex) =>
     [0, 1, 2].map((axis) => bytes.getFloat32(vertex * 12 + axis * 4, true)));
+}
+
+function uvs(name) {
+  const { document, binary } = glb(name);
+  const entry = document.accessors[document.meshes[0].primitives[0].attributes.TEXCOORD_0];
+  const view = document.bufferViews[entry.bufferView];
+  const bytes = new DataView(binary.buffer, binary.byteOffset + view.byteOffset + (entry.byteOffset ?? 0));
+  return Array.from({ length: entry.count }, (_, vertex) =>
+    [0, 1].map((axis) => bytes.getFloat32(vertex * 8 + axis * 4, true)));
 }
 
 function rgba(png) {
@@ -94,14 +103,14 @@ describe('Kenney texture and toy soldier gear bake', () => {
   });
 
   it('keeps a hard helmet rim above the face and strips runtime skeletons', () => {
-    for (const name of ['body', 'player-body', 'helmet', 'boss-helmet', 'vest',
+    for (const name of ['body', 'player-body', 'helmet', 'vest',
       'boss-vest', 'rifle', 'bullet', 'gray-body',
       'run-0', 'run-1', 'run-2', 'run-3']) {
       const { document } = glb(name);
       expect(document.skins).toBeUndefined();
       expect(document.animations).toBeUndefined();
     }
-    for (const name of ['helmet', 'boss-helmet']) {
+    for (const name of ['helmet']) {
       const { document } = glb(name);
       const position = document.meshes[0].primitives[0].attributes.POSITION;
       expect(document.accessors[position].min[1]).toBeGreaterThan(.73);
@@ -112,6 +121,7 @@ describe('Kenney texture and toy soldier gear bake', () => {
     const helmet = positions('helmet');
     expect(helmet.filter((point) => Math.abs(point[1] - .74) < .001).length).toBeGreaterThan(10);
     expect(Math.max(...helmet.map((point) => Math.abs(point[0])))).toBeGreaterThan(.32);
+    expect(existsSync(new URL('../public/models/toy-soldier-boss-helmet.glb', import.meta.url))).toBe(false);
     for (const name of ['vest', 'boss-vest']) {
       const { document } = glb(name);
       const position = document.meshes[0].primitives[0].attributes.POSITION;
@@ -140,5 +150,15 @@ describe('Kenney texture and toy soldier gear bake', () => {
     const gray = rgba(image('gray-body'));
     expect(gray.at(112, 268)[0]).toBe(gray.at(112, 268)[1]);
     expect(gray.at(112, 268)[1]).toBe(gray.at(112, 268)[2]);
+  });
+
+  it('excludes the source head-mesh green cap swatch from every baked body pose', () => {
+    for (const name of ['body', 'player-body', 'gray-body',
+      'run-0', 'run-1', 'run-2', 'run-3']) {
+      const vertices = positions(name);
+      expect(uvs(name).some(([u, v], index) => vertices[index][1] > .6
+        && Math.abs(u - .21875) < 1e-5 && v >= .824)).toBe(false);
+      expect(vertices.some((point) => point[0] > .1 && point[1] > .98 && point[2] < -.05)).toBe(false);
+    }
   });
 });

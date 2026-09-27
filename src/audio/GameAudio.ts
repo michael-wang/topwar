@@ -77,15 +77,15 @@ export class AudioCueObserver {
 
 const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number }> = {
-  rifle: { from: 440, to: 160, seconds: 0.055, wave: 'triangle', volume: 0.07 },
-  heavyRifle: { from: 220, to: 75, seconds: 0.13, wave: 'triangle', volume: 0.11 },
-  rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.065 },
+  rifle: { from: 440, to: 160, seconds: 0.055, wave: 'triangle', volume: 0.09 },
+  heavyRifle: { from: 220, to: 75, seconds: 0.13, wave: 'triangle', volume: 0.14 },
+  rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.08 },
   reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
-  damage: { from: 150, to: 70, seconds: 0.11, wave: 'triangle', volume: 0.11 },
-  fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: 0.14 },
+  damage: { from: 150, to: 70, seconds: 0.11, wave: 'triangle', volume: 0.14 },
+  fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: 0.18 },
   rewardHit: { from: 760, to: 950, seconds: 0.06, wave: 'sine', volume: 0.05 },
-  bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.045 },
-  enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.055 },
+  bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.056 },
+  enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.07 },
 };
 
 export class GameAudio {
@@ -176,7 +176,7 @@ export class GameAudio {
       this.context ??= new Constructor();
       if (!this.master) {
         this.master = this.context.createGain();
-        this.master.gain.value = 0.35;
+        this.master.gain.value = 0.70;
         this.master.connect(this.context.destination);
       }
       void this.context.resume().then(() => {

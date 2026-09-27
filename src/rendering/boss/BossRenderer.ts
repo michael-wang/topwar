@@ -6,6 +6,15 @@ const HIT_FLASH_MS = 80;
 const HIT_PULSE_MS = 100;
 const DEATH_MS = 800;
 const IMPACT_MS = 90;
+const HELMET_SCALE = 0.8;
+const HELMET_PIVOT_Y = 0.82;
+const HELMET_DROP = 0.03;
+
+function fitCommanderHelmet(helmet: THREE.Mesh): void {
+  // Scale around the head instead of the character's feet, then seat it lower.
+  helmet.scale.setScalar(HELMET_SCALE);
+  helmet.position.y = HELMET_PIVOT_Y * (1 - HELMET_SCALE) - HELMET_DROP;
+}
 
 export function bossWalkPose(id: number, nowMs: number): { leftArm: number; rightArm: number;
   leftLeg: number; rightLeg: number; bob: number } {
@@ -51,11 +60,13 @@ export class BossRenderer {
     this.flashMaterial = source.clone();
     this.flashMaterial.color.set('#ffe36e');
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
+    fitCommanderHelmet(this.helmet);
     this.vest = new THREE.Mesh(vestModel.geometry, this.tierMaterials[0]);
     this.body.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
     this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
+    fitCommanderHelmet(this.deathHelmet);
     this.deathVest = new THREE.Mesh(vestModel.geometry, this.tierMaterials[0]);
     this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
     this.death.rotation.y = Math.PI;

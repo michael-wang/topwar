@@ -201,17 +201,42 @@ def rigid_piece(source, clip=None, seconds=0):
     overrides = sample_animation(document, binary, clip, seconds) if clip else {}
     worlds = world_matrices(document, overrides)
     pieces = []
+    expected_meshes = {"body-mesh", "head-mesh"}
+    found_meshes = set()
     for index, node in enumerate(document["nodes"]):
         if "mesh" not in node:
             continue
+        name = node.get("name")
+        if name not in expected_meshes:
+            raise ValueError(f"Unexpected Kenney character mesh node: {name}")
+        found_meshes.add(name)
         for primitive in document["meshes"][node["mesh"]]["primitives"]:
-            pieces.append(bake_primitive(document, binary, primitive, index, worlds))
+            piece = bake_primitive(document, binary, primitive, index, worlds)
+            pieces.append(without_green_headgear(piece) if name == "head-mesh" else piece)
+    if found_meshes != expected_meshes:
+        raise ValueError(f"Expected Kenney mesh nodes {expected_meshes}, found {found_meshes}")
     positions = np.concatenate([piece[0] for piece in pieces])
     normals = np.concatenate([piece[1] for piece in pieces])
     uv = np.concatenate([piece[2] for piece in pieces])
     offsets = np.cumsum([0] + [len(piece[0]) for piece in pieces[:-1]])
     indices = np.concatenate([piece[3] + offset for piece, offset in zip(pieces, offsets)])
     return positions, normals, uv, indices
+
+
+def without_green_headgear(piece):
+    """Exclude head-mesh triangles assigned to the archer's green cap UV swatch."""
+    positions, normals, uv, indices = piece
+    triangles = indices.reshape(-1, 3)
+    triangle_uv = uv[triangles]
+    green_cap = np.all(np.isclose(triangle_uv[:, :, 0], .21875)
+                       & (triangle_uv[:, :, 1] >= .824), axis=1)
+    if np.count_nonzero(green_cap) != 74:
+        raise ValueError("Kenney green headgear UV island changed; inspect before baking")
+    kept = triangles[~green_cap].ravel()
+    used = np.unique(kept)
+    remap = np.full(len(positions), -1, dtype=np.int32)
+    remap[used] = np.arange(len(used))
+    return positions[used], normals[used], uv[used], remap[kept]
 
 
 def box(center, size):
@@ -240,8 +265,8 @@ def join_parts(parts):
             np.concatenate([part[2] + offset for part, offset in zip(parts, offsets)]))
 
 
-def without_rear_archer_accessory(piece):
-    """Remove the six isolated shaft/cap islands behind the player's right ear."""
+def rear_archer_accessory_mask(piece):
+    """Identify the isolated shaft islands in the normalized idle mesh."""
     positions, normals, uv, indices = piece
     parents = np.arange(len(positions))
 
@@ -261,10 +286,17 @@ def without_rear_archer_accessory(piece):
     for vertices in islands.values():
         bounds = positions[vertices]
         if (bounds[:, 0].min() > .095 and bounds[:, 1].min() > .69
-                and bounds[:, 1].max() > .90 and bounds[:, 2].max() < -.05):
+                and bounds[:, 1].max() > .90 and bounds[:, 2].max() < -.04):
             unwanted[vertices] = True
     if np.count_nonzero(unwanted) != 32:
-        raise ValueError("Kenney rear accessory islands changed; inspect before baking")
+        raise ValueError(f"Kenney rear accessory islands changed: {np.count_nonzero(unwanted)} vertices")
+    return unwanted
+
+
+def without_rear_archer_accessory(piece, unwanted):
+    positions, normals, uv, indices = piece
+    if len(unwanted) != len(positions):
+        raise ValueError("Kenney pose topology changed between idle and sprint")
     triangles = indices.reshape(-1, 3)
     kept = triangles[~unwanted[triangles].any(axis=1)].ravel()
     used = np.unique(kept)
@@ -273,11 +305,11 @@ def without_rear_archer_accessory(piece):
     return positions[used], normals[used], uv[used], remap[kept]
 
 
-def helmet_parts(boss=False):
+def helmet_parts():
     # Hard rounded shell with a continuous flared steel rim above the face.
-    radius = .39 if boss else .29
+    radius = .29
     levels = ((.75, radius), (.85, radius), (.96, radius * .78),
-              (1.02 if boss else 1.005, radius * .38))
+              (1.005, radius * .38))
     sides = 12
     vertices = np.array([[np.sin(i * 2*np.pi/sides) * r, y,
                           np.cos(i * 2*np.pi/sides) * r]
@@ -354,6 +386,8 @@ def prepare_toy_soldier(inputs, outputs):
     center = (minimum + maximum) / 2
     center[1] = minimum[1]
     body = ((positions-center)/height, normals, uv, indices)
+    rear_accessory = rear_archer_accessory_mask(body)
+    body = without_rear_archer_accessory(body, rear_accessory)
     original = (inputs / "colormap.png").read_bytes()
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
@@ -361,7 +395,7 @@ def prepare_toy_soldier(inputs, outputs):
     for frame in range(4):
         run = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125)
         p, n, texcoords, idx = run
-        run = ((p-center)/height, n, texcoords, idx)
+        run = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
         # Runtime reuses the original body's material and texture.
         write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [run],
                    {"name": "shared-body-material", "pbrMetallicRoughness": {
@@ -394,9 +428,8 @@ def prepare_toy_soldier(inputs, outputs):
                 atlas[row, col, :3] = np.clip(np.array([23, 105, 238]) * lightness, 0, 255)
     stream = BytesIO()
     Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
-    write_mesh(outputs / "toy-soldier-player-body.glb",
-               [without_rear_archer_accessory(body)], textured, stream.getvalue())
-    for name, piece in (("helmet", helmet_parts()), ("boss-helmet", helmet_parts(True)),
+    write_mesh(outputs / "toy-soldier-player-body.glb", [body], textured, stream.getvalue())
+    for name, piece in (("helmet", helmet_parts()),
                         ("vest", vest_parts()), ("boss-vest", vest_parts(True))):
         write_mesh(outputs / f"toy-soldier-{name}.glb", [piece], neutral)
     for name, piece, color in (("rifle", rifle_parts(), [.17, .20, .22, 1]),

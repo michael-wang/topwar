@@ -2,20 +2,22 @@
 
 Source: [Kenney Mini Forest 1.0](https://kenney.nl/assets/mini-forest), official archive `kenney_mini-forest_1.0.zip`. Its included `License.txt` states Creative Commons Zero (CC0). Archive SHA-256: `8691614018075A66458E35915B8C358C2E6178648AEDADAFCDF313B924AA6581`.
 
-Exact source files: `Models/GLB format/character-archer.glb` and `Textures/colormap.png`. No other character or weapon source is used. `scripts/prepare_character_models.py` generates the toy steel helmets, compact vests, rifle, and tracer from low-poly primitives. Run it with `python scripts/prepare_character_models.py SOURCE_DIR public/models` after placing those two source files in `SOURCE_DIR`; it requires NumPy and Pillow.
+Exact source files: `Models/GLB format/character-archer.glb` and `Models/GLB format/Textures/colormap.png`. No other character or weapon source is used. `scripts/prepare_character_models.py` generates the toy steel helmet, compact vests, rifle, and tracer from low-poly primitives. Run it with `python scripts/prepare_character_models.py SOURCE_DIR public/models` after placing those two source files in `SOURCE_DIR`; it requires NumPy and Pillow.
 
-The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and bake both skinned meshes into one rigid, centered, grounded, one-unit body. Enemy run frames sample the original `sprint` clip at 0.0625, 0.1875, 0.3125, and 0.4375 seconds. Runtime GLBs have no skeletons or animations. The four run geometries use the original body's shared texture/material in the renderer. The player bake removes six isolated rear archer accessory islands that protruded beside the helmet; the face, hair, clothes, and rifle are retained.
+Source GLB mesh nodes are `body-mesh` (mesh `body-mesh`) and `head-mesh` (mesh `head-mesh`); its other nodes are the rig root, legs, torso, arms, and head bones. The green archer headgear is **not** a separate named node: it is 74 triangles within `head-mesh`, mapped to the colormap swatch at U=0.21875, V≥0.824. The bake explicitly accepts those two mesh nodes and omits those headgear triangles from the idle body, player/gray variants, and all four sprint poses. The 32-vertex rear archer shaft is also excluded from every pose using a mask identified from the idle geometry. Face, brown hair, skin, clothing, hands, and footwear remain. No atlas pixels are repainted to hide the headgear.
 
-`toy-soldier-body.glb` embeds Kenney `colormap.png` without pixel changes (PNG SHA-256 `319F1087D8ED50A8794F9A8179F64671D5595F2365FDF3E47EC2D4EB74DBA20F`). The player variant changes only the UV-identified main tunic swatch at U=0.96875, V=0.775..0.975. Skin, face, hair, leather, and footwear stay intact. The death body has a grayscale copy of the same atlas. The helmet's hard dome and continuous thick rim now sit 0.05 body units lower. The rifle barrel points along local +Z, matching projectile travel. The thin tracer is 0.52 body units long, rendered with a bright unlit core and one shared translucent glow layer.
+The player and Boss body sample the Kenney `idle` animation at 0.2 seconds and bake both skinned meshes into one rigid, centered, grounded, one-unit body. Enemy run frames sample the original `sprint` clip at 0.0625, 0.1875, 0.3125, and 0.4375 seconds. Runtime GLBs have no skeletons or animations. The four run geometries use the original body's shared texture/material in the renderer.
+
+`toy-soldier-body.glb` embeds Kenney `colormap.png` without pixel changes (PNG SHA-256 `319F1087D8ED50A8794F9A8179F64671D5595F2365FDF3E47EC2D4EB74DBA20F`). The player variant changes only the UV-identified main tunic swatch at U=0.96875, V=0.775..0.975. Skin, face, hair, leather, and footwear stay intact. The death body has a grayscale copy of the same atlas. Player, enemy, and Boss share the same helmet geometry; the Boss renderer scales its helmet locally to 0.80 around the head and seats it 0.03 model units lower while retaining the existing whole-body `visualScale`. The rifle barrel points along local +Z, matching projectile travel. The thin tracer is 0.52 body units long, rendered with a bright unlit core and one shared translucent glow layer.
 
 | Runtime file | Bytes | Use |
 | --- | ---: | --- |
-| `toy-soldier-body.glb` | 55,808 | Original Kenney body and texture; Boss and shared enemy material |
-| `toy-soldier-player-body.glb` | 43,616 | Blue tunic player body, rear accessory removed |
-| `toy-soldier-gray-body.glb` | 48,388 | Grayscale body for brief enemy fade |
-| `toy-soldier-run-0.glb` through `toy-soldier-run-3.glb` | 45,100 each | Four static enemy running poses |
+| `toy-soldier-body.glb` | 44,320 | Kenney body and original texture, without archer headgear/accessory |
+| `toy-soldier-player-body.glb` | 38,500 | Blue tunic player body, headgear and rear accessory removed |
+| `toy-soldier-gray-body.glb` | 36,900 | Grayscale body for brief enemy fade |
+| `toy-soldier-run-0.glb` through `toy-soldier-run-2.glb` | 33,600 each | Three static enemy running poses |
+| `toy-soldier-run-3.glb` | 33,596 | Fourth static enemy running pose |
 | `toy-soldier-helmet.glb` | 5,504 | Tier-colored rimmed helmet |
-| `toy-soldier-boss-helmet.glb` | 5,500 | Larger rimmed Boss helmet |
 | `toy-soldier-vest.glb` | 3,156 | Compact tier-colored vest |
 | `toy-soldier-boss-vest.glb` | 3,156 | Broader Boss vest |
 | `toy-soldier-rifle.glb` | 4,600 | Fixed charcoal forward-pointing rifle |

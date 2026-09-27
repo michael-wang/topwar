@@ -163,6 +163,8 @@ describe('Modern Toy Soldier presentation', () => {
       const boss = { id: tier, tier, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7 };
       renderer.update(boss, tier * 1000);
       const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
+      expect(helmet.scale.x).toBeCloseTo(.8);
+      expect(helmet.position.y).toBeCloseTo(.82 * .2 - .03);
       expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString())
         .toBe(ENEMY_PALETTE[paletteIndex(tier, 6)].body.slice(1));
       expect(((active.children[0] as THREE.Group).children[2] as THREE.Mesh).material)
@@ -177,6 +179,10 @@ describe('Modern Toy Soldier presentation', () => {
     expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffe36e');
     renderer.update(null, 20020);
     expect(death.visible).toBe(true);
+    const deathHelmet = death.children[1] as THREE.Mesh;
+    expect(deathHelmet.geometry).toBe(helmet.geometry);
+    expect(deathHelmet.scale.x).toBeCloseTo(helmet.scale.x);
+    expect(deathHelmet.position.y).toBeCloseTo(helmet.position.y);
     renderer.update(null, 20420);
     expect(death.rotation.z).toBeLessThan(Math.PI / 2);
     renderer.update(null, 21000);
