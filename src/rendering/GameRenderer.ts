@@ -8,6 +8,7 @@ import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
 import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
 import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
 import { BossRenderer } from './boss/BossRenderer';
+import { BossCameraFraming } from './boss/BossCameraFraming';
 import { BridgeEnvironment } from './environment/BridgeEnvironment';
 import type { CharacterAssets } from './CharacterAssets';
 import type { PresentationEvent } from '../simulation/PresentationEvent';
@@ -19,6 +20,7 @@ export class GameRenderer {
   private readonly squadRenderer: SquadRenderer;
   private readonly enemyRenderer: EnemyRenderer;
   private readonly bossRenderer: BossRenderer;
+  private readonly bossCameraFraming = new BossCameraFraming();
   private readonly projectileRenderer: ProjectileRenderer;
   private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
@@ -66,12 +68,7 @@ export class GameRenderer {
 
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
-    const bossDistance = state.boss ? state.boss.z - state.player.z : Infinity;
-    const bossFraming = Math.max(0, Math.min(1, (24 - bossDistance) / 21));
-    const cameraDistance = 10 + 8 * bossFraming;
-    this.camera.position.y = 6.5 + 2.7 * bossFraming;
-    this.camera.position.z = state.player.z - cameraDistance;
-    this.camera.lookAt(0, 0, state.player.z + 12.5);
+    this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
@@ -93,6 +90,7 @@ export class GameRenderer {
     this.squadRenderer.reset();
     this.enemyRenderer.reset();
     this.bossRenderer.reset();
+    this.bossCameraFraming.reset();
     this.streamRewardRenderer.reset();
     this.projectileRenderer.reset();
   }
@@ -104,6 +102,7 @@ export class GameRenderer {
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();
     this.bossRenderer.dispose();
+    this.bossCameraFraming.reset();
     this.projectileRenderer.dispose();
     this.gateRenderer.dispose();
     this.pickupRenderer.dispose();

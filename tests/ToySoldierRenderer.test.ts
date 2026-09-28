@@ -320,13 +320,14 @@ describe('Modern Toy Soldier presentation', () => {
     expect(barAnchor.position.y).toBeCloseTo(1.1);
     renderer.update(null, 20120);
     expect(death.visible).toBe(true);
-    const deathHelmet = death.children[1] as THREE.Mesh;
+    const deathHelmet = death.getObjectByName('boss-death-helmet') as THREE.Mesh;
     expect(deathHelmet.geometry).toBe(helmet.geometry);
     expect(deathHelmet.scale.x).toBeCloseTo(helmet.scale.x);
     expect(deathHelmet.position.y).toBeCloseTo(helmet.position.y);
     expect(deathHelmet.position.z).toBeCloseTo(helmet.position.z);
     renderer.update(null, 20420);
-    expect(death.rotation.x).toBeLessThan(0);
+    expect((death.getObjectByName('boss-death-fall-pivot') as THREE.Group)
+      .rotation.x).toBeLessThan(0);
     expect(death.rotation.z).toBe(0);
     renderer.update(null, 22000);
     expect(death.visible).toBe(false);
@@ -341,6 +342,7 @@ describe('Modern Toy Soldier presentation', () => {
       runFrames(), runFrames(), grayBodyModel());
     const active = scene.children[0] as THREE.Group;
     const death = scene.getObjectByName('boss-death') as THREE.Group;
+    const fallPivot = death.getObjectByName('boss-death-fall-pivot') as THREE.Group;
     const liveBody = death.getObjectByName('boss-death-body-live') as THREE.Mesh;
     const grayBody = death.getObjectByName('boss-death-body-gray') as THREE.Mesh;
     const helmet = death.getObjectByName('boss-death-helmet') as THREE.Mesh;
@@ -365,16 +367,16 @@ describe('Modern Toy Soldier presentation', () => {
     expect(liveMaterial.opacity).toBe(1);
     expect(grayMaterial.opacity).toBe(0);
     renderer.update(null, 1100);
-    const earlyPitch = death.rotation.x;
+    const earlyPitch = fallPivot.rotation.x;
     expect(earlyPitch).toBeGreaterThan(-.1);
     expect(liveMaterial.opacity).toBe(1);
     renderer.update(null, 1300);
-    expect(death.rotation.x).toBeLessThan(earlyPitch);
+    expect(fallPivot.rotation.x).toBeLessThan(earlyPitch);
     expect(death.rotation.z).toBe(0);
     expect(liveMaterial.opacity).toBe(1);
     renderer.update(null, 1520);
-    expect(death.rotation.x).toBeCloseTo(-Math.PI * .46);
-    expect(new THREE.Vector3(0, 1, 0).applyEuler(death.rotation).z)
+    expect(fallPivot.rotation.x).toBeCloseTo(-Math.PI * .46);
+    expect(new THREE.Vector3(0, 1, 0).applyEuler(fallPivot.rotation).z)
       .toBeLessThan(-.95);
     expect(death.position.z).toBe(24);
     expect(liveMaterial.opacity).toBe(1);
@@ -390,7 +392,7 @@ describe('Modern Toy Soldier presentation', () => {
     expect(firstFade).toBeLessThan(1);
     renderer.update(null, 2400);
     expect(grayMaterial.opacity).toBeLessThan(firstFade);
-    expect(death.rotation.x).toBeCloseTo(-Math.PI * .46);
+    expect(fallPivot.rotation.x).toBeCloseTo(-Math.PI * .46);
     expect(death.position.z).toBe(24);
     renderer.update(null, 2700);
     expect(death.visible).toBe(false);
@@ -410,6 +412,73 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
     for (const dispose of disposals) expect(dispose).toHaveBeenCalledOnce();
     expect(vestGeometryDispose).toHaveBeenCalledOnce();
+  });
+
+  it('hands off the last walking or slam-hit silhouette without a frame-zero model pop', () => {
+    for (const engaged of [false, true]) {
+      const scene = new THREE.Scene();
+      const body = bodyModel();
+      const walks = runFrames();
+      const slams = runFrames();
+      const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
+        walks, slams, grayBodyModel());
+      const boss = { id: 7, tier: 3, x: 1.2, z: 19, hp: 100, maxHp: 100,
+        visualScale: 7, engaged, slamCooldownRemainingSeconds: engaged ? 1.9 : 0,
+        slamCount: engaged ? 1 : 0 };
+      const at = engaged ? 1010 : 310;
+      renderer.update(boss, at - 10);
+      renderer.update({ ...boss, hp: 80 }, at);
+      const active = scene.children[0] as THREE.Group;
+      const livePose = active.children[0] as THREE.Group;
+      const [liveBody, liveHelmet, liveVest] = livePose.children as THREE.Mesh[];
+      const liveMatrices = [liveBody, liveHelmet, liveVest].map((mesh) => {
+        active.updateMatrixWorld(true);
+        return [...mesh.matrixWorld.elements];
+      });
+      const posePosition = livePose.position.clone();
+      const poseRotation = livePose.rotation.clone();
+      const poseScale = livePose.scale.clone();
+      expect(engaged ? posePosition.y < 0 : posePosition.y > 0).toBe(true);
+      expect(poseScale.x).toBeGreaterThan(1);
+      renderer.update(null, at);
+      const death = scene.getObjectByName('boss-death') as THREE.Group;
+      const fallPivot = death.getObjectByName('boss-death-fall-pivot') as THREE.Group;
+      const deathPose = death.getObjectByName('boss-death-pose') as THREE.Group;
+      const deathBody = death.getObjectByName('boss-death-body-live') as THREE.Mesh;
+      const deathGray = death.getObjectByName('boss-death-body-gray') as THREE.Mesh;
+      const deathHelmet = death.getObjectByName('boss-death-helmet') as THREE.Mesh;
+      const deathVest = death.getObjectByName('boss-death-vest') as THREE.Mesh;
+      expect(death.position.toArray()).toEqual(active.position.toArray());
+      expect(death.rotation.toArray()).toEqual(active.rotation.toArray());
+      expect(death.scale.toArray()).toEqual(active.scale.toArray());
+      expect(fallPivot.rotation.x).toBeCloseTo(0);
+      expect(deathPose.position.toArray()).toEqual(posePosition.toArray());
+      expect(deathPose.rotation.toArray()).toEqual(poseRotation.toArray());
+      expect(deathPose.scale.toArray()).toEqual(poseScale.toArray());
+      expect(deathBody.geometry).toBe(liveBody.geometry);
+      expect(deathGray.geometry).toBe(liveBody.geometry);
+      expect(deathVest.geometry).toBe(liveVest.geometry);
+      expect((deathBody.material as THREE.MeshStandardMaterial).transparent)
+        .toBe((liveBody.material as THREE.MeshStandardMaterial).transparent);
+      expect((deathBody.material as THREE.MeshStandardMaterial).depthWrite)
+        .toBe((liveBody.material as THREE.MeshStandardMaterial).depthWrite);
+      expect(deathHelmet.position.toArray()).toEqual(liveHelmet.position.toArray());
+      expect(deathHelmet.scale.toArray()).toEqual(liveHelmet.scale.toArray());
+      expect((deathHelmet.material as THREE.MeshStandardMaterial).color.getHexString())
+        .toBe((liveHelmet.material as THREE.MeshStandardMaterial).color.getHexString());
+      const deathMeshes = [deathBody, deathHelmet, deathVest];
+      death.updateMatrixWorld(true);
+      deathMeshes.forEach((mesh, index) => {
+        mesh.matrixWorld.elements.forEach((value, component) => {
+          expect(value).toBeCloseTo(liveMatrices[index][component]);
+        });
+      });
+      expect(death.getObjectByName('boss-death-body-hit-wash')?.visible).toBe(true);
+      renderer.update(null, at + 100);
+      expect(fallPivot.rotation.x).toBeLessThan(0);
+      expect(deathPose.rotation.toArray()).toEqual(poseRotation.toArray());
+      renderer.dispose();
+    }
   });
 
   it('reveals the Boss HP plate only as the real Boss emerges from distance haze', () => {
