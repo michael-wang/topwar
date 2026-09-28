@@ -325,17 +325,17 @@ describe('Modern Toy Soldier presentation', () => {
     expect(deathHelmet.scale.x).toBeCloseTo(helmet.scale.x);
     expect(deathHelmet.position.y).toBeCloseTo(helmet.position.y);
     expect(deathHelmet.position.z).toBeCloseTo(helmet.position.z);
-    renderer.update(null, 20420);
+    renderer.update(null, 20820);
     expect((death.getObjectByName('boss-death-fall-pivot') as THREE.Group)
       .rotation.x).toBeLessThan(0);
     expect(death.rotation.z).toBe(0);
-    renderer.update(null, 22000);
+    renderer.update(null, 22300);
     expect(death.visible).toBe(false);
     renderer.reset();
     renderer.dispose();
   });
 
-  it('falls toward the player, grays after impact, then fades with owned reusable materials', () => {
+  it('grays while upright, holds, then falls toward the player and fades with owned materials', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
@@ -367,39 +367,49 @@ describe('Modern Toy Soldier presentation', () => {
     expect(liveMaterial.opacity).toBe(1);
     expect(grayMaterial.opacity).toBe(0);
     renderer.update(null, 1100);
-    const earlyPitch = fallPivot.rotation.x;
-    expect(earlyPitch).toBeGreaterThan(-.1);
-    expect(liveMaterial.opacity).toBe(1);
-    renderer.update(null, 1300);
-    expect(fallPivot.rotation.x).toBeLessThan(earlyPitch);
-    expect(death.rotation.z).toBe(0);
-    expect(liveMaterial.opacity).toBe(1);
-    renderer.update(null, 1520);
-    expect(fallPivot.rotation.x).toBeCloseTo(-Math.PI * .46);
-    expect(new THREE.Vector3(0, 1, 0).applyEuler(fallPivot.rotation).z)
-      .toBeLessThan(-.95);
-    expect(death.position.z).toBe(24);
-    expect(liveMaterial.opacity).toBe(1);
-    renderer.update(null, 1750);
+    expect(fallPivot.rotation.x).toBeCloseTo(0);
+    expect(grayMaterial.opacity).toBeGreaterThan(0);
+    expect(grayMaterial.opacity).toBeLessThan(1);
+    expect(helmetMaterial.color.getHexString()).not.toBe(tierColor);
+    renderer.update(null, 1150);
     expect(grayMaterial.opacity).toBe(1);
     expect(liveMaterial.opacity).toBe(0);
     expect(helmetMaterial.color.getHexString()).toBe('adb4b8');
     expect(vestMaterial.color.getHexString()).toBe('adb4b8');
+    expect(fallPivot.rotation.x).toBeCloseTo(0);
+    renderer.update(null, 1500);
+    expect(fallPivot.rotation.x).toBeCloseTo(0);
+    expect(grayMaterial.opacity).toBe(1);
+    renderer.update(null, 1600);
+    expect(fallPivot.rotation.x).toBeCloseTo(0);
+    renderer.update(null, 1700);
+    expect(fallPivot.rotation.x).toBeLessThan(0);
+    expect(death.rotation.z).toBe(0);
+    expect(grayMaterial.opacity).toBe(1);
+    renderer.update(null, 2120);
+    expect(fallPivot.rotation.x).toBeCloseTo(-Math.PI * .46);
+    expect(new THREE.Vector3(0, 1, 0).applyEuler(fallPivot.rotation).z)
+      .toBeLessThan(-.95);
+    expect(death.position.z).toBe(24);
+    expect(grayMaterial.opacity).toBe(1);
+    renderer.update(null, 2180);
+    expect(grayMaterial.opacity).toBe(1);
+    expect(liveMaterial.opacity).toBe(0);
     expect(grayMaterial.color.getHSL({ h: 0, s: 0, l: 0 }).s).toBeLessThan(.1);
     expect(liveHelmet.color.getHexString()).toBe(tierColor);
-    renderer.update(null, 1900);
+    renderer.update(null, 2400);
     const firstFade = grayMaterial.opacity;
     expect(firstFade).toBeLessThan(1);
-    renderer.update(null, 2400);
+    renderer.update(null, 2800);
     expect(grayMaterial.opacity).toBeLessThan(firstFade);
     expect(fallPivot.rotation.x).toBeCloseTo(-Math.PI * .46);
     expect(death.position.z).toBe(24);
-    renderer.update(null, 2700);
+    renderer.update(null, 3080);
     expect(death.visible).toBe(false);
-    renderer.update({ ...boss, id: 8, hp: 80 }, 2800);
+    renderer.update({ ...boss, id: 8, hp: 80 }, 3100);
     expect(active.visible).toBe(true);
     expect(death.visible).toBe(false);
-    renderer.update(null, 2900);
+    renderer.update(null, 3200);
     expect(death.visible).toBe(true);
     expect(liveBody.material).toBe(liveMaterial);
     expect(grayBody.material).toBe(grayMaterial);
@@ -475,6 +485,8 @@ describe('Modern Toy Soldier presentation', () => {
       });
       expect(death.getObjectByName('boss-death-body-hit-wash')?.visible).toBe(true);
       renderer.update(null, at + 100);
+      expect(fallPivot.rotation.x).toBeCloseTo(0);
+      renderer.update(null, at + 700);
       expect(fallPivot.rotation.x).toBeLessThan(0);
       expect(deathPose.rotation.toArray()).toEqual(poseRotation.toArray());
       renderer.dispose();

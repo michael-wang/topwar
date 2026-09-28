@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
+import { BOSS_DEATH_FADE_START_MS, BOSS_DEATH_FALL_START_MS,
+  BOSS_DEATH_FALL_DURATION_MS, BOSS_DEATH_GRAY_IN_MS,
+  BOSS_DEATH_IMPACT_MS, BOSS_DEATH_MS } from '../../presentation/BossDeathTiming';
 
 const HIT_FLASH_MS = 60;
 const HIT_FLASH_RETRIGGER_MS = 210;
 const HIT_PULSE_MS = 100;
 const HP_TICK_MS = 85;
 const HP_TICK_RETRIGGER_MS = 130;
-export const BOSS_DEATH_FALL_MS = 520;
-const DEATH_GRAY_MS = 750;
-export const BOSS_DEATH_MS = 1700;
 const DEATH_FORWARD_PITCH = -Math.PI * 0.46;
 const DEATH_GRAY = new THREE.Color('#adb4b8');
 const HELMET_SCALE = 0.92;
@@ -288,14 +288,14 @@ export class BossRenderer {
       const elapsed = nowMs - this.deathStartedAtMs;
       if (elapsed >= BOSS_DEATH_MS) this.death.visible = false;
       else {
-        const fall = Math.min(1, Math.max(0, elapsed / BOSS_DEATH_FALL_MS));
+        const fall = Math.min(1, Math.max(0,
+          (elapsed - BOSS_DEATH_FALL_START_MS) / BOSS_DEATH_FALL_DURATION_MS));
         this.deathFallPivot.rotation.x = DEATH_FORWARD_PITCH * fall * fall * fall;
         this.death.position.y = this.deathStartY - .03 * Math.min(1,
-          Math.max(0, (elapsed - BOSS_DEATH_FALL_MS) / 50));
-        const gray = Math.min(1, Math.max(0,
-          (elapsed - BOSS_DEATH_FALL_MS) / (DEATH_GRAY_MS - BOSS_DEATH_FALL_MS)));
+          Math.max(0, (elapsed - BOSS_DEATH_IMPACT_MS) / 50));
+        const gray = Math.min(1, Math.max(0, elapsed / BOSS_DEATH_GRAY_IN_MS));
         const opacity = Math.min(1, Math.max(0,
-          (BOSS_DEATH_MS - elapsed) / (BOSS_DEATH_MS - DEATH_GRAY_MS)));
+          (BOSS_DEATH_MS - elapsed) / (BOSS_DEATH_MS - BOSS_DEATH_FADE_START_MS)));
         if (gray > 0) this.setLiveDeathMaterialsFadeable(true);
         this.deathVest.geometry = gray > 0 ? this.deathVestGeometry : this.vest.geometry;
         this.deathBodyLiveMaterial.opacity = (1 - gray) * opacity;

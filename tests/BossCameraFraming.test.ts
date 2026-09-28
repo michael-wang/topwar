@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { BossCameraFraming } from '../src/rendering/boss/BossCameraFraming';
-import { BOSS_DEATH_FALL_MS, BOSS_DEATH_MS } from '../src/rendering/boss/BossRenderer';
+import { BOSS_DEATH_FADE_START_MS, BOSS_DEATH_FALL_START_MS,
+  BOSS_DEATH_IMPACT_MS, BOSS_DEATH_MS } from '../src/presentation/BossDeathTiming';
 
 const boss = { id: 1, tier: 1, x: 0, z: 8, hp: 100, maxHp: 100,
   visualScale: 7, engaged: true, slamCooldownRemainingSeconds: 1, slamCount: 0 };
@@ -22,14 +23,20 @@ describe('Boss camera handoff', () => {
     expect(camera.position.y).toBeCloseTo(liveY);
     expect(camera.position.z).toBeCloseTo(liveZ);
     expect(camera.quaternion.angleTo(liveOrientation)).toBeCloseTo(0);
-    expect(framing.update(camera, null, 0, 1016 + BOSS_DEATH_FALL_MS))
-      .toBeCloseTo(live);
-    const middle = framing.update(camera, null, 0, 1016 + 1000);
+    for (const elapsed of [150, 450, BOSS_DEATH_FALL_START_MS, 850,
+      BOSS_DEATH_IMPACT_MS]) {
+      expect(framing.update(camera, null, 0, 1016 + elapsed)).toBeCloseTo(live);
+      expect(camera.position.y).toBeCloseTo(liveY);
+      expect(camera.position.z).toBeCloseTo(liveZ);
+    }
+    expect(framing.update(camera, null, 0, 1016 + BOSS_DEATH_FADE_START_MS))
+      .toBeLessThan(live);
+    const middle = framing.update(camera, null, 0, 1016 + 1500);
     expect(middle).toBeGreaterThan(0);
     expect(middle).toBeLessThan(live);
     expect(camera.position.y).toBeLessThan(liveY);
     expect(camera.position.z).toBeGreaterThan(liveZ);
-    const late = framing.update(camera, null, 0, 1016 + 1500);
+    const late = framing.update(camera, null, 0, 1016 + 1900);
     expect(late).toBeGreaterThan(0);
     expect(late).toBeLessThan(middle);
     expect(framing.update(camera, null, 0, 1016 + BOSS_DEATH_MS)).toBe(0);

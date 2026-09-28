@@ -34,7 +34,7 @@ class ElementStub extends EventTarget {
 
 const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 7,
   enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10,
-  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3, musicVolume: .16 };
+  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3, musicVolume: .22 };
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -62,8 +62,8 @@ describe('temporary tuning panel', () => {
     expect(root.findAll('output')[2].textContent).toContain('1 / 4 rows (≈25%)');
     const music = inputs[8];
     expect(music.dataset.key).toBe('musicVolume');
-    expect([music.min, music.max, music.step]).toEqual(['0', '0.3', '0.01']);
-    expect(root.findAll('output').at(-1)?.textContent).toBe('0.16');
+    expect([music.min, music.max, music.step]).toEqual(['0', '0.5', '0.01']);
+    expect(root.findAll('output').at(-1)?.textContent).toBe('0.22');
     music.value = '0.24';
     music.dispatchEvent(new Event('input'));
     expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4,
@@ -72,7 +72,7 @@ describe('temporary tuning panel', () => {
     expect(onChange).toHaveBeenLastCalledWith(defaults);
     expect(density.value).toBe('7');
     expect(bossScale.value).toBe('3');
-    expect(music.value).toBe('0.16');
+    expect(music.value).toBe('0.22');
     panel.toggle();
     expect(root.open).toBe(true);
     panel.toggle();

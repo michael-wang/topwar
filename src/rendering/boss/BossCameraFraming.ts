@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
-import { BOSS_DEATH_FALL_MS, BOSS_DEATH_MS } from './BossRenderer';
+import { BOSS_DEATH_IMPACT_MS, BOSS_DEATH_MS } from '../../presentation/BossDeathTiming';
 
 export class BossCameraFraming {
   private hadBoss = false;
@@ -20,10 +20,10 @@ export class BossCameraFraming {
         this.deathStartWeight = this.weight;
       }
       const elapsed = nowMs - this.deathStartedAtMs;
-      if (elapsed <= BOSS_DEATH_FALL_MS) this.weight = this.deathStartWeight;
+      if (elapsed <= BOSS_DEATH_IMPACT_MS) this.weight = this.deathStartWeight;
       else if (elapsed < BOSS_DEATH_MS) {
-        const progress = (elapsed - BOSS_DEATH_FALL_MS)
-          / (BOSS_DEATH_MS - BOSS_DEATH_FALL_MS);
+        const progress = (elapsed - BOSS_DEATH_IMPACT_MS)
+          / (BOSS_DEATH_MS - BOSS_DEATH_IMPACT_MS);
         const eased = progress * progress * (3 - 2 * progress);
         this.weight = this.deathStartWeight * (1 - eased);
       } else this.weight = 0;

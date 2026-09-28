@@ -2,6 +2,7 @@ export const MUSIC_BPM = 88;
 export const MUSIC_STEP_MS = 60_000 / MUSIC_BPM / 2;
 export const MUSIC_APPROACH_DISTANCE = 42;
 export const MAX_MUSIC_VOICES = 12;
+export const MUSIC_MAX_VOLUME = .5;
 
 export type MusicState = 'NORMAL' | 'BOSS_APPROACH' | 'BOSS_SHOWDOWN' | 'GAME_OVER';
 export interface MusicFrame {
@@ -34,7 +35,7 @@ const SHOWDOWN = [
   [1, 4, 10, 12, 18, 20, 26, 28], [2, 6, 9, 14, 17, 22, 25, 30],
   [1, 5, 8, 13, 17, 21, 27, 30], [2, 4, 11, 15, 18, 23, 25, 29],
 ] as const;
-const MODAL_PITCHES = [146.83, 174.61, 196, 220, 261.63]; // D F G A C
+const MODAL_PITCHES = [293.66, 349.23, 392, 440, 523.25]; // D F G A C
 
 function hash(value: number): number {
   value ^= value >>> 16;
@@ -66,25 +67,25 @@ export function musicNotesForStep(seed: number, step: number, state: MusicState)
   const notes: MusicNote[] = [];
   if ((PULSE[variant] as readonly number[]).includes(withinPhrase)) {
     notes.push({ layer: 'base', voice: 'pulse',
-      frequencyHz: hash(seed ^ step) % 4 === 0 ? 110 : 73.42,
-      peakGain: .18, durationSeconds: .19 });
+      frequencyHz: hash(seed ^ step) % 4 === 0 ? 220 : 146.83,
+      peakGain: .28, durationSeconds: .19 });
   }
   if ((TEXTURE[variant] as readonly number[]).includes(withinPhrase)) {
     notes.push({ layer: 'base', voice: 'texture',
       frequencyHz: MODAL_PITCHES[hash(seed ^ Math.imul(step + 1, 37)) % MODAL_PITCHES.length],
-      peakGain: .095, durationSeconds: .3 });
+      peakGain: .16, durationSeconds: .3 });
   }
   if (state === 'NORMAL') return notes;
   if ((APPROACH[variant] as readonly number[]).includes(withinPhrase)) {
     notes.push({ layer: 'approach', voice: 'tension',
-      frequencyHz: hash(seed ^ step) % 3 === 0 ? 155.56 : 146.83, // Eb against D
-      peakGain: .09, durationSeconds: .22 });
+      frequencyHz: hash(seed ^ step) % 3 === 0 ? 311.13 : 293.66, // Eb against D
+      peakGain: .12, durationSeconds: .22 });
   }
   if (state !== 'BOSS_SHOWDOWN') return notes;
   if ((SHOWDOWN[variant] as readonly number[]).includes(withinPhrase)) {
     notes.push({ layer: 'showdown', voice: 'pulse',
-      frequencyHz: withinPhrase % 2 === 0 ? 73.42 : 77.78,
-      peakGain: .16, durationSeconds: .23 });
+      frequencyHz: withinPhrase % 2 === 0 ? 146.83 : 155.56,
+      peakGain: .22, durationSeconds: .23 });
   }
   return notes;
 }
@@ -92,6 +93,7 @@ export function musicNotesForStep(seed: number, step: number, state: MusicState)
 export class ProceduralMusic {
   readonly bus: GainNode;
   private readonly droneGain: GainNode;
+  private readonly foundationGain: GainNode;
   private readonly fifthGain: GainNode;
   private readonly filters: Record<MusicNote['voice'], BiquadFilterNode>;
   private readonly drones: OscillatorNode[] = [];
@@ -113,8 +115,10 @@ export class ProceduralMusic {
     this.droneGain = context.createGain();
     this.droneGain.gain.value = 0;
     this.droneGain.connect(this.bus);
+    this.foundationGain = context.createGain();
+    this.foundationGain.gain.value = .35;
     this.fifthGain = context.createGain();
-    this.fifthGain.gain.value = .45;
+    this.fifthGain.gain.value = .55;
     const filter = (frequency: number, destination: AudioNode): BiquadFilterNode => {
       const node = context.createBiquadFilter();
       node.type = 'lowpass';
@@ -122,12 +126,14 @@ export class ProceduralMusic {
       node.connect(destination);
       return node;
     };
-    const droneFilter = filter(230, this.droneGain);
+    const droneFilter = filter(520, this.droneGain);
+    this.foundationGain.connect(droneFilter);
     this.fifthGain.connect(droneFilter);
-    this.filters = { pulse: filter(330, this.bus), texture: filter(730, this.bus),
-      tension: filter(550, this.bus) };
+    this.filters = { pulse: filter(720, this.bus), texture: filter(1300, this.bus),
+      tension: filter(950, this.bus) };
     for (const [frequency, wave, destination] of [
-      [73.42, 'sine', droneFilter], [110, 'triangle', this.fifthGain],
+      [73.42, 'sine', this.foundationGain], [146.83, 'triangle', droneFilter],
+      [220, 'triangle', this.fifthGain],
     ] as const) {
       const oscillator = context.createOscillator();
       oscillator.type = wave;
@@ -153,7 +159,7 @@ export class ProceduralMusic {
     this.approachMix += ((state === 'BOSS_APPROACH' || state === 'BOSS_SHOWDOWN' ? 1 : 0)
       - this.approachMix) * blend;
     this.showdownMix += ((state === 'BOSS_SHOWDOWN' ? 1 : 0) - this.showdownMix) * blend;
-    const volume = Math.max(0, Math.min(.3, frame.musicVolume));
+    const volume = Math.max(0, Math.min(MUSIC_MAX_VOLUME, frame.musicVolume));
     const now = this.context.currentTime;
     const duck = this.duckFactor(presentationMs);
     const target = frame.paused || state === 'GAME_OVER' ? 0 : volume * duck;
@@ -166,7 +172,7 @@ export class ProceduralMusic {
         frame.paused ? .035 : state === 'GAME_OVER' ? .22 : duck < 1 ? .035 : .07);
       this.lastBusTarget = target;
     }
-    const droneTarget = .11 + .045 * this.approachMix + .035 * this.showdownMix;
+    const droneTarget = .25 + .065 * this.approachMix + .045 * this.showdownMix;
     if (Math.abs(droneTarget - this.lastDroneTarget) > .002 || Number.isNaN(this.lastDroneTarget)) {
       this.droneGain.gain.setTargetAtTime(droneTarget, now, .35);
       this.lastDroneTarget = droneTarget;
@@ -216,6 +222,7 @@ export class ProceduralMusic {
     }
     this.drones.length = 0;
     this.droneFilter.disconnect();
+    this.foundationGain.disconnect();
     this.fifthGain.disconnect();
     this.droneGain.disconnect();
     for (const filter of Object.values(this.filters)) filter.disconnect();

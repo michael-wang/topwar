@@ -1,5 +1,6 @@
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
+import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 
 export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
@@ -118,7 +119,7 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
     secondary: { from: 440, to: 135, seconds: .88, wave: 'sine', volume: .075,
       attackSeconds: .05 },
     tertiary: { from: 105, to: 33, seconds: .46, wave: 'sine', volume: .095,
-      delaySeconds: .49 } },
+      delaySeconds: BOSS_DEATH_IMPACT_MS / 1000 } },
   groundArtillery: { from: 120, to: 44, seconds: .22, wave: 'triangle', volume: .11,
     secondary: { from: 74, to: 32, seconds: 1, wave: 'sine', volume: .055,
       delaySeconds: .05, attackSeconds: .1 } },

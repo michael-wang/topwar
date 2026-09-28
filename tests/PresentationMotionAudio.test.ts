@@ -7,6 +7,7 @@ import { AudioCueObserver, GameAudio, shotCueGapMs } from '../src/audio/GameAudi
 import { EnvironmentAudioScheduler, type EnvironmentAudioEvent,
   type GroundArtilleryAudioEvent } from '../src/audio/EnvironmentAudioScheduler';
 import { ArtilleryScheduler } from '../src/rendering/environment/ArtilleryScheduler';
+import { BOSS_DEATH_IMPACT_MS } from '../src/presentation/BossDeathTiming';
 
 describe('presentation-only motion', () => {
   it('keeps gameplay X/Z while firing the rifle and showing its muzzle flash', () => {
@@ -392,13 +393,15 @@ describe('audio cue observation and safety', () => {
     expect(bossHit.ends[0]).toBeCloseTo(.13);
     expect(bossDeath.count).toBe(3);
     expect(bossDeath.waves).toEqual(['triangle', 'sine', 'sine']);
-    expect(bossDeath.ends[0]).toBeGreaterThanOrEqual(.95);
+    expect(bossDeath.pitches[0]).toBe(285);
+    expect(bossDeath.ends[0]).toBeCloseTo(1.08);
     expect(bossDeath.ends[0]).toBeGreaterThan(bossHit.ends[0]);
-    expect(bossDeath.volumes[0]).toBeGreaterThan(.17);
+    expect(bossDeath.volumes[0]).toBeCloseTo(.23);
     expect(bossDeath.volumes[0]).toBeGreaterThan(bossHit.volumes[0]);
-    expect(bossDeath.starts[2]).toBeGreaterThanOrEqual(.4);
-    expect(bossDeath.starts[2]).toBeLessThanOrEqual(.55);
-    expect(bossDeath.ends[2]).toBeGreaterThan(.8);
+    expect(bossDeath.pitches[2]).toBe(105);
+    expect(bossDeath.volumes[2]).toBeCloseTo(.095);
+    expect(bossDeath.starts[2]).toBeCloseTo(BOSS_DEATH_IMPACT_MS / 1000);
+    expect(bossDeath.ends[2]).toBeCloseTo(BOSS_DEATH_IMPACT_MS / 1000 + .46);
     expect(damage.volumes[0]).toBeCloseTo(.18); // Approved injury profile.
     expect(fatal.volumes[0]).toBeCloseTo(.22);
     expect(ground.count).toBe(2);

@@ -607,7 +607,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenCalledTimes(stepCount);
     expect(mock.render.mock.lastCall![1]).toBe(presentationTime);
     expect(updateMusic).toHaveBeenLastCalledWith(presentationTime,
-      expect.objectContaining({ paused: true, musicVolume: .16 }));
+      expect.objectContaining({ paused: true, musicVolume: .22 }));
     expect(raf.key(' ')).toBe(true);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     expect(raf.key(' ', false, { tagName: 'INPUT' })).toBe(false);
@@ -671,7 +671,7 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100_000 + 2 * 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 5, forwardSpeed: 3,
       rifle: { fireRate: 7, projectileSpeed: 28, range: 18 } });
-    expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ musicVolume: .16 });
+    expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ musicVolume: .22 });
     app.dispose();
     updateMusic.mockRestore();
   });
