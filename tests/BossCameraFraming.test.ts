@@ -29,16 +29,47 @@ describe('Boss camera handoff', () => {
       expect(camera.position.y).toBeCloseTo(liveY);
       expect(camera.position.z).toBeCloseTo(liveZ);
     }
-    const weights = [250, 500, 750].map(elapsed =>
+    const initial = framing.update(camera, null, 0, 1016 + BOSS_DEATH_MS + 100);
+    expect(initial).toBeGreaterThan(0.999);
+    expect(Math.abs(camera.position.z - liveZ)).toBeLessThan(0.01);
+    const weights = [1000, 3000, 5900].map(elapsed =>
       framing.update(camera, null, 0, 1016 + BOSS_DEATH_MS + elapsed));
-    expect(weights[0]).toBeLessThan(live);
+    expect(weights[0]).toBeGreaterThan(0.9);
     expect(weights[0]).toBeGreaterThan(weights[1]);
+    expect(weights[1]).toBeCloseTo(0.5);
     expect(weights[1]).toBeGreaterThan(weights[2]);
     expect(weights[2]).toBeGreaterThan(0);
+    expect(weights[2]).toBeLessThan(0.001);
     expect(framing.update(camera, null, 0, 1016 + BOSS_DEATH_MS + BOSS_CAMERA_RETURN_MS))
       .toBe(0);
     expect(camera.position.y).toBeCloseTo(6.5);
     expect(camera.position.z).toBeCloseTo(-10);
+    expect(framing.update(camera, null, 0, 1016 + BOSS_DEATH_MS
+      + BOSS_CAMERA_RETURN_MS + 1000)).toBe(0);
+  });
+
+  it('limits the framing-only camera movement on every 60 FPS return frame', () => {
+    const camera = new THREE.PerspectiveCamera(48, 9 / 16, .1, 180);
+    const framing = new BossCameraFraming();
+    expect(framing.update(camera, { ...boss, z: 2 }, 0, 1000)).toBe(1);
+    const deathStart = 1016;
+    framing.update(camera, null, 0, deathStart);
+    framing.update(camera, null, 0, deathStart + BOSS_DEATH_MS);
+    let previousY = camera.position.y;
+    let previousZ = camera.position.z;
+    let maxYDelta = 0;
+    let maxZDelta = 0;
+    const frameCount = Math.ceil(BOSS_CAMERA_RETURN_MS / (1000 / 60));
+    for (let frame = 1; frame <= frameCount; frame++) {
+      const elapsed = Math.min(BOSS_CAMERA_RETURN_MS, frame * 1000 / 60);
+      framing.update(camera, null, 0, deathStart + BOSS_DEATH_MS + elapsed);
+      maxYDelta = Math.max(maxYDelta, Math.abs(camera.position.y - previousY));
+      maxZDelta = Math.max(maxZDelta, Math.abs(camera.position.z - previousZ));
+      previousY = camera.position.y;
+      previousZ = camera.position.z;
+    }
+    expect(maxYDelta).toBeLessThanOrEqual(0.02);
+    expect(maxZDelta).toBeLessThanOrEqual(0.05);
   });
 
   it('uses the same death hold for a farther Boss while following player progression', () => {

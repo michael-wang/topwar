@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
 import { BOSS_DEATH_MS } from '../../presentation/BossDeathTiming';
 
-export const BOSS_CAMERA_RETURN_MS = 1000;
+export const BOSS_CAMERA_RETURN_MS = 6000;
 
 export class BossCameraFraming {
   private hadBoss = false;
@@ -25,7 +25,8 @@ export class BossCameraFraming {
       if (elapsed <= BOSS_DEATH_MS) this.weight = this.deathStartWeight;
       else if (elapsed < BOSS_DEATH_MS + BOSS_CAMERA_RETURN_MS) {
         const progress = (elapsed - BOSS_DEATH_MS) / BOSS_CAMERA_RETURN_MS;
-        const eased = progress * progress * (3 - 2 * progress);
+        const eased = progress * progress * progress
+          * (progress * (progress * 6 - 15) + 10);
         this.weight = this.deathStartWeight * (1 - eased);
       } else this.weight = 0;
     }
