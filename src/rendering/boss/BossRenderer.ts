@@ -48,15 +48,21 @@ export function bossWalkPose(id: number, nowMs: number): { frame: number; bob: n
 }
 
 export class BossRenderer {
-  private readonly barFrameGeometry = new THREE.PlaneGeometry(1.1, .15);
-  private readonly barFillGeometry = new THREE.PlaneGeometry(1.04, .09);
+  private readonly barFrameGeometry = new THREE.PlaneGeometry(1.5, .28);
+  private readonly barTrackGeometry = new THREE.PlaneGeometry(1.36, .17);
+  private readonly barFillGeometry = new THREE.PlaneGeometry(1.3, .13);
+  private readonly barBadgeGeometry = new THREE.PlaneGeometry(.19, .1);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly vestMaterials: THREE.MeshStandardMaterial[];
   private readonly vestGeometries: THREE.BufferGeometry[];
   private readonly hitWashMaterial = new THREE.MeshBasicMaterial({ color: '#fff4df',
     transparent: true, opacity: .2, depthWrite: false, toneMapped: false,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-  private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#250b12',
+  private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#151b22',
+    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  private readonly barTrackMaterial = new THREE.MeshBasicMaterial({ color: '#3a2024',
+    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  private readonly barBadgeMaterial = new THREE.MeshBasicMaterial({ color: '#d4b58a',
     side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ff3b30',
     side: THREE.DoubleSide, depthTest: false, depthWrite: false });
@@ -75,7 +81,9 @@ export class BossRenderer {
   private readonly deathHelmet: THREE.Mesh;
   private readonly deathVest: THREE.Mesh;
   private readonly barBackground = new THREE.Mesh(this.barFrameGeometry, this.barBackgroundMaterial);
+  private readonly barTrack = new THREE.Mesh(this.barTrackGeometry, this.barTrackMaterial);
   private readonly barFill = new THREE.Mesh(this.barFillGeometry, this.barFillMaterial);
+  private readonly barBadge = new THREE.Mesh(this.barBadgeGeometry, this.barBadgeMaterial);
   private readonly barAnchor = new THREE.Group();
   private previous: BossRenderState | null = null;
   private flashUntilMs = -Infinity;
@@ -132,15 +140,25 @@ export class BossRenderer {
     this.deathVest = new THREE.Mesh(this.vestGeometries[0], this.vestMaterials[0]);
     this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
     this.death.rotation.y = Math.PI;
-    // The framed red bar rides the head but compensates for the giant's 7× scale.
-    this.barAnchor.position.set(0, 1.0, 0.34);
-    this.barAnchor.scale.setScalar(.31);
+    // The plate follows the Boss as a whole, independent of the animated pose.
+    this.barAnchor.name = 'boss-hp-anchor';
+    this.barAnchor.position.set(0, 1.36, -0.25);
+    this.barAnchor.scale.setScalar(.32);
+    this.barBackground.name = 'boss-hp-frame';
+    this.barTrack.name = 'boss-hp-track';
+    this.barFill.name = 'boss-hp-fill';
+    this.barBadge.name = 'boss-hp-badge';
     this.barBackground.position.z = 0;
-    this.barFill.position.z = 0.01;
+    this.barTrack.position.z = -0.01;
+    this.barFill.position.z = -0.02;
+    this.barBadge.position.set(0, .18, -.03);
     this.barBackground.renderOrder = 20;
-    this.barFill.renderOrder = 21;
-    this.barAnchor.add(this.barBackground, this.barFill);
-    this.body.add(this.barAnchor, this.bodyHitWash, this.helmetHitWash, this.vestHitWash);
+    this.barTrack.renderOrder = 21;
+    this.barFill.renderOrder = 22;
+    this.barBadge.renderOrder = 23;
+    this.barAnchor.add(this.barBackground, this.barTrack, this.barFill, this.barBadge);
+    this.active.add(this.barAnchor);
+    this.body.add(this.bodyHitWash, this.helmetHitWash, this.vestHitWash);
     this.active.visible = false;
     this.death.visible = false;
     this.scene.add(this.active, this.death);
@@ -201,7 +219,7 @@ export class BossRenderer {
       this.vestHitWash.geometry = this.vest.geometry;
       const ratio = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
       this.barFill.scale.x = ratio;
-      this.barFill.position.x = -.52 * (1 - ratio);
+      this.barFill.position.x = -.65 * (1 - ratio);
     }
     if (this.death.visible) {
       const elapsed = nowMs - this.deathStartedAtMs;
@@ -234,10 +252,13 @@ export class BossRenderer {
   dispose(): void {
     this.scene.remove(this.active, this.death);
     this.barFrameGeometry.dispose();
+    this.barTrackGeometry.dispose();
     this.barFillGeometry.dispose();
+    this.barBadgeGeometry.dispose();
     for (const geometry of this.vestGeometries) geometry.dispose();
     for (const material of [...this.tierMaterials, ...this.vestMaterials, this.hitWashMaterial,
-      this.barBackgroundMaterial, this.barFillMaterial]) material.dispose();
+      this.barBackgroundMaterial, this.barTrackMaterial, this.barFillMaterial,
+      this.barBadgeMaterial]) material.dispose();
   }
 
   private startDeath(boss: BossRenderState, nowMs: number): void {

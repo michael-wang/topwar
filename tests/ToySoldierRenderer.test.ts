@@ -253,17 +253,27 @@ describe('Modern Toy Soldier presentation', () => {
     const last = { id: 20, tier: 20, x: 0, z: 10, hp: 50, maxHp: 100, visualScale: 7,
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
     renderer.update(last, 20010);
-    const barAnchor = (active.children[0] as THREE.Group).children[3] as THREE.Group;
-    expect(barAnchor.position.y).toBeCloseTo(1);
-    expect(barAnchor.scale.x).toBeCloseTo(.31);
-    expect((barAnchor.children[1] as THREE.Mesh).scale.x).toBeCloseTo(.5);
-    expect(((barAnchor.children[1] as THREE.Mesh).material as THREE.MeshBasicMaterial)
-      .color.getHexString()).toBe('ff3b30');
-    expect(((barAnchor.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
-      .depthTest).toBe(false);
-    const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
+    const barAnchor = active.getObjectByName('boss-hp-anchor') as THREE.Group;
     const pose = active.children[0] as THREE.Group;
-    const washes = pose.children.slice(4, 7) as THREE.Mesh[];
+    expect(barAnchor.parent).toBe(active);
+    expect(barAnchor.position.y).toBeGreaterThan(1.25);
+    expect(barAnchor.position.y - .28 * barAnchor.scale.y / 2).toBeGreaterThan(1.2);
+    expect(barAnchor.scale.x).toBeCloseTo(.32);
+    const frame = barAnchor.getObjectByName('boss-hp-frame') as THREE.Mesh;
+    const track = barAnchor.getObjectByName('boss-hp-track') as THREE.Mesh;
+    const fill = barAnchor.getObjectByName('boss-hp-fill') as THREE.Mesh;
+    expect(frame).toBeDefined();
+    expect(track).toBeDefined();
+    expect(fill.scale.x).toBeCloseTo(.5);
+    expect((fill.material as THREE.MeshBasicMaterial)
+      .color.getHexString()).toBe('ff3b30');
+    for (const part of [frame, track, fill]) {
+      expect((part.material as THREE.MeshBasicMaterial).depthTest).toBe(false);
+      expect((part.material as THREE.MeshBasicMaterial).depthWrite).toBe(false);
+    }
+    expect(fill.renderOrder).toBeGreaterThan(track.renderOrder);
+    const helmet = (active.children[0] as THREE.Group).children[1] as THREE.Mesh;
+    const washes = pose.children.slice(3, 6) as THREE.Mesh[];
     expect(washes[1].position.y).toBeCloseTo(helmet.position.y);
     expect(washes[1].position.z).toBeCloseTo(helmet.position.z);
     expect(washes[1].scale.x).toBeCloseTo(helmet.scale.x * 1.005);
@@ -375,7 +385,7 @@ describe('Modern Toy Soldier presentation', () => {
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), runFrames(), runFrames());
     const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
     const pose = (scene.children[0] as THREE.Group).children[0] as THREE.Group;
-    const washes = pose.children.slice(4, 7) as THREE.Mesh[];
+    const washes = pose.children.slice(3, 6) as THREE.Mesh[];
     const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
     renderer.update(boss, 0);
