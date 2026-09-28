@@ -30,7 +30,7 @@ describe('temporary runtime tuning', () => {
     expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 60, bulletRange: 80,
       rewardRowsPerReward: 7, enemyHigherTierPowerMultiplier: 10,
       rifleHigherTierPowerMultiplier: 10, fireRate: 10, moveSpeed: 5, forwardSpeed: 2,
-      bossHpScale: 3, musicVolume: .22 });
+      bossHpScale: 3, musicVolume: .50 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();
   });
 

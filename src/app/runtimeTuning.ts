@@ -25,6 +25,6 @@ export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelD
     moveSpeed: config.player.moveSpeed,
     forwardSpeed: config.player.forwardSpeed,
     bossHpScale: 3,
-    musicVolume: 0.22,
+    musicVolume: 0.50,
   };
 }
