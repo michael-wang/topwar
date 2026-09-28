@@ -58,9 +58,9 @@ export class BridgeEnvironment {
   private readonly burningCores: { mesh: THREE.Mesh; scale: number }[] = [];
   private readonly shipMaterials: THREE.MeshStandardMaterial[] = [];
   private readonly shipSections: { group: THREE.Group; x: number; halfWidth: number }[] = [];
-  private aircraftMaterial: THREE.MeshBasicMaterial | null = null;
+  private readonly aircraftMaterials: THREE.MeshBasicMaterial[] = [];
   private readonly ship = new THREE.Group();
-  private readonly aircraft = new THREE.Group();
+  private readonly aircraft: THREE.Group[] = [];
   private smokeTexture: THREE.DataTexture | null = null;
   private readonly deck: THREE.Mesh;
   private readonly shoulders: THREE.Mesh[] = [];
@@ -357,8 +357,10 @@ export class BridgeEnvironment {
     this.beachhead.add(tower);
     part(this.beachhead, 'beachhead-broken-mast', -8.5, 11, -4,
       .22, 20, .24, steel, .17);
-    part(this.beachhead, 'beachhead-terminal', -3.2, 2.6, -5,
-      14, 5.2, 3, distance);
+    part(this.beachhead, 'beachhead-terminal', -13.5, 2.1, -5,
+      7.5, 4.2, 3, distance);
+    part(this.beachhead, 'beachhead-terminal', 13.2, 1.6, -6,
+      5.8, 3.2, 3, distance);
     const transport = (x: number, z: number, width: number): void => {
       const group = new THREE.Group();
       group.name = 'beachhead-transport';
@@ -510,10 +512,6 @@ export class BridgeEnvironment {
     const hull = this.material('#303b40', true, 0);
     const fittings = this.material('#39474b', true, 0);
     this.shipMaterials.push(hull, fittings);
-    const planeMaterial = new THREE.MeshBasicMaterial({ color: '#252d31',
-      transparent: true, opacity: 0, depthWrite: false, fog: false });
-    this.aircraftMaterial = planeMaterial;
-    this.materials.push(planeMaterial);
     const part = (parent: THREE.Group, name: string, x: number, y: number,
       z: number, width: number, height: number, depth: number,
       material: THREE.Material): void => {
@@ -547,13 +545,21 @@ export class BridgeEnvironment {
     this.ship.visible = false;
     this.shipLayer.add(this.ship);
 
-    this.aircraft.name = 'battlefield-aircraft';
-    part(this.aircraft, 'aircraft-fuselage', 0, 0, 0, .52, .16, 3.2, planeMaterial);
-    part(this.aircraft, 'aircraft-wings', 0, 0, -.18, 4.1, .12, .66, planeMaterial);
-    part(this.aircraft, 'aircraft-tail', 0, 0, -1.3, 1.55, .12, .34, planeMaterial);
-    this.aircraft.scale.setScalar(.62);
-    this.aircraft.visible = false;
-    this.skyLayer.add(this.aircraft);
+    for (let index = 0; index < 2; index++) {
+      const planeMaterial = new THREE.MeshBasicMaterial({ color: '#252d31',
+        transparent: true, opacity: 0, depthWrite: false, fog: false });
+      this.aircraftMaterials.push(planeMaterial);
+      this.materials.push(planeMaterial);
+      const plane = new THREE.Group();
+      plane.name = 'battlefield-aircraft';
+      part(plane, 'aircraft-fuselage', 0, 0, 0, .52, .16, 3.2, planeMaterial);
+      part(plane, 'aircraft-wings', 0, 0, -.18, 4.1, .12, .66, planeMaterial);
+      part(plane, 'aircraft-tail', 0, 0, -1.3, 1.55, .12, .34, planeMaterial);
+      plane.scale.setScalar(index === 0 ? .62 : .54);
+      plane.visible = false;
+      this.aircraft.push(plane);
+      this.skyLayer.add(plane);
+    }
 
     for (let index = 0; index < 2; index++) {
       const flashMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
@@ -600,13 +606,16 @@ export class BridgeEnvironment {
         section.group.visible = Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
       }
     }
-    const aircraftAge = nowMs - this.activity.aircraftStartedAtMs;
-    this.aircraft.visible = aircraftAge >= 0 && aircraftAge < AIRCRAFT_PASS_MS;
-    if (this.aircraft.visible) {
+    for (let index = 0; index < this.aircraft.length; index++) {
+      const pass = this.activity.aircraftPasses[index];
+      const plane = this.aircraft[index];
+      const aircraftAge = nowMs - pass.startedAtMs;
+      plane.visible = aircraftAge >= 0 && aircraftAge < AIRCRAFT_PASS_MS;
+      if (!plane.visible) continue;
       const progress = aircraftAge / AIRCRAFT_PASS_MS;
-      this.aircraft.position.set(this.activity.aircraftSide
-        * (-26 + progress * 52), 17, -15);
-      if (this.aircraftMaterial) this.aircraftMaterial.opacity = .28
+      plane.position.set(pass.side * (-26 + progress * 52), pass.y, pass.z);
+      plane.rotation.y = pass.side === 1 ? -Math.PI / 2 : Math.PI / 2;
+      this.aircraftMaterials[index].opacity = .28
         * Math.max(0, Math.min(1, progress / .16, (1 - progress) / .16));
     }
     if (events & SKY_FLAK_STARTED) {

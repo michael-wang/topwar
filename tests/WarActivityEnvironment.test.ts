@@ -35,16 +35,43 @@ describe('presentation-only water and sky activity', () => {
     }
   });
 
-  it('keeps one warship and aircraft in their water and far-sky bands and disposes them', () => {
+  it('occasionally overlaps opposite-direction planes while keeping quiet gaps', () => {
+    const sample = () => {
+      const scheduler = new WarActivityScheduler(17);
+      let overlaps = 0;
+      let singles = 0;
+      let gaps = 0;
+      for (let nowMs = 0; nowMs <= 120_000; nowMs += 100) {
+        scheduler.update(nowMs);
+        const active = scheduler.aircraftPasses.filter((pass) =>
+          nowMs - pass.startedAtMs >= 0 && nowMs - pass.startedAtMs < AIRCRAFT_PASS_MS);
+        if (active.length === 2) {
+          overlaps++;
+          expect(active[0].side).toBe(-active[1].side);
+          expect(active[0].y).not.toBe(active[1].y);
+          expect(active[0].z).not.toBe(active[1].z);
+        } else if (active.length === 1) singles++;
+        else gaps++;
+      }
+      return { overlaps, singles, gaps };
+    };
+    const result = sample();
+    expect(sample()).toEqual(result);
+    expect(result.overlaps).toBeGreaterThan(0);
+    expect(result.singles).toBeGreaterThan(result.overlaps);
+    expect(result.gaps).toBeGreaterThan(result.overlaps);
+  });
+
+  it('keeps one warship and at most two aircraft in their bands and disposes them', () => {
     const scene = new THREE.Scene();
     const environment = new BridgeEnvironment(scene);
     const shipLayer = scene.getObjectByName('battlefield-water-traffic') as THREE.Group;
     const skyLayer = scene.getObjectByName('battlefield-sky-activity') as THREE.Group;
     const ship = shipLayer.getObjectByName('battlefield-warship') as THREE.Group;
-    const aircraft = skyLayer.getObjectByName('battlefield-aircraft') as THREE.Group;
+    const aircraft = skyLayer.children.filter((child) => child.name === 'battlefield-aircraft');
     const flak = skyLayer.children.filter((child) => child.name === 'battlefield-sky-flak-slot');
     expect(ship).toBeDefined();
-    expect(aircraft).toBeDefined();
+    expect(aircraft).toHaveLength(2);
     expect(flak).toHaveLength(2);
     const shipMaterial = (ship.getObjectByName('warship-hull') as THREE.Mesh).material as THREE.Material;
     const shipGeometry = (ship.getObjectByName('warship-hull') as THREE.Mesh).geometry;
@@ -68,7 +95,7 @@ describe('presentation-only water and sky activity', () => {
         return Math.abs(point.x) < 1 && Math.abs(point.y) < 1;
       };
       expect(shipLayer.children.filter((child) => child.name === 'battlefield-warship')).toHaveLength(1);
-      expect(skyLayer.children.filter((child) => child.name === 'battlefield-aircraft')).toHaveLength(1);
+      expect(skyLayer.children.filter((child) => child.name === 'battlefield-aircraft')).toHaveLength(2);
       expect(skyLayer.children.filter((child) => child.name === 'battlefield-sky-flak-slot'))
         .toHaveLength(2);
       if (ship.visible) {
@@ -76,12 +103,12 @@ describe('presentation-only water and sky activity', () => {
         expect(ship.getWorldPosition(new THREE.Vector3()).z - playerZ).toBeCloseTo(38);
         shipOnScreen ||= inPortrait(ship);
       }
-      if (aircraft.visible) {
+      for (const plane of aircraft.filter((candidate) => candidate.visible)) {
         sawAircraft = true;
-        expect(aircraft.position.y).toBeGreaterThan(12);
-        expect(aircraft.getWorldPosition(new THREE.Vector3()).z - playerZ)
+        expect(plane.position.y).toBeGreaterThan(12);
+        expect(plane.getWorldPosition(new THREE.Vector3()).z - playerZ)
           .toBeGreaterThan(BATTLEFIELD_FOG_FAR);
-        aircraftOnScreen ||= inPortrait(aircraft);
+        aircraftOnScreen ||= inPortrait(plane);
       }
       if (flak.some((slot) => slot.visible)) sawFlak = true;
       flakOnScreen ||= flak.some((slot) => slot.visible && inPortrait(slot));

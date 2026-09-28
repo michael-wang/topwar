@@ -415,8 +415,12 @@ describe('audio cue observation and safety', () => {
       volumeScale: .55, durationScale: .65, pitchScale: 1.08 });
     const loud = renderCue('groundArtillery', { kind: 'groundArtillery',
       volumeScale: 1.2, durationScale: 1.5, pitchScale: .88 });
-    expect(quiet.volumes[0]).toBeCloseTo(.0605);
-    expect(loud.volumes[0]).toBeCloseTo(.132);
+    expect(quiet.volumes[0]).toBeCloseTo(.077);
+    expect(loud.volumes[0]).toBeCloseTo(.168);
+    expect(ground.volumes[0]).toBeCloseTo(.14);
+    expect(ground.volumes[1]).toBeCloseTo(.065);
+    expect(ground.volumes[2]).toBeCloseTo(.105);
+    expect(flak.volumes[0]).toBeCloseTo(.05);
     expect(quiet.ends.at(-1)!).toBeLessThan(.75);
     expect(loud.ends.at(-1)!).toBeGreaterThan(1.5);
     expect(quiet.pitches[0]).toBeGreaterThan(loud.pitches[0]);

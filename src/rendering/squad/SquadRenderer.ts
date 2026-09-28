@@ -71,6 +71,10 @@ export class SquadRenderer {
   private readonly rifleFiredAtMs = new Map<number, number>();
   private rocketFiredAtMs = -Infinity;
 
+  forEachVisibleMemberPosition(visit: (position: THREE.Vector3) => void): void {
+    for (const member of this.members) if (member.group.visible) visit(member.group.position);
+  }
+
   constructor(private readonly scene: THREE.Scene,
     private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,

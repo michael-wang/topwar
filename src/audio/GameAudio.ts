@@ -120,10 +120,10 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
       attackSeconds: .05 },
     tertiary: { from: 105, to: 33, seconds: .46, wave: 'sine', volume: .095,
       delaySeconds: BOSS_DEATH_IMPACT_MS / 1000 } },
-  groundArtillery: { from: 120, to: 44, seconds: .22, wave: 'triangle', volume: .11,
-    secondary: { from: 74, to: 32, seconds: 1, wave: 'sine', volume: .055,
+  groundArtillery: { from: 120, to: 44, seconds: .22, wave: 'triangle', volume: .14,
+    secondary: { from: 74, to: 32, seconds: 1, wave: 'sine', volume: .065,
       delaySeconds: .05, attackSeconds: .1 } },
-  skyFlak: { from: 260, to: 90, seconds: .19, wave: 'triangle', volume: .039 },
+  skyFlak: { from: 260, to: 90, seconds: .19, wave: 'triangle', volume: .05 },
 };
 
 export class GameAudio {
@@ -236,7 +236,7 @@ export class GameAudio {
         const rumbleStart = start + .05 * durationScale;
         const rumbleEnd = rumbleStart + durationScale;
         gain.gain.setValueAtTime(.001, rumbleStart);
-        gain.gain.exponentialRampToValueAtTime(.085 * volumeScale,
+        gain.gain.exponentialRampToValueAtTime(.105 * volumeScale,
           rumbleStart + .15 * durationScale);
         gain.gain.exponentialRampToValueAtTime(.001, rumbleEnd);
         source.connect(gain);

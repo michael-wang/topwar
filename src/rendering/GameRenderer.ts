@@ -10,6 +10,7 @@ import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
 import { BossRenderer } from './boss/BossRenderer';
 import { BossCameraFraming } from './boss/BossCameraFraming';
 import { BridgeEnvironment } from './environment/BridgeEnvironment';
+import { ContactShadowRenderer } from './ContactShadowRenderer';
 import type { CharacterAssets } from './CharacterAssets';
 import type { PresentationEvent } from '../simulation/PresentationEvent';
 
@@ -26,6 +27,7 @@ export class GameRenderer {
   private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
   private readonly streamRewardRenderer: StreamRewardRenderer;
   private readonly environment: BridgeEnvironment;
+  private readonly contactShadows: ContactShadowRenderer;
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
 
@@ -40,6 +42,7 @@ export class GameRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
     this.environment = new BridgeEnvironment(this.scene);
+    this.contactShadows = new ContactShadowRenderer(this.scene);
 
     this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
     const sunlight = new THREE.DirectionalLight(0xffffff, 2);
@@ -74,6 +77,7 @@ export class GameRenderer {
     this.enemyRenderer.update(state.enemies, nowMs);
     this.bossRenderer.update(state.boss, nowMs, state.player.z);
     this.streamRewardRenderer.update(state.streamRewards, nowMs);
+    this.contactShadows.update(state, this.squadRenderer, nowMs);
     this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
@@ -92,6 +96,7 @@ export class GameRenderer {
     this.bossRenderer.reset();
     this.bossCameraFraming.reset();
     this.streamRewardRenderer.reset();
+    this.contactShadows.reset();
     this.projectileRenderer.reset();
   }
 
@@ -99,6 +104,7 @@ export class GameRenderer {
     if (this.disposed) return;
     this.stopResizeHandling();
     this.environment.dispose();
+    this.contactShadows.dispose();
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();
     this.bossRenderer.dispose();

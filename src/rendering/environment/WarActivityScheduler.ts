@@ -4,19 +4,29 @@ export const SKY_FLAK_STARTED = 4;
 export const SHIP_PASS_MS = 16000;
 export const AIRCRAFT_PASS_MS = 4500;
 
+export interface AircraftPass {
+  startedAtMs: number;
+  side: number;
+  y: number;
+  z: number;
+}
+
 // Presentation-only timing; no Simulation state or gameplay RNG is consumed.
 export class WarActivityScheduler {
   private seed: number;
   private lastNowMs = 0;
   private nextShipMs: number;
   private nextAircraftMs: number;
+  private nextWingmanMs = Infinity;
   private nextFlakMs: number;
   shipStartedAtMs = -Infinity;
-  aircraftStartedAtMs = -Infinity;
+  readonly aircraftPasses: [AircraftPass, AircraftPass] = [
+    { startedAtMs: -Infinity, side: 1, y: 17, z: -15 },
+    { startedAtMs: -Infinity, side: -1, y: 19.5, z: -23 },
+  ];
   flakStartedAtMs = -Infinity;
   shipSide = 1;
   shipX = 28.5;
-  aircraftSide = 1;
   flakX = 0;
   flakY = 17;
 
@@ -28,7 +38,8 @@ export class WarActivityScheduler {
   }
 
   get nextEventMs(): number {
-    return Math.min(this.nextShipMs, this.nextAircraftMs, this.nextFlakMs);
+    return Math.min(this.nextShipMs, this.nextAircraftMs, this.nextWingmanMs,
+      this.nextFlakMs);
   }
 
   update(nowMs: number): number {
@@ -43,9 +54,18 @@ export class WarActivityScheduler {
       events |= SHIP_STARTED;
     }
     if (nowMs >= this.nextAircraftMs) {
-      this.aircraftStartedAtMs = nowMs;
-      this.aircraftSide = this.random() < .5 ? -1 : 1;
-      this.nextAircraftMs = nowMs + AIRCRAFT_PASS_MS + 7000 + this.random() * 9000;
+      const side = this.random() < .5 ? -1 : 1;
+      this.aircraftPasses[0].startedAtMs = nowMs;
+      this.aircraftPasses[0].side = side;
+      this.aircraftPasses[1].side = -side;
+      this.nextWingmanMs = this.random() < .32 ? nowMs + 700 + this.random() * 1000
+        : Infinity;
+      this.nextAircraftMs = nowMs + AIRCRAFT_PASS_MS + 4500 + this.random() * 5000;
+      events |= AIRCRAFT_STARTED;
+    }
+    if (nowMs >= this.nextWingmanMs) {
+      this.aircraftPasses[1].startedAtMs = nowMs;
+      this.nextWingmanMs = Infinity;
       events |= AIRCRAFT_STARTED;
     }
     if (nowMs >= this.nextFlakMs) {
@@ -62,9 +82,10 @@ export class WarActivityScheduler {
     this.seed = this.initialSeed >>> 0;
     this.nextShipMs = 3500 + this.random() * 3000;
     this.nextAircraftMs = 2500 + this.random() * 3000;
+    this.nextWingmanMs = Infinity;
     this.nextFlakMs = 2000 + this.random() * 2500;
     this.shipStartedAtMs = -Infinity;
-    this.aircraftStartedAtMs = -Infinity;
+    for (const pass of this.aircraftPasses) pass.startedAtMs = -Infinity;
     this.flakStartedAtMs = -Infinity;
   }
 

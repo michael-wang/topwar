@@ -37,6 +37,14 @@ describe('BridgeEnvironment', () => {
       'beachhead-control-tower']) {
       expect(beachhead.getObjectByName(name)).toBeDefined();
     }
+    const terminals = beachhead.children.filter((child) =>
+      child.name === 'beachhead-terminal') as THREE.Mesh[];
+    expect(terminals).toHaveLength(2);
+    expect(terminals.some((terminal) => terminal.position.x < 0)).toBe(true);
+    expect(terminals.some((terminal) => terminal.position.x > 0)).toBe(true);
+    // The former wide terminal crossed the bridge axis and appeared to block enemy approach.
+    expect(terminals.every((terminal) =>
+      Math.abs(terminal.position.x) - terminal.scale.x / 2 > 8)).toBe(true);
     const camera = new THREE.PerspectiveCamera(48, 9 / 16, .1, 180);
     camera.position.set(0, 6.5, -10);
     camera.lookAt(0, 0, 12.5);
