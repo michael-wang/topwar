@@ -34,18 +34,18 @@ class ElementStub extends EventTarget {
 
 const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 7,
   enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10,
-  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3 };
+  fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3, musicVolume: .16 };
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it('offers eight sliders and a Boss HP selector, and Reset restores authored defaults', () => {
+  it('offers music volume with the other sliders and Reset restores authored defaults', () => {
     vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });
     const viewport = new ElementStub('div');
     const onChange = vi.fn();
     const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, onChange);
     const root = viewport.children[0];
     const inputs = root.findAll('input');
-    expect(inputs).toHaveLength(8);
+    expect(inputs).toHaveLength(9);
     expect(inputs.every((input) => input.type === 'range')).toBe(true);
     const bossScale = root.findAll('select')[0];
     expect(bossScale.findAll('option').map((option) => option.value))
@@ -60,10 +60,19 @@ describe('temporary tuning panel', () => {
     expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4,
       bossHpScale: 20 });
     expect(root.findAll('output')[2].textContent).toContain('1 / 4 rows (≈25%)');
+    const music = inputs[8];
+    expect(music.dataset.key).toBe('musicVolume');
+    expect([music.min, music.max, music.step]).toEqual(['0', '0.3', '0.01']);
+    expect(root.findAll('output').at(-1)?.textContent).toBe('0.16');
+    music.value = '0.24';
+    music.dispatchEvent(new Event('input'));
+    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4,
+      bossHpScale: 20, musicVolume: .24 });
     root.querySelector('button')!.dispatchEvent(new Event('click'));
     expect(onChange).toHaveBeenLastCalledWith(defaults);
     expect(density.value).toBe('7');
     expect(bossScale.value).toBe('3');
+    expect(music.value).toBe('0.16');
     panel.toggle();
     expect(root.open).toBe(true);
     panel.toggle();

@@ -1,4 +1,5 @@
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
+import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 
 export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
@@ -131,6 +132,8 @@ export class GameAudio {
   private rumbleBuffer: AudioBuffer | null = null;
   private readonly observer = new AudioCueObserver();
   private readonly environment = new EnvironmentAudioScheduler();
+  private music: ProceduralMusic | null = null;
+  private musicPresentationMs = 0;
   private nextEnvironmentCueMs = -Infinity;
   private unlocked = false;
   private disposed = false;
@@ -144,6 +147,7 @@ export class GameAudio {
     enemies: readonly ObservedEnemy[], rewards: readonly ObservedReward[],
     boss: ObservedBoss | null, nowMs = performance.now(),
     projectiles: readonly ObservedProjectile[] = []): void {
+    this.musicPresentationMs = nowMs;
     for (const cue of this.observer.observe(previousDefense, currentDefense, enemies,
       rewards, boss, nowMs, projectiles)) this.play(cue);
   }
@@ -152,7 +156,18 @@ export class GameAudio {
     this.observer.reset();
     this.environment.reset();
     this.nextEnvironmentCueMs = -Infinity;
+    this.musicPresentationMs = 0;
+    this.music?.reset();
   }
+
+  updateMusic(presentationMs: number, frame: MusicFrame): void {
+    this.musicPresentationMs = presentationMs;
+    if (!this.unlocked || !this.context || this.context.state !== 'running' || !this.master) return;
+    this.music ??= new ProceduralMusic(this.context, this.master);
+    this.music.update(presentationMs, frame);
+  }
+
+  silenceMusic(): void { this.music?.silence(); }
 
   updateEnvironment(nowMs: number): void {
     const events = this.environment.update(nowMs);
@@ -165,6 +180,7 @@ export class GameAudio {
   }
 
   play(cue: AudioCue, variation?: GroundArtilleryAudioEvent): void {
+    if (cue === 'bossDeath') this.music?.duck(this.musicPresentationMs);
     const context = this.context;
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
@@ -248,6 +264,8 @@ export class GameAudio {
       oscillator.disconnect();
     }
     this.active.clear();
+    this.music?.dispose();
+    this.music = null;
     this.master?.disconnect();
     if (this.context) void this.context.close().catch(() => {});
     this.context = null;

@@ -129,6 +129,7 @@ export class GameApp {
     this.pauseOverlay.setVisible(false);
     this.viewport.classList?.remove('game-paused');
     this.renderer.stopResizeHandling();
+    this.audio.silenceMusic();
   }
 
   dispose(): void {
@@ -261,6 +262,13 @@ export class GameApp {
       this.audio.observe(this.previousDefenseValue, currentDefenseValue,
         state.enemies,
         state.streamRewards, state.boss, this.presentationMs, state.projectiles);
+      this.audio.updateMusic(this.presentationMs, {
+        playerZ: state.player.z,
+        squadCount: state.squad.count,
+        boss: state.boss ? { z: state.boss.z, engaged: state.boss.engaged } : null,
+        paused: this.paused,
+        musicVolume: this.runtimeTuning.musicVolume,
+      });
       this.previousDefenseValue = currentDefenseValue;
       const renderState: GameRenderState = {
         player: { x: state.player.x, z: state.player.z },

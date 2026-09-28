@@ -13,6 +13,7 @@ const controls: readonly Control[] = [
   { key: 'moveSpeed', label: 'Move speed', min: 1, max: 10, step: 0.5 },
   { key: 'forwardSpeed', label: 'Forward speed', min: 0.5, max: 3, step: 0.1 },
   { key: 'bossHpScale', label: 'Boss HP scale', choices: [.25, .5, 1, 2, 3, 5, 10, 20, 50, 100] },
+  { key: 'musicVolume', label: 'Music volume', min: 0, max: 0.30, step: 0.01 },
 ];
 
 export class TuningPanel {
@@ -100,7 +101,8 @@ export class TuningPanel {
       const value = this.values[key];
       output.textContent = key === 'rewardRowsPerReward'
         ? `1 / ${value} rows (≈${Number((100 / value).toFixed(1))}%)`
-        : key === 'bossHpScale' ? `${value}×` : String(value);
+        : key === 'bossHpScale' ? `${value}×`
+          : key === 'musicVolume' ? value.toFixed(2) : String(value);
     }
   }
 }

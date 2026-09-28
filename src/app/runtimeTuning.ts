@@ -11,6 +11,7 @@ export interface RuntimeTuning {
   moveSpeed: number;
   forwardSpeed: number;
   bossHpScale: number;
+  musicVolume: number;
 }
 
 export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelDefinition): RuntimeTuning {
@@ -24,5 +25,6 @@ export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelD
     moveSpeed: config.player.moveSpeed,
     forwardSpeed: config.player.forwardSpeed,
     bossHpScale: 3,
+    musicVolume: 0.16,
   };
 }

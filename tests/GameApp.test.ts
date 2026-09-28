@@ -579,6 +579,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('pauses on P or Space and toggles TUNE with Escape without pausing', () => {
     const raf = createRaf();
+    const updateMusic = vi.spyOn(GameAudio.prototype, 'updateMusic');
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
     app.start();
@@ -605,6 +606,8 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(101_000);
     expect(mock.step).toHaveBeenCalledTimes(stepCount);
     expect(mock.render.mock.lastCall![1]).toBe(presentationTime);
+    expect(updateMusic).toHaveBeenLastCalledWith(presentationTime,
+      expect.objectContaining({ paused: true, musicVolume: .16 }));
     expect(raf.key(' ')).toBe(true);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     expect(raf.key(' ', false, { tagName: 'INPUT' })).toBe(false);
@@ -625,18 +628,21 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step).toHaveBeenCalledTimes(stepCount + 1);
     expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 2 });
     expect(mock.render.mock.lastCall![1]).toBeGreaterThan(presentationTime);
+    expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ paused: false });
     app.dispose();
+    updateMusic.mockRestore();
   });
 
   it('applies runtime values including Boss HP scale and retains them for Retry', () => {
     const raf = createRaf();
+    const updateMusic = vi.spyOn(GameAudio.prototype, 'updateMusic');
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const defaults = mock.panelConstructedWith.mock.calls[0][0];
     const tune = mock.panelConstructedWith.mock.calls[0][1] as (values: typeof defaults) => void;
     const edited = { ...defaults, bulletSpeed: 52, bulletRange: 65,
       rewardRowsPerReward: 3, enemyHigherTierPowerMultiplier: 12,
       rifleHigherTierPowerMultiplier: 8, fireRate: 10, moveSpeed: 9, forwardSpeed: 1.2,
-      bossHpScale: 20 };
+      bossHpScale: 20, musicVolume: .24 };
     tune(edited);
     expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 3,
       enemyHigherTierPowerMultiplier: 12, rifleHigherTierPowerMultiplier: 8, bossHpScale: 20 });
@@ -645,6 +651,8 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 9, forwardSpeed: 1.2,
       rifle: { fireRate: 10, projectileSpeed: 52, range: 65 } });
+    expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ musicVolume: .24,
+      playerZ: 3, squadCount: 3, boss: null });
     raf.key('p');
     const retry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     retry();
@@ -656,13 +664,16 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100_000);
     raf.frame(100_000 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 9, forwardSpeed: 1.2 });
+    expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ musicVolume: .24, paused: false });
     tune(defaults);
     expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 7,
       enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, bossHpScale: 3 });
     raf.frame(100_000 + 2 * 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 5, forwardSpeed: 3,
       rifle: { fireRate: 7, projectileSpeed: 28, range: 18 } });
+    expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ musicVolume: .16 });
     app.dispose();
+    updateMusic.mockRestore();
   });
   it('maps keyboard edges and neutral release to the current player position', () => {
     const raf = createRaf();
