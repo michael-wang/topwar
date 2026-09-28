@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ARTILLERY_SITES, ArtilleryScheduler, type ArtilleryLayer } from './ArtilleryScheduler';
 import { WarActivityScheduler, SKY_FLAK_STARTED, SHIP_PASS_MS,
   AIRCRAFT_PASS_MS } from './WarActivityScheduler';
+import { InfernoSurgeScheduler } from './InfernoSurgeScheduler';
 
 const SPAN_LENGTH = 300;
 const JOINT_SPACING = 12;
@@ -23,12 +24,23 @@ type ImpactSlot = {
   layer: ArtilleryLayer;
 };
 
+type InfernoVisual = {
+  group: THREE.Group;
+  sky: THREE.Sprite;
+  column: THREE.Sprite;
+  core: THREE.Sprite;
+  lowerSmoke: THREE.Sprite;
+  upperSmoke: THREE.Sprite;
+  size: number;
+};
+
 export class BridgeEnvironment {
   private readonly group = new THREE.Group();
   private readonly near = new THREE.Group();
   private readonly mid = new THREE.Group();
   private readonly far = new THREE.Group();
   private readonly beachhead = new THREE.Group();
+  private readonly inferno = new THREE.Group();
   private readonly shipLayer = new THREE.Group();
   private readonly skyLayer = new THREE.Group();
   private readonly previousBackground: THREE.Scene['background'];
@@ -39,6 +51,8 @@ export class BridgeEnvironment {
   private readonly smoke: { sprite: THREE.Sprite; x: number }[] = [];
   private readonly artillery = new ArtilleryScheduler();
   private readonly activity = new WarActivityScheduler();
+  private readonly infernoSurges = new InfernoSurgeScheduler();
+  private readonly infernoSources: InfernoVisual[] = [];
   private readonly impactSlots: ImpactSlot[] = [];
   private readonly flakSlots: ImpactSlot[] = [];
   private readonly burningCores: { mesh: THREE.Mesh; scale: number }[] = [];
@@ -63,6 +77,7 @@ export class BridgeEnvironment {
     this.mid.name = 'battlefield-mid';
     this.far.name = 'battlefield-far';
     this.beachhead.name = 'enemy-beachhead-horizon';
+    this.inferno.name = 'battlefield-deep-inferno';
     this.shipLayer.name = 'battlefield-water-traffic';
     this.skyLayer.name = 'battlefield-sky-activity';
     const deckMaterial = this.material('#8b9291');
@@ -114,9 +129,10 @@ export class BridgeEnvironment {
     }
     this.buildBattlefield();
     this.buildBeachhead();
+    this.buildInferno();
     this.buildArtillery();
     this.buildActivity();
-    this.scene.add(this.group, this.near, this.mid, this.far, this.beachhead,
+    this.scene.add(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer);
     this.update(0, 3.2, 0);
   }
@@ -144,6 +160,7 @@ export class BridgeEnvironment {
     this.far.position.set(Math.sin(playerZ * .008) * .1, 0,
       playerZ + 100 + Math.sin(playerZ * .009) * .25);
     this.beachhead.position.set(Math.sin(playerZ * .003) * .02, 0, playerZ + 125);
+    this.inferno.position.set(Math.sin(playerZ * .002) * .01, 0, playerZ + 142);
     this.shipLayer.position.z = playerZ;
     this.skyLayer.position.z = playerZ + 125;
     for (let i = 0; i < this.smoke.length; i++) {
@@ -156,10 +173,11 @@ export class BridgeEnvironment {
     }
     this.updateArtillery(nowMs);
     this.updateActivity(nowMs, bridgeHalfWidth);
+    this.updateInferno(nowMs);
   }
 
   dispose(): void {
-    this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead,
+    this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer, ...this.joints);
     this.scene.background = this.previousBackground;
     this.scene.fog = this.previousFog;
@@ -367,6 +385,71 @@ export class BridgeEnvironment {
         smoke.scale.set(scale, scale * 1.4, 1);
         this.beachhead.add(smoke);
       }
+    }
+  }
+
+  private buildInferno(): void {
+    const sourcePositions = [
+      { x: -22, z: -4, size: 1.12 },
+      { x: 17, z: 1, size: .9 },
+      { x: 34, z: 5, size: .68 },
+    ];
+    for (let index = 0; index < sourcePositions.length; index++) {
+      const { x, z, size } = sourcePositions[index];
+      const group = new THREE.Group();
+      group.name = 'inferno-source';
+      group.position.set(x, 0, z);
+      const sprite = (name: string, color: string, additive: boolean,
+        xOffset: number, y: number, depth: number): THREE.Sprite => {
+        const material = new THREE.SpriteMaterial({ map: this.smokeTexture,
+          color, transparent: true, opacity: 0, depthWrite: false, fog: false,
+          blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending });
+        this.materials.push(material);
+        const result = new THREE.Sprite(material);
+        result.name = name;
+        result.position.set(xOffset, y, depth);
+        group.add(result);
+        return result;
+      };
+      const sky = sprite('inferno-sky-glow', '#ad7058', true, 0, 16, 8);
+      const column = sprite('inferno-column-glow', '#b8744e', true,
+        index === 2 ? -.7 : .4, 7.5, 5);
+      const core = sprite('inferno-fire-core', '#c78356', true, 0, 2.8, 3);
+      const lowerSmoke = sprite('inferno-smoke-lower', '#343d40', false,
+        index === 1 ? -1 : .8, 11, 1);
+      const upperSmoke = sprite('inferno-smoke-upper', '#4d595d', false,
+        index === 1 ? 1.4 : -1, 21, 0);
+      this.inferno.add(group);
+      this.infernoSources.push({ group, sky, column, core, lowerSmoke, upperSmoke, size });
+    }
+  }
+
+  private updateInferno(nowMs: number): void {
+    const states = this.infernoSurges.update(nowMs);
+    for (let index = 0; index < this.infernoSources.length; index++) {
+      const visual = this.infernoSources[index];
+      const surge = states[index].strength;
+      const flicker = 1 + Math.sin(nowMs * .0034 + index * 2.3) * .045;
+      const size = visual.size;
+      (visual.sky.material as THREE.SpriteMaterial).opacity = (.045 + surge * .09) * flicker;
+      (visual.column.material as THREE.SpriteMaterial).opacity = (.07 + surge * .15) * flicker;
+      (visual.core.material as THREE.SpriteMaterial).opacity = (.11 + surge * .17) * flicker;
+      (visual.lowerSmoke.material as THREE.SpriteMaterial).opacity =
+        .12 + surge * .085 * states[index].smokeScale;
+      (visual.upperSmoke.material as THREE.SpriteMaterial).opacity =
+        .085 + surge * .045 * states[index].smokeScale;
+      visual.sky.scale.set(24 * size * (1 + surge * .22 * states[index].widthScale),
+        29 * size * (1 + surge * .2 * states[index].heightScale), 1);
+      visual.column.scale.set(9 * size * (1 + surge * .32 * states[index].widthScale),
+        15 * size * (1 + surge * .55 * states[index].heightScale), 1);
+      visual.core.scale.set(6 * size * (1 + surge * .2),
+        5 * size * (1 + surge * .35 * states[index].heightScale), 1);
+      visual.lowerSmoke.scale.set(10 * size * (1 + surge * .18),
+        13 * size * (1 + surge * .27 * states[index].smokeScale), 1);
+      visual.upperSmoke.scale.set(15 * size * (1 + surge * .13),
+        18 * size * (1 + surge * .2 * states[index].smokeScale), 1);
+      visual.lowerSmoke.position.y = 11 + surge * 1.8 * states[index].heightScale;
+      visual.upperSmoke.position.y = 21 + surge * 2.7 * states[index].heightScale;
     }
   }
 
