@@ -143,6 +143,19 @@ describe('unbounded enemy and Boss stream', () => {
     expect(simulation.getState().boss).toBeNull();
   });
 
+  it('keeps real normal rows behind a Boss at the authored stream lookahead', () => {
+    const stream = level.enemyStream!;
+    const bossZ = stream.startZ + bossRowForTier(1, stream.tierProgression) * stream.spacing;
+    const simulation = create(level);
+    restoreWith(simulation, (state) => {
+      state.player.z = bossZ - stream.spawnAheadDistance + 5;
+    });
+    simulation.step(.01, idle, tuning);
+    const state = simulation.getState();
+    expect(state.boss?.z).toBe(bossZ);
+    expect(state.enemies.some((entry) => entry.z > bossZ)).toBe(true);
+  });
+
   it('advances Boss cursor through Tier-3 and Tier-4 without authored encounters', () => {
     const stream = level.enemyStream!;
     const accelerated = { ...level, enemyStream: { ...stream, spawnAheadDistance: 107 } };

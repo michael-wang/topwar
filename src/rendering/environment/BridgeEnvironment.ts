@@ -3,10 +3,17 @@ import * as THREE from 'three';
 const SPAN_LENGTH = 300;
 const JOINT_SPACING = 12;
 const JOINT_COUNT = 18;
+export const BATTLEFIELD_FOG_NEAR = 65;
+export const BATTLEFIELD_FOG_FAR = 107;
+export const BATTLEFIELD_FOG_COLOR = '#8eaaae';
 
 export class BridgeEnvironment {
   private readonly group = new THREE.Group();
-  private readonly horizon = new THREE.Group();
+  private readonly near = new THREE.Group();
+  private readonly mid = new THREE.Group();
+  private readonly far = new THREE.Group();
+  private readonly previousBackground: THREE.Scene['background'];
+  private readonly previousFog: THREE.Scene['fog'];
   private readonly geometries: THREE.BufferGeometry[] = [];
   private readonly materials: THREE.Material[] = [];
   private readonly joints: THREE.Mesh[] = [];
@@ -18,6 +25,14 @@ export class BridgeEnvironment {
   private readonly water: THREE.Mesh;
 
   constructor(private readonly scene: THREE.Scene) {
+    this.previousBackground = scene.background;
+    this.previousFog = scene.fog;
+    scene.background = new THREE.Color(BATTLEFIELD_FOG_COLOR);
+    scene.fog = new THREE.Fog(BATTLEFIELD_FOG_COLOR,
+      BATTLEFIELD_FOG_NEAR, BATTLEFIELD_FOG_FAR);
+    this.near.name = 'battlefield-near';
+    this.mid.name = 'battlefield-mid';
+    this.far.name = 'battlefield-far';
     const deckMaterial = this.material('#8b9291');
     const shoulderMaterial = this.material('#707b7d');
     const parapetMaterial = this.material('#59676b');
@@ -65,8 +80,8 @@ export class BridgeEnvironment {
         this.group.add(band);
       }
     }
-    this.buildHorizon();
-    this.scene.add(this.group, this.horizon);
+    this.buildBattlefield();
+    this.scene.add(this.group, this.near, this.mid, this.far);
     this.update(0, 3, 0);
   }
 
@@ -85,7 +100,9 @@ export class BridgeEnvironment {
       joint.position.z = firstJoint + i * JOINT_SPACING;
       joint.scale.x = bridgeHalfWidth * 2 - .5;
     }
-    this.horizon.position.z = playerZ + 78;
+    this.near.position.z = playerZ + 62;
+    this.mid.position.z = playerZ + 79;
+    this.far.position.z = playerZ + 92;
     for (let i = 0; i < this.smoke.length; i++) {
       this.smoke[i].sprite.position.x = this.smoke[i].x
         + Math.sin(nowMs * .00015 + i * 1.7) * .16;
@@ -93,47 +110,83 @@ export class BridgeEnvironment {
   }
 
   dispose(): void {
-    this.scene.remove(this.group, this.horizon, ...this.joints);
+    this.scene.remove(this.group, this.near, this.mid, this.far, ...this.joints);
+    this.scene.background = this.previousBackground;
+    this.scene.fog = this.previousFog;
     this.smokeTexture?.dispose();
     for (const geometry of this.geometries) geometry.dispose();
     for (const material of this.materials) material.dispose();
   }
 
-  private buildHorizon(): void {
-    this.horizon.name = 'battlefield-horizon';
-    const ruinMaterial = this.material('#647276');
-    const darkRuinMaterial = this.material('#4c5b60');
+  private buildBattlefield(): void {
+    const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const glowGeometry = new THREE.SphereGeometry(1, 8, 6);
+    this.geometries.push(blockGeometry, glowGeometry);
+    const nearMaterial = this.material('#46545a');
+    const nearAccent = this.material('#59676b');
+    const midMaterial = this.material('#66767a');
+    const midAccent = this.material('#738387');
+    const farMaterial = this.material('#92a8aa');
     this.smokeTexture = this.createSmokeTexture();
     const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: '#48565b', transparent: true, opacity: .45, depthWrite: false });
+      color: '#4c5a5e', transparent: true, opacity: .43, depthWrite: false });
     this.materials.push(smokeMaterial);
     const glowMaterial = new THREE.MeshBasicMaterial({ color: '#b27a51',
-      transparent: true, opacity: .42, depthWrite: false });
+      transparent: true, opacity: .38, depthWrite: false });
     this.materials.push(glowMaterial);
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < 4; i++) {
-        const height = [3.1, 5.2, 2.7, 4.3][i];
-        const ruin = this.mesh(new THREE.BoxGeometry(2.3 + i * .45, height, 1.5),
-          i % 2 ? darkRuinMaterial : ruinMaterial, 'battlefield-ruin');
-        ruin.position.set(side * (11 + i * 4.3), height / 2 - .45, 3 + i * 2.5);
-        ruin.rotation.z = side * (i % 2 ? .13 : -.09);
-        this.horizon.add(ruin);
-      }
-      const glow = this.mesh(new THREE.SphereGeometry(1.3, 8, 6), glowMaterial,
-        'battlefield-fire-glow');
-      glow.position.set(side * 16, .35, 4);
-      glow.scale.set(1.7, .6, .6);
-      this.horizon.add(glow);
-      for (let i = 0; i < 4; i++) {
-        const puff = new THREE.Sprite(smokeMaterial);
-        puff.name = 'battlefield-smoke';
-        const x = side * (15 + i * .35);
-        puff.position.set(x, 2.5 + i * 1.65, 3.4);
-        puff.scale.set(3.6 + i * 1.3, 4.3 + i * 1.2, 1);
-        this.smoke.push({ sprite: puff, x });
-        this.horizon.add(puff);
-      }
-    }
+
+    const ruin = (layer: THREE.Group, x: number, z: number, width: number,
+      height: number, material: THREE.Material, tilt = 0): void => {
+      const mesh = new THREE.Mesh(blockGeometry, material);
+      mesh.name = 'battlefield-ruin';
+      mesh.scale.set(width, height, 1.6);
+      mesh.position.set(x, height / 2 - .45, z);
+      mesh.rotation.z = tilt;
+      layer.add(mesh);
+    };
+    const smoke = (layer: THREE.Group, x: number, y: number, z: number,
+      width: number, height: number): void => {
+      const sprite = new THREE.Sprite(smokeMaterial);
+      sprite.name = 'battlefield-smoke';
+      sprite.position.set(x, y, z);
+      sprite.scale.set(width, height, 1);
+      this.smoke.push({ sprite, x });
+      layer.add(sprite);
+    };
+    const fire = (layer: THREE.Group, x: number, z: number): void => {
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      glow.name = 'battlefield-fire-glow';
+      glow.position.set(x, .25, z);
+      glow.scale.set(1.45, .58, .65);
+      layer.add(glow);
+    };
+
+    // Open center preserves the combat lane; broken silhouettes enter at the edges.
+    ruin(this.near, -13.3, -3, 5.2, 3.6, nearMaterial, -.16);
+    ruin(this.near, -9.8, 2, .65, 4.2, nearAccent, .38);
+    ruin(this.near, 14.8, 1, 5.8, 2.7, nearMaterial, .11);
+    ruin(this.near, 11.7, -3, 2.1, 1.4, nearAccent, -.2);
+    smoke(this.near, 15.2, 3.1, 1, 4, 5);
+    smoke(this.near, 15.7, 4.5, 1.2, 5.3, 6.1);
+
+    ruin(this.mid, -17.5, -4, 4.9, 4.8, midMaterial, -.08);
+    ruin(this.mid, -12.4, 2, 2.7, 6.2, midAccent, .11);
+    ruin(this.mid, 12.7, -2, 4.4, 3.1, midMaterial, .08);
+    ruin(this.mid, 19.5, 4, 5.1, 5.3, midAccent, -.12);
+    fire(this.mid, -17.2, -3.7);
+    fire(this.mid, 19.3, 3.5);
+    smoke(this.mid, -17.3, 3, -4, 4.1, 5.2);
+    smoke(this.mid, -16.7, 5.1, -4.2, 5.9, 6.9);
+    smoke(this.mid, -18.2, 7.3, -4.1, 7.2, 8.1);
+    smoke(this.mid, 19.2, 4.2, 4, 4.6, 5.8);
+    smoke(this.mid, 20.1, 6.5, 4.1, 6.3, 7.5);
+
+    ruin(this.far, -23.6, 4, 4.8, 3.6, farMaterial, .1);
+    ruin(this.far, -18.2, -3, 3.4, 2.4, farMaterial, -.1);
+    ruin(this.far, 17.7, -2, 3.6, 2.9, farMaterial, .06);
+    ruin(this.far, 27.3, 3, 5.3, 3.8, farMaterial, -.08);
+    smoke(this.far, 26.8, 5.1, 3, 5.2, 6.5);
+    smoke(this.far, 27.5, 7.1, 3.1, 6.7, 7.4);
   }
 
   private createSmokeTexture(): THREE.DataTexture {

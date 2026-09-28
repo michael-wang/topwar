@@ -37,7 +37,6 @@ export class GameRenderer {
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
-    this.scene.background = new THREE.Color('#8eaaae');
     this.environment = new BridgeEnvironment(this.scene);
 
     this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
@@ -76,7 +75,7 @@ export class GameRenderer {
     this.environment.update(state.player.z, state.track.halfWidth, nowMs);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
-    this.bossRenderer.update(state.boss, nowMs);
+    this.bossRenderer.update(state.boss, nowMs, state.player.z);
     this.streamRewardRenderer.update(state.streamRewards, nowMs);
     this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);

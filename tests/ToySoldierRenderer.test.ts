@@ -256,9 +256,12 @@ describe('Modern Toy Soldier presentation', () => {
     const barAnchor = active.getObjectByName('boss-hp-anchor') as THREE.Group;
     const pose = active.children[0] as THREE.Group;
     expect(barAnchor.parent).toBe(active);
+    expect(active.scale.x).toBe(7);
+    expect(pose.scale.x).toBeGreaterThan(1);
     expect(barAnchor.position.y).toBeGreaterThan(1.25);
     expect(barAnchor.position.y - .28 * barAnchor.scale.y / 2).toBeGreaterThan(1.2);
-    expect(barAnchor.scale.x).toBeCloseTo(.32);
+    expect(barAnchor.scale.x).toBeGreaterThan(.32);
+    expect(barAnchor.position.x).toBeGreaterThan(0);
     const frame = barAnchor.getObjectByName('boss-hp-frame') as THREE.Mesh;
     const track = barAnchor.getObjectByName('boss-hp-track') as THREE.Mesh;
     const fill = barAnchor.getObjectByName('boss-hp-fill') as THREE.Mesh;
@@ -288,7 +291,12 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(last, 20071);
     expect(washes.every((mesh) => !mesh.visible)).toBe(true);
     expect((pose.children[0] as THREE.Mesh).material).toBe(body.material);
-    renderer.update(null, 20020);
+    renderer.update(last, 20110);
+    expect(active.scale.x).toBe(7);
+    expect(barAnchor.scale.x).toBeCloseTo(.32);
+    expect(barAnchor.position.x).toBe(0);
+    expect(barAnchor.position.y).toBeCloseTo(1.36);
+    renderer.update(null, 20120);
     expect(death.visible).toBe(true);
     const deathHelmet = death.children[1] as THREE.Mesh;
     expect(deathHelmet.geometry).toBe(helmet.geometry);
@@ -300,6 +308,26 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(null, 21000);
     expect(death.visible).toBe(false);
     renderer.reset();
+    renderer.dispose();
+  });
+
+  it('reveals the Boss HP plate only as the real Boss emerges from distance haze', () => {
+    const scene = new THREE.Scene();
+    const body = bodyModel();
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
+      runFrames(), runFrames());
+    const anchor = scene.getObjectByName('boss-hp-anchor') as THREE.Group;
+    const frame = scene.getObjectByName('boss-hp-frame') as THREE.Mesh;
+    const boss = { id: 1, tier: 1, x: 0, z: 100, hp: 100, maxHp: 100,
+      visualScale: 7, engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
+    renderer.update(boss, 0, 10);
+    expect(anchor.visible).toBe(false);
+    expect((frame.material as THREE.MeshBasicMaterial).opacity).toBe(0);
+    renderer.update(boss, 20, 40);
+    expect(anchor.visible).toBe(true);
+    expect((frame.material as THREE.MeshBasicMaterial).opacity).toBeCloseTo(.5);
+    renderer.update(boss, 40, 60);
+    expect((frame.material as THREE.MeshBasicMaterial).opacity).toBe(1);
     renderer.dispose();
   });
 
@@ -348,6 +376,9 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update({ ...boss, slamCount: 1, slamCooldownRemainingSeconds: 2 }, 300);
     expect(mesh.geometry).toBe(frames[2].geometry);
     expect(pose.scale.y).toBeLessThan(1);
+    const hpAnchor = active.getObjectByName('boss-hp-anchor') as THREE.Group;
+    expect(hpAnchor.parent).toBe(active);
+    expect(hpAnchor.scale.x).toBeCloseTo(.32);
     renderer.update({ ...boss, slamCount: 1, slamCooldownRemainingSeconds: 1.8 }, 500);
     expect(mesh.geometry).toBe(frames[3].geometry);
     renderer.reset();

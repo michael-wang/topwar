@@ -5,6 +5,8 @@ import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 const HIT_FLASH_MS = 60;
 const HIT_FLASH_RETRIGGER_MS = 210;
 const HIT_PULSE_MS = 100;
+const HP_TICK_MS = 85;
+const HP_TICK_RETRIGGER_MS = 130;
 const DEATH_MS = 800;
 const IMPACT_MS = 90;
 const HELMET_SCALE = 0.92;
@@ -59,13 +61,13 @@ export class BossRenderer {
     transparent: true, opacity: .2, depthWrite: false, toneMapped: false,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#151b22',
-    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+    side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
   private readonly barTrackMaterial = new THREE.MeshBasicMaterial({ color: '#3a2024',
-    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+    side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
   private readonly barBadgeMaterial = new THREE.MeshBasicMaterial({ color: '#d4b58a',
-    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+    side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
   private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ff3b30',
-    side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+    side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
   private readonly active = new THREE.Group();
   private readonly death = new THREE.Group();
   private readonly body = new THREE.Group();
@@ -89,6 +91,7 @@ export class BossRenderer {
   private flashUntilMs = -Infinity;
   private lastFlashAtMs = -Infinity;
   private hitAtMs = -Infinity;
+  private barHitAtMs = -Infinity;
   private deathStartedAtMs = -Infinity;
   private deathStartZ = 0;
   private deathScale = 1;
@@ -164,12 +167,13 @@ export class BossRenderer {
     this.scene.add(this.active, this.death);
   }
 
-  update(boss: BossRenderState | null, nowMs = performance.now()): void {
+  update(boss: BossRenderState | null, nowMs = performance.now(), playerZ?: number): void {
     if (this.previous && !boss) this.startDeath(this.previous, nowMs);
     if (boss && this.previous?.id !== boss.id) {
       this.flashUntilMs = -Infinity;
       this.lastFlashAtMs = -Infinity;
       this.hitAtMs = -Infinity;
+      this.barHitAtMs = -Infinity;
       this.death.visible = false;
       this.slamAtMs = boss.engaged && boss.slamCount > 0
         && boss.slamCooldownRemainingSeconds > 1.62
@@ -185,14 +189,24 @@ export class BossRenderer {
         this.lastFlashAtMs = nowMs;
       }
       this.hitAtMs = nowMs;
+      if (nowMs - this.barHitAtMs >= HP_TICK_RETRIGGER_MS) this.barHitAtMs = nowMs;
     }
     this.previous = boss ? { ...boss } : null;
     this.active.visible = boss !== null;
     if (boss) {
       this.active.position.set(-boss.x, 0, boss.z);
+      // The world-space plate fades in only once its owner emerges from the haze.
+      const visibility = playerZ === undefined ? 1
+        : Math.max(0, Math.min(1, (75 - (boss.z - playerZ)) / 30));
+      this.barAnchor.visible = visibility > 0;
+      for (const material of [this.barBackgroundMaterial, this.barTrackMaterial,
+        this.barFillMaterial, this.barBadgeMaterial]) material.opacity = visibility;
       const hitAgeMs = nowMs - this.hitAtMs;
-      this.active.scale.setScalar(boss.visualScale * (1 + 0.03
-        * Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS)));
+      this.active.scale.setScalar(boss.visualScale);
+      const bodyPulse = 1 + 0.03 * Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS);
+      const barTick = Math.max(0, 1 - (nowMs - this.barHitAtMs) / HP_TICK_MS);
+      this.barAnchor.scale.setScalar(.32 * (1 + .035 * barTick));
+      this.barAnchor.position.x = .012 * barTick;
       const pose = bossWalkPose(boss.id, nowMs);
       const slamAgeMs = nowMs - this.slamAtMs;
       const impact = slamAgeMs >= 0 && slamAgeMs < 140;
@@ -206,8 +220,8 @@ export class BossRenderer {
       this.body.position.y = impact ? -0.085 : boss.engaged ? 0 : pose.bob;
       this.body.rotation.x = boss.engaged ? 0 : -.10;
       this.body.rotation.z = boss.engaged ? 0 : pose.roll;
-      this.body.scale.y = 1 - (impact ? 0.16 : 0)
-        - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1;
+      this.body.scale.set(bodyPulse, bodyPulse * (1 - (impact ? 0.16 : 0)
+        - Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS) * 0.1), bodyPulse);
       const flashing = nowMs < this.flashUntilMs;
       this.bodyHitWash.visible = flashing;
       this.helmetHitWash.visible = flashing;
@@ -240,9 +254,13 @@ export class BossRenderer {
     this.flashUntilMs = -Infinity;
     this.lastFlashAtMs = -Infinity;
     this.hitAtMs = -Infinity;
+    this.barHitAtMs = -Infinity;
+    this.barAnchor.scale.setScalar(.32);
+    this.barAnchor.position.x = 0;
     this.deathStartedAtMs = -Infinity;
     this.slamAtMs = -Infinity;
     this.active.visible = false;
+    this.barAnchor.visible = true;
     this.death.visible = false;
     this.bodyHitWash.visible = false;
     this.helmetHitWash.visible = false;
