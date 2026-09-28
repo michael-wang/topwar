@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { bodyModel, grayBodyModel, runFrames, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
 import { ENEMY_PALETTE, PLAYER_PALETTE, paletteIndex } from '../src/rendering/tierPalettes';
@@ -251,7 +251,7 @@ describe('Modern Toy Soldier presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), [body, body, body, body]);
+      runFrames(), [body, body, body, body], grayBodyModel());
     const [active, death] = scene.children as THREE.Group[];
     for (let tier = 1; tier <= 20; tier++) {
       const boss = { id: tier, tier, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
@@ -326,18 +326,97 @@ describe('Modern Toy Soldier presentation', () => {
     expect(deathHelmet.position.y).toBeCloseTo(helmet.position.y);
     expect(deathHelmet.position.z).toBeCloseTo(helmet.position.z);
     renderer.update(null, 20420);
-    expect(death.rotation.z).toBeLessThan(Math.PI / 2);
-    renderer.update(null, 21000);
+    expect(death.rotation.x).toBeLessThan(0);
+    expect(death.rotation.z).toBe(0);
+    renderer.update(null, 22000);
     expect(death.visible).toBe(false);
     renderer.reset();
     renderer.dispose();
+  });
+
+  it('falls toward the player, grays after impact, then fades with owned reusable materials', () => {
+    const scene = new THREE.Scene();
+    const body = bodyModel();
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
+      runFrames(), runFrames(), grayBodyModel());
+    const active = scene.children[0] as THREE.Group;
+    const death = scene.getObjectByName('boss-death') as THREE.Group;
+    const liveBody = death.getObjectByName('boss-death-body-live') as THREE.Mesh;
+    const grayBody = death.getObjectByName('boss-death-body-gray') as THREE.Mesh;
+    const helmet = death.getObjectByName('boss-death-helmet') as THREE.Mesh;
+    const vest = death.getObjectByName('boss-death-vest') as THREE.Mesh;
+    const liveMaterial = liveBody.material as THREE.MeshStandardMaterial;
+    const grayMaterial = grayBody.material as THREE.MeshStandardMaterial;
+    const helmetMaterial = helmet.material as THREE.MeshStandardMaterial;
+    const vestMaterial = vest.material as THREE.MeshStandardMaterial;
+    const boss = { id: 7, tier: 3, x: 1.5, z: 24, hp: 100, maxHp: 100,
+      visualScale: 7, engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
+    renderer.update(boss, 0);
+    const liveHelmet = ((active.children[0] as THREE.Group).children[1] as THREE.Mesh)
+      .material as THREE.MeshStandardMaterial;
+    const tierColor = liveHelmet.color.getHexString();
+    renderer.update(null, 1000);
+    expect(death.visible).toBe(true);
+    expect(death.position.x).toBe(-1.5);
+    expect(death.position.z).toBe(24);
+    expect(active.visible).toBe(false);
+    expect(helmetMaterial).not.toBe(liveHelmet);
+    expect(helmetMaterial.color.getHexString()).toBe(tierColor);
+    expect(liveMaterial.opacity).toBe(1);
+    expect(grayMaterial.opacity).toBe(0);
+    renderer.update(null, 1100);
+    const earlyPitch = death.rotation.x;
+    expect(earlyPitch).toBeGreaterThan(-.1);
+    expect(liveMaterial.opacity).toBe(1);
+    renderer.update(null, 1300);
+    expect(death.rotation.x).toBeLessThan(earlyPitch);
+    expect(death.rotation.z).toBe(0);
+    expect(liveMaterial.opacity).toBe(1);
+    renderer.update(null, 1520);
+    expect(death.rotation.x).toBeCloseTo(-Math.PI * .46);
+    expect(new THREE.Vector3(0, 1, 0).applyEuler(death.rotation).z)
+      .toBeLessThan(-.95);
+    expect(death.position.z).toBe(24);
+    expect(liveMaterial.opacity).toBe(1);
+    renderer.update(null, 1750);
+    expect(grayMaterial.opacity).toBe(1);
+    expect(liveMaterial.opacity).toBe(0);
+    expect(helmetMaterial.color.getHexString()).toBe('adb4b8');
+    expect(vestMaterial.color.getHexString()).toBe('adb4b8');
+    expect(grayMaterial.color.getHSL({ h: 0, s: 0, l: 0 }).s).toBeLessThan(.1);
+    expect(liveHelmet.color.getHexString()).toBe(tierColor);
+    renderer.update(null, 1900);
+    const firstFade = grayMaterial.opacity;
+    expect(firstFade).toBeLessThan(1);
+    renderer.update(null, 2400);
+    expect(grayMaterial.opacity).toBeLessThan(firstFade);
+    expect(death.rotation.x).toBeCloseTo(-Math.PI * .46);
+    expect(death.position.z).toBe(24);
+    renderer.update(null, 2700);
+    expect(death.visible).toBe(false);
+    renderer.update({ ...boss, id: 8, hp: 80 }, 2800);
+    expect(active.visible).toBe(true);
+    expect(death.visible).toBe(false);
+    renderer.update(null, 2900);
+    expect(death.visible).toBe(true);
+    expect(liveBody.material).toBe(liveMaterial);
+    expect(grayBody.material).toBe(grayMaterial);
+    expect(grayMaterial.opacity).toBe(0);
+    renderer.reset();
+    expect(death.visible).toBe(false);
+    const disposals = [liveMaterial, grayMaterial, helmetMaterial, vestMaterial]
+      .map((material) => vi.spyOn(material, 'dispose'));
+    const vestGeometryDispose = vi.spyOn(vest.geometry, 'dispose');
+    renderer.dispose();
+    for (const dispose of disposals) expect(dispose).toHaveBeenCalledOnce();
+    expect(vestGeometryDispose).toHaveBeenCalledOnce();
   });
 
   it('reveals the Boss HP plate only as the real Boss emerges from distance haze', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), runFrames());
+      runFrames(), runFrames(), grayBodyModel());
     const anchor = scene.getObjectByName('boss-hp-anchor') as THREE.Group;
     const frame = scene.getObjectByName('boss-hp-frame') as THREE.Mesh;
     const boss = { id: 1, tier: 1, x: 0, z: 100, hp: 100, maxHp: 100,
@@ -360,7 +439,8 @@ describe('Modern Toy Soldier presentation', () => {
     const factors = new Float32Array(vest.geometry.getAttribute('position').count * 3).fill(1);
     factors.fill(.6, 0, 3);
     vest.geometry.setAttribute('color', new THREE.BufferAttribute(factors, 3));
-    const renderer = new BossRenderer(scene, body, helmetModel(), vest, runFrames(), runFrames());
+    const renderer = new BossRenderer(scene, body, helmetModel(), vest,
+      runFrames(), runFrames(), grayBodyModel());
     const pose = ((scene.children[0] as THREE.Group).children[0] as THREE.Group);
     const armor = pose.children[2] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
     const charcoal = new THREE.Color('#303238');
@@ -385,7 +465,8 @@ describe('Modern Toy Soldier presentation', () => {
     const body = bodyModel();
     const frames = [0, 1, 2, 3].map(() => bodyModel());
     const walks = runFrames();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks, frames);
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks,
+      frames, grayBodyModel());
     const active = scene.children[0] as THREE.Group;
     const pose = active.children[0] as THREE.Group;
     const mesh = pose.children[0] as THREE.Mesh;
@@ -418,7 +499,7 @@ describe('Modern Toy Soldier presentation', () => {
     const body = bodyModel();
     const walks = runFrames();
     const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks,
-      runFrames());
+      runFrames(), grayBodyModel());
     const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
     const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
@@ -435,7 +516,8 @@ describe('Modern Toy Soldier presentation', () => {
   it('shows brief warm transparent hit washes with gaps under sustained fire', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), runFrames(), runFrames());
+    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
+      runFrames(), runFrames(), grayBodyModel());
     const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
     const pose = (scene.children[0] as THREE.Group).children[0] as THREE.Group;
     const washes = pose.children.slice(3, 6) as THREE.Mesh[];

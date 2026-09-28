@@ -7,8 +7,11 @@ const HIT_FLASH_RETRIGGER_MS = 210;
 const HIT_PULSE_MS = 100;
 const HP_TICK_MS = 85;
 const HP_TICK_RETRIGGER_MS = 130;
-const DEATH_MS = 800;
-const IMPACT_MS = 90;
+const DEATH_FALL_MS = 520;
+const DEATH_GRAY_MS = 750;
+const DEATH_MS = 1700;
+const DEATH_FORWARD_PITCH = -Math.PI * 0.46;
+const DEATH_GRAY = new THREE.Color('#adb4b8');
 const HELMET_SCALE = 0.92;
 const HELMET_PIVOT_Y = 0.82;
 const HELMET_SEAT_OFFSET_Y = -0.025;
@@ -79,6 +82,14 @@ export class BossRenderer {
   private readonly vestHitWash: THREE.Mesh;
   private readonly deathHelmet: THREE.Mesh;
   private readonly deathVest: THREE.Mesh;
+  private readonly deathBodyLive: THREE.Mesh;
+  private readonly deathBodyGray: THREE.Mesh;
+  private readonly deathBodyLiveMaterial: THREE.MeshStandardMaterial;
+  private readonly deathBodyGrayMaterial: THREE.MeshStandardMaterial;
+  private readonly deathHelmetMaterial: THREE.MeshStandardMaterial;
+  private readonly deathVestMaterial: THREE.MeshStandardMaterial;
+  private readonly deathVestGeometry: THREE.BufferGeometry;
+  private readonly deathTierColor = new THREE.Color();
   private readonly barBackground = new THREE.Mesh(this.barFrameGeometry, this.barBackgroundMaterial);
   private readonly barTrack = new THREE.Mesh(this.barTrackGeometry, this.barTrackMaterial);
   private readonly barFill = new THREE.Mesh(this.barFillGeometry, this.barFillMaterial);
@@ -89,7 +100,6 @@ export class BossRenderer {
   private hitAtMs = -Infinity;
   private barHitAtMs = -Infinity;
   private deathStartedAtMs = -Infinity;
-  private deathStartZ = 0;
   private deathScale = 1;
   private slamAtMs = -Infinity;
 
@@ -98,7 +108,8 @@ export class BossRenderer {
     helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     walkFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[],
-    slamFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[]) {
+    slamFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[],
+    grayBodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
     if (walkFrames.length !== 4) throw new Error('Boss locomotion requires four baked poses');
     if (slamFrames.length !== 4) throw new Error('Boss slam requires four baked poses');
     this.walkGeometries = walkFrames.map((frame) => frame.geometry);
@@ -106,6 +117,10 @@ export class BossRenderer {
     this.defaultBodyGeometry = bodyModel.geometry;
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
+    if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)
+      || !(grayBodyModel.material instanceof THREE.MeshStandardMaterial)) {
+      throw new Error('Boss death body needs standard materials');
+    }
     this.tierMaterials = ENEMY_PALETTE.map((entry) => {
       const material = source.clone();
       material.color.set(entry.body);
@@ -134,11 +149,31 @@ export class BossRenderer {
     this.body.add(this.bodyMesh, this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
-    this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
+    this.deathBodyLiveMaterial = bodyModel.material.clone();
+    this.deathBodyGrayMaterial = grayBodyModel.material.clone();
+    this.deathHelmetMaterial = source.clone();
+    this.deathVestMaterial = source.clone();
+    this.deathVestMaterial.vertexColors = true;
+    this.deathVestGeometry = tierArmorGeometry(vestModel.geometry, DEATH_GRAY);
+    for (const material of [this.deathBodyLiveMaterial, this.deathBodyGrayMaterial,
+      this.deathHelmetMaterial, this.deathVestMaterial]) {
+      material.transparent = true;
+      material.depthWrite = false;
+    }
+    this.deathBodyLive = new THREE.Mesh(bodyModel.geometry, this.deathBodyLiveMaterial);
+    this.deathBodyLive.name = 'boss-death-body-live';
+    this.deathBodyGray = new THREE.Mesh(bodyModel.geometry, this.deathBodyGrayMaterial);
+    this.deathBodyGray.name = 'boss-death-body-gray';
+    this.deathBodyGray.renderOrder = 1;
+    this.deathHelmet = new THREE.Mesh(helmetModel.geometry, this.deathHelmetMaterial);
+    this.deathHelmet.name = 'boss-death-helmet';
     fitCommanderHelmet(this.deathHelmet);
-    this.deathVest = new THREE.Mesh(this.vestGeometries[0], this.vestMaterials[0]);
-    this.death.add(new THREE.Mesh(bodyModel.geometry, bodyModel.material), this.deathHelmet, this.deathVest);
+    this.deathVest = new THREE.Mesh(this.deathVestGeometry, this.deathVestMaterial);
+    this.deathVest.name = 'boss-death-vest';
+    this.death.add(this.deathBodyLive, this.deathHelmet, this.deathVest,
+      this.deathBodyGray);
     this.death.rotation.y = Math.PI;
+    this.death.name = 'boss-death';
     // The plate follows the Boss as a whole, independent of the animated pose.
     this.barAnchor.name = 'boss-hp-anchor';
     this.barAnchor.position.set(0, 1.1, -0.25);
@@ -232,12 +267,20 @@ export class BossRenderer {
       const elapsed = nowMs - this.deathStartedAtMs;
       if (elapsed >= DEATH_MS) this.death.visible = false;
       else {
-        const progress = Math.max(0, elapsed / DEATH_MS);
-        this.death.scale.setScalar(this.deathScale
-          * (1 + 0.15 * Math.max(0, 1 - elapsed / IMPACT_MS)));
-        this.death.rotation.z = Math.PI * 0.42 * progress;
-        this.death.position.y = Math.sin(Math.PI * progress) * 0.35;
-        this.death.position.z = this.deathStartZ + progress * 1.5;
+        const fall = Math.min(1, Math.max(0, elapsed / DEATH_FALL_MS));
+        this.death.rotation.x = DEATH_FORWARD_PITCH * fall * fall * fall;
+        this.death.position.y = -.03 * Math.min(1,
+          Math.max(0, (elapsed - DEATH_FALL_MS) / 50));
+        const gray = Math.min(1, Math.max(0,
+          (elapsed - DEATH_FALL_MS) / (DEATH_GRAY_MS - DEATH_FALL_MS)));
+        const opacity = Math.min(1, Math.max(0,
+          (DEATH_MS - elapsed) / (DEATH_MS - DEATH_GRAY_MS)));
+        this.deathBodyLiveMaterial.opacity = (1 - gray) * opacity;
+        this.deathBodyGrayMaterial.opacity = gray * opacity;
+        this.deathHelmetMaterial.color.copy(this.deathTierColor).lerp(DEATH_GRAY, gray);
+        this.deathVestMaterial.color.copy(this.deathTierColor).lerp(DEATH_GRAY, gray);
+        this.deathHelmetMaterial.opacity = opacity;
+        this.deathVestMaterial.opacity = opacity;
       }
     }
   }
@@ -265,22 +308,28 @@ export class BossRenderer {
     this.barFrameGeometry.dispose();
     this.barTrackGeometry.dispose();
     this.barFillGeometry.dispose();
-    for (const geometry of this.vestGeometries) geometry.dispose();
+    for (const geometry of [...this.vestGeometries, this.deathVestGeometry]) geometry.dispose();
     for (const material of [...this.tierMaterials, ...this.vestMaterials, this.hitWashMaterial,
-      this.barBackgroundMaterial, this.barTrackMaterial, this.barFillMaterial]) material.dispose();
+      this.barBackgroundMaterial, this.barTrackMaterial, this.barFillMaterial,
+      this.deathBodyLiveMaterial, this.deathBodyGrayMaterial,
+      this.deathHelmetMaterial, this.deathVestMaterial]) material.dispose();
   }
 
   private startDeath(boss: BossRenderState, nowMs: number): void {
     this.death.visible = true;
     this.deathStartedAtMs = nowMs;
-    this.deathStartZ = boss.z;
     this.deathScale = boss.visualScale;
     const tierIndex = paletteIndex(boss.tier, ENEMY_PALETTE.length);
-    this.deathHelmet.material = this.tierMaterials[tierIndex];
-    this.deathVest.material = this.vestMaterials[tierIndex];
-    this.deathVest.geometry = this.vestGeometries[tierIndex];
+    this.deathTierColor.copy(this.tierMaterials[tierIndex].color);
+    this.deathHelmetMaterial.color.copy(this.deathTierColor);
+    this.deathVestMaterial.color.copy(this.deathTierColor);
+    this.deathBodyLiveMaterial.opacity = 1;
+    this.deathBodyGrayMaterial.opacity = 0;
+    this.deathHelmetMaterial.opacity = 1;
+    this.deathVestMaterial.opacity = 1;
     this.death.position.set(-boss.x, 0, boss.z);
     this.death.rotation.set(0, Math.PI, 0);
+    this.death.scale.setScalar(this.deathScale);
   }
 
 }
