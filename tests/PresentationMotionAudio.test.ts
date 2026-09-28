@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { ProjectilePulseTracker, ProjectileRenderer, projectilePulseScale } from '../src/rendering/projectiles/ProjectileRenderer';
-import { AudioCueObserver, GameAudio } from '../src/audio/GameAudio';
+import { AudioCueObserver, GameAudio, shotCueGapMs } from '../src/audio/GameAudio';
 import { EnvironmentAudioScheduler } from '../src/audio/EnvironmentAudioScheduler';
 import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from '../src/audio/EnvironmentAudioCue';
 import { ArtilleryScheduler } from '../src/rendering/environment/ArtilleryScheduler';
@@ -102,15 +102,30 @@ describe('audio cue observation and safety', () => {
     expect(observer.observe(1, 1, [], [], null, 10, rifle)).toEqual([]);
     expect(observer.observe(1, 1, [], [], null, 100,
       [{ id: 2, kind: 'rifle', tier: 1 }])).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 221,
+    expect(observer.observe(1, 1, [], [], null, 250,
       [{ id: 3, kind: 'rifle', tier: 2 }])).toEqual(['heavyRifle']);
-    expect(observer.observe(1, 1, [], [], null, 222,
+    expect(observer.observe(1, 1, [], [], null, 251,
       [{ id: 4, kind: 'rocket', tier: 1 }])).toEqual(['rocket']);
     expect(observer.observe(9, 10, [], [], null)).toEqual(['reward']);
     expect(observer.observe(10, 9, [], [], null)).toEqual(['damage']);
     expect(observer.observe(9, 0n, [], [], null)).toEqual(['fatal']);
     observer.reset();
     expect(observer.observe(1, 1, [], [], null, 0, rifle)).toEqual(['rifle']);
+  });
+  it('uses a deterministic varying 150–260 ms rifle-audio gate', () => {
+    const gaps = Array.from({ length: 24 }, (_, index) => shotCueGapMs(index));
+    expect(gaps.every((gap) => gap >= 150 && gap <= 260)).toBe(true);
+    expect(new Set(gaps).size).toBeGreaterThan(12);
+    const observer = new AudioCueObserver();
+    const shot = (id: number, at: number) => observer.observe(1, 1, [], [], null,
+      at, [{ id, kind: 'rifle', tier: 1 }]);
+    expect(shot(1, 0)).toEqual(['rifle']);
+    expect(shot(2, gaps[0] - 1)).toEqual([]);
+    expect(shot(3, gaps[0])).toEqual(['rifle']);
+    expect(shot(4, gaps[0] + gaps[1])).toEqual(['rifle']);
+    observer.reset();
+    expect(shot(1, 0)).toEqual(['rifle']);
+    expect(shot(2, gaps[0] - 1)).toEqual([]);
   });
   it('does not tick when an ignored reward expires without squad growth', () => {
     const observer = new AudioCueObserver();
@@ -125,7 +140,7 @@ describe('audio cue observation and safety', () => {
     expect(observer.observe(1, 1, [{ id: 3, hp: 8 }], [], null, 10)).toEqual(['enemyDeath']);
     expect(observer.observe(1, 1, [], [], null, 50)).toEqual([]);
     expect(observer.observe(1, 1, [{ id: 4, hp: 10 }], [], null, 100)).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 111)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, [], [], null, 131)).toEqual(['enemyDeath']);
     observer.reset();
     expect(observer.observe(1, 1, alive, [], null, 0)).toEqual([]);
     expect(observer.observe(1, 1, alive.map((enemy) => ({ ...enemy, hp: 9 })),
@@ -141,7 +156,7 @@ describe('audio cue observation and safety', () => {
     expect(observer.observe(1, 1, crowd, [], null, 0)).toEqual([]);
     expect(observer.observe(1, 1, crowd.slice(25), [], null, 10)).toEqual(['enemyDeath']);
     expect(observer.observe(1, 1, crowd.slice(40), [], null, 20)).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 120)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, [], [], null, 130)).toEqual(['enemyDeath']);
   });
 
   it('observes Boss hits and one death solely on the Boss channel', () => {
@@ -248,7 +263,8 @@ describe('audio cue observation and safety', () => {
       oscillators.push(node);
       return node;
     };
-    const gains: { gain: { value: number; setValueAtTime: ReturnType<typeof vi.fn> } }[] = [];
+    const gains: { gain: { value: number; setValueAtTime: ReturnType<typeof vi.fn>;
+      exponentialRampToValueAtTime: ReturnType<typeof vi.fn> } }[] = [];
     function gain() {
       const node = { gain: { value: 0, setValueAtTime: vi.fn(),
         exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() };
@@ -256,8 +272,16 @@ describe('audio cue observation and safety', () => {
       return node;
     }
     const filters: { type: string; frequency: { value: number } }[] = [];
-    const context = { state: 'suspended', currentTime: 0, destination: {},
+    const buffers: Float32Array[] = [];
+    const context = { state: 'suspended', currentTime: 0, sampleRate: 8000, destination: {},
       createOscillator: vi.fn(oscillator), createGain: vi.fn(gain),
+      createBuffer: vi.fn((_channels: number, frames: number) => {
+        const samples = new Float32Array(frames);
+        buffers.push(samples);
+        return { getChannelData: () => samples };
+      }),
+      createBufferSource: vi.fn(() => ({ buffer: null, connect: vi.fn(),
+        disconnect: vi.fn(), start: starts, stop: stops, onended: null })),
       createBiquadFilter: vi.fn(() => {
         const filter = { type: '', frequency: { value: 0 }, connect: vi.fn(), disconnect: vi.fn() };
         filters.push(filter);
@@ -285,36 +309,76 @@ describe('audio cue observation and safety', () => {
     audio.observe(0, 1, [{ id: 1, hp: 10 }], [], null, 20);
     expect(starts).toHaveBeenCalledTimes(3);
     audio.observe(1, 1, [], [], null, 30);
-    expect(starts).toHaveBeenCalledTimes(4);
+    expect(starts).toHaveBeenCalledTimes(5);
     audio.observe(1, 1, [{ id: 2, hp: 10 }], [], null, 40);
     audio.observe(1, 1, [], [], null, 50);
-    expect(starts).toHaveBeenCalledTimes(4);
+    expect(starts).toHaveBeenCalledTimes(5);
     expect(constructor).toHaveBeenCalledTimes(1);
-    audio.play('rifle');
-    expect(gains.at(-1)?.gain.setValueAtTime).toHaveBeenCalledWith(.09, 0);
-    const rifleStart = oscillators.at(-1)!.frequency.setValueAtTime.mock.calls[0][0];
-    audio.play('enemyHit');
-    const enemyStart = oscillators.at(-1)!.frequency.setValueAtTime.mock.calls[0][0];
-    const enemyVolume = gains.at(-1)!.gain.setValueAtTime.mock.calls[0][0];
-    audio.play('enemyDeath');
-    const enemyDeathStart = oscillators.at(-1)!.frequency.setValueAtTime.mock.calls[0][0];
-    audio.play('bossHit');
-    const bossStart = oscillators.at(-2)!.frequency.setValueAtTime.mock.calls[0][0];
-    audio.play('bossDeath');
-    const deathDuration = stops.mock.calls.at(-2)![0];
-    audio.play('damage');
-    const damageVolume = gains.at(-2)!.gain.setValueAtTime.mock.calls[0][0];
-    expect(rifleStart).toBeGreaterThan(enemyStart);
-    expect(enemyStart).toBeGreaterThan(enemyDeathStart);
-    expect(enemyStart).toBeGreaterThan(bossStart);
-    expect(deathDuration).toBeGreaterThan(.4);
-    expect(damageVolume).toBeGreaterThan(enemyVolume);
-    audio.play('groundArtillery');
-    audio.play('skyFlak');
+    const renderCue = (cue: Parameters<GameAudio['play']>[0]) => {
+      const firstOscillator = oscillators.length;
+      const firstGain = gains.length;
+      const firstStart = starts.mock.calls.length;
+      const firstStop = stops.mock.calls.length;
+      audio.play(cue);
+      const renderedOscillators = oscillators.slice(firstOscillator);
+      const renderedGains = gains.slice(firstGain);
+      return {
+        count: renderedOscillators.length,
+        pitches: renderedOscillators.map((node) => node.frequency.setValueAtTime.mock.calls[0][0]),
+        waves: renderedOscillators.map((node) => node.type),
+        volumes: renderedGains.map((node) => Math.max(
+          ...node.gain.setValueAtTime.mock.calls.map(([value]) => value as number),
+          ...node.gain.exponentialRampToValueAtTime.mock.calls.map(
+            ([value]) => value as number))),
+        attacks: renderedGains.map((node) =>
+          node.gain.setValueAtTime.mock.calls[0]?.[0] === .001),
+        ends: stops.mock.calls.slice(firstStop).map(([at]) => at as number),
+        starts: starts.mock.calls.slice(firstStart).map(([at]) => at as number),
+      };
+    };
+    const rifle = renderCue('rifle');
+    const heavy = renderCue('heavyRifle');
+    const enemyHit = renderCue('enemyHit');
+    const enemyDeath = renderCue('enemyDeath');
+    const bossHit = renderCue('bossHit');
+    const bossDeath = renderCue('bossDeath');
+    const damage = renderCue('damage');
+    const fatal = renderCue('fatal');
+    const ground = renderCue('groundArtillery');
+    const flak = renderCue('skyFlak');
+    expect(rifle.waves).toEqual(['sawtooth']);
+    expect(rifle.ends[0]).toBeLessThan(.06);
+    expect(heavy.count).toBe(2);
+    expect(heavy.ends.every((at) => at < .09)).toBe(true);
+    expect(enemyHit.waves).toEqual(['triangle', 'sine']);
+    expect(enemyDeath.waves).toEqual(['triangle', 'sine']);
+    expect(enemyHit.attacks).toEqual([true, true]);
+    expect(enemyDeath.attacks).toEqual([true, true]);
+    expect(enemyHit.pitches[0]).toBeGreaterThan(bossHit.pitches[0]);
+    expect(enemyDeath.ends[0]).toBeGreaterThan(enemyHit.ends[0]);
+    expect(enemyDeath.volumes[0]).toBeLessThan(bossDeath.volumes[0]);
+    expect(bossHit.pitches[0]).toBe(125); // Approved armored hit profile.
+    expect(bossHit.ends[0]).toBeCloseTo(.13);
+    expect(bossDeath.count).toBe(3);
+    expect(bossDeath.waves).toEqual(['triangle', 'sine', 'sine']);
+    expect(bossDeath.ends[0]).toBeGreaterThan(.55);
+    expect(bossDeath.ends[2]).toBeGreaterThan(.6);
+    expect(bossDeath.starts[2]).toBeGreaterThan(.15);
+    expect(damage.volumes[0]).toBeCloseTo(.18); // Approved injury profile.
+    expect(fatal.volumes[0]).toBeCloseTo(.22);
+    expect(ground.count).toBe(2);
+    expect(ground.volumes[0]).toBeGreaterThan(.09);
+    expect(ground.ends.slice(1).every((at) => at > .8)).toBe(true);
+    expect(context.createBuffer).toHaveBeenCalledOnce();
+    expect(buffers[0].length).toBe(8800);
+    expect(buffers[0].some((sample) => sample !== 0)).toBe(true);
+    renderCue('groundArtillery');
+    expect(context.createBuffer).toHaveBeenCalledOnce();
+    expect(context.createBufferSource).toHaveBeenCalledTimes(2);
+    expect(flak.ends[0]).toBeLessThan(.25);
+    expect(flak.volumes[0]).toBeLessThan(ground.volumes[0]);
     expect(filters.map((filter) => [filter.type, filter.frequency.value]))
-      .toEqual([['lowpass', 380], ['lowpass', 600]]);
-    expect(gains.at(-2)?.gain.setValueAtTime).toHaveBeenCalledWith(.064, 0);
-    expect(gains.at(-1)?.gain.setValueAtTime).toHaveBeenCalledWith(.039, 0);
+      .toEqual([['lowpass', 380], ['lowpass', 600], ['lowpass', 380]]);
     audio.dispose();
     expect(stops).toHaveBeenCalled();
     expect(context.close).toHaveBeenCalledOnce();
