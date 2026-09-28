@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ARTILLERY_SITES, ArtilleryScheduler } from './ArtilleryScheduler';
 
 const SPAN_LENGTH = 300;
 const JOINT_SPACING = 12;
@@ -6,6 +7,18 @@ const JOINT_COUNT = 18;
 export const BATTLEFIELD_FOG_NEAR = 76;
 export const BATTLEFIELD_FOG_FAR = 108;
 export const BATTLEFIELD_FOG_COLOR = '#8eaaae';
+const ARTILLERY_FLASH_MS = 90;
+const ARTILLERY_GLOW_MS = 400;
+const ARTILLERY_SMOKE_MS = 2700;
+
+type ImpactSlot = {
+  group: THREE.Group;
+  flash: THREE.Sprite;
+  glow: THREE.Sprite;
+  smoke: THREE.Sprite;
+  startedAtMs: number;
+  far: boolean;
+};
 
 export class BridgeEnvironment {
   private readonly group = new THREE.Group();
@@ -18,6 +31,8 @@ export class BridgeEnvironment {
   private readonly materials: THREE.Material[] = [];
   private readonly joints: THREE.Mesh[] = [];
   private readonly smoke: { sprite: THREE.Sprite; x: number }[] = [];
+  private readonly artillery = new ArtilleryScheduler();
+  private readonly impactSlots: ImpactSlot[] = [];
   private smokeTexture: THREE.DataTexture | null = null;
   private readonly deck: THREE.Mesh;
   private readonly shoulders: THREE.Mesh[] = [];
@@ -81,6 +96,7 @@ export class BridgeEnvironment {
       }
     }
     this.buildBattlefield();
+    this.buildArtillery();
     this.scene.add(this.group, this.near, this.mid, this.far);
     this.update(0, 3, 0);
   }
@@ -111,6 +127,7 @@ export class BridgeEnvironment {
       this.smoke[i].sprite.position.x = this.smoke[i].x
         + Math.sin(nowMs * .00015 + i * 1.7) * .16;
     }
+    this.updateArtillery(nowMs);
   }
 
   dispose(): void {
@@ -235,6 +252,80 @@ export class BridgeEnvironment {
     texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
     return texture;
+  }
+
+  private buildArtillery(): void {
+    for (let index = 0; index < 3; index++) {
+      const flashMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#fff1b1', transparent: true, opacity: 0, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false });
+      const glowMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#dd7437', transparent: true, opacity: 0, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false });
+      const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#4c585d', transparent: true, opacity: 0, depthWrite: false });
+      this.materials.push(flashMaterial, glowMaterial, smokeMaterial);
+      const group = new THREE.Group();
+      group.name = 'battlefield-artillery-slot';
+      const flash = new THREE.Sprite(flashMaterial);
+      flash.name = 'battlefield-artillery-flash';
+      const glow = new THREE.Sprite(glowMaterial);
+      glow.name = 'battlefield-artillery-glow';
+      const smoke = new THREE.Sprite(smokeMaterial);
+      smoke.name = 'battlefield-artillery-smoke';
+      group.add(flash, glow, smoke);
+      group.visible = false;
+      this.mid.add(group);
+      this.impactSlots.push({ group, flash, glow, smoke,
+        startedAtMs: -Infinity, far: false });
+    }
+  }
+
+  private updateArtillery(nowMs: number): void {
+    const siteIndex = this.artillery.update(nowMs);
+    if (siteIndex >= 0) {
+      const site = ARTILLERY_SITES[siteIndex];
+      const slot = this.impactSlots.find((candidate) => !candidate.group.visible)
+        ?? this.impactSlots.reduce((oldest, candidate) =>
+          candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+      const layer = site.layer === 'mid' ? this.mid : this.far;
+      layer.add(slot.group);
+      slot.group.position.set(site.x, 0, site.z);
+      slot.group.scale.setScalar(site.layer === 'far' ? .68 : 1);
+      slot.startedAtMs = nowMs;
+      slot.far = site.layer === 'far';
+      slot.group.visible = true;
+    }
+    for (const slot of this.impactSlots) {
+      if (!slot.group.visible) continue;
+      const ageMs = nowMs - slot.startedAtMs;
+      if (ageMs >= ARTILLERY_SMOKE_MS) {
+        slot.group.visible = false;
+        continue;
+      }
+      const brightness = slot.far ? .6 : .9;
+      const flash = ageMs < ARTILLERY_FLASH_MS;
+      slot.flash.visible = flash;
+      slot.flash.position.set(0, 1.3, 0);
+      slot.flash.scale.setScalar(2.7 + ageMs / ARTILLERY_FLASH_MS * .7);
+      (slot.flash.material as THREE.SpriteMaterial).opacity = flash
+        ? brightness * (1 - ageMs / ARTILLERY_FLASH_MS) : 0;
+      const glowAge = Math.max(0, ageMs - 45);
+      const glow = ageMs >= 45 && ageMs < ARTILLERY_GLOW_MS;
+      slot.glow.visible = glow;
+      slot.glow.position.set(0, 1.5, 0);
+      slot.glow.scale.setScalar(3.2 + glowAge / ARTILLERY_GLOW_MS * 3.4);
+      (slot.glow.material as THREE.SpriteMaterial).opacity = glow
+        ? brightness * .85 * (1 - glowAge / ARTILLERY_GLOW_MS) : 0;
+      const smokeAge = Math.max(0, ageMs - 220);
+      const smoke = ageMs >= 220;
+      slot.smoke.visible = smoke;
+      slot.smoke.position.set(.25, 1.8 + smokeAge * .0007, .1);
+      slot.smoke.scale.setScalar(3.4 + smokeAge * .0014);
+      (slot.smoke.material as THREE.SpriteMaterial).opacity = smoke
+        ? (slot.far ? .34 : .55) * Math.min(1, smokeAge / 350)
+          * (1 - smokeAge / (ARTILLERY_SMOKE_MS - 220)) : 0;
+    }
   }
 
   private material(color: string, transparent = false, opacity = 1): THREE.MeshStandardMaterial {
