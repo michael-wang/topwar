@@ -53,7 +53,6 @@ export class BossRenderer {
   private readonly barFrameGeometry = new THREE.PlaneGeometry(1.5, .28);
   private readonly barTrackGeometry = new THREE.PlaneGeometry(1.36, .17);
   private readonly barFillGeometry = new THREE.PlaneGeometry(1.3, .13);
-  private readonly barBadgeGeometry = new THREE.PlaneGeometry(.19, .1);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly vestMaterials: THREE.MeshStandardMaterial[];
   private readonly vestGeometries: THREE.BufferGeometry[];
@@ -63,8 +62,6 @@ export class BossRenderer {
   private readonly barBackgroundMaterial = new THREE.MeshBasicMaterial({ color: '#151b22',
     side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
   private readonly barTrackMaterial = new THREE.MeshBasicMaterial({ color: '#3a2024',
-    side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
-  private readonly barBadgeMaterial = new THREE.MeshBasicMaterial({ color: '#d4b58a',
     side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
   private readonly barFillMaterial = new THREE.MeshBasicMaterial({ color: '#ff3b30',
     side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false });
@@ -85,7 +82,6 @@ export class BossRenderer {
   private readonly barBackground = new THREE.Mesh(this.barFrameGeometry, this.barBackgroundMaterial);
   private readonly barTrack = new THREE.Mesh(this.barTrackGeometry, this.barTrackMaterial);
   private readonly barFill = new THREE.Mesh(this.barFillGeometry, this.barFillMaterial);
-  private readonly barBadge = new THREE.Mesh(this.barBadgeGeometry, this.barBadgeMaterial);
   private readonly barAnchor = new THREE.Group();
   private previous: BossRenderState | null = null;
   private flashUntilMs = -Infinity;
@@ -145,21 +141,18 @@ export class BossRenderer {
     this.death.rotation.y = Math.PI;
     // The plate follows the Boss as a whole, independent of the animated pose.
     this.barAnchor.name = 'boss-hp-anchor';
-    this.barAnchor.position.set(0, 1.36, -0.25);
+    this.barAnchor.position.set(0, 1.1, -0.25);
     this.barAnchor.scale.setScalar(.32);
     this.barBackground.name = 'boss-hp-frame';
     this.barTrack.name = 'boss-hp-track';
     this.barFill.name = 'boss-hp-fill';
-    this.barBadge.name = 'boss-hp-badge';
     this.barBackground.position.z = 0;
     this.barTrack.position.z = -0.01;
     this.barFill.position.z = -0.02;
-    this.barBadge.position.set(0, .18, -.03);
     this.barBackground.renderOrder = 20;
     this.barTrack.renderOrder = 21;
     this.barFill.renderOrder = 22;
-    this.barBadge.renderOrder = 23;
-    this.barAnchor.add(this.barBackground, this.barTrack, this.barFill, this.barBadge);
+    this.barAnchor.add(this.barBackground, this.barTrack, this.barFill);
     this.active.add(this.barAnchor);
     this.body.add(this.bodyHitWash, this.helmetHitWash, this.vestHitWash);
     this.active.visible = false;
@@ -197,10 +190,10 @@ export class BossRenderer {
       this.active.position.set(-boss.x, 0, boss.z);
       // The world-space plate fades in only once its owner emerges from the haze.
       const visibility = playerZ === undefined ? 1
-        : Math.max(0, Math.min(1, (75 - (boss.z - playerZ)) / 30));
+        : Math.max(0, Math.min(1, (90 - (boss.z - playerZ)) / 24));
       this.barAnchor.visible = visibility > 0;
       for (const material of [this.barBackgroundMaterial, this.barTrackMaterial,
-        this.barFillMaterial, this.barBadgeMaterial]) material.opacity = visibility;
+        this.barFillMaterial]) material.opacity = visibility;
       const hitAgeMs = nowMs - this.hitAtMs;
       this.active.scale.setScalar(boss.visualScale);
       const bodyPulse = 1 + 0.03 * Math.max(0, 1 - hitAgeMs / HIT_PULSE_MS);
@@ -272,11 +265,9 @@ export class BossRenderer {
     this.barFrameGeometry.dispose();
     this.barTrackGeometry.dispose();
     this.barFillGeometry.dispose();
-    this.barBadgeGeometry.dispose();
     for (const geometry of this.vestGeometries) geometry.dispose();
     for (const material of [...this.tierMaterials, ...this.vestMaterials, this.hitWashMaterial,
-      this.barBackgroundMaterial, this.barTrackMaterial, this.barFillMaterial,
-      this.barBadgeMaterial]) material.dispose();
+      this.barBackgroundMaterial, this.barTrackMaterial, this.barFillMaterial]) material.dispose();
   }
 
   private startDeath(boss: BossRenderState, nowMs: number): void {

@@ -258,8 +258,10 @@ describe('Modern Toy Soldier presentation', () => {
     expect(barAnchor.parent).toBe(active);
     expect(active.scale.x).toBe(7);
     expect(pose.scale.x).toBeGreaterThan(1);
-    expect(barAnchor.position.y).toBeGreaterThan(1.25);
-    expect(barAnchor.position.y - .28 * barAnchor.scale.y / 2).toBeGreaterThan(1.2);
+    expect(barAnchor.position.y).toBeGreaterThan(1.05);
+    expect(barAnchor.position.y).toBeLessThan(1.2);
+    expect(barAnchor.position.y - .28 * barAnchor.scale.y / 2).toBeGreaterThan(1.04);
+    expect(active.getObjectByName('boss-hp-badge')).toBeUndefined();
     expect(barAnchor.scale.x).toBeGreaterThan(.32);
     expect(barAnchor.position.x).toBeGreaterThan(0);
     const frame = barAnchor.getObjectByName('boss-hp-frame') as THREE.Mesh;
@@ -295,7 +297,7 @@ describe('Modern Toy Soldier presentation', () => {
     expect(active.scale.x).toBe(7);
     expect(barAnchor.scale.x).toBeCloseTo(.32);
     expect(barAnchor.position.x).toBe(0);
-    expect(barAnchor.position.y).toBeCloseTo(1.36);
+    expect(barAnchor.position.y).toBeCloseTo(1.1);
     renderer.update(null, 20120);
     expect(death.visible).toBe(true);
     const deathHelmet = death.children[1] as THREE.Mesh;
@@ -323,10 +325,10 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(boss, 0, 10);
     expect(anchor.visible).toBe(false);
     expect((frame.material as THREE.MeshBasicMaterial).opacity).toBe(0);
-    renderer.update(boss, 20, 40);
+    renderer.update(boss, 20, 22);
     expect(anchor.visible).toBe(true);
     expect((frame.material as THREE.MeshBasicMaterial).opacity).toBeCloseTo(.5);
-    renderer.update(boss, 40, 60);
+    renderer.update(boss, 40, 40);
     expect((frame.material as THREE.MeshBasicMaterial).opacity).toBe(1);
     renderer.dispose();
   });

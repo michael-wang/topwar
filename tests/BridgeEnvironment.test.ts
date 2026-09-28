@@ -31,6 +31,7 @@ describe('BridgeEnvironment', () => {
     expect(fog.color.getHexString()).toBe(new THREE.Color(BATTLEFIELD_FOG_COLOR).getHexString());
     expect(fog.near).toBe(BATTLEFIELD_FOG_NEAR);
     expect(fog.far).toBe(BATTLEFIELD_FOG_FAR);
+    expect(fog.near).toBeGreaterThan(65);
     expect(fog.near).toBeGreaterThan(40); // reward and normal combat remain clear
     expect((10 + 96 - fog.near) / (fog.far - fog.near)).toBeGreaterThan(.85);
 
@@ -47,8 +48,13 @@ describe('BridgeEnvironment', () => {
     for (const layer of [near, mid, far]) {
       expect(layer.children.some((child) => child.name === 'battlefield-smoke')).toBe(true);
     }
+    const smokeColor = (layer: THREE.Group) => ((layer.children.find((child) =>
+      child.name === 'battlefield-smoke') as THREE.Sprite).material as THREE.SpriteMaterial).color;
+    expect(smokeColor(near).getHSL({ h: 0, s: 0, l: 0 }).l)
+      .toBeLessThan(smokeColor(far).getHSL({ h: 0, s: 0, l: 0 }).l);
     expect(mid.children.filter((child) => child.name === 'battlefield-fire-glow'))
       .toHaveLength(2);
+    expect(far.children.some((child) => child.name === 'battlefield-fire-glow')).toBe(false);
 
     const joint = scene.getObjectByName('bridge-expansion-joint') as THREE.Mesh;
     const firstJointZ = joint.position.z;
@@ -57,11 +63,18 @@ describe('BridgeEnvironment', () => {
     expect(water.getWorldPosition(new THREE.Vector3()).z).toBe(120);
     expect(deck.getWorldPosition(new THREE.Vector3()).z + 150).toBeGreaterThan(65 + 90);
     expect(joint.position.z).toBeGreaterThan(firstJointZ);
-    expect(near.position.z).toBe(127);
-    expect(mid.position.z).toBe(144);
-    expect(far.position.z).toBe(157);
+    expect(near.position.z - 65).toBeGreaterThan(48);
+    expect(near.position.z - 65).toBeLessThan(56);
+    expect(mid.position.z - 65).toBeGreaterThan(74);
+    expect(mid.position.z - 65).toBeLessThan(78);
+    expect(far.position.z - 65).toBeGreaterThan(99);
+    expect(far.position.z - 65).toBeLessThan(101);
     expect(near.position.z).toBeLessThan(mid.position.z);
     expect(mid.position.z).toBeLessThan(far.position.z);
+    expect(mid.position.z - near.position.z).toBeGreaterThan(20);
+    expect(far.position.z - mid.position.z).toBeGreaterThan(20);
+    expect(Math.abs(near.position.x)).toBeGreaterThan(Math.abs(mid.position.x));
+    expect(Math.abs(mid.position.x)).toBeGreaterThan(Math.abs(far.position.x));
 
     const disposeGeometry = vi.spyOn(deck.geometry, 'dispose');
     const disposeMaterial = vi.spyOn(deck.material as THREE.Material, 'dispose');
