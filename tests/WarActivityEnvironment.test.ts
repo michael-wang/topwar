@@ -95,7 +95,7 @@ describe('presentation-only water and sky activity', () => {
     expect(disposeGeometry).toHaveBeenCalledOnce();
   });
 
-  it('fades one ship across the bridge and keeps aircraft brief and faint', () => {
+  it('moves one opaque segmented ship behind the bridge with edge-only fades', () => {
     const scene = new THREE.Scene();
     const environment = new BridgeEnvironment(scene);
     const scheduler = new WarActivityScheduler();
@@ -111,21 +111,49 @@ describe('presentation-only water and sky activity', () => {
     expect(shipAt).toBeGreaterThan(0);
     expect(planeAt).toBeGreaterThan(0);
     const ship = scene.getObjectByName('battlefield-warship') as THREE.Group;
+    const sections = ship.children.filter((child) => child.name.startsWith('warship-section-'));
+    expect(sections).toHaveLength(5);
     const hull = ship.getObjectByName('warship-hull') as THREE.Mesh;
     const hullMaterial = hull.material as THREE.MeshStandardMaterial;
-    environment.update(0, 3.2, shipAt);
+    const sectionRefs = [...sections];
+    const xPositions: number[] = [];
+    const sample = (progress: number) => {
+      environment.update(0, 3.2, shipAt + SHIP_PASS_MS * progress);
+      xPositions.push(ship.position.x);
+      expect(ship.children).toEqual(sectionRefs);
+      ship.updateWorldMatrix(true, true);
+      for (const section of sections.filter((piece) => piece.visible)) {
+        const bounds = new THREE.Box3().setFromObject(section);
+        expect(bounds.max.x < -4.2 || bounds.min.x > 4.2).toBe(true);
+      }
+      return sections.filter((section) => section.visible).length;
+    };
+    sample(0);
     const entryX = ship.position.x;
     expect(hullMaterial.opacity).toBeLessThan(.05);
-    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .25);
-    expect(hullMaterial.opacity).toBeGreaterThan(.5);
-    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .5);
+    expect(sample(.1)).toBe(5);
+    expect(hullMaterial.opacity).toBeCloseTo(1);
+    expect(sample(.25)).toBe(5);
+    expect(hullMaterial.opacity).toBeCloseTo(1);
+    const approaching = sample(.4);
+    expect(approaching).toBeGreaterThan(0);
+    expect(approaching).toBeLessThan(5);
+    expect(hullMaterial.opacity).toBeCloseTo(1);
+    expect(sample(.5)).toBe(0);
     expect(Math.abs(ship.position.x)).toBeLessThan(1);
-    expect(hullMaterial.opacity).toBeLessThan(.05);
-    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .75);
+    expect(hullMaterial.opacity).toBeCloseTo(1);
+    const emerging = sample(.6);
+    expect(emerging).toBeGreaterThan(0);
+    expect(emerging).toBeLessThan(5);
+    expect(hullMaterial.opacity).toBeCloseTo(1);
+    expect(sample(.75)).toBe(5);
     expect(Math.sign(ship.position.x)).toBe(-Math.sign(entryX));
-    expect(hullMaterial.opacity).toBeGreaterThan(.5);
-    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .98);
+    expect(hullMaterial.opacity).toBeCloseTo(1);
+    sample(.99);
     expect(hullMaterial.opacity).toBeLessThan(.2);
+    const direction = Math.sign(xPositions.at(-1)! - xPositions[0]);
+    expect(xPositions.slice(1).every((x, index) =>
+      Math.sign(x - xPositions[index]) === direction)).toBe(true);
 
     const plane = scene.getObjectByName('battlefield-aircraft') as THREE.Group;
     const planeMaterial = (plane.getObjectByName('aircraft-fuselage') as THREE.Mesh)

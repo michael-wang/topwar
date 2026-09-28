@@ -43,6 +43,7 @@ export class BridgeEnvironment {
   private readonly flakSlots: ImpactSlot[] = [];
   private readonly burningCores: { mesh: THREE.Mesh; scale: number }[] = [];
   private readonly shipMaterials: THREE.MeshStandardMaterial[] = [];
+  private readonly shipSections: { group: THREE.Group; x: number; halfWidth: number }[] = [];
   private aircraftMaterial: THREE.MeshBasicMaterial | null = null;
   private readonly ship = new THREE.Group();
   private readonly aircraft = new THREE.Group();
@@ -154,7 +155,7 @@ export class BridgeEnvironment {
       core.mesh.scale.y = core.scale * (1 + Math.sin(nowMs * .006 + index * 2) * .1);
     }
     this.updateArtillery(nowMs);
-    this.updateActivity(nowMs);
+    this.updateActivity(nowMs, bridgeHalfWidth);
   }
 
   dispose(): void {
@@ -440,12 +441,26 @@ export class BridgeEnvironment {
       parent.add(mesh);
     };
     this.ship.name = 'battlefield-warship';
-    part(this.ship, 'warship-hull', 0, 0, 0, 5.4, .56, 1.6, hull);
-    part(this.ship, 'warship-deck', -.5, .4, 0, 3.1, .32, 1.3, fittings);
-    part(this.ship, 'warship-superstructure', -.65, .86, 0,
-      1.4, .82, 1, hull);
-    part(this.ship, 'warship-mast', -1.1, 1.65, 0, .12, 1, .12, fittings);
-    part(this.ship, 'warship-gun', 1.4, .58, 0, 1.4, .15, .22, hull);
+    for (let index = 0; index < 5; index++) {
+      const localX = (index - 2) * 1.1;
+      const section = new THREE.Group();
+      section.name = `warship-section-${index}`;
+      section.position.x = localX;
+      part(section, 'warship-hull', 0, 0, 0, 1.12, .56, 1.6, hull);
+      if (index >= 1 && index <= 3) {
+        part(section, 'warship-deck', 0, .4, 0, 1.08, .32, 1.3, fittings);
+      }
+      if (index === 1) {
+        part(section, 'warship-superstructure', .4, .86, 0,
+          1.4, .82, 1, hull);
+        part(section, 'warship-mast', 0, 1.65, 0, .12, 1, .12, fittings);
+      }
+      if (index === 3) part(section, 'warship-gun', .3, .58, 0,
+        1.4, .15, .22, hull);
+      this.ship.add(section);
+      this.shipSections.push({ group: section, x: localX,
+        halfWidth: index === 1 ? 1.12 : index === 3 ? 1 : .56 });
+    }
     this.ship.visible = false;
     this.shipLayer.add(this.ship);
 
@@ -484,7 +499,7 @@ export class BridgeEnvironment {
     }
   }
 
-  private updateActivity(nowMs: number): void {
+  private updateActivity(nowMs: number, bridgeHalfWidth: number): void {
     const events = this.activity.update(nowMs);
     const shipAge = nowMs - this.activity.shipStartedAtMs;
     this.ship.visible = shipAge >= 0 && shipAge < SHIP_PASS_MS;
@@ -493,12 +508,14 @@ export class BridgeEnvironment {
       const x = this.activity.shipSide * this.activity.shipX * (2 * progress - 1);
       this.ship.position.set(x, -.15, 38);
       this.ship.rotation.y = this.activity.shipSide === 1 ? 0 : Math.PI;
-      const edgeFade = Math.max(0, Math.min(1, progress / .13, (1 - progress) / .13));
-      // Hide the superstructure as the hull passes beneath the bridge footprint.
-      const bridgeOcclusion = Math.max(0, Math.min(1, (Math.abs(x) - 7) / 5));
-      const opacity = edgeFade * bridgeOcclusion;
-      this.shipMaterials[0].opacity = .82 * opacity;
-      this.shipMaterials[1].opacity = .68 * opacity;
+      const edgeFade = Math.max(0, Math.min(1, progress / .08, (1 - progress) / .08));
+      this.shipMaterials[0].opacity = edgeFade;
+      this.shipMaterials[1].opacity = edgeFade;
+      for (const section of this.shipSections) {
+        const sectionX = x + (this.activity.shipSide === 1 ? section.x : -section.x);
+        // Hard section masking keeps every visible piece outside the solid bridge footprint.
+        section.group.visible = Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
+      }
     }
     const aircraftAge = nowMs - this.activity.aircraftStartedAtMs;
     this.aircraft.visible = aircraftAge >= 0 && aircraftAge < AIRCRAFT_PASS_MS;

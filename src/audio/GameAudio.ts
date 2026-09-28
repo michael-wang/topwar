@@ -1,5 +1,4 @@
-import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from './EnvironmentAudioCue';
-import { EnvironmentAudioScheduler } from './EnvironmentAudioScheduler';
+import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 
 export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
@@ -120,7 +119,7 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
     tertiary: { from: 105, to: 33, seconds: .46, wave: 'sine', volume: .095,
       delaySeconds: .2 } },
   groundArtillery: { from: 120, to: 44, seconds: .22, wave: 'triangle', volume: .11,
-    secondary: { from: 74, to: 32, seconds: 1.08, wave: 'sine', volume: .055,
+    secondary: { from: 74, to: 32, seconds: 1, wave: 'sine', volume: .055,
       delaySeconds: .05, attackSeconds: .1 } },
   skyFlak: { from: 260, to: 90, seconds: .19, wave: 'triangle', volume: .039 },
 };
@@ -156,18 +155,16 @@ export class GameAudio {
   }
 
   updateEnvironment(nowMs: number): void {
-    const cues = this.environment.update(nowMs);
-    if (nowMs < this.nextEnvironmentCueMs) return;
-    if (cues & GROUND_ARTILLERY_CUE) {
-      this.play('groundArtillery');
-      this.nextEnvironmentCueMs = nowMs + 350;
-    } else if (cues & SKY_FLAK_CUE) {
-      this.play('skyFlak');
+    const events = this.environment.update(nowMs);
+    for (const event of events) {
+      if (nowMs < this.nextEnvironmentCueMs) break;
+      if (event.kind === 'groundArtillery') this.play(event.kind, event);
+      else this.play(event.kind);
       this.nextEnvironmentCueMs = nowMs + 350;
     }
   }
 
-  play(cue: AudioCue): void {
+  play(cue: AudioCue, variation?: GroundArtilleryAudioEvent): void {
     const context = this.context;
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
@@ -180,6 +177,9 @@ export class GameAudio {
         filter.connect(this.master);
       }
       const start = context.currentTime;
+      const volumeScale = cue === 'groundArtillery' ? variation?.volumeScale ?? 1 : 1;
+      const durationScale = cue === 'groundArtillery' ? variation?.durationScale ?? 1 : 1;
+      const pitchScale = cue === 'groundArtillery' ? variation?.pitchScale ?? 1 : 1;
       const rumbleBuffer = cue === 'groundArtillery'
         ? (this.rumbleBuffer ??= this.createRumbleBuffer(context)) : null;
       const tones = [shape, shape.secondary, shape.tertiary].filter(
@@ -188,16 +188,17 @@ export class GameAudio {
       const playTone = (tone: ToneShape): void => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
-        const toneStart = start + (tone.delaySeconds ?? 0);
+        const toneStart = start + (tone.delaySeconds ?? 0) * durationScale;
+        const toneEnd = toneStart + tone.seconds * durationScale;
         oscillator.type = tone.wave;
-        oscillator.frequency.setValueAtTime(tone.from, toneStart);
-        oscillator.frequency.exponentialRampToValueAtTime(tone.to, toneStart + tone.seconds);
+        oscillator.frequency.setValueAtTime(tone.from * pitchScale, toneStart);
+        oscillator.frequency.exponentialRampToValueAtTime(tone.to * pitchScale, toneEnd);
         if (tone.attackSeconds) {
           gain.gain.setValueAtTime(.001, toneStart);
-          gain.gain.exponentialRampToValueAtTime(tone.volume,
-            toneStart + tone.attackSeconds);
-        } else gain.gain.setValueAtTime(tone.volume, toneStart);
-        gain.gain.exponentialRampToValueAtTime(.001, toneStart + tone.seconds);
+          gain.gain.exponentialRampToValueAtTime(tone.volume * volumeScale,
+            toneStart + tone.attackSeconds * durationScale);
+        } else gain.gain.setValueAtTime(tone.volume * volumeScale, toneStart);
+        gain.gain.exponentialRampToValueAtTime(.001, toneEnd);
         oscillator.connect(gain);
         gain.connect(filter ?? this.master!);
         oscillator.onended = () => {
@@ -208,17 +209,19 @@ export class GameAudio {
         };
         this.active.add(oscillator);
         oscillator.start(toneStart);
-        oscillator.stop(toneStart + tone.seconds);
+        oscillator.stop(toneEnd);
       };
       for (const tone of tones) playTone(tone);
       if (cue === 'groundArtillery') {
         const source = context.createBufferSource();
         const gain = context.createGain();
         source.buffer = rumbleBuffer;
-        const rumbleStart = start + .05;
+        const rumbleStart = start + .05 * durationScale;
+        const rumbleEnd = rumbleStart + durationScale;
         gain.gain.setValueAtTime(.001, rumbleStart);
-        gain.gain.exponentialRampToValueAtTime(.085, rumbleStart + .15);
-        gain.gain.exponentialRampToValueAtTime(.001, rumbleStart + 1.1);
+        gain.gain.exponentialRampToValueAtTime(.085 * volumeScale,
+          rumbleStart + .15 * durationScale);
+        gain.gain.exponentialRampToValueAtTime(.001, rumbleEnd);
         source.connect(gain);
         gain.connect(filter!);
         source.onended = () => {
@@ -229,7 +232,7 @@ export class GameAudio {
         };
         this.active.add(source);
         source.start(rumbleStart);
-        source.stop(rumbleStart + 1.1);
+        source.stop(rumbleEnd);
       }
     } catch {
       // Audio is optional presentation feedback.
@@ -253,7 +256,7 @@ export class GameAudio {
   }
 
   private createRumbleBuffer(context: AudioContext): AudioBuffer {
-    const frames = Math.ceil(context.sampleRate * 1.1);
+    const frames = Math.ceil(context.sampleRate * 1.7);
     const buffer = context.createBuffer(1, frames, context.sampleRate);
     const samples = buffer.getChannelData(0);
     let seed = 0x713e9a4d;
