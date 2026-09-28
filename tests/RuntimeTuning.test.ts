@@ -36,7 +36,7 @@ describe('temporary runtime tuning', () => {
 
   it('scales Boss HP at runtime while retaining the live health ratio', () => {
     const nearBoss = LevelDefinitionSchema.parse({ ...level,
-      enemyStream: { ...stream, spawnAheadDistance: 110 } });
+      enemyStream: { ...stream, spawnAheadDistance: 116 } });
     const authoredHp = bossMaxHpForTier(1, stream.tierProgression, config.tiers);
     const normal = new Simulation({ seed: 1, level: nearBoss, startSquad: 1,
       startRocketCount: 0, tiers: config.tiers });
@@ -80,7 +80,7 @@ describe('temporary runtime tuning', () => {
     simulation.restoreState(state);
     simulation.setRuntimeBalance({ ...baseline, rifleHigherTierPowerMultiplier: 8 });
     simulation.step(0.01, { targetX: 2.5 }, { ...movement, moveSpeed: 10,
-      forwardSpeed: 2, rifle: { fireRate: 7, projectileSpeed: 50, range: 60 } });
+      forwardSpeed: 2, rifle: { ...movement.rifle, fireRate: 7, projectileSpeed: 50, range: 60 } });
     const after = simulation.getState();
     expect(after.player.x).toBeCloseTo(0.1);
     expect(after.player.z).toBeCloseTo(0.02);
@@ -170,7 +170,12 @@ describe('temporary runtime tuning', () => {
     const replay = make();
     replay.setRuntimeBalance({ ...baseline, rewardRowsPerReward: 2 });
     expect(replay.getState()).toEqual(changed);
-    expect(make(2).getState().streamRewards.length).toBeGreaterThan(active.length);
+    const denseStart = make(2);
+    const progressed = denseStart.getState();
+    progressed.player.z = 6;
+    denseStart.restoreState(progressed);
+    denseStart.step(0.01, { targetX: 0 }, movement);
+    expect(denseStart.getState().streamRewards.length).toBeGreaterThan(active.length);
     simulation.setRuntimeBalance(baseline);
     const reset = simulation.getState();
     const resetNext = rewardPlacementForBlock(reset.enemyStream!.nextRewardBlockIndex,

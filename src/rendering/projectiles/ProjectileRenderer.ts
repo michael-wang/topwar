@@ -51,8 +51,16 @@ export class ProjectileRenderer {
       const length = Math.min(1.35, 1 + 0.025 * (projectile.tier - 1));
       member.position.set(-projectile.x, projectile.kind === 'rocket' ? 0.66 : 0.64, projectile.z);
       const pulse = this.pulse.scaleFor(projectile.id, nowMs);
-      if (projectile.kind === 'rocket') member.scale.setScalar(1.8 * pulse);
-      else member.scale.set(1, 1, length * pulse);
+      const glow = member.children[0] as THREE.Mesh;
+      if (projectile.kind === 'rocket') {
+        member.scale.setScalar(1.8 * pulse);
+        glow.scale.set(2.4, 2.4, 1.12);
+      } else {
+        member.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
+          1 + 0.45 * projectile.hitRadiusBonus, length * pulse);
+        const glowWidth = 2.4 + 1.7 * projectile.hitRadiusBonus;
+        glow.scale.set(glowWidth, glowWidth, 1.12);
+      }
     }
     this.pulse.prune(activeIds);
   }

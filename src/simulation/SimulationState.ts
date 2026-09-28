@@ -80,6 +80,7 @@ export interface ProjectileSimulationState {
   damage: number;
   remainingRange: number;
   blastRadius: number;
+  hitRadiusBonus: number;
   penetrationRemaining: ExactValue;
 }
 

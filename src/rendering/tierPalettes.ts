@@ -1,10 +1,10 @@
 export const ENEMY_PALETTE = [
-  { body: '#ef5b52', head: '#ff8b7d' },
-  { body: '#f47a3c', head: '#ffab65' },
-  { body: '#e6b83f', head: '#ffe07a' },
-  { body: '#a66be8', head: '#c597ff' },
-  { body: '#e94f8a', head: '#ff82b0' },
-  { body: '#9fbe45', head: '#c8df70' },
+  { body: '#9e2f3b', head: '#c64a55' },
+  { body: '#657236', head: '#87944a' },
+  { body: '#62437c', head: '#815b9d' },
+  { body: '#a64e2d', head: '#c66a42' },
+  { body: '#46525a', head: '#68767f' },
+  { body: '#896b29', head: '#ad8939' },
 ] as const;
 
 export const PLAYER_PALETTE = [

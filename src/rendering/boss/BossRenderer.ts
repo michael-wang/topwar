@@ -23,9 +23,9 @@ function tierArmorGeometry(source: THREE.BufferGeometry, tierColor: THREE.Color)
   for (let index = 0; index < positions.count; index++) {
     const isDetail = markers !== undefined && markers.getX(index) < .75;
     const offset = index * 3;
-    colors[offset] = isDetail ? Math.min(1, charcoal.r / tierColor.r) : 1;
-    colors[offset + 1] = isDetail ? Math.min(1, charcoal.g / tierColor.g) : 1;
-    colors[offset + 2] = isDetail ? Math.min(1, charcoal.b / tierColor.b) : 1;
+    colors[offset] = isDetail ? charcoal.r / tierColor.r : 1;
+    colors[offset + 1] = isDetail ? charcoal.g / tierColor.g : 1;
+    colors[offset + 2] = isDetail ? charcoal.b / tierColor.b : 1;
   }
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   return geometry;

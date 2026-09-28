@@ -15,7 +15,9 @@
     "rifle": {
       "fireRate": 10,
       "projectileSpeed": 60,
-      "range": 80
+      "range": 80,
+      "tierHitRadiusStep": 0.45,
+      "maxHitRadiusBonus": 0.90
     },
     "rocket": {
       "damage": 15,

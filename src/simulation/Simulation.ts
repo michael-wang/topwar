@@ -11,6 +11,7 @@ import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier
   enemyPowerForTier, riflePowerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
+import { rifleHitRadiusBonusForTier } from './weapons/rifleHitRadius';
 
 export interface SimulationOptions {
   seed: number;
@@ -42,7 +43,8 @@ export interface SimulationTuning {
   memberRadius: number;
   normalEnemyRadius: number;
   bossRadius?: number;
-  rifle: { fireRate: number; projectileSpeed: number; range: number };
+  rifle: { fireRate: number; projectileSpeed: number; range: number;
+    tierHitRadiusStep: number; maxHitRadiusBonus: number };
   rocket: { damage: number; fireRate: number; projectileSpeed: number; range: number; blastRadius: number };
 }
 
@@ -67,7 +69,7 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   const minimumZ = projectile.z + travel * minimumFraction;
   for (const enemy of enemies) {
     if (piercedEnemyIds?.has(enemy.id)) continue;
-    const radius = normalEnemyRadius;
+    const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
     const dx = projectile.x - enemy.x;
     if (Math.abs(dx) > radius) continue;
     const halfChord = Math.sqrt(radius * radius - dx * dx);
@@ -435,7 +437,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
-    if (Object.keys(value).length !== 10 || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'penetrationRemaining']
+    if (Object.keys(value).length !== 11 || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'hitRadiusBonus', 'penetrationRemaining']
       .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation projectile ${index} has missing or unknown fields`);
     }
@@ -460,6 +462,10 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       || (value.kind === 'rocket' && value.blastRadius <= 0)) {
       throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
     }
+    if (typeof value.hitRadiusBonus !== 'number' || !Number.isFinite(value.hitRadiusBonus)
+      || value.hitRadiusBonus < 0 || (value.kind === 'rocket' && value.hitRadiusBonus !== 0)) {
+      throw new Error(`Simulation projectile ${index} hitRadiusBonus is invalid for its kind`);
+    }
     let penetrationRemaining: bigint;
     try { penetrationRemaining = readExactValue(value.penetrationRemaining, 'Projectile penetration'); }
     catch { throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`); }
@@ -473,6 +479,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       tier: value.tier as number,
       x: value.x, z: value.z, speed: value.speed,
       damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius,
+      hitRadiusBonus: value.hitRadiusBonus,
       penetrationRemaining: storeExactValue(penetrationRemaining) };
   });
   const weapons = state.weapons;
@@ -692,7 +699,9 @@ export class Simulation {
       throw new Error('Simulation bossRadius must be positive and finite for a Boss level');
     }
     if (!tuning.rifle || !positiveFinite(tuning.rifle.fireRate)
-      || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)) {
+      || !positiveFinite(tuning.rifle.projectileSpeed) || !positiveFinite(tuning.rifle.range)
+      || !Number.isFinite(tuning.rifle.tierHitRadiusStep) || tuning.rifle.tierHitRadiusStep < 0
+      || !Number.isFinite(tuning.rifle.maxHitRadiusBonus) || tuning.rifle.maxHitRadiusBonus < 0) {
       throw new Error('Simulation rifle tuning must be positive and finite');
     }
     if (!tuning.rocket || !positiveFinite(tuning.rocket.damage) || !positiveFinite(tuning.rocket.fireRate)
@@ -788,6 +797,8 @@ export class Simulation {
           projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
             damage, remainingRange: weapon.range,
             blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
+            hitRadiusBonus: kind === 'rifle' ? rifleHitRadiusBonusForTier(tier,
+              tuning.rifle.tierHitRadiusStep, tuning.rifle.maxHitRadiusBonus) : 0,
             penetrationRemaining: tier > 1
               ? storeExactValue(exchangeValueForTier(tier, this.tiers.mergeCount)) : 0 });
         }

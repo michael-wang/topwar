@@ -11,7 +11,7 @@ const config = GameConfigSchema.parse(configData);
 const isolated = LevelDefinitionSchema.parse({ id: 'contact-events', length: 1000,
   enemyGroups: [], upgradeGates: [] });
 const bossLevel = LevelDefinitionSchema.parse({ ...levelData,
-  enemyStream: { ...levelData.enemyStream, spawnAheadDistance: 110 } });
+  enemyStream: { ...levelData.enemyStream, spawnAheadDistance: 116 } });
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 3,
   defenseLineOffset: 1.5, formationSpacing: .45, memberRadius: .22,
   normalEnemyRadius: .3, bossRadius: 2,
@@ -50,7 +50,7 @@ describe('transient combat presentation events', () => {
     state.enemies = [{ id: 7, tier: 1, x: 0, z: 5, hp: 3 }];
     state.projectiles = [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4,
       speed: 60, damage: 3, remainingRange: 80, blastRadius: 0,
-      penetrationRemaining: 0 }];
+      hitRadiusBonus: 0, penetrationRemaining: 0 }];
     state.weapons.nextProjectileId = 2;
     state.weapons.rifleCooldownRemainingSeconds = 100;
     simulation.restoreState(state);
@@ -65,7 +65,7 @@ describe('transient combat presentation events', () => {
     state.enemies = [{ id: 9, tier: 1, x: 0, z: -2, hp: 3 }];
     state.projectiles = [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 0,
       speed: 60, damage: 3, remainingRange: 80, blastRadius: 0,
-      penetrationRemaining: 0 }];
+      hitRadiusBonus: 0, penetrationRemaining: 0 }];
     state.weapons.nextProjectileId = 2;
     state.weapons.rifleCooldownRemainingSeconds = 100;
     simulation.restoreState(state);

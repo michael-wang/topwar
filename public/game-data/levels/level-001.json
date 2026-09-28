@@ -5,7 +5,7 @@
   "enemyGroups": [],
   "enemyStream": {
     "enemy": "grunt",
-    "startZ": 24,
+    "startZ": 30,
     "spawnAheadDistance": 96,
     "columns": 7,
     "spacing": 0.60,

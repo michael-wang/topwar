@@ -238,7 +238,9 @@ export class GameApp {
           normalEnemyRadius: this.config.tiers.normalEnemyRadius,
           bossRadius: this.config.bosses.basic.radius,
           rifle: { fireRate: this.runtimeTuning.fireRate,
-            projectileSpeed: this.runtimeTuning.bulletSpeed, range: this.runtimeTuning.bulletRange },
+            projectileSpeed: this.runtimeTuning.bulletSpeed, range: this.runtimeTuning.bulletRange,
+            tierHitRadiusStep: this.config.weapon.rifle.tierHitRadiusStep,
+            maxHitRadiusBonus: this.config.weapon.rifle.maxHitRadiusBonus },
           rocket: { ...this.config.weapon.rocket },
         },
         ));
@@ -279,7 +281,7 @@ export class GameApp {
           rewardKind: pickup.rewardKind })),
         projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
           tier: projectile.tier,
-          x: projectile.x, z: projectile.z })),
+          x: projectile.x, z: projectile.z, hitRadiusBonus: projectile.hitRadiusBonus })),
       };
       if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);

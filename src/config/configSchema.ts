@@ -21,6 +21,8 @@ export const GameConfigSchema = z.strictObject({
       fireRate: positive,
       projectileSpeed: positive,
       range: positive,
+      tierHitRadiusStep: nonnegative,
+      maxHitRadiusBonus: nonnegative,
     }),
     rocket: z.strictObject({
       damage: positive,

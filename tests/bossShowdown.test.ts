@@ -9,7 +9,7 @@ import { bossMaxHpForTier, bossRowForTier, exchangeValueForTier } from '../src/s
 
 const config = GameConfigSchema.parse(configData);
 const authored = LevelDefinitionSchema.parse(levelData);
-const level = { ...authored, enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 110 } };
+const level = { ...authored, enemyStream: { ...authored.enemyStream!, spawnAheadDistance: 116 } };
 const dt = 1 / 60;
 const tuning: SimulationTuning = {
   moveSpeed: 5, forwardSpeed: 2, trackHalfWidth: 3, defenseLineOffset: 1.5,
@@ -146,7 +146,7 @@ describe('Boss melee showdown', () => {
     state.boss!.hp = 1;
     state.projectiles = [{ id: state.weapons.nextProjectileId++, kind: 'rifle', tier: 1,
       x: 0, z: state.boss!.z - 0.5, speed: 60, damage: 10, remainingRange: 80,
-      blastRadius: 0, penetrationRemaining: 0 }];
+      blastRadius: 0, hitRadiusBonus: 0, penetrationRemaining: 0 }];
     simulation.restoreState(state);
     simulation.step(dt, { targetX: 0 }, tuning);
     expect(simulation.getState().boss).toBeNull();

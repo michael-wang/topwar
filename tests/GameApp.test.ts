@@ -21,7 +21,7 @@ const mock = vi.hoisted(() => ({
     gates: [] as UpgradeGateSimulationState[],
     pickups: [] as { id: number; x: number; zOffset: number; rewardAmount: number;
       rewardKind: 'rifle' | 'tier2Rifle' }[],
-    projectiles: [{ id: 1, kind: 'rifle' as const, tier: 1, x: 2, z: 5 }],
+    projectiles: [{ id: 1, kind: 'rifle' as const, tier: 1, x: 2, z: 5, hitRadiusBonus: 0 }],
   })),
   consumePresentationEvents: vi.fn((): any[] => []),
   render: vi.fn(),
@@ -142,7 +142,8 @@ import { GameApp } from '../src/app/GameApp';
 const level = LevelDefinitionSchema.parse(authoredLevel);
 const combatTuning = { defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.22,
   normalEnemyRadius: 0.3, bossRadius: 2,
-  rifle: { fireRate: 7, projectileSpeed: 28, range: 18 },
+  rifle: { fireRate: 7, projectileSpeed: 28, range: 18,
+    tierHitRadiusStep: 0.45, maxHitRadiusBonus: 0.90 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } };
 
 function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
@@ -152,7 +153,8 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
     tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300,
       enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 },
     bosses: { basic: { visualScale: 7, radius: 2 } },
-    weapon: { rifle: { fireRate: 7, projectileSpeed: 28, range: 18 },
+    weapon: { rifle: { fireRate: 7, projectileSpeed: 28, range: 18,
+      tierHitRadiusStep: 0.45, maxHitRadiusBonus: 0.90 },
       rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 1.25 } },
   } as GameConfig;
   const listeners = new Set<ConfigListener>();
@@ -281,7 +283,8 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.step.mock.lastCall![2]).toEqual({ moveSpeed: 5, forwardSpeed: 3,
       trackHalfWidth: 2.5, defenseLineOffset: 1.5, formationSpacing: 0.45, memberRadius: 0.3,
       normalEnemyRadius: 0.5, bossRadius: 2,
-      rifle: { fireRate: 4, projectileSpeed: 28, range: 18 },
+      rifle: { fireRate: 4, projectileSpeed: 28, range: 18,
+        tierHitRadiusStep: 0.45, maxHitRadiusBonus: 0.90 },
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
@@ -307,7 +310,7 @@ describe('GameApp config and frame lifecycle', () => {
       streamRewards: [],
       gates: [],
       pickups: [],
-      projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5 }],
+      projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5, hitRadiusBonus: 0 }],
     }, expect.any(Number));
 
     config.changePlayer({ startSquad: 9, formationSpacing: 1.2 });
@@ -321,7 +324,7 @@ describe('GameApp config and frame lifecycle', () => {
       streamRewards: [],
       gates: [],
       pickups: [],
-      projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5 }],
+      projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5, hitRadiusBonus: 0 }],
     }, expect.any(Number));
     expect(mock.constructedWith).toHaveBeenCalledTimes(1);
     app.dispose();
@@ -374,13 +377,13 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
       startRocketCount: 1, rewardRowsPerReward: 8, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
-      enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] });
+      enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3, hitRadiusBonus: 0 }] });
     app.start();
     raf.frame(100);
     expect(mock.render).toHaveBeenLastCalledWith({ player: { x: 0, z: 0 },
       squad: { count: 2, rocketCount: 1, rifleCounts: [1], formationSpacing: 0.45 },
       track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null, streamRewards: [], gates: [], pickups: [],
-      projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3 }] }, expect.any(Number));
+      projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3, hitRadiusBonus: 0 }] }, expect.any(Number));
     app.dispose();
   });
 
@@ -409,13 +412,13 @@ describe('GameApp config and frame lifecycle', () => {
       squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [],
       pickups: [{ id: 7, x: 2.7, zOffset: 4, rewardKind: 'tier2Rifle', rewardAmount: 1 }],
-      projectiles: [{ id: 8, kind: 'rifle', tier: 2, x: 0, z: 6 }] });
+      projectiles: [{ id: 8, kind: 'rifle', tier: 2, x: 0, z: 6, hitRadiusBonus: 0.45 }] });
     app.start();
     raf.frame(100);
     expect(mock.render.mock.lastCall![0]).toMatchObject({
       squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1] },
       pickups: [{ id: 7, x: 2.7, z: 7, rewardKind: 'tier2Rifle', rewardAmount: 1 }],
-      projectiles: [{ id: 8, kind: 'rifle', tier: 2, x: 0, z: 6 }],
+      projectiles: [{ id: 8, kind: 'rifle', tier: 2, x: 0, z: 6, hitRadiusBonus: 0.45 }],
     });
     app.dispose();
   });
@@ -463,7 +466,7 @@ describe('GameApp config and frame lifecycle', () => {
       streamRewards: [],
       gates: [],
       pickups: [],
-      projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5 }],
+      projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 2, z: 5, hitRadiusBonus: 0 }],
     }, expect.any(Number));
     raf.frame(300_000 + 1000 / 60);
     expect(mock.step).toHaveBeenCalledTimes(2);

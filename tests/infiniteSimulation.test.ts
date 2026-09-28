@@ -13,7 +13,9 @@ import { squadDefenseValue, damageFeedback } from '../src/app/combatFeedback';
 import { compactRifleValue } from '../src/simulation/squad/composition';
 
 const config = GameConfigSchema.parse(configData);
-const level = LevelDefinitionSchema.parse(levelData);
+// Keep an initial reward in these stream fixtures after the authored opening moves to Z 30.
+const level = LevelDefinitionSchema.parse({ ...levelData, enemyStream: { ...levelData.enemyStream,
+  rewards: { ...levelData.enemyStream.rewards, spawnAheadDistance: 36 } } });
 const stillLevel: LevelDefinition = { id: 'isolated', length: 1000, enemyGroups: [], upgradeGates: [] };
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 3, defenseLineOffset: 1.5,
@@ -31,6 +33,7 @@ const reward = (id: number, tier: number, z: number, hitProgress = 0): StreamRew
 const shot = (id: number, tier: number, z = 0): ProjectileSimulationState => ({
   id, kind: 'rifle', tier, x: 0, z, speed: 100,
   damage: enemyPowerForTier(tier, config.tiers), remainingRange: 100, blastRadius: 0,
+  hitRadiusBonus: Math.min(0.9, (tier - 1) * 0.45),
   penetrationRemaining: tier === 1 ? 0 : 10 ** (tier - 1),
 });
 function restoreWith(simulation: Simulation, change: (state: SimulationState) => void): void {
@@ -127,7 +130,7 @@ describe('unbounded enemy and Boss stream', () => {
 
   it('spawns formula Bosses, skips only their own rows, and keeps later rows flowing', () => {
     const stream = level.enemyStream!;
-    const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 110 } };
+    const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 116 } };
     const simulation = create(nearFirst);
     const state = simulation.getState();
     expect(state.boss).toMatchObject({ tier: 1, maxHp: 12000,
@@ -158,7 +161,7 @@ describe('unbounded enemy and Boss stream', () => {
 
   it('advances Boss cursor through Tier-3 and Tier-4 without authored encounters', () => {
     const stream = level.enemyStream!;
-    const accelerated = { ...level, enemyStream: { ...stream, spawnAheadDistance: 107 } };
+    const accelerated = { ...level, enemyStream: { ...stream, spawnAheadDistance: 113 } };
     const simulation = create(accelerated);
     const target = [2, 3, 4];
     for (const tier of target) {
@@ -206,13 +209,13 @@ describe('unbounded enemy and Boss stream', () => {
 
   it('restores a live Tier-3 Boss and reproduces its future', () => {
     const stream = level.enemyStream!;
-    const accelerated = { ...level, enemyStream: { ...stream, spawnAheadDistance: 107 } };
+    const accelerated = { ...level, enemyStream: { ...stream, spawnAheadDistance: 113 } };
     const simulation = create(accelerated);
     for (const tier of [2, 3]) {
       restoreWith(simulation, (state) => { state.boss = null; });
       const row = bossRowForTier(tier, stream.tierProgression);
       restoreWith(simulation, (state) => {
-        state.player.z = stream.startZ + row * stream.spacing - 107 - 0.1;
+        state.player.z = stream.startZ + row * stream.spacing - 113 - 0.1;
         state.player.x = 3;
         state.enemies = [];
         state.enemyStream!.nextRowIndex = row;
@@ -250,7 +253,7 @@ describe('generic projectile exchange and rewards', () => {
     expect(copy.getState()).toEqual(saved);
   });
   it('freezes all gameplay state after Game Over, including a surviving Boss', () => {
-    const nearFirst = { ...level, enemyStream: { ...level.enemyStream!, spawnAheadDistance: 110 } };
+    const nearFirst = { ...level, enemyStream: { ...level.enemyStream!, spawnAheadDistance: 116 } };
     const simulation = create(nearFirst);
     const before = simulation.getState();
     before.squad = { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 };
@@ -375,7 +378,7 @@ describe('generic projectile exchange and rewards', () => {
     const simulation = create(level);
     restoreWith(simulation, (state) => {
       state.streamRewards = [reward(1, 2, 5)];
-      state.enemies = [enemy(1, 1, 5.6)];
+      state.enemies = [enemy(1, 1, 7)];
       state.projectiles = [shot(1, 10)];
       state.weapons.nextProjectileId = 2;
       state.weapons.rifleCooldownRemainingSeconds = 100;
@@ -410,7 +413,7 @@ describe('generic projectile exchange and rewards', () => {
     restoreWith(simulation, (state) => {
       state.streamRewards = [reward(1, 4, 5)];
       state.projectiles = [{ ...shot(1, 1), kind: 'rocket', tier: 0,
-        damage: 15, blastRadius: 1.25, penetrationRemaining: 0 }];
+        damage: 15, blastRadius: 1.25, hitRadiusBonus: 0, penetrationRemaining: 0 }];
       state.weapons.nextProjectileId = 2;
       state.weapons.rifleCooldownRemainingSeconds = 100;
     });
@@ -451,7 +454,7 @@ describe('generic projectile exchange and rewards', () => {
 
   it('all rifle tiers stop on Boss and Boss contact starts a showdown', () => {
     const stream = level.enemyStream!;
-    const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 110 } };
+    const nearFirst = { ...level, enemyStream: { ...stream, spawnAheadDistance: 116 } };
     for (const tier of [1, 2, 3, 4]) {
       const simulation = create(nearFirst);
       const boss = simulation.getState().boss!;

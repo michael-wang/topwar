@@ -32,7 +32,7 @@ describe('LevelDefinitionSchema', () => {
     expect(parsed.id).toBe('level-001');
     expect(parsed.length).toBe(112);
     expect(parsed.enemyGroups).toEqual([]);
-    expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 24, spawnAheadDistance: 96,
+    expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 30, spawnAheadDistance: 96,
       columns: 7, spacing: 0.60, columnSpacing: 0.72, jitter: 0.16, seed: 104729,
       tierProgression: { firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
         curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000,

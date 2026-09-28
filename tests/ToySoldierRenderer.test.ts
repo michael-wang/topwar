@@ -58,7 +58,8 @@ describe('Modern Toy Soldier presentation', () => {
     expect(soldier(scene).scale.x).toBeCloseTo(PLAYER_VISUAL_SCALE * 1.35);
     renderer.update(state(1), 400);
     expect(soldier(scene).scale.x).toBe(PLAYER_VISUAL_SCALE);
-    renderer.update({ ...state(1), projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1 }] }, 500);
+    renderer.update({ ...state(1), projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1,
+      hitRadiusBonus: 0 }] }, 500);
     const member = soldier(scene);
     expect(member.getObjectByName('muzzle-flash')?.visible).toBe(true);
     expect((member.getObjectByName('toy-rifle') as THREE.Mesh).rotation.x).toBeLessThan(0);
@@ -73,6 +74,22 @@ describe('Modern Toy Soldier presentation', () => {
     expect(ring.visible).toBe(true);
     renderer.reset();
     expect(ring.visible).toBe(false);
+    renderer.dispose();
+  });
+
+  it('gives merged rifles a larger but capped muzzle flash', () => {
+    const scene = new THREE.Scene();
+    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+    const scales: number[] = [];
+    for (const tier of [1, 2, 3, 20]) {
+      renderer.update(state(tier), tier * 1000);
+      renderer.update({ ...state(tier), projectiles: [{ id: tier, kind: 'rifle', tier,
+        x: 0, z: 1, hitRadiusBonus: Math.min(.9, (tier - 1) * .45) }] }, tier * 1000 + 1);
+      const flash = soldier(scene).getObjectByName('muzzle-flash')!;
+      expect(flash.visible).toBe(true);
+      scales.push(flash.scale.x);
+    }
+    expect(scales).toEqual([1, 1.2, 1.4, 1.4]);
     renderer.dispose();
   });
 
@@ -130,7 +147,10 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps four running body poses and six helmet/vest InstancedMesh pairs through Tier 20', () => {
     expect(ENEMY_PALETTE.map((entry) => entry.body)).toEqual([
-      '#ef5b52', '#f47a3c', '#e6b83f', '#a66be8', '#e94f8a', '#9fbe45',
+      '#9e2f3b', '#657236', '#62437c', '#a64e2d', '#46525a', '#896b29',
+    ]);
+    expect(ENEMY_PALETTE.map((entry) => entry.head)).toEqual([
+      '#c64a55', '#87944a', '#815b9d', '#c66a42', '#68767f', '#ad8939',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
@@ -177,7 +197,7 @@ describe('Modern Toy Soldier presentation', () => {
     helmet.getColorAt(0, color);
     expect(color.getHexString()).toBe('ffe36e');
     helmet.getColorAt(1, color);
-    expect(color.getHexString()).toBe('e94f8a');
+    expect(color.getHexString()).toBe('46525a');
     renderer.update(damaged.slice(1), 100);
     const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death).toBeDefined();
@@ -441,8 +461,11 @@ describe('Modern Toy Soldier presentation', () => {
     const scene = new THREE.Scene();
     const bullet = bulletModel();
     const renderer = new ProjectileRenderer(scene, bullet);
+    const widths: number[] = [];
+    const glowWidths: number[] = [];
     for (let tier = 1; tier <= 20; tier++) {
-      renderer.update([{ id: tier, kind: 'rifle', tier, x: 0, z: 10 }], tier * 1000);
+      renderer.update([{ id: tier, kind: 'rifle', tier, x: 0, z: 10,
+        hitRadiusBonus: Math.min(0.9, (tier - 1) * 0.45) }], tier * 1000);
       expect(scene.children).toHaveLength(1);
       const mesh = scene.children[0] as THREE.Mesh;
       expect(mesh.name).toBe('rifle-tracer');
@@ -450,9 +473,17 @@ describe('Modern Toy Soldier presentation', () => {
       const glow = mesh.getObjectByName('tracer-glow') as THREE.Mesh;
       expect(glow.geometry).toBe(bullet.geometry);
       expect((glow.material as THREE.MeshBasicMaterial).blending).toBe(THREE.AdditiveBlending);
-      expect(mesh.scale.x).toBe(1);
+      expect(mesh.scale.x).toBeCloseTo(1 + 0.45 * Math.min(0.9, (tier - 1) * 0.45));
+      widths.push(mesh.scale.x);
+      glowWidths.push(mesh.scale.x * glow.scale.x);
       expect(mesh.scale.z).toBeLessThanOrEqual(1.35 * 1.35);
     }
+    expect(widths[1]).toBeGreaterThan(widths[0]);
+    expect(widths[2]).toBeGreaterThan(widths[1]);
+    expect(widths[19]).toBe(widths[2]);
+    expect(glowWidths[1]).toBeGreaterThan(glowWidths[0]);
+    expect(glowWidths[2]).toBeGreaterThan(glowWidths[1]);
+    expect(glowWidths[19]).toBe(glowWidths[2]);
     renderer.update([], 21000);
     expect((scene.children[0] as THREE.Mesh).visible).toBe(false);
     renderer.dispose();

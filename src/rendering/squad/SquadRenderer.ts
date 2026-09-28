@@ -185,6 +185,7 @@ export class SquadRenderer {
       member.rifle.position.z = -0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
+      member.muzzle.scale.setScalar(1 + 0.2 * Math.min(2, Math.max(0, tier - 1)));
       // The camera looks along +Z, which mirrors X on screen.
       member.group.position.set(-(state.player.x + offset.x * visualSpread), 0,
         state.player.z + offset.z * visualSpread);

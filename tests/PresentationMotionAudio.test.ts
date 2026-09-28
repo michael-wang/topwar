@@ -22,7 +22,8 @@ describe('presentation-only motion', () => {
     const body = soldier.children[0];
     const rifle = soldier.getObjectByName('toy-rifle') as THREE.Mesh;
     const restingZ = rifle.position.z;
-    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 400);
+    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4,
+      hitRadiusBonus: 0 }] }, 400);
     expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
     expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
     expect(rifle.position.z).toBeLessThan(restingZ);
@@ -31,7 +32,8 @@ describe('presentation-only motion', () => {
     expect((soldier.getObjectByName('toy-soldier-helmet') as THREE.Mesh).rotation.x).toBe(0);
     expect((soldier.getObjectByName('toy-soldier-vest') as THREE.Mesh).scale.y).toBe(1);
     expect(soldier.children[4].visible).toBe(true);
-    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4 }] }, 500);
+    renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4,
+      hitRadiusBonus: 0 }] }, 500);
     expect(rifle.position.z).toBeCloseTo(restingZ);
     expect(soldier.children[4].visible).toBe(false);
     renderer.dispose();
@@ -52,18 +54,18 @@ describe('presentation-only motion', () => {
 
     const scene = new THREE.Scene();
     const renderer = new ProjectileRenderer(scene, bulletModel());
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1 },
-      { id: 2, kind: 'rifle', tier: 2, x: 0, z: 1 },
-      { id: 3, kind: 'rocket', tier: 0, x: 0, z: 1 }], 100);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1, hitRadiusBonus: 0 },
+      { id: 2, kind: 'rifle', tier: 2, x: 0, z: 1, hitRadiusBonus: 0.45 },
+      { id: 3, kind: 'rocket', tier: 0, x: 0, z: 1, hitRadiusBonus: 0 }], 100);
     expect(scene.children[0].scale.x).toBe(1);
     expect(scene.children[0].scale.z).toBeCloseTo(1.35);
-    expect(scene.children[1].scale.x).toBe(1);
+    expect(scene.children[1].scale.x).toBeGreaterThan(1);
     expect(scene.children[1].scale.z).toBeCloseTo(1.35 * 1.025);
     expect(scene.children[2].scale.x).toBeCloseTo(2.43);
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2 }], 200);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2, hitRadiusBonus: 0 }], 200);
     expect(scene.children[0].scale.x).toBe(1);
     renderer.reset();
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2 }], 210);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2, hitRadiusBonus: 0 }], 210);
     expect(scene.children[0].scale.z).toBeCloseTo(1.35);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);

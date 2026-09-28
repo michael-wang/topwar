@@ -12,7 +12,8 @@ const level: LevelDefinition = { id: 'armory-test', length: 30, enemyGroups: [],
 const tuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 2.5, defenseLineOffset: 1.5,
   formationSpacing: 0.45, memberRadius: 0.22, normalEnemyRadius: 0.3, bossRadius: 2,
-  rifle: { fireRate: 1, projectileSpeed: 10, range: 20 },
+  rifle: { fireRate: 1, projectileSpeed: 10, range: 20,
+    tierHitRadiusStep: 0.45, maxHitRadiusBonus: 0.90 },
   rocket: { damage: 15, fireRate: 0.6, projectileSpeed: 10, range: 20, blastRadius: 1.25 },
 };
 const create = (source = level, startSquad = 1) => new Simulation({ seed: 1,
@@ -23,6 +24,7 @@ const shot = (id: number, x: number, kind: 'rifle' | 'heavyRifle' | 'rocket' = '
   damage = 3): ProjectileSimulationState => ({ id, kind: kind === 'rocket' ? 'rocket' : 'rifle',
   tier: kind === 'rocket' ? 0 : kind === 'heavyRifle' ? 2 : 1, x, z: 0, speed: 100,
   damage, remainingRange: 20, blastRadius: kind === 'rocket' ? 1.25 : 0,
+  hitRadiusBonus: kind === 'heavyRifle' ? 0.45 : 0,
   penetrationRemaining: kind === 'heavyRifle' ? 10 : 0 });
 const grunt = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, tier: 1, x, z, hp: 3 });

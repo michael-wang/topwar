@@ -68,6 +68,7 @@ export interface ProjectileRenderState {
   tier: number;
   x: number;
   z: number;
+  hitRadiusBonus: number;
 }
 
 export interface EnemyRenderState {
