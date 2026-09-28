@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from '../../audio/EnvironmentAudioCue';
 import { ARTILLERY_SITES, ArtilleryScheduler, type ArtilleryLayer } from './ArtilleryScheduler';
-import { WarActivityScheduler, SKY_FLAK_STARTED } from './WarActivityScheduler';
+import { WarActivityScheduler, SKY_FLAK_STARTED, SHIP_PASS_MS,
+  AIRCRAFT_PASS_MS } from './WarActivityScheduler';
 
 const SPAN_LENGTH = 300;
 const JOINT_SPACING = 12;
@@ -41,7 +41,9 @@ export class BridgeEnvironment {
   private readonly activity = new WarActivityScheduler();
   private readonly impactSlots: ImpactSlot[] = [];
   private readonly flakSlots: ImpactSlot[] = [];
-  private readonly burningCores: THREE.Mesh[] = [];
+  private readonly burningCores: { mesh: THREE.Mesh; scale: number }[] = [];
+  private readonly shipMaterials: THREE.MeshStandardMaterial[] = [];
+  private aircraftMaterial: THREE.MeshBasicMaterial | null = null;
   private readonly ship = new THREE.Group();
   private readonly aircraft = new THREE.Group();
   private smokeTexture: THREE.DataTexture | null = null;
@@ -118,7 +120,7 @@ export class BridgeEnvironment {
     this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number): number {
+  update(playerZ: number, trackHalfWidth: number, nowMs: number): void {
     const bridgeHalfWidth = Math.max(trackHalfWidth + 1, 4);
     this.group.position.z = playerZ + 55;
     this.deck.scale.x = bridgeHalfWidth * 2;
@@ -148,12 +150,11 @@ export class BridgeEnvironment {
         + Math.sin(nowMs * .00015 + i * 1.7) * .16;
     }
     for (let index = 0; index < this.burningCores.length; index++) {
-      this.burningCores[index].scale.y = .9 + Math.sin(nowMs * .006 + index * 2) * .1;
+      const core = this.burningCores[index];
+      core.mesh.scale.y = core.scale * (1 + Math.sin(nowMs * .006 + index * 2) * .1);
     }
-    const groundImpact = this.updateArtillery(nowMs);
-    const skyEvents = this.updateActivity(nowMs);
-    return (groundImpact ? GROUND_ARTILLERY_CUE : 0)
-      | ((skyEvents & SKY_FLAK_STARTED) ? SKY_FLAK_CUE : 0);
+    this.updateArtillery(nowMs);
+    this.updateActivity(nowMs);
   }
 
   dispose(): void {
@@ -214,34 +215,39 @@ export class BridgeEnvironment {
       this.smoke.push({ sprite, x });
       layer.add(sprite);
     };
-    const fire = (layer: THREE.Group, x: number, z: number): void => {
+    const fire = (layer: THREE.Group, x: number, z: number, options: {
+      wreckWidth: number; flameScale: number; smokeWidth: number;
+      smokeHeight: number; smokeLean: number; slabTilt: number;
+    }): void => {
       const site = new THREE.Group();
       site.name = 'battlefield-burning-site';
       site.position.set(x, 0, z);
       const wreck = new THREE.Mesh(blockGeometry, wreckMaterial);
       wreck.name = 'burning-wreck-base';
       wreck.position.set(0, .22, 0);
-      wreck.scale.set(2.2, .45, 1.3);
-      wreck.rotation.y = .3;
+      wreck.scale.set(options.wreckWidth, .45, 1.3);
+      wreck.rotation.y = options.slabTilt * -.7;
       const slab = new THREE.Mesh(blockGeometry, wreckMaterial);
       slab.name = 'burning-wreck-slab';
       slab.position.set(-.55, .66, .2);
       slab.scale.set(.85, 1.1, .3);
-      slab.rotation.z = -.32;
+      slab.rotation.z = options.slabTilt;
       const glow = new THREE.Mesh(glowGeometry, glowMaterial);
       glow.name = 'battlefield-fire-glow';
       glow.position.set(.25, .45, 0);
-      glow.scale.set(.68, .28, .48);
+      glow.scale.set(.68 * options.flameScale, .28, .48);
       const core = new THREE.Mesh(flameGeometry, flameMaterial);
       core.name = 'burning-fire-core';
       core.position.set(.3, .95, 0);
-      this.burningCores.push(core);
+      core.scale.setScalar(options.flameScale);
+      this.burningCores.push({ mesh: core, scale: options.flameScale });
       site.add(wreck, slab, glow, core);
-      for (const [offsetX, y, size] of [[-.2, 2, 2.3], [.2, 3.3, 3.2]]) {
+      for (let index = 0; index < 2; index++) {
         const puff = new THREE.Sprite(fireSmokeMaterial);
         puff.name = 'burning-black-smoke';
-        puff.position.set(offsetX, y, 0);
-        puff.scale.set(size, size * 1.25, 1);
+        puff.position.set(index * options.smokeLean, 2 + index * options.smokeHeight * .42, 0);
+        puff.scale.set(options.smokeWidth * (1 + index * .15),
+          options.smokeHeight * (1 + index * .1), 1);
         site.add(puff);
       }
       layer.add(site);
@@ -260,8 +266,10 @@ export class BridgeEnvironment {
     ruin(this.mid, -15.8, 3, 2.2, 6.5, midAccent, .13);
     ruin(this.mid, 12.3, -2, 4.2, 3.4, midMaterial, .08);
     ruin(this.mid, 18.6, 4, 4.8, 5.2, midAccent, -.12);
-    fire(this.mid, -9.5, -5.8);
-    fire(this.mid, 10.5, -3.7);
+    fire(this.mid, -14, -7, { wreckWidth: 3.2, flameScale: .72,
+      smokeWidth: 2.3, smokeHeight: 5.1, smokeLean: -.5, slabTilt: -.43 });
+    fire(this.mid, 8.8, 3.2, { wreckWidth: 1.65, flameScale: 1.04,
+      smokeWidth: 4.1, smokeHeight: 2.7, smokeLean: .75, slabTilt: .2 });
     smoke(this.mid, midSmoke, -11.2, 3.2, -4, 4.3, 5.2);
     smoke(this.mid, midSmoke, -10.6, 5.4, -4.1, 6.1, 7.2);
     smoke(this.mid, midSmoke, -12.1, 7.8, -4, 7.4, 8.3);
@@ -415,10 +423,12 @@ export class BridgeEnvironment {
   private buildActivity(): void {
     const block = new THREE.BoxGeometry(1, 1, 1);
     this.geometries.push(block);
-    const hull = this.material('#303b40');
-    const fittings = this.material('#39474b');
+    const hull = this.material('#303b40', true, 0);
+    const fittings = this.material('#39474b', true, 0);
+    this.shipMaterials.push(hull, fittings);
     const planeMaterial = new THREE.MeshBasicMaterial({ color: '#252d31',
-      transparent: true, opacity: .62, depthWrite: false, fog: false });
+      transparent: true, opacity: 0, depthWrite: false, fog: false });
+    this.aircraftMaterial = planeMaterial;
     this.materials.push(planeMaterial);
     const part = (parent: THREE.Group, name: string, x: number, y: number,
       z: number, width: number, height: number, depth: number,
@@ -443,7 +453,7 @@ export class BridgeEnvironment {
     part(this.aircraft, 'aircraft-fuselage', 0, 0, 0, .52, .16, 3.2, planeMaterial);
     part(this.aircraft, 'aircraft-wings', 0, 0, -.18, 4.1, .12, .66, planeMaterial);
     part(this.aircraft, 'aircraft-tail', 0, 0, -1.3, 1.55, .12, .34, planeMaterial);
-    part(this.aircraft, 'aircraft-cockpit', 0, .17, .4, .38, .27, .7, planeMaterial);
+    this.aircraft.scale.setScalar(.62);
     this.aircraft.visible = false;
     this.skyLayer.add(this.aircraft);
 
@@ -474,19 +484,30 @@ export class BridgeEnvironment {
     }
   }
 
-  private updateActivity(nowMs: number): number {
+  private updateActivity(nowMs: number): void {
     const events = this.activity.update(nowMs);
     const shipAge = nowMs - this.activity.shipStartedAtMs;
-    this.ship.visible = shipAge >= 0 && shipAge < 12000;
+    this.ship.visible = shipAge >= 0 && shipAge < SHIP_PASS_MS;
     if (this.ship.visible) {
-      this.ship.position.set(this.activity.shipX
-        + this.activity.shipSide * shipAge / 12000 * 18, -.15, 38);
+      const progress = shipAge / SHIP_PASS_MS;
+      const x = this.activity.shipSide * this.activity.shipX * (2 * progress - 1);
+      this.ship.position.set(x, -.15, 38);
+      this.ship.rotation.y = this.activity.shipSide === 1 ? 0 : Math.PI;
+      const edgeFade = Math.max(0, Math.min(1, progress / .13, (1 - progress) / .13));
+      // Hide the superstructure as the hull passes beneath the bridge footprint.
+      const bridgeOcclusion = Math.max(0, Math.min(1, (Math.abs(x) - 7) / 5));
+      const opacity = edgeFade * bridgeOcclusion;
+      this.shipMaterials[0].opacity = .82 * opacity;
+      this.shipMaterials[1].opacity = .68 * opacity;
     }
     const aircraftAge = nowMs - this.activity.aircraftStartedAtMs;
-    this.aircraft.visible = aircraftAge >= 0 && aircraftAge < 10000;
+    this.aircraft.visible = aircraftAge >= 0 && aircraftAge < AIRCRAFT_PASS_MS;
     if (this.aircraft.visible) {
+      const progress = aircraftAge / AIRCRAFT_PASS_MS;
       this.aircraft.position.set(this.activity.aircraftSide
-        * (-26 + aircraftAge / 10000 * 52), 17, -15);
+        * (-26 + progress * 52), 17, -15);
+      if (this.aircraftMaterial) this.aircraftMaterial.opacity = .28
+        * Math.max(0, Math.min(1, progress / .16, (1 - progress) / .16));
     }
     if (events & SKY_FLAK_STARTED) {
       const slot = this.flakSlots.find((candidate) => !candidate.group.visible)
@@ -518,10 +539,9 @@ export class BridgeEnvironment {
         ? .42 * Math.min(1, (age - 150) / 250)
           * (1 - (age - 150) / (SKY_FLAK_SMOKE_MS - 150)) : 0;
     }
-    return events;
   }
 
-  private updateArtillery(nowMs: number): boolean {
+  private updateArtillery(nowMs: number): void {
     const siteIndex = this.artillery.update(nowMs);
     if (siteIndex >= 0) {
       const site = ARTILLERY_SITES[siteIndex];
@@ -572,7 +592,6 @@ export class BridgeEnvironment {
           * Math.min(1, smokeAge / 350)
           * (1 - smokeAge / (ARTILLERY_SMOKE_MS - 220)) : 0;
     }
-    return siteIndex >= 0;
   }
 
   private material(color: string, transparent = false, opacity = 1): THREE.MeshStandardMaterial {

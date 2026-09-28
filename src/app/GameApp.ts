@@ -259,7 +259,7 @@ export class GameApp {
       const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
       if (feedback) this.damageFlash.flash(feedback === 'fatal');
       this.audio.observe(this.previousDefenseValue, currentDefenseValue,
-        state.boss ? [...state.enemies, state.boss] : state.enemies,
+        state.enemies,
         state.streamRewards, state.boss, this.presentationMs, state.projectiles);
       this.previousDefenseValue = currentDefenseValue;
       const renderState: GameRenderState = {
@@ -285,8 +285,8 @@ export class GameApp {
       };
       if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
-      const environmentCues = this.renderer.render(renderState, this.presentationMs);
-      this.audio.playEnvironment(environmentCues ?? 0, this.presentationMs);
+      this.renderer.render(renderState, this.presentationMs);
+      this.audio.updateEnvironment(this.presentationMs);
       this.gameOverOverlay.setVisible(state.squad.count === 0
         && this.presentationMs >= this.fatalPresentationUntilMs);
       this.frameId = requestAnimationFrame(this.renderFrame);

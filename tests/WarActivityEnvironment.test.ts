@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { BridgeEnvironment, BATTLEFIELD_FOG_FAR } from '../src/rendering/environment/BridgeEnvironment';
 import { WarActivityScheduler, SHIP_STARTED, AIRCRAFT_STARTED,
-  SKY_FLAK_STARTED } from '../src/rendering/environment/WarActivityScheduler';
-import { SKY_FLAK_CUE } from '../src/audio/EnvironmentAudioCue';
+  SKY_FLAK_STARTED, SHIP_PASS_MS, AIRCRAFT_PASS_MS } from '../src/rendering/environment/WarActivityScheduler';
 
 describe('presentation-only water and sky activity', () => {
   it('schedules repeatable ship, aircraft, and flak activity without gameplay RNG', () => {
@@ -28,7 +27,7 @@ describe('presentation-only water and sky activity', () => {
       expect(first.some((event) => event.kind & AIRCRAFT_STARTED)).toBe(true);
       expect(first.some((event) => event.kind & SKY_FLAK_STARTED)).toBe(true);
       expect(first.filter((event) => event.kind & SHIP_STARTED)
-        .every((event) => Math.abs(event.shipX) > 8.8)).toBe(true);
+        .every((event) => event.shipX >= 27 && event.shipX <= 30)).toBe(true);
       expect(first.filter((event) => event.kind & SKY_FLAK_STARTED)
         .every((event) => event.flakY >= 14 && event.flakY <= 19)).toBe(true);
     } finally {
@@ -60,7 +59,7 @@ describe('presentation-only water and sky activity', () => {
     const camera = new THREE.PerspectiveCamera(48, 9 / 16, .1, 180);
     for (let nowMs = 0; nowMs <= 35_000; nowMs += 100) {
       const playerZ = nowMs / 500;
-      const cues = environment.update(playerZ, 3.2, nowMs);
+      environment.update(playerZ, 3.2, nowMs);
       camera.position.set(0, 6.5, playerZ - 10);
       camera.lookAt(0, 0, playerZ + 12.5);
       camera.updateMatrixWorld();
@@ -74,7 +73,6 @@ describe('presentation-only water and sky activity', () => {
         .toHaveLength(2);
       if (ship.visible) {
         sawShip = true;
-        expect(Math.abs(ship.position.x) - 2.7).toBeGreaterThan(4.2);
         expect(ship.getWorldPosition(new THREE.Vector3()).z - playerZ).toBeCloseTo(38);
         shipOnScreen ||= inPortrait(ship);
       }
@@ -85,7 +83,7 @@ describe('presentation-only water and sky activity', () => {
           .toBeGreaterThan(BATTLEFIELD_FOG_FAR);
         aircraftOnScreen ||= inPortrait(aircraft);
       }
-      if (cues & SKY_FLAK_CUE) sawFlak = true;
+      if (flak.some((slot) => slot.visible)) sawFlak = true;
       flakOnScreen ||= flak.some((slot) => slot.visible && inPortrait(slot));
     }
     expect([sawShip, sawAircraft, sawFlak]).toEqual([true, true, true]);
@@ -95,6 +93,53 @@ describe('presentation-only water and sky activity', () => {
     expect(scene.getObjectByName('battlefield-sky-activity')).toBeUndefined();
     expect(disposeMaterial).toHaveBeenCalledOnce();
     expect(disposeGeometry).toHaveBeenCalledOnce();
+  });
+
+  it('fades one ship across the bridge and keeps aircraft brief and faint', () => {
+    const scene = new THREE.Scene();
+    const environment = new BridgeEnvironment(scene);
+    const scheduler = new WarActivityScheduler();
+    let shipAt = 0;
+    let planeAt = 0;
+    for (let index = 0; index < 8 && (!shipAt || !planeAt); index++) {
+      const at = scheduler.nextEventMs;
+      const flags = scheduler.update(at);
+      environment.update(0, 3.2, at);
+      if (flags & SHIP_STARTED) shipAt = at;
+      if (flags & AIRCRAFT_STARTED) planeAt = at;
+    }
+    expect(shipAt).toBeGreaterThan(0);
+    expect(planeAt).toBeGreaterThan(0);
+    const ship = scene.getObjectByName('battlefield-warship') as THREE.Group;
+    const hull = ship.getObjectByName('warship-hull') as THREE.Mesh;
+    const hullMaterial = hull.material as THREE.MeshStandardMaterial;
+    environment.update(0, 3.2, shipAt);
+    const entryX = ship.position.x;
+    expect(hullMaterial.opacity).toBeLessThan(.05);
+    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .25);
+    expect(hullMaterial.opacity).toBeGreaterThan(.5);
+    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .5);
+    expect(Math.abs(ship.position.x)).toBeLessThan(1);
+    expect(hullMaterial.opacity).toBeLessThan(.05);
+    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .75);
+    expect(Math.sign(ship.position.x)).toBe(-Math.sign(entryX));
+    expect(hullMaterial.opacity).toBeGreaterThan(.5);
+    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .98);
+    expect(hullMaterial.opacity).toBeLessThan(.2);
+
+    const plane = scene.getObjectByName('battlefield-aircraft') as THREE.Group;
+    const planeMaterial = (plane.getObjectByName('aircraft-fuselage') as THREE.Mesh)
+      .material as THREE.MeshBasicMaterial;
+    expect(AIRCRAFT_PASS_MS).toBeLessThan(5000);
+    expect(plane.scale.x).toBeLessThan(.7);
+    environment.update(0, 3.2, planeAt);
+    expect(planeMaterial.opacity).toBeLessThan(.05);
+    environment.update(0, 3.2, planeAt + AIRCRAFT_PASS_MS * .5);
+    expect(planeMaterial.opacity).toBeGreaterThan(.2);
+    expect(planeMaterial.opacity).toBeLessThan(.32);
+    environment.update(0, 3.2, planeAt + AIRCRAFT_PASS_MS * .98);
+    expect(planeMaterial.opacity).toBeLessThan(.1);
+    environment.dispose();
   });
 
   it('uses a short sky flash followed by a compact charcoal smoke puff', () => {

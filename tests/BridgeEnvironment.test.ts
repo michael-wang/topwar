@@ -97,6 +97,14 @@ describe('BridgeEnvironment', () => {
       const glow = site.getObjectByName('battlefield-fire-glow') as THREE.Mesh;
       expect(glow.scale.x).toBeLessThan(1);
     }
+    const [leftFire, rightFire] = burningSites;
+    expect(Math.abs(Math.abs(leftFire.position.x) - Math.abs(rightFire.position.x)))
+      .toBeGreaterThan(4);
+    expect(Math.abs(leftFire.position.z - rightFire.position.z)).toBeGreaterThan(5);
+    expect((leftFire.getObjectByName('burning-wreck-base') as THREE.Mesh).scale.x)
+      .toBeGreaterThan((rightFire.getObjectByName('burning-wreck-base') as THREE.Mesh).scale.x);
+    expect((leftFire.getObjectByName('burning-fire-core') as THREE.Mesh).scale.x)
+      .toBeLessThan((rightFire.getObjectByName('burning-fire-core') as THREE.Mesh).scale.x);
     expect(far.getObjectByName('battlefield-burning-site')).toBeUndefined();
 
     const joint = scene.getObjectByName('bridge-expansion-joint') as THREE.Mesh;

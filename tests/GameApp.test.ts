@@ -8,7 +8,6 @@ import type { PointerDragCallbacks } from '../src/input/PointerDragInput';
 import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInput';
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
 import { GameAudio } from '../src/audio/GameAudio';
-import { GROUND_ARTILLERY_CUE } from '../src/audio/EnvironmentAudioCue';
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
@@ -235,17 +234,33 @@ afterEach(() => {
 });
 
 describe('GameApp config and frame lifecycle', () => {
-  it('plays renderer-owned environmental cues from presentation time', () => {
+  it('advances independent environmental audio from presentation time', () => {
     const raf = createRaf();
-    const playEnvironment = vi.spyOn(GameAudio.prototype, 'playEnvironment');
-    mock.render.mockReturnValueOnce(GROUND_ARTILLERY_CUE);
+    const updateEnvironment = vi.spyOn(GameAudio.prototype, 'updateEnvironment');
     const app = new GameApp({} as HTMLElement, createConfigStore().store,
       level, {} as CharacterAssets);
     app.start();
     raf.frame(100);
-    expect(playEnvironment).toHaveBeenCalledWith(GROUND_ARTILLERY_CUE, 0);
+    expect(updateEnvironment).toHaveBeenCalledWith(0);
     app.dispose();
-    playEnvironment.mockRestore();
+    updateEnvironment.mockRestore();
+  });
+  it('observes Boss audio separately from normal enemy audio', () => {
+    const raf = createRaf();
+    const observe = vi.spyOn(GameAudio.prototype, 'observe');
+    const baseState = mock.getState();
+    mock.getState.mockReturnValue({ ...baseState, boss: { id: 99, hp: 100, tier: 1,
+      x: 0, z: 30, phase: 'approach' } });
+    const app = new GameApp({} as HTMLElement, createConfigStore().store,
+      level, {} as CharacterAssets);
+    app.start();
+    raf.frame(100);
+    expect(observe).toHaveBeenCalled();
+    expect(observe.mock.calls.at(-1)?.[2]).toEqual(baseState.enemies);
+    expect(observe.mock.calls.at(-1)?.[4]).toMatchObject({ id: 99 });
+    app.dispose();
+    observe.mockRestore();
+    mock.getState.mockReturnValue(baseState);
   });
   it('shows a runtime error and stops scheduling frames when rendering throws', () => {
     const raf = createRaf();

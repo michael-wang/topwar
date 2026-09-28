@@ -1,6 +1,8 @@
 export const SHIP_STARTED = 1;
 export const AIRCRAFT_STARTED = 2;
 export const SKY_FLAK_STARTED = 4;
+export const SHIP_PASS_MS = 16000;
+export const AIRCRAFT_PASS_MS = 4500;
 
 // Presentation-only timing; no Simulation state or gameplay RNG is consumed.
 export class WarActivityScheduler {
@@ -13,7 +15,7 @@ export class WarActivityScheduler {
   aircraftStartedAtMs = -Infinity;
   flakStartedAtMs = -Infinity;
   shipSide = 1;
-  shipX = 9;
+  shipX = 28.5;
   aircraftSide = 1;
   flakX = 0;
   flakY = 17;
@@ -36,14 +38,14 @@ export class WarActivityScheduler {
     if (nowMs >= this.nextShipMs) {
       this.shipStartedAtMs = nowMs;
       this.shipSide = this.random() < .5 ? -1 : 1;
-      this.shipX = this.shipSide * (8.8 + this.random() * 2);
-      this.nextShipMs = nowMs + 11000 + 6500 + this.random() * 8500;
+      this.shipX = 27 + this.random() * 3;
+      this.nextShipMs = nowMs + SHIP_PASS_MS + 6500 + this.random() * 8500;
       events |= SHIP_STARTED;
     }
     if (nowMs >= this.nextAircraftMs) {
       this.aircraftStartedAtMs = nowMs;
       this.aircraftSide = this.random() < .5 ? -1 : 1;
-      this.nextAircraftMs = nowMs + 10000 + 7000 + this.random() * 9000;
+      this.nextAircraftMs = nowMs + AIRCRAFT_PASS_MS + 7000 + this.random() * 9000;
       events |= AIRCRAFT_STARTED;
     }
     if (nowMs >= this.nextFlakMs) {

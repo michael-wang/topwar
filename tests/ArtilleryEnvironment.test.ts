@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { ARTILLERY_SITES, ArtilleryScheduler } from '../src/rendering/environment/ArtilleryScheduler';
 import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
-import { GROUND_ARTILLERY_CUE } from '../src/audio/EnvironmentAudioCue';
 
 describe('distant artillery presentation', () => {
   it('uses fixed off-lane sites and a repeatable scheduler without gameplay randomness', () => {
@@ -66,8 +65,7 @@ describe('distant artillery presentation', () => {
     const initialSprites = slots.flatMap((slot) => slot.children);
     const scheduler = new ArtilleryScheduler();
     const firstAt = scheduler.nextImpactAtMs;
-    expect(environment.update(0, 3.2, firstAt) & GROUND_ARTILLERY_CUE)
-      .toBe(GROUND_ARTILLERY_CUE);
+    environment.update(0, 3.2, firstAt);
     const active = slots.find((slot) => slot.visible)!;
     expect(active).toBeDefined();
     const activeFlash = active.getObjectByName('battlefield-artillery-flash') as THREE.Sprite;

@@ -1,25 +1,27 @@
 import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from './EnvironmentAudioCue';
+import { EnvironmentAudioScheduler } from './EnvironmentAudioScheduler';
 
 export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
-  | 'reward' | 'rewardHit' | 'bossHit' | 'enemyDeath'
+  | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
   | 'groundArtillery' | 'skyFlak';
 
+interface ObservedEnemy { id: number; hp: number }
 interface ObservedReward { id: number; hitProgress: number }
 interface ObservedBoss { id: number; hp: number }
 interface ObservedProjectile { id: number; kind: 'rifle' | 'rocket'; tier: number }
 
 // Presentation-only observation; enemy IDs restart on Retry.
 export class AudioCueObserver {
-  private previousEnemyIds = new Set<number>();
+  private previousEnemyHp = new Map<number, number>();
   private previousRewards = new Map<number, number>();
   private previousBoss: ObservedBoss | null = null;
   private lastSeenProjectileId = 0;
   private nextShotCueMs = -Infinity;
-  private nextDeathCueMs = -Infinity;
+  private nextEnemyCueMs = -Infinity;
   private nextBossHitCueMs = -Infinity;
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
-    enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
+    enemies: readonly ObservedEnemy[], rewards: readonly ObservedReward[],
     boss: ObservedBoss | null, nowMs = performance.now(),
     projectiles: readonly ObservedProjectile[] = []): AudioCue[] {
     const cues = new Set<AudioCue>();
@@ -50,47 +52,54 @@ export class AudioCueObserver {
     if (boss && this.previousBoss?.id === boss.id && boss.hp < this.previousBoss.hp
       && nowMs >= this.nextBossHitCueMs) {
       cues.add('bossHit');
-      this.nextBossHitCueMs = nowMs + 100;
+      this.nextBossHitCueMs = nowMs + 130;
     }
+    if (!boss && this.previousBoss) cues.add('bossDeath');
     this.previousBoss = boss ? { ...boss } : null;
-    const currentEnemyIds = new Set(enemies.map((enemy) => enemy.id));
-    if (nowMs >= this.nextDeathCueMs) {
-      for (const id of this.previousEnemyIds) {
-        if (!currentEnemyIds.has(id)) {
-          cues.add('enemyDeath');
-          this.nextDeathCueMs = nowMs + 100;
-          break;
-        }
-      }
+    const currentEnemyHp = new Map(enemies.map((enemy) => [enemy.id, enemy.hp]));
+    const removed = [...this.previousEnemyHp.keys()].some((id) => !currentEnemyHp.has(id));
+    if (nowMs >= this.nextEnemyCueMs) {
+      if (removed) cues.add('enemyDeath');
+      else if (enemies.some((enemy) => {
+        const previous = this.previousEnemyHp.get(enemy.id);
+        return previous !== undefined && enemy.hp < previous;
+      })) cues.add('enemyHit');
+      if (cues.has('enemyHit') || cues.has('enemyDeath')) this.nextEnemyCueMs = nowMs + 90;
     }
-    this.previousEnemyIds = currentEnemyIds;
+    this.previousEnemyHp = currentEnemyHp;
     return [...cues];
   }
 
   reset(): void {
-    this.previousEnemyIds.clear();
+    this.previousEnemyHp.clear();
     this.previousRewards.clear();
     this.previousBoss = null;
     this.lastSeenProjectileId = 0;
     this.nextShotCueMs = -Infinity;
-    this.nextDeathCueMs = -Infinity;
+    this.nextEnemyCueMs = -Infinity;
     this.nextBossHitCueMs = -Infinity;
   }
 }
 
-const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
-  wave: OscillatorType; volume: number }> = {
-  rifle: { from: 440, to: 160, seconds: 0.055, wave: 'triangle', volume: 0.09 },
-  heavyRifle: { from: 220, to: 75, seconds: 0.13, wave: 'triangle', volume: 0.14 },
+type ToneShape = { from: number; to: number; seconds: number;
+  wave: OscillatorType; volume: number };
+const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape }> = {
+  rifle: { from: 720, to: 220, seconds: .052, wave: 'sawtooth', volume: .09 },
+  heavyRifle: { from: 340, to: 95, seconds: .11, wave: 'sawtooth', volume: .14 },
   rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.08 },
   reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
-  damage: { from: 150, to: 70, seconds: 0.11, wave: 'triangle', volume: 0.14 },
-  fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: 0.18 },
+  damage: { from: 360, to: 125, seconds: .16, wave: 'triangle', volume: .18,
+    secondary: { from: 145, to: 60, seconds: .14, wave: 'sine', volume: .065 } },
+  fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: .22 },
   rewardHit: { from: 760, to: 950, seconds: 0.06, wave: 'sine', volume: 0.05 },
-  bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.056 },
-  enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.07 },
-  groundArtillery: { from: 105, to: 42, seconds: .34, wave: 'triangle', volume: .035 },
-  skyFlak: { from: 185, to: 65, seconds: .17, wave: 'triangle', volume: .022 },
+  enemyHit: { from: 240, to: 105, seconds: .075, wave: 'sine', volume: .055 },
+  enemyDeath: { from: 180, to: 65, seconds: .11, wave: 'sine', volume: .068 },
+  bossHit: { from: 125, to: 52, seconds: .13, wave: 'triangle', volume: .11,
+    secondary: { from: 460, to: 180, seconds: .075, wave: 'sine', volume: .027 } },
+  bossDeath: { from: 105, to: 34, seconds: .48, wave: 'sine', volume: .18,
+    secondary: { from: 330, to: 55, seconds: .28, wave: 'sawtooth', volume: .035 } },
+  groundArtillery: { from: 125, to: 40, seconds: .4, wave: 'sine', volume: .064 },
+  skyFlak: { from: 260, to: 90, seconds: .19, wave: 'triangle', volume: .039 },
 };
 
 export class GameAudio {
@@ -98,9 +107,8 @@ export class GameAudio {
   private master: GainNode | null = null;
   private readonly active = new Set<OscillatorNode>();
   private readonly observer = new AudioCueObserver();
+  private readonly environment = new EnvironmentAudioScheduler();
   private nextEnvironmentCueMs = -Infinity;
-  private nextGroundCueMs = -Infinity;
-  private nextFlakCueMs = -Infinity;
   private unlocked = false;
   private disposed = false;
 
@@ -110,7 +118,7 @@ export class GameAudio {
   }
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
-    enemies: readonly { id: number }[], rewards: readonly ObservedReward[],
+    enemies: readonly ObservedEnemy[], rewards: readonly ObservedReward[],
     boss: ObservedBoss | null, nowMs = performance.now(),
     projectiles: readonly ObservedProjectile[] = []): void {
     for (const cue of this.observer.observe(previousDefense, currentDefense, enemies,
@@ -119,21 +127,19 @@ export class GameAudio {
 
   resetObservation(): void {
     this.observer.reset();
+    this.environment.reset();
     this.nextEnvironmentCueMs = -Infinity;
-    this.nextGroundCueMs = -Infinity;
-    this.nextFlakCueMs = -Infinity;
   }
 
-  playEnvironment(cues: number, nowMs: number): void {
+  updateEnvironment(nowMs: number): void {
+    const cues = this.environment.update(nowMs);
     if (nowMs < this.nextEnvironmentCueMs) return;
-    if ((cues & GROUND_ARTILLERY_CUE) && nowMs >= this.nextGroundCueMs) {
+    if (cues & GROUND_ARTILLERY_CUE) {
       this.play('groundArtillery');
-      this.nextGroundCueMs = nowMs + 1000;
-      this.nextEnvironmentCueMs = nowMs + 650;
-    } else if ((cues & SKY_FLAK_CUE) && nowMs >= this.nextFlakCueMs) {
+      this.nextEnvironmentCueMs = nowMs + 350;
+    } else if (cues & SKY_FLAK_CUE) {
       this.play('skyFlak');
-      this.nextFlakCueMs = nowMs + 1100;
-      this.nextEnvironmentCueMs = nowMs + 650;
+      this.nextEnvironmentCueMs = nowMs + 350;
     }
   }
 
@@ -142,46 +148,36 @@ export class GameAudio {
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
       const shape = cueShape[cue];
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
       const environmental = cue === 'groundArtillery' || cue === 'skyFlak';
       const filter = environmental ? context.createBiquadFilter() : null;
       if (filter) {
         filter.type = 'lowpass';
-        filter.frequency.value = cue === 'groundArtillery' ? 420 : 650;
+        filter.frequency.value = cue === 'groundArtillery' ? 380 : 600;
+        filter.connect(this.master);
       }
       const start = context.currentTime;
-      oscillator.type = shape.wave;
-      oscillator.frequency.setValueAtTime(shape.from, start);
-      oscillator.frequency.exponentialRampToValueAtTime(shape.to, start + shape.seconds);
-      gain.gain.setValueAtTime(shape.volume, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + shape.seconds);
-      oscillator.connect(gain);
-      const overtone = cue === 'enemyDeath' ? context.createOscillator() : null;
-      if (overtone) {
-        overtone.type = 'triangle';
-        overtone.frequency.setValueAtTime(shape.from * 1.38, start);
-        overtone.frequency.exponentialRampToValueAtTime(shape.to * 1.18, start + shape.seconds);
-        overtone.connect(gain);
-        this.active.add(overtone);
-        overtone.onended = () => {
-          overtone.disconnect();
-          this.active.delete(overtone);
+      const playTone = (tone: ToneShape, disconnectFilter = false): void => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = tone.wave;
+        oscillator.frequency.setValueAtTime(tone.from, start);
+        oscillator.frequency.exponentialRampToValueAtTime(tone.to, start + tone.seconds);
+        gain.gain.setValueAtTime(tone.volume, start);
+        gain.gain.exponentialRampToValueAtTime(.001, start + tone.seconds);
+        oscillator.connect(gain);
+        gain.connect(filter ?? this.master!);
+        oscillator.onended = () => {
+          oscillator.disconnect();
+          gain.disconnect();
+          if (disconnectFilter) filter?.disconnect();
+          this.active.delete(oscillator);
         };
-      }
-      gain.connect(filter ?? this.master);
-      filter?.connect(this.master);
-      oscillator.onended = () => {
-        oscillator.disconnect();
-        gain.disconnect();
-        filter?.disconnect();
-        this.active.delete(oscillator);
+        this.active.add(oscillator);
+        oscillator.start(start);
+        oscillator.stop(start + tone.seconds);
       };
-      this.active.add(oscillator);
-      oscillator.start(start);
-      oscillator.stop(start + shape.seconds);
-      overtone?.start(start);
-      overtone?.stop(start + shape.seconds);
+      playTone(shape, true);
+      if (shape.secondary) playTone(shape.secondary);
     } catch {
       // Audio is optional presentation feedback.
     }
