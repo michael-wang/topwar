@@ -64,15 +64,15 @@ export class GameRenderer {
     window.removeEventListener('resize', this.resize);
   }
 
-  render(state: GameRenderState, nowMs = performance.now()): void {
-    if (this.disposed) return;
+  render(state: GameRenderState, nowMs = performance.now()): number {
+    if (this.disposed) return 0;
     const bossDistance = state.boss ? state.boss.z - state.player.z : Infinity;
     const bossFraming = Math.max(0, Math.min(1, (24 - bossDistance) / 21));
     const cameraDistance = 10 + 8 * bossFraming;
     this.camera.position.y = 6.5 + 2.7 * bossFraming;
     this.camera.position.z = state.player.z - cameraDistance;
     this.camera.lookAt(0, 0, state.player.z + 12.5);
-    this.environment.update(state.player.z, state.track.halfWidth, nowMs);
+    const environmentCues = this.environment.update(state.player.z, state.track.halfWidth, nowMs);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
     this.bossRenderer.update(state.boss, nowMs, state.player.z);
@@ -81,6 +81,7 @@ export class GameRenderer {
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.renderer.render(this.scene, this.camera);
+    return environmentCues;
   }
 
   present(events: readonly PresentationEvent[], nowMs: number,

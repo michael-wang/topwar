@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { ARTILLERY_SITES, ArtilleryScheduler } from './ArtilleryScheduler';
+import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from '../../audio/EnvironmentAudioCue';
+import { ARTILLERY_SITES, ArtilleryScheduler, type ArtilleryLayer } from './ArtilleryScheduler';
+import { WarActivityScheduler, SKY_FLAK_STARTED } from './WarActivityScheduler';
 
 const SPAN_LENGTH = 300;
 const JOINT_SPACING = 12;
@@ -10,6 +12,7 @@ export const BATTLEFIELD_FOG_COLOR = '#8eaaae';
 const ARTILLERY_FLASH_MS = 90;
 const ARTILLERY_GLOW_MS = 400;
 const ARTILLERY_SMOKE_MS = 2700;
+const SKY_FLAK_SMOKE_MS = 2100;
 
 type ImpactSlot = {
   group: THREE.Group;
@@ -17,7 +20,7 @@ type ImpactSlot = {
   glow: THREE.Sprite;
   smoke: THREE.Sprite;
   startedAtMs: number;
-  far: boolean;
+  layer: ArtilleryLayer;
 };
 
 export class BridgeEnvironment {
@@ -25,6 +28,9 @@ export class BridgeEnvironment {
   private readonly near = new THREE.Group();
   private readonly mid = new THREE.Group();
   private readonly far = new THREE.Group();
+  private readonly beachhead = new THREE.Group();
+  private readonly shipLayer = new THREE.Group();
+  private readonly skyLayer = new THREE.Group();
   private readonly previousBackground: THREE.Scene['background'];
   private readonly previousFog: THREE.Scene['fog'];
   private readonly geometries: THREE.BufferGeometry[] = [];
@@ -32,7 +38,12 @@ export class BridgeEnvironment {
   private readonly joints: THREE.Mesh[] = [];
   private readonly smoke: { sprite: THREE.Sprite; x: number }[] = [];
   private readonly artillery = new ArtilleryScheduler();
+  private readonly activity = new WarActivityScheduler();
   private readonly impactSlots: ImpactSlot[] = [];
+  private readonly flakSlots: ImpactSlot[] = [];
+  private readonly burningCores: THREE.Mesh[] = [];
+  private readonly ship = new THREE.Group();
+  private readonly aircraft = new THREE.Group();
   private smokeTexture: THREE.DataTexture | null = null;
   private readonly deck: THREE.Mesh;
   private readonly shoulders: THREE.Mesh[] = [];
@@ -48,6 +59,9 @@ export class BridgeEnvironment {
     this.near.name = 'battlefield-near';
     this.mid.name = 'battlefield-mid';
     this.far.name = 'battlefield-far';
+    this.beachhead.name = 'enemy-beachhead-horizon';
+    this.shipLayer.name = 'battlefield-water-traffic';
+    this.skyLayer.name = 'battlefield-sky-activity';
     const deckMaterial = this.material('#8b9291');
     const shoulderMaterial = this.material('#707b7d');
     const parapetMaterial = this.material('#59676b');
@@ -96,12 +110,15 @@ export class BridgeEnvironment {
       }
     }
     this.buildBattlefield();
+    this.buildBeachhead();
     this.buildArtillery();
-    this.scene.add(this.group, this.near, this.mid, this.far);
-    this.update(0, 3, 0);
+    this.buildActivity();
+    this.scene.add(this.group, this.near, this.mid, this.far, this.beachhead,
+      this.shipLayer, this.skyLayer);
+    this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number): void {
+  update(playerZ: number, trackHalfWidth: number, nowMs: number): number {
     const bridgeHalfWidth = Math.max(trackHalfWidth + 1, 4);
     this.group.position.z = playerZ + 55;
     this.deck.scale.x = bridgeHalfWidth * 2;
@@ -123,15 +140,25 @@ export class BridgeEnvironment {
       playerZ + 76 + Math.sin(playerZ * .014));
     this.far.position.set(Math.sin(playerZ * .008) * .1, 0,
       playerZ + 100 + Math.sin(playerZ * .009) * .25);
+    this.beachhead.position.set(Math.sin(playerZ * .003) * .02, 0, playerZ + 125);
+    this.shipLayer.position.z = playerZ;
+    this.skyLayer.position.z = playerZ + 125;
     for (let i = 0; i < this.smoke.length; i++) {
       this.smoke[i].sprite.position.x = this.smoke[i].x
         + Math.sin(nowMs * .00015 + i * 1.7) * .16;
     }
-    this.updateArtillery(nowMs);
+    for (let index = 0; index < this.burningCores.length; index++) {
+      this.burningCores[index].scale.y = .9 + Math.sin(nowMs * .006 + index * 2) * .1;
+    }
+    const groundImpact = this.updateArtillery(nowMs);
+    const skyEvents = this.updateActivity(nowMs);
+    return (groundImpact ? GROUND_ARTILLERY_CUE : 0)
+      | ((skyEvents & SKY_FLAK_STARTED) ? SKY_FLAK_CUE : 0);
   }
 
   dispose(): void {
-    this.scene.remove(this.group, this.near, this.mid, this.far, ...this.joints);
+    this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead,
+      this.shipLayer, this.skyLayer, ...this.joints);
     this.scene.background = this.previousBackground;
     this.scene.fog = this.previousFog;
     this.smokeTexture?.dispose();
@@ -142,7 +169,8 @@ export class BridgeEnvironment {
   private buildBattlefield(): void {
     const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
     const glowGeometry = new THREE.SphereGeometry(1, 8, 6);
-    this.geometries.push(blockGeometry, glowGeometry);
+    const flameGeometry = new THREE.ConeGeometry(.42, 1.15, 5);
+    this.geometries.push(blockGeometry, glowGeometry, flameGeometry);
     const nearMaterial = this.material('#424e54');
     const nearAccent = this.material('#566267');
     const midMaterial = this.material('#66767a');
@@ -158,9 +186,14 @@ export class BridgeEnvironment {
     const lowHaze = new THREE.SpriteMaterial({ map: this.smokeTexture,
       color: BATTLEFIELD_FOG_COLOR, transparent: true, opacity: .34, depthWrite: false });
     this.materials.push(nearSmoke, midSmoke, farSmoke, lowHaze);
-    const glowMaterial = new THREE.MeshBasicMaterial({ color: '#b27a51',
-      transparent: true, opacity: .38, depthWrite: false });
-    this.materials.push(glowMaterial);
+    const wreckMaterial = this.material('#2b3335');
+    const glowMaterial = new THREE.MeshBasicMaterial({ color: '#a46239',
+      transparent: true, opacity: .2, depthWrite: false });
+    const flameMaterial = new THREE.MeshBasicMaterial({ color: '#bd7947',
+      transparent: true, opacity: .66, depthWrite: false });
+    const fireSmokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+      color: '#283136', transparent: true, opacity: .55, depthWrite: false });
+    this.materials.push(glowMaterial, flameMaterial, fireSmokeMaterial);
 
     const ruin = (layer: THREE.Group, x: number, z: number, width: number,
       height: number, material: THREE.Material, tilt = 0): void => {
@@ -182,11 +215,36 @@ export class BridgeEnvironment {
       layer.add(sprite);
     };
     const fire = (layer: THREE.Group, x: number, z: number): void => {
+      const site = new THREE.Group();
+      site.name = 'battlefield-burning-site';
+      site.position.set(x, 0, z);
+      const wreck = new THREE.Mesh(blockGeometry, wreckMaterial);
+      wreck.name = 'burning-wreck-base';
+      wreck.position.set(0, .22, 0);
+      wreck.scale.set(2.2, .45, 1.3);
+      wreck.rotation.y = .3;
+      const slab = new THREE.Mesh(blockGeometry, wreckMaterial);
+      slab.name = 'burning-wreck-slab';
+      slab.position.set(-.55, .66, .2);
+      slab.scale.set(.85, 1.1, .3);
+      slab.rotation.z = -.32;
       const glow = new THREE.Mesh(glowGeometry, glowMaterial);
       glow.name = 'battlefield-fire-glow';
-      glow.position.set(x, .25, z);
-      glow.scale.set(1.45, .58, .65);
-      layer.add(glow);
+      glow.position.set(.25, .45, 0);
+      glow.scale.set(.68, .28, .48);
+      const core = new THREE.Mesh(flameGeometry, flameMaterial);
+      core.name = 'burning-fire-core';
+      core.position.set(.3, .95, 0);
+      this.burningCores.push(core);
+      site.add(wreck, slab, glow, core);
+      for (const [offsetX, y, size] of [[-.2, 2, 2.3], [.2, 3.3, 3.2]]) {
+        const puff = new THREE.Sprite(fireSmokeMaterial);
+        puff.name = 'burning-black-smoke';
+        puff.position.set(offsetX, y, 0);
+        puff.scale.set(size, size * 1.25, 1);
+        site.add(puff);
+      }
+      layer.add(site);
     };
 
     // Large low wreckage frames the bridge without entering the combat lane.
@@ -230,6 +288,79 @@ export class BridgeEnvironment {
     smoke(this.far, lowHaze, 2.8, 2.8, -9, 18, 9, 'battlefield-low-haze');
   }
 
+  private buildBeachhead(): void {
+    const block = new THREE.BoxGeometry(1, 1, 1);
+    this.geometries.push(block);
+    const steel = new THREE.MeshBasicMaterial({ color: '#526a70', transparent: true,
+      opacity: .34, depthWrite: false, fog: false });
+    const distance = new THREE.MeshBasicMaterial({ color: '#647c81', transparent: true,
+      opacity: .25, depthWrite: false, fog: false });
+    this.materials.push(steel, distance);
+    const part = (parent: THREE.Group, name: string, x: number, y: number,
+      z: number, width: number, height: number, depth: number,
+      material: THREE.Material = steel, tilt = 0): void => {
+      const mesh = new THREE.Mesh(block, material);
+      mesh.name = name;
+      mesh.position.set(x, y, z);
+      mesh.scale.set(width, height, depth);
+      mesh.rotation.z = tilt;
+      parent.add(mesh);
+    };
+    const crane = (x: number, z: number, height: number, arm: number,
+      tilt: number): void => {
+      const group = new THREE.Group();
+      group.name = 'beachhead-crane';
+      part(group, 'crane-leg', -2.1, height / 2, z, .6, height, .6, steel, tilt);
+      part(group, 'crane-leg', 2.1, height / 2, z, .6, height, .6, steel, tilt);
+      part(group, 'crane-crossbeam', 0, height - 2, z, 5.2, .42, .6);
+      part(group, 'crane-boom', arm * .21, height + 1, z, arm, .5, .7, steel, tilt);
+      part(group, 'crane-cable', arm * .38, height - 2.5, z, .13, 6, .12, distance);
+      group.position.x = x;
+      this.beachhead.add(group);
+    };
+    crane(-18.5, -2.8, 22, 13, -.075);
+    crane(16, -3.6, 19, 11, .065);
+    crane(28, -5, 15, 8, -.1);
+    const tower = new THREE.Group();
+    tower.name = 'beachhead-control-tower';
+    part(tower, 'tower-shaft', 0, 8, -4, 2.1, 16, 2, distance, -.04);
+    part(tower, 'tower-cab', 0, 17, -4, 5.5, 2.6, 2.3);
+    part(tower, 'tower-broken-roof', -.6, 18.8, -4, 4.4, .3, 2.3, steel, -.19);
+    tower.position.x = 7.5;
+    this.beachhead.add(tower);
+    part(this.beachhead, 'beachhead-broken-mast', -8.5, 11, -4,
+      .22, 20, .24, steel, .17);
+    part(this.beachhead, 'beachhead-terminal', -3.2, 2.6, -5,
+      14, 5.2, 3, distance);
+    const transport = (x: number, z: number, width: number): void => {
+      const group = new THREE.Group();
+      group.name = 'beachhead-transport';
+      part(group, 'ship-hull', 0, 1.4, z, width, 2.8, 3, distance);
+      part(group, 'ship-superstructure', -width * .16, 4.8, z,
+        width * .38, 4.2, 2.4);
+      part(group, 'ship-stack', -width * .22, 8.2, z,
+        1.2, 3.4, 1.1, steel);
+      part(group, 'ship-mast', width * .16, 7.2, z,
+        .18, 8, .18, distance, -.08);
+      group.position.x = x;
+      this.beachhead.add(group);
+    };
+    transport(-32, -7, 15);
+    transport(34, -8, 12);
+    if (this.smokeTexture) {
+      const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#72868a', transparent: true, opacity: .2, depthWrite: false, fog: false });
+      this.materials.push(smokeMaterial);
+      for (const [x, y, z, scale] of [[-20, 18, -9, 14], [22, 15, -10, 12]]) {
+        const smoke = new THREE.Sprite(smokeMaterial);
+        smoke.name = 'beachhead-smoke';
+        smoke.position.set(x, y, z);
+        smoke.scale.set(scale, scale * 1.4, 1);
+        this.beachhead.add(smoke);
+      }
+    }
+  }
+
   private createSmokeTexture(): THREE.DataTexture {
     const size = 32;
     const data = new Uint8Array(size * size * 4);
@@ -255,7 +386,7 @@ export class BridgeEnvironment {
   }
 
   private buildArtillery(): void {
-    for (let index = 0; index < 3; index++) {
+    for (let index = 0; index < 5; index++) {
       const flashMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
         color: '#fff1b1', transparent: true, opacity: 0, depthWrite: false,
         blending: THREE.AdditiveBlending, fog: false });
@@ -277,23 +408,136 @@ export class BridgeEnvironment {
       group.visible = false;
       this.mid.add(group);
       this.impactSlots.push({ group, flash, glow, smoke,
-        startedAtMs: -Infinity, far: false });
+        startedAtMs: -Infinity, layer: 'mid' });
     }
   }
 
-  private updateArtillery(nowMs: number): void {
+  private buildActivity(): void {
+    const block = new THREE.BoxGeometry(1, 1, 1);
+    this.geometries.push(block);
+    const hull = this.material('#303b40');
+    const fittings = this.material('#39474b');
+    const planeMaterial = new THREE.MeshBasicMaterial({ color: '#252d31',
+      transparent: true, opacity: .62, depthWrite: false, fog: false });
+    this.materials.push(planeMaterial);
+    const part = (parent: THREE.Group, name: string, x: number, y: number,
+      z: number, width: number, height: number, depth: number,
+      material: THREE.Material): void => {
+      const mesh = new THREE.Mesh(block, material);
+      mesh.name = name;
+      mesh.position.set(x, y, z);
+      mesh.scale.set(width, height, depth);
+      parent.add(mesh);
+    };
+    this.ship.name = 'battlefield-warship';
+    part(this.ship, 'warship-hull', 0, 0, 0, 5.4, .56, 1.6, hull);
+    part(this.ship, 'warship-deck', -.5, .4, 0, 3.1, .32, 1.3, fittings);
+    part(this.ship, 'warship-superstructure', -.65, .86, 0,
+      1.4, .82, 1, hull);
+    part(this.ship, 'warship-mast', -1.1, 1.65, 0, .12, 1, .12, fittings);
+    part(this.ship, 'warship-gun', 1.4, .58, 0, 1.4, .15, .22, hull);
+    this.ship.visible = false;
+    this.shipLayer.add(this.ship);
+
+    this.aircraft.name = 'battlefield-aircraft';
+    part(this.aircraft, 'aircraft-fuselage', 0, 0, 0, .52, .16, 3.2, planeMaterial);
+    part(this.aircraft, 'aircraft-wings', 0, 0, -.18, 4.1, .12, .66, planeMaterial);
+    part(this.aircraft, 'aircraft-tail', 0, 0, -1.3, 1.55, .12, .34, planeMaterial);
+    part(this.aircraft, 'aircraft-cockpit', 0, .17, .4, .38, .27, .7, planeMaterial);
+    this.aircraft.visible = false;
+    this.skyLayer.add(this.aircraft);
+
+    for (let index = 0; index < 2; index++) {
+      const flashMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#e5c399', transparent: true, opacity: 0, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false });
+      const glowMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#a97455', transparent: true, opacity: 0, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false });
+      const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
+        color: '#252d31', transparent: true, opacity: 0, depthWrite: false,
+        fog: false });
+      this.materials.push(flashMaterial, glowMaterial, smokeMaterial);
+      const group = new THREE.Group();
+      group.name = 'battlefield-sky-flak-slot';
+      const flash = new THREE.Sprite(flashMaterial);
+      flash.name = 'sky-flak-flash';
+      const glow = new THREE.Sprite(glowMaterial);
+      glow.name = 'sky-flak-glow';
+      const smoke = new THREE.Sprite(smokeMaterial);
+      smoke.name = 'sky-flak-smoke';
+      group.add(flash, glow, smoke);
+      group.visible = false;
+      this.skyLayer.add(group);
+      this.flakSlots.push({ group, flash, glow, smoke,
+        startedAtMs: -Infinity, layer: 'far' });
+    }
+  }
+
+  private updateActivity(nowMs: number): number {
+    const events = this.activity.update(nowMs);
+    const shipAge = nowMs - this.activity.shipStartedAtMs;
+    this.ship.visible = shipAge >= 0 && shipAge < 12000;
+    if (this.ship.visible) {
+      this.ship.position.set(this.activity.shipX
+        + this.activity.shipSide * shipAge / 12000 * 18, -.15, 38);
+    }
+    const aircraftAge = nowMs - this.activity.aircraftStartedAtMs;
+    this.aircraft.visible = aircraftAge >= 0 && aircraftAge < 10000;
+    if (this.aircraft.visible) {
+      this.aircraft.position.set(this.activity.aircraftSide
+        * (-26 + aircraftAge / 10000 * 52), 17, -15);
+    }
+    if (events & SKY_FLAK_STARTED) {
+      const slot = this.flakSlots.find((candidate) => !candidate.group.visible)
+        ?? this.flakSlots.reduce((oldest, candidate) =>
+          candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+      slot.group.position.set(this.activity.flakX, this.activity.flakY, -3);
+      slot.startedAtMs = nowMs;
+      slot.group.visible = true;
+    }
+    for (const slot of this.flakSlots) {
+      if (!slot.group.visible) continue;
+      const age = nowMs - slot.startedAtMs;
+      if (age >= SKY_FLAK_SMOKE_MS) {
+        slot.group.visible = false;
+        continue;
+      }
+      slot.flash.visible = age < 85;
+      slot.flash.scale.setScalar(1.15 + age * .004);
+      (slot.flash.material as THREE.SpriteMaterial).opacity = slot.flash.visible
+        ? .72 * (1 - age / 85) : 0;
+      slot.glow.visible = age >= 45 && age < 270;
+      slot.glow.scale.setScalar(1.5 + age * .003);
+      (slot.glow.material as THREE.SpriteMaterial).opacity = slot.glow.visible
+        ? .34 * (1 - age / 270) : 0;
+      slot.smoke.visible = age >= 150;
+      slot.smoke.position.y = (age - 150) * .00045;
+      slot.smoke.scale.setScalar(1.3 + age * .0008);
+      (slot.smoke.material as THREE.SpriteMaterial).opacity = slot.smoke.visible
+        ? .42 * Math.min(1, (age - 150) / 250)
+          * (1 - (age - 150) / (SKY_FLAK_SMOKE_MS - 150)) : 0;
+    }
+    return events;
+  }
+
+  private updateArtillery(nowMs: number): boolean {
     const siteIndex = this.artillery.update(nowMs);
     if (siteIndex >= 0) {
       const site = ARTILLERY_SITES[siteIndex];
       const slot = this.impactSlots.find((candidate) => !candidate.group.visible)
         ?? this.impactSlots.reduce((oldest, candidate) =>
           candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
-      const layer = site.layer === 'mid' ? this.mid : this.far;
+      const layer = site.layer === 'near' ? this.near
+        : site.layer === 'mid' ? this.mid : this.beachhead;
       layer.add(slot.group);
-      slot.group.position.set(site.x, 0, site.z);
-      slot.group.scale.setScalar(site.layer === 'far' ? .68 : 1);
+      slot.group.position.set(site.x, site.y ?? 0, site.z);
+      slot.group.scale.setScalar(site.layer === 'near' ? 1.22
+        : site.layer === 'far' ? .68 : 1);
       slot.startedAtMs = nowMs;
-      slot.far = site.layer === 'far';
+      slot.layer = site.layer;
+      (slot.smoke.material as THREE.SpriteMaterial).color.set(site.layer === 'near'
+        ? '#20282b' : site.layer === 'mid' ? '#343e42' : '#536064');
       slot.group.visible = true;
     }
     for (const slot of this.impactSlots) {
@@ -303,7 +547,8 @@ export class BridgeEnvironment {
         slot.group.visible = false;
         continue;
       }
-      const brightness = slot.far ? .6 : .9;
+      const brightness = slot.layer === 'near' ? 1
+        : slot.layer === 'far' ? .58 : .82;
       const flash = ageMs < ARTILLERY_FLASH_MS;
       slot.flash.visible = flash;
       slot.flash.position.set(0, 1.3, 0);
@@ -323,9 +568,11 @@ export class BridgeEnvironment {
       slot.smoke.position.set(.25, 1.8 + smokeAge * .0007, .1);
       slot.smoke.scale.setScalar(3.4 + smokeAge * .0014);
       (slot.smoke.material as THREE.SpriteMaterial).opacity = smoke
-        ? (slot.far ? .34 : .55) * Math.min(1, smokeAge / 350)
+        ? (slot.layer === 'far' ? .3 : slot.layer === 'near' ? .6 : .5)
+          * Math.min(1, smokeAge / 350)
           * (1 - smokeAge / (ARTILLERY_SMOKE_MS - 220)) : 0;
     }
+    return siteIndex >= 0;
   }
 
   private material(color: string, transparent = false, opacity = 1): THREE.MeshStandardMaterial {

@@ -8,7 +8,7 @@
     "memberRadius": 0.22
   },
   "track": {
-    "halfWidth": 3.0,
+    "halfWidth": 3.2,
     "defenseLineOffset": 1.5
   },
   "weapon": {

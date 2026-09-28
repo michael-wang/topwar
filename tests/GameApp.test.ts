@@ -7,6 +7,8 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import type { PointerDragCallbacks } from '../src/input/PointerDragInput';
 import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInput';
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
+import { GameAudio } from '../src/audio/GameAudio';
+import { GROUND_ARTILLERY_CUE } from '../src/audio/EnvironmentAudioCue';
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
@@ -233,6 +235,18 @@ afterEach(() => {
 });
 
 describe('GameApp config and frame lifecycle', () => {
+  it('plays renderer-owned environmental cues from presentation time', () => {
+    const raf = createRaf();
+    const playEnvironment = vi.spyOn(GameAudio.prototype, 'playEnvironment');
+    mock.render.mockReturnValueOnce(GROUND_ARTILLERY_CUE);
+    const app = new GameApp({} as HTMLElement, createConfigStore().store,
+      level, {} as CharacterAssets);
+    app.start();
+    raf.frame(100);
+    expect(playEnvironment).toHaveBeenCalledWith(GROUND_ARTILLERY_CUE, 0);
+    app.dispose();
+    playEnvironment.mockRestore();
+  });
   it('shows a runtime error and stops scheduling frames when rendering throws', () => {
     const raf = createRaf();
     const notice = { className: '', textContent: '', setAttribute: vi.fn() };
@@ -288,7 +302,7 @@ describe('GameApp config and frame lifecycle', () => {
       rocket: { damage: 25, fireRate: 0.6, projectileSpeed: 18, range: 40, blastRadius: 2 } });
     expect(mock.constructedWith).toHaveBeenCalledOnce();
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 3,
-      startRocketCount: 0, rewardRowsPerReward: 8, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 0, rewardRowsPerReward: 7, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     app.dispose();
   });
   it('starts the simulation from config and sends plain live state to the renderer', () => {
@@ -296,7 +310,7 @@ describe('GameApp config and frame lifecycle', () => {
     const config = createConfigStore(5, 0.8);
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 5,
-      startRocketCount: 0, rewardRowsPerReward: 8, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 0, rewardRowsPerReward: 7, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(config.listenerCount()).toBe(1);
 
     app.start();
@@ -375,7 +389,7 @@ describe('GameApp config and frame lifecycle', () => {
     config.changePlayer({ startRocketCount: 1 });
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
-      startRocketCount: 1, rewardRowsPerReward: 8, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+      startRocketCount: 1, rewardRowsPerReward: 7, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3, hitRadiusBonus: 0 }] });
     app.start();
@@ -628,7 +642,7 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(100_000 + 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 9, forwardSpeed: 1.2 });
     tune(defaults);
-    expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 8,
+    expect(mock.setRuntimeBalance).toHaveBeenLastCalledWith({ rewardRowsPerReward: 7,
       enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, bossHpScale: 3 });
     raf.frame(100_000 + 2 * 1000 / 60);
     expect(mock.step.mock.lastCall![2]).toMatchObject({ moveSpeed: 5, forwardSpeed: 3,
@@ -638,6 +652,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('maps keyboard edges and neutral release to the current player position', () => {
     const raf = createRaf();
     const config = createConfigStore();
+    config.changeTrack({ halfWidth: 3.2 });
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     const keyboard = mock.keyboardConstructedWith.mock.calls[0][0] as KeyboardSteeringCallbacks;
     const drag = mock.inputConstructedWith.mock.calls[0][0] as PointerDragCallbacks;
@@ -647,29 +662,28 @@ describe('GameApp config and frame lifecycle', () => {
     keyboard.onAxisChange(-1);
     raf.frame(100 + 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
-      1 / 60, { targetX: -2.5 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 2.5, ...combatTuning },
+      1 / 60, { targetX: -3.2 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.2, ...combatTuning },
     );
-    config.changeTrack({ halfWidth: 3.5 });
     keyboard.onAxisChange(1);
     raf.frame(100 + 2 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
-      1 / 60, { targetX: 3.5 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
+      1 / 60, { targetX: 3.2 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.2, ...combatTuning },
     );
     keyboard.onAxisChange(0);
     raf.frame(100 + 3 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
       1 / 60, { targetX: 2 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.2, ...combatTuning },
     );
 
     drag.onDragStart();
     drag.onDrag(0.25);
     raf.frame(100 + 4 * 1000 / 60);
     expect(mock.step).toHaveBeenLastCalledWith(
-      1 / 60, { targetX: 3.75 },
-      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.5, ...combatTuning },
+      1 / 60, { targetX: 3.6 },
+      { moveSpeed: 5, forwardSpeed: 3, trackHalfWidth: 3.2, ...combatTuning },
     );
     app.dispose();
   });
@@ -697,7 +711,7 @@ describe('GameApp config and frame lifecycle', () => {
     const onRetry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
     onRetry();
     expect(mock.constructedWith).toHaveBeenLastCalledWith({ seed: 2, level, startSquad: 5,
-      startRocketCount: 1, rewardRowsPerReward: 8, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 4,
+      startRocketCount: 1, rewardRowsPerReward: 7, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 4,
         tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     expect(raf.pending.size).toBe(1);

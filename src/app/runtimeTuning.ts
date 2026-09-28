@@ -17,7 +17,7 @@ export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelD
   return {
     bulletSpeed: config.weapon.rifle.projectileSpeed,
     bulletRange: config.weapon.rifle.range,
-    rewardRowsPerReward: level.enemyStream?.rewards?.rowsPerReward ?? 8,
+    rewardRowsPerReward: level.enemyStream?.rewards?.rowsPerReward ?? 7,
     enemyHigherTierPowerMultiplier: config.tiers.enemyHigherTierPowerMultiplier,
     rifleHigherTierPowerMultiplier: config.tiers.rifleHigherTierPowerMultiplier,
     fireRate: config.weapon.rifle.fireRate,

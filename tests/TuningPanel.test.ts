@@ -32,7 +32,7 @@ class ElementStub extends EventTarget {
   }
 }
 
-const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 8,
+const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPerReward: 7,
   enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10,
   fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3 };
 
@@ -53,7 +53,7 @@ describe('temporary tuning panel', () => {
     bossScale.value = '20';
     bossScale.dispatchEvent(new Event('input'));
     expect(onChange).toHaveBeenLastCalledWith({ ...defaults, bossHpScale: 20 });
-    expect(root.findAll('output')[2].textContent).toContain('1 / 8 rows (≈12.5%)');
+    expect(root.findAll('output')[2].textContent).toContain('1 / 7 rows (≈14.3%)');
     const density = inputs[2];
     density.value = '4';
     density.dispatchEvent(new Event('input'));
@@ -62,7 +62,7 @@ describe('temporary tuning panel', () => {
     expect(root.findAll('output')[2].textContent).toContain('1 / 4 rows (≈25%)');
     root.querySelector('button')!.dispatchEvent(new Event('click'));
     expect(onChange).toHaveBeenLastCalledWith(defaults);
-    expect(density.value).toBe('8');
+    expect(density.value).toBe('7');
     expect(bossScale.value).toBe('3');
     panel.toggle();
     expect(root.open).toBe(true);

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { ProjectilePulseTracker, ProjectileRenderer, projectilePulseScale } from '../src/rendering/projectiles/ProjectileRenderer';
 import { AudioCueObserver, GameAudio } from '../src/audio/GameAudio';
+import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from '../src/audio/EnvironmentAudioCue';
 
 describe('presentation-only motion', () => {
   it('keeps gameplay X/Z while firing the rifle and showing its muzzle flash', () => {
@@ -152,6 +153,22 @@ describe('audio cue observation and safety', () => {
     expect(removeKeys).toHaveBeenCalledWith('keydown', expect.any(Function));
   });
 
+  it('throttles presentation-driven ground and sky cues independently of gameplay observation', () => {
+    const audio = new GameAudio(new EventTarget() as HTMLElement, new EventTarget() as Window);
+    const play = vi.spyOn(audio, 'play');
+    audio.playEnvironment(GROUND_ARTILLERY_CUE, 0);
+    audio.playEnvironment(GROUND_ARTILLERY_CUE | SKY_FLAK_CUE, 200);
+    audio.playEnvironment(SKY_FLAK_CUE, 700);
+    audio.playEnvironment(GROUND_ARTILLERY_CUE, 900);
+    audio.playEnvironment(GROUND_ARTILLERY_CUE, 1400);
+    expect(play.mock.calls.map(([cue]) => cue))
+      .toEqual(['groundArtillery', 'skyFlak', 'groundArtillery']);
+    audio.resetObservation();
+    audio.playEnvironment(SKY_FLAK_CUE, 0);
+    expect(play.mock.calls.at(-1)).toEqual(['skyFlak']);
+    audio.dispose();
+  });
+
   it('unlocks once, ignores suspension, and keeps its context across observation resets', async () => {
     const viewport = new EventTarget();
     const keys = new EventTarget();
@@ -167,8 +184,14 @@ describe('audio cue observation and safety', () => {
       gains.push(node);
       return node;
     }
+    const filters: { type: string; frequency: { value: number } }[] = [];
     const context = { state: 'suspended', currentTime: 0, destination: {},
       createOscillator: vi.fn(oscillator), createGain: vi.fn(gain),
+      createBiquadFilter: vi.fn(() => {
+        const filter = { type: '', frequency: { value: 0 }, connect: vi.fn(), disconnect: vi.fn() };
+        filters.push(filter);
+        return filter;
+      }),
       resume: vi.fn(async () => {}), close: vi.fn(async () => {}) };
     const constructor = vi.fn(function () { return context; });
     vi.stubGlobal('AudioContext', constructor);
@@ -198,6 +221,12 @@ describe('audio cue observation and safety', () => {
     expect(constructor).toHaveBeenCalledTimes(1);
     audio.play('rifle');
     expect(gains.at(-1)?.gain.setValueAtTime).toHaveBeenCalledWith(.09, 0);
+    audio.playEnvironment(GROUND_ARTILLERY_CUE, 1000);
+    audio.playEnvironment(SKY_FLAK_CUE, 2000);
+    expect(filters.map((filter) => [filter.type, filter.frequency.value]))
+      .toEqual([['lowpass', 420], ['lowpass', 650]]);
+    expect(gains.at(-2)?.gain.setValueAtTime).toHaveBeenCalledWith(.035, 0);
+    expect(gains.at(-1)?.gain.setValueAtTime).toHaveBeenCalledWith(.022, 0);
     audio.dispose();
     expect(stops).toHaveBeenCalled();
     expect(context.close).toHaveBeenCalledOnce();

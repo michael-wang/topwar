@@ -285,7 +285,8 @@ export class GameApp {
       };
       if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
-      this.renderer.render(renderState, this.presentationMs);
+      const environmentCues = this.renderer.render(renderState, this.presentationMs);
+      this.audio.playEnvironment(environmentCues ?? 0, this.presentationMs);
       this.gameOverOverlay.setVisible(state.squad.count === 0
         && this.presentationMs >= this.fatalPresentationUntilMs);
       this.frameId = requestAnimationFrame(this.renderFrame);

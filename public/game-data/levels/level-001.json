@@ -21,6 +21,6 @@
       "firstBossHpMultiplier": 4000,
       "laterBossHpMultiplier": 1000
     },
-    "rewards": { "rowsPerReward": 8, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 3.2 }
+    "rewards": { "rowsPerReward": 7, "spawnAheadDistance": 30, "hitsRequired": 10, "seed": 271828, "sideX": 3.2 }
   }
 }

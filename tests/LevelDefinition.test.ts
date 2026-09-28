@@ -37,7 +37,7 @@ describe('LevelDefinitionSchema', () => {
       tierProgression: { firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
         curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000,
         laterBossHpMultiplier: 1000 },
-      rewards: { rowsPerReward: 8, spawnAheadDistance: 30,
+      rewards: { rowsPerReward: 7, spawnAheadDistance: 30,
         hitsRequired: 10, seed: 271828, sideX: 3.2 } });
     expect(parsed.upgradeGates).toEqual([]);
   });

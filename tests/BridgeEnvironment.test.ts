@@ -14,6 +14,7 @@ describe('BridgeEnvironment', () => {
     const near = scene.getObjectByName('battlefield-near') as THREE.Group;
     const mid = scene.getObjectByName('battlefield-mid') as THREE.Group;
     const far = scene.getObjectByName('battlefield-far') as THREE.Group;
+    const beachhead = scene.getObjectByName('enemy-beachhead-horizon') as THREE.Group;
     expect(deck).toBeDefined();
     expect(water).toBeDefined();
     expect(left).toBeDefined();
@@ -25,6 +26,40 @@ describe('BridgeEnvironment', () => {
     expect(near).toBeDefined();
     expect(mid).toBeDefined();
     expect(far).toBeDefined();
+    expect(beachhead).toBeDefined();
+    environment.update(0, 3.2, 0);
+    expect(deck.scale.x / 2).toBeCloseTo(4.2);
+    expect(right.position.x - .12 - 3.2).toBeGreaterThanOrEqual(.7);
+    expect(deck.scale.x / 2 - (3.2 + .3)).toBeGreaterThan(.6);
+    expect(beachhead.position.z - far.position.z).toBeGreaterThan(20);
+    expect(beachhead.position.z + 10).toBeLessThan(180);
+    for (const name of ['beachhead-crane', 'beachhead-transport',
+      'beachhead-control-tower']) {
+      expect(beachhead.getObjectByName(name)).toBeDefined();
+    }
+    const camera = new THREE.PerspectiveCamera(48, 9 / 16, .1, 180);
+    camera.position.set(0, 6.5, -10);
+    camera.lookAt(0, 0, 12.5);
+    camera.updateMatrixWorld();
+    beachhead.updateMatrixWorld(true);
+    const upperShapes = [
+      ...beachhead.children.filter((child) => child.name === 'beachhead-crane')
+        .slice(0, 2).map((crane) => crane.getObjectByName('crane-boom')!),
+      beachhead.getObjectByName('tower-cab')!,
+    ];
+    expect(upperShapes.every((shape) => {
+      const projected = shape.getWorldPosition(new THREE.Vector3()).project(camera);
+      return Math.abs(projected.x) < .9 && projected.y > .45 && projected.y < 1;
+    })).toBe(true);
+    const ghost = beachhead.getObjectByName('crane-boom') as THREE.Mesh;
+    const ghostMaterial = ghost.material as THREE.MeshBasicMaterial;
+    expect(ghostMaterial.fog).toBe(false);
+    expect(ghostMaterial.opacity).toBeGreaterThan(.15);
+    expect(ghostMaterial.opacity).toBeLessThan(.36);
+    const fogColor = new THREE.Color(BATTLEFIELD_FOG_COLOR);
+    expect(Math.abs(ghostMaterial.color.r - fogColor.r)
+      + Math.abs(ghostMaterial.color.g - fogColor.g)
+      + Math.abs(ghostMaterial.color.b - fogColor.b)).toBeLessThan(.8);
     expect(scene.fog).toBeInstanceOf(THREE.Fog);
     const fog = scene.fog as THREE.Fog;
     expect(fog.color.equals(scene.background as THREE.Color)).toBe(true);
@@ -52,13 +87,21 @@ describe('BridgeEnvironment', () => {
       child.name === 'battlefield-smoke') as THREE.Sprite).material as THREE.SpriteMaterial).color;
     expect(smokeColor(near).getHSL({ h: 0, s: 0, l: 0 }).l)
       .toBeLessThan(smokeColor(far).getHSL({ h: 0, s: 0, l: 0 }).l);
-    expect(mid.children.filter((child) => child.name === 'battlefield-fire-glow'))
-      .toHaveLength(2);
-    expect(far.children.some((child) => child.name === 'battlefield-fire-glow')).toBe(false);
+    const burningSites = mid.children.filter((child) => child.name === 'battlefield-burning-site');
+    expect(burningSites).toHaveLength(2);
+    for (const site of burningSites) {
+      expect(site.getObjectByName('burning-wreck-base')).toBeDefined();
+      expect(site.getObjectByName('burning-fire-core')).toBeDefined();
+      expect(site.getObjectByName('battlefield-fire-glow')).toBeDefined();
+      expect(site.getObjectByName('burning-black-smoke')).toBeDefined();
+      const glow = site.getObjectByName('battlefield-fire-glow') as THREE.Mesh;
+      expect(glow.scale.x).toBeLessThan(1);
+    }
+    expect(far.getObjectByName('battlefield-burning-site')).toBeUndefined();
 
     const joint = scene.getObjectByName('bridge-expansion-joint') as THREE.Mesh;
     const firstJointZ = joint.position.z;
-    environment.update(65, 3, 1000);
+    environment.update(65, 3.2, 1000);
     expect(deck.getWorldPosition(new THREE.Vector3()).z).toBe(120);
     expect(water.getWorldPosition(new THREE.Vector3()).z).toBe(120);
     expect(deck.getWorldPosition(new THREE.Vector3()).z + 150).toBeGreaterThan(65 + 90);
@@ -69,24 +112,29 @@ describe('BridgeEnvironment', () => {
     expect(mid.position.z - 65).toBeLessThan(78);
     expect(far.position.z - 65).toBeGreaterThan(99);
     expect(far.position.z - 65).toBeLessThan(101);
+    expect(beachhead.position.z - 65).toBe(125);
     expect(near.position.z).toBeLessThan(mid.position.z);
     expect(mid.position.z).toBeLessThan(far.position.z);
     expect(mid.position.z - near.position.z).toBeGreaterThan(20);
     expect(far.position.z - mid.position.z).toBeGreaterThan(20);
     expect(Math.abs(near.position.x)).toBeGreaterThan(Math.abs(mid.position.x));
     expect(Math.abs(mid.position.x)).toBeGreaterThan(Math.abs(far.position.x));
+    expect(Math.abs(far.position.x)).toBeGreaterThan(Math.abs(beachhead.position.x));
 
     const disposeGeometry = vi.spyOn(deck.geometry, 'dispose');
     const disposeMaterial = vi.spyOn(deck.material as THREE.Material, 'dispose');
+    const disposeGhost = vi.spyOn(ghostMaterial, 'dispose');
     environment.dispose();
     expect(scene.getObjectByName('bridge-deck')).toBeUndefined();
     expect(scene.getObjectByName('battlefield-near')).toBeUndefined();
     expect(scene.getObjectByName('battlefield-mid')).toBeUndefined();
     expect(scene.getObjectByName('battlefield-far')).toBeUndefined();
+    expect(scene.getObjectByName('enemy-beachhead-horizon')).toBeUndefined();
     expect(scene.getObjectByName('bridge-expansion-joint')).toBeUndefined();
     expect(scene.fog).toBeNull();
     expect(scene.background).toBeNull();
     expect(disposeGeometry).toHaveBeenCalledOnce();
     expect(disposeMaterial).toHaveBeenCalledOnce();
+    expect(disposeGhost).toHaveBeenCalledOnce();
   });
 });

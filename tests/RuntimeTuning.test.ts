@@ -14,9 +14,9 @@ const config = GameConfigSchema.parse(gameData);
 const level = LevelDefinitionSchema.parse(levelData);
 const stream = level.enemyStream!;
 const seededRewards = { ...stream.rewards!, seed: effectiveSeed(1, stream.rewards!.seed) };
-const make = (rewardRowsPerReward = 8) => new Simulation({ seed: 1, level,
+const make = (rewardRowsPerReward = 7) => new Simulation({ seed: 1, level,
   startSquad: 1, startRocketCount: 0, tiers: config.tiers, rewardRowsPerReward });
-const baseline = { rewardRowsPerReward: 8, enemyHigherTierPowerMultiplier: 10,
+const baseline = { rewardRowsPerReward: 7, enemyHigherTierPowerMultiplier: 10,
   rifleHigherTierPowerMultiplier: 10 };
 const emptyLevel = LevelDefinitionSchema.parse({ id: 'tuning-isolated', length: 1000,
   enemyGroups: [], upgradeGates: [] });
@@ -26,9 +26,9 @@ const movement = { moveSpeed: 5, forwardSpeed: 1.5, trackHalfWidth: 2.5,
   rifle: { ...config.weapon.rifle }, rocket: { ...config.weapon.rocket } };
 
 describe('temporary runtime tuning', () => {
-  it('starts from the committed eight authored defaults and rejects obsolete mouse sensitivity', () => {
+  it('starts from the committed authored defaults and rejects obsolete mouse sensitivity', () => {
     expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 60, bulletRange: 80,
-      rewardRowsPerReward: 8, enemyHigherTierPowerMultiplier: 10,
+      rewardRowsPerReward: 7, enemyHigherTierPowerMultiplier: 10,
       rifleHigherTierPowerMultiplier: 10, fireRate: 10, moveSpeed: 5, forwardSpeed: 2,
       bossHpScale: 3 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();

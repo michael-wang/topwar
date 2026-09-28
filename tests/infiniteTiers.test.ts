@@ -98,10 +98,11 @@ describe('formula-driven tier data', () => {
       .toEqual([1, 2, 2, 3, 3, 4, 5]);
   });
 
-  it('preserves one deterministic side reward per eight rows and gameplay RNG', () => {
+  it('preserves one deterministic side reward per seven rows and gameplay RNG', () => {
     const rng = new SeededRng(17);
     const rngState = rng.getState();
     const rewards = stream.rewards!;
+    expect(rewards.rowsPerReward).toBe(7);
     for (let block = 0; block < 128; block++) {
       const selected = rewardPlacementForBlock(block, stream.columns, rewards);
       expect(selected).toEqual(rewardPlacementForBlock(block, stream.columns, rewards));
@@ -116,7 +117,8 @@ describe('formula-driven tier data', () => {
   it('keeps side rewards reachable but separate from outer enemy lanes', () => {
     const radius = power.normalEnemyRadius;
     expect(stream.rewards!.sideX).toBe(3.2);
-    expect(stream.rewards!.sideX - game.track.halfWidth).toBeLessThan(radius);
+    expect(game.track.halfWidth).toBe(3.2);
+    expect(stream.rewards!.sideX).toBe(game.track.halfWidth);
     const columnSpacing = stream.columnSpacing ?? stream.spacing;
     const outerEnemyCenter = 3 * columnSpacing + columnSpacing / 6 + stream.jitter;
     expect(stream.rewards!.sideX - outerEnemyCenter).toBeGreaterThan(2 * radius);

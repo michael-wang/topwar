@@ -1,5 +1,8 @@
+import { GROUND_ARTILLERY_CUE, SKY_FLAK_CUE } from './EnvironmentAudioCue';
+
 export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
-  | 'reward' | 'rewardHit' | 'bossHit' | 'enemyDeath';
+  | 'reward' | 'rewardHit' | 'bossHit' | 'enemyDeath'
+  | 'groundArtillery' | 'skyFlak';
 
 interface ObservedReward { id: number; hitProgress: number }
 interface ObservedBoss { id: number; hp: number }
@@ -86,6 +89,8 @@ const cueShape: Record<AudioCue, { from: number; to: number; seconds: number;
   rewardHit: { from: 760, to: 950, seconds: 0.06, wave: 'sine', volume: 0.05 },
   bossHit: { from: 190, to: 105, seconds: 0.07, wave: 'triangle', volume: 0.056 },
   enemyDeath: { from: 790, to: 165, seconds: 0.18, wave: 'sawtooth', volume: 0.07 },
+  groundArtillery: { from: 105, to: 42, seconds: .34, wave: 'triangle', volume: .035 },
+  skyFlak: { from: 185, to: 65, seconds: .17, wave: 'triangle', volume: .022 },
 };
 
 export class GameAudio {
@@ -93,6 +98,9 @@ export class GameAudio {
   private master: GainNode | null = null;
   private readonly active = new Set<OscillatorNode>();
   private readonly observer = new AudioCueObserver();
+  private nextEnvironmentCueMs = -Infinity;
+  private nextGroundCueMs = -Infinity;
+  private nextFlakCueMs = -Infinity;
   private unlocked = false;
   private disposed = false;
 
@@ -109,7 +117,25 @@ export class GameAudio {
       rewards, boss, nowMs, projectiles)) this.play(cue);
   }
 
-  resetObservation(): void { this.observer.reset(); }
+  resetObservation(): void {
+    this.observer.reset();
+    this.nextEnvironmentCueMs = -Infinity;
+    this.nextGroundCueMs = -Infinity;
+    this.nextFlakCueMs = -Infinity;
+  }
+
+  playEnvironment(cues: number, nowMs: number): void {
+    if (nowMs < this.nextEnvironmentCueMs) return;
+    if ((cues & GROUND_ARTILLERY_CUE) && nowMs >= this.nextGroundCueMs) {
+      this.play('groundArtillery');
+      this.nextGroundCueMs = nowMs + 1000;
+      this.nextEnvironmentCueMs = nowMs + 650;
+    } else if ((cues & SKY_FLAK_CUE) && nowMs >= this.nextFlakCueMs) {
+      this.play('skyFlak');
+      this.nextFlakCueMs = nowMs + 1100;
+      this.nextEnvironmentCueMs = nowMs + 650;
+    }
+  }
 
   play(cue: AudioCue): void {
     const context = this.context;
@@ -118,6 +144,12 @@ export class GameAudio {
       const shape = cueShape[cue];
       const oscillator = context.createOscillator();
       const gain = context.createGain();
+      const environmental = cue === 'groundArtillery' || cue === 'skyFlak';
+      const filter = environmental ? context.createBiquadFilter() : null;
+      if (filter) {
+        filter.type = 'lowpass';
+        filter.frequency.value = cue === 'groundArtillery' ? 420 : 650;
+      }
       const start = context.currentTime;
       oscillator.type = shape.wave;
       oscillator.frequency.setValueAtTime(shape.from, start);
@@ -137,10 +169,12 @@ export class GameAudio {
           this.active.delete(overtone);
         };
       }
-      gain.connect(this.master);
+      gain.connect(filter ?? this.master);
+      filter?.connect(this.master);
       oscillator.onended = () => {
         oscillator.disconnect();
         gain.disconnect();
+        filter?.disconnect();
         this.active.delete(oscillator);
       };
       this.active.add(oscillator);
