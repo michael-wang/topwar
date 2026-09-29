@@ -41,7 +41,9 @@ export class TuningPanel {
     this.element.className = 'tuning-panel';
     const summary = document.createElement('summary');
     summary.textContent = 'TUNE';
-    this.element.append(summary);
+    const content = document.createElement('div');
+    content.className = 'tuning-panel-content';
+    this.element.append(summary, content);
     for (const control of controls) {
       const label = document.createElement('label');
       label.textContent = control.label;
@@ -64,7 +66,7 @@ export class TuningPanel {
       input.dataset.key = control.key;
       const output = document.createElement('output');
       label.append(input, output);
-      this.element.append(label);
+      content.append(label);
       this.inputs.set(control.key, input);
       this.outputs.set(control.key, output);
       input.addEventListener('input', this.onInput);
@@ -73,7 +75,7 @@ export class TuningPanel {
     reset.type = 'button';
     reset.textContent = 'Reset Defaults';
     reset.addEventListener('click', this.onReset);
-    this.element.append(reset);
+    content.append(reset);
     this.element.addEventListener('pointerdown', this.onPointerDown);
     viewport.append(this.element);
     this.setValues(defaults);

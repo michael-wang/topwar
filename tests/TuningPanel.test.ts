@@ -75,6 +75,10 @@ describe('temporary tuning panel', () => {
     expect(music.value).toBe('0.5');
     panel.toggle();
     expect(root.open).toBe(true);
+    const pointer = new Event('pointerdown');
+    const stop = vi.spyOn(pointer, 'stopPropagation');
+    root.dispatchEvent(pointer);
+    expect(stop).toHaveBeenCalledOnce();
     panel.toggle();
     expect(root.open).toBe(false);
     panel.dispose();

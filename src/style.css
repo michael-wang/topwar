@@ -93,12 +93,44 @@ body {
   pointer-events: none;
 }
 
-.tuning-panel {
+.hud-actions {
   position: absolute;
   z-index: 3;
-  top: 0.6rem;
-  right: 0.5rem;
-  width: min(10rem, 38%);
+  top: max(0.5rem, env(safe-area-inset-top));
+  right: max(0.5rem, env(safe-area-inset-right));
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  font-family: sans-serif;
+}
+
+.pause-button, .tuning-panel summary {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0 0.45rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: rgb(18 24 30 / 75%);
+  color: white;
+  font: bold 0.7rem/1 sans-serif;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.tuning-panel { position: relative; }
+.tuning-panel summary { list-style: none; }
+.tuning-panel summary::-webkit-details-marker { display: none; }
+
+.tuning-panel-content {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  width: min(10rem, calc(100vw - 1rem));
+  max-height: min(65dvh, 25rem);
+  overflow-y: auto;
+  touch-action: pan-y;
   box-sizing: border-box;
   padding: 0.35rem 0.45rem;
   border-radius: 0.4rem;
@@ -107,12 +139,30 @@ body {
   font: 0.66rem/1.25 sans-serif;
 }
 
-.tuning-panel summary { cursor: pointer; font-weight: bold; text-align: right; }
 .tuning-panel label { display: block; margin-top: 0.35rem; }
 .tuning-panel input { display: block; width: 100%; margin: 0.1rem 0; }
 .tuning-panel select { display: block; width: 100%; margin: 0.1rem 0; }
 .tuning-panel output { display: block; text-align: right; }
 .tuning-panel button { width: 100%; margin-top: 0.45rem; cursor: pointer; }
+
+.touch-steering-band {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  inset: auto 0 0;
+  height: 30%;
+  touch-action: none;
+}
+
+.touch-steering-zone {
+  display: grid;
+  place-items: center;
+  width: 50%;
+  color: rgb(255 255 255 / 23%);
+  font: 1.3rem/1 sans-serif;
+  text-shadow: 0 1px 2px rgb(18 24 30 / 35%);
+  user-select: none;
+}
 
 .damage-flash-overlay {
   position: absolute;
@@ -201,6 +251,16 @@ body {
   text-align: center;
 }
 
-@media (hover: none), (pointer: coarse) {
-  .control-hint, .tuning-panel { display: none; }
+@media (any-pointer: coarse) {
+  .control-hint { display: none; }
+  .touch-steering-band { display: flex; }
+  .pause-button, .tuning-panel summary { min-width: 44px; min-height: 44px; }
+  .tuning-panel-content {
+    width: min(15rem, calc(100vw - 1rem));
+    padding: 0.55rem 0.65rem;
+    font-size: 0.75rem;
+  }
+  .tuning-panel label { margin-top: 0.55rem; }
+  .tuning-panel input[type='range'] { min-height: 32px; }
+  .tuning-panel select, .tuning-panel button { min-height: 44px; }
 }

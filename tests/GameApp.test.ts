@@ -43,6 +43,9 @@ const mock = vi.hoisted(() => ({
   pauseVisible: vi.fn(),
   pauseDispose: vi.fn(),
   hintDispose: vi.fn(),
+  hudConstructedWith: vi.fn(),
+  hudSetPaused: vi.fn(),
+  hudDispose: vi.fn(),
   panelConstructedWith: vi.fn(),
   panelSetValues: vi.fn(),
   panelToggle: vi.fn(),
@@ -55,6 +58,10 @@ const mock = vi.hoisted(() => ({
   keyboardStart: vi.fn(),
   keyboardStop: vi.fn(),
   keyboardDispose: vi.fn(),
+  touchConstructedWith: vi.fn(),
+  touchStart: vi.fn(),
+  touchStop: vi.fn(),
+  touchDispose: vi.fn(),
 }));
 
 vi.mock('../src/simulation/Simulation', () => ({
@@ -109,6 +116,14 @@ vi.mock('../src/ui/PauseOverlay', () => ({ PauseOverlay: class {
 vi.mock('../src/ui/ControlHint', () => ({ ControlHint: class {
   dispose = mock.hintDispose;
 } }));
+vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
+  element = {} as HTMLElement;
+  constructor(_viewport: HTMLElement, togglePaused: () => void) {
+    mock.hudConstructedWith(togglePaused);
+  }
+  setPaused = mock.hudSetPaused;
+  dispose = mock.hudDispose;
+} }));
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown) {
     mock.panelConstructedWith(defaults, onChange);
@@ -137,6 +152,16 @@ vi.mock('../src/input/KeyboardSteeringInput', () => ({
     start = mock.keyboardStart;
     stop = mock.keyboardStop;
     dispose = mock.keyboardDispose;
+  },
+}));
+vi.mock('../src/input/TouchSteeringInput', () => ({
+  TouchSteeringInput: class {
+    constructor(_viewport: HTMLElement, onAxisChange: (axis: -1 | 0 | 1) => void) {
+      mock.touchConstructedWith(onAxisChange);
+    }
+    start = mock.touchStart;
+    stop = mock.touchStop;
+    dispose = mock.touchDispose;
   },
 }));
 
@@ -484,6 +509,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.startResizeHandling).toHaveBeenCalledTimes(1);
     expect(mock.inputStart).toHaveBeenCalledTimes(1);
     expect(mock.keyboardStart).toHaveBeenCalledTimes(1);
+    expect(mock.touchStart).toHaveBeenCalledTimes(1);
 
     raf.frame(100);
     expect(mock.step).not.toHaveBeenCalled();
@@ -503,6 +529,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(config.listenerCount()).toBe(1);
     expect(mock.inputStop).toHaveBeenCalledTimes(1);
     expect(mock.keyboardStop).toHaveBeenCalledTimes(1);
+    expect(mock.touchStop).toHaveBeenCalledTimes(1);
 
     config.changePlayer({ formationSpacing: 0.9 });
     app.start();
@@ -532,6 +559,9 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.keyboardStart).toHaveBeenCalledTimes(2);
     expect(mock.keyboardStop).toHaveBeenCalledTimes(2);
     expect(mock.keyboardDispose).toHaveBeenCalledTimes(1);
+    expect(mock.touchStart).toHaveBeenCalledTimes(2);
+    expect(mock.touchStop).toHaveBeenCalledTimes(2);
+    expect(mock.touchDispose).toHaveBeenCalledTimes(1);
     expect(mock.overlayDispose).toHaveBeenCalledTimes(1);
     expect(config.listenerCount()).toBe(0);
     expect(() => app.start()).toThrow(/disposed/);
@@ -614,6 +644,8 @@ describe('GameApp config and frame lifecycle', () => {
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
     expect(mock.keyboardStop).toHaveBeenCalledOnce();
     expect(mock.inputStop).toHaveBeenCalledOnce();
+    expect(mock.touchStop).toHaveBeenCalledOnce();
+    expect(mock.hudSetPaused).toHaveBeenLastCalledWith(true);
     raf.key('p', true);
     expect(raf.key('Escape')).toBe(true);
     expect(mock.panelToggle).toHaveBeenCalledTimes(1);
@@ -632,6 +664,8 @@ describe('GameApp config and frame lifecycle', () => {
       expect.objectContaining({ paused: true, musicVolume: .50 }));
     expect(raf.key(' ')).toBe(true);
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    expect(mock.hudSetPaused).toHaveBeenLastCalledWith(false);
+    expect(mock.touchStart).toHaveBeenCalledTimes(2);
     expect(raf.key(' ', false, { tagName: 'INPUT' })).toBe(false);
     expect(raf.key('Escape')).toBe(true);
     expect(mock.panelToggle).toHaveBeenCalledTimes(2);
@@ -653,6 +687,42 @@ describe('GameApp config and frame lifecycle', () => {
     expect(updateMusic.mock.lastCall?.[1]).toMatchObject({ paused: false });
     app.dispose();
     updateMusic.mockRestore();
+  });
+
+  it('uses the same Pause transition for keyboard and button and clears touch steering on Retry', () => {
+    const raf = createRaf();
+    const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+    const touchAxis = mock.touchConstructedWith.mock.calls[0][0] as (axis: -1 | 0 | 1) => void;
+    const pressPause = mock.hudConstructedWith.mock.calls[0][0] as () => void;
+    app.start();
+    raf.frame(100);
+    touchAxis(-1);
+    raf.frame(100 + 1000 / 60);
+    expect(mock.step.mock.lastCall![1]).toEqual({ targetX: -2.5 });
+    pressPause();
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    expect(mock.hudSetPaused).toHaveBeenLastCalledWith(true);
+    expect(mock.keyboardStop).toHaveBeenCalledOnce();
+    expect(mock.inputStop).toHaveBeenCalledOnce();
+    expect(mock.touchStop).toHaveBeenCalledOnce();
+    raf.key('p');
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
+    expect(mock.hudSetPaused).toHaveBeenLastCalledWith(false);
+    expect(mock.keyboardStart).toHaveBeenCalledTimes(2);
+    expect(mock.inputStart).toHaveBeenCalledTimes(2);
+    expect(mock.touchStart).toHaveBeenCalledTimes(2);
+    raf.frame(200);
+    raf.frame(200 + 1000 / 60);
+    expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 2 });
+    touchAxis(1);
+    const retry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;
+    retry();
+    expect(mock.touchStop).toHaveBeenCalledTimes(2);
+    expect(mock.touchStart).toHaveBeenCalledTimes(3);
+    raf.frame(300);
+    raf.frame(300 + 1000 / 60);
+    expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 2 });
+    app.dispose();
   });
 
   it('applies runtime values including Boss HP scale and retains them for Retry', () => {

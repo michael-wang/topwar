@@ -3,6 +3,7 @@ import type { ConfigStore } from '../config/ConfigStore';
 import type { GameConfig } from '../config/configSchema';
 import { KeyboardSteeringInput } from '../input/KeyboardSteeringInput';
 import { PointerDragInput } from '../input/PointerDragInput';
+import { TouchSteeringInput } from '../input/TouchSteeringInput';
 import type { LevelDefinition } from '../level/LevelDefinition';
 import { GameRenderer } from '../rendering/GameRenderer';
 import type { CharacterAssets } from '../rendering/CharacterAssets';
@@ -18,6 +19,7 @@ import { defaultRuntimeTuning, type RuntimeTuning } from './runtimeTuning';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { ControlHint } from '../ui/ControlHint';
 import { TuningPanel } from '../ui/TuningPanel';
+import { HudActions } from '../ui/HudActions';
 import { PerfDiagnostics } from './PerfDiagnostics';
 import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
@@ -43,9 +45,11 @@ export class GameApp {
   private readonly tierHud: TierHud;
   private readonly pauseOverlay: PauseOverlay;
   private readonly controlHint: ControlHint;
+  private readonly hudActions: HudActions;
   private readonly tuningPanel: TuningPanel;
   private readonly dragInput: PointerDragInput;
   private readonly keyboardInput: KeyboardSteeringInput;
+  private readonly touchInput: TouchSteeringInput;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
@@ -80,7 +84,8 @@ export class GameApp {
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport);
-    this.tuningPanel = new TuningPanel(viewport, this.runtimeDefaults, (values) => {
+    this.hudActions = new HudActions(viewport, () => this.togglePaused());
+    this.tuningPanel = new TuningPanel(this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
         rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,
@@ -99,12 +104,9 @@ export class GameApp {
       },
     });
     this.keyboardInput = new KeyboardSteeringInput(window, {
-      onAxisChange: (axis) => {
-        this.targetX = axis === 0
-          ? this.simulation.getState().player.x
-          : axis * this.config.track.halfWidth;
-      },
+      onAxisChange: (axis) => this.setSteeringAxis(axis),
     });
+    this.touchInput = new TouchSteeringInput(viewport, (axis) => this.setSteeringAxis(axis));
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
   }
 
@@ -117,6 +119,7 @@ export class GameApp {
     this.renderer.startResizeHandling();
     this.dragInput.start();
     this.keyboardInput.start();
+    this.touchInput.start();
     window.addEventListener?.('keydown', this.onPauseKeyDown);
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
@@ -132,8 +135,10 @@ export class GameApp {
     window.removeEventListener?.('keydown', this.onPauseKeyDown);
     this.keyboardInput.stop();
     this.dragInput.stop();
+    this.touchInput.stop();
     this.paused = false;
     this.pauseOverlay.setVisible(false);
+    this.hudActions.setPaused(false);
     this.viewport.classList?.remove('game-paused');
     this.renderer.stopResizeHandling();
     this.audio.silenceMusic();
@@ -145,8 +150,10 @@ export class GameApp {
     this.unsubscribeConfig();
     this.dragInput.dispose();
     this.keyboardInput.dispose();
+    this.touchInput.dispose();
     this.gameOverOverlay.dispose();
     this.tuningPanel.dispose();
+    this.hudActions.dispose();
     this.controlHint.dispose();
     this.pauseOverlay.dispose();
     this.tierHud.dispose();
@@ -159,6 +166,9 @@ export class GameApp {
 
   private retry(): void {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
+    this.keyboardInput.stop();
+    this.dragInput.stop();
+    this.touchInput.stop();
     this.simulation = this.createSimulation();
     this.perf?.reset();
     this.perfHud?.reset();
@@ -171,12 +181,14 @@ export class GameApp {
     if (this.running) {
       this.dragInput.start();
       this.keyboardInput.start();
+      this.touchInput.start();
     }
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.presentationMs = 0;
     this.fatalPresentationUntilMs = -Infinity;
     this.pauseOverlay.setVisible(false);
+    this.hudActions.setPaused(false);
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
     this.audio.resetObservation();
@@ -213,6 +225,17 @@ export class GameApp {
     const isSpace = key === ' ' || key === 'space' || key === 'spacebar';
     if (event.repeat || (key !== 'p' && !isSpace) || isInteractivePauseTarget(event.target)) return;
     if (isSpace) event.preventDefault();
+    this.togglePaused();
+  };
+
+  private setSteeringAxis(axis: -1 | 0 | 1): void {
+    this.targetX = axis === 0
+      ? this.simulation.getState().player.x
+      : axis * this.config.track.halfWidth;
+  }
+
+  private togglePaused(): void {
+    if (!this.running) return;
     this.paused = !this.paused;
     this.viewport.classList?.toggle('game-paused', this.paused);
     this.previousFrameTimestampMs = null;
@@ -220,13 +243,16 @@ export class GameApp {
     if (this.paused) {
       this.keyboardInput.stop();
       this.dragInput.stop();
+      this.touchInput.stop();
       this.targetX = this.simulation.getState().player.x;
     } else {
       this.keyboardInput.start();
       this.dragInput.start();
+      this.touchInput.start();
     }
     this.pauseOverlay.setVisible(this.paused);
-  };
+    this.hudActions.setPaused(this.paused);
+  }
 
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
