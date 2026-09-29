@@ -15,6 +15,7 @@ class FakeElement {
   failRelease = false;
   removed = false;
   readonly children: FakeElement[] = [];
+  readonly listenerOptions = new Map<string, AddEventListenerOptions | undefined>();
   private readonly listeners = new Map<string, Set<(event: PointerEvent) => void>>();
   private readonly captures = new Set<number>();
   private parent: FakeElement | null = null;
@@ -41,7 +42,9 @@ class FakeElement {
     this.captures.delete(id);
     if (this.failRelease) { this.failRelease = false; throw new Error('pointer retired'); }
   }
-  addEventListener(type: string, listener: (event: PointerEvent) => void): void {
+  addEventListener(type: string, listener: (event: PointerEvent) => void,
+    options?: AddEventListenerOptions): void {
+    this.listenerOptions.set(type, options);
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
     this.listeners.get(type)!.add(listener);
   }
@@ -144,28 +147,35 @@ describe('TouchSteeringInput', () => {
     touch.dispose();
   });
 
-  it('suppresses native long-press gestures, clears capture, and accepts the opposite side immediately', () => {
+  it.each(['contextmenu', 'selectstart', 'dragstart'])('suppresses %s while preserving the held pointer until release', (type) => {
     const { viewport, band, left, right, touch, onAxisChange } = setup();
     touch.start();
-    for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
-      const reachedViewport = vi.fn();
-      viewport.addEventListener(type, reachedViewport);
-      left.emit('pointerdown', 1, 20);
-      expect(onAxisChange).toHaveBeenLastCalledWith(-1);
-      const event = left.children[0].emit(type, 1, 20);
-      expect(event.preventDefault).toHaveBeenCalledOnce();
-      expect(event.stopPropagation).toHaveBeenCalledOnce();
-      expect(reachedViewport).not.toHaveBeenCalled();
-      expect(left.hasPointerCapture(1)).toBe(false);
-      expect(onAxisChange).toHaveBeenLastCalledWith(0);
-      right.emit('pointerdown', 2, 180);
-      expect(onAxisChange).toHaveBeenLastCalledWith(1);
-      left.emit('lostpointercapture', 1, 20);
-      expect(onAxisChange).toHaveBeenLastCalledWith(1);
-      right.emit('pointerup', 2, 180);
-      expect(onAxisChange).toHaveBeenLastCalledWith(0);
-      viewport.removeEventListener(type, reachedViewport);
-    }
+    const reachedViewport = vi.fn();
+    viewport.addEventListener(type, reachedViewport);
+    left.emit('pointerdown', 1, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(-1);
+    const event = left.children[0].emit(type, 1, 20);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(reachedViewport).not.toHaveBeenCalled();
+    expect(left.hasPointerCapture(1)).toBe(true);
+    expect(onAxisChange.mock.calls).toEqual([[-1]]);
+    left.emit('pointermove', 1, 30);
+    expect(onAxisChange.mock.calls).toEqual([[-1]]);
+    left.emit('pointermove', 1, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(1);
+    left.emit('pointermove', 1, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(-1);
+    left.emit('pointerup', 1, 20);
+    expect(left.hasPointerCapture(1)).toBe(false);
+    expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    right.emit('pointerdown', 2, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(1);
+    left.emit('lostpointercapture', 1, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(1);
+    right.emit('pointerup', 2, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    viewport.removeEventListener(type, reachedViewport);
     expect(band.classList.contains('touch-steering-band--hint-hidden')).toBe(false);
     touch.dispose();
   });
@@ -175,12 +185,35 @@ describe('TouchSteeringInput', () => {
     const { left, right, touch, onAxisChange } = setup();
     touch.start();
     left.emit('pointerdown', 1, 20);
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(10_000);
     expect(onAxisChange.mock.calls).toEqual([[-1]]);
     left.emit('pointerup', 1, 20);
     right.emit('pointerdown', 2, 180);
     expect(onAxisChange.mock.calls).toEqual([[-1], [0], [1]]);
+    vi.advanceTimersByTime(10_000);
+    expect(onAxisChange.mock.calls).toEqual([[-1], [0], [1]]);
+    right.emit('pointerup', 2, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(0);
     touch.dispose();
+  });
+
+  it('registers band-only non-passive touch suppression without changing steering', () => {
+    const { viewport, band, left, touch, onAxisChange } = setup();
+    touch.start();
+    left.emit('pointerdown', 1, 20);
+    for (const type of ['touchstart', 'touchmove']) {
+      expect(band.listenerOptions.get(type)).toEqual({ passive: false });
+      expect(viewport.listenerOptions.has(type)).toBe(false);
+      const event = left.emit(type, 1, 20);
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(left.hasPointerCapture(1)).toBe(true);
+      expect(onAxisChange.mock.calls).toEqual([[-1]]);
+      const outside = viewport.emit(type, 2, 50);
+      expect(outside.preventDefault).not.toHaveBeenCalled();
+    }
+    touch.dispose();
+    expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    expect(left.emit('touchstart', 3, 20).preventDefault).not.toHaveBeenCalled();
   });
 
   it('recovers immediately if the browser retires a pointer during capture or release', () => {

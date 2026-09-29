@@ -36,6 +36,9 @@ export class TouchSteeringInput {
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
       this.band.addEventListener(type, this.onNativeGesture);
     }
+    for (const type of ['touchstart', 'touchmove']) {
+      this.band.addEventListener(type, this.onTouchDefault, { passive: false });
+    }
     viewport.append(this.band);
   }
 
@@ -72,6 +75,9 @@ export class TouchSteeringInput {
     for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
       this.band.removeEventListener(type, this.onNativeGesture);
     }
+    for (const type of ['touchstart', 'touchmove']) {
+      this.band.removeEventListener(type, this.onTouchDefault);
+    }
     this.band.remove();
     this.disposed = true;
   }
@@ -104,7 +110,12 @@ export class TouchSteeringInput {
   private readonly onNativeGesture = (event: Event): void => {
     event.preventDefault();
     event.stopPropagation();
-    this.endSteering();
+    // Suppressed browser defaults do not end the physical pointer stream.
+  };
+
+  private readonly onTouchDefault = (event: Event): void => {
+    // Cancel touch defaults only; Pointer Events exclusively own steering and capture.
+    event.preventDefault();
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
