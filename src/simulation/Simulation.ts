@@ -739,10 +739,11 @@ export class Simulation {
       ? targetX
       : currentX + Math.sign(difference) * maxHorizontalDelta;
     const proposedNextZ = this.state.player.z + tuning.forwardSpeed * dtSeconds;
+    const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
     const currentBoss = this.state.boss;
     const bossContact = currentBoss && !currentBoss.engaged && (
       currentBoss.z <= proposedNextZ - tuning.defenseLineOffset
-      || createSquadFormation(this.state.squad.count, tuning.formationSpacing).some((offset) =>
+      || offsets.some((offset) =>
         segmentTouchesCircle(this.state.player.x + offset.x, this.state.player.z + offset.z,
           nextX + offset.x, proposedNextZ + offset.z, currentBoss.x, currentBoss.z,
           tuning.memberRadius + tuning.bossRadius!)));
@@ -774,17 +775,17 @@ export class Simulation {
     let squad = { ...this.state.squad };
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
     let nextProjectileId = this.state.weapons.nextProjectileId;
-    const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
     const rifleEnd = this.state.squad.count - this.state.squad.rocketCount;
     const nextCooldowns = { rifle: this.state.weapons.rifleCooldownRemainingSeconds,
       rocket: this.state.weapons.rocketCooldownRemainingSeconds };
     // Fire before travel; projectiles created this tick travel for this full fixed step.
     for (const kind of ['rifle', 'rocket'] as const) {
-      const activeOffsets = kind === 'rifle' ? offsets.slice(0, rifleEnd) : offsets.slice(rifleEnd);
+      const startIndex = kind === 'rifle' ? 0 : rifleEnd;
+      const endIndex = kind === 'rifle' ? rifleEnd : offsets.length;
       const weapon = tuning[kind];
       const interval = 1 / weapon.fireRate;
       if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
-      if (activeOffsets.length === 0) {
+      if (startIndex === endIndex) {
         nextCooldowns[kind] = 0;
         continue;
       }
@@ -794,8 +795,8 @@ export class Simulation {
         throw new Error('Simulation step requests too many weapon volleys');
       }
       while (cooldown <= 0) {
-        for (let index = 0; index < activeOffsets.length; index++) {
-          const offset = activeOffsets[index];
+        for (let index = startIndex; index < endIndex; index++) {
+          const offset = offsets[index];
           let tier = 0;
           if (kind === 'rifle') {
             let roleIndex = index;
@@ -927,21 +928,32 @@ export class Simulation {
       // Both a collected and a missed plaque disappear once it passes the player.
     }
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
+    let contactFormationCount = this.state.squad.count;
+    let contactOffsets = offsets;
+    if (squad.count > 0 && squad.count !== contactFormationCount) {
+      contactFormationCount = squad.count;
+      contactOffsets = createSquadFormation(squad.count, tuning.formationSpacing);
+    }
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
       const contactRadius = tuning.memberRadius + tuning.normalEnemyRadius;
       if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
       // Sweep each moving squad member against the stationary enemy.
-      const contact = createSquadFormation(squad.count, tuning.formationSpacing).some((offset) => {
+      let contact = false;
+      for (const offset of contactOffsets) {
         const startX = this.state.player.x + offset.x;
         const startZ = this.state.player.z + offset.z;
         const endX = nextX + offset.x;
         const endZ = nextZ + offset.z;
-        if (![startX, startZ, endX, endZ].every(Number.isFinite)) {
+        if (!Number.isFinite(startX) || !Number.isFinite(startZ)
+          || !Number.isFinite(endX) || !Number.isFinite(endZ)) {
           throw new Error('Simulation squad contact position is non-finite');
         }
-        return segmentTouchesCircle(startX, startZ, endX, endZ, enemy.x, enemy.z, contactRadius);
-      });
+        if (segmentTouchesCircle(startX, startZ, endX, endZ, enemy.x, enemy.z, contactRadius)) {
+          contact = true;
+          break;
+        }
+      }
       if (contact) {
         enemies.splice(enemies.indexOf(enemy), 1);
         const before = copySquadForPresentation(squad);
@@ -951,6 +963,12 @@ export class Simulation {
         stepEvents.push({ kind: 'normalEnemyContact', enemyId: enemy.id, enemyTier: enemy.tier,
           attackerX: enemy.x, attackerZ: enemy.z, playerX: nextX, playerZ: nextZ,
           before, after: copySquadForPresentation(squad), affectedMembers: casualty.affectedMembers });
+        if (squad.count > 0 && squad.count !== contactFormationCount) {
+          contactFormationCount = squad.count;
+          // Contact can only reduce the count; reuse the pre-contact formation if it returns there.
+          contactOffsets = squad.count === this.state.squad.count ? offsets
+            : createSquadFormation(squad.count, tuning.formationSpacing);
+        }
       }
     }
     const defenseLineZ = nextZ - tuning.defenseLineOffset;
