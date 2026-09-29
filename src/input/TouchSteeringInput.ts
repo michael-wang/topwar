@@ -1,11 +1,14 @@
 import type { HorizontalAxis } from './KeyboardSteeringInput';
 
 export class TouchSteeringInput {
+  private static readonly HINT_DURATION_MS = 1750;
   private readonly band: HTMLDivElement;
   private readonly zones: readonly HTMLDivElement[];
   private activePointerId: number | null = null;
   private activeZone: HTMLDivElement | null = null;
   private axis: HorizontalAxis = 0;
+  private hintUsed = false;
+  private hintTimer: ReturnType<typeof setTimeout> | null = null;
   private listening = false;
   private disposed = false;
 
@@ -15,12 +18,24 @@ export class TouchSteeringInput {
     this.band.setAttribute('aria-hidden', 'true');
     const left = document.createElement('div');
     left.className = 'touch-steering-zone';
-    left.textContent = '◀';
     const right = document.createElement('div');
     right.className = 'touch-steering-zone';
-    right.textContent = '▶';
+    for (const [zone, arrow] of [[left, '◀'], [right, '▶']] as const) {
+      const hint = document.createElement('div');
+      hint.className = 'touch-steering-hint';
+      const direction = document.createElement('span');
+      direction.className = 'touch-steering-arrow';
+      direction.textContent = arrow;
+      const label = document.createElement('span');
+      label.textContent = 'HOLD TO MOVE';
+      hint.append(direction, label);
+      zone.append(hint);
+    }
     this.zones = [left, right];
     this.band.append(left, right);
+    for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
+      this.band.addEventListener(type, this.onNativeGesture);
+    }
     viewport.append(this.band);
   }
 
@@ -53,6 +68,10 @@ export class TouchSteeringInput {
   dispose(): void {
     if (this.disposed) return;
     this.stop();
+    if (this.hintTimer !== null) clearTimeout(this.hintTimer);
+    for (const type of ['contextmenu', 'selectstart', 'dragstart']) {
+      this.band.removeEventListener(type, this.onNativeGesture);
+    }
     this.band.remove();
     this.disposed = true;
   }
@@ -64,8 +83,28 @@ export class TouchSteeringInput {
     if (this.activePointerId !== null) return;
     this.activePointerId = event.pointerId;
     this.activeZone = event.currentTarget as HTMLDivElement;
-    this.activeZone.setPointerCapture(event.pointerId);
+    try {
+      this.activeZone.setPointerCapture(event.pointerId);
+    } catch {
+      // A pointer canceled during dispatch cannot be captured; leave the next press free.
+      this.activePointerId = null;
+      this.activeZone = null;
+      return;
+    }
     this.updateAxis(event.clientX);
+    if (!this.hintUsed) {
+      this.hintUsed = true;
+      this.hintTimer = setTimeout(() => {
+        this.band.classList.add('touch-steering-band--hint-hidden');
+        this.hintTimer = null;
+      }, TouchSteeringInput.HINT_DURATION_MS);
+    }
+  };
+
+  private readonly onNativeGesture = (event: Event): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    this.endSteering();
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
@@ -94,6 +133,8 @@ export class TouchSteeringInput {
   private setAxis(axis: HorizontalAxis): void {
     if (this.axis === axis) return;
     this.axis = axis;
+    this.zones[0].classList.toggle('touch-steering-zone--pressed', axis === -1);
+    this.zones[1].classList.toggle('touch-steering-zone--pressed', axis === 1);
     this.onAxisChange(axis);
   }
 
@@ -102,9 +143,13 @@ export class TouchSteeringInput {
     const pointerId = this.activePointerId;
     this.activeZone = null;
     this.activePointerId = null;
-    if (zone && pointerId !== null && zone.hasPointerCapture(pointerId)) {
-      zone.releasePointerCapture(pointerId);
-    }
     this.setAxis(0);
+    if (zone && pointerId !== null && zone.hasPointerCapture(pointerId)) {
+      try {
+        zone.releasePointerCapture(pointerId);
+      } catch {
+        // Cancellation may retire the pointer before capture is released.
+      }
+    }
   }
 }

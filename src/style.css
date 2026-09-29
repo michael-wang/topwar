@@ -154,15 +154,40 @@ body {
   touch-action: none;
 }
 
+.touch-steering-band, .touch-steering-band * {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .touch-steering-zone {
   display: grid;
   place-items: center;
   width: 50%;
-  color: rgb(255 255 255 / 23%);
-  font: 1.3rem/1 sans-serif;
-  text-shadow: 0 1px 2px rgb(18 24 30 / 35%);
-  user-select: none;
 }
+
+.touch-steering-zone--pressed { background: rgb(255 255 255 / 5%); }
+
+.touch-steering-hint {
+  display: grid;
+  place-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.5rem;
+  background: rgb(18 24 30 / 28%);
+  color: white;
+  font: 700 0.63rem/1.15 sans-serif;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgb(18 24 30 / 65%);
+  opacity: 0.95;
+  pointer-events: none;
+  transition: opacity 300ms ease-out;
+}
+
+.touch-steering-arrow { font: 1.65rem/1 sans-serif; }
+.touch-steering-band--hint-hidden .touch-steering-hint { opacity: 0; }
 
 .damage-flash-overlay {
   position: absolute;
