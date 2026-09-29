@@ -21,6 +21,15 @@ export interface SimulationOptions {
   tiers: TierPower;
   rewardRowsPerReward?: number;
   bossHpScale?: number;
+  collisionDiagnostics?: CollisionDiagnostics;
+}
+
+// Optional operation counts, kept outside serialized simulation state.
+export interface CollisionDiagnostics {
+  findFirstHitCalls: number;
+  enemyCandidateChecks: number;
+  projectilePasses: number;
+  penetrationPasses: number;
 }
 
 export interface RuntimeBalance {
@@ -63,11 +72,13 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   normalEnemyRadius: number,
   bossRadius: number | undefined,
   currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
-  piercedEnemyIds?: ReadonlySet<number>): ProjectileHit | undefined {
+  piercedEnemyIds?: ReadonlySet<number>, diagnostics?: CollisionDiagnostics): ProjectileHit | undefined {
+  if (diagnostics) diagnostics.findFirstHitCalls++;
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
   const minimumZ = projectile.z + travel * minimumFraction;
   for (const enemy of enemies) {
+    if (diagnostics) diagnostics.enemyCandidateChecks++;
     if (piercedEnemyIds?.has(enemy.id)) continue;
     const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
     const dx = projectile.x - enemy.x;
@@ -528,6 +539,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
 }
 
 export class Simulation {
+  private readonly collisionDiagnostics: CollisionDiagnostics | undefined;
   private rng: SeededRng;
   private state: SimulationState;
   private enemyStreamDefinition: EnemyStreamDefinition | undefined;
@@ -538,6 +550,7 @@ export class Simulation {
   private static readonly MAX_PRESENTATION_EVENTS = 256;
 
   constructor(options: SimulationOptions) {
+    this.collisionDiagnostics = options.collisionDiagnostics;
     this.rng = new SeededRng(options.seed);
     const level = LevelDefinitionSchema.parse(options.level);
     if (!validSquadCount(options.startSquad)) {
@@ -813,6 +826,7 @@ export class Simulation {
     const travelingPickups = this.state.pickups.map((pickup) => ({ pickup: { ...pickup }, travelSeconds: dtSeconds }));
     let nextPickupId = this.state.nextPickupId;
     for (const projectile of projectiles) {
+      if (this.collisionDiagnostics) this.collisionDiagnostics.projectilePasses++;
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
@@ -824,7 +838,7 @@ export class Simulation {
         const hit = findFirstHit(projectile, endZ, enemies, boss, streamRewards, gates,
           tuning.normalEnemyRadius,
           tuning.bossRadius,
-          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds);
+          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics);
         if (!hit) break;
         if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
@@ -859,6 +873,7 @@ export class Simulation {
               // this enemy also handles overlapping circles and exact-position ties.
               minimumFraction = hit.fraction;
               piercedEnemyIds!.add(hit.enemy.id);
+              if (this.collisionDiagnostics) this.collisionDiagnostics.penetrationPasses++;
               continue;
             }
           }

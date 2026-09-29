@@ -8,6 +8,7 @@ import type { PointerDragCallbacks } from '../src/input/PointerDragInput';
 import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInput';
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
 import { GameAudio } from '../src/audio/GameAudio';
+import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
@@ -234,6 +235,26 @@ afterEach(() => {
 });
 
 describe('GameApp config and frame lifecycle', () => {
+  it('creates the HUD only in perf mode and resets diagnostics on Retry', () => {
+    createRaf();
+    const element = { className: '', textContent: '', setAttribute: vi.fn(), remove: vi.fn() };
+    vi.stubGlobal('document', { createElement: vi.fn(() => element) });
+    const viewport = { append: vi.fn(), classList: { remove: vi.fn() } } as unknown as HTMLElement;
+    const normal = new GameApp(viewport, createConfigStore().store, level, {} as CharacterAssets);
+    expect(viewport.append).not.toHaveBeenCalled();
+    normal.dispose();
+    const reset = vi.spyOn(PerfDiagnostics.prototype, 'reset');
+    const measured = new GameApp(viewport, createConfigStore().store,
+      level, {} as CharacterAssets, true);
+    expect(viewport.append).toHaveBeenCalledWith(element);
+    expect(mock.constructedWith.mock.lastCall?.[0]).toHaveProperty('collisionDiagnostics');
+    const retry = mock.overlayConstructedWith.mock.lastCall?.[0] as () => void;
+    retry();
+    expect(reset).toHaveBeenCalledOnce();
+    measured.dispose();
+    expect(element.remove).toHaveBeenCalledOnce();
+    reset.mockRestore();
+  });
   it('advances independent environmental audio from presentation time', () => {
     const raf = createRaf();
     const updateEnvironment = vi.spyOn(GameAudio.prototype, 'updateEnvironment');

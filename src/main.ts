@@ -5,6 +5,7 @@ import { loadLevelDefinition } from './level/LevelLoader';
 import { publicAssetUrl } from './core/publicAssetUrl';
 import { loadCharacterAssets } from './rendering/CharacterAssets';
 import './style.css';
+import { perfEnabled } from './app/PerfDiagnostics';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
 if (!viewport) {
@@ -27,7 +28,8 @@ async function startGame(): Promise<void> {
     return;
   }
 
-  const app = new GameApp(gameViewport, configStore, level, assets);
+  const app = new GameApp(gameViewport, configStore, level, assets,
+    perfEnabled(window.location.search));
   app.start();
 }
 

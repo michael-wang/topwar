@@ -8,6 +8,14 @@ type ShadowBatch = { mesh: THREE.InstancedMesh; capacity: number };
 
 // A single soft alpha stamp shared by four bounded instanced batches; no shadow maps or lights.
 export class ContactShadowRenderer {
+  getDebugStats(): Record<ShadowKind, { active: number; capacity: number }> {
+    return {
+      player: { active: this.batches.player.mesh.count, capacity: this.batches.player.capacity },
+      enemy: { active: this.batches.enemy.mesh.count, capacity: this.batches.enemy.capacity },
+      boss: { active: this.batches.boss.mesh.count, capacity: this.batches.boss.capacity },
+      reward: { active: this.batches.reward.mesh.count, capacity: this.batches.reward.capacity },
+    };
+  }
   private readonly geometry = new THREE.PlaneGeometry(1, 1);
   private readonly texture = this.createTexture();
   private readonly material = new THREE.MeshBasicMaterial({

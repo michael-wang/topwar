@@ -127,6 +127,9 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
 };
 
 export class GameAudio {
+  getDebugStats(): { musicVoices: number; sfxSources: number } {
+    return { musicVoices: this.music?.activeVoiceCount ?? 0, sfxSources: this.active.size };
+  }
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();

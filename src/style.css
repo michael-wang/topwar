@@ -24,6 +24,24 @@ body {
   touch-action: none;
 }
 
+.perf-hud {
+  position: absolute;
+  z-index: 5;
+  top: 0.25rem;
+  left: 0.2rem;
+  margin: 0;
+  padding: 0.3rem;
+  max-width: 48%;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background: rgb(10 18 24 / 82%);
+  color: #e9f8e3;
+  font: 600 clamp(8px, 2.3vw, 10px)/1.2 monospace;
+  white-space: pre;
+  pointer-events: none;
+}
+
 .game-over-overlay:not([hidden]) {
   position: absolute;
   inset: 0;

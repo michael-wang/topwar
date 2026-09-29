@@ -14,7 +14,27 @@ import { ContactShadowRenderer } from './ContactShadowRenderer';
 import type { CharacterAssets } from './CharacterAssets';
 import type { PresentationEvent } from '../simulation/PresentationEvent';
 
+export function rendererInfoSnapshot(info: Pick<THREE.WebGLInfo, 'render' | 'memory'>,
+  devicePixelRatio: number, rendererPixelRatio: number,
+  canvas: Pick<HTMLCanvasElement, 'width' | 'height'>) {
+  return { drawCalls: info.render.calls, triangles: info.render.triangles,
+    geometries: info.memory.geometries, textures: info.memory.textures,
+    devicePixelRatio, rendererPixelRatio,
+    bufferWidth: canvas.width, bufferHeight: canvas.height };
+}
+
 export class GameRenderer {
+  getDebugStats() {
+    return {
+      ...rendererInfoSnapshot(this.renderer.info, window.devicePixelRatio || 1,
+        this.renderer.getPixelRatio(), this.renderer.domElement),
+      visibleSquad: this.squadRenderer.getVisibleCount(),
+      enemies: this.enemyRenderer.getDebugStats(),
+      projectiles: this.projectileRenderer.getDebugStats(),
+      shadows: this.contactShadows.getDebugStats(),
+      environment: this.environment.getDebugStats(),
+    };
+  }
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });

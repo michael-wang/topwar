@@ -19,6 +19,10 @@ export class ProjectilePulseTracker {
 }
 
 export class ProjectileRenderer {
+  getDebugStats(): { live: number; pool: number; pulseTrackers: number } {
+    return { live: this.members.reduce((count, mesh) => count + Number(mesh.visible), 0),
+      pool: this.members.length, pulseTrackers: this.pulse.size };
+  }
   private readonly pulse = new ProjectilePulseTracker();
   private readonly members: THREE.Mesh[] = [];
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1',

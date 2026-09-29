@@ -42,6 +42,12 @@ export function enemyRunFrame(id: number, nowMs: number): number {
 }
 
 export class EnemyRenderer {
+  getDebugStats(): { current: number; bodyCapacities: number[]; tierCapacities: number[];
+    deathVisuals: number; contactVisuals: number } {
+    return { current: this.previousEnemies.size, bodyCapacities: [...this.bodyCapacity],
+      tierCapacities: [...this.capacity], deathVisuals: this.deathVisuals.length,
+      contactVisuals: this.contactVisuals.length };
+  }
   private readonly helmetMaterial: THREE.MeshStandardMaterial;
   private readonly grayBodyMaterial: THREE.MeshStandardMaterial;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));

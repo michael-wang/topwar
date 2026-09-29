@@ -49,6 +49,11 @@ interface CasualtyVisual {
 }
 
 export class SquadRenderer {
+  getVisibleCount(): number {
+    let count = 0;
+    for (const member of this.members) if (member.group.visible) count++;
+    return count;
+  }
   private readonly muzzleGeometry = new THREE.ConeGeometry(0.11, 0.24, 5);
   private readonly muzzleCoreGeometry = new THREE.ConeGeometry(0.048, 0.15, 5);
   private readonly tierMaterials: THREE.MeshStandardMaterial[];

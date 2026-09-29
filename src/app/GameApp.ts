@@ -18,6 +18,8 @@ import { defaultRuntimeTuning, type RuntimeTuning } from './runtimeTuning';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { ControlHint } from '../ui/ControlHint';
 import { TuningPanel } from '../ui/TuningPanel';
+import { PerfDiagnostics } from './PerfDiagnostics';
+import { PerfHud } from '../ui/PerfHud';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -58,9 +60,13 @@ export class GameApp {
   private paused = false;
   private running = false;
   private disposed = false;
+  private readonly perf: PerfDiagnostics | null;
+  private readonly perfHud: PerfHud | null;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
-    private readonly level: LevelDefinition, assets: CharacterAssets) {
+    private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false) {
+    this.perf = perfEnabled ? new PerfDiagnostics() : null;
+    this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
     this.config = configStore.getConfig();
     this.runtimeDefaults = defaultRuntimeTuning(this.config, level);
     this.runtimeTuning = { ...this.runtimeDefaults };
@@ -145,6 +151,7 @@ export class GameApp {
     this.tierHud.dispose();
     this.damageFlash.dispose();
     this.audio.dispose();
+    this.perfHud?.dispose();
     this.renderer.dispose();
     this.disposed = true;
   }
@@ -152,6 +159,8 @@ export class GameApp {
   private retry(): void {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
     this.simulation = this.createSimulation();
+    this.perf?.reset();
+    this.perfHud?.reset();
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
@@ -181,6 +190,7 @@ export class GameApp {
       ? (randomWord[0] + 1) >>> 0 : randomWord[0];
     this.lastRunSeed = seed;
     return new Simulation({ seed, level: this.level,
+      collisionDiagnostics: this.perf?.counters,
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
       tiers: { ...this.config.tiers,
@@ -220,6 +230,9 @@ export class GameApp {
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
     try {
+      const perf = this.perf;
+      perf?.beginFrame();
+      const simStartedMs = perf ? performance.now() : 0;
       const elapsedSeconds = this.previousFrameTimestampMs === null
         ? 0
         : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
@@ -247,6 +260,7 @@ export class GameApp {
         ));
       }
       const state = this.simulation.getState();
+      const simFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();
       if (state.squad.count === 0 && presentationEvents.some((event) => event.after.count === 0)) {
         this.fatalPresentationUntilMs = this.presentationMs + 360;
@@ -259,6 +273,7 @@ export class GameApp {
       const currentDefenseValue = squadDefenseValue(state.squad, this.config.tiers.mergeCount);
       const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
       if (feedback) this.damageFlash.flash(feedback === 'fatal');
+      const audioStartedMs = perf ? performance.now() : 0;
       this.audio.observe(this.previousDefenseValue, currentDefenseValue,
         state.enemies,
         state.streamRewards, state.boss, this.presentationMs, state.projectiles);
@@ -269,7 +284,9 @@ export class GameApp {
         paused: this.paused,
         musicVolume: this.runtimeTuning.musicVolume,
       });
+      const audioFinishedMs = perf ? performance.now() : 0;
       this.previousDefenseValue = currentDefenseValue;
+      const renderStartedMs = perf ? performance.now() : 0;
       const renderState: GameRenderState = {
         player: { x: state.player.x, z: state.player.z },
         squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
@@ -294,7 +311,24 @@ export class GameApp {
       if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
+      const renderFinishedMs = perf ? performance.now() : 0;
       this.audio.updateEnvironment(this.presentationMs);
+      if (perf) {
+        const audioEnvironmentFinishedMs = performance.now();
+        const r = this.renderer.getDebugStats();
+        perf.record(elapsedSeconds > 0 ? elapsedSeconds * 1000 : 0, simFinishedMs - simStartedMs,
+          renderFinishedMs - renderStartedMs,
+          audioFinishedMs - audioStartedMs + audioEnvironmentFinishedMs - renderFinishedMs,
+          { enemies: state.enemies.length, projectiles: state.projectiles.length,
+            drawCalls: r.drawCalls, triangles: r.triangles, projectilePool: r.projectiles.pool });
+        const stream = this.level.enemyStream;
+        const row = stream ? Math.max(0, Math.floor((state.player.z - stream.startZ) / stream.spacing)) : 0;
+        this.perfHud?.update(timestampMs, perf, this.renderer, this.audio,
+          { enemies: state.enemies.length, projectiles: state.projectiles.length,
+            rewards: state.streamRewards.length, boss: state.boss !== null,
+            tier: stream ? highestIntroducedTierForRow(row, stream.tierProgression) : 1,
+            playerZ: state.player.z });
+      }
       this.gameOverOverlay.setVisible(state.squad.count === 0
         && this.presentationMs >= this.fatalPresentationUntilMs);
       this.frameId = requestAnimationFrame(this.renderFrame);
