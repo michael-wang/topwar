@@ -239,7 +239,7 @@ export class GameApp {
       this.previousFrameTimestampMs = timestampMs;
       if (!this.paused) {
         this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
-        this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
+        const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
         dtSeconds,
         { targetX: this.targetX },
         {
@@ -258,6 +258,7 @@ export class GameApp {
           rocket: { ...this.config.weapon.rocket },
         },
         ));
+        perf?.recordSteps(advance.steps);
       }
       const state = this.simulation.getState();
       const simFinishedMs = perf ? performance.now() : 0;

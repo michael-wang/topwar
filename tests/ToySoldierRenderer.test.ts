@@ -626,20 +626,28 @@ describe('Modern Toy Soldier presentation', () => {
     const renderer = new ProjectileRenderer(scene, bullet);
     const widths: number[] = [];
     const glowWidths: number[] = [];
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const rotation = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
     for (let tier = 1; tier <= 20; tier++) {
       renderer.update([{ id: tier, kind: 'rifle', tier, x: 0, z: 10,
         hitRadiusBonus: Math.min(0.9, (tier - 1) * 0.45) }], tier * 1000);
-      expect(scene.children).toHaveLength(1);
-      const mesh = scene.children[0] as THREE.Mesh;
-      expect(mesh.name).toBe('rifle-tracer');
+      expect(scene.children).toHaveLength(2);
+      const mesh = scene.children[0] as THREE.InstancedMesh;
+      expect(mesh.name).toBe('rifle-tracers');
       expect(mesh.geometry).toBe(bullet.geometry);
-      const glow = mesh.getObjectByName('tracer-glow') as THREE.Mesh;
+      const glow = scene.children[1] as THREE.InstancedMesh;
       expect(glow.geometry).toBe(bullet.geometry);
       expect((glow.material as THREE.MeshBasicMaterial).blending).toBe(THREE.AdditiveBlending);
-      expect(mesh.scale.x).toBeCloseTo(1 + 0.45 * Math.min(0.9, (tier - 1) * 0.45));
-      widths.push(mesh.scale.x);
-      glowWidths.push(mesh.scale.x * glow.scale.x);
-      expect(mesh.scale.z).toBeLessThanOrEqual(1.35 * 1.35);
+      mesh.getMatrixAt(0, matrix);
+      matrix.decompose(position, rotation, scale);
+      expect(scale.x).toBeCloseTo(1 + 0.45 * Math.min(0.9, (tier - 1) * 0.45));
+      widths.push(scale.x);
+      expect(scale.z).toBeLessThanOrEqual(1.35 * 1.35);
+      glow.getMatrixAt(0, matrix);
+      matrix.decompose(position, rotation, scale);
+      glowWidths.push(scale.x);
     }
     expect(widths[1]).toBeGreaterThan(widths[0]);
     expect(widths[2]).toBeGreaterThan(widths[1]);
@@ -648,7 +656,7 @@ describe('Modern Toy Soldier presentation', () => {
     expect(glowWidths[2]).toBeGreaterThan(glowWidths[1]);
     expect(glowWidths[19]).toBe(glowWidths[2]);
     renderer.update([], 21000);
-    expect((scene.children[0] as THREE.Mesh).visible).toBe(false);
+    expect((scene.children[0] as THREE.InstancedMesh).count).toBe(0);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
     const pulse = new ProjectilePulseTracker();

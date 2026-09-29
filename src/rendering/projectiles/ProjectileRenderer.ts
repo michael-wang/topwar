@@ -20,11 +20,13 @@ export class ProjectilePulseTracker {
 
 export class ProjectileRenderer {
   getDebugStats(): { live: number; pool: number; pulseTrackers: number } {
-    return { live: this.members.reduce((count, mesh) => count + Number(mesh.visible), 0),
-      pool: this.members.length, pulseTrackers: this.pulse.size };
+    return { live: this.body.count, pool: this.capacity, pulseTrackers: this.pulse.size };
   }
   private readonly pulse = new ProjectilePulseTracker();
-  private readonly members: THREE.Mesh[] = [];
+  private readonly transform = new THREE.Object3D();
+  private capacity = 8;
+  private body: THREE.InstancedMesh;
+  private glow: THREE.InstancedMesh;
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1',
     toneMapped: false });
   private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: '#ffc84a',
@@ -32,49 +34,78 @@ export class ProjectileRenderer {
     blending: THREE.AdditiveBlending, toneMapped: false });
 
   constructor(private readonly scene: THREE.Scene,
-    private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {}
+    private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    this.body = this.createBatch('rifle-tracers', this.tracerMaterial, this.capacity);
+    this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
+  }
 
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
-    while (this.members.length < projectiles.length) {
-      const mesh = new THREE.Mesh(this.bullet.geometry, this.tracerMaterial);
-      mesh.name = 'rifle-tracer';
-      const glow = new THREE.Mesh(this.bullet.geometry, this.glowMaterial);
-      glow.name = 'tracer-glow';
-      glow.scale.set(2.4, 2.4, 1.12);
-      mesh.add(glow);
-      this.scene.add(mesh);
-      this.members.push(mesh);
-    }
+    this.ensureCapacity(projectiles.length);
     const activeIds = new Set<number>();
-    for (let index = 0; index < this.members.length; index++) {
-      const member = this.members[index];
+    for (let index = 0; index < projectiles.length; index++) {
       const projectile = projectiles[index];
-      member.visible = projectile !== undefined;
-      if (!projectile) continue;
       activeIds.add(projectile.id);
       const length = Math.min(1.35, 1 + 0.025 * (projectile.tier - 1));
-      member.position.set(-projectile.x, projectile.kind === 'rocket' ? 0.66 : 0.64, projectile.z);
       const pulse = this.pulse.scaleFor(projectile.id, nowMs);
-      const glow = member.children[0] as THREE.Mesh;
+      const transform = this.transform;
+      transform.position.set(-projectile.x, projectile.kind === 'rocket' ? 0.66 : 0.64, projectile.z);
       if (projectile.kind === 'rocket') {
-        member.scale.setScalar(1.8 * pulse);
-        glow.scale.set(2.4, 2.4, 1.12);
+        transform.scale.setScalar(1.8 * pulse);
       } else {
-        member.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
+        transform.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
           1 + 0.45 * projectile.hitRadiusBonus, length * pulse);
-        const glowWidth = 2.4 + 1.7 * projectile.hitRadiusBonus;
-        glow.scale.set(glowWidth, glowWidth, 1.12);
       }
+      transform.updateMatrix();
+      this.body.setMatrixAt(index, transform.matrix);
+      const glowWidth = projectile.kind === 'rocket' ? 2.4 : 2.4 + 1.7 * projectile.hitRadiusBonus;
+      transform.scale.set(transform.scale.x * glowWidth, transform.scale.y * glowWidth,
+        transform.scale.z * 1.12);
+      transform.updateMatrix();
+      this.glow.setMatrixAt(index, transform.matrix);
     }
+    this.body.count = projectiles.length;
+    this.glow.count = projectiles.length;
+    this.body.visible = projectiles.length > 0;
+    this.glow.visible = projectiles.length > 0;
+    this.body.instanceMatrix.needsUpdate = true;
+    this.glow.instanceMatrix.needsUpdate = true;
     this.pulse.prune(activeIds);
   }
 
-  reset(): void { this.pulse.reset(); }
-  dispose(): void {
+  reset(): void {
     this.pulse.reset();
-    for (const member of this.members) this.scene.remove(member);
-    this.members.length = 0;
+    this.body.count = 0;
+    this.glow.count = 0;
+    this.body.visible = false;
+    this.glow.visible = false;
+  }
+  dispose(): void {
+    this.reset();
+    this.scene.remove(this.body, this.glow);
+    this.body.dispose();
+    this.glow.dispose();
     this.tracerMaterial.dispose();
     this.glowMaterial.dispose();
+  }
+
+  private createBatch(name: string, material: THREE.Material, capacity: number): THREE.InstancedMesh {
+    const mesh = new THREE.InstancedMesh(this.bullet.geometry, material, capacity);
+    mesh.name = name;
+    mesh.count = 0;
+    mesh.visible = false;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    this.scene.add(mesh);
+    return mesh;
+  }
+
+  private ensureCapacity(required: number): void {
+    if (required <= this.capacity) return;
+    while (this.capacity < required) this.capacity *= 2;
+    this.scene.remove(this.body, this.glow);
+    this.body.dispose();
+    this.glow.dispose();
+    this.body = this.createBatch('rifle-tracers', this.tracerMaterial, this.capacity);
+    this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
   }
 }

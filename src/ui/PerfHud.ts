@@ -29,6 +29,7 @@ export class PerfHud {
       `PERF  T${game.tier} Z${game.playerZ.toFixed(0)}`,
       `FPS ${metrics.frame.average() ? (1000 / metrics.frame.average()).toFixed(0) : '0'}  avg ${metrics.frame.average().toFixed(1)} p95 ${metrics.frame.p95().toFixed(1)}ms`,
       `SIM ${metrics.sim.average().toFixed(1)} RND ${metrics.render.average().toFixed(1)} AUD ${metrics.audio.average().toFixed(1)}ms`,
+      `STEP ${metrics.currentSteps} avg ${metrics.steps.average().toFixed(1)} max ${metrics.maxSteps}`,
       `E ${game.enemies}/${h.enemies} P ${game.projectiles}/${h.projectiles}`,
       `S ${r.visibleSquad} RW ${game.rewards} B ${game.boss ? 'Y' : 'N'}`,
       `HIT calls ${compact(c.findFirstHitCalls)} checks ${compact(c.enemyCandidateChecks)}`,

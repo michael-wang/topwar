@@ -42,6 +42,18 @@ body {
   pointer-events: none;
 }
 
+.build-label {
+  position: absolute;
+  z-index: 5;
+  right: max(0.35rem, env(safe-area-inset-right));
+  bottom: max(0.35rem, env(safe-area-inset-bottom));
+  color: white;
+  opacity: 0.55;
+  font: 9px/1 monospace;
+  text-shadow: 0 1px 2px #14212a;
+  pointer-events: none;
+}
+
 .game-over-overlay:not([hidden]) {
   position: absolute;
   inset: 0;

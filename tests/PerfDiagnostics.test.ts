@@ -45,6 +45,25 @@ describe('opt-in performance diagnostics', () => {
     expect(perf.highWater.projectilePool).toBe(0);
   });
 
+  it('tracks current, rolling, and maximum steps without sampling paused frames', () => {
+    const perf = new PerfDiagnostics();
+    for (const steps of [1, 2, 4]) {
+      perf.beginFrame();
+      perf.recordSteps(steps);
+    }
+    expect(perf.currentSteps).toBe(4);
+    expect(perf.steps.average()).toBeCloseTo(7 / 3);
+    expect(perf.maxSteps).toBe(4);
+    perf.beginFrame(); // A paused frame has no FixedStepLoop.advance call.
+    expect(perf.currentSteps).toBe(0);
+    expect(perf.steps.count).toBe(3);
+    expect(perf.steps.average()).toBeCloseTo(7 / 3);
+    perf.reset();
+    expect(perf.currentSteps).toBe(0);
+    expect(perf.steps.count).toBe(0);
+    expect(perf.maxSteps).toBe(0);
+  });
+
   it('maps renderer.info without modifying it', () => {
     const info = { render: { calls: 42, triangles: 1234 },
       memory: { geometries: 9, textures: 3 } };
@@ -62,8 +81,8 @@ describe('opt-in performance diagnostics', () => {
     const renderer = new ProjectileRenderer(scene, bullet);
     renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 0, hitRadiusBonus: 0 }], 0);
     const children = scene.children.length;
-    expect(renderer.getDebugStats()).toEqual({ live: 1, pool: 1, pulseTrackers: 1 });
-    expect(renderer.getDebugStats()).toEqual({ live: 1, pool: 1, pulseTrackers: 1 });
+    expect(renderer.getDebugStats()).toEqual({ live: 1, pool: 8, pulseTrackers: 1 });
+    expect(renderer.getDebugStats()).toEqual({ live: 1, pool: 8, pulseTrackers: 1 });
     expect(scene.children.length).toBe(children);
     renderer.dispose();
     bullet.geometry.dispose();
