@@ -4,8 +4,8 @@ export class TouchSteeringInput {
   private static readonly HINT_DURATION_MS = 1750;
   private readonly band: HTMLDivElement;
   private readonly zones: readonly HTMLDivElement[];
-  private activePointerId: number | null = null;
-  private activeZone: HTMLDivElement | null = null;
+  // Map insertion order is press order; moves never promote an older pointer.
+  private readonly heldPointers = new Map<number, { zone: HTMLDivElement; axis: HorizontalAxis }>();
   private axis: HorizontalAxis = 0;
   private hintUsed = false;
   private hintTimer: ReturnType<typeof setTimeout> | null = null;
@@ -86,18 +86,16 @@ export class TouchSteeringInput {
     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
     event.stopPropagation();
     event.preventDefault();
-    if (this.activePointerId !== null) return;
-    this.activePointerId = event.pointerId;
-    this.activeZone = event.currentTarget as HTMLDivElement;
+    if (this.heldPointers.has(event.pointerId)) return;
+    const zone = event.currentTarget as HTMLDivElement;
     try {
-      this.activeZone.setPointerCapture(event.pointerId);
+      zone.setPointerCapture(event.pointerId);
     } catch {
       // A pointer canceled during dispatch cannot be captured; leave the next press free.
-      this.activePointerId = null;
-      this.activeZone = null;
       return;
     }
-    this.updateAxis(event.clientX);
+    this.heldPointers.set(event.pointerId, { zone, axis: this.axisForX(event.clientX) });
+    this.updateAxis();
     if (!this.hintUsed) {
       this.hintUsed = true;
       this.hintTimer = setTimeout(() => {
@@ -119,26 +117,34 @@ export class TouchSteeringInput {
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    if (event.pointerId !== this.activePointerId) return;
+    const pointer = this.heldPointers.get(event.pointerId);
+    if (!pointer) return;
     event.stopPropagation();
     event.preventDefault();
-    this.updateAxis(event.clientX);
+    pointer.axis = this.axisForX(event.clientX);
+    this.updateAxis();
   };
 
   private readonly onPointerEnd = (event: PointerEvent): void => {
-    if (event.pointerId !== this.activePointerId) return;
+    if (!this.heldPointers.has(event.pointerId)) return;
     event.stopPropagation();
     event.preventDefault();
-    this.endSteering();
+    this.removePointer(event.pointerId);
   };
 
   private readonly onLostCapture = (event: PointerEvent): void => {
-    if (event.pointerId === this.activePointerId) this.endSteering();
+    this.removePointer(event.pointerId);
   };
 
-  private updateAxis(clientX: number): void {
+  private axisForX(clientX: number): HorizontalAxis {
     const bounds = this.band.getBoundingClientRect();
-    this.setAxis(clientX < bounds.left + bounds.width / 2 ? -1 : 1);
+    return clientX < bounds.left + bounds.width / 2 ? -1 : 1;
+  }
+
+  private updateAxis(): void {
+    let axis: HorizontalAxis = 0;
+    for (const pointer of this.heldPointers.values()) axis = pointer.axis;
+    this.setAxis(axis);
   }
 
   private setAxis(axis: HorizontalAxis): void {
@@ -150,12 +156,22 @@ export class TouchSteeringInput {
   }
 
   private endSteering(): void {
-    const zone = this.activeZone;
-    const pointerId = this.activePointerId;
-    this.activeZone = null;
-    this.activePointerId = null;
+    const pointers = [...this.heldPointers];
+    this.heldPointers.clear();
     this.setAxis(0);
-    if (zone && pointerId !== null && zone.hasPointerCapture(pointerId)) {
+    for (const [pointerId, pointer] of pointers) this.releaseCapture(pointerId, pointer.zone);
+  }
+
+  private removePointer(pointerId: number): void {
+    const pointer = this.heldPointers.get(pointerId);
+    if (!pointer) return;
+    this.heldPointers.delete(pointerId);
+    this.updateAxis();
+    this.releaseCapture(pointerId, pointer.zone);
+  }
+
+  private releaseCapture(pointerId: number, zone: HTMLDivElement): void {
+    if (zone.hasPointerCapture(pointerId)) {
       try {
         zone.releasePointerCapture(pointerId);
       } catch {

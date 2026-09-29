@@ -102,26 +102,112 @@ describe('TouchSteeringInput', () => {
     touch.dispose();
   });
 
-  it('accepts only one steering pointer and clears it on stop and disposal', () => {
+  it('clears every held pointer on stop and disposal', () => {
     const { band, left, right, touch, onAxisChange } = setup();
     touch.start();
     left.emit('pointerdown', 1, 20);
     right.emit('pointerdown', 2, 180);
     right.emit('pointermove', 2, 180);
-    expect(onAxisChange.mock.calls).toEqual([[-1]]);
+    expect(onAxisChange.mock.calls).toEqual([[-1], [1]]);
     touch.stop();
     expect(onAxisChange).toHaveBeenLastCalledWith(0);
     expect(left.hasPointerCapture(1)).toBe(false);
+    expect(right.hasPointerCapture(2)).toBe(false);
     touch.start();
     left.emit('pointermove', 1, 180);
     expect(onAxisChange).toHaveBeenLastCalledWith(0);
     right.emit('pointerdown', 3, 180);
     expect(onAxisChange).toHaveBeenLastCalledWith(1);
+    left.emit('pointerdown', 4, 20);
     touch.dispose();
     expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    expect(right.hasPointerCapture(3)).toBe(false);
+    expect(left.hasPointerCapture(4)).toBe(false);
     expect(band.removed).toBe(true);
     expect(() => touch.start()).toThrow(/disposed/);
   });
+
+  it('keeps the newer LEFT press active when the older RIGHT press is released', () => {
+    const { left, right, touch, onAxisChange } = setup();
+    touch.start();
+    right.emit('pointerdown', 1, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(1);
+    left.emit('pointerdown', 2, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(-1);
+    right.emit('pointerup', 1, 180);
+    expect(onAxisChange.mock.calls).toEqual([[1], [-1]]);
+    expect(left.hasPointerCapture(2)).toBe(true);
+    left.emit('pointerup', 2, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    touch.dispose();
+  });
+
+  it.each(['pointerup', 'pointercancel', 'lostpointercapture'])(
+    '%s removes only the winner and immediately restores the remaining RIGHT press', (type) => {
+      const { left, right, touch, onAxisChange } = setup();
+      touch.start();
+      right.emit('pointerdown', 1, 180);
+      left.emit('pointerdown', 2, 20);
+      expect(onAxisChange).toHaveBeenLastCalledWith(-1);
+      left.emit(type, 2, 20);
+      expect(onAxisChange.mock.calls).toEqual([[1], [-1], [1]]);
+      expect(left.hasPointerCapture(2)).toBe(false);
+      expect(right.hasPointerCapture(1)).toBe(true);
+      right.emit('pointerup', 1, 180);
+      expect(onAxisChange).toHaveBeenLastCalledWith(0);
+      touch.dispose();
+    });
+
+  it('retains press priority while fingers cross halves and uses their current sides on fallback', () => {
+    const { left, right, touch, onAxisChange } = setup();
+    touch.start();
+    left.emit('pointerdown', 1, 20);
+    right.emit('pointerdown', 2, 180);
+    left.emit('pointermove', 1, 180);
+    left.emit('pointermove', 1, 20);
+    expect(onAxisChange.mock.calls).toEqual([[-1], [1]]);
+    right.emit('pointermove', 2, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(-1);
+    left.emit('pointermove', 1, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(-1);
+    right.emit('pointerup', 2, 20);
+    expect(onAxisChange).toHaveBeenLastCalledWith(1);
+    left.emit('pointerup', 1, 180);
+    expect(onAxisChange).toHaveBeenLastCalledWith(0);
+    touch.dispose();
+  });
+
+  it('supports more than two pointers and falls back in reverse press order', () => {
+    const { left, right, touch, onAxisChange } = setup();
+    touch.start();
+    left.emit('pointerdown', 1, 20);
+    right.emit('pointerdown', 2, 180, 'pen');
+    left.emit('pointerdown', 3, 20);
+    left.emit('pointerup', 3, 20);
+    right.emit('pointerup', 2, 180, 'pen');
+    left.emit('pointerup', 1, 20);
+    expect(onAxisChange.mock.calls).toEqual([[-1], [1], [-1], [1], [-1], [0]]);
+    touch.dispose();
+  });
+
+  it.each(['contextmenu', 'selectstart', 'dragstart'])(
+    '%s preserves both pointers and their winning/fallback directions', (type) => {
+      const { left, right, touch, onAxisChange } = setup();
+      touch.start();
+      right.emit('pointerdown', 1, 180);
+      left.emit('pointerdown', 2, 20);
+      const event = left.emit(type, 2, 20);
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(event.stopPropagation).toHaveBeenCalledOnce();
+      expect(onAxisChange.mock.calls).toEqual([[1], [-1]]);
+      expect(right.hasPointerCapture(1)).toBe(true);
+      expect(left.hasPointerCapture(2)).toBe(true);
+      left.emit('pointerup', 2, 20);
+      expect(onAxisChange).toHaveBeenLastCalledWith(1);
+      right.emit('pointerup', 1, 180);
+      expect(onAxisChange).toHaveBeenLastCalledWith(0);
+      touch.dispose();
+    });
 
   it('shows the first-use hint, then hides it once across stop/start and Retry lifecycle', () => {
     vi.useFakeTimers();
