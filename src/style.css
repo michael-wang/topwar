@@ -35,7 +35,7 @@ body {
   box-sizing: border-box;
   overflow: hidden;
   border-radius: 0.25rem;
-  background: rgb(10 18 24 / 82%);
+  background: rgb(10 18 24 / 42%);
   color: #e9f8e3;
   font: 600 clamp(8px, 2.3vw, 10px)/1.2 monospace;
   white-space: pre;

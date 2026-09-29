@@ -4,6 +4,7 @@ import { createEnemyFormation } from './enemies/formation';
 import { createEnemyStreamRow } from './enemies/streamRow';
 import { rewardPlacementForBlock } from './enemies/streamRewards';
 import { effectiveSeed } from './enemies/effectiveSeed';
+import { EnemyCollisionIndex, type EnemyCandidateSource } from './enemies/EnemyCollisionIndex';
 import { addRifleSoldiers, afterCasualtiesWithBreakdown, normalizeRifleSquad, validateSquad } from './squad/composition';
 import { createSquadFormation } from './squad/formation';
 import { readExactValue, storeExactValue } from './tiers/exactValue';
@@ -66,8 +67,8 @@ type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: num
   | { kind: 'streamReward'; reward: StreamRewardSimulationState; fraction: number; z: number }
   | { kind: 'gate'; gate: UpgradeGateSimulationState; fraction: number; z: number };
 
-function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
-  enemies: EnemySimulationState[], boss: BossSimulationState | null,
+export function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
+  enemyCandidates: EnemyCandidateSource, boss: BossSimulationState | null,
   rewards: StreamRewardSimulationState[], gates: UpgradeGateSimulationState[],
   normalEnemyRadius: number,
   bossRadius: number | undefined,
@@ -77,23 +78,24 @@ function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
   const minimumZ = projectile.z + travel * minimumFraction;
-  for (const enemy of enemies) {
-    if (diagnostics) diagnostics.enemyCandidateChecks++;
-    if (piercedEnemyIds?.has(enemy.id)) continue;
-    const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
-    const dx = projectile.x - enemy.x;
-    if (Math.abs(dx) > radius) continue;
-    const halfChord = Math.sqrt(radius * radius - dx * dx);
-    const entryZ = enemy.z - halfChord;
-    const exitZ = enemy.z + halfChord;
-    if (exitZ < minimumZ || entryZ > endZ) continue;
-    const hitZ = Math.max(minimumZ, entryZ);
-    const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
-    if (!first || fraction < first.fraction
-      || (fraction === first.fraction && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
-      first = { kind: 'enemy', enemy, fraction, z: hitZ };
-    }
-  }
+  const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
+  enemyCandidates.forEachCandidate(projectile.x - radius, projectile.x + radius,
+    minimumZ - radius, endZ + radius, (enemy) => {
+      if (piercedEnemyIds?.has(enemy.id)) return;
+      if (diagnostics) diagnostics.enemyCandidateChecks++;
+      const dx = projectile.x - enemy.x;
+      if (Math.abs(dx) > radius) return;
+      const halfChord = Math.sqrt(radius * radius - dx * dx);
+      const entryZ = enemy.z - halfChord;
+      const exitZ = enemy.z + halfChord;
+      if (exitZ < minimumZ || entryZ > endZ) return;
+      const hitZ = Math.max(minimumZ, entryZ);
+      const fraction = travel === 0 ? 0 : (hitZ - projectile.z) / travel;
+      if (!first || fraction < first.fraction
+        || (fraction === first.fraction && first.kind === 'enemy' && enemy.id < first.enemy.id)) {
+        first = { kind: 'enemy', enemy, fraction, z: hitZ };
+      }
+    });
   if (boss && bossRadius !== undefined && Math.abs(projectile.x - boss.x) <= bossRadius) {
     const dx = projectile.x - boss.x;
     const halfChord = Math.sqrt(bossRadius * bossRadius - dx * dx);
@@ -767,6 +769,7 @@ export class Simulation {
         nextZ, this.tiers, boss, this.bossHpScale);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
     }
+    const enemyCollisionIndex = new EnemyCollisionIndex(enemies);
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
@@ -835,7 +838,7 @@ export class Simulation {
       let consumed = false;
       const piercedEnemyIds = projectile.tier > 1 ? new Set<number>() : undefined;
       while (true) {
-        const hit = findFirstHit(projectile, endZ, enemies, boss, streamRewards, gates,
+        const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, boss, streamRewards, gates,
           tuning.normalEnemyRadius,
           tuning.bossRadius,
           this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics);
@@ -863,7 +866,10 @@ export class Simulation {
           if (hit.boss.hp <= 0) boss = null;
         } else if (projectile.kind !== 'rocket') {
           hit.enemy.hp -= projectile.damage;
-          if (hit.enemy.hp <= 0) enemies.splice(enemies.indexOf(hit.enemy), 1);
+          if (hit.enemy.hp <= 0) {
+            enemies.splice(enemies.indexOf(hit.enemy), 1);
+            enemyCollisionIndex.remove(hit.enemy);
+          }
           const penetrationCost = projectile.tier > hit.enemy.tier
             ? exchangeValueForTier(hit.enemy.tier, this.tiers.mergeCount) : 0n;
           if (penetrationCost > 0n) {
@@ -888,7 +894,10 @@ export class Simulation {
             const dz = enemy.z - blastZ;
             if (dx * dx + dz * dz <= radiusSquared) {
               enemy.hp -= projectile.damage;
-              if (enemy.hp <= 0) enemies.splice(enemies.indexOf(enemy), 1);
+              if (enemy.hp <= 0) {
+                enemies.splice(enemies.indexOf(enemy), 1);
+                enemyCollisionIndex.remove(enemy);
+              }
             }
           }
         }
