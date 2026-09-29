@@ -1,80 +1,80 @@
 export interface GameRenderState {
-  player: {
-    x: number;
-    z: number;
+  readonly player: {
+    readonly x: number;
+    readonly z: number;
   };
-  squad: {
-    count: number;
-    rocketCount: number;
-    rifleCounts: number[];
-    formationSpacing: number;
+  readonly squad: {
+    readonly count: number;
+    readonly rocketCount: number;
+    readonly rifleCounts: readonly number[];
+    readonly formationSpacing: number;
   };
-  track: {
-    halfWidth: number;
-    defenseLineZ: number;
+  readonly track: {
+    readonly halfWidth: number;
+    readonly defenseLineZ: number;
   };
-  enemies: EnemyRenderState[];
-  boss: BossRenderState | null;
-  streamRewards: StreamRewardRenderState[];
-  gates: UpgradeGateRenderState[];
-  pickups: UpgradePickupRenderState[];
-  projectiles: ProjectileRenderState[];
+  readonly enemies: readonly EnemyRenderState[];
+  readonly boss: BossRenderState | null;
+  readonly streamRewards: readonly StreamRewardRenderState[];
+  readonly gates: readonly UpgradeGateRenderState[];
+  readonly pickups: readonly UpgradePickupRenderState[];
+  readonly projectiles: readonly ProjectileRenderState[];
 }
 
 export interface BossRenderState {
-  id: number;
-  tier: number;
-  x: number;
-  z: number;
-  hp: number;
-  maxHp: number;
-  visualScale: number;
-  engaged: boolean;
-  slamCooldownRemainingSeconds: number;
-  slamCount: number;
+  readonly id: number;
+  readonly tier: number;
+  readonly x: number;
+  readonly z: number;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly visualScale: number;
+  readonly engaged: boolean;
+  readonly slamCooldownRemainingSeconds: number;
+  readonly slamCount: number;
 }
 
 export interface StreamRewardRenderState {
-  id: number;
-  tier: number;
-  x: number;
-  z: number;
-  hitProgress: number;
-  hitsRequired: number;
+  readonly id: number;
+  readonly tier: number;
+  readonly x: number;
+  readonly z: number;
+  readonly hitProgress: number;
+  readonly hitsRequired: number;
 }
 
 export interface UpgradeGateRenderState {
-  id: string;
-  x: number;
-  z: number;
-  width: number;
-  rewardKind: 'rifle' | 'tier2Rifle';
-  rewardAmount: number;
-  hitProgress: number;
-  hitsRequired: number;
+  readonly id: string;
+  readonly x: number;
+  readonly z: number;
+  readonly width: number;
+  readonly rewardKind: 'rifle' | 'tier2Rifle';
+  readonly rewardAmount: number;
+  readonly hitProgress: number;
+  readonly hitsRequired: number;
 }
 
 export interface UpgradePickupRenderState {
-  id: number;
-  x: number;
-  z: number;
-  rewardAmount: number;
-  rewardKind: 'rifle' | 'tier2Rifle';
+  readonly id: number;
+  readonly x: number;
+  readonly z: number;
+  readonly rewardAmount: number;
+  readonly rewardKind: 'rifle' | 'tier2Rifle';
 }
 
 export interface ProjectileRenderState {
-  id: number;
-  kind: 'rifle' | 'rocket';
-  tier: number;
-  x: number;
-  z: number;
-  hitRadiusBonus: number;
+  readonly id: number;
+  readonly kind: 'rifle' | 'rocket';
+  readonly tier: number;
+  readonly x: number;
+  readonly z: number;
+  readonly hitRadiusBonus: number;
 }
 
 export interface EnemyRenderState {
-  id: number;
-  tier: number;
-  x: number;
-  z: number;
-  hp: number;
+  readonly id: number;
+  readonly tier: number;
+  readonly x: number;
+  readonly z: number;
+  readonly hp: number;
 }

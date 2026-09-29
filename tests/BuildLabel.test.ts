@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatBuildLabel, mountBuildLabel } from '../src/ui/BuildLabel';
+import { formatBuildLabel, mountBuildLabel, refreshDevBuildLabel } from '../src/ui/BuildLabel';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -18,5 +18,19 @@ describe('build label', () => {
     expect(element.className).toBe('build-label');
     expect(element.textContent).toBe('v0.1.0 · abcdef1');
     expect(viewport.append).toHaveBeenCalledWith(element);
+  });
+
+  it('reads the local dev SHA once and falls back to the injected SHA', async () => {
+    const label = { textContent: '' } as HTMLElement;
+    const load = vi.fn(async () => ({ ok: true, json: async () => ({ shortSha: 'abcdef123' }) }));
+    await refreshDevBuildLabel(label, '0.1.0', '1234567', load);
+    expect(load).toHaveBeenCalledWith('/__topwar/build-info', { cache: 'no-store' });
+    expect(label.textContent).toBe('v0.1.0 · abcdef1');
+    await refreshDevBuildLabel(label, '0.1.0', '1234567',
+      async () => ({ ok: true, json: async () => ({ shortSha: 'unknown' }) }));
+    expect(label.textContent).toBe('v0.1.0 · 1234567');
+    await refreshDevBuildLabel(label, '0.1.0', '1234567',
+      async () => { throw new Error('unavailable'); });
+    expect(label.textContent).toBe('v0.1.0 · 1234567');
   });
 });

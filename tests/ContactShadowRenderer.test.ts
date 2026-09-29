@@ -79,11 +79,11 @@ describe('soft contact shadows', () => {
   it('grows only when crowd capacity is exceeded and keeps batches bounded', () => {
     const scene = new THREE.Scene();
     const shadows = new ContactShadowRenderer(scene);
-    const frame = state();
+    let frame = state();
     const first = scene.getObjectByName('contact-shadow-enemy') as THREE.InstancedMesh;
     const material = first.material;
-    frame.enemies = Array.from({ length: 40 }, (_, id) =>
-      ({ id, tier: 1, x: 0, z: id + 8, hp: 1 }));
+    frame = { ...frame, enemies: Array.from({ length: 40 }, (_, id) =>
+      ({ id, tier: 1, x: 0, z: id + 8, hp: 1 })) };
     shadows.update(frame, squad, 0);
     const grown = scene.getObjectByName('contact-shadow-enemy') as THREE.InstancedMesh;
     expect(grown).not.toBe(first);
@@ -99,22 +99,22 @@ describe('soft contact shadows', () => {
   it('keeps the Boss grounded through its visible corpse, then clears on Retry', () => {
     const scene = new THREE.Scene();
     const shadows = new ContactShadowRenderer(scene);
-    const frame = state();
+    let frame = state();
     const bossShadow = scene.getObjectByName('contact-shadow-boss') as THREE.InstancedMesh;
     shadows.update(frame, squad, 1000);
-    frame.boss = null;
+    frame = { ...frame, boss: null };
     shadows.update(frame, squad, 1016);
     expect(bossShadow.count).toBe(1);
     shadows.update(frame, squad, 1016 + BOSS_DEATH_MS - 1);
     expect(bossShadow.count).toBe(1);
     shadows.update(frame, squad, 1016 + BOSS_DEATH_MS);
     expect(bossShadow.count).toBe(0);
-    frame.boss = state().boss;
+    frame = { ...frame, boss: state().boss };
     shadows.update(frame, squad, 4000);
     expect(bossShadow.count).toBe(1);
     shadows.reset();
     expect(bossShadow.count).toBe(0);
-    frame.boss = null;
+    frame = { ...frame, boss: null };
     shadows.update(frame, squad, 5000);
     expect(bossShadow.count).toBe(0);
     shadows.dispose();

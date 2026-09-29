@@ -63,6 +63,7 @@ vi.mock('../src/simulation/Simulation', () => ({
     step = mock.step;
     setRuntimeBalance = mock.setRuntimeBalance;
     getState = mock.getState;
+    getFrameState = mock.getState;
     consumePresentationEvents = mock.consumePresentationEvents;
   },
 }));

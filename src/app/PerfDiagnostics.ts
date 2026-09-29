@@ -49,6 +49,9 @@ export class PerfDiagnostics {
   readonly sim = new RollingMetric();
   readonly render = new RollingMetric();
   readonly audio = new RollingMetric();
+  readonly stepCpu = new RollingMetric();
+  readonly stateCpu = new RollingMetric();
+  readonly mapCpu = new RollingMetric();
   readonly collision = new RollingMetric();
   readonly collisionCalls = new RollingMetric();
   readonly projectilePasses = new RollingMetric();
@@ -77,6 +80,12 @@ export class PerfDiagnostics {
     this.maxSteps = Math.max(this.maxSteps, steps);
   }
 
+  recordCpuBreakdown(stepMs: number, stateMs: number, mapMs: number): void {
+    this.stepCpu.add(stepMs);
+    this.stateCpu.add(stateMs);
+    this.mapCpu.add(mapMs);
+  }
+
   record(frameMs: number, simMs: number, renderMs: number, audioMs: number,
     counts: { enemies: number; projectiles: number; drawCalls: number; triangles: number;
       projectilePool: number }): void {
@@ -97,6 +106,9 @@ export class PerfDiagnostics {
     for (const metric of [this.frame, this.sim, this.render, this.audio, this.collision,
       this.collisionCalls, this.projectilePasses, this.penetrationPasses]) metric.reset();
     this.steps.reset();
+    this.stepCpu.reset();
+    this.stateCpu.reset();
+    this.mapCpu.reset();
     this.currentSteps = 0;
     this.maxSteps = 0;
     this.beginFrame();

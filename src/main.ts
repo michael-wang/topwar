@@ -6,14 +6,15 @@ import { publicAssetUrl } from './core/publicAssetUrl';
 import { loadCharacterAssets } from './rendering/CharacterAssets';
 import './style.css';
 import { perfEnabled } from './app/PerfDiagnostics';
-import { mountBuildLabel } from './ui/BuildLabel';
+import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
 if (!viewport) {
   throw new Error('Game viewport is missing');
 }
 const gameViewport = viewport;
-mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
+const buildLabel = mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
+if (import.meta.env.DEV) void refreshDevBuildLabel(buildLabel, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 
 const configStore = new ConfigStore();
 async function startGame(): Promise<void> {

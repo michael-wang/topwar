@@ -1,8 +1,8 @@
-import type { SquadSimulationState } from '../SimulationState';
+import type { SquadSimulationState, SimulationFrameState } from '../SimulationState';
 import { readExactValue, storeExactValue } from '../tiers/exactValue';
 import { exchangeValueForTier } from '../tiers/tierRules';
 
-function validateRawSquad(squad: SquadSimulationState): void {
+function validateRawSquad(squad: SimulationFrameState['squad']): void {
   if (!Number.isSafeInteger(squad.count) || squad.count < 0
     || !Number.isSafeInteger(squad.rocketCount) || squad.rocketCount < 0
     || !Array.isArray(squad.rifleCounts)) {
@@ -21,7 +21,7 @@ function validateRawSquad(squad: SquadSimulationState): void {
   if (total !== squad.count) throw new Error('Squad count must equal visible rifle and rocket bodies');
 }
 
-export function validateSquad(squad: SquadSimulationState, mergeCount: number): void {
+export function validateSquad(squad: SimulationFrameState['squad'], mergeCount: number): void {
   validateRawSquad(squad);
   if (!Number.isSafeInteger(mergeCount) || mergeCount < 2) throw new Error('Invalid rifle merge count');
   let highestIndex = squad.rifleCounts.length - 1;
@@ -67,7 +67,7 @@ export function compactRifleValue(value: number | bigint, mergeCount: number, ro
   return { count, rocketCount, rifleCounts: digits, rifleRemainder };
 }
 
-export function rifleDefenseValue(squad: SquadSimulationState, mergeCount: number): bigint {
+export function rifleDefenseValue(squad: SimulationFrameState['squad'], mergeCount: number): bigint {
   validateRawSquad(squad);
   let value = readExactValue(squad.rifleRemainder, 'Squad rifle remainder');
   squad.rifleCounts.forEach((count, index) => {

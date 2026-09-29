@@ -10,7 +10,7 @@ import { createSquadFormation } from './squad/formation';
 import { readExactValue, storeExactValue } from './tiers/exactValue';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
   enemyPowerForTier, riflePowerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
-import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
+import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, SimulationFrameState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
 import { rifleHitRadiusBonusForTier } from './weapons/rifleHitRadius';
 
@@ -1010,6 +1010,10 @@ export class Simulation {
     this.presentationEvents = [];
     return events;
   }
+
+  // Trusted frame consumers may read this until the next simulation mutation. References are shared
+  // with live state; use getState() for independent snapshots or any retained/mutable data.
+  getFrameState(): SimulationFrameState { return this.state; }
 
   getState(): SimulationState {
     return {

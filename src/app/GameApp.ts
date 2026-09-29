@@ -20,6 +20,7 @@ import { ControlHint } from '../ui/ControlHint';
 import { TuningPanel } from '../ui/TuningPanel';
 import { PerfDiagnostics } from './PerfDiagnostics';
 import { PerfHud } from '../ui/PerfHud';
+import { projectRenderState } from './projectRenderState';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -237,8 +238,10 @@ export class GameApp {
         ? 0
         : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
       this.previousFrameTimestampMs = timestampMs;
+      let stepCpuMs = 0;
       if (!this.paused) {
         this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
+        const stepStartedMs = perf ? performance.now() : 0;
         const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
         dtSeconds,
         { targetX: this.targetX },
@@ -258,10 +261,12 @@ export class GameApp {
           rocket: { ...this.config.weapon.rocket },
         },
         ));
+        if (perf) stepCpuMs = performance.now() - stepStartedMs;
         perf?.recordSteps(advance.steps);
       }
-      const state = this.simulation.getState();
-      const simFinishedMs = perf ? performance.now() : 0;
+      const stateStartedMs = perf ? performance.now() : 0;
+      const state = this.simulation.getFrameState();
+      const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();
       if (state.squad.count === 0 && presentationEvents.some((event) => event.after.count === 0)) {
         this.fatalPresentationUntilMs = this.presentationMs + 360;
@@ -288,27 +293,13 @@ export class GameApp {
       const audioFinishedMs = perf ? performance.now() : 0;
       this.previousDefenseValue = currentDefenseValue;
       const renderStartedMs = perf ? performance.now() : 0;
-      const renderState: GameRenderState = {
-        player: { x: state.player.x, z: state.player.z },
-        squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
-          rifleCounts: [...state.squad.rifleCounts],
-          formationSpacing: this.config.player.formationSpacing },
-        track: { halfWidth: this.config.track.halfWidth,
-          defenseLineZ: state.player.z - this.config.track.defenseLineOffset },
-        enemies: state.enemies.map((enemy) => ({ id: enemy.id, tier: enemy.tier,
-          x: enemy.x, z: enemy.z, hp: enemy.hp })),
-        boss: state.boss ? { ...state.boss, visualScale: this.config.bosses.basic.visualScale } : null,
-        streamRewards: state.streamRewards.map((reward) => ({ ...reward })),
-        gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x, z: state.player.z + gate.zOffset, width: gate.width,
-          rewardKind: gate.reward.kind, rewardAmount: gate.reward.amount,
-          hitProgress: gate.hitProgress, hitsRequired: gate.reward.hitsRequired })),
-        pickups: state.pickups.map((pickup) => ({ id: pickup.id, x: pickup.x,
-          z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount,
-          rewardKind: pickup.rewardKind })),
-        projectiles: state.projectiles.map((projectile) => ({ id: projectile.id, kind: projectile.kind,
-          tier: projectile.tier,
-          x: projectile.x, z: projectile.z, hitRadiusBonus: projectile.hitRadiusBonus })),
-      };
+      const renderState: GameRenderState = projectRenderState(state, {
+        formationSpacing: this.config.player.formationSpacing,
+        trackHalfWidth: this.config.track.halfWidth,
+        defenseLineOffset: this.config.track.defenseLineOffset,
+        bossVisualScale: this.config.bosses.basic.visualScale,
+      });
+      const mapFinishedMs = perf ? performance.now() : 0;
       if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
@@ -316,8 +307,10 @@ export class GameApp {
       this.audio.updateEnvironment(this.presentationMs);
       if (perf) {
         const audioEnvironmentFinishedMs = performance.now();
+        perf.recordCpuBreakdown(stepCpuMs, stateFinishedMs - stateStartedMs,
+          mapFinishedMs - renderStartedMs);
         const r = this.renderer.getDebugStats();
-        perf.record(elapsedSeconds > 0 ? elapsedSeconds * 1000 : 0, simFinishedMs - simStartedMs,
+        perf.record(elapsedSeconds > 0 ? elapsedSeconds * 1000 : 0, stateFinishedMs - simStartedMs,
           renderFinishedMs - renderStartedMs,
           audioFinishedMs - audioStartedMs + audioEnvironmentFinishedMs - renderFinishedMs,
           { enemies: state.enemies.length, projectiles: state.projectiles.length,

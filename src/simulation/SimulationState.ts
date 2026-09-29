@@ -108,3 +108,9 @@ export interface SimulationState {
   projectiles: ProjectileSimulationState[];
   weapons: WeaponSimulationState;
 }
+
+type DeepReadonly<T> = T extends readonly (infer Item)[] ? readonly DeepReadonly<Item>[]
+  : T extends object ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> } : T;
+
+// Ephemeral view for synchronous presentation only. Never mutate or retain as a snapshot.
+export type SimulationFrameState = DeepReadonly<SimulationState>;

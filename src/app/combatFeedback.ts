@@ -1,7 +1,7 @@
-import type { SquadSimulationState } from '../simulation/SimulationState';
+import type { SimulationFrameState } from '../simulation/SimulationState';
 import { rifleDefenseValue } from '../simulation/squad/composition';
 
-export function squadDefenseValue(squad: SquadSimulationState, mergeCount: number): bigint {
+export function squadDefenseValue(squad: SimulationFrameState['squad'], mergeCount: number): bigint {
   return rifleDefenseValue(squad, mergeCount) + BigInt(squad.rocketCount);
 }
 

@@ -64,6 +64,19 @@ describe('opt-in performance diagnostics', () => {
     expect(perf.maxSteps).toBe(0);
   });
 
+  it('tracks and resets separate step, state, and mapping CPU averages', () => {
+    const perf = new PerfDiagnostics();
+    perf.recordCpuBreakdown(2, .2, .4);
+    perf.recordCpuBreakdown(6, .4, .8);
+    expect(perf.stepCpu.average()).toBe(4);
+    expect(perf.stateCpu.average()).toBeCloseTo(.3);
+    expect(perf.mapCpu.average()).toBeCloseTo(.6);
+    perf.reset();
+    expect(perf.stepCpu.count).toBe(0);
+    expect(perf.stateCpu.count).toBe(0);
+    expect(perf.mapCpu.count).toBe(0);
+  });
+
   it('maps renderer.info without modifying it', () => {
     const info = { render: { calls: 42, triangles: 1234 },
       memory: { geometries: 9, textures: 3 } };

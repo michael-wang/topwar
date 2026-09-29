@@ -96,8 +96,8 @@ describe('Modern Toy Soldier presentation', () => {
   it('separates four rendered soldiers without changing squad state or road bounds', () => {
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
-    const four = state(1);
-    four.squad = { count: 4, rocketCount: 0, rifleCounts: [4], formationSpacing: .45 };
+    const four = { ...state(1),
+      squad: { count: 4, rocketCount: 0, rifleCounts: [4], formationSpacing: .45 } };
     renderer.update(four, 400);
     const members = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     expect(members).toHaveLength(4);
