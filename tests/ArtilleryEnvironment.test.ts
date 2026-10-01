@@ -4,6 +4,24 @@ import { ARTILLERY_SITES, ArtilleryScheduler } from '../src/rendering/environmen
 import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
 
 describe('distant artillery presentation', () => {
+  it('clears stale artillery and flak when Retry rewinds the presentation clock', () => {
+    const environment = new BridgeEnvironment(new THREE.Scene());
+    let bothActive = false;
+    for (let nowMs = 75; nowMs < 60_000; nowMs += 75) {
+      environment.update(0, 3.2, nowMs, true);
+      const debug = environment.getDebugStats();
+      if (debug.activeImpacts > 0 && debug.activeFlak > 0) {
+        bothActive = true;
+        break;
+      }
+    }
+    expect(bothActive).toBe(true);
+    environment.update(0, 3.2, 0, true);
+    expect(environment.getDebugStats().activeImpacts).toBe(0);
+    expect(environment.getDebugStats().activeFlak).toBe(0);
+    environment.dispose();
+  });
+
   it('uses fixed off-lane sites and a repeatable scheduler without gameplay randomness', () => {
     expect(ARTILLERY_SITES).toHaveLength(10);
     expect(ARTILLERY_SITES.every((site) => Math.abs(site.x) > 8)).toBe(true);

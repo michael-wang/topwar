@@ -11,6 +11,7 @@ export const ENEMY_CONTACT_MS = 240;
 const MAX_CONTACT_VISUALS = 48;
 const CONTACT_FLASH_MS = 150;
 export const ENEMY_VISUAL_SCALE = 0.82;
+export const ENEMY_GAIT_CYCLE_MS = 360;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
@@ -33,14 +34,14 @@ interface ContactVisual {
 
 export function enemyWalkPose(id: number, nowMs: number): { leftArm: number; rightArm: number;
   leftLeg: number; rightLeg: number; bob: number } {
-  const stride = Math.sin(nowMs * (Math.PI * 2 / 500) + id * 2.399963229728653);
-  return { leftArm: stride * 0.35, rightArm: -stride * 0.35,
-    leftLeg: -stride * 0.35, rightLeg: stride * 0.35,
-    bob: Math.abs(stride) * 0.038 };
+  const stride = Math.sin(nowMs * (Math.PI * 2 / ENEMY_GAIT_CYCLE_MS) + id * 2.399963229728653);
+  return { leftArm: stride * 0.43, rightArm: -stride * 0.43,
+    leftLeg: -stride * 0.43, rightLeg: stride * 0.43,
+    bob: Math.abs(stride) * 0.052 };
 }
 
 export function enemyRunFrame(id: number, nowMs: number): number {
-  return Math.floor(nowMs / 125 + id * 1.52788745) & 3;
+  return Math.floor(nowMs / (ENEMY_GAIT_CYCLE_MS / 4) + id * 1.52788745) & 3;
 }
 
 export class EnemyRenderer {
@@ -144,7 +145,7 @@ export class EnemyRenderer {
       const pose = enemyWalkPose(enemy.id, nowMs);
       const transform = this.transform;
       transform.position.set(-enemy.x, pose.bob, enemy.z);
-      transform.rotation.set(-0.11 + pose.leftLeg * 0.035, Math.PI,
+      transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
         pose.leftArm * 0.09);
       transform.scale.setScalar(enemy.visualScale ?? ENEMY_VISUAL_SCALE);
       transform.updateMatrix();

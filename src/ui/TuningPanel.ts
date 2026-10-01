@@ -6,7 +6,7 @@ type Control = { key: Key; label: string; min: number; max: number; step: number
 const controls: readonly Control[] = [
   { key: 'enemyVisualScale', label: 'Enemy visual size', min: 1, max: 2, step: 0.05 },
   { key: 'gruntSpeed', label: 'Grunt speed', min: 0, max: 2, step: 0.05 },
-  { key: 'heavyHp', label: 'Heavy HP (rifle hits)', min: 2, max: 15, step: 1 },
+  { key: 'heavyHp', label: 'Heavy HP (rifle hits)', min: 2, max: 40, step: 1 },
   { key: 'heavySpeed', label: 'Heavy speed', min: 0, max: 1.5, step: 0.01 },
   { key: 'heavyChance', label: 'Heavy chance / wave', min: 0, max: 1, step: 0.05 },
   { key: 'bulletSpeed', label: 'Bullet speed', min: 10, max: 60, step: 1 },

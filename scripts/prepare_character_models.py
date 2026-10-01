@@ -199,9 +199,36 @@ def write_mesh(path, pieces, material, image=None, vertex_colors=None):
     print(f"{path.name}: {path.stat().st_size} bytes")
 
 
-def rigid_piece(source, clip=None, seconds=0, two_handed=False):
+def amplify_run_swing(document, overrides, factor):
+    """Amplify only the four limb rotations around their authored bind orientation."""
+    def multiply(a, b):
+        return np.r_[a[3] * b[:3] + b[3] * a[:3] + np.cross(a[:3], b[:3]),
+                     a[3] * b[3] - np.dot(a[:3], b[:3])]
+
+    for index, node in enumerate(document["nodes"]):
+        if node.get("name") not in ("arm-left", "arm-right", "leg-left", "leg-right"):
+            continue
+        rotation = overrides.get(index, {}).get("rotation")
+        if rotation is None:
+            raise ValueError("Kenney sprint limb rotation missing")
+        rest = np.asarray(node.get("rotation", [0, 0, 0, 1]), dtype=float)
+        delta = multiply(np.r_[-rest[:3], rest[3]], rotation)
+        if delta[3] < 0:
+            delta = -delta
+        length = np.linalg.norm(delta[:3])
+        if length > 1e-12:
+            half_angle = np.arctan2(length, delta[3]) * factor
+            delta = np.r_[delta[:3] / length * np.sin(half_angle), np.cos(half_angle)]
+        overrides[index]["rotation"] = multiply(rest, delta)
+
+
+def rigid_piece(source, clip=None, seconds=0, two_handed=False, swing_scale=1):
     document, binary = read_glb(source)
     overrides = sample_animation(document, binary, clip, seconds) if clip else {}
+    if swing_scale != 1:
+        if clip != "sprint":
+            raise ValueError("Limb amplification is only for normal enemy sprint poses")
+        amplify_run_swing(document, overrides, swing_scale)
     if two_handed:
         if clip != "attack-melee-right":
             raise ValueError("Two-handed Boss pose requires the right melee clip")
@@ -325,7 +352,7 @@ def without_rear_archer_accessory(piece, unwanted):
 
 
 def without_boss_helmet_occluded_head(piece, idle, moving_head=False):
-    """Clip only the upper Archer hair and hidden side-scalp in Boss poses.
+    """Clip only the upper Archer hair and hidden side-scalp under toy helmets.
 
     The idle UV islands identify hair (U=.09375) and skin (U=.21875). Hair
     triangles crossing the helmet rim are cut in each baked pose at the same
@@ -514,15 +541,21 @@ def prepare_toy_soldier(inputs, outputs):
     original = (inputs / "colormap.png").read_bytes()
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
-    write_mesh(outputs / "toy-soldier-body.glb", [body], textured, original)
+    enemy_body = without_boss_helmet_occluded_head(body, body)
+    write_mesh(outputs / "toy-soldier-body.glb", [enemy_body], textured, original)
     boss_body = without_boss_helmet_occluded_head(body, body)
     write_mesh(outputs / "toy-soldier-boss-body.glb", [boss_body], textured, original)
     for frame in range(4):
         run = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125)
         p, n, texcoords, idx = run
         run = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
-        # Runtime reuses the original body's material and texture.
-        write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [run],
+        # Keep Boss motion byte-identical; only normal sprint limbs are amplified.
+        urgent = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125,
+                             swing_scale=1.18)
+        p, n, texcoords, idx = urgent
+        urgent = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
+        urgent = without_boss_helmet_occluded_head(urgent, body)
+        write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [urgent],
                    {"name": "shared-body-material", "pbrMetallicRoughness": {
                        "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
                        "roughnessFactor": 1}})
@@ -548,7 +581,7 @@ def prepare_toy_soldier(inputs, outputs):
     gray[:, :, :3] = luminance[:, :, None]
     gray_stream = BytesIO()
     Image.fromarray(gray).save(gray_stream, format="PNG", optimize=True)
-    write_mesh(outputs / "toy-soldier-gray-body.glb", [body], textured,
+    write_mesh(outputs / "toy-soldier-gray-body.glb", [enemy_body], textured,
                gray_stream.getvalue())
     # The main tunic swatch is used by body-mesh vertices at U=0.96875,
     # V=0.775..0.975. Paint only texels touched by that UV line. The source

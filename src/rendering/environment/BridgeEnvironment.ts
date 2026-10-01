@@ -79,6 +79,7 @@ export class BridgeEnvironment {
   private readonly barriers: THREE.Mesh[] = [];
   private readonly water: THREE.Mesh;
   private readonly defenseBeach = new THREE.Group();
+  private readonly defenseSideWrecks: THREE.InstancedMesh[] = [];
 
   constructor(private readonly scene: THREE.Scene) {
     this.previousBackground = scene.background;
@@ -152,6 +153,7 @@ export class BridgeEnvironment {
     sea.rotation.x = -Math.PI / 2;
     sea.position.set(0, -.06, 143);
     this.defenseBeach.add(sand, sea);
+    this.buildDefenseSideWrecks();
     const foamMaterial = this.material('#bac7b3', true, .4);
     const duneMaterial = this.material('#b79b6c');
     for (let patch = 0; patch < 20; patch++) {
@@ -177,6 +179,9 @@ export class BridgeEnvironment {
   update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = false): void {
     this.defenseBeach.visible = defenseMode;
     this.defenseBeach.position.z = playerZ;
+    this.defenseSideWrecks.forEach((wrecks, index) => {
+      wrecks.position.x = (index === 0 ? -1 : 1) * (trackHalfWidth + 1.6);
+    });
     this.group.visible = !defenseMode;
     for (const joint of this.joints) joint.visible = !defenseMode;
     const bridgeHalfWidth = Math.max(trackHalfWidth + 1, 4);
@@ -226,6 +231,7 @@ export class BridgeEnvironment {
   }
 
   dispose(): void {
+    for (const wrecks of this.defenseSideWrecks) wrecks.dispose();
     this.scene.remove(this.defenseBeach);
     this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer, ...this.joints);
@@ -234,6 +240,46 @@ export class BridgeEnvironment {
     this.smokeTexture?.dispose();
     for (const geometry of this.geometries) geometry.dispose();
     for (const material of this.materials) material.dispose();
+  }
+
+  private buildDefenseSideWrecks(): void {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    this.geometries.push(geometry);
+    const material = this.material('#ffffff');
+    const transform = new THREE.Object3D();
+    const concrete = new THREE.Color('#77766a');
+    const steel = new THREE.Color('#41494a');
+    const rust = new THREE.Color('#72564a');
+    for (const side of [-1, 1]) {
+      // Six cheap pieces per pile, batched into one draw per side. Broken, low
+      // silhouettes frame the approach without covering outer combat corridors.
+      const wrecks = new THREE.InstancedMesh(geometry, material, 18);
+      wrecks.name = side === -1 ? 'beach-wreckage-left' : 'beach-wreckage-right';
+      let member = 0;
+      const piece = (x: number, y: number, z: number, width: number, height: number,
+        depth: number, tilt: number, yaw: number, color: THREE.Color): void => {
+        transform.position.set(side * x, y, z);
+        transform.scale.set(width, height, depth);
+        transform.rotation.set(.08, yaw * side, tilt * side);
+        transform.updateMatrix();
+        wrecks.setMatrixAt(member, transform.matrix);
+        wrecks.setColorAt(member++, color);
+      };
+      for (let pile = 0; pile < 3; pile++) {
+        const x = pile * .35;
+        const z = [6, 18, 33][pile] + (side === 1 ? 2 : 0);
+        piece(x + .2, .22, z, 1.6, .4, 2.4, -.08, .3, concrete);
+        piece(x + .65, .65, z + .8, 1.2, .85, .45, .38, -.2, concrete);
+        piece(x + .9, .5, z - .5, .9, .8, 1.3, -.18, .6, steel);
+        piece(x + .1, .43, z - 1.1, 1.25, .16, .7, -.25, -.45, rust);
+        piece(x + .65, 1.05, z + .4, .14, 1.9, .16, .5, .25, steel);
+        piece(x + 1.1, .95, z + .6, .14, 1.55, .16, -.65, -.4, steel);
+      }
+      wrecks.instanceMatrix.needsUpdate = true;
+      if (wrecks.instanceColor) wrecks.instanceColor.needsUpdate = true;
+      this.defenseSideWrecks.push(wrecks);
+      this.defenseBeach.add(wrecks);
+    }
   }
 
   private buildBattlefield(): void {
@@ -679,7 +725,7 @@ export class BridgeEnvironment {
     for (const slot of this.flakSlots) {
       if (!slot.group.visible) continue;
       const age = nowMs - slot.startedAtMs;
-      if (age >= SKY_FLAK_SMOKE_MS) {
+      if (age < 0 || age >= SKY_FLAK_SMOKE_MS) {
         slot.group.visible = false;
         continue;
       }
@@ -722,7 +768,7 @@ export class BridgeEnvironment {
     for (const slot of this.impactSlots) {
       if (!slot.group.visible) continue;
       const ageMs = nowMs - slot.startedAtMs;
-      if (ageMs >= ARTILLERY_SMOKE_MS) {
+      if (ageMs < 0 || ageMs >= ARTILLERY_SMOKE_MS) {
         slot.group.visible = false;
         continue;
       }

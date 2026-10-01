@@ -83,6 +83,13 @@ function rgba(png) {
 }
 
 describe('Kenney texture and toy soldier gear bake', () => {
+  it('preserves every player, Boss and shared gear asset byte-for-byte', () => {
+    const protectedNames = ['player-body', 'helmet', 'vest', 'rifle', 'bullet', 'boss-body', 'boss-vest',
+      ...[0, 1, 2, 3].map(index => `boss-run-${index}`), ...[0, 1, 2, 3].map(index => `boss-slam-${index}`)];
+    const hash = createHash('sha256');
+    for (const name of protectedNames) hash.update(readFileSync(new URL(`../public/models/toy-soldier-${name}.glb`, import.meta.url)));
+    expect(hash.digest('hex')).toBe('241a656db29c6f934aef5921c494862fa106cb5cfac042cc4c6167f8f46b1758');
+  });
   it('embeds the original Kenney colormap unchanged for enemy and Boss bodies', () => {
     expect(createHash('sha256').update(image('body')).digest('hex'))
       .toBe('319f1087d8ed50a8794f9a8179f64671d5595f2365fdf3e47ec2d4eb74dba20f');
@@ -165,14 +172,14 @@ describe('Kenney texture and toy soldier gear bake', () => {
   });
 
   it('bakes helmet-occluded head geometry for every Boss pose family', () => {
-    expect(triangles('body') - triangles('boss-body')).toBe(4);
+    expect(triangles('player-body') - triangles('boss-body')).toBe(4);
     const bossRunCounts = [471, 458, 458, 471];
     for (let index = 0; index < 4; index++) {
       expect(triangles(`boss-run-${index}`)).toBe(bossRunCounts[index]);
-      expect(triangles(`boss-slam-${index}`)).toBe(triangles('body') - 14);
+      expect(triangles(`boss-slam-${index}`)).toBe(triangles('player-body') - 14);
     }
     expect(image('boss-body')).toEqual(image('body'));
-    const normal = positions('body');
+    const normal = positions('player-body');
     const boss = positions('boss-body');
     // The lower hair, facial details and neck remain present in the Boss mesh.
     expect(boss.filter(([x, y, z]) => Math.abs(x) > .18 && y < .7 && z > -.15).length)
@@ -193,10 +200,24 @@ describe('Kenney texture and toy soldier gear bake', () => {
     expect(Math.max(...muzzle.map((point) => point[2]))).toBeGreaterThan(.85);
     const frames = [0, 1, 2, 3].map((index) => positions(`run-${index}`));
     expect(new Set(frames.map((frame) => JSON.stringify(frame))).size).toBe(4);
-    expect(frames.every((frame) => frame.length === frames[0].length)).toBe(true);
+    // Rim clipping generates pose-specific intersection vertices, not a shared rig.
+    expect([0, 1, 2, 3].map(index => triangles(`run-${index}`))).toEqual([471, 458, 458, 471]);
     const gray = rgba(image('gray-body'));
     expect(gray.at(112, 268)[0]).toBe(gray.at(112, 268)[1]);
     expect(gray.at(112, 268)[1]).toBe(gray.at(112, 268)[2]);
+  });
+
+  it('clips hidden upper hair consistently in normal idle, gray contact/death and every run frame', () => {
+    for (const name of ['body', 'gray-body', 'run-0', 'run-1', 'run-2', 'run-3']) {
+      const vertices = positions(name);
+      const texcoords = uvs(name);
+      const hair = vertices.filter((_, index) => Math.abs(texcoords[index][0] - .09375) < 1e-5);
+      expect(hair.length).toBeGreaterThan(0);
+      expect(hair.every(point => point[1] <= .72501)).toBe(true);
+      expect(hair.some(point => point[1] > .65 && point[1] < .725)).toBe(true);
+    }
+    expect(positions('gray-body')).toEqual(positions('body'));
+    expect(positions('body')).toEqual(positions('boss-body'));
   });
 
   it('excludes the source head-mesh green cap swatch from every baked body pose', () => {

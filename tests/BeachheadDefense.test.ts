@@ -25,6 +25,7 @@ it('uses five configurable corridors and a 5 Hz baseline without changing archet
   expect(config.player.forwardSpeed).toBe(.6);
   expect(balance.gruntSpeed).toBe(.25);
   expect(balance.heavySpeed).toBe(.12);
+  expect(balance.heavyHp).toBe(15);
   expect(config.weapon.rifle.fireRate).toBe(5);
   for (const count of [3, 4, 5]) {
     const positions = attackLanePositions(count, 3.2, balance.edgeInset);
@@ -37,7 +38,7 @@ it('uses five configurable corridors and a 5 Hz baseline without changing archet
   }
   const enemies = make(true).getState().enemies;
   expect(enemies.some((enemy) => enemy.archetype === 'heavy')).toBe(true);
-  for (const enemy of enemies) expect(enemy.hp).toBe(enemy.archetype === 'grunt' ? 1 : 5);
+  for (const enemy of enemies) expect(enemy.hp).toBe(enemy.archetype === 'grunt' ? 1 : 15);
 });
 
 it('steps exactly one destination lane, clamps, and ignores analog target X', () => {
@@ -115,7 +116,7 @@ it('permits ten overlapping members per six-row wave and creates nearly five tim
   expect(overlappingPairs).toBeGreaterThan(100);
 });
 
-it.each([['grunt', 1], ['heavy', 5]] as const)('lane fire hits offset %s in %i base rifle hits', (archetype, hits) => {
+it.each([['grunt', 1], ['heavy', 15]] as const)('lane fire hits offset %s in %i base rifle hits', (archetype, hits) => {
   const simulation = make();
   const state = simulation.getState();
   state.enemies = [{ id: 1, tier: 1, lane: 2, archetype, x: .36, z: 3, hp: hits },
@@ -130,6 +131,39 @@ it.each([['grunt', 1], ['heavy', 5]] as const)('lane fire hits offset %s in %i b
     expect(enemies.find((enemy) => enemy.id === 2)?.hp).toBe(1);
     expect(enemies.find((enemy) => enemy.id === 1)?.hp).toBe(index === hits - 1 ? undefined : hits - index - 1);
   }
+});
+
+it.each([3, 5, 10])('keeps Heavy durability fixed at 15 hits with a %i Hz Rifle', (fireRate) => {
+  const simulation = make();
+  const state = simulation.getState();
+  state.enemies = [{ id: 1, tier: 1, lane: 2, archetype: 'heavy', x: .3, z: 15, hp: balance.heavyHp }];
+  simulation.restoreState(state);
+  const live = { ...tuning, forwardSpeed: 0, rifle: { ...tuning.rifle, fireRate } };
+  // Record health changes to count actual hits, independently of cooldown timing.
+  let hits = 0;
+  let previousHp = 15;
+  while (simulation.getState().enemies.length) {
+    simulation.step(1 / 60, { targetX: 0 }, live);
+    const enemy = simulation.getState().enemies[0];
+    const hp = enemy?.hp ?? 0;
+    if (hp < previousHp) { hits += previousHp - hp; previousHp = hp; }
+    expect(simulation.getState().elapsedSeconds).toBeLessThan(6);
+  }
+  expect(hits).toBe(15);
+  expect(simulation.getState().elapsedSeconds).toBeCloseTo(14 / fireRate + 15 / 60, 1);
+});
+
+it('applies explicit Heavy live tuning above 15 without changing Grunt health', () => {
+  const simulation = make(true);
+  const before = simulation.getState().enemies;
+  simulation.setCatharsisBalance({ ...balance, heavyHp: 40 });
+  for (const enemy of simulation.getState().enemies) {
+    expect(enemy.hp).toBe(enemy.archetype === 'heavy' ? 40 : 1);
+  }
+  expect(before.filter(enemy => enemy.archetype === 'heavy').every(enemy => enemy.hp === 15)).toBe(true);
+  const restored = make(true, 99);
+  restored.restoreState(JSON.parse(JSON.stringify(simulation.getState())));
+  expect(restored.getState()).toEqual(simulation.getState());
 });
 
 it('does not generate Bosses, rewards or tier escalation across distant stream handoffs', () => {

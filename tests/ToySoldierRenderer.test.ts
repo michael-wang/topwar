@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { bodyModel, grayBodyModel, runFrames, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
 import { ENEMY_PALETTE, PLAYER_PALETTE, paletteIndex } from '../src/rendering/tierPalettes';
 import { PLAYER_VISUAL_SCALE, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
-import { ENEMY_VISUAL_SCALE, EnemyRenderer, enemyRunFrame, enemyWalkPose } from '../src/rendering/enemies/EnemyRenderer';
+import { ENEMY_VISUAL_SCALE, ENEMY_GAIT_CYCLE_MS, EnemyRenderer, enemyRunFrame, enemyWalkPose } from '../src/rendering/enemies/EnemyRenderer';
 import { BossRenderer } from '../src/rendering/boss/BossRenderer';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
 import { ProjectilePulseTracker } from '../src/rendering/projectiles/ProjectileRenderer';
@@ -22,8 +22,13 @@ const soldier = (scene: THREE.Scene) => scene.children.find((child) =>
 const helmetOf = (group: THREE.Group) => group.getObjectByName('toy-soldier-helmet') as THREE.Mesh;
 
 describe('Modern Toy Soldier presentation', () => {
-  it('cycles baked running poses by enemy id while preserving gentle body motion', () => {
-    expect(new Set([0, 125, 250, 375].map((time) => enemyRunFrame(7, time))).size).toBe(4);
+  it('cycles urgent poses every 90 ms with a 360 ms gait and independent enemy phases', () => {
+    expect(ENEMY_GAIT_CYCLE_MS).toBe(360);
+    expect(new Set([0, 90, 180, 270].map((time) => enemyRunFrame(7, time))).size).toBe(4);
+    expect(enemyRunFrame(7, 360)).toBe(enemyRunFrame(7, 0));
+    expect(enemyWalkPose(7, 360).bob).toBeCloseTo(enemyWalkPose(7, 0).bob);
+    expect(enemyWalkPose(0, 90).bob).toBeCloseTo(.052);
+    expect(enemyWalkPose(0, 90).leftArm).toBeCloseTo(.43);
     expect(enemyRunFrame(7, 0)).not.toBe(enemyRunFrame(8, 0));
     expect(enemyWalkPose(7, 0).bob).toBeGreaterThanOrEqual(0);
     expect(enemyWalkPose(7, 125).leftArm).not.toBe(enemyWalkPose(7, 0).leftArm);

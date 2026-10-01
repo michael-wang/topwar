@@ -101,11 +101,13 @@ describe('temporary tuning panel', () => {
     const viewport = new ElementStub('div');
     const onChange = vi.fn();
     const experiment = { ...defaults, enemyVisualScale: 1.4, gruntSpeed: .8,
-      heavyHp: 5, heavySpeed: .3, heavyChance: .25 };
+      heavyHp: 15, heavySpeed: .12, heavyChance: .25 };
     const panel = new TuningPanel(viewport as unknown as HTMLElement, experiment, onChange);
     const root = viewport.children[0];
+    const heavy = root.findAll('input').find(input => input.dataset.key === 'heavyHp')!;
+    expect(heavy.max).toBe('40');
     for (const [key, value] of Object.entries({ enemyVisualScale: 1.6, gruntSpeed: 1,
-      heavyHp: 8, heavySpeed: .5, heavyChance: .4 })) {
+      heavyHp: 40, heavySpeed: .5, heavyChance: .4 })) {
       const input = root.findAll('input').find((input) => input.dataset.key === key)!;
       input.value = String(value);
       input.dispatchEvent(new Event('input'));

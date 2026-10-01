@@ -31,7 +31,7 @@ describe('temporary runtime tuning', () => {
       rewardRowsPerReward: 6, enemyHigherTierPowerMultiplier: 10,
       rifleHigherTierPowerMultiplier: 10, fireRate: 5, moveSpeed: 5, forwardSpeed: .6,
       bossHpScale: 3, musicVolume: .50, enemyVisualScale: 1.4, gruntSpeed: .25,
-      heavyHp: 5, heavySpeed: .12, heavyChance: .25 });
+      heavyHp: 15, heavySpeed: .12, heavyChance: .25 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();
   });
 
