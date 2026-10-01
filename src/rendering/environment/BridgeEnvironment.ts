@@ -78,6 +78,7 @@ export class BridgeEnvironment {
   private readonly shoulders: THREE.Mesh[] = [];
   private readonly barriers: THREE.Mesh[] = [];
   private readonly water: THREE.Mesh;
+  private readonly defenseBeach = new THREE.Group();
 
   constructor(private readonly scene: THREE.Scene) {
     this.previousBackground = scene.background;
@@ -144,12 +145,40 @@ export class BridgeEnvironment {
     this.buildInferno();
     this.buildArtillery();
     this.buildActivity();
+    const sand = this.mesh(new THREE.PlaneGeometry(150, 100), this.material('#c9ad7c'), 'defense-sand');
+    sand.rotation.x = -Math.PI / 2;
+    sand.position.set(0, .005, 3);
+    const sea = this.mesh(new THREE.PlaneGeometry(240, 180), this.material('#547e84'), 'defense-sea');
+    sea.rotation.x = -Math.PI / 2;
+    sea.position.set(0, -.06, 143);
+    this.defenseBeach.add(sand, sea);
+    const foamMaterial = this.material('#bac7b3', true, .4);
+    const duneMaterial = this.material('#b79b6c');
+    for (let patch = 0; patch < 20; patch++) {
+      const foam = this.mesh(new THREE.PlaneGeometry(7, .75), foamMaterial, 'shoreline-foam');
+      foam.rotation.x = -Math.PI / 2;
+      foam.position.set((patch - 9.5) * 7, .02, 52.8 + Math.sin(patch * 1.7) * .65);
+      this.defenseBeach.add(foam);
+      if (patch % 3 === 0) {
+        const dune = this.mesh(new THREE.SphereGeometry(1, 8, 5), duneMaterial, 'beach-dune');
+        dune.position.set((patch % 2 ? 1 : -1) * (9 + patch), -.2, 10 + patch * 2);
+        dune.scale.set(4, .55, 6);
+        this.defenseBeach.add(dune);
+      }
+    }
+    this.defenseBeach.name = 'stationary-defense-beach';
+    this.defenseBeach.visible = false;
+    this.scene.add(this.defenseBeach);
     this.scene.add(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer);
     this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number): void {
+  update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = false): void {
+    this.defenseBeach.visible = defenseMode;
+    this.defenseBeach.position.z = playerZ;
+    this.group.visible = !defenseMode;
+    for (const joint of this.joints) joint.visible = !defenseMode;
     const bridgeHalfWidth = Math.max(trackHalfWidth + 1, 4);
     this.group.position.z = playerZ + 55;
     this.deck.scale.x = bridgeHalfWidth * 2;
@@ -175,6 +204,14 @@ export class BridgeEnvironment {
     this.inferno.position.set(Math.sin(playerZ * .002) * .01, 0, playerZ + 142);
     this.shipLayer.position.z = playerZ;
     this.skyLayer.position.z = playerZ + 125;
+    if (defenseMode) {
+      // Scenery is fixed relative to the defense line; internal progression never
+      // scrolls tracks, barricades or the horizon past the standing defenders.
+      this.near.position.set(0, 0, playerZ + 52);
+      this.mid.position.set(0, 0, playerZ + 76);
+      this.far.position.set(0, 0, playerZ + 100);
+      this.shipLayer.position.z = playerZ + 60;
+    }
     for (let i = 0; i < this.smoke.length; i++) {
       this.smoke[i].sprite.position.x = this.smoke[i].x
         + Math.sin(nowMs * .00015 + i * 1.7) * .16;
@@ -189,6 +226,7 @@ export class BridgeEnvironment {
   }
 
   dispose(): void {
+    this.scene.remove(this.defenseBeach);
     this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer, ...this.joints);
     this.scene.background = this.previousBackground;

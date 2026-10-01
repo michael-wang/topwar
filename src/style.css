@@ -24,6 +24,18 @@ body {
   touch-action: none;
 }
 
+.beachhead-defense .tier-hud, .beachhead-defense .touch-steering-band { display: none; }
+.lane-hud {
+  position: absolute; z-index: 1; top: 1rem; left: 50%; transform: translateX(-50%);
+  padding: .35rem .55rem; border-radius: .3rem; color: #fff5d7;
+  background: rgb(45 42 31 / 55%); font: bold .7rem sans-serif; pointer-events: none;
+}
+.beachhead-defense::after {
+  content: 'TAP LEFT / RIGHT · ONE LANE'; position: absolute; bottom: 1rem; left: 50%;
+  transform: translateX(-50%); color: #fff8df; text-shadow: 0 1px 3px #51472f;
+  font: 600 .65rem sans-serif; white-space: nowrap; pointer-events: none;
+}
+
 .perf-hud {
   position: absolute;
   z-index: 5;

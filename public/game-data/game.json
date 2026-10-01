@@ -1,5 +1,10 @@
 {
   "catharsis": {
+    "defenseMode": true,
+    "laneSwitchSeconds": 0.15,
+    "lateralSpreadFraction": 0.26,
+    "memberDepthSpacing": 0.85,
+    "depthJitter": 0.35,
     "laneCount": 5,
     "edgeInset": 0.4,
     "waveRows": 12,
@@ -29,7 +34,7 @@
   },
   "weapon": {
     "rifle": {
-      "fireRate": 10,
+      "fireRate": 5,
       "projectileSpeed": 60,
       "range": 80,
       "tierHitRadiusStep": 0.45,

@@ -1,4 +1,5 @@
 export interface GameRenderState {
+  readonly defenseMode?: boolean;
   readonly player: {
     readonly x: number;
     readonly z: number;
@@ -64,6 +65,7 @@ export interface UpgradePickupRenderState {
 }
 
 export interface ProjectileRenderState {
+  readonly slopeX?: number;
   readonly id: number;
   readonly kind: 'rifle' | 'rocket';
   readonly tier: number;

@@ -40,7 +40,7 @@ export class TuningPanel {
   private values: RuntimeTuning;
 
   constructor(viewport: HTMLElement, private readonly defaults: RuntimeTuning,
-    private readonly onChange: (values: RuntimeTuning) => void) {
+    private readonly onChange: (values: RuntimeTuning) => void, defenseMode = false) {
     this.values = { ...defaults };
     this.element = document.createElement('details');
     this.element.className = 'tuning-panel';
@@ -50,10 +50,11 @@ export class TuningPanel {
     content.className = 'tuning-panel-content';
     this.element.append(summary, content);
     for (const control of controls) {
+      if (defenseMode && ['rewardRowsPerReward', 'enemyHigherTierPowerMultiplier', 'rifleHigherTierPowerMultiplier', 'bossHpScale', 'moveSpeed'].includes(control.key)) continue;
       if (defaults[control.key] === undefined) continue;
       const label = document.createElement('label');
       label.textContent = control.key === 'enemyHigherTierPowerMultiplier' && defaults.enemyVisualScale !== undefined
-        ? 'Boss base HP / tier' : control.label;
+        ? 'Boss base HP / tier' : defenseMode && control.key === 'forwardSpeed' ? 'Approach pace' : control.label;
       const input = control.key === 'bossHpScale'
         ? document.createElement('select') : document.createElement('input');
       if ('choices' in control) {

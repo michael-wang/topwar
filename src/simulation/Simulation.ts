@@ -99,13 +99,15 @@ export function findFirstHit(projectile: ProjectileSimulationState, endZ: number
   const travel = endZ - projectile.z;
   const minimumZ = projectile.z + travel * minimumFraction;
   const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
-  enemyCandidates.forEachCandidate(projectile.x - radius, projectile.x + radius,
+  const laneShot = projectile.kind === 'rifle' && projectile.lane !== undefined;
+  enemyCandidates.forEachCandidate(laneShot ? -Infinity : projectile.x - radius, laneShot ? Infinity : projectile.x + radius,
     minimumZ - radius, endZ + radius, (enemy) => {
       if (piercedEnemyIds?.has(enemy.id)) return;
+      if (laneShot && enemy.lane !== projectile.lane) return;
       if (diagnostics) diagnostics.enemyCandidateChecks++;
       const dx = projectile.x - enemy.x;
-      if (Math.abs(dx) > radius) return;
-      const halfChord = Math.sqrt(radius * radius - dx * dx);
+      if (!laneShot && Math.abs(dx) > radius) return;
+      const halfChord = laneShot ? normalEnemyRadius : Math.sqrt(radius * radius - dx * dx);
       const entryZ = enemy.z - halfChord;
       const exitZ = enemy.z + halfChord;
       if (exitZ < minimumZ || entryZ > endZ) return;
@@ -198,7 +200,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     if (!Number.isFinite(rowZ)) throw new Error('Simulation enemy stream row position is non-finite');
     if (rowZ > horizonZ) break;
     const bossTier = cursor.nextBossTier;
-    if (cursor.nextRowIndex === bossRowForTier(bossTier, stream.tierProgression)) {
+    if (!catharsis?.balance.defenseMode && cursor.nextRowIndex === bossRowForTier(bossTier, stream.tierProgression)) {
       // One active Boss is supported; authored encounters must not overlap in play.
       if (boss) throw new Error('Simulation cannot spawn a Boss while another Boss is active');
       const maxHp = bossMaxHpForTier(bossTier, stream.tierProgression, power) * bossHpScale;
@@ -231,12 +233,14 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
         throw new Error('Simulation enemy stream produces a non-finite position');
       }
-      const tier = enemyTierForRow(rowIndex, column, revealColumn, stream.seed, stream.tierProgression);
+      const tier = catharsis?.balance.defenseMode ? 1
+        : enemyTierForRow(rowIndex, column, revealColumn, stream.seed, stream.tierProgression);
       const enemyId = cursor.nextEnemyId++;
       const archetype = 'archetype' in offset ? offset.archetype as 'grunt' | 'heavy' : undefined;
       enemies.push({ id: enemyId, tier, x: offset.x, z,
         hp: archetype ? (archetype === 'heavy' ? catharsis!.balance.heavyHp : 1) : enemyPowerForTier(tier, power),
         ...(archetype ? { archetype } : {}) });
+      if ('lane' in offset) enemies.at(-1)!.lane = offset.lane as number;
     }
     cursor.nextRowIndex++;
   }
@@ -246,6 +250,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
 function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, catharsis?: SimulationState['catharsis'], playerX = 0): void {
   const definition = stream.rewards;
+  if (catharsis?.balance.defenseMode) return;
   if (!definition) return;
   const horizonZ = playerZ + definition.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation reward stream horizon is non-finite');
@@ -299,7 +304,13 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     throw new Error('Simulation player must be a plain object');
   }
   const player = state.player;
-  if (Object.keys(player).length !== 2 || !Object.hasOwn(player, 'x') || !Object.hasOwn(player, 'z')) {
+  const selectedLane = player.selectedLane;
+  const laneIsValid = (lane: unknown): lane is number => typeof lane === 'number' && Number.isInteger(lane)
+    && lane >= 0 && !!catharsis && lane < catharsis.balance.laneCount;
+  if (Object.keys(player).length !== (selectedLane === undefined ? 2 : 3)
+    || (selectedLane !== undefined && !laneIsValid(selectedLane))
+    || (catharsis?.balance.defenseMode && selectedLane === undefined)
+    || !Object.hasOwn(player, 'x') || !Object.hasOwn(player, 'z')) {
     throw new Error('Simulation player has missing or unknown fields');
   }
   if (typeof player.x !== 'number' || !Number.isFinite(player.x)) {
@@ -325,7 +336,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const enemies: EnemySimulationState[] = state.enemies.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation enemy ${index} must be a plain object`);
     const archetype = value.archetype;
-    if (Object.keys(value).length !== (archetype === undefined ? 5 : 6)
+    if (Object.keys(value).length !== 5 + (archetype === undefined ? 0 : 1) + (value.lane === undefined ? 0 : 1)
+      || (value.lane !== undefined && !laneIsValid(value.lane))
+      || (catharsis?.balance.defenseMode && (!laneIsValid(value.lane) || value.tier !== 1))
       || (archetype !== undefined && archetype !== 'grunt' && archetype !== 'heavy')
       || ['id', 'tier', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation enemy ${index} has missing or unknown fields`);
@@ -346,6 +359,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation enemy ${index} violates experiment health`);
     }
     return { id, tier: value.tier as number, x: value.x, z: value.z, hp: value.hp,
+      ...(value.lane !== undefined ? { lane: value.lane as number } : {}),
       ...(archetype ? { archetype: archetype as 'grunt' | 'heavy' } : {}) };
   });
 
@@ -486,7 +500,10 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
-    if (Object.keys(value).length !== 11 || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'hitRadiusBonus', 'penetrationRemaining']
+    if (Object.keys(value).length !== 11 + (value.lane === undefined ? 0 : 2)
+      || (value.lane !== undefined && (!laneIsValid(value.lane) || value.kind !== 'rifle'
+        || typeof value.slopeX !== 'number' || !Number.isFinite(value.slopeX)))
+      || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'hitRadiusBonus', 'penetrationRemaining']
       .some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation projectile ${index} has missing or unknown fields`);
     }
@@ -525,6 +542,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`);
     }
     return { id: value.id as number, kind: value.kind as ProjectileSimulationState['kind'],
+      ...(value.lane !== undefined ? { lane: value.lane as number, slopeX: value.slopeX as number } : {}),
       tier: value.tier as number,
       x: value.x, z: value.z, speed: value.speed,
       damage: value.damage, remainingRange: value.remainingRange, blastRadius: value.blastRadius,
@@ -557,7 +575,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       levelId: state.levelId,
       seed: state.seed as number,
       rngState: rng.getState(),
-      player: { x: player.x as number, z: player.z as number },
+      player: { x: player.x as number, z: player.z as number,
+        ...(selectedLane !== undefined ? { selectedLane: selectedLane as number } : {}) },
       squad: { count: squad.count as number, rocketCount: squad.rocketCount as number,
         rifleCounts: [...(squad.rifleCounts as number[])],
         rifleRemainder: storeExactValue(readExactValue(squad.rifleRemainder, 'Squad rifle remainder')) },
@@ -655,7 +674,9 @@ export class Simulation {
       levelId: level.id,
       seed: options.seed,
       rngState: this.rng.getState(),
-      player: { x: 0, z: 0 },
+      player: catharsis?.balance.defenseMode ? {
+        x: attackLanePositions(catharsis.balance.laneCount, catharsis.trackHalfWidth, catharsis.balance.edgeInset)[Math.floor(catharsis.balance.laneCount / 2)],
+        z: 0, selectedLane: Math.floor(catharsis.balance.laneCount / 2) } : { x: 0, z: 0 },
       squad: normalizeRifleSquad({ count: options.startSquad, rocketCount: options.startRocketCount,
         rifleCounts: [options.startSquad - options.startRocketCount], rifleRemainder: 0 }, this.tiers.mergeCount),
       enemies,
@@ -740,6 +761,14 @@ export class Simulation {
         hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp } : enemy) };
   }
 
+  stepLane(direction: -1 | 1): void {
+    const experiment = this.state.catharsis;
+    if (!experiment?.balance.defenseMode || (direction !== -1 && direction !== 1)) throw new Error('Invalid lane step');
+    if (this.state.squad.count === 0) return;
+    const selectedLane = Math.max(0, Math.min(experiment.balance.laneCount - 1, this.state.player.selectedLane! + direction));
+    this.state = { ...this.state, player: { ...this.state.player, selectedLane } };
+  }
+
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
     if (!Number.isFinite(dtSeconds) || dtSeconds <= 0) {
       throw new Error('Simulation dtSeconds must be finite and greater than zero');
@@ -788,8 +817,10 @@ export class Simulation {
     const halfWidth = this.state.catharsis
       ? this.state.catharsis.trackHalfWidth - this.state.catharsis.balance.edgeInset : tuning.trackHalfWidth;
     const currentX = Math.max(-halfWidth, Math.min(halfWidth, this.state.player.x));
-    const targetX = Math.max(-halfWidth, Math.min(halfWidth, input.targetX));
-    const maxHorizontalDelta = tuning.moveSpeed * dtSeconds;
+    const lanePositions = this.state.catharsis?.balance.defenseMode
+      ? attackLanePositions(this.state.catharsis.balance.laneCount, this.state.catharsis.trackHalfWidth, this.state.catharsis.balance.edgeInset) : undefined;
+    const targetX = lanePositions ? lanePositions[this.state.player.selectedLane!] : Math.max(-halfWidth, Math.min(halfWidth, input.targetX));
+    const maxHorizontalDelta = (lanePositions ? (lanePositions[1] - lanePositions[0]) / this.state.catharsis!.balance.laneSwitchSeconds : tuning.moveSpeed) * dtSeconds;
     const difference = targetX - currentX;
     const nextX = Math.abs(difference) <= maxHorizontalDelta
       ? targetX
@@ -869,8 +900,13 @@ export class Simulation {
           if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
           const x = nextX + offset.x;
           const z = nextZ + offset.z;
+          const lane = catharsis?.balance.defenseMode && kind === 'rifle' ? this.state.player.selectedLane : undefined;
+          const target = lane === undefined ? undefined : enemies.filter((enemy) => enemy.lane === lane && enemy.z > z
+            && enemy.z - z <= weapon.range).sort((a, b) => a.z - b.z || a.id - b.id)[0];
+          const slopeX = target ? (target.x - x) / Math.max(tuning.normalEnemyRadius, target.z - z) : 0;
           if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
           projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
+            ...(lane !== undefined ? { lane, slopeX } : {}),
             damage, remainingRange: weapon.range,
             blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
             hitRadiusBonus: kind === 'rifle' ? rifleHitRadiusBonusForTier(tier,
@@ -972,7 +1008,7 @@ export class Simulation {
       }
       const remainingRange = projectile.remainingRange - travel;
       if (!consumed && remainingRange > 0) {
-        survivingProjectiles.push({ ...projectile, z: endZ, remainingRange,
+        survivingProjectiles.push({ ...projectile, x: projectile.x + travel * (projectile.slopeX ?? 0), z: endZ, remainingRange,
           penetrationRemaining: storeExactValue(penetrationRemaining > 0n ? penetrationRemaining : 0n) });
       }
     }
@@ -1075,7 +1111,7 @@ export class Simulation {
     if (squad.count === 0 && stepEvents.length > 0) survivingProjectiles.length = 0;
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
-    this.state = { ...this.state, player: { x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
+    this.state = { ...this.state, player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
@@ -1129,7 +1165,10 @@ export class Simulation {
     const expectedTier = cursor && progression ? 1 + Math.max(0, Math.ceil(
       (cursor.nextRowIndex - bossRowForTier(1, progression))
         / (progression.transitionRows + progression.stableRows))) : 1;
-    if (cursor && (cursor.nextBossTier !== expectedTier
+    const defenseMode = candidate.state.catharsis?.balance.defenseMode;
+    if (defenseMode && (boss || candidate.state.streamRewards.length || candidate.state.enemies.some((enemy) => enemy.tier !== 1)
+      || (cursor && cursor.nextBossTier !== 1))) throw new Error('Disabled systems are present in defense snapshot');
+    if (!defenseMode && cursor && (cursor.nextBossTier !== expectedTier
       || (boss && (boss.tier !== cursor.nextBossTier - 1
         || boss.z !== this.enemyStreamDefinition!.startZ
           + bossRowForTier(boss.tier, progression!) * this.enemyStreamDefinition!.spacing || boss.x !== 0

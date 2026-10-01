@@ -29,7 +29,7 @@ describe('temporary runtime tuning', () => {
   it('starts from the committed authored defaults and rejects obsolete mouse sensitivity', () => {
     expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 60, bulletRange: 80,
       rewardRowsPerReward: 12, enemyHigherTierPowerMultiplier: 10,
-      rifleHigherTierPowerMultiplier: 10, fireRate: 10, moveSpeed: 5, forwardSpeed: 2,
+      rifleHigherTierPowerMultiplier: 10, fireRate: 5, moveSpeed: 5, forwardSpeed: 2,
       bossHpScale: 3, musicVolume: .50, enemyVisualScale: 1.4, gruntSpeed: .8,
       heavyHp: 5, heavySpeed: .3, heavyChance: .25 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();
@@ -92,7 +92,7 @@ describe('temporary runtime tuning', () => {
       startSquad: 1, startRocketCount: 0, tiers: config.tiers });
     const fast = new Simulation({ seed: 1, level: emptyLevel,
       startSquad: 1, startRocketCount: 0, tiers: config.tiers });
-    for (const sim of [slow, fast]) sim.step(0.01, { targetX: 0 }, movement);
+    for (const sim of [slow, fast]) sim.step(0.01, { targetX: 0 }, { ...movement, rifle: { ...movement.rifle, fireRate: 10 } });
     slow.step(0.2, { targetX: 0 }, { ...movement, rifle: { ...movement.rifle, fireRate: 1 } });
     fast.step(0.2, { targetX: 0 }, { ...movement, rifle: { ...movement.rifle, fireRate: 15 } });
     expect(fast.getState().weapons.nextProjectileId).toBeGreaterThan(slow.getState().weapons.nextProjectileId);

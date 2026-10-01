@@ -9,7 +9,8 @@ import { attackLanePositions, laneCompositionForRow, laneWave, rewardLaneXForRow
 import { projectRenderState } from '../src/app/projectRenderState';
 
 const config = GameConfigSchema.parse(gameData);
-const balance = config.catharsis!;
+// The first experiment's dormant path is still supported; defense has its own suite.
+const balance = { ...config.catharsis!, defenseMode: false };
 const level = LevelDefinitionSchema.parse(levelData);
 const isolated = { id: 'lane-test', length: 1000, enemyGroups: [], upgradeGates: [] };
 const make = (stream = false, seed = 17) => new Simulation({ seed, level: stream ? level : isolated,

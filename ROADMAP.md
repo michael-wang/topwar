@@ -3,14 +3,14 @@
 ## Current playable
 
 - Catharsis prototype experiment: five configurable attack corridors, larger 1-HP Grunts, sparse slower 5-HP amber Heavies, and deterministic one/two-lane pressure held across several groups.
-- Temporary reinforcement crates occupy quiet corridors and require squad alignment to accept rifle hits. TUNE exposes enemy size, movement, Heavy health/frequency and retained combat controls.
-- Continuous touch/pen drag, existing mobile hold steering, desktop keys, Pause, Game Over and Retry remain operational. Plain-data snapshots retain experiment balance, archetypes and stream cursors.
-- Existing 10-to-1 Merge, adjacent active tiers, exact defense/remainder arithmetic, tier-colored gear, formula-driven Boss handoffs and showdown remain. The experiment adds no XP or weapon progression.
+- Discrete left/right taps or key presses select a defended lane; lane-tagged Rifle shots reliably hit loose seeded groups in that corridor. Rifle starts at 5 Hz. Defenders stand on a beach with natural obstacle openings.
+- Pause, TUNE, Game Over and Retry remain operational. Plain-data snapshots retain lane selection, projectile/enemy lane identity, experiment balance and stream cursors.
+- Bosses, rewards, normal tier escalation and ENEMY LV are temporarily disabled. Existing Merge, tier power and the disabled systems remain in code for later experiments. No XP or weapon progression is added.
 - Instanced toy soldiers, contact/death feedback, audio, environment and procedural music remain.
 
 ## NOW
 
-**Playtest the first Catharsis lane/readability experiment on portrait phones.** Compare 3/4/5 corridors, visible soldier/death readability, one/two-lane pressure, Heavy interruptions and intentional reward movement. This is a focused prototype, not the full new design.
+**Playtest the second Catharsis beachhead-defense experiment on portrait phones.** Evaluate discrete lane switching, automatic lane targeting, loose groups and natural corridor readability without progression rewards. This is a focused prototype, not the full new design.
 
 ## NEXT
 

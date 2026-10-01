@@ -1,81 +1,100 @@
-# First Catharsis Loop experiment
+# Second Catharsis Loop experiment: beachhead defense
 
-This prototype tests lane decisions and readable larger combat only. The supplied
-Catharsis design SPEC is direction, not an implementation checklist.
+This prototype asks whether choosing a corridor to defend is fun by itself.
+It does not implement the full Catharsis progression design. The first experiment's
+readable Grunt/Heavy art and one/two-lane pressure remain; discrete lane selection
+replaces continuous aiming.
 
-## Initial tuning
+## Controls and combat
 
-Runtime-loaded `public/game-data/game.json`, under `catharsis`:
+A/D or Left/Right moves exactly one destination lane per press; key repeat and
+holding do not steer. A tap released on the gameplay area's left/right half steps
+one lane in that direction. Swipes are ignored. HUD, Pause, TUNE and Retry receive
+their own input. The compact DEFEND label shows the selected lane immediately.
+Pause stops gameplay input; Retry starts at the middle lane and retains live tuning.
+
+The selected lane is plain serialized player state. Squad X approaches its center
+in a configurable 0.15 seconds per lane. Rifle projectiles carry the lane selected
+when fired, so changing lanes does not redirect existing shots. Swept forward
+collision checks hit enemies of that lane regardless of small lateral offsets.
+Tracers take a fixed trajectory toward the nearest same-lane enemy at firing time;
+they do not home. An enemy killed before a tracer arrives can leave a tracer that
+hits another member without perfect visual alignment. Evaluate this presentation.
+
+Each wave generates a loose cluster at its first row. Seeded per-member lateral
+offsets and staggered depths replace single-file queues. Members remain within
+their corridor and carry explicit lane identity. Priority lanes still persist across
+three groups; the total group budget is split when there are two priority lanes.
+
+## Runtime tuning
+
+Edit `public/game-data/game.json` and reload to change authored values; no production
+rebuild is needed. The `catharsis` values are included in simulation snapshots.
 
 | Value | Initial setting | Meaning |
 | --- | --- | --- |
-| `laneCount` | 5 | Try 3, 4 or 5; no renderer positions are hard-coded |
-| `edgeInset` | 0.4 | Centers span ±2.8 on a ±3.2 track; spacing is 1.4 |
-| `waveRows` | 12 | One group every 7.2 world units at existing 0.6 row spacing |
-| `priorityWaves` | 3 | Keep the same one/two pressure lanes across three groups |
-| `groupSize` | 4 | Total group budget, split across lanes when there are two |
-| `groupRowStride` | 2 | 1.2 world units between members; group must fit the wave |
-| `secondLaneChance` | 0.4 | Chance of two priority lanes in a pressure block |
-| `heavyChance` | 0.25 | Chance of one Heavy replacing the first member of a group |
-| `gruntSpeed` | 0.8 | Approach speed in world units/second, in addition to player advance |
-| `heavySpeed` | 0.3 | Heavy approach speed |
-| `heavyHp` | 5 | Five initial normal rifle hits; Grunt HP is always exactly 1 |
-| `enemyVisualScale` | 1.4 | About 71% larger than the previous 0.82 model scale |
-| `heavyVisualScale` | 1.35 | Relative multiplier: initial Heavy scale is 1.89 |
-| `rewardAimRadius` | 0.5 | Maximum squad-center distance from a crate lane for hits |
+| `defenseMode` | true | Temporarily enables this focused experiment |
+| `laneCount` | 5 | Configurable corridor count; try 3/4/5 |
+| `edgeInset` | 0.4 | Centers span ±2.8 on a ±3.2 track; spacing 1.4 |
+| `laneSwitchSeconds` | 0.15 | Time to traverse one lane spacing |
+| `waveRows` | 12 | Group cadence: 7.2 world units at existing row spacing |
+| `priorityWaves` | 3 | Groups before pressure lanes change |
+| `groupSize` | 4 | Total members per group, including a possible Heavy |
+| `secondLaneChance` | 0.4 | Chance of two priority lanes |
+| `lateralSpreadFraction` | 0.26 | Maximum lateral offset as a fraction of lane spacing |
+| `memberDepthSpacing` | 0.85 | Depth between loose member pairs |
+| `depthJitter` | 0.35 | Seeded positive/negative depth jitter |
+| `heavyChance` | 0.25 | Chance of one Heavy replacing the first group member |
+| `gruntSpeed` | 0.8 | Approach speed plus internal forward progression |
+| `heavySpeed` | 0.3 | Slower Heavy approach speed |
+| `heavyHp` | 5 | Five base Rifle hits; Grunt remains exactly 1 HP |
+| `enemyVisualScale` | 1.4 | Retained enlarged Grunt model |
+| `heavyVisualScale` | 1.35 | Relative multiplier; Heavy model scale 1.89 |
 
-TUNE applies visual size and movement to active enemies, Heavy HP by remaining
-health fraction, and Heavy chance to future groups. Retry retains slider values;
-Reset Defaults restores them. Because enemy lookahead is still 96 units, Retry
-is the quickest way to see a new Heavy-frequency setting in nearby waves.
-Lane count, group density/spacing, priority duration and the Heavy relative size
-are JSON controls: edit the table's values and reload, without a production rebuild.
-Configuration rejects groups that do not fit a wave and lanes outside track bounds.
-Rewards initially use one per 12-row block; the existing reward-density slider
-can override that temporarily. The level JSON still owns row spacing, lookahead,
-tier colors and unchanged Boss row formulas.
+`weapon.rifle.fireRate` is **5 shots/second**. TUNE keeps Fire rate, enemy scale,
+Grunt speed, Heavy HP/speed/frequency, bullet speed/range, approach pace and music
+volume. Reset Defaults restores authored values. Enemy lookahead remains 96 units,
+so Retry is the quickest way to see frequency changes in nearby groups. Lane count,
+switch duration and cluster layout are JSON controls. Legacy `groupRowStride` and
+reward settings remain stored but are inactive in defense mode.
 
-## Preserved contracts and limitations to playtest
+## Presentation and temporarily disabled systems
 
-- Gameplay uses seeded block/row generation independent of gameplay RNG, fixed
-  stepping, narrow simulation APIs and JSON-only snapshots. Serialized experiment
-  balance plus archetypes reproduces future spawning after restore.
-- Both normal archetypes retain radius 0.30. Enlarging their art does not enlarge
-  the hit corridor or cause neighboring-lane collisions. Full steering clamps
-  to the outer corridor; movement between corridors stays continuous.
-- Quiet-lane crates use the existing ten-hit reinforcement system. Squad-center
-  alignment prevents distant formation-edge shots from granting incidental rewards.
-  Rewards avoid the squad lane at spawn. With three lanes, a pressured lane is used if the only quiet lane is already defended. Adjacent blocks can bring later threats.
-- Normal archetype damage is measured in initial rifle-hit units (existing rifle
-  damage divided by Tier-1 power). Bosses retain original projectile damage/HP,
-  cadence, melee and pause behavior. Merge remains 10-to-1, with all tier power,
-  penetration, formation and casualty rules intact.
-- Consequently, higher-tier rifles can one-shot Heavies, high-tier contacts/leaks
-  retain large exchange-value losses, and the old single-soldier opening still
-  punishes a missed lane. These are deliberate constraints of retaining progression;
-  evaluate mowing rhythm, readability and positioning before changing progression.
-- Several pressure blocks can be visible at the retained long enemy horizon;
-  holding priorities for three groups reduces lane churn, but phone playtests
-  should assess whether the closest one/two threats remain obvious.
-- No XP, new weapons/buttons/framework/backend, Merge redesign or Boss redesign.
+Defenders stand at the bottom of a sandy beach, with sea and broken shoreline
+toward the upper battlefield. Staggered crossed obstacles and muted sand scuffs
+suggest corridor openings. Bridge road, rails, road markings and bright corridor
+lines are hidden. Existing generic industrial silhouettes, smoke, ships and aircraft
+remain. Simulation still advances internally in Z; rendering subtracts player Z
+and holds the environment fixed so the player reads as defending a position.
 
-## Verification
+Boss spawning/showdown, normal enemy tier escalation, the ENEMY LV HUD and yellow
+recruitment rewards are temporarily disabled. Their implementations remain available
+outside defense mode. Irrelevant TUNE controls are hidden. Merge, tier power,
+penetration, casualties and higher-tier infrastructure are retained without redesign;
+the authored run starts with one soldier and no rewards to grow the squad.
 
-Simulation tests cover seeded composition, priority/quiet lanes, bounds with
-3/4/5 lanes, Grunt one-hit and Heavy five-hit health, live tuning, reward aim,
-outer-lane steering, JSON snapshot continuation and retained Boss showdown damage.
-Renderer/control tests cover configured scales, Heavy identification/deaths,
-dynamic corridor count, all experiment sliders and Reset Defaults. Run `npm test`,
-`npm run typecheck` and `npm run build` before delivery.
+No XP, upgrades, additional weapons/enemies, backend, framework or deployment.
+The single-soldier opening is unforgiving: a missed lane can end the run quickly.
+Assess that pressure and the 5 Hz rhythm before adding progression to compensate.
 
-Mobile browser checks use a 390×844 touch-enabled portrait Chrome viewport
-(390×693 gameplay area at 9:16). Screenshots and detailed local check output
-are kept under `artifacts/catharsis-loop/`; these are playtest evidence, not
-deployment artifacts. Browser emulation does not replace a physical-phone test.
+## Verification and phone playtest focus
 
-Delivery checks: 351 tests in 51 files passed; typecheck and production build
-passed. Build retains dependency annotation and large-bundle warnings. The mobile
-check exercised touch drag to a crate, confirmed recruitment and crate removal,
-Pause/Resume, a live size edit, Reset Defaults and Retry, with no browser errors.
-The short emulated run reported roughly 60 FPS with about 30–40 active enemies;
-this is local browser evidence, not a physical-phone performance claim.
+Focused tests cover one-step input/clamping, repeat suppression, UI input isolation,
+lane snapshot continuation, same-lane hits despite X spread, deterministic bounded
+clusters, Grunt/Heavy health, 5 Hz defaults, disabled streams/tier escalation and
+stationary beach presentation. Legacy system tests remain operational.
+
+Run `npm test`, `npm run typecheck` and `npm run build` before delivery. Mobile browser
+evidence is kept locally under `artifacts/beachhead-defense/` at 390×844 with touch
+enabled (390×693 gameplay area). Emulation does not replace a physical-phone test.
+Evaluate corridor readability without bright markers, tap-release responsiveness,
+the 150 ms switch, group readability near the horizon, and fixed tracer alignment
+when enemies die before arrival.
+
+Delivery verification: 363 tests in 54 files passed, as did typecheck and production
+build. Existing dependency annotation and bundle-size warnings remain. The portrait
+browser check exercised tap stepping/clamping, repeat-free keys, Pause, live TUNE,
+Reset Defaults, natural Game Over and Retry, with no browser errors. After Retry,
+the middle lane was restored and taps worked. The run contained only Tier-1 normal
+enemies, no Boss and no recruitment rewards. Local emulation is not a claim of
+physical-phone performance.

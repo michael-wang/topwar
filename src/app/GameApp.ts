@@ -23,6 +23,8 @@ import { HudActions } from '../ui/HudActions';
 import { PerfDiagnostics } from './PerfDiagnostics';
 import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
+import { LaneStepInput } from '../input/LaneStepInput';
+import { LaneHud } from '../ui/LaneHud';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -50,6 +52,8 @@ export class GameApp {
   private readonly dragInput: PointerDragInput;
   private readonly keyboardInput: KeyboardSteeringInput;
   private readonly touchInput: TouchSteeringInput;
+  private readonly laneInput: LaneStepInput | null;
+  private readonly laneHud: LaneHud | null;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
@@ -73,6 +77,7 @@ export class GameApp {
     this.perf = perfEnabled ? new PerfDiagnostics() : null;
     this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
     this.config = configStore.getConfig();
+    if (this.config.catharsis?.defenseMode) this.viewport.classList.add('beachhead-defense');
     this.runtimeDefaults = defaultRuntimeTuning(this.config, level);
     this.runtimeTuning = { ...this.runtimeDefaults };
     this.simulation = this.createSimulation();
@@ -83,7 +88,8 @@ export class GameApp {
     this.audio = new GameAudio(viewport);
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
-    this.controlHint = new ControlHint(viewport);
+    this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
+    this.laneHud = this.config.catharsis?.defenseMode ? new LaneHud(viewport) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.tuningPanel = new TuningPanel(this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
@@ -94,7 +100,7 @@ export class GameApp {
       if (this.config.catharsis) this.simulation.setCatharsisBalance({ ...this.config.catharsis,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
-    });
+    }, !!this.config.catharsis?.defenseMode);
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
@@ -110,6 +116,8 @@ export class GameApp {
       onAxisChange: (axis) => this.setSteeringAxis(axis),
     });
     this.touchInput = new TouchSteeringInput(viewport, (axis) => this.setSteeringAxis(axis));
+    this.laneInput = this.config.catharsis?.defenseMode ? new LaneStepInput(viewport, window,
+      (direction) => this.simulation.stepLane(direction)) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
   }
 
@@ -120,9 +128,8 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
-    this.dragInput.start();
-    this.keyboardInput.start();
-    this.touchInput.start();
+    if (this.laneInput) this.laneInput.start();
+    else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput.start(); }
     window.addEventListener?.('keydown', this.onPauseKeyDown);
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
@@ -139,6 +146,7 @@ export class GameApp {
     this.keyboardInput.stop();
     this.dragInput.stop();
     this.touchInput.stop();
+    this.laneInput?.stop();
     this.paused = false;
     this.pauseOverlay.setVisible(false);
     this.hudActions.setPaused(false);
@@ -154,6 +162,8 @@ export class GameApp {
     this.dragInput.dispose();
     this.keyboardInput.dispose();
     this.touchInput.dispose();
+    this.laneInput?.dispose();
+    this.laneHud?.dispose();
     this.gameOverOverlay.dispose();
     this.tuningPanel.dispose();
     this.hudActions.dispose();
@@ -172,6 +182,7 @@ export class GameApp {
     this.keyboardInput.stop();
     this.dragInput.stop();
     this.touchInput.stop();
+    this.laneInput?.stop();
     this.simulation = this.createSimulation();
     this.perf?.reset();
     this.perfHud?.reset();
@@ -182,9 +193,12 @@ export class GameApp {
     this.paused = false;
     this.viewport.classList?.remove('game-paused');
     if (this.running) {
-      this.dragInput.start();
-      this.keyboardInput.start();
-      this.touchInput.start();
+      if (this.laneInput) this.laneInput.start();
+      else {
+        this.dragInput.start();
+        this.keyboardInput.start();
+        this.touchInput.start();
+      }
     }
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
@@ -251,11 +265,11 @@ export class GameApp {
       this.keyboardInput.stop();
       this.dragInput.stop();
       this.touchInput.stop();
+      this.laneInput?.stop();
       this.targetX = this.simulation.getState().player.x;
     } else {
-      this.keyboardInput.start();
-      this.dragInput.start();
-      this.touchInput.start();
+      if (this.laneInput) this.laneInput.start();
+      else { this.keyboardInput.start(); this.dragInput.start(); this.touchInput.start(); }
     }
     this.pauseOverlay.setVisible(this.paused);
     this.hudActions.setPaused(this.paused);
@@ -299,13 +313,14 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
+      if (state.player.selectedLane !== undefined) this.laneHud?.update(state.player.selectedLane, state.catharsis!.balance.laneCount);
       const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();
       if (state.squad.count === 0 && presentationEvents.some((event) => event.after.count === 0)) {
         this.fatalPresentationUntilMs = this.presentationMs + 360;
       }
       const stream = this.level.enemyStream;
-      if (stream) {
+      if (stream && !state.catharsis?.balance.defenseMode) {
         const row = Math.max(0, Math.floor((state.player.z - stream.startZ) / stream.spacing));
         this.tierHud.setTier(highestIntroducedTierForRow(row, stream.tierProgression));
       }
@@ -334,7 +349,9 @@ export class GameApp {
         catharsis: state.catharsis,
       });
       const mapFinishedMs = perf ? performance.now() : 0;
-      if (presentationEvents.length > 0) this.renderer.present(presentationEvents,
+      const renderEvents = state.catharsis?.balance.defenseMode ? presentationEvents.map((event) => ({ ...event,
+        attackerZ: event.attackerZ - state.player.z, playerZ: 0 })) : presentationEvents;
+      if (renderEvents.length > 0) this.renderer.present(renderEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
       const renderFinishedMs = perf ? performance.now() : 0;

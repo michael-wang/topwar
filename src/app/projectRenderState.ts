@@ -14,15 +14,19 @@ export interface RenderProjectionConfig {
 // change coordinate space or add presentation data are projected here.
 export function projectRenderState(state: SimulationFrameState,
   config: RenderProjectionConfig): GameRenderState {
+  const defenseMode = !!config.catharsis?.balance.defenseMode;
+  const originZ = defenseMode ? state.player.z : 0;
   return {
-    player: state.player,
+    ...(defenseMode ? { defenseMode } : {}),
+    player: defenseMode ? { ...state.player, z: 0 } : state.player,
     squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
       rifleCounts: state.squad.rifleCounts, formationSpacing: config.formationSpacing },
     track: { halfWidth: config.trackHalfWidth,
       ...(config.catharsis ? { lanePositions: attackLanePositions(config.catharsis.balance.laneCount,
         config.catharsis.trackHalfWidth, config.catharsis.balance.edgeInset) } : {}),
-      defenseLineZ: state.player.z - config.defenseLineOffset },
+      defenseLineZ: state.player.z - originZ - config.defenseLineOffset },
     enemies: config.catharsis ? state.enemies.map((enemy) => ({ ...enemy,
+      z: enemy.z - originZ,
       visualScale: config.catharsis!.balance.enemyVisualScale
         * (enemy.archetype === 'heavy' ? config.catharsis!.balance.heavyVisualScale : 1) })) : state.enemies,
     boss: state.boss ? { ...state.boss, visualScale: config.bossVisualScale } : null,
@@ -34,6 +38,6 @@ export function projectRenderState(state: SimulationFrameState,
     pickups: state.pickups.map((pickup) => ({ id: pickup.id, x: pickup.x,
       z: state.player.z + pickup.zOffset, rewardAmount: pickup.rewardAmount,
       rewardKind: pickup.rewardKind })),
-    projectiles: state.projectiles,
+    projectiles: defenseMode ? state.projectiles.map((shot) => ({ ...shot, z: shot.z - originZ })) : state.projectiles,
   };
 }

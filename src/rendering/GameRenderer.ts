@@ -94,8 +94,8 @@ export class GameRenderer {
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
-    this.environment.update(state.player.z, state.track.halfWidth, nowMs);
-    this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x);
+    this.environment.update(state.player.z, state.track.halfWidth, nowMs, state.defenseMode);
+    this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
     this.bossRenderer.update(state.boss, nowMs, state.player.z);

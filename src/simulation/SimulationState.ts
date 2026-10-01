@@ -1,4 +1,5 @@
 export interface PlayerSimulationState {
+  selectedLane?: number;
   x: number;
   z: number;
 }
@@ -14,6 +15,7 @@ export interface SquadSimulationState {
 }
 
 export interface EnemySimulationState {
+  lane?: number;
   archetype?: 'grunt' | 'heavy';
   id: number;
   tier: number;
@@ -73,6 +75,8 @@ export interface UpgradePickupSimulationState {
 }
 
 export interface ProjectileSimulationState {
+  lane?: number;
+  slopeX?: number;
   id: number;
   kind: 'rifle' | 'rocket';
   tier: number;

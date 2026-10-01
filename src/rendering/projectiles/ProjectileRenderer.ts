@@ -48,6 +48,7 @@ export class ProjectileRenderer {
       const length = Math.min(1.35, 1 + 0.025 * (projectile.tier - 1));
       const pulse = this.pulse.scaleFor(projectile.id, nowMs);
       const transform = this.transform;
+      transform.rotation.y = -Math.atan(projectile.slopeX ?? 0);
       transform.position.set(-projectile.x, projectile.kind === 'rocket' ? 0.66 : 0.64, projectile.z);
       if (projectile.kind === 'rocket') {
         transform.scale.setScalar(1.8 * pulse);

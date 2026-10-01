@@ -15,7 +15,8 @@ const bossLevel = LevelDefinitionSchema.parse({ ...levelData,
 const baseTuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 3, defenseLineOffset: 1.5,
   formationSpacing: 0.8, memberRadius: 0.01, normalEnemyRadius: 0.01,
-  bossRadius: 0.01, rifle: { ...config.weapon.rifle }, rocket: { ...config.weapon.rocket },
+  // Keep the recorded legacy formation fixture at its original cadence.
+  bossRadius: 0.01, rifle: { ...config.weapon.rifle, fireRate: 10 }, rocket: { ...config.weapon.rocket },
 };
 
 function fingerprint(value: unknown): string {
