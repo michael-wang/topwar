@@ -1,14 +1,15 @@
-# Phase 2.6: Lane Commitment + Assault Presentation
+# Phase 2.7: Overwhelm Threshold
 
-This beachhead-defense prototype tests whether a durable Heavy creates a meaningful
-lane commitment while other crowds continue advancing. Horde population, pressure
-lanes, speed, targeting and input are held at Phase 2.5 settings. No progression is
-added to compensate for a weak loop.
+This beachhead-defense prototype deliberately pushes visible Horde pressure to
+find when one soldier cannot comfortably cover the assault. It creates the need
+for future soldiers, upgrades, supplies or support without implementing them.
+Performance is measured honestly but is not yet the design limiter. There is no
+adaptive density, FPS-dependent gameplay or population reduction.
 
 Heavy has a fixed authored **15 base Rifle-hit HP**, with explicit live TUNE edits
 up to **40**. It never scales itself from Rifle fire rate, DPS, squad size or weapon
 power. Grunt stays exactly **1 HP**. Uninterrupted single-soldier fire needs 15 hits:
-roughly five seconds at a manually tuned 3 Hz or three seconds at the authored 5 Hz,
+roughly five seconds at the authored 3 Hz,
 including small projectile/cooldown timing differences. Later power can outgrow it.
 
 ## Controls and combat
@@ -39,15 +40,23 @@ Tracers take a fixed trajectory toward the nearest same-lane enemy at firing tim
 they do not home. An enemy killed before a tracer arrives can leave a tracer that
 hits another member without perfect visual alignment. Evaluate this presentation.
 
-Each wave generates ten members at its first row, every six rows. Seeded independent
-lateral and depth samples replace paired depth slots, avoiding marching rows/queues.
+Each wave generates fifty members at its first row, every six rows. Seeded independent
+lateral and depth samples have no unique slots, rows or count-dependent column length.
 Overlap and occlusion are intentional human-wave presentation: members need no
 personal space and there is no enemy-to-enemy collision avoidance. Lateral samples
-stay inside each corridor and track bounds; depth is bounded by the configured
-cluster span plus jitter. Adjacent groups may overlap too. Explicit lane identity
+stay inside each corridor and track bounds; depth is sampled in **[-5, 0]** units
+relative to group entry, independently of population. Ten, fifty and one hundred
+members occupy the same bounded volume. Adjacent groups may overlap too. Explicit lane identity
 keeps targeting independent of crowd geometry. Priority lanes still persist across
 three groups; the total group budget is split between one/two pressure lanes.
 The old group-row fit validation is only applied outside defense mode.
+
+Defense stream lookahead is **53 units** ahead of the standing defender, near the
+existing shoreline foam at Z≈52.8. Group anchors enter at the next authored stream
+row boundary; members are sampled beachward only, so no member of a new group is
+placed beyond the entry horizon. Initial runs prefill the authored stream from
+Z=30 to that horizon; subsequent groups emerge at the shoreline. The legacy
+non-defense stream retains its 96-unit horizon and original layout.
 
 ## Runtime tuning
 
@@ -57,16 +66,16 @@ rebuild is needed. The `catharsis` values are included in simulation snapshots.
 | Value | Initial setting | Meaning |
 | --- | --- | --- |
 | `defenseMode` | true | Temporarily enables this focused experiment |
+| `defenseSpawnAheadDistance` | 53 | Defense-only entry/lookahead distance in world units |
+| `crowdDepthSpan` | 5 | Maximum beachward depth of every group, independent of population |
 | `laneCount` | 5 | Configurable corridor count; try 3/4/5 |
 | `edgeInset` | 0.4 | Centers span ±2.8 on a ±3.2 track; spacing 1.4 |
 | `laneSwitchSeconds` | 0.15 | Time to traverse one lane spacing |
 | `waveRows` | 6 | Group cadence: 3.6 world units at existing row spacing |
 | `priorityWaves` | 3 | Groups before pressure lanes change |
-| `groupSize` | 10 | Total members per group, including a possible Heavy |
+| `groupSize` | 50 | Total members per group, including a possible Heavy; TUNE 10–100, step 5 |
 | `secondLaneChance` | 0.4 | Chance of two priority lanes |
 | `lateralSpreadFraction` | 0.26 | Maximum lateral offset as a fraction of lane spacing |
-| `memberDepthSpacing` | 0.85 | Cluster span unit: floor((groupSize − 1) / (2 × pressure lanes)) × this value |
-| `depthJitter` | 0.35 | Seeded positive/negative depth jitter |
 | `heavyChance` | 0.25 | Chance of one Heavy replacing the first group member |
 | `gruntSpeed` | 0.25 | Approach speed plus internal forward progression |
 | `heavySpeed` | 0.12 | Slower Heavy approach speed |
@@ -76,12 +85,15 @@ rebuild is needed. The `catharsis` values are included in simulation snapshots.
 
 `player.forwardSpeed` (Approach pace) is **0.6 units/second**. Effective closing
 speeds are initially 0.85 for Grunts and 0.72 for Heavies.
-`weapon.rifle.fireRate` stays **5 shots/second**. TUNE keeps Fire rate, enemy scale,
+`weapon.rifle.fireRate` starts at **3 shots/second**, with unchanged base damage. TUNE keeps Fire rate, enemy scale,
 Grunt speed, Heavy HP/speed/frequency, bullet speed/range, approach pace and music
-volume. Reset Defaults restores authored values. Enemy lookahead remains 96 units,
-so Retry is the quickest way to see frequency changes in nearby groups. Lane count,
-switch duration and cluster layout are JSON controls. Legacy `groupRowStride` and
-reward settings remain stored but are inactive in defense mode.
+volume and **Enemies / wave** (10–100, step 5). Density changes only future groups:
+active enemies remain untouched. Retry retains tuning and is the cleanest way to
+refill the beach at a new density. Reset Defaults restores authored values. Lane
+count, switch duration, entry horizon and crowd span are JSON controls. Balance,
+including density/horizon/span, is serialized with stream cursors for deterministic
+snapshot continuation. Legacy `groupRowStride`, `memberDepthSpacing`, `depthJitter`
+and reward settings remain stored but inactive in this defense layout.
 
 ## Presentation and temporarily disabled systems
 
@@ -121,39 +133,53 @@ the authored run starts with one soldier and no rewards to grow the squad.
 
 No XP, upgrades, additional weapons/enemies, backend, framework or deployment.
 The single-soldier opening is unforgiving: a missed lane can end the run quickly.
-Assess that pressure and the 5 Hz rhythm before adding progression to compensate.
+Assess that pressure and the 3 Hz rhythm before adding progression to compensate.
 
 ## Verification and phone playtest focus
 
 Focused tests cover immediate stepping/clamping, hold delay/cadence/cancellation,
 opposite direction, TUNE focus release, native editing and UI input isolation,
 lane snapshot continuation, same-lane hits despite X spread, deterministic bounded
-overlapping dense clusters, preserved population, fixed 15-hit Heavy health across
-3/5/10 Hz, explicit live tuning, 1-HP Grunts, 5 Hz defaults, energetic gait, corrected
+overlapping 10/50/100-member clusters, shoreline entry and unchanged legacy horizon,
+future-group density tuning/snapshot continuation, fixed 15-hit Heavy health across
+3/5/10 Hz, explicit live tuning, 1-HP Grunts, 3 Hz defaults, energetic gait, corrected
 baked poses and protected asset hashes, side-wreckage bounds,
 disabled streams/tier escalation and stationary beach presentation. Legacy system tests remain operational.
 
+Phase 2.7 verification: **388 tests / 54 files pass**; typecheck and production
+build pass. Asset baking/render geometry are unchanged in this phase.
+
 Run `npm test`, `npm run typecheck` and `npm run build` before delivery. Mobile browser
-evidence is kept locally under `artifacts/lane-commitment/` at 390×844 with touch
+evidence is kept locally under `artifacts/overwhelm-threshold/` at 390×844 with touch
 enabled (390×693 gameplay area). Emulation does not replace a physical-phone test.
 Evaluate corridor readability without bright markers, tap-release responsiveness,
 the 150 ms switch, group readability near the horizon, and fixed tracer alignment
 when enemies die before arrival.
 
-Phase 2.6 delivery verification: 382 tests across 54 files pass, as do typecheck
-and production build. The character bake completes, and a second clean bake
-reproduces all 21 GLBs byte-for-byte. Player, Boss and shared equipment assets
-retain their previous hashes.
+Portrait evidence uses seed 17 followed by a tuned Retry (seed 18), DPR 2,
+headless Chrome software rendering. Actual fixed-step gameplay is advanced by
+12 seconds between live observations to inspect near/mid-beach crowds sooner;
+no enemies are relocated, hidden or removed for screenshots. At roughly 24 seconds:
 
-Portrait browser checks inspect all four near-front Grunt/Heavy run poses,
-contact/death geometry and the full overlapping crowd. Heavy tuning to 40/reset
-to 15, keyboard input after TUNE, mobile stepping, Pause, Game Over and Retry
-work. A small Retry fix clears old artillery/flak sprites when presentation time
-rewinds instead of extrapolating their flash opacity into the past.
+| Enemies / wave | Retry population | Active | Near ≤15 / mid 15–35 / far >35 | FPS | Avg / p95 frame ms | CPU step ms |
+| --- | --- | --- | --- | --- | --- | --- |
+| 10 | 70 | 95 | 25 / 45 / 25 | 35 | 28 / 33 | 0.1 |
+| 50 | 350 | 492 | 137 / 211 / 144 | 10 | 97 / 117 | 0.4 |
+| 100 | 700 | 1,027 | 288 / 438 / 301 | 5 | 186 / 217 | 1.0 |
 
-A representative live moment has 175–177 active enemies and approximately
-24–25 FPS at DPR 2 using headless Chrome software rendering; simulation steps
-cost about 0.1 ms and frame p95 is about 50 ms. These numbers are not physical
-phone performance or a GC diagnosis. On a phone, evaluate sustained crowd frame
-pacing, whether 15-hit Heavy commitment at roughly 3 Hz makes neglected lanes
-costly, and whether the 360 ms gait reads as urgent rather than sliding/comical.
+All three densities run without browser errors; tuning leaves existing populations
+intact, Retry uses the selected density, and mobile taps still step one lane.
+Fifty/one hundred form an almost continuous overlapping helmet mass in pressure
+corridors, while ten leaves individual bodies easier to distinguish. Natural
+corridor openings and DEFEND remain readable, but overlapping ranks obscure faces
+and interior Heavy bodies. Amber Heavy helmets remain visible where unobstructed;
+they are easier to find near the front or shoreline than inside the mass.
+
+Software rendering degrades severely at 100; these numbers do not establish phone
+performance. Rendering/raster load is the apparent limitation (about 68k/340k/704k
+triangles, with low measured JS simulation/render submission cost), without a GPU
+profile proving a particular bottleneck or GC issue. No density or detail was reduced.
+On a phone, evaluate sustained frame pacing, distinguishing pressure between lanes,
+Heavy occlusion, and whether the dense assault makes support feel necessary rather
+than simply producing visual congestion. The unchanged priority schedule can show
+one strongly dominant corridor in a seeded moment; evaluate several runs.

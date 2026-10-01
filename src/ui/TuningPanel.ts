@@ -4,6 +4,7 @@ type Key = keyof RuntimeTuning;
 type Control = { key: Key; label: string; min: number; max: number; step: number }
   | { key: 'bossHpScale'; label: string; choices: readonly number[] };
 const controls: readonly Control[] = [
+  { key: 'groupSize', label: 'Enemies / wave (future groups; Retry refills)', min: 10, max: 100, step: 5 },
   { key: 'enemyVisualScale', label: 'Enemy visual size', min: 1, max: 2, step: 0.05 },
   { key: 'gruntSpeed', label: 'Grunt speed', min: 0, max: 2, step: 0.05 },
   { key: 'heavyHp', label: 'Heavy HP (rifle hits)', min: 2, max: 40, step: 1 },

@@ -1,6 +1,8 @@
 {
   "catharsis": {
     "defenseMode": true,
+    "defenseSpawnAheadDistance": 53,
+    "crowdDepthSpan": 5,
     "laneSwitchSeconds": 0.15,
     "lateralSpreadFraction": 0.26,
     "memberDepthSpacing": 0.85,
@@ -9,7 +11,7 @@
     "edgeInset": 0.4,
     "waveRows": 6,
     "priorityWaves": 3,
-    "groupSize": 10,
+    "groupSize": 50,
     "groupRowStride": 2,
     "secondLaneChance": 0.4,
     "heavyChance": 0.25,
@@ -34,7 +36,7 @@
   },
   "weapon": {
     "rifle": {
-      "fireRate": 5,
+      "fireRate": 3,
       "projectileSpeed": 60,
       "range": 80,
       "tierHitRadiusStep": 0.45,

@@ -3,6 +3,8 @@ import { z } from 'zod';
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
   defenseMode: z.boolean().default(false),
+  defenseSpawnAheadDistance: z.number().finite().positive().default(53),
+  crowdDepthSpan: z.number().finite().positive().default(5),
   laneSwitchSeconds: z.number().finite().positive().default(.15),
   lateralSpreadFraction: z.number().finite().min(0).max(.35).default(.26),
   memberDepthSpacing: z.number().finite().positive().default(.85),
@@ -11,7 +13,7 @@ export const CatharsisConfigSchema = z.strictObject({
   edgeInset: z.number().finite().positive(),
   waveRows: z.number().int().min(2),
   priorityWaves: z.number().int().min(1).max(10),
-  groupSize: z.number().int().min(1).max(10),
+  groupSize: z.number().int().min(1).max(100),
   groupRowStride: z.number().int().positive(),
   secondLaneChance: z.number().min(0).max(1),
   heavyChance: z.number().min(0).max(1),

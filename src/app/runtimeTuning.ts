@@ -2,6 +2,7 @@ import type { GameConfig } from '../config/configSchema';
 import type { LevelDefinition } from '../level/LevelDefinition';
 
 export interface RuntimeTuning {
+  groupSize?: number;
   enemyVisualScale?: number;
   gruntSpeed?: number;
   heavyHp?: number;
@@ -21,6 +22,7 @@ export interface RuntimeTuning {
 
 export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelDefinition): RuntimeTuning {
   return {
+    ...(config.catharsis?.defenseMode ? { groupSize: config.catharsis.groupSize } : {}),
     ...(config.catharsis ? { enemyVisualScale: config.catharsis.enemyVisualScale,
       gruntSpeed: config.catharsis.gruntSpeed, heavyHp: config.catharsis.heavyHp,
       heavySpeed: config.catharsis.heavySpeed, heavyChance: config.catharsis.heavyChance } : {}),

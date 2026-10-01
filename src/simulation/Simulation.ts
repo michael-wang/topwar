@@ -193,7 +193,8 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
   stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
   boss: BossSimulationState | null, bossHpScale: number,
   catharsis?: SimulationState['catharsis']): BossSimulationState | null {
-  const horizonZ = playerZ + stream.spawnAheadDistance;
+  const horizonZ = playerZ + (catharsis?.balance.defenseMode
+    ? catharsis.balance.defenseSpawnAheadDistance : stream.spawnAheadDistance);
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
     const rowZ = stream.startZ + cursor.nextRowIndex * stream.spacing;

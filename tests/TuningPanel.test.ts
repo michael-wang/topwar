@@ -45,6 +45,23 @@ const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPe
   fireRate: 7, moveSpeed: 5, forwardSpeed: 1.5, bossHpScale: 3, musicVolume: .50 };
 
 describe('temporary tuning panel', () => {
+  it('exposes the defense crowd range and resets it to the authored density', () => {
+    vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });
+    const viewport = new ElementStub('div');
+    const onChange = vi.fn();
+    const values = { ...defaults, groupSize: 50 };
+    const panel = new TuningPanel(viewport as unknown as HTMLElement, values, onChange, true);
+    const slider = viewport.children[0].findAll('input').find(input => input.dataset.key === 'groupSize')!;
+    expect([slider.min, slider.max, slider.step, slider.value]).toEqual(['10', '100', '5', '50']);
+    slider.value = '100';
+    slider.dispatchEvent(new Event('input'));
+    expect(onChange).toHaveBeenLastCalledWith({ ...values, groupSize: 100 });
+    viewport.children[0].querySelector('button')!.dispatchEvent(new Event('click'));
+    expect(slider.value).toBe('50');
+    expect(onChange).toHaveBeenLastCalledWith(values);
+    panel.dispose();
+  });
+
   afterEach(() => vi.unstubAllGlobals());
   it('keeps slider keys native while open and releases hidden focus immediately on Escape-style close', () => {
     vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag), activeElement: null });

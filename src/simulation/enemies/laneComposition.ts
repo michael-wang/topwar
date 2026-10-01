@@ -30,7 +30,6 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
     if (slot !== 0) return [];
     const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
     const spacing = positions[1] - positions[0];
-    const depthSpan = Math.floor((config.groupSize - 1) / (2 * wave.lanes.length)) * config.memberDepthSpacing;
     const rng = new SeededRng((seed ^ Math.imul(row + 1, 0xc2b2ae35)) >>> 0);
     return Array.from({ length: config.groupSize }, (_, member) => {
       const lane = wave.lanes[member % wave.lanes.length];
@@ -39,7 +38,9 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
       const maximumX = Math.min(positions.at(-1)!, positions[lane] + spread);
       // Independent samples intentionally allow overlap; no rows or personal-space slots.
       return { lane, x: minimumX + rng.nextFloat() * (maximumX - minimumX),
-        z: rng.nextFloat() * depthSpan + (rng.nextFloat() * 2 - 1) * config.depthJitter,
+        // Beachward only: even the rear of a newly admitted crowd stays at entry.
+        // Population changes density, never the group's longitudinal footprint.
+        z: -rng.nextFloat() * config.crowdDepthSpan,
         archetype: member === 0 && wave.heavy ? 'heavy' as const : 'grunt' as const };
     });
   }

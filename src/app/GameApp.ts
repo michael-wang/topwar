@@ -98,6 +98,7 @@ export class GameApp {
         bossHpScale: values.bossHpScale });
       this.runtimeTuning = values;
       if (this.config.catharsis) this.simulation.setCatharsisBalance({ ...this.config.catharsis,
+        groupSize: values.groupSize ?? this.config.catharsis.groupSize,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
     }, !!this.config.catharsis?.defenseMode);
@@ -222,6 +223,7 @@ export class GameApp {
     return new Simulation({ seed, level: this.level,
       ...(this.config.catharsis ? { catharsis: { trackHalfWidth: this.config.track.halfWidth,
         balance: { ...this.config.catharsis, enemyVisualScale: this.runtimeTuning.enemyVisualScale!,
+          groupSize: this.runtimeTuning.groupSize ?? this.config.catharsis.groupSize,
           gruntSpeed: this.runtimeTuning.gruntSpeed!, heavyHp: this.runtimeTuning.heavyHp!,
           heavySpeed: this.runtimeTuning.heavySpeed!, heavyChance: this.runtimeTuning.heavyChance! } } } : {}),
       collisionDiagnostics: this.perf?.counters,

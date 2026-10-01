@@ -18,15 +18,15 @@ const tuning = { moveSpeed: 5, forwardSpeed: config.player.forwardSpeed, trackHa
   formationSpacing: .45, memberRadius: .22, normalEnemyRadius: .3, bossRadius: 2,
   rifle: { ...config.weapon.rifle }, rocket: { ...config.weapon.rocket } };
 
-it('uses five configurable corridors and a 5 Hz baseline without changing archetype health', () => {
+it('uses five configurable corridors and a 3 Hz baseline without changing archetype health', () => {
   expect(balance.laneCount).toBe(5);
-  expect(balance.groupSize).toBe(10);
+  expect(balance.groupSize).toBe(50);
   expect(balance.waveRows).toBe(6);
   expect(config.player.forwardSpeed).toBe(.6);
   expect(balance.gruntSpeed).toBe(.25);
   expect(balance.heavySpeed).toBe(.12);
   expect(balance.heavyHp).toBe(15);
-  expect(config.weapon.rifle.fireRate).toBe(5);
+  expect(config.weapon.rifle.fireRate).toBe(3);
   for (const count of [3, 4, 5]) {
     const positions = attackLanePositions(count, 3.2, balance.edgeInset);
     for (let row = 0; row < 240; row++) {
@@ -39,6 +39,68 @@ it('uses five configurable corridors and a 5 Hz baseline without changing archet
   const enemies = make(true).getState().enemies;
   expect(enemies.some((enemy) => enemy.archetype === 'heavy')).toBe(true);
   for (const enemy of enemies) expect(enemy.hp).toBe(enemy.archetype === 'grunt' ? 1 : 15);
+});
+
+it('uses a defense shoreline horizon while leaving the legacy stream horizon unchanged', () => {
+  expect(balance.defenseSpawnAheadDistance).toBe(53);
+  expect(balance.crowdDepthSpan).toBe(5);
+  const defense = make(true);
+  expect(defense.getState().enemies.every(enemy => enemy.z <= 53)).toBe(true);
+  const custom = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0,
+    tiers: config.tiers, catharsis: { balance: { ...balance, defenseSpawnAheadDistance: 42 }, trackHalfWidth: 3.2 } });
+  expect(custom.getState().enemies.every(enemy => enemy.z <= 42)).toBe(true);
+  expect(custom.getState().enemies.length).toBeLessThan(defense.getState().enemies.length);
+  const legacy = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0, tiers: config.tiers });
+  expect(legacy.getState().enemyStream!.nextRowIndex).toBe(111);
+  expect(Math.max(...legacy.getState().enemies.map(enemy => enemy.z))).toBeGreaterThan(90);
+  // Advance the stream across a new entry boundary; every new member appears on the beach.
+  const state = defense.getState();
+  const nextId = state.enemyStream!.nextEnemyId;
+  state.player.z = 2.2;
+  defense.restoreState(state);
+  defense.step(1 / 60, { targetX: 0 }, tuning);
+  const advanced = defense.getState();
+  const newEnemies = advanced.enemies.filter(enemy => enemy.id >= nextId);
+  expect(newEnemies).toHaveLength(50);
+  expect(newEnemies.every(enemy => enemy.z - advanced.player.z <= 53)).toBe(true);
+  expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= 48 - .02)).toBe(true);
+});
+
+it.each([10, 50, 100])('samples %i members deterministically within the same bounded crowd volume', (groupSize) => {
+  const layout = { ...balance, groupSize };
+  for (let row = 0; row < 120; row += balance.waveRows) {
+    const group = laneCompositionForRow(row, 17, layout, 3.2);
+    expect(group).toEqual(laneCompositionForRow(row, 17, layout, 3.2));
+    expect(group).not.toEqual(laneCompositionForRow(row, 18, layout, 3.2));
+    expect(group).toHaveLength(groupSize);
+    const positions = attackLanePositions(balance.laneCount, 3.2, balance.edgeInset);
+    for (const enemy of group) {
+      expect(enemy.z).toBeGreaterThanOrEqual(-5);
+      expect(enemy.z).toBeLessThanOrEqual(0);
+      expect(Math.abs(enemy.x) + .3).toBeLessThanOrEqual(3.2);
+      expect(Math.abs(enemy.x - positions[enemy.lane!])).toBeLessThanOrEqual(1.4 * balance.lateralSpreadFraction);
+    }
+  }
+});
+
+it('tunes density for future groups and restores its balance and stream continuation', () => {
+  const original = make(true);
+  const existing = original.getState().enemies;
+  original.setCatharsisBalance({ ...balance, groupSize: 100, crowdDepthSpan: 4, defenseSpawnAheadDistance: 54 });
+  expect(original.getState().enemies).toEqual(existing);
+  const saved = JSON.parse(JSON.stringify(original.getState()));
+  const restored = make(true, 99);
+  restored.restoreState(saved);
+  expect(restored.getState().catharsis!.balance.groupSize).toBe(100);
+  const newIds = saved.enemyStream.nextEnemyId;
+  for (let tick = 0; tick < 1200; tick++) {
+    original.step(1 / 60, { targetX: 0 }, tuning);
+    restored.step(1 / 60, { targetX: 0 }, tuning);
+  }
+  const after = original.getState();
+  expect(after.enemies.filter(enemy => enemy.id >= newIds).length).toBeGreaterThanOrEqual(100);
+  expect(after.enemyStream!.nextEnemyId - newIds).toBe(300);
+  expect(restored.getState()).toEqual(after);
 });
 
 it('steps exactly one destination lane, clamps, and ignores analog target X', () => {
@@ -91,23 +153,23 @@ it('generates reproducible loose clusters with explicit lane identity and bounde
   const group = (seed: number) => laneCompositionForRow(0, seed, balance, 3.2);
   expect(group(17)).toEqual(group(17));
   expect(group(18)).not.toEqual(group(17));
-  expect(group(17)).toHaveLength(10);
+  expect(group(17)).toHaveLength(50);
   expect(new Set(group(17).map((member) => member.x)).size).toBeGreaterThan(2);
   expect(new Set(group(17).map((member) => member.z)).size).toBeGreaterThan(2);
   expect(new Set(group(17).map((member) => member.lane)).size).toBeLessThanOrEqual(2);
 });
 
-it('permits ten overlapping members per six-row wave and creates nearly five times the initial population', () => {
+it('permits fifty overlapping members per six-row wave and increases density fivefold at the same horizon', () => {
   expect(CatharsisConfigSchema.parse(balance)).toEqual(balance);
   expect(() => CatharsisConfigSchema.parse({ ...balance, defenseMode: false })).toThrow();
   const previous = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0,
-    tiers: config.tiers, catharsis: { balance: { ...balance, groupSize: 4, waveRows: 12 }, trackHalfWidth: 3.2 } });
-  expect(make(true).getState().enemies.length).toBeGreaterThan(previous.getState().enemies.length * 4.5);
+    tiers: config.tiers, catharsis: { balance: { ...balance, groupSize: 10 }, trackHalfWidth: 3.2 } });
+  expect(make(true).getState().enemies.length).toBe(previous.getState().enemies.length * 5);
   let overlappingPairs = 0;
   for (let wave = 0; wave < 100; wave++) {
     const group = Array.from({ length: balance.waveRows }, (_, slot) =>
       laneCompositionForRow(wave * balance.waveRows + slot, 17, balance, 3.2)).flat();
-    expect(group).toHaveLength(10);
+    expect(group).toHaveLength(50);
     for (let a = 0; a < group.length; a++) for (let b = a + 1; b < group.length; b++) {
       if (group[a].lane === group[b].lane && Math.hypot(group[a].x - group[b].x, group[a].z - group[b].z) < .6)
         overlappingPairs++;
