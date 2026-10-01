@@ -13,8 +13,11 @@ import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier
 import type { BossSimulationState, EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, SimulationFrameState, StreamRewardSimulationState, UpgradeGateSimulationState, UpgradePickupSimulationState } from './SimulationState';
 import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
 import { rifleHitRadiusBonusForTier } from './weapons/rifleHitRadius';
+import { CatharsisConfigSchema, type CatharsisConfig } from '../config/catharsisConfig';
+import { attackLanePositions, laneCompositionForRow, rewardLaneXForRow } from './enemies/laneComposition';
 
 export interface SimulationOptions {
+  catharsis?: { balance: CatharsisConfig; trackHalfWidth: number };
   seed: number;
   level: LevelDefinition;
   startSquad: number;
@@ -60,6 +63,23 @@ export interface SimulationTuning {
 
 function positiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function validateCatharsis(value: unknown): NonNullable<SimulationState['catharsis']> {
+  if (!isPlainObject(value) || Object.keys(value).length !== (Object.hasOwn(value, 'rewardRowsPerReward') ? 3 : 2)) {
+    throw new Error('Invalid lane experiment state');
+  }
+  const balance = CatharsisConfigSchema.parse(value.balance);
+  const trackHalfWidth = value.trackHalfWidth as number;
+  attackLanePositions(balance.laneCount, trackHalfWidth, balance.edgeInset);
+  if (balance.rewardAimRadius >= trackHalfWidth - balance.edgeInset) {
+    throw new Error('Reward aim radius must leave another lane to pursue');
+  }
+  const rewardRowsPerReward = value.rewardRowsPerReward;
+  if (rewardRowsPerReward !== undefined && (!Number.isSafeInteger(rewardRowsPerReward)
+    || (rewardRowsPerReward as number) <= 0)) throw new Error('Invalid experiment reward density');
+  return { balance, trackHalfWidth,
+    ...(rewardRowsPerReward !== undefined ? { rewardRowsPerReward: rewardRowsPerReward as number } : {}) };
 }
 
 type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
@@ -169,7 +189,8 @@ function validSquadCount(count: unknown): count is number {
 
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
-  boss: BossSimulationState | null, bossHpScale: number): BossSimulationState | null {
+  boss: BossSimulationState | null, bossHpScale: number,
+  catharsis?: SimulationState['catharsis']): BossSimulationState | null {
   const horizonZ = playerZ + stream.spawnAheadDistance;
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
   while (true) {
@@ -195,8 +216,10 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       || !Number.isSafeInteger(cursor.nextEnemyId + stream.columns)) {
       throw new Error('Simulation enemy stream exceeds the supported range');
     }
-    const offsets = createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
-      stream.columnSpacing ?? stream.spacing, stream.jitter, stream.seed);
+    const offsets = catharsis
+      ? laneCompositionForRow(cursor.nextRowIndex, stream.seed, catharsis.balance, catharsis.trackHalfWidth)
+      : createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
+        stream.columnSpacing ?? stream.spacing, stream.jitter, stream.seed);
     const rowIndex = cursor.nextRowIndex;
     let revealColumn = 0;
     for (let column = 1; column < offsets.length; column++) {
@@ -210,7 +233,10 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       }
       const tier = enemyTierForRow(rowIndex, column, revealColumn, stream.seed, stream.tierProgression);
       const enemyId = cursor.nextEnemyId++;
-      enemies.push({ id: enemyId, tier, x: offset.x, z, hp: enemyPowerForTier(tier, power) });
+      const archetype = 'archetype' in offset ? offset.archetype as 'grunt' | 'heavy' : undefined;
+      enemies.push({ id: enemyId, tier, x: offset.x, z,
+        hp: archetype ? (archetype === 'heavy' ? catharsis!.balance.heavyHp : 1) : enemyPowerForTier(tier, power),
+        ...(archetype ? { archetype } : {}) });
     }
     cursor.nextRowIndex++;
   }
@@ -218,7 +244,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
 }
 
 function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: EnemyStreamSimulationState,
-  stream: EnemyStreamDefinition, playerZ: number): void {
+  stream: EnemyStreamDefinition, playerZ: number, catharsis?: SimulationState['catharsis'], playerX = 0): void {
   const definition = stream.rewards;
   if (!definition) return;
   const horizonZ = playerZ + definition.spawnAheadDistance;
@@ -240,7 +266,8 @@ function extendRewardStream(rewards: StreamRewardSimulationState[], cursor: Enem
       throw new Error('Simulation reward stream exceeds the supported range');
     }
     rewards.push({ id: cursor.nextRewardId++, tier: rewardTierForRow(placement.rowIndex, stream.tierProgression),
-      x: placement.side * definition.sideX, z,
+      x: catharsis ? rewardLaneXForRow(placement.rowIndex, stream.seed, catharsis.balance,
+        catharsis.trackHalfWidth, playerX) : placement.side * definition.sideX, z,
       hitProgress: 0, hitsRequired: definition.hitsRequired });
     cursor.nextRewardBlockIndex++;
   }
@@ -252,9 +279,11 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   }
   const state = value;
   const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'boss', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
+  if (Object.hasOwn(state, 'catharsis')) fields.push('catharsis');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
+  const catharsis = Object.hasOwn(state, 'catharsis') ? validateCatharsis(state.catharsis) : undefined;
   if (!Number.isSafeInteger(state.tick) || (state.tick as number) < 0) {
     throw new Error('Simulation tick must be a non-negative integer');
   }
@@ -295,7 +324,10 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const enemyIds = new Set<number>();
   const enemies: EnemySimulationState[] = state.enemies.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation enemy ${index} must be a plain object`);
-    if (Object.keys(value).length !== 5 || ['id', 'tier', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
+    const archetype = value.archetype;
+    if (Object.keys(value).length !== (archetype === undefined ? 5 : 6)
+      || (archetype !== undefined && archetype !== 'grunt' && archetype !== 'heavy')
+      || ['id', 'tier', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation enemy ${index} has missing or unknown fields`);
     }
     if (!Number.isSafeInteger(value.id) || (value.id as number) <= 0) {
@@ -310,7 +342,11 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation enemy ${index} position must be finite`);
     }
     if (!positiveFinite(value.hp)) throw new Error(`Simulation enemy ${index} hp must be positive and finite`);
-    return { id, tier: value.tier as number, x: value.x, z: value.z, hp: value.hp };
+    if (catharsis && (!archetype || value.hp > (archetype === 'heavy' ? catharsis.balance.heavyHp : 1))) {
+      throw new Error(`Simulation enemy ${index} violates experiment health`);
+    }
+    return { id, tier: value.tier as number, x: value.x, z: value.z, hp: value.hp,
+      ...(archetype ? { archetype: archetype as 'grunt' | 'heavy' } : {}) };
   });
 
   let boss: BossSimulationState | null = null;
@@ -515,6 +551,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
 
   return {
     state: {
+      ...(catharsis ? { catharsis } : {}),
       tick: state.tick as number,
       elapsedSeconds: state.elapsedSeconds,
       levelId: state.levelId,
@@ -552,6 +589,8 @@ export class Simulation {
   private static readonly MAX_PRESENTATION_EVENTS = 256;
 
   constructor(options: SimulationOptions) {
+    const catharsis = options.catharsis ? validateCatharsis({ ...options.catharsis,
+      rewardRowsPerReward: options.rewardRowsPerReward ?? options.catharsis.balance.waveRows }) : undefined;
     this.collisionDiagnostics = options.collisionDiagnostics;
     this.rng = new SeededRng(options.seed);
     const level = LevelDefinitionSchema.parse(options.level);
@@ -578,7 +617,7 @@ export class Simulation {
     }
     this.authoredEnemyStreamDefinition = level.enemyStream;
     this.enemyStreamDefinition = this.effectiveStreamDefinition(options.seed,
-      options.rewardRowsPerReward);
+      options.rewardRowsPerReward ?? catharsis?.balance.waveRows);
     this.tiers = { ...options.tiers };
     const enemies: EnemySimulationState[] = [];
     for (const group of level.enemyGroups) {
@@ -593,7 +632,8 @@ export class Simulation {
           tier: 1,
           x: offset.x,
           z,
-          hp: enemyPowerForTier(1, this.tiers),
+          hp: catharsis ? 1 : enemyPowerForTier(1, this.tiers),
+          ...(catharsis ? { archetype: 'grunt' as const } : {}),
         });
       }
     }
@@ -605,10 +645,11 @@ export class Simulation {
     let boss: BossSimulationState | null = null;
     if (enemyStream && this.enemyStreamDefinition) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        0, this.tiers, boss, this.bossHpScale);
-      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, 0);
+        0, this.tiers, boss, this.bossHpScale, catharsis);
+      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, 0, catharsis);
     }
     this.state = {
+      ...(catharsis ? { catharsis } : {}),
       tick: 0,
       elapsedSeconds: 0,
       levelId: level.id,
@@ -647,6 +688,7 @@ export class Simulation {
     const rescaleHp = nextTiers.enemyHigherTierPowerMultiplier
       !== this.tiers.enemyHigherTierPowerMultiplier;
     const enemies = !rescaleHp ? this.state.enemies : this.state.enemies.map((enemy) => {
+      if (enemy.archetype) return enemy;
       const oldMax = enemyPowerForTier(enemy.tier, this.tiers);
       const nextMax = enemyPowerForTier(enemy.tier, nextTiers);
       return { ...enemy, hp: Math.min(nextMax, Math.max(0, enemy.hp / oldMax * nextMax)) };
@@ -684,7 +726,18 @@ export class Simulation {
     this.bossHpScale = nextBossHpScale;
     if (rewards) rewards.rowsPerReward = balance.rewardRowsPerReward;
     this.state = { ...this.state, enemies, boss,
+      ...(this.state.catharsis ? { catharsis: { ...this.state.catharsis,
+        rewardRowsPerReward: balance.rewardRowsPerReward } } : {}),
       enemyStream: cursor ? { ...cursor, nextRewardBlockIndex: nextRewardBlockIndex! } : null };
+  }
+
+  setCatharsisBalance(balance: CatharsisConfig): void {
+    const previous = this.state.catharsis;
+    if (!previous) throw new Error('Lane experiment is not active');
+    const next = validateCatharsis({ ...previous, balance });
+    this.state = { ...this.state, catharsis: next, enemies: this.state.enemies.map((enemy) =>
+      enemy.archetype === 'heavy' ? { ...enemy,
+        hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp } : enemy) };
   }
 
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
@@ -730,7 +783,10 @@ export class Simulation {
       throw new Error('Simulation time or tick exceeds the supported range');
     }
 
-    const halfWidth = tuning.trackHalfWidth;
+    // Full steering reaches the outer attack corridor instead of overshooting
+    // its narrow rifle collision width. Drag remains continuous between lanes.
+    const halfWidth = this.state.catharsis
+      ? this.state.catharsis.trackHalfWidth - this.state.catharsis.balance.edgeInset : tuning.trackHalfWidth;
     const currentX = Math.max(-halfWidth, Math.min(halfWidth, this.state.player.x));
     const targetX = Math.max(-halfWidth, Math.min(halfWidth, input.targetX));
     const maxHorizontalDelta = tuning.moveSpeed * dtSeconds;
@@ -756,7 +812,10 @@ export class Simulation {
       || !Number.isFinite(nextZ + gate.zOffset))) {
       throw new Error('Simulation armory position exceeds the supported range');
     }
-    const enemies = this.state.enemies.map((enemy) => ({ ...enemy }));
+    const catharsis = this.state.catharsis;
+    const enemies = this.state.enemies.map((enemy) => ({ ...enemy,
+      z: enemy.z - (catharsis && !currentBoss?.engaged && !bossContact && enemy.archetype
+        ? (enemy.archetype === 'heavy' ? catharsis.balance.heavySpeed : catharsis.balance.gruntSpeed) * dtSeconds : 0) }));
     const stepEvents: PresentationEvent[] = [];
     let boss = this.state.boss ? { ...this.state.boss } : null;
     if (boss && justEngaged) {
@@ -767,8 +826,8 @@ export class Simulation {
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition && !boss?.engaged) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.tiers, boss, this.bossHpScale);
-      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ);
+        nextZ, this.tiers, boss, this.bossHpScale, catharsis);
+      extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
     const enemyCollisionIndex = new EnemyCollisionIndex(enemies);
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
@@ -839,7 +898,11 @@ export class Simulation {
       let consumed = false;
       const piercedEnemyIds = projectile.tier > 1 ? new Set<number>() : undefined;
       while (true) {
-        const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, boss, streamRewards, gates,
+        // Rewards require the squad center to defend their corridor; wide merged
+        // formations cannot collect a remote crate incidentally.
+        const aimedRewards = catharsis ? streamRewards.filter((reward) =>
+          Math.abs(nextX - reward.x) <= catharsis.balance.rewardAimRadius) : streamRewards;
+        const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, boss, aimedRewards, gates,
           tuning.normalEnemyRadius,
           tuning.bossRadius,
           this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics);
@@ -866,7 +929,9 @@ export class Simulation {
           hit.boss.hp -= projectile.damage;
           if (hit.boss.hp <= 0) boss = null;
         } else if (projectile.kind !== 'rocket') {
-          hit.enemy.hp -= projectile.damage;
+          // Keep the retained tier/Boss power economy intact while expressing
+          // experiment health in Tier-1 rifle-hit units (Grunt = one hit).
+          hit.enemy.hp -= hit.enemy.archetype ? projectile.damage / this.tiers.tier1Power : projectile.damage;
           if (hit.enemy.hp <= 0) {
             enemies.splice(enemies.indexOf(hit.enemy), 1);
             enemyCollisionIndex.remove(hit.enemy);
@@ -938,11 +1003,13 @@ export class Simulation {
       if (squad.count === 0) break;
       const contactRadius = tuning.memberRadius + tuning.normalEnemyRadius;
       if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
-      // Sweep each moving squad member against the stationary enemy.
+      const enemyTravel = catharsis && !currentBoss?.engaged && !bossContact && enemy.archetype
+        ? (enemy.archetype === 'heavy' ? catharsis.balance.heavySpeed : catharsis.balance.gruntSpeed) * dtSeconds : 0;
+      // Sweep in the enemy's final coordinate space, accounting for its approach.
       let contact = false;
       for (const offset of contactOffsets) {
         const startX = this.state.player.x + offset.x;
-        const startZ = this.state.player.z + offset.z;
+        const startZ = this.state.player.z + offset.z - enemyTravel;
         const endX = nextX + offset.x;
         const endZ = nextZ + offset.z;
         if (!Number.isFinite(startX) || !Number.isFinite(startZ)
@@ -1036,6 +1103,7 @@ export class Simulation {
   getState(): SimulationState {
     return {
       ...this.state,
+      ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       rngState: this.rng.getState(),
       player: { ...this.state.player },
       squad: { ...this.state.squad, rifleCounts: [...this.state.squad.rifleCounts] },
@@ -1071,7 +1139,7 @@ export class Simulation {
     this.state = candidate.state;
     this.rng = candidate.rng;
     this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed,
-      this.enemyStreamDefinition?.rewards?.rowsPerReward);
+      candidate.state.catharsis?.rewardRowsPerReward ?? this.enemyStreamDefinition?.rewards?.rowsPerReward);
     this.presentationEvents = [];
   }
 

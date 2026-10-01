@@ -91,6 +91,9 @@ export class GameApp {
         rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,
         bossHpScale: values.bossHpScale });
       this.runtimeTuning = values;
+      if (this.config.catharsis) this.simulation.setCatharsisBalance({ ...this.config.catharsis,
+        enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
+        heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
     });
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
@@ -203,6 +206,10 @@ export class GameApp {
       ? (randomWord[0] + 1) >>> 0 : randomWord[0];
     this.lastRunSeed = seed;
     return new Simulation({ seed, level: this.level,
+      ...(this.config.catharsis ? { catharsis: { trackHalfWidth: this.config.track.halfWidth,
+        balance: { ...this.config.catharsis, enemyVisualScale: this.runtimeTuning.enemyVisualScale!,
+          gruntSpeed: this.runtimeTuning.gruntSpeed!, heavyHp: this.runtimeTuning.heavyHp!,
+          heavySpeed: this.runtimeTuning.heavySpeed!, heavyChance: this.runtimeTuning.heavyChance! } } } : {}),
       collisionDiagnostics: this.perf?.counters,
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
@@ -324,6 +331,7 @@ export class GameApp {
         trackHalfWidth: this.config.track.halfWidth,
         defenseLineOffset: this.config.track.defenseLineOffset,
         bossVisualScale: this.config.bosses.basic.visualScale,
+        catharsis: state.catharsis,
       });
       const mapFinishedMs = perf ? performance.now() : 0;
       if (presentationEvents.length > 0) this.renderer.present(presentationEvents,

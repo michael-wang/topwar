@@ -239,7 +239,7 @@ This distinction avoids spooky implicit state mutation.
 
 ### Development persistence
 
-The current eight-slider tuning panel keeps overrides in memory only. Retry retains them; reload returns to authored JSON defaults. Persistence infrastructure may be used by later development tools, but is not used by this panel.
+The compact tuning panel keeps overrides in memory only. Retry retains them; reload returns to authored JSON defaults. Persistence infrastructure may be used by later development tools, but is not used by this panel.
 
 Later, local development may add a Vite-only dev endpoint that writes approved config changes back to disk. That endpoint must never exist in production.
 
@@ -304,6 +304,15 @@ still comes from BigInt exchange-value subtraction. Initial runs and Retry draw
 an unsigned 32-bit browser-crypto seed. Simulation mixes that stored run seed
 with authored enemy and reward salts for deterministic stream generation;
 restoring a snapshot derives the same effective seeds from its saved run seed.
+
+The optional Catharsis experiment state stores its validated balance and track
+half-width as plain data. Normal enemies carry a `grunt` or `heavy` archetype.
+The existing row cursor reconstructs deterministic lane compositions without a
+second director clock or mutable RNG. Experiment snapshots retain live movement,
+Heavy HP, composition overrides and reward density, so restore also reproduces future spawns.
+Legacy states without experiment fields remain valid. Simulation supplies lane
+positions; render projection supplies configured visual scales. Neither depends
+on renderer resources. Normal movement stops during an engaged Boss showdown.
 
 ### Snapshot invariant
 

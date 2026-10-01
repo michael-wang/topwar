@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { AttackLaneRenderer } from './AttackLaneRenderer';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
 import { renderSize } from './renderSize';
@@ -36,6 +37,7 @@ export class GameRenderer {
     };
   }
   private readonly scene = new THREE.Scene();
+  private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
@@ -93,6 +95,7 @@ export class GameRenderer {
     if (this.disposed) return;
     this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs);
+    this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
     this.bossRenderer.update(state.boss, nowMs, state.player.z);
@@ -124,6 +127,7 @@ export class GameRenderer {
     if (this.disposed) return;
     this.stopResizeHandling();
     this.environment.dispose();
+    this.attackLanes.dispose();
     this.contactShadows.dispose();
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();

@@ -4,6 +4,7 @@ export interface PlayerSimulationState {
 }
 
 import type { ExactValue } from './tiers/exactValue';
+import type { CatharsisConfig } from '../config/catharsisConfig';
 
 export interface SquadSimulationState {
   count: number;
@@ -13,6 +14,7 @@ export interface SquadSimulationState {
 }
 
 export interface EnemySimulationState {
+  archetype?: 'grunt' | 'heavy';
   id: number;
   tier: number;
   x: number;
@@ -91,6 +93,7 @@ export interface WeaponSimulationState {
 }
 
 export interface SimulationState {
+  catharsis?: { balance: CatharsisConfig; trackHalfWidth: number; rewardRowsPerReward?: number };
   tick: number;
   elapsedSeconds: number;
   levelId: string;

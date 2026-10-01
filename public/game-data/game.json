@@ -1,4 +1,20 @@
 {
+  "catharsis": {
+    "laneCount": 5,
+    "edgeInset": 0.4,
+    "waveRows": 12,
+    "priorityWaves": 3,
+    "groupSize": 4,
+    "groupRowStride": 2,
+    "secondLaneChance": 0.4,
+    "heavyChance": 0.25,
+    "gruntSpeed": 0.8,
+    "heavySpeed": 0.3,
+    "heavyHp": 5,
+    "enemyVisualScale": 1.4,
+    "heavyVisualScale": 1.35,
+    "rewardAimRadius": 0.5
+  },
   "player": {
     "startSquad": 1,
     "startRocketCount": 0,

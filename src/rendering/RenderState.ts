@@ -10,6 +10,7 @@ export interface GameRenderState {
     readonly formationSpacing: number;
   };
   readonly track: {
+    readonly lanePositions?: readonly number[];
     readonly halfWidth: number;
     readonly defenseLineZ: number;
   };
@@ -72,6 +73,8 @@ export interface ProjectileRenderState {
 }
 
 export interface EnemyRenderState {
+  readonly archetype?: 'grunt' | 'heavy';
+  readonly visualScale?: number;
   readonly id: number;
   readonly tier: number;
   readonly x: number;

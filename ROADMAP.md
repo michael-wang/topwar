@@ -2,31 +2,25 @@
 
 ## Current playable
 
-- Endless deterministic seven-enemy rows, desktop keyboard or mobile touch/pen steering, pause/resume, automatic rifle fire, stationary gameplay enemies, and visual enemy walking. Game Over leads directly to Retry.
-- Formula-driven normal tiers have no authored ceiling. Each 96-row quadratic transition is followed by 96 stable rows; Tier-2 starts at row 48, Tier-3 at 240, and later tiers follow the same cycle. Normal bodies share radius 0.30 and one visual size; tier color cycles through six enemy colors.
-- Enemy HP and player rifle damage are 3 at Tier-1, 300 at Tier-2, then multiply by 10 per tier by default. Enemy and rifle growth can be tuned independently during a run. Ten rifle soldiers merge into one at the next tier. Only the highest two adjacent player rifle tiers remain active; exact lower-tier remainder value contributes to defense and future merges without firing. Player colors cycle through five cool palettes without permanent body growth.
-- One deterministic side reward appears per eight-row block at X = ±3.2, 30 units ahead against a 96-unit enemy horizon. Each rifle hit consumes its shot; ten hits grant the fully established enemy tier. Enemies remain in reward rows.
-- A giant Boss replaces one row eight rows before each next-tier saturation. Tier-1 Boss is row 136 with 12,000 HP; later Boss HP uses 1000 times its normal tier power. Enemy and reward streams continue behind Bosses. A small HUD shows the highest enemy tier introduced at the player's current row.
-- Toy soldier rifle recoil and muzzle flash, unarmed grunt waddling, hit/death feedback, reward and tier-up payoff remain. Audio includes throttled firing, reward ticks/chimes, damage/Game Over, Boss hit thuds, and throttled enemy death yelps after a browser interaction. An eight-slider runtime panel provides temporary tuning with Reset Defaults.
+- Catharsis prototype experiment: five configurable attack corridors, larger 1-HP Grunts, sparse slower 5-HP amber Heavies, and deterministic one/two-lane pressure held across several groups.
+- Temporary reinforcement crates occupy quiet corridors and require squad alignment to accept rifle hits. TUNE exposes enemy size, movement, Heavy health/frequency and retained combat controls.
+- Continuous touch/pen drag, existing mobile hold steering, desktop keys, Pause, Game Over and Retry remain operational. Plain-data snapshots retain experiment balance, archetypes and stream cursors.
+- Existing 10-to-1 Merge, adjacent active tiers, exact defense/remainder arithmetic, tier-colored gear, formula-driven Boss handoffs and showdown remain. The experiment adds no XP or weapon progression.
+- Instanced toy soldiers, contact/death feedback, audio, environment and procedural music remain.
 
 ## NOW
 
-**Prototype weekly checkpoint / stabilization.** Major gameplay and progression architecture is complete for this checkpoint; validate sustained handoffs, reward choices, and mobile play.
+**Playtest the first Catharsis lane/readability experiment on portrait phones.** Compare 3/4/5 corridors, visible soldier/death readability, one/two-lane pressure, Heavy interruptions and intentional reward movement. This is a focused prototype, not the full new design.
 
 ## NEXT
 
-1. Fix blockers discovered in human or mobile long-run playtest.
-2. Profile sustained high-tier runs only if performance becomes an issue.
-3. Revisit feel and readability only from observed playtest evidence.
+1. Fix input/readability blockers and tune composition from phone playtest evidence.
+2. Decide lane count, enemy size and density from the experiment.
+3. Design the next XP, squad-growth and Merge phase together before implementation.
 
 ## LATER
 
+- Progression and battlefield opportunities
+- Additional enemy/Boss variety
 - Dev Panel and snapshot tooling/UI
-- Additional Boss variations
-- Mobile polish
-
-## Explicitly inactive / rejected
-
-- Normal tier does not change body size; basic enemies do not pursue the player in simulation.
-- No finite level or permanent side-armory economy is active.
-- Rocket specialist code remains prototype infrastructure outside Level 001's rifle progression.
+- Mobile polish and measured performance work

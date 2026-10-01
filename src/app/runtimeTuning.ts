@@ -2,6 +2,11 @@ import type { GameConfig } from '../config/configSchema';
 import type { LevelDefinition } from '../level/LevelDefinition';
 
 export interface RuntimeTuning {
+  enemyVisualScale?: number;
+  gruntSpeed?: number;
+  heavyHp?: number;
+  heavySpeed?: number;
+  heavyChance?: number;
   bulletSpeed: number;
   bulletRange: number;
   rewardRowsPerReward: number;
@@ -16,9 +21,12 @@ export interface RuntimeTuning {
 
 export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelDefinition): RuntimeTuning {
   return {
+    ...(config.catharsis ? { enemyVisualScale: config.catharsis.enemyVisualScale,
+      gruntSpeed: config.catharsis.gruntSpeed, heavyHp: config.catharsis.heavyHp,
+      heavySpeed: config.catharsis.heavySpeed, heavyChance: config.catharsis.heavyChance } : {}),
     bulletSpeed: config.weapon.rifle.projectileSpeed,
     bulletRange: config.weapon.rifle.range,
-    rewardRowsPerReward: level.enemyStream?.rewards?.rowsPerReward ?? 7,
+    rewardRowsPerReward: config.catharsis?.waveRows ?? level.enemyStream?.rewards?.rowsPerReward ?? 7,
     enemyHigherTierPowerMultiplier: config.tiers.enemyHigherTierPowerMultiplier,
     rifleHigherTierPowerMultiplier: config.tiers.rifleHigherTierPowerMultiplier,
     fireRate: config.weapon.rifle.fireRate,

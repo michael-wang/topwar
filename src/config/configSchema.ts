@@ -1,9 +1,11 @@
 import { z } from 'zod';
+import { CatharsisConfigSchema } from './catharsisConfig';
 
 const positive = z.number().finite().positive();
 const nonnegative = z.number().finite().nonnegative();
 
 export const GameConfigSchema = z.strictObject({
+  catharsis: CatharsisConfigSchema.optional(),
   player: z.strictObject({
     startSquad: z.number().int().safe().nonnegative(),
     startRocketCount: z.number().int().safe().nonnegative(),
@@ -46,7 +48,13 @@ export const GameConfigSchema = z.strictObject({
       radius: positive,
     }),
   }),
-}).refine((config) => config.player.startRocketCount <= config.player.startSquad,
+}).refine((config) => !config.catharsis || (config.catharsis.edgeInset < config.track.halfWidth
+  && config.catharsis.edgeInset >= config.tiers.normalEnemyRadius),
+  { path: ['catharsis', 'edgeInset'], message: 'Lane inset must contain enemy collision and be inside the track' })
+  .refine((config) => !config.catharsis
+    || config.catharsis.rewardAimRadius < config.track.halfWidth - config.catharsis.edgeInset,
+  { path: ['catharsis', 'rewardAimRadius'], message: 'Rewards must leave another lane to pursue' })
+  .refine((config) => config.player.startRocketCount <= config.player.startSquad,
   { path: ['player', 'startRocketCount'], message: 'startRocketCount cannot exceed startSquad' });
 
 export type GameConfig = z.infer<typeof GameConfigSchema>;

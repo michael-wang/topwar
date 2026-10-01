@@ -14,6 +14,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  scale: number;
   group: THREE.Group;
   bodyMaterial: THREE.MeshStandardMaterial;
   gearMaterial: THREE.MeshStandardMaterial;
@@ -21,6 +22,7 @@ interface DeathVisual {
 }
 
 interface ContactVisual {
+  scale: number;
   group: THREE.Group;
   materials: THREE.MeshStandardMaterial[];
   startedAtMs: number;
@@ -52,6 +54,7 @@ export class EnemyRenderer {
   private readonly grayBodyMaterial: THREE.MeshStandardMaterial;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));
   private readonly flashColor = new THREE.Color('#ffe36e');
+  private readonly heavyColor = new THREE.Color('#e7ad43');
   private readonly transform = new THREE.Object3D();
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
@@ -143,7 +146,7 @@ export class EnemyRenderer {
       transform.position.set(-enemy.x, pose.bob, enemy.z);
       transform.rotation.set(-0.11 + pose.leftLeg * 0.035, Math.PI,
         pose.leftArm * 0.09);
-      transform.scale.setScalar(ENEMY_VISUAL_SCALE);
+      transform.scale.setScalar(enemy.visualScale ?? ENEMY_VISUAL_SCALE);
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs);
       this.bodyMeshes[frame].setMatrixAt(bodyIndices[frame]++, transform.matrix);
@@ -153,8 +156,9 @@ export class EnemyRenderer {
       vest.setMatrixAt(index, transform.matrix);
       const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
       if (!flashing) this.flashUntilMs.delete(enemy.id);
-      helmet.setColorAt(index, flashing ? this.flashColor : this.helmetColors[palette]);
-      vest.setColorAt(index, flashing ? this.flashColor : this.helmetColors[palette]);
+      const color = enemy.archetype === 'heavy' ? this.heavyColor : this.helmetColors[palette];
+      helmet.setColorAt(index, flashing ? this.flashColor : color);
+      vest.setColorAt(index, flashing ? this.flashColor : color);
     }
     for (const mesh of this.bodyMeshes) mesh.instanceMatrix.needsUpdate = true;
     for (const palette of PALETTES) {
@@ -214,7 +218,7 @@ export class EnemyRenderer {
       });
       models.forEach((model, index) => group.add(new THREE.Mesh(model.geometry, materials[index])));
       this.scene.add(group);
-      visual = { group, materials, startedAtMs: nowMs, x, z, direction: 1 };
+      visual = { group, materials, startedAtMs: nowMs, x, z, direction: 1, scale: ENEMY_VISUAL_SCALE };
       this.contactVisuals.push(visual);
     }
     if (!visual) visual = this.contactVisuals.reduce((oldest, candidate) =>
@@ -223,12 +227,14 @@ export class EnemyRenderer {
     visual.x = x;
     visual.z = z;
     visual.direction = id % 2 === 0 ? -1 : 1;
+    visual.scale = this.previousEnemies.get(id)?.visualScale ?? ENEMY_VISUAL_SCALE;
     visual.group.visible = true;
     visual.group.rotation.set(0, Math.PI, 0);
     visual.group.position.set(-x, 0, z);
-    visual.group.scale.setScalar(ENEMY_VISUAL_SCALE);
+    visual.group.scale.setScalar(visual.scale);
     for (const material of visual.materials) material.opacity = 1;
-    const color = this.helmetColors[paletteIndex(tier, PALETTES.length)];
+    const color = this.previousEnemies.get(id)?.archetype === 'heavy' ? this.heavyColor
+      : this.helmetColors[paletteIndex(tier, PALETTES.length)];
     visual.materials[1].color.copy(color);
     visual.materials[2].color.copy(color);
   }
@@ -248,7 +254,7 @@ export class EnemyRenderer {
       visual.group.position.set(-visual.x + visual.direction * .8 * progress,
         .5 * Math.sin(Math.PI * progress), visual.z + .9 * progress);
       visual.group.rotation.z = visual.direction * .45 * progress;
-      visual.group.scale.setScalar(ENEMY_VISUAL_SCALE * (1.12 - .26 * progress));
+      visual.group.scale.setScalar(visual.scale * (1.12 - .26 * progress));
     }
   }
 
@@ -268,17 +274,18 @@ export class EnemyRenderer {
       const vest = new THREE.Mesh(this.vestModel.geometry, gearMaterial);
       group.add(body, helmet, vest);
       this.scene.add(group);
-      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs };
+      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: ENEMY_VISUAL_SCALE };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     visual.startedAtMs = nowMs;
+    visual.scale = enemy.visualScale ?? ENEMY_VISUAL_SCALE;
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
     visual.gearMaterial.color.set('#fff1a0');
     visual.group.visible = true;
-    visual.group.scale.setScalar(ENEMY_VISUAL_SCALE * 1.07);
+    visual.group.scale.setScalar(visual.scale * 1.07);
     visual.group.position.set(-enemy.x, 0, enemy.z);
     visual.group.rotation.set(0, Math.PI, 0);
   }
@@ -293,7 +300,7 @@ export class EnemyRenderer {
       const opacity = Math.min(1, (1 - progress) / .78);
       visual.bodyMaterial.opacity = opacity;
       visual.gearMaterial.opacity = opacity;
-      visual.group.scale.setScalar(ENEMY_VISUAL_SCALE * (1.07 - .10 * progress));
+      visual.group.scale.setScalar(visual.scale * (1.07 - .10 * progress));
       visual.group.position.y = progress * .55;
     }
   }

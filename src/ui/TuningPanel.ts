@@ -4,6 +4,11 @@ type Key = keyof RuntimeTuning;
 type Control = { key: Key; label: string; min: number; max: number; step: number }
   | { key: 'bossHpScale'; label: string; choices: readonly number[] };
 const controls: readonly Control[] = [
+  { key: 'enemyVisualScale', label: 'Enemy visual size', min: 1, max: 2, step: 0.05 },
+  { key: 'gruntSpeed', label: 'Grunt speed', min: 0, max: 2, step: 0.1 },
+  { key: 'heavyHp', label: 'Heavy HP (rifle hits)', min: 2, max: 15, step: 1 },
+  { key: 'heavySpeed', label: 'Heavy speed', min: 0, max: 1.5, step: 0.05 },
+  { key: 'heavyChance', label: 'Heavy chance / wave', min: 0, max: 1, step: 0.05 },
   { key: 'bulletSpeed', label: 'Bullet speed', min: 10, max: 60, step: 1 },
   { key: 'bulletRange', label: 'Bullet range', min: 10, max: 80, step: 1 },
   { key: 'rewardRowsPerReward', label: 'Reward density', min: 2, max: 20, step: 1 },
@@ -45,8 +50,10 @@ export class TuningPanel {
     content.className = 'tuning-panel-content';
     this.element.append(summary, content);
     for (const control of controls) {
+      if (defaults[control.key] === undefined) continue;
       const label = document.createElement('label');
-      label.textContent = control.label;
+      label.textContent = control.key === 'enemyHigherTierPowerMultiplier' && defaults.enemyVisualScale !== undefined
+        ? 'Boss base HP / tier' : control.label;
       const input = control.key === 'bossHpScale'
         ? document.createElement('select') : document.createElement('input');
       if ('choices' in control) {
@@ -100,7 +107,7 @@ export class TuningPanel {
 
   private updateDisplay(): void {
     for (const [key, output] of this.outputs) {
-      const value = this.values[key];
+      const value = this.values[key]!;
       output.textContent = key === 'rewardRowsPerReward'
         ? `1 / ${value} rows (≈${Number((100 / value).toFixed(1))}%)`
         : key === 'bossHpScale' ? `${value}×`

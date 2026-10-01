@@ -38,6 +38,25 @@ const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPe
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
+  it('applies each live Catharsis control and restores all experiment defaults', () => {
+    vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });
+    const viewport = new ElementStub('div');
+    const onChange = vi.fn();
+    const experiment = { ...defaults, enemyVisualScale: 1.4, gruntSpeed: .8,
+      heavyHp: 5, heavySpeed: .3, heavyChance: .25 };
+    const panel = new TuningPanel(viewport as unknown as HTMLElement, experiment, onChange);
+    const root = viewport.children[0];
+    for (const [key, value] of Object.entries({ enemyVisualScale: 1.6, gruntSpeed: 1,
+      heavyHp: 8, heavySpeed: .5, heavyChance: .4 })) {
+      const input = root.findAll('input').find((input) => input.dataset.key === key)!;
+      input.value = String(value);
+      input.dispatchEvent(new Event('input'));
+      expect(onChange.mock.lastCall?.[0][key]).toBe(value);
+    }
+    root.querySelector('button')!.dispatchEvent(new Event('click'));
+    expect(onChange).toHaveBeenLastCalledWith(experiment);
+    panel.dispose();
+  });
   it('offers music volume with the other sliders and Reset restores authored defaults', () => {
     vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });
     const viewport = new ElementStub('div');
