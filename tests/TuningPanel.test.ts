@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TuningPanel } from '../src/ui/TuningPanel';
 import type { RuntimeTuning } from '../src/app/runtimeTuning';
+import { LaneStepInput } from '../src/input/LaneStepInput';
 
 class ElementStub extends EventTarget {
   readonly children: ElementStub[] = [];
@@ -15,6 +16,13 @@ class ElementStub extends EventTarget {
   open = false;
   removed = false;
   constructor(readonly tagName: string) { super(); }
+  get ownerDocument(): Document { return document; }
+  contains(element: ElementStub): boolean {
+    return this === element || this.children.some((child) => child.contains(element));
+  }
+  focus(): void { Object.defineProperty(document, 'activeElement', { configurable: true, value: this }); }
+  blur(): void { Object.defineProperty(document, 'activeElement', { configurable: true, value: null }); }
+  closest(): ElementStub | null { return ['input', 'select', 'summary'].includes(this.tagName) ? this : null; }
   append(...children: ElementStub[]): void { this.children.push(...children); }
   remove(): void { this.removed = true; }
   querySelector(tag: string): ElementStub | null {
@@ -38,6 +46,56 @@ const defaults: RuntimeTuning = { bulletSpeed: 28, bulletRange: 40, rewardRowsPe
 
 describe('temporary tuning panel', () => {
   afterEach(() => vi.unstubAllGlobals());
+  it('keeps slider keys native while open and releases hidden focus immediately on Escape-style close', () => {
+    vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag), activeElement: null });
+    const viewport = new ElementStub('div');
+    const keys = new EventTarget();
+    const step = vi.fn(() => false);
+    const input = new LaneStepInput(viewport as unknown as HTMLElement, keys as unknown as Window, step);
+    input.start();
+    const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
+    const slider = viewport.children[0].findAll('input').find((input) => input.dataset.key === 'fireRate')!;
+    const keyDown = (key: string) => {
+      const event = new Event('keydown', { cancelable: true });
+      Object.defineProperties(event, { key: { value: key }, target: { value: document.activeElement } });
+      keys.dispatchEvent(event);
+      return event;
+    };
+    panel.toggle();
+    slider.focus();
+    expect(keyDown('ArrowRight').defaultPrevented).toBe(false);
+    expect(step).not.toHaveBeenCalled();
+    slider.value = '6';
+    slider.dispatchEvent(new Event('input'));
+    panel.toggle();
+    expect(document.activeElement).toBeNull();
+    expect(keyDown('ArrowRight').defaultPrevented).toBe(true);
+    expect(step).toHaveBeenCalledWith(1);
+    expect(keyDown('a').defaultPrevented).toBe(true);
+    expect(step).toHaveBeenCalledWith(-1);
+    input.dispose();
+    panel.dispose();
+  });
+
+  it('releases focus for native details close but leaves outside focus and open controls alone', () => {
+    vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag), activeElement: null });
+    const viewport = new ElementStub('div');
+    const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn());
+    const root = viewport.children[0];
+    const select = root.findAll('select')[0];
+    root.open = true;
+    select.focus();
+    root.dispatchEvent(new Event('toggle'));
+    expect(document.activeElement).toBe(select);
+    root.open = false;
+    root.dispatchEvent(new Event('toggle'));
+    expect(document.activeElement).toBeNull();
+    const outside = new ElementStub('input');
+    outside.focus();
+    root.dispatchEvent(new Event('toggle'));
+    expect(document.activeElement).toBe(outside);
+    panel.dispose();
+  });
   it('applies each live Catharsis control and restores all experiment defaults', () => {
     vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });
     const viewport = new ElementStub('div');

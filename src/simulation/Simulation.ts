@@ -761,12 +761,15 @@ export class Simulation {
         hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp } : enemy) };
   }
 
-  stepLane(direction: -1 | 1): void {
+  // Return whether this direction can repeat; moving onto an edge stops input timers.
+  stepLane(direction: -1 | 1): boolean {
     const experiment = this.state.catharsis;
     if (!experiment?.balance.defenseMode || (direction !== -1 && direction !== 1)) throw new Error('Invalid lane step');
-    if (this.state.squad.count === 0) return;
+    if (this.state.squad.count === 0) return false;
     const selectedLane = Math.max(0, Math.min(experiment.balance.laneCount - 1, this.state.player.selectedLane! + direction));
+    if (selectedLane === this.state.player.selectedLane) return false;
     this.state = { ...this.state, player: { ...this.state.player, selectedLane } };
+    return selectedLane + direction >= 0 && selectedLane + direction < experiment.balance.laneCount;
   }
 
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {

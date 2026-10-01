@@ -5,9 +5,9 @@ type Control = { key: Key; label: string; min: number; max: number; step: number
   | { key: 'bossHpScale'; label: string; choices: readonly number[] };
 const controls: readonly Control[] = [
   { key: 'enemyVisualScale', label: 'Enemy visual size', min: 1, max: 2, step: 0.05 },
-  { key: 'gruntSpeed', label: 'Grunt speed', min: 0, max: 2, step: 0.1 },
+  { key: 'gruntSpeed', label: 'Grunt speed', min: 0, max: 2, step: 0.05 },
   { key: 'heavyHp', label: 'Heavy HP (rifle hits)', min: 2, max: 15, step: 1 },
-  { key: 'heavySpeed', label: 'Heavy speed', min: 0, max: 1.5, step: 0.05 },
+  { key: 'heavySpeed', label: 'Heavy speed', min: 0, max: 1.5, step: 0.01 },
   { key: 'heavyChance', label: 'Heavy chance / wave', min: 0, max: 1, step: 0.05 },
   { key: 'bulletSpeed', label: 'Bullet speed', min: 10, max: 60, step: 1 },
   { key: 'bulletRange', label: 'Bullet range', min: 10, max: 80, step: 1 },
@@ -38,6 +38,11 @@ export class TuningPanel {
     this.onChange({ ...this.values });
   };
   private values: RuntimeTuning;
+  private readonly releaseClosedFocus = (): void => {
+    if (this.element.open) return;
+    const focused = this.element.ownerDocument?.activeElement as HTMLElement | null;
+    if (focused && this.element.contains(focused)) focused.blur();
+  };
 
   constructor(viewport: HTMLElement, private readonly defaults: RuntimeTuning,
     private readonly onChange: (values: RuntimeTuning) => void, defenseMode = false) {
@@ -85,6 +90,7 @@ export class TuningPanel {
     reset.addEventListener('click', this.onReset);
     content.append(reset);
     this.element.addEventListener('pointerdown', this.onPointerDown);
+    this.element.addEventListener('toggle', this.releaseClosedFocus);
     viewport.append(this.element);
     this.setValues(defaults);
   }
@@ -97,11 +103,14 @@ export class TuningPanel {
 
   toggle(): void {
     this.element.open = !this.element.open;
+    // Escape must release hidden slider focus synchronously, before the next key press.
+    this.releaseClosedFocus();
   }
 
   dispose(): void {
     for (const input of this.inputs.values()) input.removeEventListener('input', this.onInput);
     this.element.removeEventListener('pointerdown', this.onPointerDown);
+    this.element.removeEventListener('toggle', this.releaseClosedFocus);
     this.element.querySelector('button')?.removeEventListener('click', this.onReset);
     this.element.remove();
   }

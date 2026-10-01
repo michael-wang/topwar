@@ -30,14 +30,16 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
     if (slot !== 0) return [];
     const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
     const spacing = positions[1] - positions[0];
+    const depthSpan = Math.floor((config.groupSize - 1) / (2 * wave.lanes.length)) * config.memberDepthSpacing;
     const rng = new SeededRng((seed ^ Math.imul(row + 1, 0xc2b2ae35)) >>> 0);
     return Array.from({ length: config.groupSize }, (_, member) => {
       const lane = wave.lanes[member % wave.lanes.length];
-      const localMember = Math.floor(member / wave.lanes.length);
-      const lateral = (localMember % 2 === 0 ? -1 : 1)
-        * spacing * config.lateralSpreadFraction * (.55 + rng.nextFloat() * .45);
-      return { lane, x: Math.max(positions[0], Math.min(positions.at(-1)!, positions[lane] + lateral)),
-        z: Math.floor(localMember / 2) * config.memberDepthSpacing + (rng.nextFloat() * 2 - 1) * config.depthJitter,
+      const spread = spacing * config.lateralSpreadFraction;
+      const minimumX = Math.max(positions[0], positions[lane] - spread);
+      const maximumX = Math.min(positions.at(-1)!, positions[lane] + spread);
+      // Independent samples intentionally allow overlap; no rows or personal-space slots.
+      return { lane, x: minimumX + rng.nextFloat() * (maximumX - minimumX),
+        z: rng.nextFloat() * depthSpan + (rng.nextFloat() * 2 - 1) * config.depthJitter,
         archetype: member === 0 && wave.heavy ? 'heavy' as const : 'grunt' as const };
     });
   }
