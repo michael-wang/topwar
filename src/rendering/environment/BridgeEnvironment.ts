@@ -1,3 +1,4 @@
+import { OffshoreTransports } from './OffshoreTransports';
 import { defenseSideDebris } from './DefenseDebrisLayout';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
@@ -84,6 +85,7 @@ export class BridgeEnvironment {
   private readonly shoulders: THREE.Mesh[] = [];
   private readonly barriers: THREE.Mesh[] = [];
   private readonly water: THREE.Mesh;
+  private readonly transports = new OffshoreTransports();
   private readonly defenseBeach = new THREE.Group();
   private readonly defenseSideWrecks: THREE.InstancedMesh[] = [];
 
@@ -179,13 +181,14 @@ export class BridgeEnvironment {
     }
     this.defenseBeach.name = 'stationary-defense-beach';
     this.defenseBeach.visible = false;
-    this.scene.add(this.defenseBeach);
+    this.scene.add(this.defenseBeach, this.transports.group);
     this.scene.add(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer);
     this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = false): void {
+  update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = false, assaultAgeSeconds?: number): void {
+    this.transports.update(playerZ, nowMs, defenseMode, assaultAgeSeconds);
     this.defenseBeach.visible = defenseMode;
     this.defenseBeach.position.z = playerZ;
     this.defenseSideWrecks.forEach((wrecks, index) => {
@@ -241,7 +244,8 @@ export class BridgeEnvironment {
 
   dispose(): void {
     for (const wrecks of this.defenseSideWrecks) wrecks.dispose();
-    this.scene.remove(this.defenseBeach);
+    this.transports.dispose();
+    this.scene.remove(this.defenseBeach, this.transports.group);
     this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer, ...this.joints);
     this.scene.background = this.previousBackground;

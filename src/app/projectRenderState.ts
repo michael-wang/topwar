@@ -18,6 +18,10 @@ export function projectRenderState(state: SimulationFrameState,
   const originZ = defenseMode ? state.player.z : 0;
   return {
     ...(defenseMode ? { defenseMode } : {}),
+    ...(defenseMode && state.landingAssault?.reinforcementActiveAtSeconds !== null
+      && state.landingAssault?.reinforcementActiveAtSeconds !== undefined ? {
+      landingAssaultAgeSeconds: state.elapsedSeconds - state.landingAssault.reinforcementActiveAtSeconds
+        - config.catharsis!.balance.landingAssault.powerWindowSeconds } : {}),
     player: defenseMode ? { ...state.player, z: 0 } : state.player,
     squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
       rifleCounts: state.squad.rifleCounts, formationSpacing: config.formationSpacing,

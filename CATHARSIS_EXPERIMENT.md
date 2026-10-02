@@ -1,4 +1,4 @@
-# Visual Cleanup + Giant Difficulty Tuning
+# Post-LV7 Landing Assault + Offshore Invasion
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
@@ -7,7 +7,92 @@ Kills now earn automatic Rifle power so previously overwhelming fronts can
 become easier. Combat never pauses for a level, and no upgrade choices or support abilities
 are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
 
-## Focused cleanup
+## Current experiment: earned power, then a larger landing force
+
+LV1–LV6 and the LV7 reinforcement are unchanged. Soldier B still takes 1.1 s to
+arrive, then both soldiers fire at 6.9 Hz each into the same selected lane.
+The simulation records the **actual reinforcement activation time**, gives it
+**10 full seconds** of the existing pressure, and only then starts the landing
+assault. There is no phase label, tutorial, player nerf or ordinary-HP scaling.
+
+Runtime-loaded `catharsis.landingAssault` starting values:
+
+| Value | Initial experiment |
+| --- | --- |
+| `enabled` | true (absent in older saved balance: false) |
+| `powerWindowSeconds` | 10 |
+| `groupSize` | 66, versus the previous LV7 quantity of 35 |
+| `cadenceMultiplier` | 0.88: 5.28 s between admitted waves at the authored 0.6 approach pace |
+| `primaryLaneShare` | 0.70: 23 + 23 troops in two primary lanes, 7 + 7 + 6 elsewhere |
+| `heavyMultiplier` | 1.3 times the prior expected Heavy proportion |
+| `heavyChanceCap` | 0.85 probability ceiling; at most one Heavy per wave |
+| `activeSoftCap` | 180 |
+| `secondGiantDelaySeconds` | 30 after assault start |
+
+Heavy admission probability is `min(cap, previousHeavyChance × assaultGroupSize /
+LV7GroupSize × heavyMultiplier)`: initially **61.29%** per 66-person wave, versus
+25% per 35-person wave. This modestly increases the expected proportion by 1.3×;
+Heavy HP, speed and leader clearance stay unchanged. The authored cadence is
+12% shorter (about 13.6% more frequent), rather than doubling frequency.
+
+Pairs rotate through a seeded shuffled list of distinct lane pairs. Consecutive
+waves use different pairs. Composition samples remain deterministic, overlapping,
+bounded to the existing 9-unit crowd depth and 0.42 lateral spread. New groups
+enter at the 53-unit shoreline. All enemies retain explicit lane targeting.
+
+Only future groups use the assault settings. If admitting a whole 66-person group
+would exceed the soft-cap, its admission waits; no enemies are removed and there
+is no catch-up burst. A late backlog above 180 may remain until normal combat
+clears it. The cap does not apply to the preserved early game. The dormant legacy
+row cursor advances without spawning during the assault so disabling it later
+cannot release old rows in a burst. Pause freezes the simulation clock. Retry
+clears all assault clocks/counters along with the run; effective runtime balance
+retains the existing Retry semantics. Phase clocks, wave index and second-Giant
+flag are plain snapshot state and deterministic restore is tested.
+
+The second Giant becomes eligible after 30 assault seconds and at least one
+assault group has been admitted. It waits for any existing Giant to die and for
+room below the cap. It chooses a pressured interior lane so its broad silhouette
+stays readable in portrait. There is exactly one additional encounter per run;
+no twin Giants. Both encounters retain **172 HP / 120 XP / 0.08 additional speed**.
+The first LV6 Giant's scheduling and combat remain unchanged.
+
+Three asymmetrically placed troop carriers use long low cargo hulls, troop holds,
+lifeboats and rear bridges, without battleship guns. Their muted blue-gray
+materials share the illustrated palette; distances/scales differ and the farthest
+is softened by fog. Static ship parts are merged per material (four draws per
+carrier). Slow bob and faint wakes are presentation only. A simple landing craft
+starts drifting shoreward during the last four seconds of the reward window,
+then opens its bow ramp around assault arrival. No naval gameplay or collision
+is introduced. Background actors remain absent from the legacy non-defense view.
+
+### Local verification and playtest limits
+
+The deterministic nearest-threat pilot and a physical-style variant (1.5 s
+choices, one-lane movement at roughly 133 ms cadence, intermittent Giant focus)
+were run for ten minutes on seeds 1/17/42. All six retained two soldiers and
+survived. Post-assault mean populations were about **102–125**, with peaks of
+**180** and no zero-enemy time. Whole-run peaks were **243–274**, all from the
+unchanged pre-assault buildup. Holding one lane after assault instead of
+reprioritizing died on all three seeds **26–28 s** later: other fronts cannot be
+ignored indefinitely.
+
+These conservative pilots arrive at LV7 with a large backlog and do **not**
+reproduce the physical playtest's cleared-screen reward beat. A separately labeled
+controlled low-backlog LV6 snapshot verifies the reinforcement → clear → calm →
+landing sequence: 5.22 s with no enemies, with assault starting exactly 10 s after
+Soldier B activates. This fixture is visual evidence, not a full-run timing claim.
+Physical-phone playtesting should judge whether the 10-second reward window feels
+long enough and whether the soft-cap's delayed landings become perceptible.
+
+Portrait evidence, full seed tables, UI checks and a short recorded sequence are
+under `artifacts/landing-assault/`. Software-rendered 390×844 portrait / DPR2
+fixtures at 100/150/180/200 enemies measured approximately **19.6/22.3/18.7/16.7
+FPS**, with enemy-render update medians **0.117/0.230/0.275/0.204 ms**. SwiftShader
+frame timing is noisy/quantized and is not a physical-phone performance claim.
+No density reduction, adaptive gameplay or new framework was introduced.
+
+## Retained visual cleanup
 
 XP now has distinct **pale-blue → cyan-white → warm ivory → bright gold** resource
 semantics. Deliberate stops at 0/40/60/70/82/90/100% keep blue and yellow separated
@@ -66,7 +151,7 @@ bodies retain their short collapse/fade. Dust/ash use quiet sand/cream tones.
 Existing particle budgets, animation timing, hit rate limits and level-up intensity
 are retained. Reinforcement arrival, fire scheduling and all combat/progression
 values are unchanged except for the explicitly authored Giant HP above. No simulation, snapshot schema
-or input edits are part of this pass; LV7 balance work remains deferred.
+or input edits are part of this pass; Post-LV7 balance is governed by the landing-assault experiment above.
 
 The bevels add approximately **6,200 fixed environment triangles**, and sand,
 scuffs and bars add **four shared small textures**. Crowd instancing, pooled
@@ -81,8 +166,7 @@ limitations for a future asset-authoring pass.
 
 The animation system remains unchanged. Apart from authored Giant HP above,
 pressure tables, population, damage, Rifle rates, XP thresholds/rewards, Giant timing and the exact LV7 two-soldier
-DPS/arrival behavior are unchanged. The acknowledged LV7 screen-clearing balance
-issue is deferred.
+DPS/arrival behavior are unchanged. LV7 screen-clearing remains an intentional short reward window before the landing assault.
 
 Character motion is procedural over the existing baked meshes. Player geometry
 now carries four original limb-weight channels, consumed by a small vertex shader;

@@ -98,7 +98,16 @@ export interface WeaponSimulationState {
   nextProjectileId: number;
 }
 
+export interface LandingAssaultState {
+  reinforcementActiveAtSeconds: number | null;
+  startedAtSeconds: number | null;
+  nextWaveAtSeconds: number | null;
+  waveIndex: number;
+  secondGiantSpawned: boolean;
+}
+
 export interface SimulationState {
+  landingAssault?: LandingAssaultState;
   reinforcement?: { startedAtSeconds: number | null; arrived: boolean };
   giantEncounter?: { scheduledAtSeconds: number | null; spawned: boolean };
   progression?: { level: number; xp: number };

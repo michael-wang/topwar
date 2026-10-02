@@ -16,6 +16,19 @@ export const CatharsisConfigSchema = z.strictObject({
     reinforcementSpacing: z.number().finite().positive().default(.72),
     reinforcementStagger: z.number().finite().nonnegative().default(.18),
   }).default({ xpRequirements: [28, 60, 110, 180, 280, 420], xpFallbackMultiplier: 1.45, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1, fireRateTaperStartLevel: 5, fireRateTaperFirstGain: .5, fireRateTaperDecay: .8, reinforcementLevel: 7, reinforcementArrivalSeconds: 1.1, reinforcementSpacing: .72, reinforcementStagger: .18 }),
+  landingAssault: z.strictObject({
+    enabled: z.boolean().default(false),
+    powerWindowSeconds: z.number().finite().nonnegative().default(10),
+    groupSize: z.number().int().min(1).max(200).default(66),
+    cadenceMultiplier: z.number().finite().positive().default(.88),
+    primaryLaneShare: z.number().finite().min(.5).max(.9).default(.7),
+    heavyMultiplier: z.number().finite().min(1).max(3).default(1.3),
+    heavyChanceCap: z.number().finite().min(0).max(1).default(.85),
+    activeSoftCap: z.number().int().positive().default(180),
+    secondGiantDelaySeconds: z.number().finite().positive().default(30),
+  }).default({ enabled: false, powerWindowSeconds: 10, groupSize: 66, cadenceMultiplier: .88,
+    primaryLaneShare: .7, heavyMultiplier: 1.3, heavyChanceCap: .85, activeSoftCap: 180,
+    secondGiantDelaySeconds: 30 }),
   pressureMultipliers: z.array(z.number().finite().min(1).max(4)).min(1).default([1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65]),
   giant: z.strictObject({
     enabled: z.boolean().default(false),
@@ -58,6 +71,8 @@ export const CatharsisConfigSchema = z.strictObject({
   rewardAimRadius: z.number().finite().positive(),
 }).refine((value) => value.defenseMode || (value.groupSize - 1) * value.groupRowStride < value.waveRows,
   { message: 'Group must fit inside one wave' })
+  .refine(value => value.landingAssault.groupSize <= value.landingAssault.activeSoftCap,
+    { message: 'Landing group must fit inside the active soft cap' })
   .refine(value => value.pressureLaneCount === undefined || value.pressureLaneCount <= value.laneCount,
     { message: 'Pressure lane count must fit inside the battlefield' });
 

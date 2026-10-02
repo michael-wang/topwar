@@ -1,3 +1,4 @@
+import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { pressureGroupSize, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
 import { grantXp, requiredXp, effectiveRifleFireRate } from './progression';
 import { SeededRng } from '../core/Rng';
@@ -293,6 +294,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'progression')) fields.push('progression');
   if (Object.hasOwn(state, 'reinforcement')) fields.push('reinforcement');
   if (Object.hasOwn(state, 'giantEncounter')) fields.push('giantEncounter');
+  if (Object.hasOwn(state, 'landingAssault')) fields.push('landingAssault');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -305,6 +307,22 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     || (progression.xp as number) >= requiredXp(progression.level as number, catharsis.balance.progression))) {
     throw new Error('Simulation progression must have a valid level and current-level XP');
   }
+  const landingAssault = state.landingAssault;
+  if (landingAssault !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(landingAssault)
+    || Object.keys(landingAssault).length !== 5 || !Number.isSafeInteger(landingAssault.waveIndex)
+    || (landingAssault.waveIndex as number) < 0 || typeof landingAssault.secondGiantSpawned !== 'boolean'
+    || !['reinforcementActiveAtSeconds', 'startedAtSeconds', 'nextWaveAtSeconds'].every(key =>
+      landingAssault[key] === null || (typeof landingAssault[key] === 'number'
+        && Number.isFinite(landingAssault[key]) && landingAssault[key] >= 0))
+    || (landingAssault.reinforcementActiveAtSeconds !== null && (!isPlainObject(state.reinforcement)
+      || state.reinforcement.arrived !== true || (landingAssault.reinforcementActiveAtSeconds as number) > (state.elapsedSeconds as number)))
+    || (landingAssault.startedAtSeconds !== null && (landingAssault.reinforcementActiveAtSeconds === null
+      || (landingAssault.startedAtSeconds as number) > (state.elapsedSeconds as number)
+      || landingAssault.nextWaveAtSeconds === null
+      || (landingAssault.startedAtSeconds as number) < (landingAssault.reinforcementActiveAtSeconds as number)
+      || (landingAssault.nextWaveAtSeconds as number) < (landingAssault.startedAtSeconds as number)))
+    || (landingAssault.startedAtSeconds === null && (landingAssault.nextWaveAtSeconds !== null
+      || landingAssault.waveIndex !== 0 || landingAssault.secondGiantSpawned)))) throw new Error('Invalid landing assault state');
   const reinforcement = state.reinforcement;
   if (reinforcement !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(reinforcement)
     || Object.keys(reinforcement).length !== 2 || typeof reinforcement.arrived !== 'boolean'
@@ -620,6 +638,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   return {
     state: {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { landingAssault: landingAssault ? { ...landingAssault } as unknown as NonNullable<SimulationState['landingAssault']> : emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { reinforcement: reinforcement
         ? { startedAtSeconds: reinforcement.startedAtSeconds as number | null, arrived: reinforcement.arrived as boolean }
         : { startedAtSeconds: null, arrived: false } } : {}),
@@ -728,6 +747,7 @@ export class Simulation {
     this.state = {
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
+      ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
       tick: 0,
       elapsedSeconds: 0,
@@ -928,7 +948,14 @@ export class Simulation {
     }
     const streamRewards = this.state.streamRewards.map((reward) => ({ ...reward }));
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
-    if (enemyStream && this.enemyStreamDefinition && !boss?.engaged) {
+    let landingAssault = this.state.landingAssault ? { ...this.state.landingAssault } : undefined;
+    // Old snapshots with an already-arrived reinforcement receive the full reward window on load.
+    if (landingAssault && this.state.reinforcement?.arrived && landingAssault.reinforcementActiveAtSeconds === null)
+      landingAssault.reinforcementActiveAtSeconds = this.state.elapsedSeconds;
+    const assaultDue = catharsis?.balance.landingAssault.enabled && landingAssault?.reinforcementActiveAtSeconds !== null
+      && landingAssault?.reinforcementActiveAtSeconds !== undefined
+      && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
+    if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression?.level);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
@@ -936,6 +963,18 @@ export class Simulation {
     const giantEncounter = this.state.giantEncounter && catharsis && enemyStream
       ? advanceGiantEncounter(this.state.giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
         catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream) : this.state.giantEncounter;
+    if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue) {
+      const interval = this.enemyStreamDefinition.spacing * catharsis.balance.waveRows / tuning.forwardSpeed;
+      // Consume dormant legacy rows without spawning: disabling the experiment later must not
+      // dump a backlog of distance-based waves into the restored beach.
+      const nextRow = Math.floor((nextZ + catharsis.balance.defenseSpawnAheadDistance
+        - this.enemyStreamDefinition.startZ) / this.enemyStreamDefinition.spacing) + 1;
+      if (!Number.isSafeInteger(nextRow)) throw new Error('Landing stream row exceeds supported range');
+      enemyStream.nextRowIndex = Math.max(enemyStream.nextRowIndex, nextRow);
+      // A paused approach cannot generate an infinite/zero cadence; wait until it resumes.
+      if (tuning.forwardSpeed > 0) landingAssault = advanceLandingAssault(landingAssault, nextElapsedSeconds,
+        nextZ, catharsis.balance, catharsis.trackHalfWidth, this.enemyStreamDefinition.seed, interval, enemies, enemyStream);
+    }
     const enemyCollisionIndex = new EnemyCollisionIndex(enemies);
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
@@ -1217,13 +1256,14 @@ export class Simulation {
       if (!reinforcement.arrived && reinforcement.startedAtSeconds !== null
         && nextElapsedSeconds - reinforcement.startedAtSeconds >= balance.reinforcementArrivalSeconds - 1e-9) {
         reinforcement = { ...reinforcement, arrived: true };
+        if (landingAssault) landingAssault.reinforcementActiveAtSeconds = nextElapsedSeconds;
         squad = addRifleSoldiers(squad, 1, 1, this.tiers.mergeCount);
         const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, balance);
         memberCooldowns?.push(nextCooldowns.rifle + interval / 2);
       }
     }
     if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
-    this.state = { ...this.state, ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
+    this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { ...(memberCooldowns ? { rifleMemberCooldowns: memberCooldowns } : {}), rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
@@ -1255,6 +1295,7 @@ export class Simulation {
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
+      ...(this.state.landingAssault ? { landingAssault: { ...this.state.landingAssault } } : {}),
       rngState: this.rng.getState(),
       player: { ...this.state.player },
       squad: { ...this.state.squad, rifleCounts: [...this.state.squad.rifleCounts] },

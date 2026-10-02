@@ -51,6 +51,17 @@
       "visualScale": 3.6,
       "widthMultiplier": 0.68,
       "gaitCycleMs": 850
+    },
+    "landingAssault": {
+      "enabled": true,
+      "powerWindowSeconds": 10,
+      "groupSize": 66,
+      "cadenceMultiplier": 0.88,
+      "primaryLaneShare": 0.7,
+      "heavyMultiplier": 1.3,
+      "heavyChanceCap": 0.85,
+      "activeSoftCap": 180,
+      "secondGiantDelaySeconds": 30
     }
   },
   "player": {

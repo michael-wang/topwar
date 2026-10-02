@@ -106,7 +106,7 @@ export class GameRenderer {
     // One tiny positional breath on defeat; no continuous footfall shake.
     if (defeatAge >= 0 && defeatAge < 240) this.camera.position.y += .025 * Math.sin(Math.PI * defeatAge / 240);
     this.air.update(state.enemies, state.player.z, nowMs, !!state.defenseMode);
-    this.environment.update(state.player.z, state.track.halfWidth, nowMs, state.defenseMode);
+    this.environment.update(state.player.z, state.track.halfWidth, nowMs, state.defenseMode, state.landingAssaultAgeSeconds);
     this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs);
