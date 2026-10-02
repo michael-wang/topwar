@@ -1,5 +1,7 @@
 # Phase 3.0.5 — Progression Feel Pass
 
+Focused follow-up: fixed-width XP color reveal, Heavy hit feedback and LV5 Rifle taper.
+
 This is the first **progression experiment**, not final progression pacing.
 The accepted naked-combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
@@ -20,17 +22,24 @@ awards **10 XP**. Hits, contact casualties and leaks award nothing. Rifle penetr
 can award each kill; retained rocket kill resolution uses the same award boundary.
 Overflow repeatedly advances levels and retains the remainder; there is no authored cap.
 
-Effective Rifle rate is **base + (level - 1) × fireRatePerLevel**. Authored base is
-3 Hz and bonus is 1 Hz per gained level: **3 / 4 / 5 / 6 / 7… Hz**. TUNE controls
-**Base fire rate** independently (2.5 base at LV3 gives 4.5 Hz). Levels shorten
-the pending Rifle cooldown when necessary and affect subsequent scheduling without
-resetting combat. No projectile damage, enemy HP or wave tuning is changed.
+Effective Rifle rate adds authored level bonuses to the independent TUNE base.
+LV1–4 remain **3 / 4 / 5 / 6 Hz**. From `fireRateTaperStartLevel=5`, the first gain
+is `fireRateTaperFirstGain=0.5` Hz; each subsequent gain is multiplied by
+`fireRateTaperDecay=0.8`. Thus LV5–8 are **6.5 / 6.9 / 7.22 / 7.476 Hz**, with
+diminishing gains thereafter. `fireRatePerLevel=1` controls the earlier gains.
+TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 gives
+6 Hz). These values are runtime-loaded and retained/validated in snapshots.
+Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs,
+enemy HP or wave tuning changes.
 
 The bottom HUD shows **LV N only**, with no routine numeric XP. Its shaped dark
-track has beveled warm borders, inset depth and a red→orange→hot-yellow fill.
-The right tip shines brightest, with a subtle traveling sheen. At 70% fill the
-glow strengthens; at 90% it pulses gently. Forward fill updates interpolate over
-120 ms, while simulation remains the source of truth.
+track keeps beveled warm borders and inset depth. The red→orange→hot-yellow
+**gradient spans the full track width**, progressively revealed with a clip mask;
+it is never stretched across the filled segment. At 15% only red is revealed,
+50% remains mostly red with a warming edge, 75% reaches orange, and 90–100%
+reveals bright yellow/gold. The leading-edge glow follows that progression.
+The traveling sheen remains subtle. At 70% glow strengthens; at 90% it pulses.
+Forward mask/edge updates interpolate over 120 ms; simulation remains truth.
 
 One disposable `progressionLevelUp` event coordinates the entire presentation:
 **800 ms** HUD gold/white pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message.
@@ -85,6 +94,17 @@ up to **40**. It never scales itself from Rifle fire rate, DPS, squad size or we
 power. Grunt stays exactly **1 HP**. Uninterrupted single-soldier fire needs 15 hits:
 roughly five seconds at the authored 3 Hz,
 including small projectile/cooldown timing differences. Later power can outgrow it.
+
+Heavy-only nonlethal hit feedback adds a **100 ms** warm body/gear flash, a
+**0.07-unit** visual recoil and **0.045-radian** tilt that settle within the flash,
+and four **170 ms** sparks at the defender-facing Rifle-height impact proxy.
+The render state exposes HP deltas, not exact projectile impact coordinates.
+A **250 ms per-Heavy cooldown** prevents continuous flashing at high fire rates;
+the lightweight pool holds at most 12 simultaneous reactions. Baked body poses
+are borrowed, and spark geometry/materials are reused. Death/Retry clears these
+visuals. Grunts gain no new hit feedback. This never changes HP, movement,
+collision, damage, targeting or knockback. The longer gray vaporizing death and
+its existing burst remain stronger than a surviving hit.
 
 ## Controls and combat
 
@@ -262,12 +282,12 @@ The same fixed-step nearest-threat pilot selects lanes every 90 ticks (1.5 s).
 | LV2 | 13.3 s | 28 | 0 | 4 Hz |
 | LV3 | 27.8 s | 79 | 1 | 5 Hz |
 | LV4 | 49.7 s | 180 | 2 | 6 Hz |
-| LV5 | 82.6 s | 342 | 4 | 7 Hz |
+| LV5 | 82.6 s | 342 | 4 | 6.5 Hz |
 
 Across seeds 1/17/42, LV2 arrives at 9.4–13.3 s, LV3 at 25.6–27.8 s,
 LV4 at 49.7–49.9 s and LV5 at 81.7–82.6 s. All three pilots survive 300 s
-and reach LV7 (~203–205 s). Seed-17 active population is 199 at 30 s,
-181 at 60 s, 99 at 120 s, 11 at 180 s and 10 at 300 s: power eventually
+and reach LV7 (~205 s). Seed-17 active population is 199 at 30 s,
+181 at 60 s, 105 at 120 s, 23 at 180 s and 11 at 300 s: power eventually
 outgrows unchanged pressure. These are scripted decisions, not human pacing evidence.
 
 Physical-phone playtests should judge whether the first reward still arrives too
@@ -277,11 +297,29 @@ and whether the brief afterglow makes the new rhythm feel earned. Heavy leaders
 can still be obscured by adjacent waves; their existing bars/readability are retained.
 No adaptive density, hidden scaling or unrelated optimization is applied.
 
-Delivery checks: **422 tests / 58 files pass**, plus typecheck and production build.
-A separate 22-second live browser pilot (without synchronous offline simulation)
-reported **21 FPS**, average **47.9 ms**, p95 **50.1 ms**, with 200 active enemies
-under SwiftShader. A natural LV1→LV2 gain produced exactly one shared presentation
-beat at ~11 s in this wall-timed pilot. This is not physical-phone performance;
-the fixed-tick table above is the comparable pacing evidence. Existing build
-warnings concern bundle size and third-party Zod annotations; no density change
-or performance optimization was made for this report.
+Focused follow-up portrait captures are local under `artifacts/xp-color-heavy-hit/`:
+15/50/75/90/99% masks, Heavy hit/settle at 3 and 15 Hz, and a live ~200-enemy run.
+Percentage captures use presentation-only fixtures for exact progress, retaining
+the crowd. One Heavy is repositioned for close hit inspection. At 3 Hz all eight
+staged hits react; at 15 Hz only two of eight react, with visible settle gaps.
+No browser errors. The existing level-up ring/wash/motes, audio, label pop,
+800 ms full-flash sequence and 1400 ms weapon afterglow are unchanged.
+
+An additional fixed-LV5 seed-17 comparison disables XP awards **only in the test
+fixture** to isolate 7 versus 6.5 Hz. Both pilots visit all five lanes, switching
+to the nearest threat every 1.5 seconds, and survive 300 seconds. At 90 seconds
+7 Hz leaves 23 enemies versus 57 at 6.5 Hz; at 180 seconds both have only ~11–12.
+**6.5 Hz delays cleanup but still eventually covers all five lanes comfortably
+in this scripted test.** Lane choice is still required to execute the pilot;
+this does not prove human triviality, nor eliminate the physical-playtest concern.
+No additional combat rebalance is applied. Evaluate this specifically on a phone.
+
+Delivery checks: **426 tests / 59 files pass**, plus typecheck and production build.
+A separate ~22-second live portrait browser pilot (without synchronous offline
+simulation) reports **23 FPS**, average **44.2 ms**, p95 **50.1 ms**, with 199 active
+enemies under Chrome SwiftShader/DPR2. The prior comparable check was 21 FPS /
+47.9 ms at 200 enemies; variation does not establish a performance improvement.
+No obvious new hitch was observed; this is software-rendered desktop evidence,
+not physical-phone performance. Screenshot PERF counters from offline fixtures
+are stale and are not used as FPS measurements. Existing build warnings concern
+bundle size and third-party Zod annotations; no density reduction or optimization.

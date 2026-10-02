@@ -13,7 +13,9 @@
 **Phase 3.0.5 Progression Feel Pass.** Test slower authored XP costs and unmistakable HUD/soldier/weapon feedback
 against the locked Phase 2 baseline. Evaluate pressure/release and first rewards on
 portrait phones; this is a progression feel experiment, not final pacing. Heavy
-staging, slower visual gait and HP bars remain unchanged.
+staging, slower visual gait and HP bars remain unchanged. The focused follow-up
+corrects full-track XP color reveal, adds rate-limited Heavy hit reactions, and
+tapers Rifle gains from LV5 (6.5 Hz); evaluate whether lane coverage still trivializes.
 
 ## NEXT
 

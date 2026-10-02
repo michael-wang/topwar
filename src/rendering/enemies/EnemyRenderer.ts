@@ -1,3 +1,4 @@
+import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import { DeathBurst } from './DeathBurst';
@@ -71,6 +72,7 @@ export class EnemyRenderer {
   private readonly contactIds = new Set<number>();
   private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
     color: '#fff47d', toneMapped: false });
+  private readonly heavyHits: HeavyHitFeedback;
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
   private readonly barBackingMaterial = new THREE.SpriteMaterial({ color: '#171c20', depthTest: false, toneMapped: false });
@@ -105,6 +107,7 @@ export class EnemyRenderer {
     this.vestMeshes = PALETTES.map((palette) => this.createTier(palette, 1, true));
     this.scene.add(...this.bodyMeshes, ...this.helmetMeshes, ...this.vestMeshes);
     this.deathBurst = new DeathBurst(scene);
+    this.heavyHits = new HeavyHitFeedback(scene);
   }
 
   present(events: readonly PresentationEvent[], nowMs: number): void {
@@ -126,7 +129,10 @@ export class EnemyRenderer {
     }
     for (const enemy of enemies) {
       const previous = this.previousEnemies.get(enemy.id);
-      if (previous && enemy.hp < previous.hp) this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
+      if (previous && enemy.hp < previous.hp) {
+        if (enemy.archetype !== 'heavy') this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
+        else if (this.heavyHits.observe(enemy, nowMs)) this.flashUntilMs.set(enemy.id, nowMs + HEAVY_HIT_FLASH_MS);
+      }
       this.previousEnemies.set(enemy.id, { ...enemy });
     }
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
@@ -134,6 +140,7 @@ export class EnemyRenderer {
     this.updateDeaths(nowMs);
     this.updateContacts(nowMs);
     this.deathBurst.update(nowMs);
+    this.heavyHits.update(currentIds, nowMs);
 
     let barIndex = 0;
     for (const enemy of enemies) {
@@ -188,10 +195,14 @@ export class EnemyRenderer {
       transform.position.set(-enemy.x, pose.bob, enemy.z);
       transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
         pose.leftArm * 0.09);
+      const hitStrength = this.heavyHits.strength(enemy.id, nowMs);
+      transform.position.z += .07 * hitStrength;
+      transform.rotation.x += .045 * hitStrength;
       setEnemyScale(transform.scale, enemy);
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
       this.bodyMeshes[frame].setMatrixAt(bodyIndices[frame]++, transform.matrix);
+      this.heavyHits.setBody(enemy.id, this.runFrames[frame].geometry, transform.matrix, nowMs);
       const helmet = this.helmetMeshes[palette];
       helmet.setMatrixAt(index, transform.matrix);
       const vest = this.vestMeshes[palette];
@@ -219,6 +230,7 @@ export class EnemyRenderer {
     for (const visual of this.contactVisuals) visual.group.visible = false;
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.deathBurst.reset();
+    this.heavyHits.reset();
   }
 
   dispose(): void {
@@ -244,6 +256,7 @@ export class EnemyRenderer {
     this.barBackingMaterial.dispose();
     this.barFillMaterial.dispose();
     this.deathBurst.dispose();
+    this.heavyHits.dispose();
     this.helmetMaterial.dispose();
     this.contactFlashMaterial.dispose();
   }

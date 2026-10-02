@@ -1,0 +1,22 @@
+import * as THREE from 'three';
+import { expect, it } from 'vitest';
+import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
+it('limits Heavy reactions, settles rapidly, prunes on death and reuses its bounded visuals', () => {
+  const scene = new THREE.Scene(), feedback = new HeavyHitFeedback(scene);
+  const heavy = { id:1,tier:1,archetype:'heavy' as const,x:0,z:15,hp:14 };
+  expect(feedback.observe({...heavy,archetype:'grunt'},0)).toBe(false);
+  expect(feedback.observe(heavy,0)).toBe(true);
+  const body = scene.getObjectByName('heavy-hit-body')!, sparks=scene.getObjectByName('heavy-hit-sparks')!;
+  expect(sparks.children).toHaveLength(4);
+  expect(feedback.strength(1,0)).toBe(1);
+  expect(feedback.observe(heavy,67)).toBe(false);
+  feedback.update(new Set([1]),101); expect(body.visible).toBe(false); expect(sparks.visible).toBe(true);
+  expect(feedback.strength(1,101)).toBe(0);
+  feedback.update(new Set([1]),171); expect(sparks.visible).toBe(false);
+  expect(feedback.observe(heavy,249)).toBe(false);
+  expect(feedback.observe(heavy,250)).toBe(true);
+  expect(scene.getObjectByName('heavy-hit-body')).toBe(body);
+  feedback.update(new Set(),251); expect(body.visible).toBe(false); expect(sparks.visible).toBe(false);
+  feedback.reset(); expect(feedback.strength(1,0)).toBe(0);
+  feedback.dispose(); expect(scene.children).toHaveLength(0);
+});

@@ -30,7 +30,10 @@
       "xpFallbackMultiplier": 1.45,
       "gruntKillXp": 1,
       "heavyKillXp": 10,
-      "fireRatePerLevel": 1
+      "fireRatePerLevel": 1,
+      "fireRateTaperStartLevel": 5,
+      "fireRateTaperFirstGain": 0.5,
+      "fireRateTaperDecay": 0.8
     },
     "heavyFrontClearance": 2.5
   },

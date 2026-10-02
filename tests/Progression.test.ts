@@ -139,3 +139,30 @@ it('validates the table balance in snapshots and rejects superseded linear field
   old.catharsis.balance.progression = { firstLevelXp: 16, xpRequirementStep: 12, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1 };
   expect(() => sim.restoreState(old)).toThrow();
 });
+
+it('keeps LV1–4 rates fixed and tapers LV5 and later gains without changing base or enemies', () => {
+  expect([1,2,3,4,5,6,7,8].map(level => effectiveRifleFireRate(3, level, curve)))
+    .toEqual([3,4,5,6,6.5,6.9,7.22,7.476]);
+  expect(effectiveRifleFireRate(2.5, 5, curve)).toBe(6);
+  const sim = make(); const state = sim.getState(); state.progression = { level: 5, xp: 0 };
+  sim.restoreState(state);
+  for (let tick=0;tick<120;tick++) sim.step(1/60,{targetX:0},tuning);
+  expect(sim.getState().weapons.nextProjectileId - 1).toBe(13);
+  expect(sim.getState().catharsis!.balance.heavyHp).toBe(15);
+  expect(sim.getState().catharsis!.balance.groupSize).toBe(24);
+});
+
+
+it('restores and validates runtime Rifle taper balance independently from XP costs', () => {
+  const sim = make(); const state = sim.getState();
+  state.catharsis!.balance.progression.fireRateTaperFirstGain = .3;
+  state.catharsis!.balance.progression.fireRateTaperDecay = .5;
+  state.progression = { level: 6, xp: 10 };
+  sim.restoreState(JSON.parse(JSON.stringify(state)));
+  const restored = sim.getState();
+  expect(effectiveRifleFireRate(3, 6, restored.catharsis!.balance.progression)).toBe(6.45);
+  expect(restored.progression).toEqual({ level: 6, xp: 10 });
+  expect(restored.catharsis!.balance.progression.xpRequirements).toEqual([28,60,110,180,280,420]);
+  restored.catharsis!.balance.progression.fireRateTaperDecay = 1;
+  expect(() => sim.restoreState(restored)).toThrow();
+});

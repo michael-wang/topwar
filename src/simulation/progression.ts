@@ -24,5 +24,9 @@ export function grantXp(state: ProgressionState, amount: number, balance: Progre
   return { level, xp };
 }
 export function effectiveRifleFireRate(base: number, level: number, balance: ProgressionBalance): number {
-  return base + (level - 1) * balance.fireRatePerLevel;
+  const earlyGains = Math.min(level - 1, balance.fireRateTaperStartLevel - 2);
+  const taperedGains = Math.max(0, level - balance.fireRateTaperStartLevel + 1);
+  const lateBonus = balance.fireRateTaperFirstGain
+    * (1 - Math.pow(balance.fireRateTaperDecay, taperedGains)) / (1 - balance.fireRateTaperDecay);
+  return base + earlyGains * balance.fireRatePerLevel + lateBonus;
 }
