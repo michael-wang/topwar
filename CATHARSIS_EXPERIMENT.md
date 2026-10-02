@@ -1,4 +1,4 @@
-# Art Direction Unification Pass
+# Visual Cleanup + Giant Difficulty Tuning
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
@@ -6,6 +6,33 @@ barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
 become easier. Combat never pauses for a level, and no upgrade choices or support abilities
 are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
+
+## Focused cleanup
+
+XP now has distinct **pale-blue → cyan-white → warm ivory → bright gold** resource
+semantics. Deliberate stops at 0/40/60/70/82/90/100% keep blue and yellow separated
+by a near-white bridge, avoiding an obvious green middle. The gradient remains
+fixed to the full track and is progressively masked. Its leading-edge glow uses
+the same palette stops. The frame, 70/90% anticipation, level-up flash/label pop,
+no-numeric-XP rule and underlying XP/progression logic are retained.
+
+The fixed authored Giant HP is now **172**. Isolated seeds 1/17/42, at 44/38/30
+units respectively, each measure **24.48 s** from first damage to death at LV6
+single-soldier 6.9 Hz. Settled LV7 two-soldier 13.8 Hz measures **12.25 s** in all
+three runs. Firing-start-to-death also includes projectile travel (24.98–25.22 s
+single, 12.75–12.98 s pair). HP is the only Giant combat change; 120 XP, speed,
+spawn timing, appearance, reactions and all player/ordinary-enemy balance stay fixed.
+Snapshots retain their saved effective balance; existing snapshots need no migration.
+
+Side scenery has four uneven authored clusters per side, with independently
+sampled static offsets, dimensions and rotations. Left/right clusters have
+unequal depth gaps and different 3–6-piece densities rather than mirrored piles.
+There are still **18 pieces per side / two instanced draws**. The existing
+corridor-edge barricades are staggered, independently angled and occasionally
+broken (32 beams instead of 36). They remain anchored to lane boundaries; side
+wreckage stays at least 0.4 units outside the track. No gameplay collision,
+pathfinding or lane changes are introduced. Sampling is stable between runs and
+never consumes gameplay RNG. Chipped forms and the existing world palette remain.
 
 ## Illustrated battlefield art direction
 
@@ -23,13 +50,13 @@ Chipped, beveled prop silhouettes retain normalized placement bounds. The sand
 uses a small generated cream/ochre wash texture; corridor scuffs have irregular
 soft brush edges instead of rectangular stamps. Warm sunlight/cool hemisphere
 fill separates saturated characters from the quieter distance. Shoreline,
-obstacle placement and lane membership remain unchanged.
+lane membership and shoreline remain unchanged; obstacle composition follows the cleanup above.
 
 XP and Heavy/Giant HP now share a **rounded brass-and-ink frame family**: warm
 upper rim, dark blue outline/backing, inset fill and restrained depth. World bars
 use two shared generated textures, with gold Heavy fill and hot coral Giant fill.
 HP truth, placement and update timing remain unchanged. XP retains the full-width
-masked red/orange/gold progression, 70/90% anticipation, flash and label pop.
+masked blue/white/ivory/gold progression, 70/90% anticipation, flash and label pop.
 HUD controls use the same rim/backing and friendly weighted typography; lower-left
 instructions remain compact, transparent and pointer-transparent.
 
@@ -38,10 +65,10 @@ impacts use hot coral sparks; death debris mixes warm white/gold/ember and gray
 bodies retain their short collapse/fade. Dust/ash use quiet sand/cream tones.
 Existing particle budgets, animation timing, hit rate limits and level-up intensity
 are retained. Reinforcement arrival, fire scheduling and all combat/progression
-values are unchanged. No simulation, snapshot schema, input or balance data edits
-are part of this pass; LV7 balance work remains deferred.
+values are unchanged except for the explicitly authored Giant HP above. No simulation, snapshot schema
+or input edits are part of this pass; LV7 balance work remains deferred.
 
-The bevels add approximately **6,400 fixed environment triangles**, and sand,
+The bevels add approximately **6,200 fixed environment triangles**, and sand,
 scuffs and bars add **four shared small textures**. Crowd instancing, pooled
 feedback, geometry count and draw-call structure are retained. Software-rendered
 portrait checks cover 50/100/150/200 enemies; they are not physical-phone FPS
@@ -50,10 +77,10 @@ Giant and HUD details. Distant cranes remain deliberately simple silhouettes;
 the small atlas accessories and faceted Giant ornaments remain visible style
 limitations for a future asset-authoring pass.
 
-## Presentation quality pass
+## Retained animation presentation
 
-This iteration is **presentation only**. Pressure tables, population, HP/damage,
-Rifle rates, XP thresholds/rewards, Giant timing and the exact LV7 two-soldier
+The animation system remains unchanged. Apart from authored Giant HP above,
+pressure tables, population, damage, Rifle rates, XP thresholds/rewards, Giant timing and the exact LV7 two-soldier
 DPS/arrival behavior are unchanged. The acknowledged LV7 screen-clearing balance
 issue is deferred.
 
@@ -80,7 +107,7 @@ Boss, normal enemy and shared equipment assets remain byte-identical.
 * Giant keeps **850 ms** visual cadence and its existing crimson/gold dimensions.
   Up to **1.8%** presentation compression marks landing; maximum bounce is 0.022
   units, sway 0.026 radians. Arms, separate forearms, shoulders and mace have small
-  asynchronous delayed motion. HP, movement, collision and bar are unchanged.
+  asynchronous delayed motion. Movement, collision and bar are unchanged.
 * Heavy/Giant hits remain rate-limited additive impulses over ongoing gait.
   Grunt/Heavy gray deaths retain their **480 ms** fade/pop/shrink/burst, adding a
   quick 0.55-radian collapse with small roll (65/110 ms response respectively).
@@ -98,7 +125,7 @@ Boss, normal enemy and shared equipment assets remain byte-identical.
 
 All animation/particle clocks and resources are renderer-owned and cleared on
 Retry/restore. Nothing new is serialized or consumes gameplay RNG. There are no
-simulation/input or balance JSON changes. Presentation tests cover timing,
+simulation/input changes. The only balance JSON edit is the authored Giant HP above. Presentation tests cover timing,
 independent phases/recoil, hit layering, physical death, bounded dust buffers and
 asset surface preservation. Large-crowd CPU and portrait capture evidence is
 recorded separately; physical-phone feel remains the final check.
@@ -127,11 +154,10 @@ TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 give
 Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs or enemy HP changes.
 
 The bottom HUD shows **LV N only**, with no routine numeric XP. Its shaped dark
-track keeps beveled warm borders and inset depth. The red→orange→hot-yellow
+track keeps beveled warm borders and inset depth. The pale-blue→white→gold
 **gradient spans the full track width**, progressively revealed with a clip mask;
-it is never stretched across the filled segment. At 15% only red is revealed,
-50% remains mostly red with a warming edge, 75% reaches orange, and 90–100%
-reveals bright yellow/gold. The leading-edge glow follows that progression.
+it is never stretched across the filled segment. At 20% pale blue is revealed,
+50% is brighter blue/cyan, 75% reaches warm ivory, and 90–100% reveals bright yellow/gold. The leading-edge glow follows that progression.
 The traveling sheen remains subtle. At 70% glow strengthens; at 90% it pulses.
 Forward mask/edge updates interpolate over 120 ms. Large same-level gains
 (at least 20% of the requirement) use a brief **260 ms** reveal so the Giant
@@ -265,16 +291,16 @@ Ordinary waves continue during the delay; no breathing-window density reduction
 is applied. The pending time and one-shot flag survive snapshots. Retry resets
 both. Old snapshots without this state initialize an untriggered encounter; missing Giant balance defaults disabled, while new authored runs explicitly enable it.
 
-Authored `catharsis.giant` values: **210 HP / 120 XP / 0.08 additional speed**, unlock
+Authored `catharsis.giant` values: **172 HP / 120 XP / 0.08 additional speed**, unlock
 level 6, delay 4 seconds, visual scale **3.6**, width multiplier **0.68**, visual gait
-**850 ms**. HP is fixed, never derived from player fire rate. The presentation pass changes only animation, secondary motion and physical defeat. Giant HP,
+**850 ms**. HP is fixed, never derived from player fire rate. The retained presentation adds animation, secondary motion and physical defeat. Giant
 speed, static silhouette, hit timings, HP bar, appearance timing, pressure curve,
 LV1–LV6 Rifle values, XP thresholds and Heavy values remain unchanged.
 The Giant uses normal lane targeting, tier-1 contact damage and the existing 0.3
 normal collision radius. XP is awarded once by the shared player-kill boundary;
 contact/leaks grant none. At fixed LV6 / 6.9 Hz, uninterrupted single-soldier fire
-takes **29.95 seconds from first damage to death**. With the two LV7 soldiers it
-naturally takes **14.97 seconds** against the same 210 HP.
+takes **24.48 seconds from first damage to death**. With the two LV7 soldiers it
+naturally takes **12.25 seconds** against the same 172 HP.
 No armor, phases, regeneration, new damage or special attacks were introduced.
 All Giant values and the pressure table are runtime-loaded JSON/snapshot balance.
 Explicit live HP edits retain damage fraction, as Heavy does.
@@ -445,9 +471,9 @@ maximum bob **0.038 → 0.052 model units**, and base forward lean
 **0.11 → 0.15 rad**. Existing per-enemy phase offsets remain. Gait is independent
 of enemy velocity; simulation speeds stay **0.6 / 0.25 / 0.12**.
 
-Six cheap broken pieces per pile form three concrete/machinery/steel wreckage piles
-on each side of the beach. They use shared box geometry and two instanced draw calls,
-with staggered depths and muted concrete/steel/rust colors. Every piece stays at
+Four asymmetric 3–6-piece clusters on each side use shared chipped/beveled
+geometry and two instanced draw calls. Depth gaps, rotation, lateral offset and
+piece size vary independently, with the retained muted concrete/steel/rust colors. Every piece stays at
 least 0.4 units outside the configured track; nothing adds collision/pathfinding.
 The central five approaches, player and nearest outer-lane enemies remain clear.
 Existing shoreline, smoke, fire and distant atmosphere remain unchanged.
@@ -485,19 +511,19 @@ were not changed to accommodate the pilot.
 
 All three kill the Giant and receive exactly **120 XP**; none gets an entire
 level from a Giant starting at XP0. Seed 17 still fails just before reinforcement.
-This does not override the successful physical-phone evidence or justify reducing
-Giant HP/pressure. A supplemental alternating Giant-priority pilot also fails
+These earlier 210-HP pilot results do not drive pressure retuning; the current
+Giant HP reduction follows subsequent physical-phone feedback. A supplemental alternating Giant-priority pilot also fails
 seed 17; primary benchmark timing above comes from the unchanged nearest-threat
 pilot. Seeds 1/42 outgrow the initial backlog after reinforcement. Peaks before
 relief are 276 / 303 / 289; no pressure or density was reduced for FPS.
 
-Three isolated seed-1/17/42 checks use a Giant at 38-unit range, unchanged HP210,
-damage and speed. **Every run** measures:
+Current isolated seed-1/17/42 checks use a Giant at 44/38/30-unit range, authored HP172,
+unchanged damage and speed. **Every run** measures the same focused TTK:
 
-| State | Per-soldier rate | Total rate | First hit to death | First shot to death |
+| State | Per-soldier rate | Total rate | First hit to death | Firing start to death |
 | --- | --- | --- | --- | --- |
-| LV6, 1 soldier | 6.9 Hz | 6.9 Hz | 29.95 s | 30.58 s |
-| LV7, 2 settled soldiers | 6.9 Hz | 13.8 Hz | 14.97 s | 15.60 s |
+| LV6, 1 soldier | 6.9 Hz | 6.9 Hz | 24.48 s | 24.98–25.22 s |
+| LV7, 2 settled soldiers | 6.9 Hz | 13.8 Hz | 12.25 s | 12.75–12.98 s |
 
 Arrival delay is excluded from the settled two-soldier TTK, and no second Giant
 is spawned naturally. Both test soldiers target the same lane. Additional tests

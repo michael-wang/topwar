@@ -46,12 +46,20 @@ export class AttackLaneRenderer {
         const boundaries = [positions[0] - spacing / 2,
           ...positions.slice(0, -1).map((x, index) => (x + positions[index + 1]) / 2), positions.at(-1)! + spacing / 2];
         boundaries.forEach((x, index) => {
-          for (const z of [7, 21, 37]) {
-            for (const angle of [-.8, .8]) {
+          for (let patch = 0; patch < 3; patch++) {
+            // Broken/staggered barricades suggest openings without drawing rows.
+            // All offsets remain close to the configured corridor boundary.
+            const z = [7, 21, 37][patch] + Math.sin(index * 2.11 + patch * 3.4) * 3.1;
+            for (let member = 0; member < 2; member++) {
+              if ((index + patch) % 5 === 2 && member === 1) continue;
+              const phase = index * 2.87 + patch * 1.31 + member * 1.9;
               const beam = new THREE.Mesh(this.beamGeometry, this.beamMaterial);
               beam.name = 'beach-obstacle';
-              beam.position.set(-x, .28, z + (index % 2) * .8);
-              beam.rotation.set(0, .3 * index, angle);
+              beam.position.set(-x + Math.sin(phase) * spacing * .035, .28,
+                z + Math.sin(phase * 1.7) * .35);
+              beam.rotation.set(0, Math.sin(phase) * .8,
+                (member === 0 ? -1 : 1) * (.7 + Math.sin(phase * 1.3) * .17));
+              beam.scale.setScalar(.92 + Math.cos(phase * 1.4) * .10);
               this.beachDetails.add(beam);
             }
           }

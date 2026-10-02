@@ -45,7 +45,7 @@
       "enabled": true,
       "unlockLevel": 6,
       "introDelaySeconds": 4,
-      "hp": 210,
+      "hp": 172,
       "xp": 120,
       "speed": 0.08,
       "visualScale": 3.6,

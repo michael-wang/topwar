@@ -1,3 +1,4 @@
+import { xpEdgeColor } from './xpPalette';
 import type { ProgressionState, ProgressionBalance } from '../simulation/progression';
 import { requiredXp } from '../simulation/progression';
 import { LEVEL_UP_MS, LEVEL_BAR_FLASH_MS, type ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
@@ -61,7 +62,7 @@ export class XpHud {
     this.edge.style.transition = flashing || this.wasFlashing ? 'none' : `left ${gainMs}ms ease-out`;
     this.edge.style.left = `${revealed * 100}%`;
     this.edge.style.visibility = revealed > 0 ? 'visible' : 'hidden';
-    this.edge.style.color = `hsl(${Math.max(6, Math.min(50, (revealed - .4) * 90))} 95% 55%)`;
+    this.edge.style.color = xpEdgeColor(revealed);
     this.wasFlashing = flashing;
   }
   reset(): void {

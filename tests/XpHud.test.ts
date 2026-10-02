@@ -45,7 +45,7 @@ it('flashes full then resets cleanly to new-level truth, pops the label and expi
 
 it('reveals a full-track gradient with a mask rather than resizing the gradient', () => {
   const {hud,root}=make();
-  for(const percentage of [15,50,75,90,99]) {
+  for(const percentage of [20,50,75,90,99]) {
     hud.update({level:3,xp:percentage}, {...balance,xpRequirements:[28,60,100]},percentage);
     const track=root.children[1],fill=track.children[0],edge=track.children[1];
     expect(Number.parseFloat(fill.style.clipPath.split(' ')[1])).toBeCloseTo(100-percentage);
@@ -68,4 +68,14 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', '']);
   hud.reset(); hud.update({ level: 1, xp: 1 }, balance, 1000);
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
+});
+
+it('uses a blue XP edge early and a gold edge near full without changing the frame/mask semantics', () => {
+  const { hud, root } = make(), edge = root.children[1].children[1];
+  const testBalance = { ...balance, xpRequirements: [100] };
+  hud.update({ level: 1, xp: 20 }, testBalance, 0);
+  expect(edge.style.color).toBe('#b1daf3');
+  hud.update({ level: 1, xp: 90 }, testBalance, 100);
+  expect(edge.style.color).toBe('#ffdb6f');
+  expect(root.classes.has('xp-imminent')).toBe(true);
 });

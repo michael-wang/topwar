@@ -8,6 +8,10 @@ export const ART = {
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
     ash: '#e9dfc2', dust: '#cfb994', gray: '#a2b2b8' },
   bar: { ink: '#293e4c', deep: '#1c2d39', frame: '#ac865a', highlight: '#e3c596',
-    paper: '#f6e8c9', shadow: '#172d3a', xpRed: '#872e3c', xpOrange: '#e47d39', xpGold: '#ffe184',
+    paper: '#f6e8c9', shadow: '#172d3a',
     cornerFraction: .45, edgeFraction: .07 },
+  // Pass through cyan-white/ivory before gold; direct blue/yellow mixing reads green.
+  xp: [{ at: 0, color: '#a9d4ef' }, { at: .4, color: '#b9e0f7' },
+    { at: .6, color: '#daf3ff' }, { at: .7, color: '#f1f8fa' },
+    { at: .82, color: '#f7e9bf' }, { at: .9, color: '#ffdb6f' }, { at: 1, color: '#fff28f' }],
 } as const;

@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import * as THREE from 'three';
+import { XP_FILL_GRADIENT } from '../src/ui/xpPalette';
 import { ART } from '../src/art/ArtDirection';
 import { illustratedMaterial } from '../src/rendering/art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../src/rendering/art/PaintedGeometry';
@@ -69,5 +70,5 @@ it('feeds the DOM HUD from the same palette as the world bars', () => {
   applyArtTheme({ style: { setProperty } } as unknown as HTMLElement);
   expect(setProperty).toHaveBeenCalledWith('--art-frame', ART.bar.frame);
   expect(setProperty).toHaveBeenCalledWith('--art-ink', ART.bar.ink);
-  expect(setProperty).toHaveBeenCalledWith('--art-xp-gold', ART.bar.xpGold);
+  expect(setProperty).toHaveBeenCalledWith('--art-xp-gradient', XP_FILL_GRADIENT);
 });

@@ -26,7 +26,7 @@ it('holds LV7 per-soldier rate at LV6, then resumes taper without changing thres
     .toEqual([3,4,5,6,6.5,6.9,6.9,7.22,7.476]);
   expect(effectiveRifleFireRate(2.5, 7, balance.progression)).toBe(6.4);
   expect(requiredXp(6, balance.progression)).toBe(420);
-  expect(balance.giant.hp).toBe(210); expect(balance.giant.xp).toBe(120);
+  expect(balance.giant.hp).toBe(172); expect(balance.giant.xp).toBe(120);
   expect(balance.heavyHp).toBe(15); expect(balance.pressureMultipliers).toEqual([1,1,1,1,1.25,1.35,1.45,1.55,1.6,1.65]);
 });
 it('grants one soldier after the nonblocking arrival, survives snapshots and never grants twice', () => {
@@ -66,17 +66,17 @@ it('fires identical damage at twice the rate in alternating half-interval phases
   step(sim, 120); step(clone, 120); expect(sim.getState()).toEqual(clone.getState());
   const bad = sim.getState(); bad.weapons.rifleMemberCooldowns = [0]; expect(() => sim.restoreState(bad)).toThrow(/clocks/);
 });
-it.each([1,17,42])('kills the same 210HP Giant in about 15 seconds at LV7 (seed %i)', seed => {
+it.each([1,17,42])('kills the same authored Giant in 12–13 seconds at LV7 (seed %i)', seed => {
   const sim = twoSoldiers(seed), state = sim.getState(); state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
-  state.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: 38, hp: 210 }];
+  state.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: 38, hp: balance.giant.hp }];
   sim.restoreState(state); let firstHit: number | undefined;
   while (sim.getFrameState().enemies.length && sim.getFrameState().elapsedSeconds < 25) {
     step(sim, 1); const frame = sim.getFrameState();
-    if (firstHit === undefined && frame.enemies[0]?.hp < 210) firstHit = frame.elapsedSeconds;
+    if (firstHit === undefined && frame.enemies[0]?.hp < balance.giant.hp) firstHit = frame.elapsedSeconds;
   }
   const result = sim.getState(); expect(result.squad.count).toBe(2); expect(result.progression).toEqual({ level: 7, xp: 120 });
-  expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(14);
-  expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(16);
+  expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(12);
+  expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(13);
 });
 it('projects the pending entrance from simulation time and settles both members within one corridor', () => {
   const sim = make(), state = sim.getState(); state.progression = { level: 7, xp: 0 };

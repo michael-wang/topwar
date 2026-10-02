@@ -1,3 +1,4 @@
+import { defenseSideDebris } from './DefenseDebrisLayout';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
@@ -256,34 +257,20 @@ export class BridgeEnvironment {
     this.geometries.push(geometry);
     const material = this.material('#ffffff');
     const transform = new THREE.Object3D();
-    const concrete = new THREE.Color(ART.world.concrete);
-    const steel = new THREE.Color(ART.world.steel);
-    const rust = new THREE.Color(ART.world.rust);
-    for (const side of [-1, 1]) {
-      // Six cheap pieces per pile, batched into one draw per side. Broken, low
-      // silhouettes frame the approach without covering outer combat corridors.
-      const wrecks = new THREE.InstancedMesh(geometry, material, 18);
+    const colors = { concrete: new THREE.Color(ART.world.concrete),
+      steel: new THREE.Color(ART.world.steel), rust: new THREE.Color(ART.world.rust) };
+    for (const side of [-1, 1] as const) {
+      const pieces = defenseSideDebris(side);
+      const wrecks = new THREE.InstancedMesh(geometry, material, pieces.length);
       wrecks.name = side === -1 ? 'beach-wreckage-left' : 'beach-wreckage-right';
-      let member = 0;
-      const piece = (x: number, y: number, z: number, width: number, height: number,
-        depth: number, tilt: number, yaw: number, color: THREE.Color): void => {
-        transform.position.set(side * x, y, z);
-        transform.scale.set(width, height, depth);
-        transform.rotation.set(.08, yaw * side, tilt * side);
+      pieces.forEach((piece, member) => {
+        transform.position.set(side * piece.x, piece.y, piece.z);
+        transform.scale.set(piece.width, piece.height, piece.depth);
+        transform.rotation.set(piece.pitch, piece.yaw, piece.tilt);
         transform.updateMatrix();
         wrecks.setMatrixAt(member, transform.matrix);
-        wrecks.setColorAt(member++, color);
-      };
-      for (let pile = 0; pile < 3; pile++) {
-        const x = pile * .35;
-        const z = [6, 18, 33][pile] + (side === 1 ? 2 : 0);
-        piece(x + .2, .22, z, 1.6, .4, 2.4, -.08, .3, concrete);
-        piece(x + .65, .65, z + .8, 1.2, .85, .45, .38, -.2, concrete);
-        piece(x + .9, .5, z - .5, .9, .8, 1.3, -.18, .6, steel);
-        piece(x + .1, .43, z - 1.1, 1.25, .16, .7, -.25, -.45, rust);
-        piece(x + .65, 1.05, z + .4, .14, 1.9, .16, .5, .25, steel);
-        piece(x + 1.1, .95, z + .6, .14, 1.55, .16, -.65, -.4, steel);
-      }
+        wrecks.setColorAt(member, colors[piece.color]);
+      });
       wrecks.instanceMatrix.needsUpdate = true;
       if (wrecks.instanceColor) wrecks.instanceColor.needsUpdate = true;
       this.defenseSideWrecks.push(wrecks);

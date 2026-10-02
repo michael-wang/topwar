@@ -323,8 +323,8 @@ body {
 .xp-fill {
   position: absolute; inset: 0; height: 100%; width: 100%; border-radius: inherit;
   clip-path: inset(0 100% 0 0 round .45rem);
-  background: linear-gradient(90deg, var(--art-xp-red) 0%, #b44238 45%, var(--art-xp-orange) 65%, #efb44f 82%, var(--art-xp-gold) 92%, #fff1b2 100%);
-  box-shadow: 0 0 7px #ff741a99, inset 0 1px 0 #fff5bbaa;
+  background: var(--art-xp-gradient);
+  box-shadow: 0 0 7px var(--art-xp-glow), inset 0 1px 0 #eefaffaa;
   overflow: hidden;
 }
 .xp-edge { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: .2rem;
@@ -336,7 +336,7 @@ body {
 .xp-fill::before { content: ''; position: absolute; inset: -40% -20%;
   background: linear-gradient(110deg, transparent 35%, #ffffff33 50%, transparent 65%);
   animation: xp-sheen 3.2s ease-in-out infinite; }
-.xp-charged .xp-fill { box-shadow: 0 0 10px #ffae35cc, inset 0 1px 0 #fff8c2; }
+.xp-charged .xp-fill { box-shadow: 0 0 10px #f4e7b9cc, inset 0 1px 0 #fff8df; }
 .xp-imminent .xp-fill { animation: xp-anticipation 1.2s ease-in-out infinite; }
 .level-up-message { position: absolute; bottom: calc(100% + .45rem); left: 0; right: 0;
   text-align: center; color: #fff5bf; opacity: 0; text-shadow: 0 2px 3px #482b13, 0 0 12px #ffb838;
