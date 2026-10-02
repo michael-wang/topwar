@@ -66,6 +66,47 @@ it('uses a defense shoreline horizon while leaving the legacy stream horizon unc
   expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= 44 - .02)).toBe(true);
 });
 
+it('projects Heavy proportions while leaving Grunts and all simulation outcomes unchanged', () => {
+  const old = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0, tiers: config.tiers,
+    catharsis: { balance: { ...balance, heavyWidthMultiplier: 1, heavyHeightMultiplier: 1, heavyDepthMultiplier: 1 }, trackHalfWidth: 3.2 } });
+  const current = make(true);
+  const view = projectRenderState(current.getFrameState(), { catharsis: current.getFrameState().catharsis,
+    trackHalfWidth: 3.2, defenseLineOffset: 1.5, formationSpacing: .45, bossVisualScale: 7 });
+  const heavy = view.enemies.find(enemy => enemy.archetype === 'heavy')!;
+  const grunt = view.enemies.find(enemy => enemy.archetype === 'grunt')!;
+  expect(heavy.hp).toBe(15);
+  expect(heavy.visualScaleX).toBeCloseTo(1.9845);
+  expect(heavy.visualScaleY).toBeCloseTo(2.1735);
+  expect(heavy.visualScaleZ).toBeCloseTo(2.1735);
+  expect(grunt.visualScale).toBe(1.4);
+  expect(grunt.visualScaleX).toBeUndefined();
+  expect(config.tiers.normalEnemyRadius).toBe(.3);
+  expect([balance.groupSize, balance.pressureLaneCount, balance.crowdDepthSpan,
+    balance.lateralSpreadFraction, balance.defenseSpawnAheadDistance, config.weapon.rifle.fireRate,
+    balance.heavyHp, config.player.forwardSpeed, balance.gruntSpeed, balance.heavySpeed,
+    balance.waveRows, balance.heavyChance, balance.laneCount, balance.laneSwitchSeconds])
+    .toEqual([24, 3, 9, .42, 53, 3, 15, .6, .25, .12, 6, .25, 5, .15]);
+  for (let tick = 0; tick < 1800; tick++) {
+    if (tick === 120 || tick === 700) { current.stepLane(-1); old.stepLane(-1); }
+    current.step(1 / 60, { targetX: 0 }, tuning);
+    old.step(1 / 60, { targetX: 0 }, tuning);
+  }
+  const { catharsis: currentVisuals, ...currentGameplay } = current.getState();
+  const { catharsis: oldVisuals, ...oldGameplay } = old.getState();
+  expect(currentGameplay).toEqual(oldGameplay);
+  const restored = make(true, 99);
+  restored.restoreState(JSON.parse(JSON.stringify(current.getState())));
+  expect(restored.getState()).toEqual(current.getState());
+  for (const key of ['heavyWidthMultiplier', 'heavyHeightMultiplier', 'heavyDepthMultiplier']) {
+    expect(() => CatharsisConfigSchema.parse({ ...balance, [key]: 0 })).toThrow();
+    expect(() => CatharsisConfigSchema.parse({ ...balance, [key]: Infinity })).toThrow();
+    expect(() => CatharsisConfigSchema.parse({ ...balance, [key]: 3 })).toThrow();
+  }
+  const { heavyWidthMultiplier, heavyHeightMultiplier, heavyDepthMultiplier, ...legacyBalance } = balance;
+  const legacy = CatharsisConfigSchema.parse(legacyBalance);
+  expect([legacy.heavyWidthMultiplier, legacy.heavyHeightMultiplier, legacy.heavyDepthMultiplier]).toEqual([1, 1, 1]);
+});
+
 it('chooses three distinct seeded fronts per priority block and distributes 24 members as 8/8/8', () => {
   expect(balance.pressureLaneCount).toBe(3);
   expect(balance.lateralSpreadFraction).toBe(.42);

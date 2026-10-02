@@ -15,7 +15,7 @@ export const ENEMY_GAIT_CYCLE_MS = 360;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
-  scale: number;
+  scale: THREE.Vector3;
   group: THREE.Group;
   bodyMaterial: THREE.MeshStandardMaterial;
   gearMaterial: THREE.MeshStandardMaterial;
@@ -23,7 +23,7 @@ interface DeathVisual {
 }
 
 interface ContactVisual {
-  scale: number;
+  scale: THREE.Vector3;
   group: THREE.Group;
   materials: THREE.MeshStandardMaterial[];
   startedAtMs: number;
@@ -42,6 +42,11 @@ export function enemyWalkPose(id: number, nowMs: number): { leftArm: number; rig
 
 export function enemyRunFrame(id: number, nowMs: number): number {
   return Math.floor(nowMs / (ENEMY_GAIT_CYCLE_MS / 4) + id * 1.52788745) & 3;
+}
+
+function setEnemyScale(target: THREE.Vector3, enemy?: EnemyRenderState): void {
+  const base = enemy?.visualScale ?? ENEMY_VISUAL_SCALE;
+  target.set(enemy?.visualScaleX ?? base, enemy?.visualScaleY ?? base, enemy?.visualScaleZ ?? base);
 }
 
 export class EnemyRenderer {
@@ -147,7 +152,7 @@ export class EnemyRenderer {
       transform.position.set(-enemy.x, pose.bob, enemy.z);
       transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
         pose.leftArm * 0.09);
-      transform.scale.setScalar(enemy.visualScale ?? ENEMY_VISUAL_SCALE);
+      setEnemyScale(transform.scale, enemy);
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs);
       this.bodyMeshes[frame].setMatrixAt(bodyIndices[frame]++, transform.matrix);
@@ -219,7 +224,7 @@ export class EnemyRenderer {
       });
       models.forEach((model, index) => group.add(new THREE.Mesh(model.geometry, materials[index])));
       this.scene.add(group);
-      visual = { group, materials, startedAtMs: nowMs, x, z, direction: 1, scale: ENEMY_VISUAL_SCALE };
+      visual = { group, materials, startedAtMs: nowMs, x, z, direction: 1, scale: new THREE.Vector3() };
       this.contactVisuals.push(visual);
     }
     if (!visual) visual = this.contactVisuals.reduce((oldest, candidate) =>
@@ -228,11 +233,11 @@ export class EnemyRenderer {
     visual.x = x;
     visual.z = z;
     visual.direction = id % 2 === 0 ? -1 : 1;
-    visual.scale = this.previousEnemies.get(id)?.visualScale ?? ENEMY_VISUAL_SCALE;
+    setEnemyScale(visual.scale, this.previousEnemies.get(id));
     visual.group.visible = true;
     visual.group.rotation.set(0, Math.PI, 0);
     visual.group.position.set(-x, 0, z);
-    visual.group.scale.setScalar(visual.scale);
+    visual.group.scale.copy(visual.scale);
     for (const material of visual.materials) material.opacity = 1;
     const color = this.previousEnemies.get(id)?.archetype === 'heavy' ? this.heavyColor
       : this.helmetColors[paletteIndex(tier, PALETTES.length)];
@@ -255,7 +260,7 @@ export class EnemyRenderer {
       visual.group.position.set(-visual.x + visual.direction * .8 * progress,
         .5 * Math.sin(Math.PI * progress), visual.z + .9 * progress);
       visual.group.rotation.z = visual.direction * .45 * progress;
-      visual.group.scale.setScalar(visual.scale * (1.12 - .26 * progress));
+      visual.group.scale.copy(visual.scale).multiplyScalar(1.12 - .26 * progress);
     }
   }
 
@@ -275,18 +280,18 @@ export class EnemyRenderer {
       const vest = new THREE.Mesh(this.vestModel.geometry, gearMaterial);
       group.add(body, helmet, vest);
       this.scene.add(group);
-      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: ENEMY_VISUAL_SCALE };
+      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3() };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     visual.startedAtMs = nowMs;
-    visual.scale = enemy.visualScale ?? ENEMY_VISUAL_SCALE;
+    setEnemyScale(visual.scale, enemy);
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
     visual.gearMaterial.color.set('#fff1a0');
     visual.group.visible = true;
-    visual.group.scale.setScalar(visual.scale * 1.07);
+    visual.group.scale.copy(visual.scale).multiplyScalar(enemyDeathPose(0).scale);
     visual.group.position.set(-enemy.x, ENEMY_DEATH_POP, enemy.z);
     visual.group.rotation.set(0, Math.PI, 0);
   }
@@ -296,11 +301,11 @@ export class EnemyRenderer {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
       if (elapsed >= ENEMY_DEATH_MS) { visual.group.visible = false; continue; }
-      const { progress, opacity, rise } = enemyDeathPose(elapsed);
+      const { scale, opacity, rise } = enemyDeathPose(elapsed);
       visual.gearMaterial.color.set(elapsed < 35 ? '#fff1a0' : '#adb4b8');
       visual.bodyMaterial.opacity = opacity;
       visual.gearMaterial.opacity = opacity;
-      visual.group.scale.setScalar(visual.scale * (1.07 - .10 * progress));
+      visual.group.scale.copy(visual.scale).multiplyScalar(scale);
       visual.group.position.y = rise;
     }
   }

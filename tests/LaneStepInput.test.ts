@@ -39,19 +39,19 @@ it('sends an immediate lane step per physical key press and ignores OS repeat ev
   f.input.dispose();
 });
 
-it('waits 350 ms then steps at 220 ms cadence regardless of OS repeat rate', () => {
+it('waits 180 ms then steps at 120 ms cadence regardless of OS repeat rate', () => {
   const f = fixture();
   f.key('keydown', 'ArrowRight');
-  vi.advanceTimersByTime(349);
+  vi.advanceTimersByTime(179);
   for (let index = 0; index < 30; index++) f.key('keydown', 'ArrowRight', true);
   expect(f.step).toHaveBeenCalledTimes(1);
   vi.advanceTimersByTime(1);
   expect(f.step).toHaveBeenCalledTimes(2);
-  vi.advanceTimersByTime(219);
+  vi.advanceTimersByTime(119);
   expect(f.step).toHaveBeenCalledTimes(2);
   vi.advanceTimersByTime(1);
   expect(f.step).toHaveBeenCalledTimes(3);
-  vi.advanceTimersByTime(440);
+  vi.advanceTimersByTime(240);
   expect(f.step).toHaveBeenCalledTimes(5);
   f.key('keyup', 'ArrowRight');
   vi.advanceTimersByTime(1000);
@@ -81,7 +81,7 @@ it('opposite press immediately takes over with a fresh delay and no stale timers
   vi.advanceTimersByTime(100);
   f.key('keydown', 'd');
   f.key('keyup', 'a');
-  vi.advanceTimersByTime(349);
+  vi.advanceTimersByTime(179);
   expect(f.step.mock.calls).toEqual([[-1], [1]]);
   vi.advanceTimersByTime(1);
   expect(f.step.mock.calls).toEqual([[-1], [1], [1]]);
@@ -100,7 +100,7 @@ it('stops scheduling at an outer lane and can immediately step away from it', ()
     return lane + direction! >= 0 && lane + direction! < 5;
   });
   f.key('keydown', 'd');
-  vi.advanceTimersByTime(350);
+  vi.advanceTimersByTime(180);
   expect(lane).toBe(4);
   expect(vi.getTimerCount()).toBe(0);
   vi.advanceTimersByTime(5000);

@@ -48,8 +48,9 @@ export class ContactShadowRenderer {
     this.batches.player.mesh.instanceMatrix.needsUpdate = true;
     for (let index = 0; index < state.enemies.length; index++) {
       const enemy = state.enemies[index];
-      const scale = (enemy.visualScale ?? .82) / .82;
-      this.place('enemy', index, -enemy.x, enemy.z, .68 * scale, .42 * scale);
+      const widthScale = (enemy.visualScaleX ?? enemy.visualScale ?? .82) / .82;
+      const depthScale = (enemy.visualScaleZ ?? enemy.visualScale ?? .82) / .82;
+      this.place('enemy', index, -enemy.x, enemy.z, .68 * widthScale, .42 * depthScale);
     }
     this.batches.enemy.mesh.count = state.enemies.length;
     this.batches.enemy.mesh.instanceMatrix.needsUpdate = true;

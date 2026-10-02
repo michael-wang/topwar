@@ -21,6 +21,9 @@
     "heavyHp": 15,
     "enemyVisualScale": 1.4,
     "heavyVisualScale": 1.35,
+    "heavyWidthMultiplier": 1.05,
+    "heavyHeightMultiplier": 1.15,
+    "heavyDepthMultiplier": 1.15,
     "rewardAimRadius": 0.5
   },
   "player": {

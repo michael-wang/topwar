@@ -24,6 +24,9 @@ export const CatharsisConfigSchema = z.strictObject({
   heavyHp: z.number().finite().gt(1),
   enemyVisualScale: z.number().finite().positive(),
   heavyVisualScale: z.number().finite().gt(1),
+  heavyWidthMultiplier: z.number().finite().positive().max(2).default(1),
+  heavyHeightMultiplier: z.number().finite().positive().max(2).default(1),
+  heavyDepthMultiplier: z.number().finite().positive().max(2).default(1),
   rewardAimRadius: z.number().finite().positive(),
 }).refine((value) => value.defenseMode || (value.groupSize - 1) * value.groupRowStride < value.waveRows,
   { message: 'Group must fit inside one wave' })

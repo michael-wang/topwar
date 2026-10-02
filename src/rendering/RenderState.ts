@@ -77,6 +77,9 @@ export interface ProjectileRenderState {
 export interface EnemyRenderState {
   readonly archetype?: 'grunt' | 'heavy';
   readonly visualScale?: number;
+  readonly visualScaleX?: number;
+  readonly visualScaleY?: number;
+  readonly visualScaleZ?: number;
   readonly id: number;
   readonly tier: number;
   readonly x: number;

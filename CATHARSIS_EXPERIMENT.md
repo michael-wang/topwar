@@ -1,12 +1,12 @@
-# Phase 2.8: Readable Multi-Lane Pressure
+# Phase 2.9: Combat Baseline Lock
 
-This beachhead-defense prototype tests the naked combat target:
+The naked beachhead-defense combat baseline is now accepted:
 **one defended normal lane is manageable, all active lanes are not**.
 Twenty-four members attack three coherent fronts per wave. Wider/deeper crowds
-should read as individuals and make repeated gray-rise kills visible, while
+read as individuals and make repeated gray vaporization kills visible, while
 unattended lanes accumulate. The 15-hit Heavy remains the successful tactical
 priority threat. No progression or support is added to compensate for the loop.
-Performance is measured, with no adaptive density or FPS-dependent gameplay.
+Phase 2 is ready for progression work; this task adds no XP/progression. Phase 2.8 pressure, archetype gameplay and environment are frozen. Only death/Heavy presentation and keyboard hold cadence change. Performance remains measured without adaptive density.
 
 Heavy has a fixed authored **15 base Rifle-hit HP**, with explicit live TUNE edits
 up to **40**. It never scales itself from Rifle fire rate, DPS, squad size or weapon
@@ -17,7 +17,7 @@ including small projectile/cooldown timing differences. Later power can outgrow 
 ## Controls and combat
 
 A/D or Left/Right immediately steps one destination lane. Holding repeats after
-350 ms, then every 220 ms using one input timer; OS repeat events do not determine
+180 ms, then every 120 ms using one input timer; OS repeat events do not determine
 cadence. Timings are localized in `src/input/LaneStepInput.ts`. The latest pressed
 key owns the hold, including opposite-direction presses with a fresh delay.
 Releasing it does not resume an older held key. Reaching an edge stops scheduling;
@@ -85,7 +85,10 @@ rebuild is needed. The `catharsis` values are included in simulation snapshots.
 | `heavySpeed` | 0.12 | Slower Heavy approach speed |
 | `heavyHp` | 15 | Fixed base Rifle-hit durability; TUNE range 2–40; Grunt stays 1 HP |
 | `enemyVisualScale` | 1.4 | Retained enlarged Grunt model |
-| `heavyVisualScale` | 1.35 | Relative multiplier; Heavy model scale 1.89 |
+| `heavyVisualScale` | 1.35 | Retained Heavy base scalar: 1.89 |
+| `heavyWidthMultiplier` | 1.05 | Complete model X multiplier: final 1.9845 |
+| `heavyHeightMultiplier` | 1.15 | Complete model Y multiplier: final 2.1735 |
+| `heavyDepthMultiplier` | 1.15 | Complete model Z multiplier: final 2.1735 |
 
 `player.forwardSpeed` (Approach pace) is **0.6 units/second**. Effective closing
 speeds are initially 0.85 for Grunts and 0.72 for Heavies.
@@ -101,16 +104,28 @@ and reward settings remain stored but inactive in this defense layout.
 
 ## Presentation and temporarily disabled systems
 
-Gray-rise kill presentation keeps the existing reusable 48-body pool and small
-burst, with no new VFX system. Lifetime is **320 → 600 ms**. Immediate pop is
-**0 → 0.25 world units**, followed by a front-loaded eased **1.65-unit** rise,
-for **1.9 total** versus the old linear **0.55**. Bodies retain full opacity for
-180 ms (previously about 70 ms), then fade over 420 ms. At 300 ms their feet are
-about 1.49 units above the ground at 71% opacity, clearing nearby normal heads.
-Scale shrink and gray materials remain. At 3 Hz this normally means one/two
-simultaneous deaths, not a long-lived confetti cloud. Timing lives in the pure
-presentation helper `src/presentation/EnemyDeathTiming.ts`; collision/simulation
-and snapshots do not depend on it.
+Gray vaporization reuses the existing capped 48-body pool and DeathBurst. Lifetime
+is **600 → 480 ms**, immediate pop **0.25 → 0.12 units**, additional eased rise
+**1.65 → 0.60**, and maximum height **1.9 → 0.72**. Opacity stays full for 120 ms,
+then fades over 360 ms. Death size shrinks **1.07 → 0.55** of the complete live
+body scale, versus the old subtle **1.07 → 0.97** shrink. Gray body/gear remain;
+the short yellow confirmation stays. This is a low pop, shrink and dissolve,
+with no upward spirit-like flight. Pure timing remains in
+`src/presentation/EnemyDeathTiming.ts`, independent of simulation/collision.
+
+Heavy uses non-uniform complete-model proportions, including body/helmet/vest,
+contact reaction, hit display and pooled death. Relative to the unchanged 1.4
+Grunt scale, Heavy is **1.4175× wide / 1.5525× tall / 1.5525× deep**. Final XYZ
+scales are **1.9845 / 2.1735 / 2.1735**. The baked swinging arms already have a
+broader envelope than the torso/helmet: measured run widths are ~1.49–1.62 world
+units on 1.4-unit lane spacing; helmet width is ~1.36 (~97% of one lane). This
+uses visual judgment instead of forcing the entire arm envelope into an 80–90%
+width target and producing a tall skinny Heavy. The silhouette reads as one
+large corridor obstacle, rather than a multi-lane giant. Width/depth shadow
+footprint follows the new axes (~1.65×1.11), without height inflating the stamp.
+Grunts stay at 1.4, and Heavy HP=15, additional speed=0.12, lane/position/damage
+and collision radius=0.30 remain unchanged. New multipliers are catharsis JSON;
+snapshot defaults of 1 preserve old visual proportions. No assets were rebaked.
 
 Normal Grunt and Heavy assets now reuse the proven Boss helmet-occlusion rule.
 The original Archer cap was already stripped, but upper brown hair and side scalp
@@ -152,54 +167,29 @@ Assess that pressure and the 3 Hz rhythm before adding progression to compensate
 
 ## Verification and phone playtest focus
 
-Focused tests cover deterministic three-front priority blocks, exact 8/8/8 budgets,
-legal widened lane X bounds and bounded nine-unit depths across density settings,
-53-unit defense entry/unchanged legacy horizon, runtime density and snapshot
-continuation, 1-HP Grunts, fixed 15-hit Heavies, 3 Hz Rifle, death pop/rise/fade,
-and preserved input/exclusions. Normal-lane holdability is checked across four
-seeds with Grunt-only composition: continuous fire holds the selected front while
-unattended fronts accumulate and eventually cause the fatal leak. The full live
-browser run retains sparse Heavies and the authored settings.
+Delivery checks: **399 tests / 55 files pass**, as do typecheck and production
+build. Tests cover 180/120 ms repeat/cancellation, vaporization rise bounds and
+shrink/opacity progression, Heavy axis validation/render projection, shared
+body/gear transforms, contact/death proportions and matching shadows. Simulation
+outcomes are identical with old/new Heavy visual proportions across the same
+30-second fixed-step/input sequence; snapshots still restore. Authored Phase 2.8
+balance is explicitly asserted unchanged. No backend/framework or deployment.
 
-The authored wave interval remains six seconds: 3.6 world units / 0.6 internal
-approach pace. Eight members/front means 1.33 incoming members/sec versus 3 Rifle
-hits/sec. Combined inflow is 4 members/sec before Heavy extra durability. This is
-fixed authored balance, not runtime DPS scaling. Initial horizon prefill, priority
-handoffs and depth overlap can create bursts; a neglected/Heavy lane may still
-become impossible. Other lanes are never cleared automatically.
+Portrait browser evidence is local in `artifacts/combat-baseline-lock/`, at
+390×844 touch viewport, DPR 2 and Chrome software rendering. Full-density live
+captures show repeated Grunt kills as low gray shrinking silhouettes. Equal-depth
+near/mid inspection uses two render-only position changes at Z=6/18, retaining
+every other enemy, to compare Heavy and Grunt silhouettes and shadow. Heavy
+hit/contact/death proportions are also covered by renderer tests; visual death
+captures at 0/160/320 ms show its size preserved through the shrink. The Heavy
+stands out amid partially overlapping crowds, while outer-lane/body overlap
+remains worth inspecting on physical phones.
 
-Run `npm test`, `npm run typecheck` and `npm run build` before delivery. Portrait
-browser evidence stays locally in `artifacts/multi-lane-pressure/` at 390×844,
-touch enabled and DPR 2. Physical-phone focus: whether a normal lane feels
-holdable, whether three fronts force attention changes, how clearly amber Heavies
-interrupt that rhythm, and whether raised gray bodies make repeated kills visible
-without obscuring the next target. The pressure count stays JSON-only to keep
-TUNE narrow; density, Heavy HP/frequency, speeds, Rifle rate and approach pace
-remain usable controls. Density changes future groups only; Retry refills.
-
-Delivery checks: 396 tests across 55 files pass, as do typecheck and production
-build. Assets/bake pipeline, shoreline, wreckage and gait are unchanged.
-
-Portrait browser evidence uses seed 17, then a normal tuned Retry at seed 18,
-390×844 touch viewport, DPR 2 and Chrome software rendering. The authored run
-starts with 168 enemies. Holding lane 3 (zero-based 2) for about 21 seconds leaves
-the soldier alive: its population falls 56→18 and nearest enemy is ~33.6 units
-away. Unattended totals grow 112→160; the closest front reaches ~4.1 units.
-Sparse Heavies remain 15 HP, with amber helmets visible in the upper crowds.
-The scene retains individual foreground faces and broad loose fronts, though
-neglected ranks still overlap substantially and the horizon remains crowded.
-
-Raised gray bodies are visible above living helmets in consecutive live captures;
-sample death heights are ~0.43 and ~1.65 units, at full and ~56% opacity.
-No enemies are relocated, hidden or culled for screenshots. Around this moment,
-active population is 178–199, FPS ~21–22, average frame ~46–47 ms, p95 ~50–67 ms,
-and simulation CPU step ~0.1 ms. These software-rendering numbers do not establish
-physical-phone performance and did not drive a further density reduction.
-
-TUNE density 60 changes future composition without mutating the 168 active enemies;
-reset returns to 24. Keyboard works immediately after closing TUNE. Pause blocks
-lane taps; resume accepts one lane per tap. Natural Game Over and Retry work,
-with Retry retaining 24 and returning to the middle lane. No browser errors.
-Evaluate whether the successful held-lane clearance stays satisfying during
-Heavy commitment and whether deaths remain visible without distracting from the
-next lane decision on a physical phone.
+Measured held-key traversal from lane 1→5 and 5→1 starts immediately, repeats
+at ~181 ms then ~120–122 ms, and stops at the edges. Mobile remains one tap per
+lane; Pause suppresses taps and closing TUNE restores keyboard control. No browser
+errors. Live population is ~202–205 around 18 seconds, with ~21–22 FPS, average
+~46–47 ms and p95 ~50–83 ms under software rendering. No combat tuning changed
+for performance. Physical-phone checks should confirm short kill visibility,
+Heavy lane footprint, and the more responsive hold while the unchanged 150 ms
+visual interpolation catches up to the destination.

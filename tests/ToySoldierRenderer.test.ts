@@ -207,7 +207,7 @@ describe('Modern Toy Soldier presentation', () => {
     const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death).toBeDefined();
     expect(death.rotation.z).toBe(0);
-    expect(death.position.y).toBe(.25);
+    expect(death.position.y).toBe(.12);
     renderer.update(damaged.slice(1), 320);
     expect(death.position.y).toBeGreaterThan(0);
     const gray = (death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
@@ -218,6 +218,43 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(damaged.slice(1), 800);
     expect(death.visible).toBe(false);
     renderer.reset();
+    renderer.dispose();
+  });
+
+  it('keeps complete Heavy proportions in active, hit, pooled death and contact paths', () => {
+    const scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+    const heavy = { id: 2, tier: 1, archetype: 'heavy' as const, x: 0, z: 8, hp: 15,
+      visualScale: 1.89, visualScaleX: 1.9845, visualScaleY: 2.1735, visualScaleZ: 2.1735 };
+    const matrix = new THREE.Matrix4();
+    const scale = new THREE.Vector3();
+    for (const [time, hp] of [[0, 15], [100, 14]]) {
+      renderer.update([{ ...heavy, hp }], time);
+      for (const name of ['0-toy-soldier-helmet', '0-toy-soldier-vest', `toy-soldier-run-${enemyRunFrame(2, time)}`]) {
+        (scene.getObjectByName(name) as THREE.InstancedMesh).getMatrixAt(0, matrix);
+        scale.setFromMatrixScale(matrix);
+        expect(scale.x).toBeCloseTo(heavy.visualScaleX);
+        expect(scale.y).toBeCloseTo(heavy.visualScaleY);
+        expect(scale.z).toBeCloseTo(heavy.visualScaleZ);
+      }
+    }
+    renderer.update([], 200);
+    const death = scene.children.find(child => child instanceof THREE.Group && child.visible) as THREE.Group;
+    expect(death.scale.x).toBeCloseTo(heavy.visualScaleX * 1.07);
+    expect(death.scale.y).toBeCloseTo(heavy.visualScaleY * 1.07);
+    renderer.update([], 440);
+    expect(death.scale.x).toBeCloseTo(heavy.visualScaleX * .81);
+    expect(death.scale.y / death.scale.x).toBeCloseTo(heavy.visualScaleY / heavy.visualScaleX);
+    renderer.update([heavy], 1000);
+    renderer.present([{ kind: 'normalEnemyContact', enemyId: 2, enemyTier: 1,
+      attackerX: 0, attackerZ: 8, playerX: 0, playerZ: 0,
+      before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
+      after: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 } }], 1100);
+    renderer.update([], 1100);
+    const contact = scene.getObjectByName('enemy-contact-exchange') as THREE.Group;
+    expect(contact.scale.x).toBeCloseTo(heavy.visualScaleX * 1.12);
+    expect(contact.scale.y).toBeCloseTo(heavy.visualScaleY * 1.12);
+    expect(contact.scale.z).toBeCloseTo(heavy.visualScaleZ * 1.12);
     renderer.dispose();
   });
 

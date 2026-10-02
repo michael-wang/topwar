@@ -26,6 +26,21 @@ function state(): GameRenderState {
 }
 
 describe('soft contact shadows', () => {
+  it('uses enemy width/depth proportions without making height inflate the footprint', () => {
+    const scene = new THREE.Scene();
+    const shadows = new ContactShadowRenderer(scene);
+    const frame = state();
+    shadows.update({ ...frame, enemies: [{ ...frame.enemies[0], visualScale: 1.89,
+      visualScaleX: 1.9845, visualScaleY: 2.1735, visualScaleZ: 2.1735 }] }, squad, 0);
+    const mesh = scene.getObjectByName('contact-shadow-enemy') as THREE.InstancedMesh;
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(0, matrix);
+    const scale = new THREE.Vector3().setFromMatrixScale(matrix);
+    expect(scale.x).toBeCloseTo(.68 * 1.9845 / .82);
+    expect(scale.z).toBeCloseTo(.42 * 2.1735 / .82);
+    expect(scale.y).toBe(1);
+    shadows.dispose();
+  });
   it('grounds player, enemies, Boss, and rewards with one reusable soft stamp', () => {
     const scene = new THREE.Scene();
     const shadows = new ContactShadowRenderer(scene);

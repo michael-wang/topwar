@@ -1,5 +1,5 @@
-const HOLD_INITIAL_DELAY_MS = 350;
-const HOLD_REPEAT_INTERVAL_MS = 220;
+const HOLD_INITIAL_DELAY_MS = 180;
+const HOLD_REPEAT_INTERVAL_MS = 120;
 
 // Keyboard hold uses our clock, never OS repeat frequency. Mobile stays one step per tap.
 export class LaneStepInput {

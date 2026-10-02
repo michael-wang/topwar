@@ -28,7 +28,12 @@ export function projectRenderState(state: SimulationFrameState,
     enemies: config.catharsis ? state.enemies.map((enemy) => ({ ...enemy,
       z: enemy.z - originZ,
       visualScale: config.catharsis!.balance.enemyVisualScale
-        * (enemy.archetype === 'heavy' ? config.catharsis!.balance.heavyVisualScale : 1) })) : state.enemies,
+        * (enemy.archetype === 'heavy' ? config.catharsis!.balance.heavyVisualScale : 1),
+      ...(enemy.archetype === 'heavy' ? {
+        visualScaleX: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyWidthMultiplier,
+        visualScaleY: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyHeightMultiplier,
+        visualScaleZ: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyDepthMultiplier,
+      } : {}) })) : state.enemies,
     boss: state.boss ? { ...state.boss, visualScale: config.bossVisualScale } : null,
     streamRewards: state.streamRewards,
     gates: state.gates.map((gate) => ({ id: gate.id, x: gate.x,
