@@ -1,3 +1,5 @@
+import { ART } from '../../art/ArtDirection';
+import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { laneLocomotion, recoilEnvelope, RECOIL_SETTLE_MS } from '../../presentation/CharacterMotion';
 import { PlayerBodyMotion } from './PlayerBodyMotion';
 import { reinforcementArrivalPose } from '../../presentation/ReinforcementArrival';
@@ -67,14 +69,14 @@ export class SquadRenderer {
   private levelUpAtMs = -Infinity;
   private readonly levelBodyMaterial: THREE.MeshStandardMaterial;
   private readonly levelGearMaterial: THREE.MeshStandardMaterial;
-  private readonly poweredMuzzleMaterial = new THREE.MeshBasicMaterial({ color: '#fff3ab', toneMapped: false });
+  private readonly poweredMuzzleMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core, toneMapped: false });
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
   private readonly hitMaterial = new THREE.MeshBasicMaterial({ color: '#ff3030', toneMapped: false });
-  private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: '#ffd15b', toneMapped: false });
-  private readonly muzzleCoreMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1', toneMapped: false });
+  private readonly muzzleMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold, toneMapped: false });
+  private readonly muzzleCoreMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core, toneMapped: false });
   private readonly ringGeometry = new THREE.RingGeometry(0.42, 0.55, 32);
-  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#fff0a4',
+  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold,
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
   private readonly tierRing = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
   private readonly members: SoldierVisual[] = [];
@@ -107,19 +109,23 @@ export class SquadRenderer {
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');
-    this.levelBodyMaterial = bodyModel.material.clone();
-    this.levelBodyMaterial.emissive.set('#ffbd36');
-    this.levelGearMaterial = source.clone();
+    illustratedMaterial(bodyModel.material, 'player');
+    if (rifleModel.material instanceof THREE.MeshStandardMaterial) {
+      rifleModel.material.color.set(ART.world.steel); illustratedMaterial(rifleModel.material);
+    }
+    this.levelBodyMaterial = illustratedMaterial(bodyModel.material.clone(), 'player');
+    this.levelBodyMaterial.emissive.set(ART.faction.gold);
+    this.levelGearMaterial = illustratedMaterial(source.clone());
     this.levelGearMaterial.color.set('#fff0ae');
-    this.levelGearMaterial.emissive.set('#ffd052');
+    this.levelGearMaterial.emissive.set(ART.fx.gold);
     this.levelEffect = new PlayerLevelUpEffect(scene);
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
-      const material = source.clone();
+      const material = illustratedMaterial(source.clone());
       material.color.set(entry.body);
       return material;
     });
-    this.upgradeMaterial = source.clone();
-    this.upgradeMaterial.color.set('#b9eaff');
+    this.upgradeMaterial = illustratedMaterial(source.clone());
+    this.upgradeMaterial.color.set(ART.faction.playerLight);
     this.tierRing.rotation.x = -Math.PI / 2;
     this.tierRing.position.y = 0.035;
     this.tierRing.visible = false;
@@ -350,7 +356,7 @@ export class SquadRenderer {
         if (!(source.material instanceof THREE.MeshStandardMaterial)) {
           throw new Error('Player casualty visuals require standard materials');
         }
-        const material = source.material.clone();
+        const material = illustratedMaterial(source.material.clone(), source === this.bodyModel ? 'player' : 'world');
         material.transparent = true;
         material.depthWrite = false;
         return material;

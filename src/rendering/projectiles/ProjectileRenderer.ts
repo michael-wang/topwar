@@ -1,3 +1,4 @@
+import { ART } from '../../art/ArtDirection';
 import { WEAPON_AFTERGLOW_MS } from '../../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
@@ -29,9 +30,9 @@ export class ProjectileRenderer {
   private afterglowUntilMs = -Infinity;
   private body: THREE.InstancedMesh;
   private glow: THREE.InstancedMesh;
-  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1',
+  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core,
     toneMapped: false });
-  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: '#ffc84a',
+  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold,
     transparent: true, opacity: 0.28, depthWrite: false,
     blending: THREE.AdditiveBlending, toneMapped: false });
 

@@ -60,8 +60,8 @@ describe('batched projectile renderer', () => {
     renderer.update(projectiles, 100);
     const body = scene.children[0] as THREE.InstancedMesh;
     const glow = scene.children[1] as THREE.InstancedMesh;
-    expect((body.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('fffbd1');
-    expect((glow.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('ffc84a');
+    expect((body.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('fff7e8');
+    expect((glow.material as THREE.MeshBasicMaterial).color.getHexString()).toBe('f7cd76');
     expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
     expect((glow.material as THREE.MeshBasicMaterial).blending).toBe(THREE.AdditiveBlending);
     expect((glow.material as THREE.MeshBasicMaterial).toneMapped).toBe(false);

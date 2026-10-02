@@ -1,3 +1,4 @@
+import { illustratedMaterial } from '../art/IllustratedMaterial';
 import * as THREE from 'three';
 
 // Original bone weights baked into a static mesh: four cheap rigid rotations in
@@ -39,6 +40,7 @@ export class PlayerBodyMotion {
           transformed.z -= playerRecoil*.025*(_motion.z+_motion.w);
         `);
       };
+      illustratedMaterial(material, 'player');
     }
   }
   update(stride: number, recoil: number, glow: number, ready = 0): void {

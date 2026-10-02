@@ -1,3 +1,7 @@
+import { ART } from '../art/ArtDirection';
+import { paintedBlockGeometry } from './art/PaintedGeometry';
+import { illustratedMaterial } from './art/IllustratedMaterial';
+import { paintDaubTexture } from './art/PaintedTextures';
 import * as THREE from 'three';
 
 // Disposable presentation only: all corridor positions come from simulation config.
@@ -9,13 +13,16 @@ export class AttackLaneRenderer {
   private capacity = 1;
   private readonly transform = new THREE.Object3D();
   private readonly beachDetails = new THREE.Group();
-  private readonly beamGeometry = new THREE.BoxGeometry(1.1, .10, .10);
-  private readonly beamMaterial = new THREE.MeshStandardMaterial({ color: '#635b49', roughness: 1 });
-  private readonly trackMaterial = new THREE.MeshBasicMaterial({ color: '#85724f', transparent: true,
-    opacity: .10, depthWrite: false });
+  private readonly beamGeometry = paintedBlockGeometry().scale(1.1, .15, .15);
+  private readonly beamMaterial = new THREE.MeshStandardMaterial({ color: ART.world.steel, roughness: 1 });
+  private readonly trackMaterial = new THREE.MeshBasicMaterial({ color: ART.world.sandShade, transparent: true,
+    opacity: .28, depthWrite: false });
   private layoutKey = '';
+  private readonly daub = paintDaubTexture();
 
   constructor(private readonly scene: THREE.Scene) {
+    this.trackMaterial.map = this.daub;
+    illustratedMaterial(this.beamMaterial);
     this.geometry.rotateX(-Math.PI / 2);
     this.mesh = new THREE.InstancedMesh(this.geometry, this.material, this.capacity);
     this.mesh.name = 'attack-corridors';
@@ -54,7 +61,7 @@ export class AttackLaneRenderer {
             const scuff = new THREE.Mesh(this.geometry, this.trackMaterial);
             scuff.name = 'sand-scuff';
             scuff.position.set(-x + Math.sin(patch * 2 + lane) * spacing * .12, .026, 3 + patch * 5);
-            scuff.scale.set(spacing * (.32 + .1 * (patch % 3)), 1, 2.2 + patch % 2);
+            scuff.scale.set(spacing * (.40 + .1 * (patch % 3)), 1, 2.2 + patch % 2);
             scuff.rotation.y = Math.sin(patch + lane) * .15;
             this.beachDetails.add(scuff);
           }
@@ -90,6 +97,7 @@ export class AttackLaneRenderer {
     this.beamGeometry.dispose();
     this.beamMaterial.dispose();
     this.trackMaterial.dispose();
+    this.daub.dispose();
     this.scene.remove(this.mesh);
     this.mesh.dispose();
     this.geometry.dispose();

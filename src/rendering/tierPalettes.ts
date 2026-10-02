@@ -1,5 +1,6 @@
+import { ART } from '../art/ArtDirection';
 export const ENEMY_PALETTE = [
-  { body: '#9e2f3b', head: '#c64a55' },
+  { body: ART.faction.grunt, head: ART.faction.gruntLight },
   { body: '#657236', head: '#87944a' },
   { body: '#62437c', head: '#815b9d' },
   { body: '#a64e2d', head: '#c66a42' },
@@ -8,7 +9,7 @@ export const ENEMY_PALETTE = [
 ] as const;
 
 export const PLAYER_PALETTE = [
-  { body: '#1769ee', head: '#4b91ff' },
+  { body: ART.faction.player, head: ART.faction.playerLight },
   { body: '#10429b', head: '#3579d6' },
   { body: '#2938c7', head: '#6677ff' },
   { body: '#1b8fd6', head: '#42bfd0' },

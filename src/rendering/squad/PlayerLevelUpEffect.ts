@@ -1,3 +1,4 @@
+import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import { LEVEL_UP_MS } from '../../presentation/ProgressionLevelUp';
 
@@ -9,9 +10,9 @@ export class PlayerLevelUpEffect {
   private readonly visuals: THREE.Group[] = [];
   private readonly ringGeometry = new THREE.RingGeometry(.4, .49, 40);
   private readonly moteGeometry = new THREE.SphereGeometry(.055, 6, 4);
-  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#ffdb72', transparent: true,
+  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold, transparent: true,
     depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false });
-  private readonly moteMaterial = new THREE.MeshBasicMaterial({ color: '#fff0b2', transparent: true,
+  private readonly moteMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core, transparent: true,
     depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
   constructor(private readonly scene: THREE.Scene) {}
   present(nowMs: number): void { this.startedAtMs = nowMs; }

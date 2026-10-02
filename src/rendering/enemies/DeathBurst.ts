@@ -1,3 +1,4 @@
+import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
@@ -5,6 +6,7 @@ import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 export const DEATH_PARTICLE_CAPACITY = 192;
 export const DEATH_PARTICLE_LIFETIME_MS = 260;
 const PARTICLES_PER_DEATH = 6;
+const GIANT_COLORS = [ART.fx.core, ART.fx.gold, ART.fx.ember].map(color => new THREE.Color(color));
 const PALETTE = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.head));
 
 function hash(value: number): number {
@@ -52,8 +54,9 @@ export class DeathBurst {
   }
 
   spawn(enemy: EnemyRenderState, nowMs: number): void {
-    const color = this.giant ? new THREE.Color('#ffe8c0') : deathParticleColor(enemy.tier);
+    const normalColor = deathParticleColor(enemy.tier);
     for (let index = 0; index < (this.giant ? 36 : PARTICLES_PER_DEATH); index++) {
+      const color = this.giant ? GIANT_COLORS[index % GIANT_COLORS.length] : normalColor;
       const slot = this.cursor;
       const offset = slot * 3;
       this.cursor = (this.cursor + 1) % DEATH_PARTICLE_CAPACITY;

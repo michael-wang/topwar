@@ -71,9 +71,9 @@ export class GameRenderer {
     this.environment = new BridgeEnvironment(this.scene);
     this.contactShadows = new ContactShadowRenderer(this.scene);
 
-    this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
-    const sunlight = new THREE.DirectionalLight(0xffffff, 2);
-    sunlight.position.set(-3, 8, -5);
+    this.scene.add(new THREE.HemisphereLight('#c8e0e9', '#bda57e', 1.9));
+    const sunlight = new THREE.DirectionalLight('#fff0d4', 1.55);
+    sunlight.position.set(-4, 9, -3);
     this.scene.add(sunlight);
 
     this.camera.position.set(0, 6.5, -10);

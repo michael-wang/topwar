@@ -28,7 +28,7 @@ describe('StreamRewardRenderer', () => {
       .toBe('c98c28');
     const helmet = part(crate, 'reward-soldier-helmet');
     expect(helmet.geometry).toBe(sourceHelmet.geometry);
-    expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('1769ee');
+    expect((helmet.material as THREE.MeshStandardMaterial).color.getHexString()).toBe('2879cb');
     expect(helmet.position.z).toBeLessThan(-.2);
     expect(helmet.scale.z).toBeLessThan(helmet.scale.x);
     const fill = part(crate, 'remaining-durability');
@@ -66,7 +66,7 @@ describe('StreamRewardRenderer', () => {
     expect(part(first, 'crate-lid').material).toBe(part(second, 'crate-lid').material);
     expect((part(first, 'crate-lid').material as THREE.MeshStandardMaterial).color.getHexString()).toBe('ffd86a');
     expect((part(first, 'reward-soldier-helmet').material as THREE.MeshStandardMaterial).color.getHexString())
-      .toBe('1769ee');
+      .toBe('2879cb');
     expect((part(second, 'reward-soldier-helmet').material as THREE.MeshStandardMaterial).color.getHexString())
       .toBe('10429b');
     const geometry = part(first, 'crate-body').geometry;

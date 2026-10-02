@@ -1,3 +1,6 @@
+import { framedBarTexture } from '../art/FramedBarTextures';
+import { ART } from '../../art/ArtDirection';
+import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { GiantRenderer } from './GiantRenderer';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
@@ -64,8 +67,8 @@ export class EnemyRenderer {
   private readonly helmetMaterial: THREE.MeshStandardMaterial;
   private readonly grayBodyMaterial: THREE.MeshStandardMaterial;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));
-  private readonly flashColor = new THREE.Color('#ffe36e');
-  private readonly heavyColor = new THREE.Color('#e7ad43');
+  private readonly flashColor = new THREE.Color(ART.fx.core);
+  private readonly heavyColor = new THREE.Color(ART.faction.heavy);
   private readonly transform = new THREE.Object3D();
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
@@ -73,14 +76,17 @@ export class EnemyRenderer {
   private readonly contactVisuals: ContactVisual[] = [];
   private readonly contactIds = new Set<number>();
   private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
-    color: '#fff47d', toneMapped: false });
+    color: ART.fx.core, toneMapped: false });
   private readonly heavyHits: HeavyHitFeedback;
   private readonly giantRenderer: GiantRenderer;
   private readonly giantBurst: DeathBurst;
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
-  private readonly barBackingMaterial = new THREE.SpriteMaterial({ color: '#171c20', depthTest: false, toneMapped: false });
-  private readonly barFillMaterial = new THREE.SpriteMaterial({ color: '#ffd35c', depthTest: false, toneMapped: false });
+  private readonly barFrameTexture = framedBarTexture();
+  private readonly barFillTexture = framedBarTexture(true);
+  private readonly barBackingMaterial = new THREE.SpriteMaterial({ map: this.barFrameTexture, depthTest: false, toneMapped: false });
+  private readonly barFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.faction.gold, depthTest: false, toneMapped: false });
+  private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.fx.impact, depthTest: false, toneMapped: false });
   private readonly capacity = PALETTES.map(() => 1);
   private readonly bodyCapacity = [1, 1, 1, 1];
   private readonly bodyMeshes: THREE.InstancedMesh[];
@@ -103,8 +109,9 @@ export class EnemyRenderer {
       model.geometry.computeBoundingBox();
       return model.geometry.boundingBox!.max.y;
     }));
-    this.grayBodyMaterial = grayBodyModel.material;
-    this.helmetMaterial = source.clone();
+    if (bodyModel.material instanceof THREE.MeshStandardMaterial) illustratedMaterial(bodyModel.material, 'enemy');
+    this.grayBodyMaterial = illustratedMaterial(grayBodyModel.material);
+    this.helmetMaterial = illustratedMaterial(source.clone());
     this.helmetMaterial.color.set('white');
     this.bodyMeshes = runFrames.map((_, frame) => this.createBody(frame, 1));
     this.helmetMeshes = PALETTES.map((palette) => this.createTier(palette, 1));
@@ -173,9 +180,10 @@ export class EnemyRenderer {
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
       bar.backing.position.set(-enemy.x, y, enemy.z);
-      bar.backing.scale.set(width + .08, giantBar ? .26 : .18, 1);
+      bar.fill.material = giantBar ? this.giantBarFillMaterial : this.barFillMaterial;
+      bar.backing.scale.set(width + .10, giantBar ? .36 : .26, 1);
       bar.fill.position.set(-enemy.x + width * (1 - fraction) / 2, y, enemy.z);
-      bar.fill.scale.set(width * fraction, giantBar ? .18 : .11, 1);
+      bar.fill.scale.set(width * fraction, giantBar ? .20 : .14, 1);
     }
     for (; barIndex < this.healthBars.length; barIndex++) {
       this.healthBars[barIndex].backing.visible = false;
@@ -277,7 +285,8 @@ export class EnemyRenderer {
     for (const bar of this.healthBars) this.scene.remove(bar.backing, bar.fill);
     this.healthBars.length = 0;
     this.barBackingMaterial.dispose();
-    this.barFillMaterial.dispose();
+    this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
+    this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.deathBurst.dispose();
     this.heavyHits.dispose();
     this.giantRenderer.dispose(); this.giantBurst.dispose();
@@ -295,7 +304,7 @@ export class EnemyRenderer {
         if (!(model.material instanceof THREE.MeshStandardMaterial)) {
           throw new Error('Enemy contact visuals require standard materials');
         }
-        const material = model.material.clone();
+        const material = illustratedMaterial(model.material.clone(), model === this.bodyModel ? 'enemy' : 'world');
         material.transparent = true;
         material.depthWrite = false;
         return material;
@@ -347,10 +356,10 @@ export class EnemyRenderer {
     let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
-      const bodyMaterial = this.grayBodyMaterial.clone();
+      const bodyMaterial = illustratedMaterial(this.grayBodyMaterial.clone());
       bodyMaterial.transparent = true;
       bodyMaterial.depthWrite = false;
-      const gearMaterial = this.helmetMaterial.clone();
+      const gearMaterial = illustratedMaterial(this.helmetMaterial.clone());
       gearMaterial.transparent = true;
       gearMaterial.depthWrite = false;
       const body = new THREE.Mesh(this.grayBodyModel.geometry, bodyMaterial);
@@ -368,7 +377,7 @@ export class EnemyRenderer {
     setEnemyScale(visual.scale, enemy);
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
-    visual.gearMaterial.color.set('#fff1a0');
+    visual.gearMaterial.color.set(ART.fx.core);
     visual.group.visible = true;
     visual.group.scale.copy(visual.scale).multiplyScalar(enemyDeathPose(0).scale);
     visual.group.position.set(-enemy.x, ENEMY_DEATH_POP, enemy.z);
@@ -381,7 +390,7 @@ export class EnemyRenderer {
       const elapsed = nowMs - visual.startedAtMs;
       if (elapsed >= ENEMY_DEATH_MS) { visual.group.visible = false; continue; }
       const { scale, opacity, rise } = enemyDeathPose(elapsed);
-      visual.gearMaterial.color.set(elapsed < 35 ? '#fff1a0' : '#adb4b8');
+      visual.gearMaterial.color.set(elapsed < 35 ? ART.fx.core : ART.fx.gray);
       visual.bodyMaterial.opacity = opacity;
       visual.gearMaterial.opacity = opacity;
       visual.group.scale.copy(visual.scale).multiplyScalar(scale);

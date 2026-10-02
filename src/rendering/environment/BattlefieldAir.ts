@@ -1,3 +1,4 @@
+import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 
@@ -12,9 +13,9 @@ export class BattlefieldAir {
   private readonly origins = new Float32Array(FOOT_DUST_CAPACITY * 3);
   private readonly ashGeometry = new THREE.BufferGeometry();
   private readonly dustGeometry = new THREE.BufferGeometry();
-  private readonly ashMaterial = new THREE.PointsMaterial({ color: '#ffe8bf', size: .042, transparent: true,
+  private readonly ashMaterial = new THREE.PointsMaterial({ color: ART.fx.ash, size: .042, transparent: true,
     opacity: .25, depthWrite: false });
-  private readonly dustMaterial = new THREE.PointsMaterial({ color: '#e5ccaa', size: .10, transparent: true,
+  private readonly dustMaterial = new THREE.PointsMaterial({ color: ART.fx.dust, size: .10, transparent: true,
     opacity: .22, depthWrite: false });
   private readonly ash: THREE.Points;
   private readonly dust: THREE.Points;

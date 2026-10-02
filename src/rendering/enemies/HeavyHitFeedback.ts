@@ -1,3 +1,4 @@
+import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 export const HEAVY_HIT_FLASH_MS = 100;
@@ -8,7 +9,7 @@ interface Burst { id: number; startedAt: number; body: THREE.Mesh; sparks: THREE
 export class HeavyHitFeedback {
   private readonly lastHit = new Map<number, number>();
   private readonly bursts: Burst[] = [];
-  private readonly flash = new THREE.MeshBasicMaterial({ color: '#fff2ce', transparent: true, opacity: .72,
+  private readonly flash = new THREE.MeshBasicMaterial({ color: ART.fx.core, transparent: true, opacity: .72,
     depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, toneMapped: false });
   private readonly geometry = new THREE.SphereGeometry(.035, 5, 3);
   constructor(private readonly scene: THREE.Scene) {}
@@ -17,7 +18,7 @@ export class HeavyHitFeedback {
     this.lastHit.set(enemy.id, nowMs);
     let burst = this.bursts.find(b => !b.body.visible && !b.sparks.visible);
     if (!burst && this.bursts.length < MAX_BURSTS) {
-      const material = new THREE.MeshBasicMaterial({ color: '#ffe4a2', transparent: true, depthWrite: false, toneMapped: false });
+      const material = new THREE.MeshBasicMaterial({ color: ART.fx.impact, transparent: true, depthWrite: false, toneMapped: false });
       const body = new THREE.Mesh(this.geometry, this.flash); body.name = 'heavy-hit-body'; body.matrixAutoUpdate = false;
       const sparks = new THREE.Group(); sparks.name = 'heavy-hit-sparks';
       for (let index = 0; index < 6; index++) sparks.add(new THREE.Mesh(this.geometry, material));

@@ -1,3 +1,4 @@
+import { ART } from '../art/ArtDirection';
 import * as THREE from 'three';
 import type { GameRenderState } from './RenderState';
 import type { SquadRenderer } from './squad/SquadRenderer';
@@ -19,7 +20,7 @@ export class ContactShadowRenderer {
   private readonly geometry = new THREE.PlaneGeometry(1, 1);
   private readonly texture = this.createTexture();
   private readonly material = new THREE.MeshBasicMaterial({
-    color: '#1d292c', map: this.texture, transparent: true, opacity: .28,
+    color: ART.bar.shadow, map: this.texture, transparent: true, opacity: .28,
     depthWrite: false, toneMapped: false,
   });
   private readonly transform = new THREE.Object3D();

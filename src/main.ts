@@ -1,3 +1,4 @@
+import { applyArtTheme } from './ui/ArtTheme';
 import { GameApp } from './app/GameApp';
 import { ConfigStore } from './config/ConfigStore';
 import type { LevelDefinition } from './level/LevelDefinition';
@@ -13,6 +14,7 @@ if (!viewport) {
   throw new Error('Game viewport is missing');
 }
 const gameViewport = viewport;
+applyArtTheme(gameViewport);
 const buildLabel = mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 if (import.meta.env.DEV) void refreshDevBuildLabel(buildLabel, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 

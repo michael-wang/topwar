@@ -36,7 +36,7 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps helmet and vest blue through Tier 20 while rifle stays charcoal', () => {
     expect(PLAYER_PALETTE.map((entry) => entry.body)).toEqual([
-      '#1769ee', '#10429b', '#2938c7', '#1b8fd6', '#5d5ee8',
+      '#2879cb', '#10429b', '#2938c7', '#1b8fd6', '#5d5ee8',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
@@ -152,10 +152,10 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps four running body poses and six helmet/vest InstancedMesh pairs through Tier 20', () => {
     expect(ENEMY_PALETTE.map((entry) => entry.body)).toEqual([
-      '#9e2f3b', '#657236', '#62437c', '#a64e2d', '#46525a', '#896b29',
+      '#ad3d4b', '#657236', '#62437c', '#a64e2d', '#46525a', '#896b29',
     ]);
     expect(ENEMY_PALETTE.map((entry) => entry.head)).toEqual([
-      '#c64a55', '#87944a', '#815b9d', '#c66a42', '#68767f', '#ad8939',
+      '#d77869', '#87944a', '#815b9d', '#c66a42', '#68767f', '#ad8939',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
@@ -200,7 +200,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(damaged, 10);
     const color = new THREE.Color();
     helmet.getColorAt(0, color);
-    expect(color.getHexString()).toBe('ffe36e');
+    expect(color.getHexString()).toBe('fff7e8');
     helmet.getColorAt(1, color);
     expect(color.getHexString()).toBe('46525a');
     renderer.update(damaged.slice(1), 100);
@@ -214,7 +214,7 @@ describe('Modern Toy Soldier presentation', () => {
     expect(gray.color.getHexString()).toBe('aeb4b7');
     expect(gray.opacity).toBeLessThan(1);
     expect(((death.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color
-      .getHexString()).toBe('adb4b8');
+      .getHexString()).toBe('a2b2b8');
     renderer.update(damaged.slice(1), 800);
     expect(death.visible).toBe(false);
     renderer.reset();
@@ -273,7 +273,7 @@ describe('Modern Toy Soldier presentation', () => {
     const contact = scene.getObjectByName('enemy-contact-exchange') as THREE.Group;
     expect(contact.visible).toBe(true);
     expect(((contact.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
-      .color.getHexString()).toBe('fff47d');
+      .color.getHexString()).toBe('fff7e8');
     renderer.update([], 200);
     expect(contact.visible).toBe(true);
     const otherDeath = scene.children.find((child) => child instanceof THREE.Group

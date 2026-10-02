@@ -1,4 +1,4 @@
-# Art + Animation Quality Pass
+# Art Direction Unification Pass
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
@@ -6,6 +6,49 @@ barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
 become easier. Combat never pauses for a level, and no upgrade choices or support abilities
 are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
+
+## Illustrated battlefield art direction
+
+This is a **presentation-only art direction pass** over the existing animation.
+It uses a painted coastal toy-world language: warm ochre/cream sand, cool
+blue-gray fog and ruins, ink-blue steel and muted rust/concrete. Cobalt defenders,
+crimson Grunts, ochre Heavies and crimson/gold Giant armor share matte surfaces
+and broad, quiet tonal washes. The face/leather atlas regions and all baked
+character geometry are retained. There is no photorealistic texture noise,
+external artwork, postprocess stack or new lighting/shadow pipeline.
+
+`src/art/ArtDirection.ts` is the shared presentation palette. Surface shading
+composes with the existing player limb shader rather than replacing animation.
+Chipped, beveled prop silhouettes retain normalized placement bounds. The sand
+uses a small generated cream/ochre wash texture; corridor scuffs have irregular
+soft brush edges instead of rectangular stamps. Warm sunlight/cool hemisphere
+fill separates saturated characters from the quieter distance. Shoreline,
+obstacle placement and lane membership remain unchanged.
+
+XP and Heavy/Giant HP now share a **rounded brass-and-ink frame family**: warm
+upper rim, dark blue outline/backing, inset fill and restrained depth. World bars
+use two shared generated textures, with gold Heavy fill and hot coral Giant fill.
+HP truth, placement and update timing remain unchanged. XP retains the full-width
+masked red/orange/gold progression, 70/90% anticipation, flash and label pop.
+HUD controls use the same rim/backing and friendly weighted typography; lower-left
+instructions remain compact, transparent and pointer-transparent.
+
+Muzzle/tracer/level-up highlights share a warm white core/gold family; Heavy/Giant
+impacts use hot coral sparks; death debris mixes warm white/gold/ember and gray
+bodies retain their short collapse/fade. Dust/ash use quiet sand/cream tones.
+Existing particle budgets, animation timing, hit rate limits and level-up intensity
+are retained. Reinforcement arrival, fire scheduling and all combat/progression
+values are unchanged. No simulation, snapshot schema, input or balance data edits
+are part of this pass; LV7 balance work remains deferred.
+
+The bevels add approximately **6,400 fixed environment triangles**, and sand,
+scuffs and bars add **four shared small textures**. Crowd instancing, pooled
+feedback, geometry count and draw-call structure are retained. Software-rendered
+portrait checks cover 50/100/150/200 enemies; they are not physical-phone FPS
+claims. Matching before/after portrait evidence covers early play, Grunts/Heavy,
+Giant and HUD details. Distant cranes remain deliberately simple silhouettes;
+the small atlas accessories and faceted Giant ornaments remain visible style
+limitations for a future asset-authoring pass.
 
 ## Presentation quality pass
 

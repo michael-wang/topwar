@@ -33,7 +33,7 @@ it('renders a larger amber Heavy and preserves configured scale through death', 
   expect(scale.x).toBeCloseTo(1.89);
   const color = new THREE.Color();
   helmets.getColorAt(1, color);
-  expect(color.getHexString()).toBe('e7ad43');
+  expect(color.getHexString()).toBe('daa34c');
   renderer.update([], 100);
   const deaths = scene.children.filter((child) => child instanceof THREE.Group);
   expect(deaths.some((death) => Math.abs(death.scale.x - 1.89 * 1.07) < .001)).toBe(true);

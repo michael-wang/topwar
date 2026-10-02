@@ -1,3 +1,7 @@
+import { ART } from '../../art/ArtDirection';
+import { illustratedMaterial } from '../art/IllustratedMaterial';
+import { paintedBlockGeometry } from '../art/PaintedGeometry';
+import { sandWashTexture } from '../art/PaintedTextures';
 import * as THREE from 'three';
 import { ARTILLERY_SITES, ArtilleryScheduler, type ArtilleryLayer } from './ArtilleryScheduler';
 import { WarActivityScheduler, SKY_FLAK_STARTED, SHIP_PASS_MS,
@@ -9,7 +13,7 @@ const JOINT_SPACING = 12;
 const JOINT_COUNT = 18;
 export const BATTLEFIELD_FOG_NEAR = 76;
 export const BATTLEFIELD_FOG_FAR = 108;
-export const BATTLEFIELD_FOG_COLOR = '#8eaaae';
+export const BATTLEFIELD_FOG_COLOR = ART.world.fog;
 const ARTILLERY_FLASH_MS = 90;
 const ARTILLERY_GLOW_MS = 400;
 const ARTILLERY_SMOKE_MS = 2700;
@@ -74,6 +78,7 @@ export class BridgeEnvironment {
   private readonly ship = new THREE.Group();
   private readonly aircraft: THREE.Group[] = [];
   private smokeTexture: THREE.DataTexture | null = null;
+  private sandTexture: THREE.DataTexture | null = null;
   private readonly deck: THREE.Mesh;
   private readonly shoulders: THREE.Mesh[] = [];
   private readonly barriers: THREE.Mesh[] = [];
@@ -146,16 +151,19 @@ export class BridgeEnvironment {
     this.buildInferno();
     this.buildArtillery();
     this.buildActivity();
-    const sand = this.mesh(new THREE.PlaneGeometry(150, 100), this.material('#c9ad7c'), 'defense-sand');
+    const sandMaterial = this.material(ART.world.sand, false, 1, true);
+    sandMaterial.map = this.sandTexture = sandWashTexture();
+    this.sandTexture.wrapS = THREE.RepeatWrapping; this.sandTexture.repeat.set(10, 1);
+    const sand = this.mesh(new THREE.PlaneGeometry(150, 100), sandMaterial, 'defense-sand');
     sand.rotation.x = -Math.PI / 2;
     sand.position.set(0, .005, 3);
-    const sea = this.mesh(new THREE.PlaneGeometry(240, 180), this.material('#547e84'), 'defense-sea');
+    const sea = this.mesh(new THREE.PlaneGeometry(240, 180), this.material(ART.world.sea, false, 1, true), 'defense-sea');
     sea.rotation.x = -Math.PI / 2;
     sea.position.set(0, -.06, 143);
     this.defenseBeach.add(sand, sea);
     this.buildDefenseSideWrecks();
-    const foamMaterial = this.material('#bac7b3', true, .4);
-    const duneMaterial = this.material('#b79b6c');
+    const foamMaterial = this.material(ART.world.foam, true, .4);
+    const duneMaterial = this.material(ART.world.sandShade);
     for (let patch = 0; patch < 20; patch++) {
       const foam = this.mesh(new THREE.PlaneGeometry(7, .75), foamMaterial, 'shoreline-foam');
       foam.rotation.x = -Math.PI / 2;
@@ -238,18 +246,19 @@ export class BridgeEnvironment {
     this.scene.background = this.previousBackground;
     this.scene.fog = this.previousFog;
     this.smokeTexture?.dispose();
+    this.sandTexture?.dispose();
     for (const geometry of this.geometries) geometry.dispose();
     for (const material of this.materials) material.dispose();
   }
 
   private buildDefenseSideWrecks(): void {
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const geometry = paintedBlockGeometry();
     this.geometries.push(geometry);
     const material = this.material('#ffffff');
     const transform = new THREE.Object3D();
-    const concrete = new THREE.Color('#77766a');
-    const steel = new THREE.Color('#41494a');
-    const rust = new THREE.Color('#72564a');
+    const concrete = new THREE.Color(ART.world.concrete);
+    const steel = new THREE.Color(ART.world.steel);
+    const rust = new THREE.Color(ART.world.rust);
     for (const side of [-1, 1]) {
       // Six cheap pieces per pile, batched into one draw per side. Broken, low
       // silhouettes frame the approach without covering outer combat corridors.
@@ -283,32 +292,32 @@ export class BridgeEnvironment {
   }
 
   private buildBattlefield(): void {
-    const blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const blockGeometry = paintedBlockGeometry();
     const glowGeometry = new THREE.SphereGeometry(1, 8, 6);
     const flameGeometry = new THREE.ConeGeometry(.42, 1.15, 5);
     this.geometries.push(blockGeometry, glowGeometry, flameGeometry);
-    const nearMaterial = this.material('#424e54');
-    const nearAccent = this.material('#566267');
-    const midMaterial = this.material('#66767a');
-    const midAccent = this.material('#78888b');
-    const farMaterial = this.material('#6d8b91');
+    const nearMaterial = this.material(ART.world.near);
+    const nearAccent = this.material(ART.world.nearAccent);
+    const midMaterial = this.material(ART.world.mid);
+    const midAccent = this.material(ART.world.midAccent);
+    const farMaterial = this.material(ART.world.far);
     this.smokeTexture = this.createSmokeTexture();
     const nearSmoke = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: '#485459', transparent: true, opacity: .47, depthWrite: false });
+      color: ART.world.near, transparent: true, opacity: .47, depthWrite: false });
     const midSmoke = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: '#647176', transparent: true, opacity: .42, depthWrite: false });
+      color: ART.world.mid, transparent: true, opacity: .42, depthWrite: false });
     const farSmoke = new THREE.SpriteMaterial({ map: this.smokeTexture,
       color: '#a4b9bb', transparent: true, opacity: .22, depthWrite: false });
     const lowHaze = new THREE.SpriteMaterial({ map: this.smokeTexture,
       color: BATTLEFIELD_FOG_COLOR, transparent: true, opacity: .34, depthWrite: false });
     this.materials.push(nearSmoke, midSmoke, farSmoke, lowHaze);
-    const wreckMaterial = this.material('#2b3335');
+    const wreckMaterial = this.material(ART.world.steel);
     const glowMaterial = new THREE.MeshBasicMaterial({ color: '#a46239',
       transparent: true, opacity: .2, depthWrite: false });
     const flameMaterial = new THREE.MeshBasicMaterial({ color: '#bd7947',
       transparent: true, opacity: .66, depthWrite: false });
     const fireSmokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: '#283136', transparent: true, opacity: .55, depthWrite: false });
+      color: ART.world.steel, transparent: true, opacity: .55, depthWrite: false });
     this.materials.push(glowMaterial, flameMaterial, fireSmokeMaterial);
 
     const ruin = (layer: THREE.Group, x: number, z: number, width: number,
@@ -412,11 +421,11 @@ export class BridgeEnvironment {
   }
 
   private buildBeachhead(): void {
-    const block = new THREE.BoxGeometry(1, 1, 1);
+    const block = paintedBlockGeometry();
     this.geometries.push(block);
-    const steel = new THREE.MeshBasicMaterial({ color: '#526a70', transparent: true,
+    const steel = new THREE.MeshBasicMaterial({ color: ART.world.mid, transparent: true,
       opacity: .34, depthWrite: false, fog: false });
-    const distance = new THREE.MeshBasicMaterial({ color: '#647c81', transparent: true,
+    const distance = new THREE.MeshBasicMaterial({ color: ART.world.far, transparent: true,
       opacity: .25, depthWrite: false, fog: false });
     this.materials.push(steel, distance);
     const part = (parent: THREE.Group, name: string, x: number, y: number,
@@ -578,10 +587,10 @@ export class BridgeEnvironment {
   private buildArtillery(): void {
     for (let index = 0; index < 5; index++) {
       const flashMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-        color: '#fff1b1', transparent: true, opacity: 0, depthWrite: false,
+        color: ART.fx.core, transparent: true, opacity: 0, depthWrite: false,
         blending: THREE.AdditiveBlending, fog: false });
       const glowMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-        color: '#dd7437', transparent: true, opacity: 0, depthWrite: false,
+        color: ART.fx.impact, transparent: true, opacity: 0, depthWrite: false,
         blending: THREE.AdditiveBlending, fog: false });
       const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
         color: '#4c585d', transparent: true, opacity: 0, depthWrite: false });
@@ -603,7 +612,7 @@ export class BridgeEnvironment {
   }
 
   private buildActivity(): void {
-    const block = new THREE.BoxGeometry(1, 1, 1);
+    const block = paintedBlockGeometry();
     this.geometries.push(block);
     const hull = this.material('#303b40', true, 0);
     const fittings = this.material('#39474b', true, 0);
@@ -642,7 +651,7 @@ export class BridgeEnvironment {
     this.shipLayer.add(this.ship);
 
     for (let index = 0; index < 2; index++) {
-      const planeMaterial = new THREE.MeshBasicMaterial({ color: '#252d31',
+      const planeMaterial = new THREE.MeshBasicMaterial({ color: ART.world.steel,
         transparent: true, opacity: 0, depthWrite: false, fog: false });
       this.aircraftMaterials.push(planeMaterial);
       this.materials.push(planeMaterial);
@@ -659,13 +668,13 @@ export class BridgeEnvironment {
 
     for (let index = 0; index < 2; index++) {
       const flashMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-        color: '#e5c399', transparent: true, opacity: 0, depthWrite: false,
+        color: ART.fx.gold, transparent: true, opacity: 0, depthWrite: false,
         blending: THREE.AdditiveBlending, fog: false });
       const glowMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
         color: '#a97455', transparent: true, opacity: 0, depthWrite: false,
         blending: THREE.AdditiveBlending, fog: false });
       const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-        color: '#252d31', transparent: true, opacity: 0, depthWrite: false,
+        color: ART.world.steel, transparent: true, opacity: 0, depthWrite: false,
         fog: false });
       this.materials.push(flashMaterial, glowMaterial, smokeMaterial);
       const group = new THREE.Group();
@@ -799,9 +808,10 @@ export class BridgeEnvironment {
     }
   }
 
-  private material(color: string, transparent = false, opacity = 1): THREE.MeshStandardMaterial {
+  private material(color: string, transparent = false, opacity = 1, ground = false): THREE.MeshStandardMaterial {
     const material = new THREE.MeshStandardMaterial({ color, transparent, opacity,
       depthWrite: !transparent, roughness: 1 });
+    illustratedMaterial(material, ground ? 'ground' : 'world');
     this.materials.push(material);
     return material;
   }

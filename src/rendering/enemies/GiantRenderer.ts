@@ -1,3 +1,5 @@
+import { ART } from '../../art/ArtDirection';
+import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { giantWeightPose } from '../../presentation/CharacterMotion';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
@@ -8,13 +10,13 @@ const DEATH_MS = 650;
 // One introduction per run; all ornament/weapon motion is disposable presentation.
 export class GiantRenderer {
   private readonly group = new THREE.Group();
-  private readonly red = new THREE.MeshStandardMaterial({ color: '#d32d3e', roughness: .65,
+  private readonly red = new THREE.MeshStandardMaterial({ color: ART.faction.giant, roughness: .65,
     emissive: '#ffc16f', emissiveIntensity: 0 });
-  private readonly gold = new THREE.MeshStandardMaterial({ color: '#ffc650', roughness: .5,
+  private readonly gold = new THREE.MeshStandardMaterial({ color: ART.faction.gold, roughness: .5,
     metalness: .1, emissive: '#fff0b9', emissiveIntensity: 0 });
-  private readonly skin = new THREE.MeshStandardMaterial({ color: '#e7b88c', roughness: .9 });
-  private readonly steel = new THREE.MeshStandardMaterial({ color: '#879eac', roughness: .6 });
-  private readonly leather = new THREE.MeshStandardMaterial({ color: '#614438', roughness: .9 });
+  private readonly skin = new THREE.MeshStandardMaterial({ color: ART.faction.skin, roughness: .9 });
+  private readonly steel = new THREE.MeshStandardMaterial({ color: ART.world.nearAccent, roughness: .6 });
+  private readonly leather = new THREE.MeshStandardMaterial({ color: ART.faction.leather, roughness: .9 });
   private readonly bodyMaterial: THREE.MeshStandardMaterial;
   private readonly deathMaterial: THREE.MeshStandardMaterial;
   private readonly box = new THREE.BoxGeometry(1, 1, 1);
@@ -29,7 +31,7 @@ export class GiantRenderer {
   private readonly weapon = new THREE.Group();
   private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color }[];
   private readonly dimensions: THREE.Vector3;
-  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#ffe6aa', transparent: true,
+  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold, transparent: true,
     opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
   private readonly ringGeometry = new THREE.RingGeometry(1, 1.2, 32);
   private readonly ring = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
@@ -43,8 +45,8 @@ export class GiantRenderer {
     private readonly grayBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
     if (!(body.material instanceof THREE.MeshStandardMaterial)
       || !(grayBody.material instanceof THREE.MeshStandardMaterial)) throw new Error('Giant requires soldier materials');
-    this.bodyMaterial = body.material.clone(); this.bodyMaterial.color.set('white');
-    this.deathMaterial = grayBody.material.clone(); this.deathMaterial.transparent = true; this.deathMaterial.depthWrite = false;
+    this.bodyMaterial = illustratedMaterial(body.material.clone(), 'enemy'); this.bodyMaterial.color.set('white');
+    this.deathMaterial = illustratedMaterial(grayBody.material.clone()); this.deathMaterial.transparent = true; this.deathMaterial.depthWrite = false;
     this.body = new THREE.Mesh(body.geometry, this.bodyMaterial);
     this.group.name = 'giant-assault-soldier';
     this.group.add(this.body, new THREE.Mesh(helmet.geometry, this.red), new THREE.Mesh(vest.geometry, this.red));
@@ -91,7 +93,7 @@ export class GiantRenderer {
       spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
     }
     this.palette = [this.red, this.gold, this.skin, this.steel, this.leather, this.bodyMaterial]
-      .map(material => ({ material, color: material.color.clone() }));
+      .map(material => ({ material: illustratedMaterial(material), color: material.color.clone() }));
     this.group.updateMatrixWorld(true);
     this.dimensions = new THREE.Box3().setFromObject(this.group).getSize(new THREE.Vector3());
     this.ring.rotation.x = -Math.PI / 2; this.ring.name = 'giant-death-impact';
