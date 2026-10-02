@@ -1,7 +1,8 @@
+import { reinforcementArrivalPose } from '../../presentation/ReinforcementArrival';
 import { LEVEL_UP_MS, WEAPON_AFTERGLOW_MS, type ProgressionLevelUpEvent } from '../../presentation/ProgressionLevelUp';
 import { PlayerLevelUpEffect } from './PlayerLevelUpEffect';
 import * as THREE from 'three';
-import { createSquadFormation } from '../../simulation/squad/formation';
+import { createSquadFormation, createDefenseSquadFormation } from '../../simulation/squad/formation';
 import type { GameRenderState, ProjectileRenderState } from '../RenderState';
 import { PLAYER_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -81,6 +82,7 @@ export class SquadRenderer {
   private tierUpAtMs = -Infinity;
   private lastSeenProjectileId = 0;
   private readonly rifleFiredAtMs = new Map<number, number>();
+  private readonly memberFiredAtMs = new Map<number, number>();
   private rocketFiredAtMs = -Infinity;
 
   forEachVisibleMemberPosition(visit: (position: THREE.Vector3) => void): void {
@@ -179,10 +181,14 @@ export class SquadRenderer {
       this.tierRing.position.set(-state.player.x, 0.035, state.player.z);
       this.tierRing.scale.setScalar(0.5 + 1.8 * progress);
     }
-    const offsets = createSquadFormation(state.squad.count, state.squad.formationSpacing);
+    const arrival = state.squad.reinforcement;
+    const entering = !!arrival && arrival.progress < 1 && state.squad.count > 0;
+    const offsets = createDefenseSquadFormation(entering ? 2 : state.squad.count,
+      state.squad.formationSpacing, state.defenseMode ? arrival : undefined);
+    if (entering && state.squad.count === 1) offsets[0].x *= Math.min(1, arrival!.progress / .82);
     const maxOffsetX = offsets.reduce((max, offset) => Math.max(max, Math.abs(offset.x)), 0);
     // Only the rendered anchors spread out; simulation formation and collision stay unchanged.
-    const visualSpread = maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
+    const visualSpread = state.defenseMode && arrival ? 1 : maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
       (state.track.halfWidth - 0.4) / maxOffsetX));
     while (this.members.length < offsets.length) this.addMember();
 
@@ -194,7 +200,8 @@ export class SquadRenderer {
       member.group.visible = offset !== undefined;
       if (!offset) continue;
       if (!wasVisible) member.appearedAtMs = nowMs;
-      const isRocket = index >= rocketStart;
+      const recruit = entering && index === state.squad.count;
+      const isRocket = !recruit && index >= rocketStart;
       let tier = 0;
       if (!isRocket) {
         let roleIndex = index;
@@ -203,7 +210,8 @@ export class SquadRenderer {
           if (roleIndex < 0) { tier = tierIndex + 1; break; }
         }
       }
-      const firedAt = isRocket ? this.rocketFiredAtMs : this.rifleFiredAtMs.get(tier) ?? -Infinity;
+      const firedAt = recruit ? -Infinity : isRocket ? this.rocketFiredAtMs
+        : state.defenseMode ? this.memberFiredAtMs.get(index) ?? -Infinity : this.rifleFiredAtMs.get(tier) ?? -Infinity;
       const recoil = firingRecoil(nowMs, firedAt);
       const spawnScale = soldierSpawnScale(nowMs - member.appearedAtMs);
       const upgrading = tierActive && tier === this.tierUpTier;
@@ -216,15 +224,17 @@ export class SquadRenderer {
       member.helmet.material = hit ? this.hitMaterial : levelActive ? this.levelGearMaterial : glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       member.vest.material = member.helmet.material;
-      member.rifle.rotation.x = -0.18 * recoil;
+      const entrance = recruit ? reinforcementArrivalPose(arrival!.progress) : undefined;
+      member.rifle.rotation.x = (entrance?.weaponLower ?? 0) - 0.18 * recoil;
       member.rifle.position.z = -0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < (afterglow ? 90 : FLASH_MS);
       member.muzzle.material = afterglow ? this.poweredMuzzleMaterial : this.muzzleMaterial;
       member.muzzle.scale.setScalar((afterglow ? 1.9 : 1) * (1 + 0.2 * Math.min(2, Math.max(0, tier - 1))));
       // The camera looks along +Z, which mirrors X on screen.
-      member.group.position.set(-(state.player.x + offset.x * visualSpread), 0,
-        state.player.z + offset.z * visualSpread);
+      member.group.position.set(-(state.player.x + offset.x * visualSpread + (entrance?.sideOffset ?? 0)), entrance?.bob ?? 0,
+        state.player.z + offset.z * visualSpread + (entrance?.backOffset ?? 0));
+      member.group.rotation.set(entrance?.lean ?? 0, 0, entrance ? Math.sin(arrival!.progress * Math.PI * 10) * .035 : 0);
     }
     this.lastRenderedSquadCount = state.squad.count;
     for (const [index, until] of this.hitMemberIndices) {
@@ -239,6 +249,7 @@ export class SquadRenderer {
     this.levelEffect.reset();
     this.lastSeenProjectileId = 0;
     this.rifleFiredAtMs.clear();
+    this.memberFiredAtMs.clear();
     this.rocketFiredAtMs = -Infinity;
     this.previousRifleCounts = [];
     this.tierUpTier = null;
@@ -275,7 +286,10 @@ export class SquadRenderer {
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
     for (const projectile of projectiles) {
       if (projectile.id > this.lastSeenProjectileId) {
-        if (projectile.kind === 'rifle') this.rifleFiredAtMs.set(projectile.tier, nowMs);
+        if (projectile.kind === 'rifle') {
+          this.rifleFiredAtMs.set(projectile.tier, nowMs);
+          this.memberFiredAtMs.set(projectile.memberIndex ?? 0, nowMs);
+        }
         if (projectile.kind === 'rocket') this.rocketFiredAtMs = nowMs;
       }
       this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);

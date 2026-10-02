@@ -5,6 +5,7 @@ export interface GameRenderState {
     readonly z: number;
   };
   readonly squad: {
+    readonly reinforcement?: { progress: number; reinforcementSpacing: number; reinforcementStagger: number };
     readonly count: number;
     readonly rocketCount: number;
     readonly rifleCounts: readonly number[];
@@ -65,6 +66,7 @@ export interface UpgradePickupRenderState {
 }
 
 export interface ProjectileRenderState {
+  readonly memberIndex?: number;
   readonly slopeX?: number;
   readonly id: number;
   readonly kind: 'rifle' | 'rocket';

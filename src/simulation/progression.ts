@@ -24,6 +24,8 @@ export function grantXp(state: ProgressionState, amount: number, balance: Progre
   return { level, xp };
 }
 export function effectiveRifleFireRate(base: number, level: number, balance: ProgressionBalance): number {
+  // This level rewards a soldier instead of also granting per-soldier fire rate.
+  level -= level >= balance.reinforcementLevel ? 1 : 0;
   const earlyGains = Math.min(level - 1, balance.fireRateTaperStartLevel - 2);
   const taperedGains = Math.max(0, level - balance.fireRateTaperStartLevel + 1);
   const lateBonus = balance.fireRateTaperFirstGain

@@ -33,7 +33,11 @@
       "fireRatePerLevel": 1,
       "fireRateTaperStartLevel": 5,
       "fireRateTaperFirstGain": 0.5,
-      "fireRateTaperDecay": 0.8
+      "fireRateTaperDecay": 0.8,
+      "reinforcementLevel": 7,
+      "reinforcementArrivalSeconds": 1.1,
+      "reinforcementSpacing": 0.72,
+      "reinforcementStagger": 0.18
     },
     "heavyFrontClearance": 2.5,
     "pressureMultipliers": [1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65],
@@ -42,7 +46,7 @@
       "unlockLevel": 6,
       "introDelaySeconds": 4,
       "hp": 210,
-      "xp": 30,
+      "xp": 120,
       "speed": 0.08,
       "visualScale": 3.6,
       "widthMultiplier": 0.68,

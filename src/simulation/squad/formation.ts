@@ -29,3 +29,13 @@ export function createSquadFormation(count: number, spacing: number): FormationO
   }
   return offsets.map(({ x, z }) => ({ x: x - sumX / count, z: z - sumZ / count }));
 }
+
+
+// Both Rifle members remain within the same corridor; no independent lane targets.
+export function createDefenseSquadFormation(count: number, spacing: number,
+  pair?: { reinforcementSpacing: number; reinforcementStagger: number }): FormationOffset[] {
+  return count === 2 && pair ? [
+    { x: -pair.reinforcementSpacing / 2, z: pair.reinforcementStagger / 2 },
+    { x: pair.reinforcementSpacing / 2, z: -pair.reinforcementStagger / 2 },
+  ] : createSquadFormation(count, spacing);
+}

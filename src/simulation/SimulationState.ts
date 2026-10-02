@@ -75,6 +75,7 @@ export interface UpgradePickupSimulationState {
 }
 
 export interface ProjectileSimulationState {
+  memberIndex?: number;
   lane?: number;
   slopeX?: number;
   id: number;
@@ -91,12 +92,14 @@ export interface ProjectileSimulationState {
 }
 
 export interface WeaponSimulationState {
+  rifleMemberCooldowns?: number[];
   rifleCooldownRemainingSeconds: number;
   rocketCooldownRemainingSeconds: number;
   nextProjectileId: number;
 }
 
 export interface SimulationState {
+  reinforcement?: { startedAtSeconds: number | null; arrived: boolean };
   giantEncounter?: { scheduledAtSeconds: number | null; spawned: boolean };
   progression?: { level: number; xp: number };
   catharsis?: { balance: CatharsisConfig; trackHalfWidth: number; rewardRowsPerReward?: number };

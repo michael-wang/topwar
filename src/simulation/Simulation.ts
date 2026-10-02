@@ -8,7 +8,7 @@ import { rewardPlacementForBlock } from './enemies/streamRewards';
 import { effectiveSeed } from './enemies/effectiveSeed';
 import { EnemyCollisionIndex, type EnemyCandidateSource } from './enemies/EnemyCollisionIndex';
 import { addRifleSoldiers, afterCasualtiesWithBreakdown, normalizeRifleSquad, validateSquad } from './squad/composition';
-import { createSquadFormation } from './squad/formation';
+import { createDefenseSquadFormation } from './squad/formation';
 import { readExactValue, storeExactValue } from './tiers/exactValue';
 import { bossMaxHpForTier, bossRowForTier, enemyTierForRow, exchangeValueForTier,
   enemyPowerForTier, riflePowerForTier, rewardTierForRow, validTier, type TierPower } from './tiers/tierRules';
@@ -291,6 +291,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'boss', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.hasOwn(state, 'catharsis')) fields.push('catharsis');
   if (Object.hasOwn(state, 'progression')) fields.push('progression');
+  if (Object.hasOwn(state, 'reinforcement')) fields.push('reinforcement');
   if (Object.hasOwn(state, 'giantEncounter')) fields.push('giantEncounter');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
@@ -303,6 +304,17 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     || (progression.xp as number) < 0
     || (progression.xp as number) >= requiredXp(progression.level as number, catharsis.balance.progression))) {
     throw new Error('Simulation progression must have a valid level and current-level XP');
+  }
+  const reinforcement = state.reinforcement;
+  if (reinforcement !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(reinforcement)
+    || Object.keys(reinforcement).length !== 2 || typeof reinforcement.arrived !== 'boolean'
+    || !(reinforcement.startedAtSeconds === null || (typeof reinforcement.startedAtSeconds === 'number'
+      && Number.isFinite(reinforcement.startedAtSeconds) && reinforcement.startedAtSeconds >= 0
+      && reinforcement.startedAtSeconds <= (state.elapsedSeconds as number)))
+    || (reinforcement.arrived && reinforcement.startedAtSeconds === null)
+    || (reinforcement.startedAtSeconds !== null && (!isPlainObject(progression)
+      || (progression.level as number) < catharsis.balance.progression.reinforcementLevel)))) {
+    throw new Error('Invalid reinforcement state');
   }
   const giantEncounter = state.giantEncounter;
   if (giantEncounter !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(giantEncounter)
@@ -529,7 +541,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const projectileIds = new Set<number>();
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
-    if (Object.keys(value).length !== 11 + (value.lane === undefined ? 0 : 2)
+    if (Object.keys(value).length !== 11 + (value.lane === undefined ? 0 : 2) + (value.memberIndex === undefined ? 0 : 1)
+      || (value.memberIndex !== undefined && (value.kind !== 'rifle' || value.lane === undefined
+        || !Number.isSafeInteger(value.memberIndex) || (value.memberIndex as number) < 0))
       || (value.lane !== undefined && (!laneIsValid(value.lane) || value.kind !== 'rifle'
         || typeof value.slopeX !== 'number' || !Number.isFinite(value.slopeX)))
       || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'hitRadiusBonus', 'penetrationRemaining']
@@ -571,6 +585,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`);
     }
     return { id: value.id as number, kind: value.kind as ProjectileSimulationState['kind'],
+      ...(value.memberIndex !== undefined ? { memberIndex: value.memberIndex as number } : {}),
       ...(value.lane !== undefined ? { lane: value.lane as number, slopeX: value.slopeX as number } : {}),
       tier: value.tier as number,
       x: value.x, z: value.z, speed: value.speed,
@@ -579,7 +594,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       penetrationRemaining: storeExactValue(penetrationRemaining) };
   });
   const weapons = state.weapons;
-  if (!isPlainObject(weapons) || Object.keys(weapons).length !== 3
+  if (!isPlainObject(weapons) || Object.keys(weapons).length !== 3 + (weapons.rifleMemberCooldowns === undefined ? 0 : 1)
     || ['rifleCooldownRemainingSeconds', 'rocketCooldownRemainingSeconds', 'nextProjectileId']
       .some((field) => !Object.hasOwn(weapons, field))) {
     throw new Error('Simulation weapons state has missing or unknown fields');
@@ -590,6 +605,12 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation ${key} must be finite and non-negative`);
     }
   }
+  if (weapons.rifleMemberCooldowns !== undefined && (!catharsis?.balance.defenseMode
+    || !Array.isArray(weapons.rifleMemberCooldowns)
+    || weapons.rifleMemberCooldowns.length !== (squad.count as number) - (squad.rocketCount as number)
+    || weapons.rifleMemberCooldowns.some(v => typeof v !== 'number' || !Number.isFinite(v) || v < 0))) {
+    throw new Error('Invalid Rifle member clocks');
+  }
   const nextProjectileId = weapons.nextProjectileId;
   if (!Number.isSafeInteger(nextProjectileId) || (nextProjectileId as number) <= 0
     || projectiles.some((projectile) => projectile.id >= (nextProjectileId as number))) {
@@ -599,6 +620,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   return {
     state: {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { reinforcement: reinforcement
+        ? { startedAtSeconds: reinforcement.startedAtSeconds as number | null, arrived: reinforcement.arrived as boolean }
+        : { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: giantEncounter
         ? { scheduledAtSeconds: giantEncounter.scheduledAtSeconds as number | null, spawned: giantEncounter.spawned as boolean }
         : { scheduledAtSeconds: null, spawned: false } } : {}),
@@ -621,7 +645,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       pickups,
       nextPickupId: state.nextPickupId as number,
       projectiles,
-      weapons: { rifleCooldownRemainingSeconds: weapons.rifleCooldownRemainingSeconds as number,
+      weapons: { ...(Array.isArray(weapons.rifleMemberCooldowns) ? { rifleMemberCooldowns: [...weapons.rifleMemberCooldowns] as number[] } : {}),
+        rifleCooldownRemainingSeconds: weapons.rifleCooldownRemainingSeconds as number,
         rocketCooldownRemainingSeconds: weapons.rocketCooldownRemainingSeconds as number,
         nextProjectileId: nextProjectileId as number },
     },
@@ -702,7 +727,7 @@ export class Simulation {
     }
     this.state = {
       ...(catharsis ? { catharsis } : {}),
-      ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 } } : {}),
+      ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
       tick: 0,
       elapsedSeconds: 0,
@@ -867,7 +892,7 @@ export class Simulation {
       ? targetX
       : currentX + Math.sign(difference) * maxHorizontalDelta;
     const proposedNextZ = this.state.player.z + tuning.forwardSpeed * dtSeconds;
-    const offsets = createSquadFormation(this.state.squad.count, tuning.formationSpacing);
+    const offsets = createDefenseSquadFormation(this.state.squad.count, tuning.formationSpacing, this.state.catharsis?.balance.defenseMode ? this.state.catharsis.balance.progression : undefined);
     const currentBoss = this.state.boss;
     const bossContact = currentBoss && !currentBoss.engaged && (
       currentBoss.z <= proposedNextZ - tuning.defenseLineOffset
@@ -919,6 +944,7 @@ export class Simulation {
     const rifleEnd = this.state.squad.count - this.state.squad.rocketCount;
     const nextCooldowns = { rifle: this.state.weapons.rifleCooldownRemainingSeconds,
       rocket: this.state.weapons.rocketCooldownRemainingSeconds };
+    const memberCooldowns: number[] | undefined = catharsis?.balance.defenseMode ? [] : undefined;
     // Fire before travel; projectiles created this tick travel for this full fixed step.
     for (const kind of ['rifle', 'rocket'] as const) {
       const startIndex = kind === 'rifle' ? 0 : rifleEnd;
@@ -932,45 +958,52 @@ export class Simulation {
         nextCooldowns[kind] = 0;
         continue;
       }
-      let cooldown = nextCooldowns[kind] - dtSeconds;
-      // A malformed direct step must not turn into an unbounded catch-up loop.
-      if (cooldown <= 0 && Math.floor(-cooldown / interval) + 1 > 10_000) {
-        throw new Error('Simulation step requests too many weapon volleys');
-      }
-      while (cooldown <= 0) {
-        for (let index = startIndex; index < endIndex; index++) {
-          const offset = offsets[index];
-          let tier = 0;
-          if (kind === 'rifle') {
-            let roleIndex = index;
-            for (let tierIndex = 0; tierIndex < this.state.squad.rifleCounts.length; tierIndex++) {
-              roleIndex -= this.state.squad.rifleCounts[tierIndex];
-              if (roleIndex < 0) { tier = tierIndex + 1; break; }
-            }
-          }
-          const damage = kind === 'rifle' ? riflePowerForTier(tier, this.tiers) : tuning.rocket.damage;
-          if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
-          if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
-          const x = nextX + offset.x;
-          const z = nextZ + offset.z;
-          const lane = catharsis?.balance.defenseMode && kind === 'rifle' ? this.state.player.selectedLane : undefined;
-          const target = lane === undefined ? undefined : enemies.filter((enemy) => enemy.lane === lane && enemy.z > z
-            && enemy.z - z <= weapon.range).sort((a, b) => a.z - b.z || a.id - b.id)[0];
-          const slopeX = target ? (target.x - x) / Math.max(tuning.normalEnemyRadius, target.z - z) : 0;
-          if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
-          projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
-            ...(lane !== undefined ? { lane, slopeX } : {}),
-            damage, remainingRange: weapon.range,
-            blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
-            hitRadiusBonus: kind === 'rifle' ? rifleHitRadiusBonusForTier(tier,
-              tuning.rifle.tierHitRadiusStep, tuning.rifle.maxHitRadiusBonus) : 0,
-            penetrationRemaining: tier > 1
-              ? storeExactValue(exchangeValueForTier(tier, this.tiers.mergeCount)) : 0 });
+      const schedules = kind === 'rifle' && memberCooldowns ? Array.from({ length: endIndex }, (_, index) => ({
+        start: index, end: index + 1, cooldown: index === 0 ? nextCooldowns.rifle : this.state.weapons.rifleMemberCooldowns?.[index]
+          ?? (nextCooldowns.rifle + index * interval / endIndex),
+      })) : [{ start: startIndex, end: endIndex, cooldown: nextCooldowns[kind] }];
+      for (const schedule of schedules) {
+        let cooldown = schedule.cooldown - dtSeconds;
+        // A malformed direct step must not turn into an unbounded catch-up loop.
+        if (cooldown <= 0 && Math.floor(-cooldown / interval) + 1 > 10_000) {
+          throw new Error('Simulation step requests too many weapon volleys');
         }
-        cooldown += interval;
-        if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
+        while (cooldown <= 0) {
+          for (let index = schedule.start; index < schedule.end; index++) {
+            const offset = offsets[index];
+            let tier = 0;
+            if (kind === 'rifle') {
+              let roleIndex = index;
+              for (let tierIndex = 0; tierIndex < this.state.squad.rifleCounts.length; tierIndex++) {
+                roleIndex -= this.state.squad.rifleCounts[tierIndex];
+                if (roleIndex < 0) { tier = tierIndex + 1; break; }
+              }
+            }
+            const damage = kind === 'rifle' ? riflePowerForTier(tier, this.tiers) : tuning.rocket.damage;
+            if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
+            if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
+            const x = nextX + offset.x;
+            const z = nextZ + offset.z;
+            const lane = catharsis?.balance.defenseMode && kind === 'rifle' ? this.state.player.selectedLane : undefined;
+            const target = lane === undefined ? undefined : enemies.filter((enemy) => enemy.lane === lane && enemy.z > z
+              && enemy.z - z <= weapon.range).sort((a, b) => a.z - b.z || a.id - b.id)[0];
+            const slopeX = target ? (target.x - x) / Math.max(tuning.normalEnemyRadius, target.z - z) : 0;
+            if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
+            projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
+              ...(lane !== undefined ? { lane, slopeX, memberIndex: index } : {}),
+              damage, remainingRange: weapon.range,
+              blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
+              hitRadiusBonus: kind === 'rifle' ? rifleHitRadiusBonusForTier(tier,
+                tuning.rifle.tierHitRadiusStep, tuning.rifle.maxHitRadiusBonus) : 0,
+              penetrationRemaining: tier > 1
+                ? storeExactValue(exchangeValueForTier(tier, this.tiers.mergeCount)) : 0 });
+          }
+          cooldown += interval;
+          if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
+        }
+        if (kind === 'rifle' && memberCooldowns) memberCooldowns[schedule.start] = cooldown;
+        if (schedule.start === startIndex) nextCooldowns[kind] = cooldown;
       }
-      nextCooldowns[kind] = cooldown;
     }
     if (!Number.isSafeInteger(nextProjectileId)) throw new Error('Simulation projectile ID exceeds the supported range');
 
@@ -1088,7 +1121,7 @@ export class Simulation {
     let contactOffsets = offsets;
     if (squad.count > 0 && squad.count !== contactFormationCount) {
       contactFormationCount = squad.count;
-      contactOffsets = createSquadFormation(squad.count, tuning.formationSpacing);
+      contactOffsets = createDefenseSquadFormation(squad.count, tuning.formationSpacing, catharsis?.balance.defenseMode ? catharsis.balance.progression : undefined);
     }
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
@@ -1125,7 +1158,7 @@ export class Simulation {
           contactFormationCount = squad.count;
           // Contact can only reduce the count; reuse the pre-contact formation if it returns there.
           contactOffsets = squad.count === this.state.squad.count ? offsets
-            : createSquadFormation(squad.count, tuning.formationSpacing);
+            : createDefenseSquadFormation(squad.count, tuning.formationSpacing, catharsis?.balance.defenseMode ? catharsis.balance.progression : undefined);
         }
       }
     }
@@ -1171,10 +1204,29 @@ export class Simulation {
       nextCooldowns.rifle = Math.min(nextCooldowns.rifle,
         1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression));
     }
-    this.state = { ...this.state, ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
+    if (memberCooldowns && progression && catharsis && this.state.progression
+      && progression.level > this.state.progression.level) {
+      const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression);
+      memberCooldowns.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
+    }
+    let reinforcement = this.state.reinforcement;
+    if (reinforcement && progression && catharsis && squad.count > 0) {
+      const balance = catharsis.balance.progression;
+      if (reinforcement.startedAtSeconds === null && progression.level >= balance.reinforcementLevel)
+        reinforcement = { startedAtSeconds: nextElapsedSeconds, arrived: false };
+      if (!reinforcement.arrived && reinforcement.startedAtSeconds !== null
+        && nextElapsedSeconds - reinforcement.startedAtSeconds >= balance.reinforcementArrivalSeconds - 1e-9) {
+        reinforcement = { ...reinforcement, arrived: true };
+        squad = addRifleSoldiers(squad, 1, 1, this.tiers.mergeCount);
+        const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, balance);
+        memberCooldowns?.push(nextCooldowns.rifle + interval / 2);
+      }
+    }
+    if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
+    this.state = { ...this.state, ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
-      weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
+      weapons: { ...(memberCooldowns ? { rifleMemberCooldowns: memberCooldowns } : {}), rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
     if (stepEvents.length > 0) {
@@ -1201,6 +1253,7 @@ export class Simulation {
       ...this.state,
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
+      ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
       rngState: this.rng.getState(),
       player: { ...this.state.player },
@@ -1212,7 +1265,7 @@ export class Simulation {
       gates: this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } })),
       pickups: this.state.pickups.map((pickup) => ({ ...pickup })),
       projectiles: this.state.projectiles.map((projectile) => ({ ...projectile })),
-      weapons: { ...this.state.weapons },
+      weapons: { ...this.state.weapons, ...(this.state.weapons.rifleMemberCooldowns ? { rifleMemberCooldowns: [...this.state.weapons.rifleMemberCooldowns] } : {}) },
     };
   }
 

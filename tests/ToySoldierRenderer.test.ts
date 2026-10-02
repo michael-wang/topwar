@@ -775,3 +775,32 @@ it('makes tracers warmer/louder temporarily and resets the afterglow on Retry', 
   expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
   renderer.dispose();
 });
+
+
+it('runs reinforcement in from below, raises its rifle, then flashes only the member who fired', () => {
+  const scene = new THREE.Scene(), renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+  const pending: GameRenderState = { ...state(1), defenseMode: true, squad: { ...state(1).squad,
+    reinforcement: { progress: 0, reinforcementSpacing: .72, reinforcementStagger: .18 } } };
+  renderer.update(pending, 0);
+  const members = scene.children.filter(child => child.getObjectByName('toy-soldier-body'));
+  expect(members).toHaveLength(2); expect(members[1].position.z).toBeLessThan(-5);
+  expect(members[1].getObjectByName('muzzle-flash')!.visible).toBe(false);
+  renderer.update({ ...pending, squad: { ...pending.squad, reinforcement: { ...pending.squad.reinforcement!, progress: .5 } } }, 550);
+  expect(members[1].position.z).toBeGreaterThan(-2);
+  expect(members[1].getObjectByName('toy-rifle')!.rotation.x).toBeGreaterThan(0);
+  const settled: GameRenderState = { ...pending, squad: { ...pending.squad, count: 2, rifleCounts: [2],
+    reinforcement: { ...pending.squad.reinforcement!, progress: 1 } } };
+  renderer.update(settled, 1100);
+  expect(Math.abs(members[1].position.x - members[0].position.x)).toBeCloseTo(.72);
+  expect(members[1].getObjectByName('toy-rifle')!.rotation.x).toBe(0);
+  const shot = { id: 1, memberIndex: 0, lane: 2, kind: 'rifle' as const, tier: 1, x: -.36, z: 1, hitRadiusBonus: 0 };
+  renderer.update({ ...settled, projectiles: [shot] }, 1200);
+  expect(members[0].getObjectByName('muzzle-flash')!.visible).toBe(true);
+  expect(members[1].getObjectByName('muzzle-flash')!.visible).toBe(false);
+  renderer.update({ ...settled, projectiles: [{ ...shot, id: 2, memberIndex: 1 }] }, 1273);
+  expect(members[0].getObjectByName('muzzle-flash')!.visible).toBe(false);
+  expect(members[1].getObjectByName('muzzle-flash')!.visible).toBe(true);
+  renderer.reset(); renderer.update(state(1), 2000); expect(renderer.getVisibleCount()).toBe(1);
+  expect(members[0].getObjectByName('muzzle-flash')!.visible).toBe(false);
+  renderer.dispose();
+});

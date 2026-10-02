@@ -1,11 +1,11 @@
-# Progression Phase 2 — Giant Combat Feel + HUD Cleanup
+# Progression Phase 2 — Giant Reward + LV7 Reinforcement
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
-become easier. Combat never pauses for a level, and no choices or support systems
-are introduced. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
+become easier. Combat never pauses for a level, and no upgrade choices or support abilities
+are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
 
 ## Earned progression
 
@@ -23,8 +23,9 @@ Overflow repeatedly advances levels and retains the remainder; there is no autho
 Effective Rifle rate adds authored level bonuses to the independent TUNE base.
 LV1–4 remain **3 / 4 / 5 / 6 Hz**. From `fireRateTaperStartLevel=5`, the first gain
 is `fireRateTaperFirstGain=0.5` Hz; each subsequent gain is multiplied by
-`fireRateTaperDecay=0.8`. Thus LV5–8 are **6.5 / 6.9 / 7.22 / 7.476 Hz**, with
-diminishing gains thereafter. `fireRatePerLevel=1` controls the earlier gains.
+`fireRateTaperDecay=0.8`. LV7 is now the configurable **reinforcementLevel=7**, so that level skips its
+per-soldier rate gain. Thus LV5–9 are **6.5 / 6.9 / 6.9 / 7.22 / 7.476 Hz** per
+soldier, with diminishing gains resuming at LV8. `fireRatePerLevel=1` controls the earlier gains.
 TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 gives
 6 Hz). These values are runtime-loaded and retained/validated in snapshots.
 Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs or enemy HP changes.
@@ -36,10 +37,13 @@ it is never stretched across the filled segment. At 15% only red is revealed,
 50% remains mostly red with a warming edge, 75% reaches orange, and 90–100%
 reveals bright yellow/gold. The leading-edge glow follows that progression.
 The traveling sheen remains subtle. At 70% glow strengthens; at 90% it pulses.
-Forward mask/edge updates interpolate over 120 ms; simulation remains truth.
+Forward mask/edge updates interpolate over 120 ms. Large same-level gains
+(at least 20% of the requirement) use a brief **260 ms** reveal so the Giant
+reward is visible; XP and level power are granted immediately in simulation.
 
 One disposable `progressionLevelUp` event coordinates the entire presentation:
-**800 ms** HUD gold/white pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message.
+**800 ms** HUD gold/white pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message
+(`REINFORCEMENTS` replaces the subtitle at the reinforcement unlock).
 For the first **240 ms** the bar flashes full, then resets immediately to actual
 new-level overflow; the old level label becomes the new one with a pop at 120 ms.
 Combat does not pause. Multi-level grants carry a from/to range and share one
@@ -64,6 +68,48 @@ balance defaults; non-defense runs remain without XP. Retry resets level/XP,
 observer, HUD beat, soldier burst and weapon afterglow, retaining runtime TUNE.
 Edit `catharsis.progression.xpRequirements` / `xpFallbackMultiplier` in runtime JSON.
 Kill awards remain `gruntKillXp=1`, `heavyKillXp=10`; `fireRatePerLevel=1`.
+
+## LV7 reinforcement
+
+LV6→LV7 still costs **420 current-level XP** (1,078 XP cumulatively from LV1).
+This unlock replaces the usual per-soldier fire-rate gain: after arrival, both
+Tier-1 Rifle soldiers fire at **6.9 Hz each**, exactly **13.8 shots/second total**.
+There is no hidden damage bonus or extra rate gain at LV7. TUNE Base fire rate
+remains independent; each member receives the same base plus level bonus.
+LV8 resumes the small diminishing per-soldier gain (7.22 Hz each).
+
+Simulation serializes a one-time reinforcement start clock and arrived flag.
+At the unlock, Soldier A continues fighting while a disposable Soldier B visual
+runs from below the screen into formation, with bob/lean and a lowered Rifle.
+The weapon rises during the final quarter of the **1.1-second** entrance. Only
+when the arrival finishes does simulation add one Tier-1 soldier and enable its
+fire. The world never pauses. The existing warm level-up ring/body wash/motes,
+positive audio, level-label pop and 1.4-second weapon afterglow remain intact.
+No damage-multiplier text is added; the visible arrival communicates the reward.
+
+Both soldiers share the one selected lane. The two-member formation uses **0.72
+units** between centers and **0.18 units** of longitudinal stagger, with the same
+explicit lane identity on both members' Rifle shots. There is no independent
+lane targeting or wider Rifle targeting. Formation values and unlock/arrival
+values are runtime-loaded under `catharsis.progression`:
+`reinforcementLevel`, `reinforcementArrivalSeconds`, `reinforcementSpacing`,
+`reinforcementStagger`. Other legacy formations and Merge rules remain intact.
+
+Defense Rifle timing uses serialized per-member cooldowns. Soldier B joins with
+half a shot interval offset from A's next shot: **~72.46 ms** at 6.9 Hz. Fixed-step
+rounding produces alternating **66.7 / 83.3 ms** gaps, without reducing total DPS.
+A ten-second check emits 69 shots from each member (138 total), with identical
+Tier-1 damage. Projectiles carry optional `memberIndex` so recoil and muzzle
+flashes belong to the actual shooter rather than both members of the same tier.
+Legacy non-defense firing retains its existing volley behavior.
+
+Snapshots retain pending arrival, completed grant, member clocks and projectile
+member identity. Restore mid-entrance resumes from simulation time; pause also
+holds that clock. Older defense snapshots without reinforcement state initialize
+an unclaimed reward; at/above the unlock it starts once. Missing member clocks
+initialize deterministically. Retry resets to LV1/XP0/one soldier, clears arrival
+and presentation, and retains existing runtime TUNE semantics. A lost reinforcement
+is not repeatedly granted at later levels; Game Over does not resurrect the squad.
 
 ## Heavy lane leader
 
@@ -123,15 +169,16 @@ Ordinary waves continue during the delay; no breathing-window density reduction
 is applied. The pending time and one-shot flag survive snapshots. Retry resets
 both. Old snapshots without this state initialize an untriggered encounter; missing Giant balance defaults disabled, while new authored runs explicitly enable it.
 
-Authored `catharsis.giant` values: **210 HP / 30 XP / 0.08 additional speed**, unlock
+Authored `catharsis.giant` values: **210 HP / 120 XP / 0.08 additional speed**, unlock
 level 6, delay 4 seconds, visual scale **3.6**, width multiplier **0.68**, visual gait
-**850 ms**. HP is fixed, never derived from player fire rate. Only Giant HP and
-presentation changed in this follow-up; pressure, Rifle progression, XP thresholds,
-Heavy values, spawn clock, XP reward and all level-up effects remain untouched.
+**850 ms**. HP is fixed, never derived from player fire rate. This follow-up changes only Giant XP and the LV7 reinforcement reward. Giant HP,
+speed, geometry, hit/death feedback, HP bar, appearance timing, pressure curve,
+LV1–LV6 Rifle values, XP thresholds and Heavy values remain unchanged.
 The Giant uses normal lane targeting, tier-1 contact damage and the existing 0.3
 normal collision radius. XP is awarded once by the shared player-kill boundary;
 contact/leaks grant none. At fixed LV6 / 6.9 Hz, uninterrupted single-soldier fire
-now takes **29.95 seconds from first damage to death**, versus the previous ~3.87.
+takes **29.95 seconds from first damage to death**. With the two LV7 soldiers it
+naturally takes **14.97 seconds** against the same 210 HP.
 No armor, phases, regeneration, new damage or special attacks were introduced.
 All Giant values and the pressure table are runtime-loaded JSON/snapshot balance.
 Explicit live HP edits retain damage fraction, as Heavy does.
@@ -170,9 +217,9 @@ is removed. Safe-area positioning leaves a gap above the XP bar, and the group
 remains pointer-transparent. The existing temporary instruction hide during the
 level-up announcement is retained.
 
-No second soldier, squad growth, new player weapon or upgrade choice is introduced.
-Rifle progression, all XP thresholds, Grunt 1 HP / 1 XP, Heavy 15 HP / 10 XP and
-all existing level-up spectacle/audio stay unchanged.
+The one LV7 reinforcement is the only squad-growth reward. No new player weapon,
+upgrade choice or further recruitment is introduced. XP thresholds, Grunt 1 HP /
+1 XP, Heavy 15 HP / 10 XP and existing level-up spectacle/audio remain unchanged.
 
 ## Controls and combat
 
@@ -320,72 +367,75 @@ Boss spawning/showdown, normal enemy tier escalation, the ENEMY LV HUD and yello
 recruitment rewards are temporarily disabled. Their implementations remain available
 outside defense mode. Irrelevant TUNE controls are hidden. Merge, tier power,
 penetration, casualties and higher-tier infrastructure are retained without redesign;
-the authored run starts with one soldier and no rewards to grow the squad.
+the authored run starts with one soldier and no battlefield rewards. LV7 is the
+one authored reinforcement unlock; no Merge change is introduced.
 
-No upgrade choices, squad growth, additional player weapons, backend, framework or deployment. Giant is the only new archetype.
+No upgrade choices, additional recruitment, player weapons, backend, framework or deployment. Giant remains the only new archetype.
 The single-soldier opening remains unforgiving; evaluate whether earned fire rate changes
 the pressure/release loop before designing further progression.
 
 ## Verification and phone playtest focus
 
-The seed-17 fixed-step nearest-threat pilot still reaches LV2/3/4/5/6 at
-**13.3 / 27.8 / 49.7 / 82.6 / 128.65 seconds**, with unchanged effective rates
-**4 / 5 / 6 / 6.5 / 6.9 Hz**. First Giant enters at **132.67 seconds**.
+The same fixed-step nearest-threat pilot selects a lane every 90 ticks (1.5 s).
+**Seed 17** retains exact LV2/3/4/5/6 timings:
+**13.3 / 27.8 / 49.7 / 82.6 / 128.65 seconds**. Enemy pressure and Giant difficulty
+were not changed to accommodate the pilot.
 
-Three isolated fixed-LV6 fights (one soldier, default damage, no other enemies)
-measure HP from the first hit until death. Starting distance varies to verify
-travel time does not change sustained-fire durability:
+| Seed | First Giant | Giant killed | LV7 reached | Outcome at 400 s / earlier death |
+| --- | --- | --- | --- | --- |
+| 1 | 134.60 s | 189.83 s | 207.17 s | Alive, 2 soldiers, 32 enemies |
+| 17 | 132.67 s | 195.37 s | Not reached | Dies at 198.50 s, LV6 / 377 XP |
+| 42 | 133.72 s | 194.67 s | 205.88 s | Alive, 2 soldiers, 42 enemies |
 
-| Seed | Starting distance | First shot to death | First damage to death |
-| --- | --- | --- | --- |
-| 1 | 44 | 30.68 s | 29.95 s |
-| 17 | 38 | 30.58 s | 29.95 s |
-| 42 | 30 | 30.45 s | 29.95 s |
+All three kill the Giant and receive exactly **120 XP**; none gets an entire
+level from a Giant starting at XP0. Seed 17 still fails just before reinforcement.
+This does not override the successful physical-phone evidence or justify reducing
+Giant HP/pressure. A supplemental alternating Giant-priority pilot also fails
+seed 17; primary benchmark timing above comes from the unchanged nearest-threat
+pilot. Seeds 1/42 outgrow the initial backlog after reinforcement. Peaks before
+relief are 276 / 303 / 289; no pressure or density was reduced for FPS.
 
-Each survives, stays LV6, and receives exactly 30 XP on the kill. Starting too
-near the defense line can cause contact before 30 seconds; this remains the
-existing movement/contact rule, not a new Giant mechanic.
+Three isolated seed-1/17/42 checks use a Giant at 38-unit range, unchanged HP210,
+damage and speed. **Every run** measures:
 
-For the portrait crowded-fight evidence, the same seed-17 pilot switches from
-nearest-threat selection to continuously defending the Giant lane at entry.
-Giant HP falls to 157/210 at **141.75 s**, 105/210 at **149.22 s**, and 10/210 at
-**162.83 s**. Active populations are 193 / 225 / 289 respectively. **That exclusive
-commitment loses the run to unattended pressure before the Giant dies.** This is
-an observed consequence of the requested durability, not a pressure retune.
-Evaluate on a physical phone whether switching attention makes the long commitment
-rewarding; do not infer survival from the isolated TTK checks. No second soldier
-or relief system was added.
+| State | Per-soldier rate | Total rate | First hit to death | First shot to death |
+| --- | --- | --- | --- | --- |
+| LV6, 1 soldier | 6.9 Hz | 6.9 Hz | 29.95 s | 30.58 s |
+| LV7, 2 settled soldiers | 6.9 Hz | 13.8 Hz | 14.97 s | 15.60 s |
 
-Portrait captures in `artifacts/giant-warlord/` show full-HP entry, surrounding
-Grunts/Heavies, ~75% / 50% / near-death HP, controlled isolated death, and normal
-HUD. They project actual simulation states at **390×844 / DPR2**, with live level,
-XP and lane labels and no enemy title. The death capture comes from the successful
-isolated fight; it is not presented as a crowded-run victory. Hit stages sample
-the brief warm flash; a non-flashing crowded frame shows the crimson/gold palette.
-The face, separate shoulders, arms, torso, legs and mace remain recognizable.
-The bar is above the crest and remains clear as health declines. Hits settle
-between rate-limited reactions; the gray death/ring is stronger. No browser errors.
-Lower-left instructions are transparent/pointer-transparent, end ~10.6 pixels
-above the XP HUD, and a tap through them moves exactly one lane. Pause and TUNE
-also respond in the touch-enabled portrait check.
+Arrival delay is excluded from the settled two-soldier TTK, and no second Giant
+is spawned naturally. Both test soldiers target the same lane. Additional tests
+cover reward overflow into LV7, no duplicate award/grant, snapshot continuation,
+clock validation, retry initialization, exact shot counts, phase offset, same-lane
+shots after lane switching, entrance/weapon raising and independent muzzle flashes.
 
-Live eight-second checks resume the ~75% and ~50% crowded states with simulation
-and Giant fire running. Chrome **SwiftShader desktop software rendering**, not
-physical-phone GPU performance:
+Portrait captures in `artifacts/reinforcement/` use **390×844 / DPR2**. The natural
+LV7/arrival/formation/firing sequence is seed 1; seed 17 supplies the crowded
+Giant death/reward sequence. A controlled isolated LV7 fixture supplies two soldiers
+fighting the same Giant, because there is only one natural introduction per run.
+The reward visibly moves the existing red-to-gold bar without numeric XP. The
+entrance comes from below the frame, both bodies remain distinct, and no multiplier
+label appears. The original level-up spectacle stays readable. Mobile left tap
+moves one lane with both members retained; Pause/TUNE respond. Actual Retry returns
+LV1, one visible soldier, no pending entrance. No browser errors.
 
-| Active population range | FPS | Average frame | p95 |
-| --- | --- | --- | --- |
-| 193–225 | 21 | 47.1 ms | 50.1 ms |
-| 225–257 | 18 | 55.6 ms | 66.7 ms |
+Eight-second live portrait checks restore the same high-pressure state and run
+the same pilot; the single-soldier comparison is a fixture, not a gameplay change.
+Chrome **SwiftShader software rendering**, not physical-phone GPU performance:
 
-Simulation CPU stays ~0.2–0.3 ms/frame; render submission ~1.3–1.4 ms. The software
-GPU/frame budget remains the limitation. Density was not reduced and no adaptive
-behavior or unrelated optimization was added. Phone checks should assess armor/
-impact contrast, the visual intrusion into neighboring lanes, HP progress during
-a full 30-second fight, and the commitment cost while other fronts accumulate.
+| Soldiers | Active enemy range | FPS | Average frame | p95 | Simulation CPU |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 239–263 | 18 | 54.2 ms | 66.7 ms | ~0.2 ms |
+| 2 | 211–251 | 20 | 49.3 ms | 50.1 ms | ~0.2 ms |
 
-Delivery checks: **436 tests / 61 files pass**, typecheck and production build.
-Focused tests cover measured three-run durability, fixed HP/live tuning and render
-maximum, full-model bar bounds, mace/arm silhouette, bounded stronger death, 30-second rate-limited impact/pool stability and
-resource disposal. Existing pressure, input, Heavy, snapshot and spectacle tests
-remain passing. Build warnings remain third-party Zod annotations and bundle size.
+The second soldier reuses geometry/materials and existing effect pools; geometry
+count stays 43 and projectile pool stays 8 in these samples. Two-soldier fire also
+kills more enemies, so the FPS difference is not a pure render-cost benchmark.
+No clear CPU regression or blocking hitch appeared, and no adaptive density or
+optimization was added. Phone testing should judge whether the visible arrival
+and alternating firing feel like earned reinforcements, while one shared lane
+still demands attention elsewhere.
+
+Delivery checks: **446 tests / 62 files pass**, typecheck and production build.
+Existing Giant, Heavy, input, snapshot and spectacle tests remain passing.
+Build warnings remain third-party Zod annotations and bundle size.

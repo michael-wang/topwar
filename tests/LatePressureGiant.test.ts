@@ -69,8 +69,8 @@ it('awards Giant XP only on a player kill, while HP and movement stay independen
   expect(sim.getState().enemies[0].z).toBeCloseTo(2.92);
   const injured = sim.getState(); injured.enemies[0].hp = 1; injured.weapons.rifleCooldownRemainingSeconds = 0;
   sim.restoreState(injured); step(sim, 60);
-  expect(sim.getState().progression!.xp).toBe(30);
-  step(sim, 60); expect(sim.getState().progression!.xp).toBe(30);
+  expect(sim.getState().progression!.xp).toBe(120);
+  step(sim, 60); expect(sim.getState().progression!.xp).toBe(120);
   injured.enemies[0].z = injured.player.z - 2; injured.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(injured); step(sim, 1);
   expect(sim.getState().progression!.xp).toBe(0);
@@ -111,7 +111,7 @@ it.each([[1, 44], [17, 38], [42, 30]])('takes about 30 seconds of LV6 focused fi
   expect(balance.giant.hp).toBe(210);
   expect(result.enemies).toHaveLength(0);
   expect(result.squad.count).toBe(1);
-  expect(result.progression).toEqual({ level: 6, xp: 30 });
+  expect(result.progression).toEqual({ level: 6, xp: 120 });
   expect(firstHit).toBeDefined();
   expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(28);
   expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(32);

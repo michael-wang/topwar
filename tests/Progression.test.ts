@@ -142,7 +142,7 @@ it('validates the table balance in snapshots and rejects superseded linear field
 
 it('keeps LV1–4 rates fixed and tapers LV5 and later gains without changing base or enemies', () => {
   expect([1,2,3,4,5,6,7,8].map(level => effectiveRifleFireRate(3, level, curve)))
-    .toEqual([3,4,5,6,6.5,6.9,7.22,7.476]);
+    .toEqual([3,4,5,6,6.5,6.9,6.9,7.22]);
   expect(effectiveRifleFireRate(2.5, 5, curve)).toBe(6);
   const sim = make(); const state = sim.getState(); state.progression = { level: 5, xp: 0 };
   sim.restoreState(state);
