@@ -26,8 +26,8 @@
     "heavyDepthMultiplier": 1.15,
     "rewardAimRadius": 0.5,
     "progression": {
-      "firstLevelXp": 16,
-      "xpRequirementStep": 12,
+      "xpRequirements": [28, 60, 110, 180, 280, 420],
+      "xpFallbackMultiplier": 1.45,
       "gruntKillXp": 1,
       "heavyKillXp": 10,
       "fireRatePerLevel": 1

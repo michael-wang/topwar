@@ -16,9 +16,9 @@ const tuning = { moveSpeed: 5, forwardSpeed: 0, trackHalfWidth: 3.2, defenseLine
   rifle: config.weapon.rifle, rocket: config.weapon.rocket };
 it('starts at level one and uses the authored increasing XP curve with repeated overflow', () => {
   expect(make().getState().progression).toEqual({ level: 1, xp: 0 });
-  expect([1, 2, 3, 4].map(level => requiredXp(level, curve))).toEqual([16, 28, 40, 52]);
-  expect(grantXp({ level: 1, xp: 15 }, 10, curve)).toEqual({ level: 2, xp: 9 });
-  expect(grantXp({ level: 1, xp: 0 }, 90, curve)).toEqual({ level: 4, xp: 6 });
+  expect([1, 2, 3, 4, 5, 6].map(level => requiredXp(level, curve))).toEqual([28, 60, 110, 180, 280, 420]);
+  expect(grantXp({ level: 1, xp: 27 }, 10, curve)).toEqual({ level: 2, xp: 9 });
+  expect(grantXp({ level: 1, xp: 0 }, 205, curve)).toEqual({ level: 4, xp: 7 });
 });
 it.each([['grunt', 1, 1], ['heavy', 15, 10]] as const)('awards %s XP only on its lethal hit, once', (archetype, hp, xp) => {
   const sim = make(); const state = sim.getState();
@@ -57,7 +57,7 @@ it.each([1, 2, 3])('schedules effective Rifle fire at level %i without mutating 
   expect(sim.getState().catharsis!.balance.heavyHp).toBe(15);
 });
 it('shortens the pending shot promptly when a kill levels up', () => {
-  const sim = make(); const state = sim.getState(); state.progression!.xp = 15;
+  const sim = make(); const state = sim.getState(); state.progression!.xp = 27;
   state.enemies = [{ id: 1, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: 3, hp: 1 }];
   sim.restoreState(state); sim.step(.06, { targetX: 0 }, tuning);
   expect(sim.getState().progression).toEqual({ level: 2, xp: 0 });
@@ -69,7 +69,7 @@ it('restores progression deterministically, validates it, and new runs reset it'
   state.progression.xp = 0;
   for (let tick = 0; tick < 90; tick++) { sim.step(1 / 60, { targetX: 0 }, tuning); clone.step(1 / 60, { targetX: 0 }, tuning); }
   expect(clone.getState()).toEqual(sim.getState());
-  const bad = sim.getState(); bad.progression!.xp = 40; expect(() => clone.restoreState(bad)).toThrow(/progression/);
+  const bad = sim.getState(); bad.progression!.xp = 110; expect(() => clone.restoreState(bad)).toThrow(/progression/);
   expect(make().getState().progression).toEqual({ level: 1, xp: 0 });
 });
 it('stages a Heavy deterministically in front of its own lane without changing population or bounds', () => {
@@ -119,4 +119,23 @@ it('uses the tuned base rate in actual level-three scheduling', () => {
   for (let tick = 0; tick < 120; tick++) sim.step(1 / 60, { targetX: 0 }, live);
   expect(sim.getState().weapons.nextProjectileId - 1).toBe(9);
   expect(live.rifle.fireRate).toBe(2.5);
+});
+
+it('uses successive ceil growth beyond the table without a level cap', () => {
+  expect(requiredXp(7, curve)).toBe(609);
+  expect(requiredXp(8, curve)).toBe(884);
+  expect(requiredXp(9, { ...curve, xpFallbackMultiplier: 2 })).toBe(3360);
+  expect(grantXp({ level: 6, xp: 419 }, 620, curve)).toEqual({ level: 8, xp: 10 });
+});
+it('validates the table balance in snapshots and rejects superseded linear fields', () => {
+  const sim = make(); const state = sim.getState();
+  state.catharsis!.balance.progression.xpRequirements = [30, 70];
+  state.progression = { level: 3, xp: 100 };
+  sim.restoreState(JSON.parse(JSON.stringify(state)));
+  expect(requiredXp(3, sim.getState().catharsis!.balance.progression)).toBe(102);
+  const bad = sim.getState(); bad.catharsis!.balance.progression.xpRequirements = [];
+  expect(() => sim.restoreState(bad)).toThrow();
+  const old = sim.getState() as any;
+  old.catharsis.balance.progression = { firstLevelXp: 16, xpRequirementStep: 12, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1 };
+  expect(() => sim.restoreState(old)).toThrow();
 });

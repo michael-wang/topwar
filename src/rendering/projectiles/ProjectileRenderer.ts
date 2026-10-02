@@ -1,3 +1,4 @@
+import { WEAPON_AFTERGLOW_MS } from '../../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
 
@@ -25,6 +26,7 @@ export class ProjectileRenderer {
   private readonly pulse = new ProjectilePulseTracker();
   private readonly transform = new THREE.Object3D();
   private capacity = 8;
+  private afterglowUntilMs = -Infinity;
   private body: THREE.InstancedMesh;
   private glow: THREE.InstancedMesh;
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: '#fffbd1',
@@ -39,8 +41,12 @@ export class ProjectileRenderer {
     this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
   }
 
+  presentLevelUp(nowMs: number): void { this.afterglowUntilMs = nowMs + WEAPON_AFTERGLOW_MS; }
+
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
     this.ensureCapacity(projectiles.length);
+    const afterglow = nowMs < this.afterglowUntilMs;
+    this.glowMaterial.opacity = afterglow ? .55 : .28;
     const activeIds = new Set<number>();
     for (let index = 0; index < projectiles.length; index++) {
       const projectile = projectiles[index];
@@ -56,6 +62,7 @@ export class ProjectileRenderer {
         transform.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
           1 + 0.45 * projectile.hitRadiusBonus, length * pulse);
       }
+      if (afterglow && projectile.kind === 'rifle') { transform.scale.x *= 1.2; transform.scale.y *= 1.2; }
       transform.updateMatrix();
       this.body.setMatrixAt(index, transform.matrix);
       const glowWidth = projectile.kind === 'rocket' ? 2.4 : 2.4 + 1.7 * projectile.hitRadiusBonus;
@@ -74,6 +81,7 @@ export class ProjectileRenderer {
   }
 
   reset(): void {
+    this.afterglowUntilMs = -Infinity;
     this.pulse.reset();
     this.body.count = 0;
     this.glow.count = 0;

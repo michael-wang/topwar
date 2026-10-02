@@ -1,3 +1,4 @@
+import { ProgressionLevelObserver } from '../presentation/ProgressionLevelUp';
 import { XpHud } from '../ui/XpHud';
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
@@ -54,6 +55,7 @@ export class GameApp {
   private readonly keyboardInput: KeyboardSteeringInput;
   private readonly touchInput: TouchSteeringInput;
   private readonly laneInput: LaneStepInput | null;
+  private readonly progressionObserver = new ProgressionLevelObserver();
   private readonly xpHud: XpHud | null;
   private readonly laneHud: LaneHud | null;
   private readonly unsubscribeConfig: () => void;
@@ -215,6 +217,7 @@ export class GameApp {
     this.damageFlash.reset();
     this.audio.resetObservation();
     this.xpHud?.reset();
+    this.progressionObserver.reset();
     this.renderer.resetFeedback();
     this.tierHud.setTier(1);
   }
@@ -321,8 +324,15 @@ export class GameApp {
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
       if (state.player.selectedLane !== undefined) this.laneHud?.update(state.player.selectedLane, state.catharsis!.balance.laneCount);
-      if (state.progression && state.catharsis && this.xpHud?.update(state.progression,
-        state.catharsis.balance.progression, this.presentationMs)) this.audio.play('levelUp');
+      if (state.progression && state.catharsis) {
+        const levelUp = this.progressionObserver.observe(state.progression.level);
+        if (levelUp) {
+          this.xpHud?.presentLevelUp(levelUp, this.presentationMs);
+          this.renderer.presentLevelUp(levelUp, this.presentationMs);
+          this.audio.play('levelUp');
+        }
+        this.xpHud?.update(state.progression, state.catharsis.balance.progression, this.presentationMs);
+      }
       const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();
       if (state.squad.count === 0 && presentationEvents.some((event) => event.after.count === 0)) {

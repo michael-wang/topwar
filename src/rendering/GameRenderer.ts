@@ -1,3 +1,4 @@
+import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
 import { AttackLaneRenderer } from './AttackLaneRenderer';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
@@ -111,6 +112,11 @@ export class GameRenderer {
     trackHalfWidth: number, formationSpacing: number): void {
     this.squadRenderer.present(events, nowMs, trackHalfWidth, formationSpacing);
     this.enemyRenderer.present(events, nowMs);
+  }
+
+  presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {
+    this.squadRenderer.presentLevelUp(event, nowMs);
+    this.projectileRenderer.presentLevelUp(nowMs);
   }
 
   resetFeedback(): void {

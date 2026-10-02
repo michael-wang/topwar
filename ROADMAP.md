@@ -10,10 +10,10 @@
 
 ## NOW
 
-**Phase 3.0 Earned Power Loop.** Test kill-earned XP → automatic levels → faster Rifle
-against the locked Phase 2 baseline. Evaluate pressure/release and first levels on
-portrait phones; this is a progression experiment, not final pacing. Heavy staging,
-slower visual gait and HP bars improve tactical readability.
+**Phase 3.0.5 Progression Feel Pass.** Test slower authored XP costs and unmistakable HUD/soldier/weapon feedback
+against the locked Phase 2 baseline. Evaluate pressure/release and first rewards on
+portrait phones; this is a progression feel experiment, not final pacing. Heavy
+staging, slower visual gait and HP bars remain unchanged.
 
 ## NEXT
 

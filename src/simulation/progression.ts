@@ -1,8 +1,17 @@
 import type { CatharsisConfig } from '../config/catharsisConfig';
 export interface ProgressionState { level: number; xp: number }
-export type ProgressionBalance = CatharsisConfig['progression'];
+export type ProgressionBalance = Readonly<Omit<CatharsisConfig['progression'], 'xpRequirements'>>
+  & { readonly xpRequirements: readonly number[] };
 export function requiredXp(level: number, balance: ProgressionBalance): number {
-  return balance.firstLevelXp + balance.xpRequirementStep * (level - 1);
+  if (!Number.isSafeInteger(level) || level < 1) throw new Error('Invalid progression level');
+  const table = balance.xpRequirements;
+  if (level <= table.length) return table[level - 1];
+  let requirement = table[table.length - 1];
+  for (let index = table.length; index < level; index++) {
+    requirement = Math.ceil(requirement * balance.xpFallbackMultiplier);
+    if (!Number.isSafeInteger(requirement)) throw new Error('XP requirement exceeds the supported range');
+  }
+  return requirement;
 }
 export function grantXp(state: ProgressionState, amount: number, balance: ProgressionBalance): ProgressionState {
   let { level, xp } = state;

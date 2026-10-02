@@ -1,3 +1,5 @@
+import gameData from '../public/game-data/game.json';
+import { CatharsisConfigSchema } from '../src/config/catharsisConfig';
 import type { CharacterAssets } from '../src/rendering/CharacterAssets';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ConfigStore, ConfigListener } from '../src/config/ConfigStore';
@@ -28,6 +30,7 @@ const mock = vi.hoisted(() => ({
   consumePresentationEvents: vi.fn((): any[] => []),
   render: vi.fn(),
   present: vi.fn(),
+  presentLevelUp: vi.fn(),
   resetFeedback: vi.fn(),
   startResizeHandling: vi.fn(),
   stopResizeHandling: vi.fn(),
@@ -79,6 +82,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
     present = mock.present;
+    presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;
     startResizeHandling = mock.startResizeHandling;
     stopResizeHandling = mock.stopResizeHandling;
@@ -941,4 +945,31 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
     expect(mock.tierHudDispose).toHaveBeenCalledOnce();
   });
+});
+
+
+it('dispatches one shared progression beat per gain, coalesces overflow and resets observation on Retry', () => {
+  const raf = createRaf();
+  const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+  const base = mock.getState();
+  const balance = CatharsisConfigSchema.parse(gameData.catharsis);
+  const play = vi.spyOn(GameAudio.prototype, 'play').mockImplementation(() => {});
+  app.start();
+  for (const [timestamp, playerLevel] of [[100, 1], [116, 2], [133, 2], [150, 5], [166, 5]]) {
+    mock.getState.mockReturnValueOnce({ ...base, progression: { level: playerLevel, xp: 0 },
+      catharsis: { balance, trackHalfWidth: 3.2 } });
+    raf.frame(timestamp);
+  }
+  expect(mock.presentLevelUp).toHaveBeenCalledTimes(2);
+  expect(mock.presentLevelUp.mock.calls.map(call => call[0])).toEqual([
+    { kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 },
+    { kind: 'progressionLevelUp', fromLevel: 2, toLevel: 5 },
+  ]);
+  expect(play.mock.calls.filter(call => call[0] === 'levelUp')).toHaveLength(2);
+  (mock.overlayConstructedWith.mock.calls[0][0] as () => void)();
+  mock.getState.mockReturnValueOnce({ ...base, progression: { level: 2, xp: 0 }, catharsis: { balance, trackHalfWidth: 3.2 } });
+  raf.frame(200);
+  expect(mock.presentLevelUp.mock.lastCall?.[0]).toEqual({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 });
+  expect(mock.presentLevelUp).toHaveBeenCalledTimes(3);
+  app.dispose(); play.mockRestore();
 });

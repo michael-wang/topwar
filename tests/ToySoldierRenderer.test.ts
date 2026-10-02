@@ -728,3 +728,50 @@ it('keeps Heavy-only floating health bars live, proportionate and reusable', () 
   renderer.reset(); expect(fill.visible).toBe(false);
   renderer.dispose(); expect(scene.getObjectByName('heavy-hp-fill')).toBeUndefined();
 });
+
+it('presents progression power independently of tiers with reusable member bursts and temporary muzzle afterglow', () => {
+  const scene = new THREE.Scene();
+  const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+  const frame = { ...state(1),
+    squad: { count: 2, rocketCount: 0, rifleCounts: [2], formationSpacing: .45 },
+    projectiles: [{ id: 1, tier: 1, kind: 'rifle' as const, x: 0, z: 1, hitRadiusBonus: 0 }] };
+  renderer.update(frame, 0);
+  const before = JSON.stringify(frame);
+  renderer.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 4 }, 100);
+  frame.projectiles = [{ ...frame.projectiles[0], id: 2 }];
+  renderer.update(frame, 100);
+  const bursts = scene.children.filter(child => child.name === 'player-level-up-burst');
+  expect(bursts).toHaveLength(2);
+  expect(bursts.every(child => child.visible && child.children.length === 9)).toBe(true);
+  const body = scene.getObjectByName('toy-soldier-body') as THREE.Mesh;
+  expect((body.material as THREE.MeshStandardMaterial).emissiveIntensity).toBeGreaterThan(1);
+  const muzzle = scene.getObjectByName('muzzle-flash') as THREE.Mesh;
+  expect(muzzle.scale.x).toBeCloseTo(1.9);
+  renderer.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 4, toLevel: 5 }, 200);
+  renderer.update(frame, 400);
+  expect(scene.children.filter(child => child.name === 'player-level-up-burst')).toHaveLength(2);
+  renderer.update(frame, 1001);
+  expect(bursts.every(child => !child.visible)).toBe(true);
+  frame.projectiles = [{ ...frame.projectiles[0], id: 3 }];
+  renderer.update(frame, 1100); expect(muzzle.scale.x).toBeCloseTo(1.9);
+  renderer.update(frame, 1700); expect(muzzle.scale.x).toBeCloseTo(1);
+  expect(frame.squad.rifleCounts).toEqual([2]);
+  expect(JSON.parse(before).squad).toEqual(frame.squad);
+  renderer.reset(); renderer.update(frame, 1800);
+  expect(bursts.every(child => !child.visible)).toBe(true);
+  expect((body.material as THREE.MeshStandardMaterial).emissive.getHex()).toBe(0);
+  renderer.dispose(); expect(scene.getObjectByName('player-level-up-burst')).toBeUndefined();
+});
+it('makes tracers warmer/louder temporarily and resets the afterglow on Retry', () => {
+  const scene = new THREE.Scene(); const renderer = new ProjectileRenderer(scene, bulletModel());
+  const shots = [{ id: 1, tier: 1, kind: 'rifle' as const, x: 0, z: 3, hitRadiusBonus: 0 }];
+  renderer.update(shots, 0);
+  const glow = scene.getObjectByName('tracer-glows') as THREE.InstancedMesh;
+  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
+  renderer.presentLevelUp(100); renderer.update(shots, 200);
+  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.55);
+  renderer.update(shots, 1501); expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
+  renderer.presentLevelUp(1600); renderer.reset(); renderer.update(shots, 1700);
+  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
+  renderer.dispose();
+});

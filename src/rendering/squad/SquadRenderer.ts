@@ -1,3 +1,5 @@
+import { LEVEL_UP_MS, WEAPON_AFTERGLOW_MS, type ProgressionLevelUpEvent } from '../../presentation/ProgressionLevelUp';
+import { PlayerLevelUpEffect } from './PlayerLevelUpEffect';
 import * as THREE from 'three';
 import { createSquadFormation } from '../../simulation/squad/formation';
 import type { GameRenderState, ProjectileRenderState } from '../RenderState';
@@ -56,6 +58,11 @@ export class SquadRenderer {
   }
   private readonly muzzleGeometry = new THREE.ConeGeometry(0.11, 0.24, 5);
   private readonly muzzleCoreGeometry = new THREE.ConeGeometry(0.048, 0.15, 5);
+  private readonly levelEffect: PlayerLevelUpEffect;
+  private levelUpAtMs = -Infinity;
+  private readonly levelBodyMaterial: THREE.MeshStandardMaterial;
+  private readonly levelGearMaterial: THREE.MeshStandardMaterial;
+  private readonly poweredMuzzleMaterial = new THREE.MeshBasicMaterial({ color: '#fff3ab', toneMapped: false });
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
   private readonly hitMaterial = new THREE.MeshBasicMaterial({ color: '#ff3030', toneMapped: false });
@@ -87,6 +94,13 @@ export class SquadRenderer {
     private readonly rifleModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
+    if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');
+    this.levelBodyMaterial = bodyModel.material.clone();
+    this.levelBodyMaterial.emissive.set('#ffbd36');
+    this.levelGearMaterial = source.clone();
+    this.levelGearMaterial.color.set('#fff0ae');
+    this.levelGearMaterial.emissive.set('#ffd052');
+    this.levelEffect = new PlayerLevelUpEffect(scene);
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
       const material = source.clone();
       material.color.set(entry.body);
@@ -128,8 +142,19 @@ export class SquadRenderer {
     }
   }
 
+  presentLevelUp(_event: ProgressionLevelUpEvent, nowMs: number): void {
+    this.levelUpAtMs = nowMs;
+    this.levelEffect.present(nowMs);
+  }
+
   update(state: GameRenderState, nowMs = performance.now()): void {
     this.observeShots(state.projectiles, nowMs);
+    const levelAge = nowMs - this.levelUpAtMs;
+    const levelActive = levelAge >= 0 && levelAge < LEVEL_UP_MS;
+    const levelStrength = levelActive ? Math.pow(1 - levelAge / LEVEL_UP_MS, .7) : 0;
+    const afterglow = levelAge >= 0 && levelAge < WEAPON_AFTERGLOW_MS;
+    this.levelBodyMaterial.emissiveIntensity = 1.8 * levelStrength;
+    this.levelGearMaterial.emissiveIntensity = 1.6 * levelStrength;
     let higherTierDecreased = false;
     const tierSlots = Math.max(state.squad.rifleCounts.length, this.previousRifleCounts.length);
     for (let index = tierSlots - 1; index >= 1; index--) {
@@ -183,18 +208,20 @@ export class SquadRenderer {
       const spawnScale = soldierSpawnScale(nowMs - member.appearedAtMs);
       const upgrading = tierActive && tier === this.tierUpTier;
       member.group.scale.setScalar(PLAYER_VISUAL_SCALE
-        * (upgrading ? tierUpScale(tierAgeMs) : spawnScale));
+        * (levelActive ? 1 + .2 * Math.sin(Math.PI * Math.min(1, levelAge / 400))
+          : upgrading ? tierUpScale(tierAgeMs) : spawnScale));
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
       const hit = (this.hitMemberIndices.get(index) ?? -Infinity) > nowMs;
-      member.body.material = hit ? this.hitMaterial : this.bodyModel.material;
-      member.helmet.material = hit ? this.hitMaterial : glowing ? this.upgradeMaterial
+      member.body.material = hit ? this.hitMaterial : levelActive ? this.levelBodyMaterial : this.bodyModel.material;
+      member.helmet.material = hit ? this.hitMaterial : levelActive ? this.levelGearMaterial : glowing ? this.upgradeMaterial
         : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
       member.vest.material = member.helmet.material;
       member.rifle.rotation.x = -0.18 * recoil;
       member.rifle.position.z = -0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
-      member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < FLASH_MS;
-      member.muzzle.scale.setScalar(1 + 0.2 * Math.min(2, Math.max(0, tier - 1)));
+      member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < (afterglow ? 90 : FLASH_MS);
+      member.muzzle.material = afterglow ? this.poweredMuzzleMaterial : this.muzzleMaterial;
+      member.muzzle.scale.setScalar((afterglow ? 1.9 : 1) * (1 + 0.2 * Math.min(2, Math.max(0, tier - 1))));
       // The camera looks along +Z, which mirrors X on screen.
       member.group.position.set(-(state.player.x + offset.x * visualSpread), 0,
         state.player.z + offset.z * visualSpread);
@@ -204,9 +231,12 @@ export class SquadRenderer {
       if (until <= nowMs) this.hitMemberIndices.delete(index);
     }
     this.updateCasualties(nowMs);
+    this.levelEffect.update(this.members, nowMs);
   }
 
   reset(): void {
+    this.levelUpAtMs = -Infinity;
+    this.levelEffect.reset();
     this.lastSeenProjectileId = 0;
     this.rifleFiredAtMs.clear();
     this.rocketFiredAtMs = -Infinity;
@@ -225,6 +255,7 @@ export class SquadRenderer {
   }
 
   dispose(): void {
+    this.levelEffect.dispose();
     for (const member of this.members) this.scene.remove(member.group);
     this.members.length = 0;
     for (const visual of this.casualtyVisuals) {
@@ -238,7 +269,7 @@ export class SquadRenderer {
     this.muzzleGeometry.dispose();
     this.muzzleCoreGeometry.dispose();
     for (const material of [...this.tierMaterials, this.upgradeMaterial, this.hitMaterial,
-      this.muzzleMaterial, this.muzzleCoreMaterial]) material.dispose();
+      this.muzzleMaterial, this.muzzleCoreMaterial, this.levelBodyMaterial, this.levelGearMaterial, this.poweredMuzzleMaterial]) material.dispose();
   }
 
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {

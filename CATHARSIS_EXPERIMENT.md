@@ -1,4 +1,4 @@
-# Phase 3.0: Earned Power Loop
+# Phase 3.0.5 — Progression Feel Pass
 
 This is the first **progression experiment**, not final progression pacing.
 The accepted naked-combat baseline stays locked: one defended normal lane is
@@ -10,8 +10,12 @@ are introduced. Enemy durability, density and speeds do not scale with player po
 ## Earned progression
 
 Defense runs start at **LV1 / XP0**. XP measures progress within the current level.
-`requiredXp(level) = firstLevelXp + xpRequirementStep * (level - 1)`:
-**16, 28, 40, 52…** XP. A player-caused Grunt death awards **1 XP**; a Heavy
+Authored per-level requirements are **28 / 60 / 110 / 180 / 280 / 420** XP for
+LV1→2 through LV6→7. These are current-level costs, not cumulative totals.
+After the table, each requirement is **ceil(previous × 1.45)** (609, 884…);
+`xpFallbackMultiplier` is configurable and there is no authored cap.
+The old linear formula/fields are removed.
+A player-caused Grunt death awards **1 XP**; a Heavy
 awards **10 XP**. Hits, contact casualties and leaks award nothing. Rifle penetration
 can award each kill; retained rocket kill resolution uses the same award boundary.
 Overflow repeatedly advances levels and retains the remainder; there is no authored cap.
@@ -22,17 +26,38 @@ Effective Rifle rate is **base + (level - 1) × fireRatePerLevel**. Authored bas
 the pending Rifle cooldown when necessary and affect subsequent scheduling without
 resetting combat. No projectile damage, enemy HP or wave tuning is changed.
 
-The bottom XP HUD shows level, current/required XP and a fill bar. It ignores pointer
-input and respects safe-area insets; the tap hint sits above it. Level gains trigger
-an **800 ms** warm bar glow and `LEVEL UP · FIRE RATE +N`, plus a short ascending
-two-tone Web Audio cue. No combat interruption or new VFX framework.
+The bottom HUD shows **LV N only**, with no routine numeric XP. Its shaped dark
+track has beveled warm borders, inset depth and a red→orange→hot-yellow fill.
+The right tip shines brightest, with a subtle traveling sheen. At 70% fill the
+glow strengthens; at 90% it pulses gently. Forward fill updates interpolate over
+120 ms, while simulation remains the source of truth.
 
-Progression and progression balance are plain snapshot data. Validation checks current-level
-XP and positive integer level. Older defense snapshots without progression initialize
-at LV1/XP0; non-defense runs remain without XP. Retry resets level/XP and feedback,
-while retaining existing runtime TUNE values. Edit `catharsis.progression` in runtime
-JSON for `firstLevelXp=16`, `xpRequirementStep=12`, `gruntKillXp=1`,
-`heavyKillXp=10` and `fireRatePerLevel=1`.
+One disposable `progressionLevelUp` event coordinates the entire presentation:
+**800 ms** HUD gold/white pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message.
+For the first **240 ms** the bar flashes full, then resets immediately to actual
+new-level overflow; the old level label becomes the new one with a pop at 120 ms.
+Combat does not pause. Multi-level grants carry a from/to range and share one
+coherent beat instead of stacking duplicate visual/audio bursts.
+
+Each visible soldier gets an **800 ms** expanding warm ground ring, emissive
+body/helmet/vest wash, a brief 20% presentation scale pulse, and eight rising
+energy motes. A reusable pool covers up to 24 members, sharing geometry/materials;
+the current single soldier and multiple-member fixtures are verified. Rifle tiers
+and gameplay hitboxes are untouched. The next **1400 ms** uses a 1.9× brighter
+warm muzzle flash (90 ms rather than 50 ms) and stronger tracer glow (.55 opacity
+versus .28, 1.2× Rifle width). Damage, range and the weapon model stay unchanged.
+The existing modest ascending two-tone audio cue remains at its prior volume.
+
+Progression and progression balance are plain snapshot data. Validation checks
+current-level XP, positive integer level, nonempty positive requirement table and
+finite fallback multiplier >1. Phase 3.0 snapshots carrying explicit linear
+`firstLevelXp`/`xpRequirementStep` balance are **intentionally rejected**, not
+silently reinterpreted; save a new snapshot for this pacing experiment. Older
+pre-XP defense snapshots without progression initialize LV1/XP0 and use current
+balance defaults; non-defense runs remain without XP. Retry resets level/XP,
+observer, HUD beat, soldier burst and weapon afterglow, retaining runtime TUNE.
+Edit `catharsis.progression.xpRequirements` / `xpFallbackMultiplier` in runtime JSON.
+Kill awards remain `gruntKillXp=1`, `heavyKillXp=10`; `fireRatePerLevel=1`.
 
 ## Heavy lane leader
 
@@ -214,42 +239,49 @@ the pressure/release loop before designing further progression.
 
 ## Verification and phone playtest focus
 
-Focused checks cover player kill awards/contact exclusions, duplicate prevention,
-penetration and retained rocket kills, XP curve/overflow, effective scheduling,
-base-rate composition, snapshot validation/restore, new-run reset, deterministic
-Heavy staging, render max HP, gait independence, health-bar reuse and HUD feedback.
-Existing baseline/input/death checks remain in place.
+Focused tests cover authored table/fallback/overflow, strict snapshot format,
+unchanged awards/contact exclusions, effective scheduling/base independence,
+HUD percentages and anticipation, full flash/reset/label pop, one-shot/coalesced
+presentation events, reusable multi-member bursts, tier independence, afterglow
+expiry and Retry cleanup. Existing combat baseline and input tests remain.
 
-Portrait evidence and measurements are saved locally under `artifacts/earned-power/`.
-Physical-phone playtesting should evaluate the first few earned levels, whether
-Heavy leads remain visible as different waves overlap, the 650 ms lumbering gait,
-HP bar legibility at the shoreline, low vaporization visibility and whether the
-800 ms level beat is rewarding during sustained fire. Performance is measured;
-no adaptive density or hidden scaling is used.
+Portrait evidence is local under `artifacts/progression-feel/`, at 390×844/DPR2
+Chrome SwiftShader. Captures include normal/70%+/90%+ fill, a full-density staged
+lethal hit at 27 XP, and render-timed flash/sparks/reset/afterglow/expiry. Only one
+Grunt is repositioned for the staged hit; crowd population is retained. The warmer
+HUD and prominent ring/wash/motes are readable below combat without covering the
+soldier. XP taps still step a lane, Pause suppresses taps, and closing edited TUNE
+restores keys. Retry resets LV1/XP0 and visible bursts while retaining base 2.5 Hz.
+No browser errors. Audio remains the existing gesture-unlocked positive cue.
 
-Delivery checks: **415 tests / 57 files pass**, plus typecheck and production build.
-Portrait Chrome at **390×844, DPR2** shows the unobstructed XP bar, readable
-near/mid Heavy silhouette and live amber health fill; no extra size increase was
-needed. The hint hides during the level-up beat. XP-HUD taps step lanes, Pause
-suppresses taps, closing TUNE restores keyboard input, and Retry returns LV1/XP0
-while retaining a tuned 2.5 Hz base. Three natural level-up cues were observed;
-no browser errors. Audio playback uses the existing gesture unlock and remains
-optional if Web Audio is denied.
+The same fixed-step nearest-threat pilot selects lanes every 90 ticks (1.5 s).
+**Seed 17:**
 
-A scripted nearest-threat lane pilot reached LV2/3/4 at **5.4 / 13.9 / 22.4 s**
-in the live seed-17 run; LV4 had 13/52 XP with ~185 active enemies at ~25 s.
-Three deterministic fixed-step pilots (seeds 1/17/42) reached LV2 at **5.3–7.0 s**,
-LV3 at **13.2–14.0 s**, LV4 at **21.8–22.1 s**, and LV5 at **31.4–31.7 s**.
-Seed 17 reached LV2/3/4/5 after **16 / 35 / 75 / 118 kills**, including
-**0 / 1 / 1 / 2 Heavies** respectively. These are automated lane choices, not human pacing evidence. The first thresholds
-represent 16/44/84 total XP (up to that many Grunt kills; Heavies reduce kill count).
-All three pilots survived 100 s and reached LV10 with ~19–20 active enemies:
-automatic power objectively outgrows unchanged pressure, which requires phone
-playtesting before selecting a final curve.
+| Level | Time | Total kills | Heavy kills included | Effective Rifle |
+| --- | --- | --- | --- | --- |
+| LV2 | 13.3 s | 28 | 0 | 4 Hz |
+| LV3 | 27.8 s | 79 | 1 | 5 Hz |
+| LV4 | 49.7 s | 180 | 2 | 6 Hz |
+| LV5 | 82.6 s | 342 | 4 | 7 Hz |
 
-The live software-rendered run reported **23 FPS**, average **42.9 ms**, p95
-**50.1 ms**, with simulation ~0.2 ms and ~209 draw calls. This is Chrome SwiftShader,
-not target-phone performance. No density reduction or optimization was applied.
-Heavy leaders can still be occluded by older overlapping waves despite clearance
-within their own group; bars remain visible. Evaluate this limitation and whether
-the first levels arrive too quickly on a physical phone.
+Across seeds 1/17/42, LV2 arrives at 9.4–13.3 s, LV3 at 25.6–27.8 s,
+LV4 at 49.7–49.9 s and LV5 at 81.7–82.6 s. All three pilots survive 300 s
+and reach LV7 (~203–205 s). Seed-17 active population is 199 at 30 s,
+181 at 60 s, 99 at 120 s, 11 at 180 s and 10 at 300 s: power eventually
+outgrows unchanged pressure. These are scripted decisions, not human pacing evidence.
+
+Physical-phone playtests should judge whether the first reward still arrives too
+soon or feels delayed, whether the bold soldier wash preserves its silhouette,
+whether near-full anticipation is noticeable without distracting from lane choice,
+and whether the brief afterglow makes the new rhythm feel earned. Heavy leaders
+can still be obscured by adjacent waves; their existing bars/readability are retained.
+No adaptive density, hidden scaling or unrelated optimization is applied.
+
+Delivery checks: **422 tests / 58 files pass**, plus typecheck and production build.
+A separate 22-second live browser pilot (without synchronous offline simulation)
+reported **21 FPS**, average **47.9 ms**, p95 **50.1 ms**, with 200 active enemies
+under SwiftShader. A natural LV1→LV2 gain produced exactly one shared presentation
+beat at ~11 s in this wall-timed pilot. This is not physical-phone performance;
+the fixed-tick table above is the comparable pacing evidence. Existing build
+warnings concern bundle size and third-party Zod annotations; no density change
+or performance optimization was made for this report.
