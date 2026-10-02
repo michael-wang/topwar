@@ -166,14 +166,15 @@ export class EnemyRenderer {
         this.healthBars.push(bar);
       }
       const fraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
-      const width = enemy.archetype === 'giant' ? 1.5 : 1.1;
-      const y = (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.modelTop + .3;
+      const giantBar = enemy.archetype === 'giant' ? this.giantRenderer.healthBarLayout(enemy) : undefined;
+      const width = giantBar?.width ?? 1.1;
+      const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.modelTop + .3;
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
       bar.backing.position.set(-enemy.x, y, enemy.z);
-      bar.backing.scale.set(width + .08, .18, 1);
+      bar.backing.scale.set(width + .08, giantBar ? .26 : .18, 1);
       bar.fill.position.set(-enemy.x + width * (1 - fraction) / 2, y, enemy.z);
-      bar.fill.scale.set(width * fraction, .11, 1);
+      bar.fill.scale.set(width * fraction, giantBar ? .18 : .11, 1);
     }
     for (; barIndex < this.healthBars.length; barIndex++) {
       this.healthBars[barIndex].backing.visible = false;

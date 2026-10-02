@@ -28,7 +28,7 @@ export class HeavyHitFeedback {
     // HP deltas carry no impact coordinates: use the defender-facing Rifle-height surface.
     burst.giant = enemy.archetype === 'giant';
     burst.sparks.children.forEach((spark, index) => spark.visible = burst!.giant || index < 4);
-    burst.id = enemy.id; burst.startedAt = nowMs; burst.x = -enemy.x; burst.z = enemy.z - .25;
+    burst.id = enemy.id; burst.startedAt = nowMs; burst.x = -enemy.x; burst.z = enemy.z - (burst.giant ? (enemy.visualScaleZ ?? enemy.visualScale ?? 1) * .32 : .25);
     burst.body.visible = true; burst.sparks.visible = true;
     return true;
   }

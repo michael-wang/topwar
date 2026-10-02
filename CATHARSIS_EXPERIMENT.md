@@ -1,4 +1,4 @@
-# Progression Phase 2 — Late Pressure + First Giant
+# Progression Phase 2 — Giant Combat Feel + HUD Cleanup
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
@@ -123,28 +123,52 @@ Ordinary waves continue during the delay; no breathing-window density reduction
 is applied. The pending time and one-shot flag survive snapshots. Retry resets
 both. Old snapshots without this state initialize an untriggered encounter; missing Giant balance defaults disabled, while new authored runs explicitly enable it.
 
-Authored `catharsis.giant` values: **28 HP / 30 XP / 0.08 additional speed**, unlock
-level 6, delay 4 seconds, visual scale **2.4**, width multiplier **0.85**, visual gait
-**850 ms**. HP is fixed, never derived from player fire rate. The Giant uses normal
-lane targeting, tier-1 contact damage and the existing 0.3 normal collision radius.
-XP is awarded only by the shared player-kill boundary, once; contact/leaks grant
-none. At 6.9 Hz focused single-soldier fire takes about **4.1 seconds** from firing
-to death at 14-unit range, **3.87 seconds** from first damage to death. Actual
-encounters can take longer because Grunts ahead and other lanes need attention.
-All Giant values and the pressure table are runtime-loaded JSON/snapshot balance;
-no new fake TUNE controls. Explicit live HP edits retain damage fraction, as Heavy does.
+Authored `catharsis.giant` values: **210 HP / 30 XP / 0.08 additional speed**, unlock
+level 6, delay 4 seconds, visual scale **3.6**, width multiplier **0.68**, visual gait
+**850 ms**. HP is fixed, never derived from player fire rate. Only Giant HP and
+presentation changed in this follow-up; pressure, Rifle progression, XP thresholds,
+Heavy values, spawn clock, XP reward and all level-up effects remain untouched.
+The Giant uses normal lane targeting, tier-1 contact damage and the existing 0.3
+normal collision radius. XP is awarded once by the shared player-kill boundary;
+contact/leaks grant none. At fixed LV6 / 6.9 Hz, uninterrupted single-soldier fire
+now takes **29.95 seconds from first damage to death**, versus the previous ~3.87.
+No armor, phases, regeneration, new damage or special attacks were introduced.
+All Giant values and the pressure table are runtime-loaded JSON/snapshot balance.
+Explicit live HP edits retain damage fraction, as Heavy does.
 
-Giant presentation reuses corrected soldier poses but has a **separate dark body/
-armor treatment**, broad slab shoulder guards, heavier chest/back plates and a
-narrow visor. Final XYZ scale is **2.856 / 3.36 / 3.36**, versus Grunt 1.4. The
-asynchronous 850 ms gait is visual only, with a restrained weighty bob/sway.
-A floating live HP bar remains above the silhouette. The shared rate-limited
-100 ms / 250 ms hit system adds slightly stronger **0.11-unit recoil / 0.06-radian
-tilt** and **six larger 170 ms sparks** for Giant; Heavy retains its prior four
-sparks, flash and jolt. Death uses gray baked body/material, a **650 ms** shrink/
-fade, expanding ground-impact ring, and **24 larger debris points lasting 450 ms**
-in a fixed pool (normal death remains six points / 260 ms). No camera shake,
-special attacks, collision avoidance or new asset-bake pipeline is added.
+The separate Giant renderer reuses the corrected soldier face and run poses, but
+adds **crimson armor / warm gold trim**, faceted broad shoulder plates and spikes,
+independent thick arms/gauntlets, skin-colored hands, a gold helmet rim/crest,
+chest shield/belt and slate boots. A clearly visible **spiked mace** gives the
+silhouette character; it is entirely visual, with no weapon mechanics. Dark
+materials are secondary leather contrast. Neither Heavy nor player assets changed.
+Final XYZ scale is **3.4272 / 5.04 / 5.04**, versus unchanged Grunt 1.4.
+Measured full-model envelope is ~**4.16 wide × 5.85 high × 4.44 deep** world units,
+including mace and crest: roughly **three 1.4-unit lane spacings** wide. Armor/body
+occupies about 2.4 lanes; the weapon extends the envelope. Height exceeds four
+Grunt model heights with the crest. Visual intrusion into neighboring lanes is
+intentional; targeting/collision still belongs to one logical lane.
+The asynchronous 850 ms gait and simulation advance remain unchanged.
+
+The floating HP bar uses measured full-model bounds: ~**3.12 units** of fill track,
+0.18 fill height / 0.26 backing height, centered ~0.35 units above the model top.
+It has no numbers, remains visible through crowds, and loses ~0.48% per Rifle hit.
+Shared surviving-hit rate limiting remains **100 ms flash / 250 ms minimum gap**.
+Giant armor adds a brief warm emissive wash; its **0.11-unit recoil / 0.06-radian
+tilt** and six larger **170 ms sparks** remain. Sparks move to the defender-facing
+surface of the enlarged model so impacts are not hidden inside it. Heavy's four
+sparks, flash and jolt are unchanged. Death uses gray body and armor, a **650 ms**
+shrink/fade and proportionally wider expanding ground ring, plus **36 larger
+0.34-unit debris points lasting 450 ms** in the existing fixed pool. Normal enemy
+deaths stay six points / 260 ms. No camera shake, collision avoidance or new
+asset-bake pipeline is added. Renderer-owned geometry/materials reset/dispose;
+borrowed soldier geometry remains intact.
+
+The lower-left instruction group now has **transparent backing**, quiet small
+text/shadow, and includes the mobile tap hint. The separate bottom-center hint
+is removed. Safe-area positioning leaves a gap above the XP bar, and the group
+remains pointer-transparent. The existing temporary instruction hide during the
+level-up announcement is retained.
 
 No second soldier, squad growth, new player weapon or upgrade choice is introduced.
 Rifle progression, all XP thresholds, Grunt 1 HP / 1 XP, Heavy 15 HP / 10 XP and
@@ -304,73 +328,64 @@ the pressure/release loop before designing further progression.
 
 ## Verification and phone playtest focus
 
-The same fixed-step nearest-threat pilot selects lanes every 90 ticks (1.5 s).
-**Seed 17**, one Rifle soldier, untouched Rifle/XP settings:
+The seed-17 fixed-step nearest-threat pilot still reaches LV2/3/4/5/6 at
+**13.3 / 27.8 / 49.7 / 82.6 / 128.65 seconds**, with unchanged effective rates
+**4 / 5 / 6 / 6.5 / 6.9 Hz**. First Giant enters at **132.67 seconds**.
 
-| Level | Time | Total kills | Heavy kills included | Effective Rifle |
-| --- | --- | --- | --- | --- |
-| LV2 | 13.3 s | 28 | 0 | 4 Hz |
-| LV3 | 27.8 s | 79 | 1 | 5 Hz |
-| LV4 | 49.7 s | 180 | 2 | 6 Hz |
-| LV5 | 82.6 s | 342 | 4 | 6.5 Hz |
-| LV6 | 128.6 s | 586 | 8 | 6.9 Hz |
+Three isolated fixed-LV6 fights (one soldier, default damage, no other enemies)
+measure HP from the first hit until death. Starting distance varies to verify
+travel time does not change sustained-fire durability:
 
-LV2–LV5 timings are exactly preserved; more future enemies slightly change LV6
-from the previous 129.5 s. Giant appears at **132.7 s** and dies at **161.8 s**
-under the switching pilot. The isolated focused-fire check measures 4.1 s to kill.
+| Seed | Starting distance | First shot to death | First damage to death |
+| --- | --- | --- | --- |
+| 1 | 44 | 30.68 s | 29.95 s |
+| 17 | 38 | 30.58 s | 29.95 s |
+| 42 | 30 | 30.45 s | 29.95 s |
 
-| Seed | Active at 90 s | Active at 180 s | Active at 300 s | Peak | First Giant |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 143 | 129 | 57 | 205 | 134.6 s |
-| 17 | 152 | 134 | 63 | 213 | 132.7 s |
-| 42 | 159 | 135 | 90 | 207 | 133.7 s |
+Each survives, stays LV6, and receives exactly 30 XP on the kill. Starting too
+near the defense line can cause contact before 30 seconds; this remains the
+existing movement/contact rule, not a new Giant mechanic.
 
-All three survive 300 seconds and exactly one Giant appears in each. Ten-minute
-extensions also survive without runaway accumulation. The roughly 200-enemy
-opening peak predates LV5 and is intentionally retained; later crowds decline
-into a broad 40–90 band rather than a permanent 150–200 mass. Brief larger banks
-remain around the LV6 encounter. At 180 seconds seed 17 retains 134 enemies
-versus 23 before this change, and 63 versus 11 at 300 seconds.
+For the portrait crowded-fight evidence, the same seed-17 pilot switches from
+nearest-threat selection to continuously defending the Giant lane at entry.
+Giant HP falls to 157/210 at **141.75 s**, 105/210 at **149.22 s**, and 10/210 at
+**162.83 s**. Active populations are 193 / 225 / 289 respectively. **That exclusive
+commitment loses the run to unattended pressure before the Giant dies.** This is
+an observed consequence of the requested durability, not a pressure retune.
+Evaluate on a physical phone whether switching attention makes the long commitment
+rewarding; do not infer survival from the isolated TTK checks. No second soldier
+or relief system was added.
 
-LV5/LV6 no longer wipe the normal progressing battlefield to ~11 enemies in the
-old time window. The pilot must still switch to approaching fronts while spending
-shots on the Giant. This is **not proof of physical-phone difficulty**: it chooses
-the nearest threat automatically and still survives all seeds. Isolated fixed-
-level probes (XP disabled only in fixtures) eventually win too: LV5 leaves 34,
-LV6 19 at 300 seconds, though both retain ~94–102 at 180 seconds. This experiment
-restores pressure during normal earned progression, not an unwinnable permanent
-wall. Existing contact/leak rules remain unchanged; no global breach mechanic was
-introduced. Phone playtests should judge whether lane decisions now feel costly,
-whether the Giant discovery is imposing, and whether its larger death beat rewards
-focused attention. Pressure may still need further authored tuning from that evidence.
+Portrait captures in `artifacts/giant-warlord/` show full-HP entry, surrounding
+Grunts/Heavies, ~75% / 50% / near-death HP, controlled isolated death, and normal
+HUD. They project actual simulation states at **390×844 / DPR2**, with live level,
+XP and lane labels and no enemy title. The death capture comes from the successful
+isolated fight; it is not presented as a crowded-run victory. Hit stages sample
+the brief warm flash; a non-flashing crowded frame shows the crimson/gold palette.
+The face, separate shoulders, arms, torso, legs and mace remain recognizable.
+The bar is above the crest and remains clear as health declines. Hits settle
+between rate-limited reactions; the gray death/ring is stronger. No browser errors.
+Lower-left instructions are transparent/pointer-transparent, end ~10.6 pixels
+above the XP HUD, and a tap through them moves exactly one lane. Pause and TUNE
+also respond in the touch-enabled portrait check.
 
-Portrait evidence in `artifacts/late-pressure-giant/`: normal LV5 at 90 seconds,
-LV6 at 150 seconds, natural first Giant entry, sustained hits after eight damage
-points, and death at +120 ms. These project actual seed-17 simulation frames,
-with live level/XP/lane labels, retained crowds and no encounter label. Hit/death
-frames use render-timed feedback so the short beats can be inspected. The dark
-silhouette, HP bar, warm impacts and large gray death are readable at 390×844/DPR2.
-No browser errors; current XP gradient and level-up presentation are preserved.
+Live eight-second checks resume the ~75% and ~50% crowded states with simulation
+and Giant fire running. Chrome **SwiftShader desktop software rendering**, not
+physical-phone GPU performance:
 
-Separate live 6.5-second portrait checks resumed actual seed-17 snapshots near
-each population band; the same pilot and simulation ran during measurement.
-Chrome SwiftShader on desktop, **not physical-phone GPU performance**:
+| Active population range | FPS | Average frame | p95 |
+| --- | --- | --- | --- |
+| 193–225 | 21 | 47.1 ms | 50.1 ms |
+| 225–257 | 18 | 55.6 ms | 66.7 ms |
 
-| Approximate population | End population | FPS | Average frame | p95 |
-| --- | --- | --- | --- | --- |
-| ~50 (sampled 53–81) | 49 | 43 | 23.3 ms | 33.4 ms |
-| ~100 (91–123) | 123 | 30 | 33.5 ms | 50.0 ms |
-| ~150 (138–166) | 136 | 24 | 40.8 ms | 50.1 ms |
-| ~200 (183–201) | 199 | 21 | 48.2 ms | 50.1 ms |
+Simulation CPU stays ~0.2–0.3 ms/frame; render submission ~1.3–1.4 ms. The software
+GPU/frame budget remains the limitation. Density was not reduced and no adaptive
+behavior or unrelated optimization was added. Phone checks should assess armor/
+impact contrast, the visual intrusion into neighboring lanes, HP progress during
+a full 30-second fight, and the commitment cost while other fronts accumulate.
 
-Simulation CPU remained ~0.1–0.2 ms/frame in these checks; software GPU rendering
-is the visible limitation. No new severe hitch was observed, no density was
-lowered for FPS, and no adaptive performance behavior or unrelated optimization
-was added. Offline screenshot counters are not FPS evidence.
-
-Delivery checks: **432 tests / 61 files pass**, typecheck and production build.
-Tests cover quantity-only deterministic generation, unchanged early stream,
-Giant gate/pending snapshot/once-only spawn/Retry initialization, kill-only XP,
-movement, projected maximum/proportions/gait, rate-limited Giant impacts and
-larger bounded death/disposal. Existing Heavy/input/spectacle tests still pass.
-Build warnings remain third-party Zod annotations and bundle size.
+Delivery checks: **436 tests / 61 files pass**, typecheck and production build.
+Focused tests cover measured three-run durability, fixed HP/live tuning and render
+maximum, full-model bar bounds, mace/arm silhouette, bounded stronger death, 30-second rate-limited impact/pool stability and
+resource disposal. Existing pressure, input, Heavy, snapshot and spectacle tests
+remain passing. Build warnings remain third-party Zod annotations and bundle size.

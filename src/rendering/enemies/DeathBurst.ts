@@ -42,7 +42,7 @@ export class DeathBurst {
   private cursor = 0;
 
   constructor(private readonly scene: THREE.Scene, private readonly giant = false) {
-    if (giant) { this.material.size = .28; this.material.toneMapped = false; }
+    if (giant) { this.material.size = .34; this.material.toneMapped = false; }
     this.positions.fill(-1000);
     this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage));
     this.geometry.setAttribute('color', new THREE.BufferAttribute(this.colors, 3).setUsage(THREE.DynamicDrawUsage));
@@ -53,15 +53,15 @@ export class DeathBurst {
 
   spawn(enemy: EnemyRenderState, nowMs: number): void {
     const color = this.giant ? new THREE.Color('#ffe8c0') : deathParticleColor(enemy.tier);
-    for (let index = 0; index < (this.giant ? 24 : PARTICLES_PER_DEATH); index++) {
+    for (let index = 0; index < (this.giant ? 36 : PARTICLES_PER_DEATH); index++) {
       const slot = this.cursor;
       const offset = slot * 3;
       this.cursor = (this.cursor + 1) % DEATH_PARTICLE_CAPACITY;
       const velocity = deathParticleVelocity(enemy.id, index);
       this.births[slot] = nowMs;
-      this.origins[offset] = this.positions[offset] = -enemy.x + (this.giant ? velocity.x * 1.2 : 0);
-      this.origins[offset + 1] = this.positions[offset + 1] = this.giant ? .6 + (index % 4) * .35 : 0.58;
-      this.origins[offset + 2] = this.positions[offset + 2] = enemy.z + (this.giant ? velocity.z * 1.2 : 0);
+      this.origins[offset] = this.positions[offset] = -enemy.x + (this.giant ? velocity.x * 2 : 0);
+      this.origins[offset + 1] = this.positions[offset + 1] = this.giant ? .9 + (index % 5) * .45 : 0.58;
+      this.origins[offset + 2] = this.positions[offset + 2] = enemy.z + (this.giant ? velocity.z * 2 : 0);
       this.velocities[offset] = velocity.x * (this.giant ? 2.4 : 1);
       this.velocities[offset + 1] = velocity.y * (this.giant ? 1.7 : 1);
       this.velocities[offset + 2] = velocity.z * (this.giant ? 2.4 : 1);

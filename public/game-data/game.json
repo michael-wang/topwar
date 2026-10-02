@@ -41,11 +41,11 @@
       "enabled": true,
       "unlockLevel": 6,
       "introDelaySeconds": 4,
-      "hp": 28,
+      "hp": 210,
       "xp": 30,
       "speed": 0.08,
-      "visualScale": 2.4,
-      "widthMultiplier": 0.85,
+      "visualScale": 3.6,
+      "widthMultiplier": 0.68,
       "gaitCycleMs": 850
     }
   },

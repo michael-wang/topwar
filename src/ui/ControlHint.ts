@@ -4,7 +4,7 @@ export class ControlHint {
   constructor(viewport: HTMLElement, defenseMode = false) {
     this.element = document.createElement('div');
     this.element.className = 'control-hint';
-    this.element.innerHTML = `A / D or ← / → &nbsp; ${defenseMode ? 'STEP LANE' : 'MOVE'}<br>P / SPACE &nbsp; PAUSE<br>ESC &nbsp; TUNE`;
+    this.element.innerHTML = `A / D or ← / → &nbsp; ${defenseMode ? 'STEP LANE' : 'MOVE'}<br>P / SPACE &nbsp; PAUSE<br>ESC &nbsp; TUNE${defenseMode ? '<br>TAP LEFT / RIGHT · ONE LANE' : ''}`;
     viewport.append(this.element);
   }
 
