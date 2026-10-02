@@ -83,12 +83,12 @@ function rgba(png) {
 }
 
 describe('Kenney texture and toy soldier gear bake', () => {
-  it('preserves every player, Boss and shared gear asset byte-for-byte', () => {
-    const protectedNames = ['player-body', 'helmet', 'vest', 'rifle', 'bullet', 'boss-body', 'boss-vest',
+  it('preserves Boss and shared gear assets byte-for-byte', () => {
+    const protectedNames = ['helmet', 'vest', 'rifle', 'bullet', 'boss-body', 'boss-vest',
       ...[0, 1, 2, 3].map(index => `boss-run-${index}`), ...[0, 1, 2, 3].map(index => `boss-slam-${index}`)];
     const hash = createHash('sha256');
     for (const name of protectedNames) hash.update(readFileSync(new URL(`../public/models/toy-soldier-${name}.glb`, import.meta.url)));
-    expect(hash.digest('hex')).toBe('241a656db29c6f934aef5921c494862fa106cb5cfac042cc4c6167f8f46b1758');
+    expect(hash.digest('hex')).toBe('c35147b2ebb80e37271f50429bef97c9f52c08537247f94641dcd762f8875ed9');
   });
   it('embeds the original Kenney colormap unchanged for enemy and Boss bodies', () => {
     expect(createHash('sha256').update(image('body')).digest('hex'))
@@ -230,3 +230,23 @@ describe('Kenney texture and toy soldier gear bake', () => {
     }
   });
 });
+
+ it('adds normalized limb metadata while preserving the player surface and texture exactly', () => {
+   const { document, binary } = glb('player-body'), primitive = document.meshes[0].primitives[0];
+   const hash = createHash('sha256');
+   for (const accessorIndex of ['POSITION','NORMAL','TEXCOORD_0'].map(name => primitive.attributes[name]).concat(primitive.indices)) {
+     const view = document.bufferViews[document.accessors[accessorIndex].bufferView];
+     hash.update(binary.subarray(view.byteOffset,view.byteOffset+view.byteLength));
+   }
+   hash.update(image('player-body'));
+   expect(hash.digest('hex')).toBe('7a5f141af33d2fcd7bba873b58894b38fe986fdd8f3db174bc837a5b46f49ed0');
+   const a = document.accessors[primitive.attributes._MOTION], view = document.bufferViews[a.bufferView];
+   expect(a.type).toBe('VEC4'); expect(a.count).toBe(positions('player-body').length);
+   const bytes = new DataView(binary.buffer,binary.byteOffset+view.byteOffset,view.byteLength);
+   const totals = [0,0,0,0];
+   for(let i=0;i<a.count;i++) { let sum=0; for(let j=0;j<4;j++) {
+     const value=bytes.getFloat32(i*16+j*4,true); expect(value).toBeGreaterThanOrEqual(0); expect(value).toBeLessThanOrEqual(1);
+     totals[j]+=value;sum+=value;
+   } expect(sum).toBeLessThanOrEqual(1.00001); }
+   expect(totals.every(n => n>10)).toBe(true);
+ });

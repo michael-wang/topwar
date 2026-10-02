@@ -1,3 +1,4 @@
+import { giantWeightPose } from '../../presentation/CharacterMotion';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import type { HeavyHitFeedback } from './HeavyHitFeedback';
@@ -23,6 +24,9 @@ export class GiantRenderer {
   private readonly trim = new THREE.TorusGeometry(1, .08, 5, 12);
   private readonly body: THREE.Mesh;
   private readonly arms: THREE.Group[] = [];
+  private readonly forearms: THREE.Group[] = [];
+  private readonly shoulders: THREE.Mesh[] = [];
+  private readonly weapon = new THREE.Group();
   private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color }[];
   private readonly dimensions: THREE.Vector3;
   private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: '#ffe6aa', transparent: true,
@@ -53,16 +57,18 @@ export class GiantRenderer {
     this.part(this.facet, this.red, 0, .33, .36, .075, .055, .035);
     this.part(this.box, this.red, 0, .45, -.31, .46, .32, .14);
     for (const side of [-1, 1]) {
-      this.part(this.facet, this.gold, side * .33, .58, 0, .18, .14, .25);
-      this.part(this.facet, this.red, side * .335, .58, .045, .155, .115, .22);
+      this.shoulders.push(this.part(this.facet, this.gold, side * .33, .58, 0, .18, .14, .25));
+      this.shoulders.push(this.part(this.facet, this.red, side * .335, .58, .045, .155, .115, .22));
       for (const depth of [-.12, .02, .15])
         this.part(this.cone, this.gold, side * .40, .74, depth, .035, .17, .035);
       const arm = new THREE.Group(); arm.name = 'giant-arm'; arm.position.set(side * .31, .53, 0);
       this.group.add(arm); this.arms.push(arm);
       this.part(this.cylinder, this.skin, side * .04, -.09, .03, .075, .24, .09, arm);
-      this.part(this.facet, this.red, side * .055, -.18, .09, .115, .13, .135, arm);
-      this.part(this.facet, this.gold, side * .055, -.12, .12, .118, .055, .14, arm);
-      this.part(this.facet, this.skin, side * .065, -.27, .12, .095, .07, .10, arm);
+      const forearm = new THREE.Group(); forearm.name = 'giant-forearm';
+      forearm.position.y = -.12; arm.add(forearm); this.forearms.push(forearm);
+      this.part(this.facet, this.red, side * .055, -.06, .09, .115, .13, .135, forearm);
+      this.part(this.facet, this.gold, side * .055, 0, .12, .118, .055, .14, forearm);
+      this.part(this.facet, this.skin, side * .065, -.15, .12, .095, .07, .10, forearm);
       this.part(this.facet, this.steel, side * .13, .10, .10, .10, .10, .18);
       this.part(this.facet, this.red, side * .13, .22, .17, .085, .09, .04);
     }
@@ -72,8 +78,8 @@ export class GiantRenderer {
     for (const x of [-.11, 0, .11])
       this.part(this.cone, this.gold, x, 1.04 + (x === 0 ? .035 : 0), .01, .04, .15, .055);
 
-    const weapon = new THREE.Group(); weapon.name = 'giant-mace';
-    this.arms[1].add(weapon); weapon.position.set(.10, -.12, .18);
+    const weapon = this.weapon; weapon.name = 'giant-mace';
+    this.forearms[1].add(weapon); weapon.position.set(.10, 0, .18);
     this.part(this.cylinder, this.leather, 0, 0, 0, .032, .55, .032, weapon);
     this.part(this.facet, this.red, 0, .37, 0, .18, .22, .18, weapon);
     const band = this.part(this.trim, this.gold, 0, .37, 0, .19, .19, .19, weapon);
@@ -121,11 +127,20 @@ export class GiantRenderer {
       const cycle = enemy.gaitCycleMs ?? 850, phase = nowMs * Math.PI * 2 / cycle + enemy.id * 2.399963;
       const hit = hits.strength(enemy.id, nowMs);
       this.body.geometry = this.frames[Math.floor(nowMs / (cycle / 4) + enemy.id * 1.52788745) & 3].geometry;
-      this.arms.forEach((arm, index) => { arm.rotation.x = Math.sin(phase + index * Math.PI) * .12; });
-      this.group.position.set(-enemy.x, Math.abs(Math.sin(phase)) * .035, enemy.z + hit * .11);
-      this.group.rotation.set(-.12 + hit * .06, Math.PI, Math.sin(phase) * .018);
+      const weight = giantWeightPose(enemy.id, nowMs, cycle);
+      this.arms.forEach((arm, index) => {
+        const side = index === 0 ? 1 : -1;
+        arm.rotation.z = 0;
+        arm.rotation.x = weight.arm * side + .035 * hit;
+        this.forearms[index].rotation.x = Math.sin(phase - .55 + index * Math.PI) * .07 + .02 * hit;
+      });
+      this.weapon.rotation.x = weight.weapon + .03 * hit;
+      this.weapon.rotation.z = Math.sin(phase - .8) * .045;
+      this.shoulders.forEach((shoulder, index) => { shoulder.rotation.z = weight.shoulder * (index < 2 ? 1 : -1); });
+      this.group.position.set(-enemy.x, weight.bob, enemy.z + hit * .11);
+      this.group.rotation.set(-.12 + hit * .06, Math.PI, weight.sway);
       const scale = enemy.visualScale ?? 1;
-      this.group.scale.set(enemy.visualScaleX ?? scale, enemy.visualScaleY ?? scale, enemy.visualScaleZ ?? scale);
+      this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression), enemy.visualScaleZ ?? scale);
       this.group.visible = true; this.ring.visible = false; this.restorePalette();
       this.red.emissiveIntensity = .45 * hit; this.gold.emissiveIntensity = .6 * hit;
       this.group.updateMatrixWorld(true);
@@ -134,10 +149,15 @@ export class GiantRenderer {
     }
     const age = nowMs - this.deathAt;
     if (!this.previous || age < 0 || age >= DEATH_MS) { this.group.visible = this.ring.visible = false; return; }
-    const p = age / DEATH_MS, scale = 1 - .8 * p, base = this.previous.visualScale ?? 1;
+    const p = age / DEATH_MS, falling = Math.max(0, Math.min(1, (age - 70) / 380));
+    const fall = falling * falling * (3 - 2 * falling);
+    const scale = 1 - .8 * p * p, base = this.previous.visualScale ?? 1;
+    this.group.rotation.set(-.12 - 1.1 * fall, Math.PI, .18 * fall);
+    this.arms.forEach((arm, index) => { arm.rotation.x = -.35 * fall; arm.rotation.z = (index ? 1 : -1) * .25 * fall; });
+    this.weapon.rotation.x = -.5 * fall;
     this.group.visible = this.ring.visible = true;
     this.group.scale.set(this.previous.visualScaleX ?? base, this.previous.visualScaleY ?? base, this.previous.visualScaleZ ?? base).multiplyScalar(scale);
-    this.group.position.set(-this.previous.x, .12 + .25 * p, this.previous.z);
+    this.group.position.set(-this.previous.x, .10 * (1 - p), this.previous.z + .6 * fall);
     this.body.geometry = this.grayBody.geometry; this.body.material = this.deathMaterial; this.deathMaterial.opacity = 1 - p;
     for (const { material } of this.palette) {
       material.color.set(age < 80 ? '#fff1bd' : '#aeb6bc'); material.transparent = true;

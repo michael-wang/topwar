@@ -1,4 +1,4 @@
-# Progression Phase 2 — Giant Reward + LV7 Reinforcement
+# Art + Animation Quality Pass
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
@@ -6,6 +6,59 @@ barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
 become easier. Combat never pauses for a level, and no upgrade choices or support abilities
 are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
+
+## Presentation quality pass
+
+This iteration is **presentation only**. Pressure tables, population, HP/damage,
+Rifle rates, XP thresholds/rewards, Giant timing and the exact LV7 two-soldier
+DPS/arrival behavior are unchanged. The acknowledged LV7 screen-clearing balance
+issue is deferred.
+
+Character motion is procedural over the existing baked meshes. Player geometry
+now carries four original limb-weight channels, consumed by a small vertex shader;
+its positions/normals/UVs/indices/atlas are byte-identical to the previous surface.
+No runtime skeleton, AnimationMixer, physics or CPU vertex rewriting is added.
+Boss, normal enemy and shared equipment assets remain byte-identical.
+
+* Lane locomotion lasts **220 ms**, overlapping the unchanged **150 ms** simulation
+  lane interpolation. A tiny initial counter-lean leads into two quick steps,
+  travel lean, weapon/upper-body lag and settle. Rapid destinations retain the prior
+  lean briefly, avoiding an abrupt pose reset. Input and logical lane truth are immediate.
+* Firing adds weapon, weighted arm, shoulder and torso impulses with **38 ms decay**,
+  a small spring overshoot and a **150 ms** cutoff (previous weapon-only recoil was
+  85 ms). Repeated shots blend with a bounded 1.35-strength envelope. Each member
+  observes its own existing projectile memberIndex; DPS and alternating phase are untouched.
+* Two members have independent idle/step phases and a tiny recoil-amplitude difference.
+  Original two-member spacing/stagger and same-lane targeting remain unchanged.
+* Grunt keeps its **360 ms** quick baked gait, with a lighter **0.0416-unit** bounce
+  and ~0.032-radian weight roll. Heavy keeps **650 ms**, with **0.0198-unit** bounce
+  and ~0.077-radian alternating weight roll. Helmet/vest roll follows at 82%/92%
+  of body roll. All bodies still use four shared InstancedMesh pose batches.
+* Giant keeps **850 ms** visual cadence and its existing crimson/gold dimensions.
+  Up to **1.8%** presentation compression marks landing; maximum bounce is 0.022
+  units, sway 0.026 radians. Arms, separate forearms, shoulders and mace have small
+  asynchronous delayed motion. HP, movement, collision and bar are unchanged.
+* Heavy/Giant hits remain rate-limited additive impulses over ongoing gait.
+  Grunt/Heavy gray deaths retain their **480 ms** fade/pop/shrink/burst, adding a
+  quick 0.55-radian collapse with small roll (65/110 ms response respectively).
+  Giant staggers briefly, then falls ~1.1 radians before disappearing at **650 ms**;
+  its expanding ring and existing 36 debris points remain stronger than ordinary hits.
+* Reinforcement still takes exactly **1.1 seconds**. Weighted limbs run during
+  arrival, decelerate and settle, with smooth arm/weapon readiness in the final
+  quarter. LV7 keeps LEVEL UP but no explanatory reinforcement subtitle; existing
+  ring/wash/motes, label pop, positive audio and weapon afterglow are preserved.
+* Air adds **24 sparse warm motes** and **24 pooled dust slots**, four points per
+  Giant footfall lasting **420 ms**. These are two shared point batches, not
+  per-character emitters. The existing hit/death/level-up particle budgets are unchanged.
+  A Giant removal adds only a **0.025-unit / 240 ms** camera lift; there is no
+  continuous footfall shake, extra player-camera motion or fullscreen effect.
+
+All animation/particle clocks and resources are renderer-owned and cleared on
+Retry/restore. Nothing new is serialized or consumes gameplay RNG. There are no
+simulation/input or balance JSON changes. Presentation tests cover timing,
+independent phases/recoil, hit layering, physical death, bounded dust buffers and
+asset surface preservation. Large-crowd CPU and portrait capture evidence is
+recorded separately; physical-phone feel remains the final check.
 
 ## Earned progression
 
@@ -43,7 +96,7 @@ reward is visible; XP and level power are granted immediately in simulation.
 
 One disposable `progressionLevelUp` event coordinates the entire presentation:
 **800 ms** HUD gold/white pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message
-(`REINFORCEMENTS` replaces the subtitle at the reinforcement unlock).
+(the reinforcement unlock omits the explanatory subtitle).
 For the first **240 ms** the bar flashes full, then resets immediately to actual
 new-level overflow; the old level label becomes the new one with a pop at 120 ms.
 Combat does not pause. Multi-level grants carry a from/to range and share one
@@ -171,8 +224,8 @@ both. Old snapshots without this state initialize an untriggered encounter; miss
 
 Authored `catharsis.giant` values: **210 HP / 120 XP / 0.08 additional speed**, unlock
 level 6, delay 4 seconds, visual scale **3.6**, width multiplier **0.68**, visual gait
-**850 ms**. HP is fixed, never derived from player fire rate. This follow-up changes only Giant XP and the LV7 reinforcement reward. Giant HP,
-speed, geometry, hit/death feedback, HP bar, appearance timing, pressure curve,
+**850 ms**. HP is fixed, never derived from player fire rate. The presentation pass changes only animation, secondary motion and physical defeat. Giant HP,
+speed, static silhouette, hit timings, HP bar, appearance timing, pressure curve,
 LV1–LV6 Rifle values, XP thresholds and Heavy values remain unchanged.
 The Giant uses normal lane targeting, tier-1 contact damage and the existing 0.3
 normal collision radius. XP is awarded once by the shared player-kill boundary;
@@ -188,7 +241,7 @@ adds **crimson armor / warm gold trim**, faceted broad shoulder plates and spike
 independent thick arms/gauntlets, skin-colored hands, a gold helmet rim/crest,
 chest shield/belt and slate boots. A clearly visible **spiked mace** gives the
 silhouette character; it is entirely visual, with no weapon mechanics. Dark
-materials are secondary leather contrast. Neither Heavy nor player assets changed.
+materials are secondary leather contrast. Heavy assets are unchanged; player surface is preserved with added limb-weight metadata.
 Final XYZ scale is **3.4272 / 5.04 / 5.04**, versus unchanged Grunt 1.4.
 Measured full-model envelope is ~**4.16 wide × 5.85 high × 4.44 deep** world units,
 including mace and crest: roughly **three 1.4-unit lane spacings** wide. Armor/body
@@ -205,10 +258,10 @@ Giant armor adds a brief warm emissive wash; its **0.11-unit recoil / 0.06-radia
 tilt** and six larger **170 ms sparks** remain. Sparks move to the defender-facing
 surface of the enlarged model so impacts are not hidden inside it. Heavy's four
 sparks, flash and jolt are unchanged. Death uses gray body and armor, a **650 ms**
-shrink/fade and proportionally wider expanding ground ring, plus **36 larger
+physical stagger/collapse and shrink/fade and proportionally wider expanding ground ring, plus **36 larger
 0.34-unit debris points lasting 450 ms** in the existing fixed pool. Normal enemy
-deaths stay six points / 260 ms. No camera shake, collision avoidance or new
-asset-bake pipeline is added. Renderer-owned geometry/materials reset/dispose;
+deaths stay six points / 260 ms. No collision avoidance or new animation framework is added. The small camera
+defeat lift and player limb metadata are presentation only. Renderer-owned geometry/materials reset/dispose;
 borrowed soldier geometry remains intact.
 
 The lower-left instruction group now has **transparent backing**, quiet small

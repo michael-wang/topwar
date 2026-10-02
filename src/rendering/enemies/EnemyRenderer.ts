@@ -23,6 +23,7 @@ interface DeathVisual {
   bodyMaterial: THREE.MeshStandardMaterial;
   gearMaterial: THREE.MeshStandardMaterial;
   startedAtMs: number;
+  heavy: boolean;
 }
 
 interface ContactVisual {
@@ -205,9 +206,12 @@ export class EnemyRenderer {
       const index = indices[palette]++;
       const pose = enemyWalkPose(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
       const transform = this.transform;
-      transform.position.set(-enemy.x, pose.bob, enemy.z);
+      const heavy = enemy.archetype === 'heavy';
+      // Low bounce, stronger alternating weight transfer distinguish a Heavy.
+      const sway = pose.leftArm * (heavy ? .18 : .075);
+      transform.position.set(-enemy.x, pose.bob * (heavy ? .38 : .80), enemy.z);
       transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
-        pose.leftArm * 0.09);
+        sway);
       const hitStrength = this.heavyHits.strength(enemy.id, nowMs);
       transform.position.z += .07 * hitStrength;
       transform.rotation.x += .045 * hitStrength;
@@ -217,8 +221,13 @@ export class EnemyRenderer {
       this.bodyMeshes[frame].setMatrixAt(bodyIndices[frame]++, transform.matrix);
       this.heavyHits.setBody(enemy.id, this.runFrames[frame].geometry, transform.matrix, nowMs);
       const helmet = this.helmetMeshes[palette];
+      // Gear follows the torso a little late; retain the same instancing batches.
+      transform.rotation.z = sway * .82;
+      transform.updateMatrix();
       helmet.setMatrixAt(index, transform.matrix);
       const vest = this.vestMeshes[palette];
+      transform.rotation.z = sway * .92;
+      transform.updateMatrix();
       vest.setMatrixAt(index, transform.matrix);
       const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
       if (!flashing) this.flashUntilMs.delete(enemy.id);
@@ -349,12 +358,13 @@ export class EnemyRenderer {
       const vest = new THREE.Mesh(this.vestModel.geometry, gearMaterial);
       group.add(body, helmet, vest);
       this.scene.add(group);
-      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3() };
+      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     visual.startedAtMs = nowMs;
+    visual.heavy = enemy.archetype === 'heavy';
     setEnemyScale(visual.scale, enemy);
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
@@ -376,6 +386,10 @@ export class EnemyRenderer {
       visual.gearMaterial.opacity = opacity;
       visual.group.scale.copy(visual.scale).multiplyScalar(scale);
       visual.group.position.y = rise;
+      // Short knee/torso loss of weight layered onto the existing gray dissolve.
+      const collapse = 1 - Math.exp(-elapsed / (visual.heavy ? 110 : 65));
+      visual.group.rotation.x = -.55 * collapse;
+      visual.group.rotation.z = (visual.heavy ? .26 : .16) * collapse;
     }
   }
 

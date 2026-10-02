@@ -181,7 +181,7 @@ class GlbWriter:
                          + struct.pack("<II", len(self.binary), 0x004E4942) + self.binary)
 
 
-def write_mesh(path, pieces, material, image=None, vertex_colors=None):
+def write_mesh(path, pieces, material, image=None, vertex_colors=None, motion_weights=None):
     writer = GlbWriter()
     primitives = []
     for positions, normals, uv, indices in pieces:
@@ -192,6 +192,8 @@ def write_mesh(path, pieces, material, image=None, vertex_colors=None):
         if vertex_colors is not None:
             attrs["COLOR_0"] = writer.add_array(np.asarray(vertex_colors, dtype="<f4"),
                                                   "VEC3", 5126, 34962)
+        if motion_weights is not None:
+            attrs["_MOTION"] = writer.add_array(np.asarray(motion_weights, dtype="<f4"), "VEC4", 5126, 34962)
         primitives.append({"attributes": attrs,
                            "indices": writer.add_array(np.asarray(indices, dtype="<u4"), "SCALAR", 5125, 34963),
                            "material": 0})
@@ -603,7 +605,31 @@ def prepare_toy_soldier(inputs, outputs):
                 atlas[row, col, :3] = np.clip(np.array([23, 105, 238]) * lightness, 0, 255)
     stream = BytesIO()
     Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
-    write_mesh(outputs / "toy-soldier-player-body.glb", [body], textured, stream.getvalue())
+    # Keep the same baked surface/atlas. Four original joint influences allow
+    # cheap GPU-only limb rotation without reintroducing a runtime skeleton.
+    document, binary = read_glb(inputs / "character-archer.glb")
+    worlds = world_matrices(document, sample_animation(document, binary, "idle", .2))
+    channels = ("leg-left", "leg-right", "arm-left", "arm-right")
+    weighted_positions = {}
+    for node_index, node in enumerate(document["nodes"]):
+        if node.get("name") != "body-mesh":
+            continue
+        joint_names = [document["nodes"][joint]["name"] for joint in document["skins"][node["skin"]]["joints"]]
+        for primitive in document["meshes"][node["mesh"]]["primitives"]:
+            baked = bake_primitive(document, binary, primitive, node_index, worlds)[0]
+            joints = accessor(document, binary, primitive["attributes"]["JOINTS_0"]).astype(int)
+            weights = accessor(document, binary, primitive["attributes"]["WEIGHTS_0"]).astype(float)
+            weights /= np.maximum(weights.sum(axis=1, keepdims=True), 1e-12)
+            for point, links, influences in zip((baked-center)/height, joints, weights):
+                weighted_positions[tuple(np.round(point, 6))] = [
+                    sum(weight for joint, weight in zip(links, influences) if joint_names[joint] == name)
+                    for name in channels]
+    motion_weights = np.asarray([weighted_positions.get(tuple(np.round(point, 6)), [0, 0, 0, 0])
+                                 for point in body[0]])
+    if any(np.sum(motion_weights[:, channel]) < 10 for channel in range(4)):
+        raise ValueError("Player limb influences missing")
+    write_mesh(outputs / "toy-soldier-player-body.glb", [body], textured, stream.getvalue(),
+               motion_weights=motion_weights)
     for name, piece in (("helmet", helmet_parts()), ("vest", vest_parts())):
         write_mesh(outputs / f"toy-soldier-{name}.glb", [piece], neutral)
     boss_parts = boss_vest_parts()

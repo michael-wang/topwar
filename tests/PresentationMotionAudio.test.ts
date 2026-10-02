@@ -12,7 +12,7 @@ import { BOSS_DEATH_IMPACT_MS } from '../src/presentation/BossDeathTiming';
 describe('presentation-only motion', () => {
   it('keeps gameplay X/Z while firing the rifle and showing its muzzle flash', () => {
     expect(firingRecoil(100, 100)).toBe(1);
-    expect(firingRecoil(200, 100)).toBe(0);
+    expect(firingRecoil(250, 100)).toBe(0);
     const scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
     const state = { player: { x: 0.4, z: 3 }, squad: { count: 2, rocketCount: 0,
@@ -31,13 +31,13 @@ describe('presentation-only motion', () => {
     expect(soldiers.map((member) => [member.position.x, member.position.z])).toEqual(positions);
     expect(soldiers.every((member) => member.position.y === 0)).toBe(true);
     expect(rifle.position.z).toBeLessThan(restingZ);
-    expect(body.rotation.x).toBe(0);
+    expect(body.rotation.x).toBeLessThan(0);
     expect(body.scale.y).toBe(1);
     expect((soldier.getObjectByName('toy-soldier-helmet') as THREE.Mesh).rotation.x).toBe(0);
     expect((soldier.getObjectByName('toy-soldier-vest') as THREE.Mesh).scale.y).toBe(1);
     expect(soldier.children[4].visible).toBe(true);
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4,
-      hitRadiusBonus: 0 }] }, 500);
+      hitRadiusBonus: 0 }] }, 600);
     expect(rifle.position.z).toBeCloseTo(restingZ);
     expect(soldier.children[4].visible).toBe(false);
     renderer.dispose();

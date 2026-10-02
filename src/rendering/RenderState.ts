@@ -1,6 +1,7 @@
 export interface GameRenderState {
   readonly defenseMode?: boolean;
   readonly player: {
+    readonly selectedLane?: number;
     readonly x: number;
     readonly z: number;
   };

@@ -56,7 +56,7 @@ it('reveals a full-track gradient with a mask rather than resizing the gradient'
 });
 
 
-it('visibly interpolates a large Giant XP grant without numeric text and labels the reinforcement beat', () => {
+it('visibly interpolates a large Giant XP grant without numeric text and keeps the reinforcement beat free of explanatory text', () => {
   const { hud, root } = make(); const fill = root.children[1].children[0];
   hud.update({ level: 6, xp: 40 }, balance, 0);
   hud.update({ level: 6, xp: 160 }, balance, 100);
@@ -65,7 +65,7 @@ it('visibly interpolates a large Giant XP grant without numeric text and labels 
   expect(root.children[0].textContent).toBe('LV 6');
   hud.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 6, toLevel: 7 }, 500);
   hud.update({ level: 7, xp: 0 }, balance, 600);
-  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', 'REINFORCEMENTS']);
+  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', '']);
   hud.reset(); hud.update({ level: 1, xp: 1 }, balance, 1000);
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
 });

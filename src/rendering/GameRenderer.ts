@@ -1,3 +1,4 @@
+import { BattlefieldAir } from './environment/BattlefieldAir';
 import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
 import { AttackLaneRenderer } from './AttackLaneRenderer';
@@ -51,6 +52,9 @@ export class GameRenderer {
   private readonly streamRewardRenderer: StreamRewardRenderer;
   private readonly environment: BridgeEnvironment;
   private readonly contactShadows: ContactShadowRenderer;
+  private readonly air = new BattlefieldAir(this.scene);
+  private hadGiant = false;
+  private giantDefeatAtMs = -Infinity;
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
 
@@ -95,6 +99,13 @@ export class GameRenderer {
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
+    const hasGiant = state.enemies.some(enemy => enemy.archetype === 'giant');
+    if (this.hadGiant && !hasGiant) this.giantDefeatAtMs = nowMs;
+    this.hadGiant = hasGiant;
+    const defeatAge = nowMs - this.giantDefeatAtMs;
+    // One tiny positional breath on defeat; no continuous footfall shake.
+    if (defeatAge >= 0 && defeatAge < 240) this.camera.position.y += .025 * Math.sin(Math.PI * defeatAge / 240);
+    this.air.update(state.enemies, state.player.z, nowMs, !!state.defenseMode);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs, state.defenseMode);
     this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
     this.squadRenderer.update(state, nowMs);
@@ -120,6 +131,7 @@ export class GameRenderer {
   }
 
   resetFeedback(): void {
+    this.hadGiant = false; this.giantDefeatAtMs = -Infinity; this.air.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset();
     this.bossRenderer.reset();
@@ -132,6 +144,7 @@ export class GameRenderer {
   dispose(): void {
     if (this.disposed) return;
     this.stopResizeHandling();
+    this.air.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
     this.contactShadows.dispose();

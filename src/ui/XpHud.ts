@@ -47,7 +47,7 @@ export class XpHud {
     this.previousProgress = { ...state };
     const gainMs = nowMs < this.gainUntilMs ? 260 : 120;
     const reinforcement = active && this.event!.fromLevel < balance.reinforcementLevel && this.event!.toLevel >= balance.reinforcementLevel;
-    this.detail.textContent = reinforcement ? 'REINFORCEMENTS' : 'FIRE RATE ↑';
+    this.detail.textContent = reinforcement ? '' : 'FIRE RATE ↑';
     this.label.textContent = `LV ${active && age < 120 ? this.event!.fromLevel : state.level}`;
     this.element.classList.toggle('level-up', active);
     this.element.classList.toggle('level-flash', flashing);
