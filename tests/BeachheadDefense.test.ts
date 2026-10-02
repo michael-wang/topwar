@@ -5,7 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { CatharsisConfigSchema } from '../src/config/catharsisConfig';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
-import { attackLanePositions, laneCompositionForRow } from '../src/simulation/enemies/laneComposition';
+import { attackLanePositions, laneCompositionForRow, laneWave } from '../src/simulation/enemies/laneComposition';
 import { projectRenderState } from '../src/app/projectRenderState';
 
 const config = GameConfigSchema.parse(data);
@@ -20,7 +20,7 @@ const tuning = { moveSpeed: 5, forwardSpeed: config.player.forwardSpeed, trackHa
 
 it('uses five configurable corridors and a 3 Hz baseline without changing archetype health', () => {
   expect(balance.laneCount).toBe(5);
-  expect(balance.groupSize).toBe(50);
+  expect(balance.groupSize).toBe(24);
   expect(balance.waveRows).toBe(6);
   expect(config.player.forwardSpeed).toBe(.6);
   expect(balance.gruntSpeed).toBe(.25);
@@ -43,7 +43,7 @@ it('uses five configurable corridors and a 3 Hz baseline without changing archet
 
 it('uses a defense shoreline horizon while leaving the legacy stream horizon unchanged', () => {
   expect(balance.defenseSpawnAheadDistance).toBe(53);
-  expect(balance.crowdDepthSpan).toBe(5);
+  expect(balance.crowdDepthSpan).toBe(9);
   const defense = make(true);
   expect(defense.getState().enemies.every(enemy => enemy.z <= 53)).toBe(true);
   const custom = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0,
@@ -61,12 +61,80 @@ it('uses a defense shoreline horizon while leaving the legacy stream horizon unc
   defense.step(1 / 60, { targetX: 0 }, tuning);
   const advanced = defense.getState();
   const newEnemies = advanced.enemies.filter(enemy => enemy.id >= nextId);
-  expect(newEnemies).toHaveLength(50);
+  expect(newEnemies).toHaveLength(24);
   expect(newEnemies.every(enemy => enemy.z - advanced.player.z <= 53)).toBe(true);
-  expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= 48 - .02)).toBe(true);
+  expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= 44 - .02)).toBe(true);
 });
 
-it.each([10, 50, 100])('samples %i members deterministically within the same bounded crowd volume', (groupSize) => {
+it('chooses three distinct seeded fronts per priority block and distributes 24 members as 8/8/8', () => {
+  expect(balance.pressureLaneCount).toBe(3);
+  expect(balance.lateralSpreadFraction).toBe(.42);
+  for (let block = 0; block < 30; block++) {
+    const wave = block * balance.priorityWaves;
+    const fronts = laneWave(wave, 17, balance).lanes;
+    expect(new Set(fronts).size).toBe(3);
+    expect(laneWave(wave, 17, balance).lanes).toEqual(fronts);
+    for (let index = 0; index < balance.priorityWaves; index++) {
+      expect(laneWave(wave + index, 17, balance).lanes).toEqual(fronts);
+      const group = laneCompositionForRow((wave + index) * balance.waveRows, 17, balance, 3.2);
+      expect(group).toHaveLength(24);
+      for (const lane of fronts) expect(group.filter(enemy => enemy.lane === lane)).toHaveLength(8);
+    }
+  }
+  const frontsForSeed = (seed: number) => Array.from({ length: 30 }, (_, wave) => laneWave(wave, seed, balance).lanes);
+  expect(frontsForSeed(18)).not.toEqual(frontsForSeed(17));
+  for (const count of [1, 2, 3, 4, 5]) {
+    expect(laneWave(0, 17, { ...balance, pressureLaneCount: count }).lanes).toHaveLength(count);
+  }
+  for (const groupSize of [10, 25, 60]) {
+    const group = laneCompositionForRow(0, 17, { ...balance, groupSize }, 3.2);
+    const counts = laneWave(0, 17, balance).lanes.map(lane => group.filter(enemy => enemy.lane === lane).length);
+    expect(group).toHaveLength(groupSize);
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+  }
+  expect(() => CatharsisConfigSchema.parse({ ...balance, pressureLaneCount: 6 })).toThrow();
+  expect(make(true).getState().enemies).toHaveLength(168);
+});
+
+it('preserves legacy one/two-front selection outside defense mode', () => {
+  const legacy = { ...balance, defenseMode: false };
+  for (let wave = 0; wave < 30; wave++) {
+    expect(laneWave(wave, 17, legacy)).toEqual(laneWave(wave, 17, { ...legacy, pressureLaneCount: undefined }));
+  }
+});
+
+it.each([1, 17, 42, 99])('holds a continuously defended Grunt front while unattended fronts overwhelm seed %i', seed => {
+  const simulation = new Simulation({ seed, level, startSquad: 1, startRocketCount: 0,
+    tiers: config.tiers, catharsis: { balance: { ...balance, heavyChance: 0 }, trackHalfWidth: 3.2 } });
+  const start = simulation.getState();
+  const heldLane = start.enemies.reduce((nearest, enemy) => enemy.z < nearest.z ? enemy : nearest).lane!;
+  start.player.selectedLane = heldLane;
+  start.player.x = attackLanePositions(5, 3.2, balance.edgeInset)[heldLane];
+  simulation.restoreState(start);
+  const initialUnattended = start.enemies.filter(enemy => enemy.lane !== heldLane).length;
+  let maxUnattended = initialUnattended;
+  let fatalLane: number | undefined;
+  for (let tick = 0; tick < 3600 && simulation.getFrameState().squad.count; tick++) {
+    const before = simulation.getFrameState();
+    const lanesById = new Map(before.enemies.map(enemy => [enemy.id, enemy.lane]));
+    simulation.step(1 / 60, { targetX: 0 }, tuning);
+    for (const event of simulation.consumePresentationEvents()) {
+      if (event.kind === 'normalEnemyContact') fatalLane = lanesById.get(event.enemyId);
+    }
+    maxUnattended = Math.max(maxUnattended, simulation.getFrameState().enemies.filter(enemy => enemy.lane !== heldLane).length);
+  }
+  expect(simulation.getState().squad.count).toBe(0);
+  expect(simulation.getState().elapsedSeconds).toBeGreaterThan(20);
+  expect(fatalLane).toBeDefined();
+  expect(fatalLane).not.toBe(heldLane);
+  expect(maxUnattended).toBeGreaterThan(initialUnattended);
+  // Authored incoming budget: one front is below rifle capacity, all fronts exceed it.
+  const waveSeconds = level.enemyStream!.spacing * balance.waveRows / config.player.forwardSpeed;
+  expect(balance.groupSize / balance.pressureLaneCount! / waveSeconds).toBeLessThan(config.weapon.rifle.fireRate);
+  expect(balance.groupSize / waveSeconds).toBeGreaterThan(config.weapon.rifle.fireRate);
+});
+
+it.each([10, 24, 60, 100])('samples %i members deterministically within the same bounded crowd volume', (groupSize) => {
   const layout = { ...balance, groupSize };
   for (let row = 0; row < 120; row += balance.waveRows) {
     const group = laneCompositionForRow(row, 17, layout, 3.2);
@@ -75,7 +143,7 @@ it.each([10, 50, 100])('samples %i members deterministically within the same bou
     expect(group).toHaveLength(groupSize);
     const positions = attackLanePositions(balance.laneCount, 3.2, balance.edgeInset);
     for (const enemy of group) {
-      expect(enemy.z).toBeGreaterThanOrEqual(-5);
+      expect(enemy.z).toBeGreaterThanOrEqual(-9);
       expect(enemy.z).toBeLessThanOrEqual(0);
       expect(Math.abs(enemy.x) + .3).toBeLessThanOrEqual(3.2);
       expect(Math.abs(enemy.x - positions[enemy.lane!])).toBeLessThanOrEqual(1.4 * balance.lateralSpreadFraction);
@@ -86,12 +154,13 @@ it.each([10, 50, 100])('samples %i members deterministically within the same bou
 it('tunes density for future groups and restores its balance and stream continuation', () => {
   const original = make(true);
   const existing = original.getState().enemies;
-  original.setCatharsisBalance({ ...balance, groupSize: 100, crowdDepthSpan: 4, defenseSpawnAheadDistance: 54 });
+  original.setCatharsisBalance({ ...balance, groupSize: 100, pressureLaneCount: 4, crowdDepthSpan: 4, defenseSpawnAheadDistance: 54 });
   expect(original.getState().enemies).toEqual(existing);
   const saved = JSON.parse(JSON.stringify(original.getState()));
   const restored = make(true, 99);
   restored.restoreState(saved);
   expect(restored.getState().catharsis!.balance.groupSize).toBe(100);
+  expect(restored.getState().catharsis!.balance.pressureLaneCount).toBe(4);
   const newIds = saved.enemyStream.nextEnemyId;
   for (let tick = 0; tick < 1200; tick++) {
     original.step(1 / 60, { targetX: 0 }, tuning);
@@ -153,23 +222,23 @@ it('generates reproducible loose clusters with explicit lane identity and bounde
   const group = (seed: number) => laneCompositionForRow(0, seed, balance, 3.2);
   expect(group(17)).toEqual(group(17));
   expect(group(18)).not.toEqual(group(17));
-  expect(group(17)).toHaveLength(50);
+  expect(group(17)).toHaveLength(24);
   expect(new Set(group(17).map((member) => member.x)).size).toBeGreaterThan(2);
   expect(new Set(group(17).map((member) => member.z)).size).toBeGreaterThan(2);
-  expect(new Set(group(17).map((member) => member.lane)).size).toBeLessThanOrEqual(2);
+  expect(new Set(group(17).map((member) => member.lane)).size).toBe(3);
 });
 
-it('permits fifty overlapping members per six-row wave and increases density fivefold at the same horizon', () => {
+it('permits twenty-four overlapping members per six-row wave without reducing the total budget', () => {
   expect(CatharsisConfigSchema.parse(balance)).toEqual(balance);
   expect(() => CatharsisConfigSchema.parse({ ...balance, defenseMode: false })).toThrow();
   const previous = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0,
     tiers: config.tiers, catharsis: { balance: { ...balance, groupSize: 10 }, trackHalfWidth: 3.2 } });
-  expect(make(true).getState().enemies.length).toBe(previous.getState().enemies.length * 5);
+  expect(make(true).getState().enemies.length).toBe(previous.getState().enemies.length * 2.4);
   let overlappingPairs = 0;
   for (let wave = 0; wave < 100; wave++) {
     const group = Array.from({ length: balance.waveRows }, (_, slot) =>
       laneCompositionForRow(wave * balance.waveRows + slot, 17, balance, 3.2)).flat();
-    expect(group).toHaveLength(50);
+    expect(group).toHaveLength(24);
     for (let a = 0; a < group.length; a++) for (let b = a + 1; b < group.length; b++) {
       if (group[a].lane === group[b].lane && Math.hypot(group[a].x - group[b].x, group[a].z - group[b].z) < .6)
         overlappingPairs++;

@@ -15,11 +15,20 @@ export function laneWave(waveIndex: number, seed: number, config: CatharsisConfi
   const rng = new SeededRng((seed ^ Math.imul(pressureBlock + 1, 0x9e3779b1)) >>> 0);
   const primary = rng.nextInt(config.laneCount);
   const secondary = (primary + 1 + rng.nextInt(config.laneCount - 1)) % config.laneCount;
-  const lanes = rng.nextFloat() < config.secondLaneChance ? [primary, secondary] : [primary];
+  let lanes = rng.nextFloat() < config.secondLaneChance ? [primary, secondary] : [primary];
+  if (config.defenseMode && config.pressureLaneCount !== undefined) {
+    const choices = Array.from({ length: config.laneCount }, (_, lane) => lane);
+    // A small seeded partial shuffle selects distinct fronts for the whole block.
+    for (let index = 0; index < config.pressureLaneCount; index++) {
+      const chosen = index + rng.nextInt(choices.length - index);
+      [choices[index], choices[chosen]] = [choices[chosen], choices[index]];
+    }
+    lanes = choices.slice(0, config.pressureLaneCount);
+  }
   const compositionRng = new SeededRng((seed ^ Math.imul(waveIndex + 1, 0x85ebca6b)) >>> 0);
   const heavy = compositionRng.nextFloat() < config.heavyChance;
   const quiet = Array.from({ length: config.laneCount }, (_, lane) => lane).filter((lane) => !lanes.includes(lane));
-  return { lanes, heavy, rewardLane: quiet[compositionRng.nextInt(quiet.length)] };
+  return { lanes, heavy, rewardLane: quiet.length ? quiet[compositionRng.nextInt(quiet.length)] : lanes[0] };
 }
 
 export function laneCompositionForRow(row: number, seed: number, config: CatharsisConfig, halfWidth: number):

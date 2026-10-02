@@ -207,14 +207,15 @@ describe('Modern Toy Soldier presentation', () => {
     const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death).toBeDefined();
     expect(death.rotation.z).toBe(0);
-    renderer.update(damaged.slice(1), 180);
+    expect(death.position.y).toBe(.25);
+    renderer.update(damaged.slice(1), 320);
     expect(death.position.y).toBeGreaterThan(0);
     const gray = (death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     expect(gray.color.getHexString()).toBe('aeb4b7');
     expect(gray.opacity).toBeLessThan(1);
     expect(((death.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color
       .getHexString()).toBe('adb4b8');
-    renderer.update(damaged.slice(1), 500);
+    renderer.update(damaged.slice(1), 800);
     expect(death.visible).toBe(false);
     renderer.reset();
     renderer.dispose();

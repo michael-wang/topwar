@@ -3,9 +3,9 @@ import type { EnemyRenderState } from '../RenderState';
 import { DeathBurst } from './DeathBurst';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
+import { ENEMY_DEATH_MS, ENEMY_DEATH_POP, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
 
 const HIT_FLASH_MS = 80;
-const DEATH_MS = 320;
 const MAX_DEATH_VISUALS = 48;
 export const ENEMY_CONTACT_MS = 240;
 const MAX_CONTACT_VISUALS = 48;
@@ -287,7 +287,7 @@ export class EnemyRenderer {
     visual.gearMaterial.color.set('#fff1a0');
     visual.group.visible = true;
     visual.group.scale.setScalar(visual.scale * 1.07);
-    visual.group.position.set(-enemy.x, 0, enemy.z);
+    visual.group.position.set(-enemy.x, ENEMY_DEATH_POP, enemy.z);
     visual.group.rotation.set(0, Math.PI, 0);
   }
 
@@ -295,14 +295,13 @@ export class EnemyRenderer {
     for (const visual of this.deathVisuals) {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
-      if (elapsed >= DEATH_MS) { visual.group.visible = false; continue; }
-      const progress = Math.max(0, elapsed / DEATH_MS);
+      if (elapsed >= ENEMY_DEATH_MS) { visual.group.visible = false; continue; }
+      const { progress, opacity, rise } = enemyDeathPose(elapsed);
       visual.gearMaterial.color.set(elapsed < 35 ? '#fff1a0' : '#adb4b8');
-      const opacity = Math.min(1, (1 - progress) / .78);
       visual.bodyMaterial.opacity = opacity;
       visual.gearMaterial.opacity = opacity;
       visual.group.scale.setScalar(visual.scale * (1.07 - .10 * progress));
-      visual.group.position.y = progress * .55;
+      visual.group.position.y = rise;
     }
   }
 
