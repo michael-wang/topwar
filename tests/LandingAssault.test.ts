@@ -50,18 +50,19 @@ it('delays at the soft cap without despawn or catch-up bursts, retaining configu
   expect(enemies).toHaveLength(176); expect(admitted.nextWaveAtSeconds).toBeCloseTo(25.28);
   expect(admitted.waveIndex).toBe(1);
 });
-it('waits thirty assault seconds and for the first Giant to die, then admits one fixed-stat Giant', () => {
+it('retains the old one-Giant encounter policy when loaded from older effective balance', () => {
+  const legacy = {...balance,landingAssault:{...balance.landingAssault,secondGiantDelaySeconds:30,maxSimultaneousGiants:1}};
   const enemies: EnemySimulationState[] = [{id:1,tier:1,x:0,z:20,hp:172,lane:2,archetype:'giant'}];
   const cursor = {nextEnemyId:2,nextRowIndex:0,nextRewardId:1,nextRewardBlockIndex:0,nextBossTier:1};
   let state: ReturnType<typeof emptyLandingAssault> = {...emptyLandingAssault(),reinforcementActiveAtSeconds:0,startedAtSeconds:10,nextWaveAtSeconds:1000,waveIndex:1};
-  state = advanceLandingAssault(state, 39.9, 0, balance, 3.2, 17, 6, enemies, cursor);
+  state = advanceLandingAssault(state, 39.9, 0, legacy, 3.2, 17, 6, enemies, cursor);
   expect(state.secondGiantSpawned).toBe(false);
-  state = advanceLandingAssault(state, 40, 0, balance, 3.2, 17, 6, enemies, cursor);
+  state = advanceLandingAssault(state, 40, 0, legacy, 3.2, 17, 6, enemies, cursor);
   expect(enemies).toHaveLength(1); expect(state.secondGiantSpawned).toBe(false);
   enemies.length = 0;
-  state = advanceLandingAssault(state, 41, 0, balance, 3.2, 17, 6, enemies, cursor);
+  state = advanceLandingAssault(state, 41, 0, legacy, 3.2, 17, 6, enemies, cursor);
   expect(enemies[0].hp).toBe(172); expect(enemies[0].z).toBe(44); expect(state.secondGiantSpawned).toBe(true);
-  enemies.length = 0; advanceLandingAssault(state, 42, 0, balance, 3.2, 17, 6, enemies, cursor);
+  enemies.length = 0; advanceLandingAssault(state, 42, 0, legacy, 3.2, 17, 6, enemies, cursor);
   expect(enemies).toHaveLength(0);
 });
 it('rejects corrupt phase clocks and initializes Retry cleanly', () => {
@@ -91,4 +92,56 @@ it('keeps live pressure tuning in snapshots and leaves existing enemies untouche
   const b = make(); b.restoreState(JSON.parse(JSON.stringify(a.getState())));
   expect(b.getState().catharsis!.balance.landingAssault.groupSize).toBe(70);
   expect(b.getState().catharsis!.balance.landingAssault.cadenceMultiplier).toBe(.9);
+});
+
+it('admits staggered overlapping Giants in different lanes, waits at two, and restores its follow-up clock', () => {
+  const enemies: EnemySimulationState[] = [{id:1,tier:1,x:0,z:20,hp:172,lane:2,archetype:'giant'}];
+  const cursor={nextEnemyId:2,nextRowIndex:0,nextRewardId:1,nextRewardBlockIndex:0,nextBossTier:1};
+  let state: ReturnType<typeof emptyLandingAssault>={...emptyLandingAssault(),reinforcementActiveAtSeconds:0,
+    startedAtSeconds:10,nextWaveAtSeconds:1000,waveIndex:1};
+  state=advanceLandingAssault(state,27.9,0,balance,3.2,17,6,enemies,cursor); expect(enemies).toHaveLength(1);
+  state=advanceLandingAssault(state,28,0,balance,3.2,17,6,enemies,cursor);
+  expect(enemies).toHaveLength(2); expect(new Set(enemies.map(e=>e.lane)).size).toBe(2);
+  expect(state.nextGiantAtSeconds).toBe(38);
+  const restored=JSON.parse(JSON.stringify(state));
+  state=advanceLandingAssault(restored,38,0,balance,3.2,17,6,enemies,cursor); expect(enemies).toHaveLength(2);
+  enemies.splice(0,1); state=advanceLandingAssault(state,39,0,balance,3.2,17,6,enemies,cursor);
+  expect(enemies).toHaveLength(2); expect(new Set(enemies.map(e=>e.lane)).size).toBe(2);
+  expect(state.nextGiantAtSeconds).toBeNull(); expect(enemies.every(e=>e.hp===172)).toBe(true);
+  enemies.length=0; advanceLandingAssault(state,100,0,balance,3.2,17,6,enemies,cursor); expect(enemies).toHaveLength(0);
+});
+it('increases expected Heavy proportion twofold without HP inflation or extra population', () => {
+  let total=0, two=0;
+  for(let index=0;index<2000;index++){
+    const group=landingComposition(index,17,balance,3.2),heavies=group.filter(e=>e.archetype==='heavy');
+    total+=heavies.length; if(heavies.length===2)two++;
+    expect(group).toHaveLength(66); expect(heavies.length).toBeLessThanOrEqual(2);
+    for(const heavy of heavies)expect(group.filter(e=>e!==heavy&&e.lane===heavy.lane).every(e=>e.z>=-6.5)).toBe(true);
+  }
+  expect(total/2000).toBeCloseTo(.25/35*66*2,1); expect(two).toBeGreaterThan(200);
+  expect(balance.heavyHp).toBe(15); expect(balance.giant.hp).toBe(172);
+});
+
+it('serializes the pending second post-assault Giant and resumes it identically', () => {
+  const a=make(), s=a.getState(); s.elapsedSeconds=40;s.tick=2400;s.enemies=[];
+  s.progression={level:7,xp:0};s.reinforcement={startedAtSeconds:0,arrived:true};
+  s.giantEncounter={scheduledAtSeconds:4,spawned:true};
+  s.squad={...s.squad,count:2,rifleCounts:[2]};
+  s.landingAssault={...emptyLandingAssault(),reinforcementActiveAtSeconds:1.1,startedAtSeconds:11.1,
+    nextWaveAtSeconds:40,waveIndex:3};a.restoreState(s);step(a,1);
+  const pending=a.getState();expect(pending.landingAssault!.nextGiantAtSeconds).toBeCloseTo(50+1/60);
+  const b=make();b.restoreState(JSON.parse(JSON.stringify(pending)));step(a,601);step(b,601);
+  expect(a.getState()).toEqual(b.getState());expect(a.getState().landingAssault!.nextGiantAtSeconds).toBeNull();
+  const giants=a.getState().enemies.filter(e=>e.archetype==='giant');expect(giants).toHaveLength(2);
+  expect(Math.abs(giants[0].lane!-giants[1].lane!)).toBeGreaterThanOrEqual(2);
+  const corrupt=a.getState();corrupt.landingAssault!.nextGiantAtSeconds=-1;
+  expect(()=>a.restoreState(corrupt)).toThrow('landing assault');
+});
+
+it('keeps overlapping Giant placement valid when playtesting three lanes', () => {
+  const small={...balance,laneCount:3}, enemies: EnemySimulationState[]=[{id:1,tier:1,x:0,z:20,hp:172,lane:1,archetype:'giant'}];
+  const cursor={nextEnemyId:2,nextRowIndex:0,nextRewardId:1,nextRewardBlockIndex:0,nextBossTier:1};
+  const state={...emptyLandingAssault(),reinforcementActiveAtSeconds:0,startedAtSeconds:10,nextWaveAtSeconds:1000,waveIndex:1};
+  advanceLandingAssault(state,28,0,small,3.2,17,6,enemies,cursor);
+  expect(enemies).toHaveLength(2); expect(enemies[1].lane).not.toBe(1); expect(Math.abs(enemies[1].x)).toBeCloseTo(2.8);
 });

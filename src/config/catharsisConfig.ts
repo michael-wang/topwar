@@ -26,9 +26,11 @@ export const CatharsisConfigSchema = z.strictObject({
     heavyChanceCap: z.number().finite().min(0).max(1).default(.85),
     activeSoftCap: z.number().int().positive().default(180),
     secondGiantDelaySeconds: z.number().finite().positive().default(30),
+    giantFollowupDelaySeconds: z.number().finite().positive().default(10),
+    maxSimultaneousGiants: z.number().int().min(1).max(2).default(1),
   }).default({ enabled: false, powerWindowSeconds: 10, groupSize: 66, cadenceMultiplier: .88,
     primaryLaneShare: .7, heavyMultiplier: 1.3, heavyChanceCap: .85, activeSoftCap: 180,
-    secondGiantDelaySeconds: 30 }),
+    secondGiantDelaySeconds: 30, giantFollowupDelaySeconds: 10, maxSimultaneousGiants: 1 }),
   pressureMultipliers: z.array(z.number().finite().min(1).max(4)).min(1).default([1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65]),
   giant: z.strictObject({
     enabled: z.boolean().default(false),

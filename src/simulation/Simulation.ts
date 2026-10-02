@@ -309,7 +309,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   }
   const landingAssault = state.landingAssault;
   if (landingAssault !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(landingAssault)
-    || Object.keys(landingAssault).length !== 5 || !Number.isSafeInteger(landingAssault.waveIndex)
+    || Object.keys(landingAssault).length !== (Object.hasOwn(landingAssault, 'nextGiantAtSeconds') ? 6 : 5) || !Number.isSafeInteger(landingAssault.waveIndex)
     || (landingAssault.waveIndex as number) < 0 || typeof landingAssault.secondGiantSpawned !== 'boolean'
     || !['reinforcementActiveAtSeconds', 'startedAtSeconds', 'nextWaveAtSeconds'].every(key =>
       landingAssault[key] === null || (typeof landingAssault[key] === 'number'
@@ -322,7 +322,11 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       || (landingAssault.startedAtSeconds as number) < (landingAssault.reinforcementActiveAtSeconds as number)
       || (landingAssault.nextWaveAtSeconds as number) < (landingAssault.startedAtSeconds as number)))
     || (landingAssault.startedAtSeconds === null && (landingAssault.nextWaveAtSeconds !== null
-      || landingAssault.waveIndex !== 0 || landingAssault.secondGiantSpawned)))) throw new Error('Invalid landing assault state');
+      || landingAssault.waveIndex !== 0 || landingAssault.secondGiantSpawned))
+    || (Object.hasOwn(landingAssault, 'nextGiantAtSeconds') && !(landingAssault.nextGiantAtSeconds === null
+      || (typeof landingAssault.nextGiantAtSeconds === 'number' && Number.isFinite(landingAssault.nextGiantAtSeconds)
+        && landingAssault.secondGiantSpawned && landingAssault.startedAtSeconds !== null
+        && landingAssault.nextGiantAtSeconds >= (landingAssault.startedAtSeconds as number)))))) throw new Error('Invalid landing assault state');
   const reinforcement = state.reinforcement;
   if (reinforcement !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(reinforcement)
     || Object.keys(reinforcement).length !== 2 || typeof reinforcement.arrived !== 'boolean'

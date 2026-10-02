@@ -1,12 +1,13 @@
+import { GIANT_CRASH_MS } from '../presentation/GiantDrama';
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 
 export type AudioCue = 'levelUp' | 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
-  | 'groundArtillery' | 'skyFlak';
+  | 'giantDeath' | 'groundArtillery' | 'skyFlak';
 
-interface ObservedEnemy { id: number; hp: number }
+interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
 interface ObservedReward { id: number; hitProgress: number }
 interface ObservedBoss { id: number; hp: number }
 interface ObservedProjectile { id: number; kind: 'rifle' | 'rocket'; tier: number }
@@ -21,6 +22,7 @@ export function shotCueGapMs(index: number): number {
 
 // Presentation-only observation; enemy IDs restart on Retry.
 export class AudioCueObserver {
+  private previousGiantIds: number[] = [];
   private previousEnemyHp = new Map<number, number>();
   private previousRewards = new Map<number, number>();
   private previousBoss: ObservedBoss | null = null;
@@ -67,6 +69,8 @@ export class AudioCueObserver {
     if (!boss && this.previousBoss) cues.add('bossDeath');
     this.previousBoss = boss ? { ...boss } : null;
     const currentEnemyHp = new Map(enemies.map((enemy) => [enemy.id, enemy.hp]));
+    if (currentDefense >= previousDefense && this.previousGiantIds.some(id => !currentEnemyHp.has(id))) cues.add('giantDeath');
+    this.previousGiantIds = enemies.filter(enemy => enemy.archetype === 'giant').map(enemy => enemy.id);
     const removed = [...this.previousEnemyHp.keys()].some((id) => !currentEnemyHp.has(id));
     if (nowMs >= this.nextEnemyCueMs) {
       if (removed) cues.add('enemyDeath');
@@ -81,6 +85,7 @@ export class AudioCueObserver {
   }
 
   reset(): void {
+    this.previousGiantIds = [];
     this.previousEnemyHp.clear();
     this.previousRewards.clear();
     this.previousBoss = null;
@@ -116,6 +121,11 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
       attackSeconds: .023 } },
   bossHit: { from: 125, to: 52, seconds: .13, wave: 'triangle', volume: .11,
     secondary: { from: 460, to: 180, seconds: .075, wave: 'sine', volume: .027 } },
+  giantDeath: { from: 180, to: 60, seconds: .14, wave: 'triangle', volume: .15,
+    secondary: { from: 95, to: 26, seconds: .6, wave: 'triangle', volume: .22,
+      delaySeconds: GIANT_CRASH_MS / 1000, attackSeconds: .012 },
+    tertiary: { from: 480, to: 95, seconds: .35, wave: 'sawtooth', volume: .065,
+      delaySeconds: GIANT_CRASH_MS / 1000 + .04 } },
   bossDeath: { from: 285, to: 90, seconds: 1.08, wave: 'triangle', volume: .23,
     attackSeconds: .04,
     secondary: { from: 440, to: 135, seconds: .88, wave: 'sine', volume: .075,
@@ -159,6 +169,8 @@ export class GameAudio {
   }
 
   resetObservation(): void {
+    // Retry/load must not play a crash scheduled by the previous run's lethal hit.
+    for (const source of this.active) { try { source.stop(); } catch { /* already ended */ } }
     this.observer.reset();
     this.environment.reset();
     this.nextEnvironmentCueMs = -Infinity;
@@ -191,7 +203,7 @@ export class GameAudio {
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
       const shape = cueShape[cue];
-      const environmental = cue === 'groundArtillery' || cue === 'skyFlak';
+      const environmental = cue === 'groundArtillery' || cue === 'skyFlak' || cue === 'giantDeath';
       const filter = environmental ? context.createBiquadFilter() : null;
       if (filter) {
         filter.type = 'lowpass';
@@ -202,11 +214,11 @@ export class GameAudio {
       const volumeScale = cue === 'groundArtillery' ? variation?.volumeScale ?? 1 : 1;
       const durationScale = cue === 'groundArtillery' ? variation?.durationScale ?? 1 : 1;
       const pitchScale = cue === 'groundArtillery' ? variation?.pitchScale ?? 1 : 1;
-      const rumbleBuffer = cue === 'groundArtillery'
+      const rumbleBuffer = cue === 'groundArtillery' || cue === 'giantDeath'
         ? (this.rumbleBuffer ??= this.createRumbleBuffer(context)) : null;
       const tones = [shape, shape.secondary, shape.tertiary].filter(
         (tone): tone is ToneShape => tone !== undefined);
-      let remaining = tones.length + (cue === 'groundArtillery' ? 1 : 0);
+      let remaining = tones.length + (cue === 'groundArtillery' || cue === 'giantDeath' ? 1 : 0);
       const playTone = (tone: ToneShape): void => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
@@ -234,15 +246,15 @@ export class GameAudio {
         oscillator.stop(toneEnd);
       };
       for (const tone of tones) playTone(tone);
-      if (cue === 'groundArtillery') {
+      if (cue === 'groundArtillery' || cue === 'giantDeath') {
         const source = context.createBufferSource();
         const gain = context.createGain();
         source.buffer = rumbleBuffer;
-        const rumbleStart = start + .05 * durationScale;
-        const rumbleEnd = rumbleStart + durationScale;
+        const rumbleStart = start + (cue === 'giantDeath' ? GIANT_CRASH_MS / 1000 : .05) * durationScale;
+        const rumbleEnd = rumbleStart + (cue === 'giantDeath' ? .6 : 1) * durationScale;
         gain.gain.setValueAtTime(.001, rumbleStart);
         gain.gain.exponentialRampToValueAtTime(.105 * volumeScale,
-          rumbleStart + .15 * durationScale);
+          rumbleStart + (cue === 'giantDeath' ? .03 : .15) * durationScale);
         gain.gain.exponentialRampToValueAtTime(.001, rumbleEnd);
         source.connect(gain);
         gain.connect(filter!);

@@ -1,3 +1,4 @@
+import { GIANT_CRASH_MS } from '../../presentation/GiantDrama';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
@@ -78,7 +79,8 @@ export class EnemyRenderer {
   private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
     color: ART.fx.core, toneMapped: false });
   private readonly heavyHits: HeavyHitFeedback;
-  private readonly giantRenderer: GiantRenderer;
+  private readonly giantRenderers: GiantRenderer[];
+  private readonly pendingGiantBursts: { enemy: EnemyRenderState; at: number }[] = [];
   private readonly giantBurst: DeathBurst;
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
@@ -119,7 +121,7 @@ export class EnemyRenderer {
     this.scene.add(...this.bodyMeshes, ...this.helmetMeshes, ...this.vestMeshes);
     this.deathBurst = new DeathBurst(scene);
     this.heavyHits = new HeavyHitFeedback(scene);
-    this.giantRenderer = new GiantRenderer(scene, bodyModel, helmetModel, vestModel, runFrames, grayBodyModel);
+    this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, bodyModel, helmetModel, vestModel, runFrames, grayBodyModel));
     this.giantBurst = new DeathBurst(scene, true);
   }
 
@@ -137,9 +139,14 @@ export class EnemyRenderer {
     for (const previous of this.previousEnemies.values()) {
       if (!currentIds.has(previous.id)) {
         if (!this.contactIds.has(previous.id)) {
-          if (previous.archetype === 'giant') { this.giantRenderer.die(previous, nowMs); this.giantBurst.spawn(previous, nowMs); }
+          if (previous.archetype === 'giant') {
+            this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs);
+            this.pendingGiantBursts.push({ enemy: previous, at: nowMs + GIANT_CRASH_MS });
+          }
           else this.spawnDeath(previous, nowMs);
         }
+        if (this.contactIds.has(previous.id) && previous.archetype === 'giant')
+          this.giantRenderers.find(renderer => renderer.id === previous.id)?.reset();
         this.flashUntilMs.delete(previous.id);
       }
     }
@@ -157,12 +164,23 @@ export class EnemyRenderer {
     this.updateContacts(nowMs);
     this.deathBurst.update(nowMs);
     this.heavyHits.update(currentIds, nowMs);
-    this.giantRenderer.update(enemies.find(e => e.archetype === 'giant'), nowMs, this.heavyHits);
+    for (const enemy of enemies) if (enemy.archetype === 'giant') {
+      const renderer = this.giantRenderers.find(slot => slot.id === enemy.id)
+        ?? this.giantRenderers.find(slot => slot.available(nowMs));
+      renderer?.update(enemy, nowMs, this.heavyHits);
+    }
+    for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits);
+    for (let i = this.pendingGiantBursts.length - 1; i >= 0; i--) if (nowMs >= this.pendingGiantBursts[i].at) {
+      const pending = this.pendingGiantBursts.splice(i, 1)[0]; this.giantBurst.spawn(pending.enemy, pending.at);
+    }
     this.giantBurst.update(nowMs);
 
+    const giantCount = enemies.reduce((count, enemy) => count + (enemy.archetype === 'giant' ? 1 : 0), 0);
     let barIndex = 0;
     for (const enemy of enemies) {
       if ((enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') || enemy.maxHp === undefined) continue;
+      const giantSlot = enemy.archetype === 'giant' ? this.giantRenderers.find(slot => slot.id === enemy.id) : undefined;
+      if (giantSlot && !giantSlot.barVisible(nowMs)) continue;
       let bar = this.healthBars[barIndex++];
       if (!bar) {
         bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(this.barFillMaterial) };
@@ -174,8 +192,8 @@ export class EnemyRenderer {
         this.healthBars.push(bar);
       }
       const fraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
-      const giantBar = enemy.archetype === 'giant' ? this.giantRenderer.healthBarLayout(enemy) : undefined;
-      const width = giantBar?.width ?? 1.1;
+      const giantBar = enemy.archetype === 'giant' ? giantSlot!.healthBarLayout(enemy) : undefined;
+      const width = giantBar ? giantBar.width * (giantCount > 1 ? .8 : 1) : 1.1;
       const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.modelTop + .3;
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
@@ -261,7 +279,7 @@ export class EnemyRenderer {
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.deathBurst.reset();
     this.heavyHits.reset();
-    this.giantRenderer.reset(); this.giantBurst.reset();
+    this.giantRenderers.forEach(renderer => renderer.reset()); this.pendingGiantBursts.length = 0; this.giantBurst.reset();
   }
 
   dispose(): void {
@@ -289,7 +307,7 @@ export class EnemyRenderer {
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.deathBurst.dispose();
     this.heavyHits.dispose();
-    this.giantRenderer.dispose(); this.giantBurst.dispose();
+    this.giantRenderers.forEach(renderer => renderer.dispose()); this.giantBurst.dispose();
     this.helmetMaterial.dispose();
     this.contactFlashMaterial.dispose();
   }

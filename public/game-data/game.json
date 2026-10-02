@@ -58,10 +58,12 @@
       "groupSize": 66,
       "cadenceMultiplier": 0.88,
       "primaryLaneShare": 0.7,
-      "heavyMultiplier": 1.3,
+      "heavyMultiplier": 2.0,
       "heavyChanceCap": 0.85,
       "activeSoftCap": 180,
-      "secondGiantDelaySeconds": 30
+      "secondGiantDelaySeconds": 18,
+      "giantFollowupDelaySeconds": 10,
+      "maxSimultaneousGiants": 2
     }
   },
   "player": {

@@ -104,6 +104,7 @@ export interface LandingAssaultState {
   nextWaveAtSeconds: number | null;
   waveIndex: number;
   secondGiantSpawned: boolean;
+  nextGiantAtSeconds?: number | null;
 }
 
 export interface SimulationState {

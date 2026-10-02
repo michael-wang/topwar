@@ -1,4 +1,4 @@
-# Post-LV7 Landing Assault + Offshore Invasion
+# Giant Drama + Post-LV7 Elite Escalation
 
 This is a focused **progression experiment**, not final progression pacing.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
@@ -7,90 +7,106 @@ Kills now earn automatic Rifle power so previously overwhelming fronts can
 become easier. Combat never pauses for a level, and no upgrade choices or support abilities
 are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
 
-## Current experiment: earned power, then a larger landing force
+## Current experiment: dramatic Giants + post-LV7 elite overlap
 
-LV1–LV6 and the LV7 reinforcement are unchanged. Soldier B still takes 1.1 s to
-arrive, then both soldiers fire at 6.9 Hz each into the same selected lane.
-The simulation records the **actual reinforcement activation time**, gives it
-**10 full seconds** of the existing pressure, and only then starts the landing
-assault. There is no phase label, tutorial, player nerf or ordinary-HP scaling.
+LV1–LV6, the first Giant's gameplay and the LV7 reinforcement remain unchanged.
+Soldier B arrives in 1.1 s, then both soldiers fire at 6.9 Hz into the same lane.
+The actual activation clock still grants **10 full seconds** of existing pressure
+before assault. There is no player nerf, ordinary HP scaling, warning label or
+cinematic pause. Giant damage/reward resolve immediately in simulation; reveal,
+collapse and debris are disposable presentation.
 
-Runtime-loaded `catharsis.landingAssault` starting values:
+### Giant arrival and defeat
+
+Every Giant has a **1.5-second smoke-emergence reveal**: a subdued partial
+silhouette, four drifting haze sprites, then full crimson/gold clarity. HP bars
+stay hidden for roughly the first second, appearing when the body is mostly
+readable. Giants can be hit throughout this reveal; it grants no invulnerability,
+movement change or delay to spawning. Loading a snapshot rebuilds presentation
+rather than saving meshes or effects.
+
+Death is now a short staged near-boss beat, rather than a 650 ms shrink/fade:
+
+- 0–110 ms: warm lethal flash and a low impact cue, with no gameplay hit-stop.
+- 90–520 ms: full-size body, arms and mace lose balance and fall; prone armor is
+  lifted slightly so it does not disappear into the beach.
+- 520 ms: ground crash, expanding impact ring, four reused dust sprites and the
+  existing 36-point Giant burst. A restrained 0.045-unit / 240 ms camera impulse
+  and delayed crash/rumble/metal cue support the impact.
+- 650 ms: the fallen body breaks into **12 large crimson/gold/steel armor chunks**.
+  Chunks settle rapidly, remain visible until 1.55 s, then fade and clear by 2.4 s.
+
+There are three bounded Giant render slots for two live threats plus a recent
+collapse. Chunk rendering is instanced; haze is reused for reveal and ground dust.
+No ragdoll, physics body, unbounded emitter, texture asset or new VFX framework is
+introduced. Hits retain the existing 100 ms / 250 ms rate limit and additive gait.
+When two Giants are visible their HP bars use 80% of the single-Giant width to
+avoid overlap. Contact/leak removals do not play the Giant kill/death beat. Retry
+clears visual pools and cancels pending audio from the previous run.
+
+### Runtime-loaded elite pressure
+
+`public/game-data/game.json` / `catharsis.landingAssault`:
 
 | Value | Initial experiment |
 | --- | --- |
-| `enabled` | true (absent in older saved balance: false) |
-| `powerWindowSeconds` | 10 |
-| `groupSize` | 66, versus the previous LV7 quantity of 35 |
-| `cadenceMultiplier` | 0.88: 5.28 s between admitted waves at the authored 0.6 approach pace |
-| `primaryLaneShare` | 0.70: 23 + 23 troops in two primary lanes, 7 + 7 + 6 elsewhere |
-| `heavyMultiplier` | 1.3 times the prior expected Heavy proportion |
-| `heavyChanceCap` | 0.85 probability ceiling; at most one Heavy per wave |
-| `activeSoftCap` | 180 |
-| `secondGiantDelaySeconds` | 30 after assault start |
+| `enabled` | true |
+| `powerWindowSeconds` | 10, unchanged |
+| `groupSize` | 66, unchanged |
+| `cadenceMultiplier` | 0.88: nominal 5.28 s interval, unchanged |
+| `primaryLaneShare` | 0.70: 23 + 23 primary troops, 7 + 7 + 6 elsewhere |
+| `heavyMultiplier` | **2.0**, previously 1.3, relative to pre-assault Heavy proportion |
+| `heavyChanceCap` | 0.85 per primary lane |
+| `activeSoftCap` | 180, unchanged |
+| `secondGiantDelaySeconds` | **18** after assault start (retained key names first additional Giant) |
+| `giantFollowupDelaySeconds` | **10** after that Giant's actual admission |
+| `maxSimultaneousGiants` | **2** including any surviving first LV6 Giant |
 
-Heavy admission probability is `min(cap, previousHeavyChance × assaultGroupSize /
-LV7GroupSize × heavyMultiplier)`: initially **61.29%** per 66-person wave, versus
-25% per 35-person wave. This modestly increases the expected proportion by 1.3×;
-Heavy HP, speed and leader clearance stay unchanged. The authored cadence is
-12% shorter (about 13.6% more frequent), rather than doubling frequency.
+Expected Heavies per wave are `previousHeavyChance × 66 / LV7GroupSize × 2`,
+initially **0.943** (1.43% of troops), versus 0.613 previously. Two independently
+seeded primary-lane rolls permit **0–2 Heavy leaders** rather than capping each
+wave at one. Each gets the existing front clearance. Total wave population and
+Heavy HP/speed remain unchanged; this is quantity/composition, not hidden armor.
 
-Pairs rotate through a seeded shuffled list of distinct lane pairs. Consecutive
-waves use different pairs. Composition samples remain deterministic, overlapping,
-bounded to the existing 9-unit crowd depth and 0.42 lateral spread. New groups
-enter at the 53-unit shoreline. All enemies retain explicit lane targeting.
+The first additional Giant is eligible 18 s after assault and after a larger
+wave has entered. The follow-up is eligible 10 s after actual Giant admission.
+Admission waits for space below the soft-cap and fewer than two live Giants.
+Placement avoids any live Giant lane and prefers two-lane separation, balancing
+current pressure and portrait visibility. There are two additional encounters
+per run; no three-Giant overlaps or indefinite respawn loop. All retain
+**172 HP / 120 XP / 0.08 additional approach speed**. The first LV6 unlock/delay,
+collision and isolated TTK are unchanged (about24.48 s single /12.25 s pair).
 
-Only future groups use the assault settings. If admitting a whole 66-person group
-would exceed the soft-cap, its admission waits; no enemies are removed and there
-is no catch-up burst. A late backlog above 180 may remain until normal combat
-clears it. The cap does not apply to the preserved early game. The dormant legacy
-row cursor advances without spawning during the assault so disabling it later
-cannot release old rows in a burst. Pause freezes the simulation clock. Retry
-clears all assault clocks/counters along with the run; effective runtime balance
-retains the existing Retry semantics. Phase clocks, wave index and second-Giant
-flag are plain snapshot state and deterministic restore is tested.
+Concentrated lane pairs still rotate through a seeded shuffled pair cycle.
+Crowds retain bounded 9-unit depth, 0.42 spread, intentional overlap and 53-unit
+shoreline entry. Whole-wave admission waits below the cap, without despawn or
+catch-up bursts. Early-game backlogs above180 can remain until combat clears them;
+the cap is not retroactively applied to LV1–LV6. The dormant legacy row cursor
+continues advancing without spawning. Assault clocks and the pending follow-up
+Giant timestamp serialize as plain data. Old snapshots without that timestamp
+remain valid; their saved balance defaults to the previous one-Giant policy.
 
-The second Giant becomes eligible after 30 assault seconds and at least one
-assault group has been admitted. It waits for any existing Giant to die and for
-room below the cap. It chooses a pressured interior lane so its broad silhouette
-stays readable in portrait. There is exactly one additional encounter per run;
-no twin Giants. Both encounters retain **172 HP / 120 XP / 0.08 additional speed**.
-The first LV6 Giant's scheduling and combat remain unchanged.
+Three muted asymmetric troop carriers, their distant fog treatment, slow bob and
+faint wakes remain unchanged. The simple craft's shoreward approach/ramp still
+telegraphs landing. No naval collision or new scenery is added in this pass.
 
-Three asymmetrically placed troop carriers use long low cargo hulls, troop holds,
-lifeboats and rear bridges, without battleship guns. Their muted blue-gray
-materials share the illustrated palette; distances/scales differ and the farthest
-is softened by fog. Static ship parts are merged per material (four draws per
-carrier). Slow bob and faint wakes are presentation only. A simple landing craft
-starts drifting shoreward during the last four seconds of the reward window,
-then opens its bow ramp around assault arrival. No naval gameplay or collision
-is introduced. Background actors remain absent from the legacy non-defense view.
+### Local checks and limits
 
-### Local verification and playtest limits
+Nearest-threat and physical-style pilots on seeds1/17/42 all survived600 s with
+two soldiers. Post-assault means were roughly **120–134**, with two-Giant overlap
+at **114–180 enemies**, up to **4–5 Heavies** active, and a180 post-assault peak.
+Holding one lane after assault died on all three seeds in **26–28 s**. Software
+pilots demonstrate overlap and pressure but do not prove final human difficulty;
+physical play should judge whether the short overlap actually forces hard choices.
+No further player or raw-population rebalance was made to force a pilot death.
 
-The deterministic nearest-threat pilot and a physical-style variant (1.5 s
-choices, one-lane movement at roughly 133 ms cadence, intermittent Giant focus)
-were run for ten minutes on seeds 1/17/42. All six retained two soldiers and
-survived. Post-assault mean populations were about **102–125**, with peaks of
-**180** and no zero-enemy time. Whole-run peaks were **243–274**, all from the
-unchanged pre-assault buildup. Holding one lane after assault instead of
-reprioritizing died on all three seeds **26–28 s** later: other fronts cannot be
-ignored indefinitely.
-
-These conservative pilots arrive at LV7 with a large backlog and do **not**
-reproduce the physical playtest's cleared-screen reward beat. A separately labeled
-controlled low-backlog LV6 snapshot verifies the reinforcement → clear → calm →
-landing sequence: 5.22 s with no enemies, with assault starting exactly 10 s after
-Soldier B activates. This fixture is visual evidence, not a full-run timing claim.
-Physical-phone playtesting should judge whether the 10-second reward window feels
-long enough and whether the soft-cap's delayed landings become perceptible.
-
-Portrait evidence, full seed tables, UI checks and a short recorded sequence are
-under `artifacts/landing-assault/`. Software-rendered 390×844 portrait / DPR2
-fixtures at 100/150/180/200 enemies measured approximately **19.6/22.3/18.7/16.7
-FPS**, with enemy-render update medians **0.117/0.230/0.275/0.204 ms**. SwiftShader
-frame timing is noisy/quantized and is not a physical-phone performance claim.
-No density reduction, adaptive gameplay or new framework was introduced.
+Portrait captures/video and exact seed tables are under `artifacts/giant-drama/`.
+The reveal/collapse video is a labeled visual fixture; the two-Giant/Heavy frames
+come from the seed17 pilot. SwiftShader DPR2 portrait fixtures with two Giants at
+100/150/180/200 total enemies measured about **18.3/18.4/20.5/19.2 FPS**, with
+approximately50 ms median frame timing. Enemy-render update CPU medians were
+**0.119/0.249/0.288/0.221 ms**. Software frame timing is noisy/quantized and is not
+a physical-phone claim. Density and gameplay never vary with FPS.
 
 ## Retained visual cleanup
 
@@ -105,8 +121,8 @@ The fixed authored Giant HP is now **172**. Isolated seeds 1/17/42, at 44/38/30
 units respectively, each measure **24.48 s** from first damage to death at LV6
 single-soldier 6.9 Hz. Settled LV7 two-soldier 13.8 Hz measures **12.25 s** in all
 three runs. Firing-start-to-death also includes projectile travel (24.98–25.22 s
-single, 12.75–12.98 s pair). HP is the only Giant combat change; 120 XP, speed,
-spawn timing, appearance, reactions and all player/ordinary-enemy balance stay fixed.
+single, 12.75–12.98 s pair). The previously authored HP tuning is retained; 120 XP, speed,
+the first encounter timing and all player/ordinary-enemy stats stay fixed. Giant reveal/death and post-assault elite scheduling follow the current experiment above.
 Snapshots retain their saved effective balance; existing snapshots need no migration.
 
 Side scenery has four uneven authored clusters per side, with independently
@@ -164,7 +180,7 @@ limitations for a future asset-authoring pass.
 
 ## Retained animation presentation
 
-The animation system remains unchanged. Apart from authored Giant HP above,
+The base locomotion, firing and reinforcement animation remain unchanged; Giant reveal and defeat use the scoped presentation above. Apart from authored Giant HP above,
 pressure tables, population, damage, Rifle rates, XP thresholds/rewards, Giant timing and the exact LV7 two-soldier
 DPS/arrival behavior are unchanged. LV7 screen-clearing remains an intentional short reward window before the landing assault.
 
@@ -195,8 +211,8 @@ Boss, normal enemy and shared equipment assets remain byte-identical.
 * Heavy/Giant hits remain rate-limited additive impulses over ongoing gait.
   Grunt/Heavy gray deaths retain their **480 ms** fade/pop/shrink/burst, adding a
   quick 0.55-radian collapse with small roll (65/110 ms response respectively).
-  Giant staggers briefly, then falls ~1.1 radians before disappearing at **650 ms**;
-  its expanding ring and existing 36 debris points remain stronger than ordinary hits.
+  Giant now uses the scoped lethal flash → full-body collapse → ground crash →
+  armor breakup sequence described above, with cleanup by **2.4 seconds**.
 * Reinforcement still takes exactly **1.1 seconds**. Weighted limbs run during
   arrival, decelerate and settle, with smooth arm/weapon readiness in the final
   quarter. LV7 keeps LEVEL UP but no explanatory reinforcement subtitle; existing
@@ -357,11 +373,11 @@ its existing burst remain stronger than a surviving hit.
 
 ## Late pressure and first Giant
 
-One quantity-only mechanism scales **future** defense waves. `pressureMultipliers`
+Before landing assault, one quantity-only mechanism scales **future** defense waves. `pressureMultipliers`
 is indexed by player level: **1 / 1 / 1 / 1 / 1.25 / 1.35 / 1.45 / 1.55 / 1.6 / 1.65**.
 Beyond the table the last authored value repeats; edit/extend the array for further
 experiments. Round(base groupSize × multiplier) gives **24 / 24 / 24 / 24 / 30 /
-32 / 35 / 37 / 38 / 40** enemies. Existing wave intervals, three-front priorities,
+32 / 35 / 37 / 38 / 40** enemies. Once assault starts the separate authored 66-person composition takes over. Existing pre-assault wave intervals, three-front priorities,
 Heavy frequency, crowd footprint, HP and movement do not change. Existing enemies
 are not retroactively multiplied. The initial suggested 1.25/1.5/1.8 profile was
 measured and rejected because it left 195–235 active enemies at 300 seconds.
@@ -404,18 +420,16 @@ intentional; targeting/collision still belongs to one logical lane.
 The asynchronous 850 ms gait and simulation advance remain unchanged.
 
 The floating HP bar uses measured full-model bounds: ~**3.12 units** of fill track,
-0.18 fill height / 0.26 backing height, centered ~0.35 units above the model top.
+0.20 fill height / 0.36 backing height, centered ~0.35 units above the model top. Two-Giant bars use80% track width and reveal visibility follows the current experiment.
 It has no numbers, remains visible through crowds, and loses ~0.48% per Rifle hit.
 Shared surviving-hit rate limiting remains **100 ms flash / 250 ms minimum gap**.
 Giant armor adds a brief warm emissive wash; its **0.11-unit recoil / 0.06-radian
 tilt** and six larger **170 ms sparks** remain. Sparks move to the defender-facing
 surface of the enlarged model so impacts are not hidden inside it. Heavy's four
-sparks, flash and jolt are unchanged. Death uses gray body and armor, a **650 ms**
-physical stagger/collapse and shrink/fade and proportionally wider expanding ground ring, plus **36 larger
-0.34-unit debris points lasting 450 ms** in the existing fixed pool. Normal enemy
-deaths stay six points / 260 ms. No collision avoidance or new animation framework is added. The small camera
-defeat lift and player limb metadata are presentation only. Renderer-owned geometry/materials reset/dispose;
-borrowed soldier geometry remains intact.
+sparks, flash and jolt are unchanged. Giant defeat follows the staged collapse,
+crash and armor-breakup sequence above; normal enemy deaths remain six points /
+260 ms. Renderer-owned geometry/materials reset/dispose; borrowed soldier geometry
+remains intact. No collision avoidance or new animation framework is added.
 
 The lower-left instruction group now has **transparent backing**, quiet small
 text/shadow, and includes the mobile tap hint. The separate bottom-center hint
@@ -587,19 +601,9 @@ The same fixed-step nearest-threat pilot selects a lane every 90 ticks (1.5 s).
 **13.3 / 27.8 / 49.7 / 82.6 / 128.65 seconds**. Enemy pressure and Giant difficulty
 were not changed to accommodate the pilot.
 
-| Seed | First Giant | Giant killed | LV7 reached | Outcome at 400 s / earlier death |
-| --- | --- | --- | --- | --- |
-| 1 | 134.60 s | 189.83 s | 207.17 s | Alive, 2 soldiers, 32 enemies |
-| 17 | 132.67 s | 195.37 s | Not reached | Dies at 198.50 s, LV6 / 377 XP |
-| 42 | 133.72 s | 194.67 s | 205.88 s | Alive, 2 soldiers, 42 enemies |
-
-All three kill the Giant and receive exactly **120 XP**; none gets an entire
-level from a Giant starting at XP0. Seed 17 still fails just before reinforcement.
-These earlier 210-HP pilot results do not drive pressure retuning; the current
-Giant HP reduction follows subsequent physical-phone feedback. A supplemental alternating Giant-priority pilot also fails
-seed 17; primary benchmark timing above comes from the unchanged nearest-threat
-pilot. Seeds 1/42 outgrow the initial backlog after reinforcement. Peaks before
-relief are 276 / 303 / 289; no pressure or density was reduced for FPS.
+Current full-run survival, elite overlap and pressure measurements are documented
+above and in `artifacts/giant-drama/REPORT.md`. Superseded 210-HP pilot outcomes
+are retained in Git history rather than used as current balance targets.
 
 Current isolated seed-1/17/42 checks use a Giant at 44/38/30-unit range, authored HP172,
 unchanged damage and speed. **Every run** measures the same focused TTK:
@@ -609,8 +613,8 @@ unchanged damage and speed. **Every run** measures the same focused TTK:
 | LV6, 1 soldier | 6.9 Hz | 6.9 Hz | 24.48 s | 24.98–25.22 s |
 | LV7, 2 settled soldiers | 6.9 Hz | 13.8 Hz | 12.25 s | 12.75–12.98 s |
 
-Arrival delay is excluded from the settled two-soldier TTK, and no second Giant
-is spawned naturally. Both test soldiers target the same lane. Additional tests
+Arrival delay is excluded from the settled two-soldier TTK; those isolated fixtures
+suppress additional natural encounters. Both test soldiers target the same lane. Additional tests
 cover reward overflow into LV7, no duplicate award/grant, snapshot continuation,
 clock validation, retry initialization, exact shot counts, phase offset, same-lane
 shots after lane switching, entrance/weapon raising and independent muzzle flashes.
@@ -618,8 +622,8 @@ shots after lane switching, entrance/weapon raising and independent muzzle flash
 Portrait captures in `artifacts/reinforcement/` use **390×844 / DPR2**. The natural
 LV7/arrival/formation/firing sequence is seed 1; seed 17 supplies the crowded
 Giant death/reward sequence. A controlled isolated LV7 fixture supplies two soldiers
-fighting the same Giant, because there is only one natural introduction per run.
-The reward visibly moves the existing red-to-gold bar without numeric XP. The
+fighting the same Giant without other natural encounters in that isolated fixture.
+The reward visibly moves the current pale-blue-to-gold bar without numeric XP. The
 entrance comes from below the frame, both bodies remain distinct, and no multiplier
 label appears. The original level-up spectacle stays readable. Mobile left tap
 moves one lane with both members retained; Pause/TUNE respond. Actual Retry returns

@@ -31,11 +31,16 @@ it('adds an armored silhouette, heavier rate-limited sparks and a stronger dispo
   const burst = new DeathBurst(scene, true); burst.spawn(enemy, 200);
   expect(burst.activeCount).toBe(36);
   renderer.die(enemy, 200); renderer.update(undefined, 320, hits);
+  expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(false);
+  expect(group.visible).toBe(true);
+  renderer.update(undefined, 750, hits);
   expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(true);
-  expect((group.children[0] as THREE.Mesh).geometry).toBe(gray);
+  expect((group.children[0] as THREE.Mesh).geometry).toBe(geometry);
   burst.update(500); expect(burst.activeCount).toBe(36);
   burst.update(651); expect(burst.activeCount).toBe(0);
   renderer.update(undefined, 851, hits); expect(group.visible).toBe(false);
+  expect(scene.getObjectByName('giant-armor-wreckage')!.visible).toBe(true);
+  renderer.update(undefined, 2601, hits); expect(scene.getObjectByName('giant-armor-wreckage')!.visible).toBe(false);
   let borrowedDisposed = false; geometry.addEventListener('dispose', () => { borrowedDisposed = true; });
   renderer.reset(); renderer.dispose(); hits.dispose(); burst.dispose();
   expect(scene.children).toHaveLength(0); expect(borrowedDisposed).toBe(false);

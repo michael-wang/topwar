@@ -1,3 +1,4 @@
+import { GIANT_REVEAL_MS, GIANT_DEATH_MS, GIANT_CRASH_MS, giantReveal, giantDeathPose } from '../../presentation/GiantDrama';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { giantWeightPose } from '../../presentation/CharacterMotion';
@@ -5,9 +6,18 @@ import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import type { HeavyHitFeedback } from './HeavyHitFeedback';
 
-const DEATH_MS = 650;
+function hazeTexture(): THREE.DataTexture {
+  const size = 32, bytes = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = (x - 15.5) / 15.5, dy = (y - 15.5) / 15.5, radius = dx * dx + dy * dy;
+    const at = (y * size + x) * 4; bytes[at] = bytes[at + 1] = bytes[at + 2] = 255;
+    bytes[at + 3] = Math.round(180 * Math.pow(Math.max(0, 1 - radius), 1.5));
+  }
+  const texture = new THREE.DataTexture(bytes, size, size); texture.needsUpdate = true;
+  texture.magFilter = texture.minFilter = THREE.LinearFilter; return texture;
+}
 
-// One introduction per run; all ornament/weapon motion is disposable presentation.
+// A bounded slot for each live or recently defeated Giant; all ornament/weapon motion is disposable presentation.
 export class GiantRenderer {
   private readonly group = new THREE.Group();
   private readonly red = new THREE.MeshStandardMaterial({ color: ART.faction.giant, roughness: .65,
@@ -35,6 +45,16 @@ export class GiantRenderer {
     opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
   private readonly ringGeometry = new THREE.RingGeometry(1, 1.2, 32);
   private readonly ring = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
+  private readonly hazeMap = hazeTexture();
+  private readonly hazeMaterial = new THREE.SpriteMaterial({ map: this.hazeMap, color: ART.world.fog,
+    transparent: true, opacity: 0, depthWrite: false });
+  private readonly haze = new THREE.Group();
+  private readonly chunksMaterial = new THREE.MeshStandardMaterial({ color: 'white', roughness: 1, transparent: true });
+  private readonly debrisGroup = new THREE.Object3D();
+  private readonly chunks = new THREE.InstancedMesh(this.facet, this.chunksMaterial, 12);
+  private readonly transform = new THREE.Object3D();
+  private readonly coreColor = new THREE.Color(ART.fx.core);
+  private bornAt = -Infinity;
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
   constructor(private readonly scene: THREE.Scene,
@@ -98,7 +118,13 @@ export class GiantRenderer {
     this.dimensions = new THREE.Box3().setFromObject(this.group).getSize(new THREE.Vector3());
     this.ring.rotation.x = -Math.PI / 2; this.ring.name = 'giant-death-impact';
     this.group.visible = this.ring.visible = false;
-    scene.add(this.group, this.ring);
+    this.haze.name = 'giant-emergence-haze';
+    for (let i = 0; i < 4; i++) this.haze.add(new THREE.Sprite(this.hazeMaterial));
+    this.chunks.name = 'giant-armor-wreckage'; this.chunks.visible = false; this.chunks.frustumCulled = false;
+    for (let i = 0; i < 12; i++) this.chunks.setColorAt(i, new THREE.Color([ART.faction.giant, ART.faction.gold, ART.world.nearAccent][i % 3]));
+    this.haze.visible = false;
+    this.debrisGroup.add(this.chunks);
+    scene.add(this.group, this.ring, this.haze, this.debrisGroup);
   }
 
   private part(geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number,
@@ -107,6 +133,9 @@ export class GiantRenderer {
     mesh.position.set(x, y, z); mesh.scale.set(width, height, depth); parent.add(mesh); return mesh;
   }
 
+  get id(): number | undefined { return this.previous?.id; }
+  available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= GIANT_DEATH_MS); }
+  barVisible(nowMs: number): boolean { return giantReveal(nowMs - this.bornAt).barVisible; }
   getModelDimensions(): { width: number; height: number; depth: number } {
     return { width: this.dimensions.x, height: this.dimensions.y, depth: this.dimensions.z };
   }
@@ -116,7 +145,7 @@ export class GiantRenderer {
       y: this.dimensions.y * (enemy.visualScaleY ?? base) + .35 };
   }
   die(enemy: EnemyRenderState, nowMs: number): void {
-    this.previous = enemy; this.deathAt = nowMs; this.ring.position.set(-enemy.x, .06, enemy.z);
+    this.previous = enemy; this.deathAt = nowMs; this.ring.position.set(-enemy.x, .06, enemy.z - 1.5);
   }
   private restorePalette(): void {
     for (const { material, color } of this.palette) {
@@ -125,6 +154,7 @@ export class GiantRenderer {
   }
   update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback): void {
     if (enemy) {
+      if (this.previous?.id !== enemy.id) this.bornAt = nowMs;
       this.previous = enemy; this.deathAt = -Infinity; this.body.material = this.bodyMaterial;
       const cycle = enemy.gaitCycleMs ?? 850, phase = nowMs * Math.PI * 2 / cycle + enemy.id * 2.399963;
       const hit = hits.strength(enemy.id, nowMs);
@@ -144,35 +174,75 @@ export class GiantRenderer {
       const scale = enemy.visualScale ?? 1;
       this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression), enemy.visualScaleZ ?? scale);
       this.group.visible = true; this.ring.visible = false; this.restorePalette();
+      const reveal = giantReveal(nowMs - this.bornAt);
+      for (const { material, color } of this.palette) {
+        material.transparent = reveal.opacity < 1; material.opacity = reveal.opacity;
+        material.color.set(ART.world.near).lerp(color, reveal.color);
+      }
+      this.haze.visible = nowMs - this.bornAt < GIANT_REVEAL_MS;
+      this.hazeMaterial.color.set(ART.world.fog); this.hazeMaterial.opacity = reveal.haze;
+      this.haze.children.forEach((cloud, index) => {
+        cloud.position.set(-enemy.x + Math.sin(index * 2.4) * 1.1 + (nowMs - this.bornAt) * .00025,
+          .9 + index * 1.05, enemy.z - 1.1 - index * .15);
+        cloud.scale.set(4.7 + index * .35, 2.9, 1);
+      });
+      this.chunks.visible = false;
       this.red.emissiveIntensity = .45 * hit; this.gold.emissiveIntensity = .6 * hit;
       this.group.updateMatrixWorld(true);
       hits.setBody(enemy.id, this.body.geometry, this.body.matrixWorld, nowMs);
       return;
     }
+    this.haze.visible = false;
     const age = nowMs - this.deathAt;
-    if (!this.previous || age < 0 || age >= DEATH_MS) { this.group.visible = this.ring.visible = false; return; }
-    const p = age / DEATH_MS, falling = Math.max(0, Math.min(1, (age - 70) / 380));
-    const fall = falling * falling * (3 - 2 * falling);
-    const scale = 1 - .8 * p * p, base = this.previous.visualScale ?? 1;
-    this.group.rotation.set(-.12 - 1.1 * fall, Math.PI, .18 * fall);
-    this.arms.forEach((arm, index) => { arm.rotation.x = -.35 * fall; arm.rotation.z = (index ? 1 : -1) * .25 * fall; });
-    this.weapon.rotation.x = -.5 * fall;
-    this.group.visible = this.ring.visible = true;
-    this.group.scale.set(this.previous.visualScaleX ?? base, this.previous.visualScaleY ?? base, this.previous.visualScaleZ ?? base).multiplyScalar(scale);
-    this.group.position.set(-this.previous.x, .10 * (1 - p), this.previous.z + .6 * fall);
-    this.body.geometry = this.grayBody.geometry; this.body.material = this.deathMaterial; this.deathMaterial.opacity = 1 - p;
-    for (const { material } of this.palette) {
-      material.color.set(age < 80 ? '#fff1bd' : '#aeb6bc'); material.transparent = true;
-      material.opacity = 1 - p; material.emissiveIntensity = 0;
+    if (!this.previous || age < 0 || age >= GIANT_DEATH_MS) {
+      this.group.visible = this.ring.visible = this.chunks.visible = false; return;
     }
-    const footprint = (this.previous.visualScaleX ?? base) * .5;
-    this.ring.scale.setScalar(footprint * (1 + 2 * p)); this.ringMaterial.opacity = .85 * (1 - p);
+    const pose = giantDeathPose(age), enemyScale = this.previous.visualScale ?? 1;
+    const fall = pose.falling;
+    this.group.visible = pose.bodyVisible; this.ring.visible = pose.ringOpacity > 0;
+    this.group.rotation.set(-.12 - 1.42 * fall, Math.PI, .22 * fall);
+    this.arms.forEach((arm, index) => { arm.rotation.x = -.6 * fall; arm.rotation.z = (index ? 1 : -1) * .4 * fall; });
+    this.weapon.rotation.x = -.9 * fall; this.weapon.rotation.z = .25 * fall;
+    this.group.scale.set(this.previous.visualScaleX ?? enemyScale, this.previous.visualScaleY ?? enemyScale, this.previous.visualScaleZ ?? enemyScale);
+    this.group.position.set(-this.previous.x, .03 + .08 * (1 - fall) + .9 * fall, this.previous.z + .4 * fall);
+    this.body.material = this.bodyMaterial; // Keep the recognizable massive body intact until the crash.
+    for (const { material, color } of this.palette) {
+      material.color.copy(color).lerp(this.coreColor, pose.lethalFlash);
+      material.transparent = false; material.opacity = 1; material.emissiveIntensity = pose.lethalFlash * .6;
+    }
+    const impactAge = Math.max(0, age - GIANT_CRASH_MS);
+    this.haze.visible = pose.crash && impactAge < 850;
+    this.hazeMaterial.color.set(ART.fx.dust);
+    this.hazeMaterial.opacity = .45 * Math.min(1, impactAge / 60) * Math.max(0, 1 - impactAge / 850);
+    this.haze.children.forEach((cloud, index) => {
+      const angle = index * 2.399963, spread = .8 + impactAge * .002;
+      cloud.position.set(-this.previous!.x + Math.cos(angle) * spread, .35 + index * .12,
+        this.previous!.z - 1.5 + Math.sin(angle) * spread);
+      cloud.scale.set(3 + impactAge * .003, 1 + impactAge * .001, 1);
+    });
+    const footprint = (this.previous.visualScaleX ?? enemyScale) * .8;
+    this.ring.scale.setScalar(footprint * (1 + impactAge / 280)); this.ringMaterial.opacity = pose.ringOpacity;
+    this.chunks.visible = pose.debrisVisible; this.chunksMaterial.opacity = pose.debrisOpacity;
+    if (pose.debrisVisible) {
+      const seconds = Math.min(.6, Math.max(0, (age - 650) / 1000));
+      for (let i = 0; i < 12; i++) {
+        const phase = i * 2.399963 + this.previous.id * .71, distance = .45 + (i % 4) * .36;
+        this.transform.position.set(-this.previous.x + Math.cos(phase) * distance * (1 + seconds * .6),
+          .13 + Math.max(0, Math.sin(seconds / .6 * Math.PI) * (.35 + (i % 3) * .15)),
+          this.previous.z - 1.5 + Math.sin(phase) * distance * 1.4);
+        this.transform.rotation.set(phase + seconds * 2, phase * .7, .4 + phase);
+        this.transform.scale.set(.4 + (i % 3) * .18, .25 + (i % 2) * .18, .55 + (i % 4) * .15);
+        this.transform.updateMatrix(); this.chunks.setMatrixAt(i, this.transform.matrix);
+      }
+      this.chunks.instanceMatrix.needsUpdate = true;
+    }
   }
   reset(): void {
-    this.previous = undefined; this.deathAt = -Infinity; this.group.visible = this.ring.visible = false; this.restorePalette();
+    this.previous = undefined; this.deathAt = -Infinity; this.group.visible = this.ring.visible = this.haze.visible = this.chunks.visible = false; this.bornAt = -Infinity; this.restorePalette();
   }
   dispose(): void {
-    this.scene.remove(this.group, this.ring);
+    this.scene.remove(this.group, this.ring, this.haze, this.debrisGroup);
+    this.hazeMap.dispose(); this.hazeMaterial.dispose(); this.chunksMaterial.dispose(); this.chunks.dispose();
     for (const geometry of [this.box, this.facet, this.cylinder, this.cone, this.trim, this.ringGeometry]) geometry.dispose();
     for (const { material } of this.palette) material.dispose(); this.deathMaterial.dispose(); this.ringMaterial.dispose();
   }

@@ -1,3 +1,4 @@
+import { GIANT_CRASH_MS } from '../presentation/GiantDrama';
 import { BattlefieldAir } from './environment/BattlefieldAir';
 import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
@@ -53,7 +54,8 @@ export class GameRenderer {
   private readonly environment: BridgeEnvironment;
   private readonly contactShadows: ContactShadowRenderer;
   private readonly air = new BattlefieldAir(this.scene);
-  private hadGiant = false;
+  private readonly contactedEnemyIds = new Set<number>();
+  private previousGiantIds: number[] = [];
   private giantDefeatAtMs = -Infinity;
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
@@ -99,12 +101,12 @@ export class GameRenderer {
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
-    const hasGiant = state.enemies.some(enemy => enemy.archetype === 'giant');
-    if (this.hadGiant && !hasGiant) this.giantDefeatAtMs = nowMs;
-    this.hadGiant = hasGiant;
+    const giantIds = state.enemies.filter(enemy => enemy.archetype === 'giant').map(enemy => enemy.id);
+    if (this.previousGiantIds.some(id => !giantIds.includes(id) && !this.contactedEnemyIds.has(id))) this.giantDefeatAtMs = nowMs + GIANT_CRASH_MS;
+    this.previousGiantIds = giantIds; this.contactedEnemyIds.clear();
     const defeatAge = nowMs - this.giantDefeatAtMs;
     // One tiny positional breath on defeat; no continuous footfall shake.
-    if (defeatAge >= 0 && defeatAge < 240) this.camera.position.y += .025 * Math.sin(Math.PI * defeatAge / 240);
+    if (defeatAge >= 0 && defeatAge < 240) this.camera.position.y += .045 * Math.sin(Math.PI * defeatAge / 240);
     this.air.update(state.enemies, state.player.z, nowMs, !!state.defenseMode);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs, state.defenseMode, state.landingAssaultAgeSeconds);
     this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
@@ -121,6 +123,7 @@ export class GameRenderer {
 
   present(events: readonly PresentationEvent[], nowMs: number,
     trackHalfWidth: number, formationSpacing: number): void {
+    for (const event of events) if (event.kind === 'normalEnemyContact') this.contactedEnemyIds.add(event.enemyId);
     this.squadRenderer.present(events, nowMs, trackHalfWidth, formationSpacing);
     this.enemyRenderer.present(events, nowMs);
   }
@@ -131,7 +134,7 @@ export class GameRenderer {
   }
 
   resetFeedback(): void {
-    this.hadGiant = false; this.giantDefeatAtMs = -Infinity; this.air.reset();
+    this.previousGiantIds = []; this.contactedEnemyIds.clear(); this.giantDefeatAtMs = -Infinity; this.air.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset();
     this.bossRenderer.reset();
