@@ -16,7 +16,7 @@ export interface SquadSimulationState {
 
 export interface EnemySimulationState {
   lane?: number;
-  archetype?: 'grunt' | 'heavy';
+  archetype?: 'grunt' | 'heavy' | 'giant';
   id: number;
   tier: number;
   x: number;
@@ -97,6 +97,7 @@ export interface WeaponSimulationState {
 }
 
 export interface SimulationState {
+  giantEncounter?: { scheduledAtSeconds: number | null; spawned: boolean };
   progression?: { level: number; xp: number };
   catharsis?: { balance: CatharsisConfig; trackHalfWidth: number; rewardRowsPerReward?: number };
   tick: number;

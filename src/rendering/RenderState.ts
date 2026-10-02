@@ -75,8 +75,9 @@ export interface ProjectileRenderState {
 }
 
 export interface EnemyRenderState {
+  readonly gaitCycleMs?: number;
   readonly maxHp?: number;
-  readonly archetype?: 'grunt' | 'heavy';
+  readonly archetype?: 'grunt' | 'heavy' | 'giant';
   readonly visualScale?: number;
   readonly visualScaleX?: number;
   readonly visualScaleY?: number;

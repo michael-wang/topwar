@@ -1,13 +1,11 @@
-# Phase 3.0.5 — Progression Feel Pass
+# Progression Phase 2 — Late Pressure + First Giant
 
-Focused follow-up: fixed-width XP color reveal, Heavy hit feedback and LV5 Rifle taper.
-
-This is the first **progression experiment**, not final progression pacing.
-The accepted naked-combat baseline stays locked: one defended normal lane is
+This is a focused **progression experiment**, not final progression pacing.
+The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
 become easier. Combat never pauses for a level, and no choices or support systems
-are introduced. Enemy durability, density and speeds do not scale with player power.
+are introduced. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
 
 ## Earned progression
 
@@ -29,8 +27,7 @@ is `fireRateTaperFirstGain=0.5` Hz; each subsequent gain is multiplied by
 diminishing gains thereafter. `fireRatePerLevel=1` controls the earlier gains.
 TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 gives
 6 Hz). These values are runtime-loaded and retained/validated in snapshots.
-Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs,
-enemy HP or wave tuning changes.
+Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs or enemy HP changes.
 
 The bottom HUD shows **LV N only**, with no routine numeric XP. Its shaped dark
 track keeps beveled warm borders and inset depth. The red→orange→hot-yellow
@@ -106,6 +103,53 @@ visuals. Grunts gain no new hit feedback. This never changes HP, movement,
 collision, damage, targeting or knockback. The longer gray vaporizing death and
 its existing burst remain stronger than a surviving hit.
 
+## Late pressure and first Giant
+
+One quantity-only mechanism scales **future** defense waves. `pressureMultipliers`
+is indexed by player level: **1 / 1 / 1 / 1 / 1.25 / 1.35 / 1.45 / 1.55 / 1.6 / 1.65**.
+Beyond the table the last authored value repeats; edit/extend the array for further
+experiments. Round(base groupSize × multiplier) gives **24 / 24 / 24 / 24 / 30 /
+32 / 35 / 37 / 38 / 40** enemies. Existing wave intervals, three-front priorities,
+Heavy frequency, crowd footprint, HP and movement do not change. Existing enemies
+are not retroactively multiplied. The initial suggested 1.25/1.5/1.8 profile was
+measured and rejected because it left 195–235 active enemies at 300 seconds.
+
+The first Giant is a normal lane-tagged enemy, **not a Boss**, with no special
+attack or popup. On reaching LV6 a serialized introduction clock starts; after
+**4 seconds**, exactly one Giant enters at the shoreline volume's beachward edge:
+53 − 9 = **44 units** ahead. It chooses the least crowded interior corridor,
+preferring center on ties; interior placement avoids portrait-edge cropping.
+Ordinary waves continue during the delay; no breathing-window density reduction
+is applied. The pending time and one-shot flag survive snapshots. Retry resets
+both. Old snapshots without this state initialize an untriggered encounter; missing Giant balance defaults disabled, while new authored runs explicitly enable it.
+
+Authored `catharsis.giant` values: **28 HP / 30 XP / 0.08 additional speed**, unlock
+level 6, delay 4 seconds, visual scale **2.4**, width multiplier **0.85**, visual gait
+**850 ms**. HP is fixed, never derived from player fire rate. The Giant uses normal
+lane targeting, tier-1 contact damage and the existing 0.3 normal collision radius.
+XP is awarded only by the shared player-kill boundary, once; contact/leaks grant
+none. At 6.9 Hz focused single-soldier fire takes about **4.1 seconds** from firing
+to death at 14-unit range, **3.87 seconds** from first damage to death. Actual
+encounters can take longer because Grunts ahead and other lanes need attention.
+All Giant values and the pressure table are runtime-loaded JSON/snapshot balance;
+no new fake TUNE controls. Explicit live HP edits retain damage fraction, as Heavy does.
+
+Giant presentation reuses corrected soldier poses but has a **separate dark body/
+armor treatment**, broad slab shoulder guards, heavier chest/back plates and a
+narrow visor. Final XYZ scale is **2.856 / 3.36 / 3.36**, versus Grunt 1.4. The
+asynchronous 850 ms gait is visual only, with a restrained weighty bob/sway.
+A floating live HP bar remains above the silhouette. The shared rate-limited
+100 ms / 250 ms hit system adds slightly stronger **0.11-unit recoil / 0.06-radian
+tilt** and **six larger 170 ms sparks** for Giant; Heavy retains its prior four
+sparks, flash and jolt. Death uses gray baked body/material, a **650 ms** shrink/
+fade, expanding ground-impact ring, and **24 larger debris points lasting 450 ms**
+in a fixed pool (normal death remains six points / 260 ms). No camera shake,
+special attacks, collision avoidance or new asset-bake pipeline is added.
+
+No second soldier, squad growth, new player weapon or upgrade choice is introduced.
+Rifle progression, all XP thresholds, Grunt 1 HP / 1 XP, Heavy 15 HP / 10 XP and
+all existing level-up spectacle/audio stay unchanged.
+
 ## Controls and combat
 
 A/D or Left/Right immediately steps one destination lane. Holding repeats after
@@ -134,7 +178,8 @@ Tracers take a fixed trajectory toward the nearest same-lane enemy at firing tim
 they do not home. An enemy killed before a tracer arrives can leave a tracer that
 hits another member without perfect visual alignment. Evaluate this presentation.
 
-Each wave generates twenty-four members at its first row, every six rows. Seeded independent
+Each wave generates the base twenty-four members at its first row, every six rows
+through LV4. Later waves multiply this base population using the authored pressure table. Seeded independent
 lateral and depth samples have no unique slots, rows or count-dependent column length.
 Overlap and occlusion are intentional human-wave presentation: members need no
 personal space and there is no enemy-to-enemy collision avoidance. Lateral samples
@@ -169,7 +214,7 @@ rebuild is needed. The `catharsis` values are included in simulation snapshots.
 | `laneSwitchSeconds` | 0.15 | Time to traverse one lane spacing |
 | `waveRows` | 6 | Group cadence: 3.6 world units at existing row spacing |
 | `priorityWaves` | 3 | Groups before pressure lanes change |
-| `groupSize` | 24 | Total members per group, including a possible Heavy; TUNE 10–60, step 2 |
+| `groupSize` | 24 | Base members per group, including a possible Heavy; TUNE 10–60, step 2; level pressure multiplies this base |
 | `pressureLaneCount` | 3 | Distinct pressure fronts per block; runtime-loaded JSON, 1–laneCount |
 | `lateralSpreadFraction` | 0.42 | Maximum lateral offset as a fraction of lane spacing |
 | `heavyChance` | 0.25 | Chance of one Heavy replacing the first group member |
@@ -187,7 +232,7 @@ speeds are initially 0.85 for Grunts and 0.72 for Heavies.
 `weapon.rifle.fireRate` starts at **3 shots/second**, with unchanged base damage. TUNE keeps Fire rate, enemy scale,
 Grunt speed, Heavy HP/speed/frequency, bullet speed/range, approach pace and music
 volume and **Enemies / wave** (10–60, step 2). Density changes only future groups:
-active enemies remain untouched. Retry retains tuning and is the cleanest way to
+active enemies remain untouched; later levels multiply the tuned base. Retry retains tuning and is the cleanest way to
 refill the beach at a new density. Reset Defaults restores authored values. Lane
 count, switch duration, entry horizon and crowd span are JSON controls. Balance,
 including density/horizon/span, is serialized with stream cursors for deterministic
@@ -253,29 +298,14 @@ outside defense mode. Irrelevant TUNE controls are hidden. Merge, tier power,
 penetration, casualties and higher-tier infrastructure are retained without redesign;
 the authored run starts with one soldier and no rewards to grow the squad.
 
-No upgrade choices, squad growth, additional weapons/enemies, backend, framework or deployment.
+No upgrade choices, squad growth, additional player weapons, backend, framework or deployment. Giant is the only new archetype.
 The single-soldier opening remains unforgiving; evaluate whether earned fire rate changes
 the pressure/release loop before designing further progression.
 
 ## Verification and phone playtest focus
 
-Focused tests cover authored table/fallback/overflow, strict snapshot format,
-unchanged awards/contact exclusions, effective scheduling/base independence,
-HUD percentages and anticipation, full flash/reset/label pop, one-shot/coalesced
-presentation events, reusable multi-member bursts, tier independence, afterglow
-expiry and Retry cleanup. Existing combat baseline and input tests remain.
-
-Portrait evidence is local under `artifacts/progression-feel/`, at 390×844/DPR2
-Chrome SwiftShader. Captures include normal/70%+/90%+ fill, a full-density staged
-lethal hit at 27 XP, and render-timed flash/sparks/reset/afterglow/expiry. Only one
-Grunt is repositioned for the staged hit; crowd population is retained. The warmer
-HUD and prominent ring/wash/motes are readable below combat without covering the
-soldier. XP taps still step a lane, Pause suppresses taps, and closing edited TUNE
-restores keys. Retry resets LV1/XP0 and visible bursts while retaining base 2.5 Hz.
-No browser errors. Audio remains the existing gesture-unlocked positive cue.
-
 The same fixed-step nearest-threat pilot selects lanes every 90 ticks (1.5 s).
-**Seed 17:**
+**Seed 17**, one Rifle soldier, untouched Rifle/XP settings:
 
 | Level | Time | Total kills | Heavy kills included | Effective Rifle |
 | --- | --- | --- | --- | --- |
@@ -283,43 +313,64 @@ The same fixed-step nearest-threat pilot selects lanes every 90 ticks (1.5 s).
 | LV3 | 27.8 s | 79 | 1 | 5 Hz |
 | LV4 | 49.7 s | 180 | 2 | 6 Hz |
 | LV5 | 82.6 s | 342 | 4 | 6.5 Hz |
+| LV6 | 128.6 s | 586 | 8 | 6.9 Hz |
 
-Across seeds 1/17/42, LV2 arrives at 9.4–13.3 s, LV3 at 25.6–27.8 s,
-LV4 at 49.7–49.9 s and LV5 at 81.7–82.6 s. All three pilots survive 300 s
-and reach LV7 (~205 s). Seed-17 active population is 199 at 30 s,
-181 at 60 s, 105 at 120 s, 23 at 180 s and 11 at 300 s: power eventually
-outgrows unchanged pressure. These are scripted decisions, not human pacing evidence.
+LV2–LV5 timings are exactly preserved; more future enemies slightly change LV6
+from the previous 129.5 s. Giant appears at **132.7 s** and dies at **161.8 s**
+under the switching pilot. The isolated focused-fire check measures 4.1 s to kill.
 
-Physical-phone playtests should judge whether the first reward still arrives too
-soon or feels delayed, whether the bold soldier wash preserves its silhouette,
-whether near-full anticipation is noticeable without distracting from lane choice,
-and whether the brief afterglow makes the new rhythm feel earned. Heavy leaders
-can still be obscured by adjacent waves; their existing bars/readability are retained.
-No adaptive density, hidden scaling or unrelated optimization is applied.
+| Seed | Active at 90 s | Active at 180 s | Active at 300 s | Peak | First Giant |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 143 | 129 | 57 | 205 | 134.6 s |
+| 17 | 152 | 134 | 63 | 213 | 132.7 s |
+| 42 | 159 | 135 | 90 | 207 | 133.7 s |
 
-Focused follow-up portrait captures are local under `artifacts/xp-color-heavy-hit/`:
-15/50/75/90/99% masks, Heavy hit/settle at 3 and 15 Hz, and a live ~200-enemy run.
-Percentage captures use presentation-only fixtures for exact progress, retaining
-the crowd. One Heavy is repositioned for close hit inspection. At 3 Hz all eight
-staged hits react; at 15 Hz only two of eight react, with visible settle gaps.
-No browser errors. The existing level-up ring/wash/motes, audio, label pop,
-800 ms full-flash sequence and 1400 ms weapon afterglow are unchanged.
+All three survive 300 seconds and exactly one Giant appears in each. Ten-minute
+extensions also survive without runaway accumulation. The roughly 200-enemy
+opening peak predates LV5 and is intentionally retained; later crowds decline
+into a broad 40–90 band rather than a permanent 150–200 mass. Brief larger banks
+remain around the LV6 encounter. At 180 seconds seed 17 retains 134 enemies
+versus 23 before this change, and 63 versus 11 at 300 seconds.
 
-An additional fixed-LV5 seed-17 comparison disables XP awards **only in the test
-fixture** to isolate 7 versus 6.5 Hz. Both pilots visit all five lanes, switching
-to the nearest threat every 1.5 seconds, and survive 300 seconds. At 90 seconds
-7 Hz leaves 23 enemies versus 57 at 6.5 Hz; at 180 seconds both have only ~11–12.
-**6.5 Hz delays cleanup but still eventually covers all five lanes comfortably
-in this scripted test.** Lane choice is still required to execute the pilot;
-this does not prove human triviality, nor eliminate the physical-playtest concern.
-No additional combat rebalance is applied. Evaluate this specifically on a phone.
+LV5/LV6 no longer wipe the normal progressing battlefield to ~11 enemies in the
+old time window. The pilot must still switch to approaching fronts while spending
+shots on the Giant. This is **not proof of physical-phone difficulty**: it chooses
+the nearest threat automatically and still survives all seeds. Isolated fixed-
+level probes (XP disabled only in fixtures) eventually win too: LV5 leaves 34,
+LV6 19 at 300 seconds, though both retain ~94–102 at 180 seconds. This experiment
+restores pressure during normal earned progression, not an unwinnable permanent
+wall. Existing contact/leak rules remain unchanged; no global breach mechanic was
+introduced. Phone playtests should judge whether lane decisions now feel costly,
+whether the Giant discovery is imposing, and whether its larger death beat rewards
+focused attention. Pressure may still need further authored tuning from that evidence.
 
-Delivery checks: **426 tests / 59 files pass**, plus typecheck and production build.
-A separate ~22-second live portrait browser pilot (without synchronous offline
-simulation) reports **23 FPS**, average **44.2 ms**, p95 **50.1 ms**, with 199 active
-enemies under Chrome SwiftShader/DPR2. The prior comparable check was 21 FPS /
-47.9 ms at 200 enemies; variation does not establish a performance improvement.
-No obvious new hitch was observed; this is software-rendered desktop evidence,
-not physical-phone performance. Screenshot PERF counters from offline fixtures
-are stale and are not used as FPS measurements. Existing build warnings concern
-bundle size and third-party Zod annotations; no density reduction or optimization.
+Portrait evidence in `artifacts/late-pressure-giant/`: normal LV5 at 90 seconds,
+LV6 at 150 seconds, natural first Giant entry, sustained hits after eight damage
+points, and death at +120 ms. These project actual seed-17 simulation frames,
+with live level/XP/lane labels, retained crowds and no encounter label. Hit/death
+frames use render-timed feedback so the short beats can be inspected. The dark
+silhouette, HP bar, warm impacts and large gray death are readable at 390×844/DPR2.
+No browser errors; current XP gradient and level-up presentation are preserved.
+
+Separate live 6.5-second portrait checks resumed actual seed-17 snapshots near
+each population band; the same pilot and simulation ran during measurement.
+Chrome SwiftShader on desktop, **not physical-phone GPU performance**:
+
+| Approximate population | End population | FPS | Average frame | p95 |
+| --- | --- | --- | --- | --- |
+| ~50 (sampled 53–81) | 49 | 43 | 23.3 ms | 33.4 ms |
+| ~100 (91–123) | 123 | 30 | 33.5 ms | 50.0 ms |
+| ~150 (138–166) | 136 | 24 | 40.8 ms | 50.1 ms |
+| ~200 (183–201) | 199 | 21 | 48.2 ms | 50.1 ms |
+
+Simulation CPU remained ~0.1–0.2 ms/frame in these checks; software GPU rendering
+is the visible limitation. No new severe hitch was observed, no density was
+lowered for FPS, and no adaptive performance behavior or unrelated optimization
+was added. Offline screenshot counters are not FPS evidence.
+
+Delivery checks: **432 tests / 61 files pass**, typecheck and production build.
+Tests cover quantity-only deterministic generation, unchanged early stream,
+Giant gate/pending snapshot/once-only spawn/Retry initialization, kill-only XP,
+movement, projected maximum/proportions/gait, rate-limited Giant impacts and
+larger bounded death/disposal. Existing Heavy/input/spectacle tests still pass.
+Build warnings remain third-party Zod annotations and bundle size.

@@ -4,7 +4,7 @@ export const HEAVY_HIT_FLASH_MS = 100;
 export const HEAVY_HIT_GAP_MS = 250;
 const SPARK_MS = 170;
 const MAX_BURSTS = 12;
-interface Burst { id: number; startedAt: number; body: THREE.Mesh; sparks: THREE.Group; material: THREE.MeshBasicMaterial; x: number; z: number }
+interface Burst { id: number; startedAt: number; body: THREE.Mesh; sparks: THREE.Group; material: THREE.MeshBasicMaterial; giant: boolean; x: number; z: number }
 export class HeavyHitFeedback {
   private readonly lastHit = new Map<number, number>();
   private readonly bursts: Burst[] = [];
@@ -13,19 +13,21 @@ export class HeavyHitFeedback {
   private readonly geometry = new THREE.SphereGeometry(.035, 5, 3);
   constructor(private readonly scene: THREE.Scene) {}
   observe(enemy: EnemyRenderState, nowMs: number): boolean {
-    if (enemy.archetype !== 'heavy' || nowMs - (this.lastHit.get(enemy.id) ?? -Infinity) < HEAVY_HIT_GAP_MS) return false;
+    if ((enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') || nowMs - (this.lastHit.get(enemy.id) ?? -Infinity) < HEAVY_HIT_GAP_MS) return false;
     this.lastHit.set(enemy.id, nowMs);
     let burst = this.bursts.find(b => !b.body.visible && !b.sparks.visible);
     if (!burst && this.bursts.length < MAX_BURSTS) {
       const material = new THREE.MeshBasicMaterial({ color: '#ffe4a2', transparent: true, depthWrite: false, toneMapped: false });
       const body = new THREE.Mesh(this.geometry, this.flash); body.name = 'heavy-hit-body'; body.matrixAutoUpdate = false;
       const sparks = new THREE.Group(); sparks.name = 'heavy-hit-sparks';
-      for (let index = 0; index < 4; index++) sparks.add(new THREE.Mesh(this.geometry, material));
+      for (let index = 0; index < 6; index++) sparks.add(new THREE.Mesh(this.geometry, material));
       this.scene.add(body, sparks);
-      burst = { id: 0, startedAt: 0, body, sparks, material, x: 0, z: 0 }; this.bursts.push(burst);
+      burst = { id: 0, startedAt: 0, body, sparks, material, giant: false, x: 0, z: 0 }; this.bursts.push(burst);
     }
     burst ??= this.bursts.reduce((oldest, b) => b.startedAt < oldest.startedAt ? b : oldest);
     // HP deltas carry no impact coordinates: use the defender-facing Rifle-height surface.
+    burst.giant = enemy.archetype === 'giant';
+    burst.sparks.children.forEach((spark, index) => spark.visible = burst!.giant || index < 4);
     burst.id = enemy.id; burst.startedAt = nowMs; burst.x = -enemy.x; burst.z = enemy.z - .25;
     burst.body.visible = true; burst.sparks.visible = true;
     return true;
@@ -47,9 +49,9 @@ export class HeavyHitFeedback {
       const progress = age / SPARK_MS; burst.material.opacity = 1 - progress;
       burst.sparks.children.forEach((spark, index) => {
         const angle = index * 2.4;
-        spark.position.set(burst.x + Math.cos(angle) * .32 * progress,
+        spark.position.set(burst.x + Math.cos(angle) * (burst.giant ? .5 : .32) * progress,
           .7 + Math.sin(angle) * .2 * progress + .15 * progress, burst.z - .35 * progress);
-        spark.scale.setScalar(1 - .5 * progress);
+        spark.scale.setScalar((burst.giant ? 1.8 : 1) * (1 - .5 * progress));
       });
     }
   }

@@ -1,3 +1,4 @@
+import { pressureGroupSize, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
 import { grantXp, requiredXp, effectiveRifleFireRate } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
@@ -193,7 +194,7 @@ function validSquadCount(count: unknown): count is number {
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
   boss: BossSimulationState | null, bossHpScale: number,
-  catharsis?: SimulationState['catharsis']): BossSimulationState | null {
+  catharsis?: SimulationState['catharsis'], playerLevel = 1): BossSimulationState | null {
   const horizonZ = playerZ + (catharsis?.balance.defenseMode
     ? catharsis.balance.defenseSpawnAheadDistance : stream.spawnAheadDistance);
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
@@ -221,9 +222,11 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       throw new Error('Simulation enemy stream exceeds the supported range');
     }
     const offsets = catharsis
-      ? laneCompositionForRow(cursor.nextRowIndex, stream.seed, catharsis.balance, catharsis.trackHalfWidth)
+      ? laneCompositionForRow(cursor.nextRowIndex, stream.seed, catharsis.balance.defenseMode
+        ? { ...catharsis.balance, groupSize: pressureGroupSize(catharsis.balance, playerLevel) } : catharsis.balance, catharsis.trackHalfWidth)
       : createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
         stream.columnSpacing ?? stream.spacing, stream.jitter, stream.seed);
+    if (!Number.isSafeInteger(cursor.nextEnemyId + offsets.length)) throw new Error('Enemy group ID exceeds supported range');
     const rowIndex = cursor.nextRowIndex;
     let revealColumn = 0;
     for (let column = 1; column < offsets.length; column++) {
@@ -238,7 +241,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       const tier = catharsis?.balance.defenseMode ? 1
         : enemyTierForRow(rowIndex, column, revealColumn, stream.seed, stream.tierProgression);
       const enemyId = cursor.nextEnemyId++;
-      const archetype = 'archetype' in offset ? offset.archetype as 'grunt' | 'heavy' : undefined;
+      const archetype = 'archetype' in offset ? offset.archetype as 'grunt' | 'heavy' | 'giant' : undefined;
       enemies.push({ id: enemyId, tier, x: offset.x, z,
         hp: archetype ? (archetype === 'heavy' ? catharsis!.balance.heavyHp : 1) : enemyPowerForTier(tier, power),
         ...(archetype ? { archetype } : {}) });
@@ -288,6 +291,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'boss', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.hasOwn(state, 'catharsis')) fields.push('catharsis');
   if (Object.hasOwn(state, 'progression')) fields.push('progression');
+  if (Object.hasOwn(state, 'giantEncounter')) fields.push('giantEncounter');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -299,6 +303,16 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     || (progression.xp as number) < 0
     || (progression.xp as number) >= requiredXp(progression.level as number, catharsis.balance.progression))) {
     throw new Error('Simulation progression must have a valid level and current-level XP');
+  }
+  const giantEncounter = state.giantEncounter;
+  if (giantEncounter !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(giantEncounter)
+    || Object.keys(giantEncounter).length !== 2 || typeof giantEncounter.spawned !== 'boolean'
+    || !(giantEncounter.scheduledAtSeconds === null || (typeof giantEncounter.scheduledAtSeconds === 'number'
+      && Number.isFinite(giantEncounter.scheduledAtSeconds) && giantEncounter.scheduledAtSeconds >= 0))
+    || (giantEncounter.spawned && giantEncounter.scheduledAtSeconds === null)
+    || (giantEncounter.scheduledAtSeconds !== null && (!isPlainObject(progression)
+      || (progression.level as number) < catharsis.balance.giant.unlockLevel)))) {
+    throw new Error('Invalid first Giant encounter state');
   }
   if (!Number.isSafeInteger(state.tick) || (state.tick as number) < 0) {
     throw new Error('Simulation tick must be a non-negative integer');
@@ -350,7 +364,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     if (Object.keys(value).length !== 5 + (archetype === undefined ? 0 : 1) + (value.lane === undefined ? 0 : 1)
       || (value.lane !== undefined && !laneIsValid(value.lane))
       || (catharsis?.balance.defenseMode && (!laneIsValid(value.lane) || value.tier !== 1))
-      || (archetype !== undefined && archetype !== 'grunt' && archetype !== 'heavy')
+      || (archetype !== undefined && archetype !== 'grunt' && archetype !== 'heavy' && archetype !== 'giant')
       || ['id', 'tier', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation enemy ${index} has missing or unknown fields`);
     }
@@ -366,14 +380,18 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation enemy ${index} position must be finite`);
     }
     if (!positiveFinite(value.hp)) throw new Error(`Simulation enemy ${index} hp must be positive and finite`);
-    if (catharsis && (!archetype || value.hp > (archetype === 'heavy' ? catharsis.balance.heavyHp : 1))) {
+    if (catharsis && (!archetype || value.hp > (archetype === 'giant' ? catharsis.balance.giant.hp : archetype === 'heavy' ? catharsis.balance.heavyHp : 1))) {
       throw new Error(`Simulation enemy ${index} violates experiment health`);
     }
     return { id, tier: value.tier as number, x: value.x, z: value.z, hp: value.hp,
       ...(value.lane !== undefined ? { lane: value.lane as number } : {}),
-      ...(archetype ? { archetype: archetype as 'grunt' | 'heavy' } : {}) };
+      ...(archetype ? { archetype: archetype as 'grunt' | 'heavy' | 'giant' } : {}) };
   });
 
+  if (enemies.filter(e => e.archetype === 'giant').length > 1
+    || (enemies.some(e => e.archetype === 'giant') && !(giantEncounter as { spawned?: boolean } | undefined)?.spawned)) {
+    throw new Error('Only one introduced Giant is supported');
+  }
   let boss: BossSimulationState | null = null;
   if (state.boss !== null) {
     const value = state.boss;
@@ -581,6 +599,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   return {
     state: {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { giantEncounter: giantEncounter
+        ? { scheduledAtSeconds: giantEncounter.scheduledAtSeconds as number | null, spawned: giantEncounter.spawned as boolean }
+        : { scheduledAtSeconds: null, spawned: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: progression ? { level: progression.level as number, xp: progression.xp as number } : { level: 1, xp: 0 } } : {}),
       tick: state.tick as number,
       elapsedSeconds: state.elapsedSeconds,
@@ -682,6 +703,7 @@ export class Simulation {
     this.state = {
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 } } : {}),
+      ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
       tick: 0,
       elapsedSeconds: 0,
       levelId: level.id,
@@ -773,7 +795,8 @@ export class Simulation {
       ? grantXp(this.state.progression, 0, next.balance.progression) : undefined;
     this.state = { ...this.state, catharsis: next, ...(progression ? { progression } : {}), enemies: this.state.enemies.map((enemy) =>
       enemy.archetype === 'heavy' ? { ...enemy,
-        hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp } : enemy) };
+        hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp }
+        : enemy.archetype === 'giant' ? { ...enemy, hp: enemy.hp / previous.balance.giant.hp * next.balance.giant.hp } : enemy) };
   }
 
   // Return whether this direction can repeat; moving onto an edge stops input timers.
@@ -864,11 +887,12 @@ export class Simulation {
     const catharsis = this.state.catharsis;
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy,
       z: enemy.z - (catharsis && !currentBoss?.engaged && !bossContact && enemy.archetype
-        ? (enemy.archetype === 'heavy' ? catharsis.balance.heavySpeed : catharsis.balance.gruntSpeed) * dtSeconds : 0) }));
+        ? enemyApproachSpeed(enemy, catharsis.balance) * dtSeconds : 0) }));
     let progression = this.state.progression;
     const awardKill = (enemy: EnemySimulationState): void => {
       if (progression && catharsis?.balance.defenseMode) progression = grantXp(progression,
-        enemy.archetype === 'heavy' ? catharsis.balance.progression.heavyKillXp : catharsis.balance.progression.gruntKillXp,
+        enemy.archetype === 'giant' ? catharsis.balance.giant.xp
+          : enemy.archetype === 'heavy' ? catharsis.balance.progression.heavyKillXp : catharsis.balance.progression.gruntKillXp,
         catharsis.balance.progression);
     };
     const stepEvents: PresentationEvent[] = [];
@@ -881,9 +905,12 @@ export class Simulation {
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     if (enemyStream && this.enemyStreamDefinition && !boss?.engaged) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.tiers, boss, this.bossHpScale, catharsis);
+        nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression?.level);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
+    const giantEncounter = this.state.giantEncounter && catharsis && enemyStream
+      ? advanceGiantEncounter(this.state.giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
+        catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream) : this.state.giantEncounter;
     const enemyCollisionIndex = new EnemyCollisionIndex(enemies);
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
@@ -1068,7 +1095,7 @@ export class Simulation {
       const contactRadius = tuning.memberRadius + tuning.normalEnemyRadius;
       if (!positiveFinite(contactRadius)) throw new Error('Simulation contact radius exceeds the supported range');
       const enemyTravel = catharsis && !currentBoss?.engaged && !bossContact && enemy.archetype
-        ? (enemy.archetype === 'heavy' ? catharsis.balance.heavySpeed : catharsis.balance.gruntSpeed) * dtSeconds : 0;
+        ? enemyApproachSpeed(enemy, catharsis.balance) * dtSeconds : 0;
       // Sweep in the enemy's final coordinate space, accounting for its approach.
       let contact = false;
       for (const offset of contactOffsets) {
@@ -1144,7 +1171,7 @@ export class Simulation {
       nextCooldowns.rifle = Math.min(nextCooldowns.rifle,
         1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression));
     }
-    this.state = { ...this.state, ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
+    this.state = { ...this.state, ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
@@ -1174,6 +1201,7 @@ export class Simulation {
       ...this.state,
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
+      ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
       rngState: this.rng.getState(),
       player: { ...this.state.player },
       squad: { ...this.state.squad, rifleCounts: [...this.state.squad.rifleCounts] },

@@ -35,7 +35,19 @@
       "fireRateTaperFirstGain": 0.5,
       "fireRateTaperDecay": 0.8
     },
-    "heavyFrontClearance": 2.5
+    "heavyFrontClearance": 2.5,
+    "pressureMultipliers": [1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65],
+    "giant": {
+      "enabled": true,
+      "unlockLevel": 6,
+      "introDelaySeconds": 4,
+      "hp": 28,
+      "xp": 30,
+      "speed": 0.08,
+      "visualScale": 2.4,
+      "widthMultiplier": 0.85,
+      "gaitCycleMs": 850
+    }
   },
   "player": {
     "startSquad": 1,

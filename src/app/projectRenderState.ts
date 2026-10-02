@@ -28,7 +28,15 @@ export function projectRenderState(state: SimulationFrameState,
     enemies: config.catharsis ? state.enemies.map((enemy) => ({ ...enemy,
       z: enemy.z - originZ,
       visualScale: config.catharsis!.balance.enemyVisualScale
-        * (enemy.archetype === 'heavy' ? config.catharsis!.balance.heavyVisualScale : 1),
+        * (enemy.archetype === 'giant' ? config.catharsis!.balance.giant.visualScale
+          : enemy.archetype === 'heavy' ? config.catharsis!.balance.heavyVisualScale : 1),
+      ...(enemy.archetype === 'giant' ? {
+        maxHp: config.catharsis!.balance.giant.hp,
+        gaitCycleMs: config.catharsis!.balance.giant.gaitCycleMs,
+        visualScaleX: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.giant.visualScale * config.catharsis!.balance.giant.widthMultiplier,
+        visualScaleY: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.giant.visualScale,
+        visualScaleZ: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.giant.visualScale,
+      } : {}),
       ...(enemy.archetype === 'heavy' ? {
         maxHp: config.catharsis!.balance.heavyHp,
         visualScaleX: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyWidthMultiplier,

@@ -6,16 +6,15 @@
 - Discrete left/right taps or key presses select a defended lane; lane-tagged Rifle shots reliably hit dense seeded crowds in that corridor. Keyboard holding uses a controlled 180/120 ms repeat cadence. Rifle starts at 3 Hz. Twenty-four-member waves split 8/8/8 across fronts, enter near the shoreline within bounded nine-unit crowd depth; TUNE tests 10–60. Defenders stand on a beach with natural obstacle openings.
 - Pause, TUNE, Game Over and Retry remain operational. Plain-data snapshots retain lane selection, projectile/enemy lane identity, experiment balance and stream cursors.
 - Bosses, rewards, normal tier escalation and ENEMY LV are temporarily disabled. Existing Merge, tier power and the disabled systems remain in code for later experiments. Phase 3.0 adds kill-earned XP and automatic Rifle fire-rate progression, with no choices or squad growth.
-- Instanced toy soldiers, contact/death feedback, audio, environment and procedural music remain.
+- Future defense waves grow from LV5 via an authored quantity table; one dark armored Giant enters after LV6. Instanced crowds, contact/death feedback, audio, environment and procedural music remain.
 
 ## NOW
 
-**Phase 3.0.5 Progression Feel Pass.** Test slower authored XP costs and unmistakable HUD/soldier/weapon feedback
-against the locked Phase 2 baseline. Evaluate pressure/release and first rewards on
-portrait phones; this is a progression feel experiment, not final pacing. Heavy
-staging, slower visual gait and HP bars remain unchanged. The focused follow-up
-corrects full-track XP color reveal, adds rate-limited Heavy hit reactions, and
-tapers Rifle gains from LV5 (6.5 Hz); evaluate whether lane coverage still trivializes.
+**Progression phase 2: late pressure and first Giant.** Evaluate quantity-only
+pressure from LV5 and a single LV6 Giant discovery against unchanged Rifle power,
+XP pacing, Heavy stats and level-up spectacle. Keep one player soldier; judge lane
+prioritization and whether the battlefield now asks for future reinforcements.
+This remains a prototype progression experiment, not final pacing.
 
 ## NEXT
 

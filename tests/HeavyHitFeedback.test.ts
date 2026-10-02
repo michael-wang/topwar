@@ -7,7 +7,7 @@ it('limits Heavy reactions, settles rapidly, prunes on death and reuses its boun
   expect(feedback.observe({...heavy,archetype:'grunt'},0)).toBe(false);
   expect(feedback.observe(heavy,0)).toBe(true);
   const body = scene.getObjectByName('heavy-hit-body')!, sparks=scene.getObjectByName('heavy-hit-sparks')!;
-  expect(sparks.children).toHaveLength(4);
+  expect(sparks.children.filter(s => s.visible)).toHaveLength(4);
   expect(feedback.strength(1,0)).toBe(1);
   expect(feedback.observe(heavy,67)).toBe(false);
   feedback.update(new Set([1]),101); expect(body.visible).toBe(false); expect(sparks.visible).toBe(true);

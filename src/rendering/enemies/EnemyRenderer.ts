@@ -1,3 +1,4 @@
+import { GiantRenderer } from './GiantRenderer';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
@@ -73,6 +74,8 @@ export class EnemyRenderer {
   private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
     color: '#fff47d', toneMapped: false });
   private readonly heavyHits: HeavyHitFeedback;
+  private readonly giantRenderer: GiantRenderer;
+  private readonly giantBurst: DeathBurst;
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
   private readonly barBackingMaterial = new THREE.SpriteMaterial({ color: '#171c20', depthTest: false, toneMapped: false });
@@ -108,6 +111,8 @@ export class EnemyRenderer {
     this.scene.add(...this.bodyMeshes, ...this.helmetMeshes, ...this.vestMeshes);
     this.deathBurst = new DeathBurst(scene);
     this.heavyHits = new HeavyHitFeedback(scene);
+    this.giantRenderer = new GiantRenderer(scene, bodyModel, helmetModel, vestModel, runFrames, grayBodyModel);
+    this.giantBurst = new DeathBurst(scene, true);
   }
 
   present(events: readonly PresentationEvent[], nowMs: number): void {
@@ -123,14 +128,17 @@ export class EnemyRenderer {
     const currentIds = new Set(enemies.map((enemy) => enemy.id));
     for (const previous of this.previousEnemies.values()) {
       if (!currentIds.has(previous.id)) {
-        if (!this.contactIds.has(previous.id)) this.spawnDeath(previous, nowMs);
+        if (!this.contactIds.has(previous.id)) {
+          if (previous.archetype === 'giant') { this.giantRenderer.die(previous, nowMs); this.giantBurst.spawn(previous, nowMs); }
+          else this.spawnDeath(previous, nowMs);
+        }
         this.flashUntilMs.delete(previous.id);
       }
     }
     for (const enemy of enemies) {
       const previous = this.previousEnemies.get(enemy.id);
       if (previous && enemy.hp < previous.hp) {
-        if (enemy.archetype !== 'heavy') this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
+        if (enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
         else if (this.heavyHits.observe(enemy, nowMs)) this.flashUntilMs.set(enemy.id, nowMs + HEAVY_HIT_FLASH_MS);
       }
       this.previousEnemies.set(enemy.id, { ...enemy });
@@ -141,10 +149,12 @@ export class EnemyRenderer {
     this.updateContacts(nowMs);
     this.deathBurst.update(nowMs);
     this.heavyHits.update(currentIds, nowMs);
+    this.giantRenderer.update(enemies.find(e => e.archetype === 'giant'), nowMs, this.heavyHits);
+    this.giantBurst.update(nowMs);
 
     let barIndex = 0;
     for (const enemy of enemies) {
-      if (enemy.archetype !== 'heavy' || enemy.maxHp === undefined) continue;
+      if ((enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') || enemy.maxHp === undefined) continue;
       let bar = this.healthBars[barIndex++];
       if (!bar) {
         bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(this.barFillMaterial) };
@@ -156,7 +166,7 @@ export class EnemyRenderer {
         this.healthBars.push(bar);
       }
       const fraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
-      const width = 1.1;
+      const width = enemy.archetype === 'giant' ? 1.5 : 1.1;
       const y = (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.modelTop + .3;
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
@@ -172,6 +182,7 @@ export class EnemyRenderer {
     const counts = PALETTES.map(() => 0);
     const bodyCounts = [0, 0, 0, 0];
     for (const enemy of enemies) {
+      if (enemy.archetype === 'giant') continue;
       counts[paletteIndex(enemy.tier, PALETTES.length)]++;
       bodyCounts[enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS)]++;
     }
@@ -188,6 +199,7 @@ export class EnemyRenderer {
     const bodyIndices = [0, 0, 0, 0];
     for (let bodyIndex = 0; bodyIndex < enemies.length; bodyIndex++) {
       const enemy = enemies[bodyIndex];
+      if (enemy.archetype === 'giant') continue;
       const palette = paletteIndex(enemy.tier, PALETTES.length);
       const index = indices[palette]++;
       const pose = enemyWalkPose(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
@@ -231,6 +243,7 @@ export class EnemyRenderer {
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.deathBurst.reset();
     this.heavyHits.reset();
+    this.giantRenderer.reset(); this.giantBurst.reset();
   }
 
   dispose(): void {
@@ -257,6 +270,7 @@ export class EnemyRenderer {
     this.barFillMaterial.dispose();
     this.deathBurst.dispose();
     this.heavyHits.dispose();
+    this.giantRenderer.dispose(); this.giantBurst.dispose();
     this.helmetMaterial.dispose();
     this.contactFlashMaterial.dispose();
   }
