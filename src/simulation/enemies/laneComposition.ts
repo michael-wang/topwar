@@ -40,7 +40,7 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
     const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
     const spacing = positions[1] - positions[0];
     const rng = new SeededRng((seed ^ Math.imul(row + 1, 0xc2b2ae35)) >>> 0);
-    return Array.from({ length: config.groupSize }, (_, member) => {
+    const members = Array.from({ length: config.groupSize }, (_, member) => {
       const lane = wave.lanes[member % wave.lanes.length];
       const spread = spacing * config.lateralSpreadFraction;
       const minimumX = Math.max(positions[0], positions[lane] - spread);
@@ -52,6 +52,18 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
         z: -rng.nextFloat() * config.crowdDepthSpan,
         archetype: member === 0 && wave.heavy ? 'heavy' as const : 'grunt' as const };
     });
+    const heavy = members.find(member => member.archetype === 'heavy');
+    if (heavy) {
+      heavy.x = positions[heavy.lane];
+      heavy.z = -config.crowdDepthSpan;
+      // Only this lane's leader gets clearance; Grunts remain overlapping seeded crowds.
+      const clearance = Math.min(config.heavyFrontClearance, config.crowdDepthSpan);
+      for (const member of members) if (member !== heavy && member.lane === heavy.lane) {
+        member.z = -config.crowdDepthSpan + clearance
+          + (member.z + config.crowdDepthSpan) * (config.crowdDepthSpan - clearance) / config.crowdDepthSpan;
+      }
+    }
+    return members;
   }
   if (slot % config.groupRowStride !== 0 || slot / config.groupRowStride >= config.groupSize) return [];
   const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);

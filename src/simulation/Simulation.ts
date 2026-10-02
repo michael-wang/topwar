@@ -1,3 +1,4 @@
+import { grantXp, requiredXp, effectiveRifleFireRate } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
@@ -286,10 +287,19 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const state = value;
   const fields = ['tick', 'elapsedSeconds', 'levelId', 'seed', 'rngState', 'player', 'squad', 'enemies', 'boss', 'enemyStream', 'streamRewards', 'gates', 'pickups', 'nextPickupId', 'projectiles', 'weapons'];
   if (Object.hasOwn(state, 'catharsis')) fields.push('catharsis');
+  if (Object.hasOwn(state, 'progression')) fields.push('progression');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
   const catharsis = Object.hasOwn(state, 'catharsis') ? validateCatharsis(state.catharsis) : undefined;
+  const progression = state.progression;
+  if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
+    || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
+    || (progression.level as number) < 1 || !Number.isSafeInteger(progression.xp)
+    || (progression.xp as number) < 0
+    || (progression.xp as number) >= requiredXp(progression.level as number, catharsis.balance.progression))) {
+    throw new Error('Simulation progression must have a valid level and current-level XP');
+  }
   if (!Number.isSafeInteger(state.tick) || (state.tick as number) < 0) {
     throw new Error('Simulation tick must be a non-negative integer');
   }
@@ -571,6 +581,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   return {
     state: {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { progression: progression ? { level: progression.level as number, xp: progression.xp as number } : { level: 1, xp: 0 } } : {}),
       tick: state.tick as number,
       elapsedSeconds: state.elapsedSeconds,
       levelId: state.levelId,
@@ -670,6 +681,7 @@ export class Simulation {
     }
     this.state = {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 } } : {}),
       tick: 0,
       elapsedSeconds: 0,
       levelId: level.id,
@@ -757,7 +769,9 @@ export class Simulation {
     const previous = this.state.catharsis;
     if (!previous) throw new Error('Lane experiment is not active');
     const next = validateCatharsis({ ...previous, balance });
-    this.state = { ...this.state, catharsis: next, enemies: this.state.enemies.map((enemy) =>
+    const progression = this.state.progression
+      ? grantXp(this.state.progression, 0, next.balance.progression) : undefined;
+    this.state = { ...this.state, catharsis: next, ...(progression ? { progression } : {}), enemies: this.state.enemies.map((enemy) =>
       enemy.archetype === 'heavy' ? { ...enemy,
         hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp } : enemy) };
   }
@@ -851,6 +865,12 @@ export class Simulation {
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy,
       z: enemy.z - (catharsis && !currentBoss?.engaged && !bossContact && enemy.archetype
         ? (enemy.archetype === 'heavy' ? catharsis.balance.heavySpeed : catharsis.balance.gruntSpeed) * dtSeconds : 0) }));
+    let progression = this.state.progression;
+    const awardKill = (enemy: EnemySimulationState): void => {
+      if (progression && catharsis?.balance.defenseMode) progression = grantXp(progression,
+        enemy.archetype === 'heavy' ? catharsis.balance.progression.heavyKillXp : catharsis.balance.progression.gruntKillXp,
+        catharsis.balance.progression);
+    };
     const stepEvents: PresentationEvent[] = [];
     let boss = this.state.boss ? { ...this.state.boss } : null;
     if (boss && justEngaged) {
@@ -877,7 +897,9 @@ export class Simulation {
       const startIndex = kind === 'rifle' ? 0 : rifleEnd;
       const endIndex = kind === 'rifle' ? rifleEnd : offsets.length;
       const weapon = tuning[kind];
-      const interval = 1 / weapon.fireRate;
+      const fireRate = kind === 'rifle' && progression && catharsis
+        ? effectiveRifleFireRate(weapon.fireRate, progression.level, catharsis.balance.progression) : weapon.fireRate;
+      const interval = 1 / fireRate;
       if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
       if (startIndex === endIndex) {
         nextCooldowns[kind] = 0;
@@ -975,6 +997,7 @@ export class Simulation {
           if (hit.enemy.hp <= 0) {
             enemies.splice(enemies.indexOf(hit.enemy), 1);
             enemyCollisionIndex.remove(hit.enemy);
+            awardKill(hit.enemy);
           }
           const penetrationCost = projectile.tier > hit.enemy.tier
             ? exchangeValueForTier(hit.enemy.tier, this.tiers.mergeCount) : 0n;
@@ -1003,6 +1026,7 @@ export class Simulation {
               if (enemy.hp <= 0) {
                 enemies.splice(enemies.indexOf(enemy), 1);
                 enemyCollisionIndex.remove(enemy);
+                awardKill(enemy);
               }
             }
           }
@@ -1115,7 +1139,12 @@ export class Simulation {
     if (squad.count === 0 && stepEvents.length > 0) survivingProjectiles.length = 0;
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
-    this.state = { ...this.state, player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
+    // A gained level shortens the next scheduled shot without restarting the weapon clock.
+    if (progression && this.state.progression && progression.level > this.state.progression.level && catharsis) {
+      nextCooldowns.rifle = Math.min(nextCooldowns.rifle,
+        1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression));
+    }
+    this.state = { ...this.state, ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
@@ -1144,6 +1173,7 @@ export class Simulation {
     return {
       ...this.state,
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
+      ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       rngState: this.rng.getState(),
       player: { ...this.state.player },
       squad: { ...this.state.squad, rifleCounts: [...this.state.squad.rifleCounts] },

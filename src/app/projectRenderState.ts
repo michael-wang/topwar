@@ -30,6 +30,7 @@ export function projectRenderState(state: SimulationFrameState,
       visualScale: config.catharsis!.balance.enemyVisualScale
         * (enemy.archetype === 'heavy' ? config.catharsis!.balance.heavyVisualScale : 1),
       ...(enemy.archetype === 'heavy' ? {
+        maxHp: config.catharsis!.balance.heavyHp,
         visualScaleX: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyWidthMultiplier,
         visualScaleY: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyHeightMultiplier,
         visualScaleZ: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyDepthMultiplier,

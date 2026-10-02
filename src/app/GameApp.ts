@@ -1,3 +1,4 @@
+import { XpHud } from '../ui/XpHud';
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
 import type { GameConfig } from '../config/configSchema';
@@ -53,6 +54,7 @@ export class GameApp {
   private readonly keyboardInput: KeyboardSteeringInput;
   private readonly touchInput: TouchSteeringInput;
   private readonly laneInput: LaneStepInput | null;
+  private readonly xpHud: XpHud | null;
   private readonly laneHud: LaneHud | null;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
@@ -89,6 +91,7 @@ export class GameApp {
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
+    this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
     this.laneHud = this.config.catharsis?.defenseMode ? new LaneHud(viewport) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.tuningPanel = new TuningPanel(this.hudActions.element, this.runtimeDefaults, (values) => {
@@ -165,6 +168,7 @@ export class GameApp {
     this.touchInput.dispose();
     this.laneInput?.dispose();
     this.laneHud?.dispose();
+    this.xpHud?.dispose();
     this.gameOverOverlay.dispose();
     this.tuningPanel.dispose();
     this.hudActions.dispose();
@@ -210,6 +214,7 @@ export class GameApp {
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
     this.audio.resetObservation();
+    this.xpHud?.reset();
     this.renderer.resetFeedback();
     this.tierHud.setTier(1);
   }
@@ -316,6 +321,8 @@ export class GameApp {
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
       if (state.player.selectedLane !== undefined) this.laneHud?.update(state.player.selectedLane, state.catharsis!.balance.laneCount);
+      if (state.progression && state.catharsis && this.xpHud?.update(state.progression,
+        state.catharsis.balance.progression, this.presentationMs)) this.audio.play('levelUp');
       const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();
       if (state.squad.count === 0 && presentationEvents.some((event) => event.after.count === 0)) {

@@ -12,6 +12,7 @@ const MAX_CONTACT_VISUALS = 48;
 const CONTACT_FLASH_MS = 150;
 export const ENEMY_VISUAL_SCALE = 0.82;
 export const ENEMY_GAIT_CYCLE_MS = 360;
+export const HEAVY_GAIT_CYCLE_MS = 650;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
@@ -32,16 +33,16 @@ interface ContactVisual {
   direction: number;
 }
 
-export function enemyWalkPose(id: number, nowMs: number): { leftArm: number; rightArm: number;
+export function enemyWalkPose(id: number, nowMs: number, cycleMs = ENEMY_GAIT_CYCLE_MS): { leftArm: number; rightArm: number;
   leftLeg: number; rightLeg: number; bob: number } {
-  const stride = Math.sin(nowMs * (Math.PI * 2 / ENEMY_GAIT_CYCLE_MS) + id * 2.399963229728653);
+  const stride = Math.sin(nowMs * (Math.PI * 2 / cycleMs) + id * 2.399963229728653);
   return { leftArm: stride * 0.43, rightArm: -stride * 0.43,
     leftLeg: -stride * 0.43, rightLeg: stride * 0.43,
     bob: Math.abs(stride) * 0.052 };
 }
 
-export function enemyRunFrame(id: number, nowMs: number): number {
-  return Math.floor(nowMs / (ENEMY_GAIT_CYCLE_MS / 4) + id * 1.52788745) & 3;
+export function enemyRunFrame(id: number, nowMs: number, cycleMs = ENEMY_GAIT_CYCLE_MS): number {
+  return Math.floor(nowMs / (cycleMs / 4) + id * 1.52788745) & 3;
 }
 
 function setEnemyScale(target: THREE.Vector3, enemy?: EnemyRenderState): void {
@@ -56,6 +57,7 @@ export class EnemyRenderer {
       tierCapacities: [...this.capacity], deathVisuals: this.deathVisuals.length,
       contactVisuals: this.contactVisuals.length };
   }
+  private readonly modelTop: number;
   private readonly helmetMaterial: THREE.MeshStandardMaterial;
   private readonly grayBodyMaterial: THREE.MeshStandardMaterial;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));
@@ -70,6 +72,9 @@ export class EnemyRenderer {
   private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
     color: '#fff47d', toneMapped: false });
   private readonly deathBurst: DeathBurst;
+  private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
+  private readonly barBackingMaterial = new THREE.SpriteMaterial({ color: '#171c20', depthTest: false, toneMapped: false });
+  private readonly barFillMaterial = new THREE.SpriteMaterial({ color: '#ffd35c', depthTest: false, toneMapped: false });
   private readonly capacity = PALETTES.map(() => 1);
   private readonly bodyCapacity = [1, 1, 1, 1];
   private readonly bodyMeshes: THREE.InstancedMesh[];
@@ -88,6 +93,10 @@ export class EnemyRenderer {
     if (!(grayBodyModel.material instanceof THREE.MeshStandardMaterial)) {
       throw new Error('Gray death body needs a standard material');
     }
+    this.modelTop = Math.max(...[helmetModel, ...runFrames].map(model => {
+      model.geometry.computeBoundingBox();
+      return model.geometry.boundingBox!.max.y;
+    }));
     this.grayBodyMaterial = grayBodyModel.material;
     this.helmetMaterial = source.clone();
     this.helmetMaterial.color.set('white');
@@ -126,11 +135,38 @@ export class EnemyRenderer {
     this.updateContacts(nowMs);
     this.deathBurst.update(nowMs);
 
+    let barIndex = 0;
+    for (const enemy of enemies) {
+      if (enemy.archetype !== 'heavy' || enemy.maxHp === undefined) continue;
+      let bar = this.healthBars[barIndex++];
+      if (!bar) {
+        bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(this.barFillMaterial) };
+        bar.backing.name = 'heavy-hp-backing';
+        bar.fill.name = 'heavy-hp-fill';
+        bar.backing.renderOrder = 10;
+        bar.fill.renderOrder = 11;
+        this.scene.add(bar.backing, bar.fill);
+        this.healthBars.push(bar);
+      }
+      const fraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
+      const width = 1.1;
+      const y = (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.modelTop + .3;
+      bar.backing.visible = true;
+      bar.fill.visible = fraction > 0;
+      bar.backing.position.set(-enemy.x, y, enemy.z);
+      bar.backing.scale.set(width + .08, .18, 1);
+      bar.fill.position.set(-enemy.x + width * (1 - fraction) / 2, y, enemy.z);
+      bar.fill.scale.set(width * fraction, .11, 1);
+    }
+    for (; barIndex < this.healthBars.length; barIndex++) {
+      this.healthBars[barIndex].backing.visible = false;
+      this.healthBars[barIndex].fill.visible = false;
+    }
     const counts = PALETTES.map(() => 0);
     const bodyCounts = [0, 0, 0, 0];
     for (const enemy of enemies) {
       counts[paletteIndex(enemy.tier, PALETTES.length)]++;
-      bodyCounts[enemyRunFrame(enemy.id, nowMs)]++;
+      bodyCounts[enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS)]++;
     }
     for (let frame = 0; frame < 4; frame++) {
       if (bodyCounts[frame] > this.bodyCapacity[frame]) this.growBody(frame, bodyCounts[frame]);
@@ -147,14 +183,14 @@ export class EnemyRenderer {
       const enemy = enemies[bodyIndex];
       const palette = paletteIndex(enemy.tier, PALETTES.length);
       const index = indices[palette]++;
-      const pose = enemyWalkPose(enemy.id, nowMs);
+      const pose = enemyWalkPose(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
       const transform = this.transform;
       transform.position.set(-enemy.x, pose.bob, enemy.z);
       transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
         pose.leftArm * 0.09);
       setEnemyScale(transform.scale, enemy);
       transform.updateMatrix();
-      const frame = enemyRunFrame(enemy.id, nowMs);
+      const frame = enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
       this.bodyMeshes[frame].setMatrixAt(bodyIndices[frame]++, transform.matrix);
       const helmet = this.helmetMeshes[palette];
       helmet.setMatrixAt(index, transform.matrix);
@@ -181,6 +217,7 @@ export class EnemyRenderer {
     this.contactIds.clear();
     for (const visual of this.deathVisuals) visual.group.visible = false;
     for (const visual of this.contactVisuals) visual.group.visible = false;
+    for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.deathBurst.reset();
   }
 
@@ -202,6 +239,10 @@ export class EnemyRenderer {
     this.contactVisuals.length = 0;
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
+    for (const bar of this.healthBars) this.scene.remove(bar.backing, bar.fill);
+    this.healthBars.length = 0;
+    this.barBackingMaterial.dispose();
+    this.barFillMaterial.dispose();
     this.deathBurst.dispose();
     this.helmetMaterial.dispose();
     this.contactFlashMaterial.dispose();

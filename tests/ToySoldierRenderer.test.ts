@@ -230,7 +230,7 @@ describe('Modern Toy Soldier presentation', () => {
     const scale = new THREE.Vector3();
     for (const [time, hp] of [[0, 15], [100, 14]]) {
       renderer.update([{ ...heavy, hp }], time);
-      for (const name of ['0-toy-soldier-helmet', '0-toy-soldier-vest', `toy-soldier-run-${enemyRunFrame(2, time)}`]) {
+      for (const name of ['0-toy-soldier-helmet', '0-toy-soldier-vest', `toy-soldier-run-${enemyRunFrame(2, time, 650)}`]) {
         (scene.getObjectByName(name) as THREE.InstancedMesh).getMatrixAt(0, matrix);
         scale.setFromMatrixScale(matrix);
         expect(scale.x).toBeCloseTo(heavy.visualScaleX);
@@ -707,4 +707,24 @@ describe('Modern Toy Soldier presentation', () => {
     pulse.prune(new Set());
     expect(pulse.size).toBe(0);
   });
+});
+
+it('keeps Heavy-only floating health bars live, proportionate and reusable', () => {
+  const scene = new THREE.Scene();
+  const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+  const heavy = { id: 1, tier: 1, archetype: 'heavy' as const, x: 0, z: 15, hp: 15, maxHp: 15, visualScaleY: 2.1735 };
+  const grunt = { id: 2, tier: 1, archetype: 'grunt' as const, x: 1.4, z: 15, hp: 1 };
+  renderer.update([heavy, grunt], 0);
+  const backing = scene.getObjectByName('heavy-hp-backing') as THREE.Sprite;
+  const fill = scene.getObjectByName('heavy-hp-fill') as THREE.Sprite;
+  expect(scene.children.filter(child => child.name === 'heavy-hp-fill')).toHaveLength(1);
+  expect(fill.scale.x).toBeCloseTo(1.1);
+  expect(fill.position.y).toBeGreaterThan(heavy.visualScaleY * .5);
+  renderer.update([{ ...heavy, hp: 5 }], 100);
+  expect(fill.scale.x).toBeCloseTo(1.1 / 3);
+  expect(fill.position.x).toBeCloseTo(1.1 / 3);
+  renderer.update([], 200); expect(fill.visible).toBe(false); expect(backing.visible).toBe(false);
+  renderer.update([heavy], 300); expect(scene.getObjectByName('heavy-hp-fill')).toBe(fill);
+  renderer.reset(); expect(fill.visible).toBe(false);
+  renderer.dispose(); expect(scene.getObjectByName('heavy-hp-fill')).toBeUndefined();
 });

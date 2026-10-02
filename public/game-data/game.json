@@ -24,7 +24,15 @@
     "heavyWidthMultiplier": 1.05,
     "heavyHeightMultiplier": 1.15,
     "heavyDepthMultiplier": 1.15,
-    "rewardAimRadius": 0.5
+    "rewardAimRadius": 0.5,
+    "progression": {
+      "firstLevelXp": 16,
+      "xpRequirementStep": 12,
+      "gruntKillXp": 1,
+      "heavyKillXp": 10,
+      "fireRatePerLevel": 1
+    },
+    "heavyFrontClearance": 2.5
   },
   "player": {
     "startSquad": 1,

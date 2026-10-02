@@ -2,6 +2,14 @@ import { z } from 'zod';
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
+  progression: z.strictObject({
+    firstLevelXp: z.number().int().positive().default(16),
+    xpRequirementStep: z.number().int().nonnegative().default(12),
+    gruntKillXp: z.number().int().nonnegative().default(1),
+    heavyKillXp: z.number().int().nonnegative().default(10),
+    fireRatePerLevel: z.number().finite().nonnegative().default(1),
+  }).default({ firstLevelXp: 16, xpRequirementStep: 12, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1 }),
+  heavyFrontClearance: z.number().finite().nonnegative().default(2.5),
   defenseMode: z.boolean().default(false),
   defenseSpawnAheadDistance: z.number().finite().positive().default(53),
   crowdDepthSpan: z.number().finite().positive().default(5),

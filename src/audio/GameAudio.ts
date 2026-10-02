@@ -2,7 +2,7 @@ import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './Env
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 
-export type AudioCue = 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
+export type AudioCue = 'levelUp' | 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
   | 'groundArtillery' | 'skyFlak';
 
@@ -95,6 +95,8 @@ export class AudioCueObserver {
 type ToneShape = { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number; attackSeconds?: number; delaySeconds?: number };
 const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?: ToneShape }> = {
+  levelUp: { from: 660, to: 880, seconds: .16, wave: 'sine', volume: .17,
+    secondary: { from: 880, to: 1320, seconds: .24, wave: 'sine', volume: .14, delaySeconds: .13 } },
   rifle: { from: 1050, to: 280, seconds: .038, wave: 'sawtooth', volume: .09 },
   heavyRifle: { from: 850, to: 210, seconds: .055, wave: 'sawtooth', volume: .12,
     secondary: { from: 170, to: 75, seconds: .075, wave: 'triangle', volume: .04 } },

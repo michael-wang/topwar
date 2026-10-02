@@ -1,12 +1,59 @@
-# Phase 2.9: Combat Baseline Lock
+# Phase 3.0: Earned Power Loop
 
-The naked beachhead-defense combat baseline is now accepted:
-**one defended normal lane is manageable, all active lanes are not**.
-Twenty-four members attack three coherent fronts per wave. Wider/deeper crowds
-read as individuals and make repeated gray vaporization kills visible, while
-unattended lanes accumulate. The 15-hit Heavy remains the successful tactical
-priority threat. No progression or support is added to compensate for the loop.
-Phase 2 is ready for progression work; this task adds no XP/progression. Phase 2.8 pressure, archetype gameplay and environment are frozen. Only death/Heavy presentation and keyboard hold cadence change. Performance remains measured without adaptive density.
+This is the first **progression experiment**, not final progression pacing.
+The accepted naked-combat baseline stays locked: one defended normal lane is
+barely manageable, while three active fronts exceed one soldier's capacity.
+Kills now earn automatic Rifle power so previously overwhelming fronts can
+become easier. Combat never pauses for a level, and no choices or support systems
+are introduced. Enemy durability, density and speeds do not scale with player power.
+
+## Earned progression
+
+Defense runs start at **LV1 / XP0**. XP measures progress within the current level.
+`requiredXp(level) = firstLevelXp + xpRequirementStep * (level - 1)`:
+**16, 28, 40, 52…** XP. A player-caused Grunt death awards **1 XP**; a Heavy
+awards **10 XP**. Hits, contact casualties and leaks award nothing. Rifle penetration
+can award each kill; retained rocket kill resolution uses the same award boundary.
+Overflow repeatedly advances levels and retains the remainder; there is no authored cap.
+
+Effective Rifle rate is **base + (level - 1) × fireRatePerLevel**. Authored base is
+3 Hz and bonus is 1 Hz per gained level: **3 / 4 / 5 / 6 / 7… Hz**. TUNE controls
+**Base fire rate** independently (2.5 base at LV3 gives 4.5 Hz). Levels shorten
+the pending Rifle cooldown when necessary and affect subsequent scheduling without
+resetting combat. No projectile damage, enemy HP or wave tuning is changed.
+
+The bottom XP HUD shows level, current/required XP and a fill bar. It ignores pointer
+input and respects safe-area insets; the tap hint sits above it. Level gains trigger
+an **800 ms** warm bar glow and `LEVEL UP · FIRE RATE +N`, plus a short ascending
+two-tone Web Audio cue. No combat interruption or new VFX framework.
+
+Progression and progression balance are plain snapshot data. Validation checks current-level
+XP and positive integer level. Older defense snapshots without progression initialize
+at LV1/XP0; non-defense runs remain without XP. Retry resets level/XP and feedback,
+while retaining existing runtime TUNE values. Edit `catharsis.progression` in runtime
+JSON for `firstLevelXp=16`, `xpRequirementStep=12`, `gruntKillXp=1`,
+`heavyKillXp=10` and `fireRatePerLevel=1`.
+
+## Heavy lane leader
+
+When a defense group contains a Heavy, it is centered at the beachward edge
+of its own lane volume. Its same-group, same-lane Grunts are deterministically
+redistributed behind **2.5 units** of clearance (`heavyFrontClearance`). Total
+population, wave interval, pressure lanes and bounded nine-unit footprint remain.
+This is a leader staging rule, not enemy collision avoidance; adjacent waves and
+Grunts may overlap. Existing Heavy proportions remain after portrait inspection:
+its silhouette already occupies most of one corridor. Complete body/gear, feedback
+and contact shadow retain their shared non-uniform scales.
+
+Grunts keep **360 ms** urgent gait; Heavies use **650 ms** deliberate gait, including
+baked frame progression and bob/sway. Entity phase offsets remain asynchronous.
+This changes presentation only; Heavy simulation additional speed stays 0.12.
+
+Heavy-only camera-facing health sprites use dark backing and amber fill. Reusable
+bar pairs share materials, follow measured model height and remain visible through
+crowd occlusion. Fill is live HP divided by `maxHp` projected from effective
+Catharsis Heavy HP; no redundant maximum is stored in enemy simulation state.
+Explicit TUNE Heavy HP edits immediately update both HP and the projected maximum.
 
 Heavy has a fixed authored **15 base Rifle-hit HP**, with explicit live TUNE edits
 up to **40**. It never scales itself from Rifle fire rate, DPS, squad size or weapon
@@ -123,7 +170,7 @@ uses visual judgment instead of forcing the entire arm envelope into an 80–90%
 width target and producing a tall skinny Heavy. The silhouette reads as one
 large corridor obstacle, rather than a multi-lane giant. Width/depth shadow
 footprint follows the new axes (~1.65×1.11), without height inflating the stamp.
-Grunts stay at 1.4, and Heavy HP=15, additional speed=0.12, lane/position/damage
+Grunts stay at 1.4, and Heavy HP=15, additional speed=0.12, lane/damage
 and collision radius=0.30 remain unchanged. New multipliers are catharsis JSON;
 snapshot defaults of 1 preserve old visual proportions. No assets were rebaked.
 
@@ -135,7 +182,7 @@ Corrected files: normal idle body, gray death body and all four run frames. Norm
 contact uses corrected idle geometry; hit flashes use corrected active run frames.
 Player, all Boss files and shared helmet/gear remain byte-identical.
 
-Visual gait changes only presentation: cycle **500 → 360 ms**, frame step
+Grunt visual gait changes only presentation: cycle **500 → 360 ms**, frame step
 **125 → 90 ms**, baked limb rotations **1.18×**, pose swing **0.35 → 0.43 rad**,
 maximum bob **0.038 → 0.052 model units**, and base forward lean
 **0.11 → 0.15 rad**. Existing per-enemy phase offsets remain. Gait is independent
@@ -161,35 +208,48 @@ outside defense mode. Irrelevant TUNE controls are hidden. Merge, tier power,
 penetration, casualties and higher-tier infrastructure are retained without redesign;
 the authored run starts with one soldier and no rewards to grow the squad.
 
-No XP, upgrades, additional weapons/enemies, backend, framework or deployment.
-The single-soldier opening is unforgiving: a missed lane can end the run quickly.
-Assess that pressure and the 3 Hz rhythm before adding progression to compensate.
+No upgrade choices, squad growth, additional weapons/enemies, backend, framework or deployment.
+The single-soldier opening remains unforgiving; evaluate whether earned fire rate changes
+the pressure/release loop before designing further progression.
 
 ## Verification and phone playtest focus
 
-Delivery checks: **399 tests / 55 files pass**, as do typecheck and production
-build. Tests cover 180/120 ms repeat/cancellation, vaporization rise bounds and
-shrink/opacity progression, Heavy axis validation/render projection, shared
-body/gear transforms, contact/death proportions and matching shadows. Simulation
-outcomes are identical with old/new Heavy visual proportions across the same
-30-second fixed-step/input sequence; snapshots still restore. Authored Phase 2.8
-balance is explicitly asserted unchanged. No backend/framework or deployment.
+Focused checks cover player kill awards/contact exclusions, duplicate prevention,
+penetration and retained rocket kills, XP curve/overflow, effective scheduling,
+base-rate composition, snapshot validation/restore, new-run reset, deterministic
+Heavy staging, render max HP, gait independence, health-bar reuse and HUD feedback.
+Existing baseline/input/death checks remain in place.
 
-Portrait browser evidence is local in `artifacts/combat-baseline-lock/`, at
-390×844 touch viewport, DPR 2 and Chrome software rendering. Full-density live
-captures show repeated Grunt kills as low gray shrinking silhouettes. Equal-depth
-near/mid inspection uses two render-only position changes at Z=6/18, retaining
-every other enemy, to compare Heavy and Grunt silhouettes and shadow. Heavy
-hit/contact/death proportions are also covered by renderer tests; visual death
-captures at 0/160/320 ms show its size preserved through the shrink. The Heavy
-stands out amid partially overlapping crowds, while outer-lane/body overlap
-remains worth inspecting on physical phones.
+Portrait evidence and measurements are saved locally under `artifacts/earned-power/`.
+Physical-phone playtesting should evaluate the first few earned levels, whether
+Heavy leads remain visible as different waves overlap, the 650 ms lumbering gait,
+HP bar legibility at the shoreline, low vaporization visibility and whether the
+800 ms level beat is rewarding during sustained fire. Performance is measured;
+no adaptive density or hidden scaling is used.
 
-Measured held-key traversal from lane 1→5 and 5→1 starts immediately, repeats
-at ~181 ms then ~120–122 ms, and stops at the edges. Mobile remains one tap per
-lane; Pause suppresses taps and closing TUNE restores keyboard control. No browser
-errors. Live population is ~202–205 around 18 seconds, with ~21–22 FPS, average
-~46–47 ms and p95 ~50–83 ms under software rendering. No combat tuning changed
-for performance. Physical-phone checks should confirm short kill visibility,
-Heavy lane footprint, and the more responsive hold while the unchanged 150 ms
-visual interpolation catches up to the destination.
+Delivery checks: **415 tests / 57 files pass**, plus typecheck and production build.
+Portrait Chrome at **390×844, DPR2** shows the unobstructed XP bar, readable
+near/mid Heavy silhouette and live amber health fill; no extra size increase was
+needed. The hint hides during the level-up beat. XP-HUD taps step lanes, Pause
+suppresses taps, closing TUNE restores keyboard input, and Retry returns LV1/XP0
+while retaining a tuned 2.5 Hz base. Three natural level-up cues were observed;
+no browser errors. Audio playback uses the existing gesture unlock and remains
+optional if Web Audio is denied.
+
+A scripted nearest-threat lane pilot reached LV2/3/4 at **5.4 / 13.9 / 22.4 s**
+in the live seed-17 run; LV4 had 13/52 XP with ~185 active enemies at ~25 s.
+Three deterministic fixed-step pilots (seeds 1/17/42) reached LV2 at **5.3–7.0 s**,
+LV3 at **13.2–14.0 s**, LV4 at **21.8–22.1 s**, and LV5 at **31.4–31.7 s**.
+Seed 17 reached LV2/3/4/5 after **16 / 35 / 75 / 118 kills**, including
+**0 / 1 / 1 / 2 Heavies** respectively. These are automated lane choices, not human pacing evidence. The first thresholds
+represent 16/44/84 total XP (up to that many Grunt kills; Heavies reduce kill count).
+All three pilots survived 100 s and reached LV10 with ~19–20 active enemies:
+automatic power objectively outgrows unchanged pressure, which requires phone
+playtesting before selecting a final curve.
+
+The live software-rendered run reported **23 FPS**, average **42.9 ms**, p95
+**50.1 ms**, with simulation ~0.2 ms and ~209 draw calls. This is Chrome SwiftShader,
+not target-phone performance. No density reduction or optimization was applied.
+Heavy leaders can still be occluded by older overlapping waves despite clearance
+within their own group; bars remain visible. Evaluate this limitation and whether
+the first levels arrive too quickly on a physical phone.

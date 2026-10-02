@@ -60,7 +60,7 @@ export class TuningPanel {
       if (defaults[control.key] === undefined) continue;
       const label = document.createElement('label');
       label.textContent = control.key === 'enemyHigherTierPowerMultiplier' && defaults.enemyVisualScale !== undefined
-        ? 'Boss base HP / tier' : defenseMode && control.key === 'forwardSpeed' ? 'Approach pace' : control.label;
+        ? 'Boss base HP / tier' : defenseMode && control.key === 'forwardSpeed' ? 'Approach pace' : defenseMode && control.key === 'fireRate' ? 'Base fire rate' : control.label;
       const input = control.key === 'bossHpScale'
         ? document.createElement('select') : document.createElement('input');
       if ('choices' in control) {

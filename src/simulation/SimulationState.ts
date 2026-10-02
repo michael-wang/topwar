@@ -97,6 +97,7 @@ export interface WeaponSimulationState {
 }
 
 export interface SimulationState {
+  progression?: { level: number; xp: number };
   catharsis?: { balance: CatharsisConfig; trackHalfWidth: number; rewardRowsPerReward?: number };
   tick: number;
   elapsedSeconds: number;

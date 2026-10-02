@@ -301,3 +301,25 @@ body {
   .tuning-panel input[type='range'] { min-height: 32px; }
   .tuning-panel select, .tuning-panel button { min-height: 44px; }
 }
+
+.xp-hud {
+  position: absolute; z-index: 2; pointer-events: none;
+  left: max(.75rem, env(safe-area-inset-left)); right: max(.75rem, env(safe-area-inset-right));
+  bottom: max(.6rem, env(safe-area-inset-bottom));
+  padding: .35rem .55rem; border-radius: .4rem;
+  background: rgb(15 24 30 / 82%); color: #eaf8ff; font: 700 .7rem/1.5 sans-serif;
+}
+.xp-track { height: .35rem; background: #36424b; border-radius: .2rem; overflow: hidden; }
+.xp-fill { height: 100%; background: #73dcfa; }
+.level-up-message { position: absolute; bottom: calc(100% + .3rem); left: 0; right: 0;
+  text-align: center; color: #fff2a2; font: 800 .9rem sans-serif; opacity: 0;
+  text-shadow: 0 1px 4px #000; }
+.xp-hud.level-up { box-shadow: 0 0 12px #ffd76e; }
+.xp-hud.level-up .xp-fill { background: #ffe69b; }
+.xp-hud.level-up .level-up-message { opacity: 1; }
+.beachhead-defense .control-hint { bottom: 3.4rem; }
+
+.beachhead-defense::after { bottom: max(3.35rem, calc(env(safe-area-inset-bottom) + 3rem)); }
+.beachhead-defense .build-label { bottom: max(3.35rem, calc(env(safe-area-inset-bottom) + 3rem)); }
+.beachhead-defense:has(.xp-hud.level-up)::after,
+.beachhead-defense:has(.xp-hud.level-up) .control-hint { visibility: hidden; }
