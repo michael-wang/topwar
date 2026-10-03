@@ -123,6 +123,26 @@ insignia.
 Future tiers and archetypes should extend this grammar rather than introducing
 an unrelated style.
 
+## Enemy family: amphibious landing infantry
+
+The enemies across the sea are still human beings. TopWar's original sea-borne
+landing troops should feel human, physical, vulnerable, numerous and determined,
+with slightly absurd effort within the two-head system. Exposed warm skin and
+simple human anatomy make that humanity readable beneath oversized helmets;
+avoid monsters, robots and anonymous armored blobs.
+
+Derive an original visual family. Do not copy Republic of China Marine Corps
+uniforms, real unit insignia or patches, exact helmet models, exact camouflage
+patterns, rank markings or identifiable contemporary military loadouts.
+Camouflage uses only a few broad original shapes that read at mobile scale.
+Helmet-first identity matters more than uniform detail.
+
+Faction contrast is intentional: Player is the organized, clothed coastal
+defender; enemies are improvised, aggressive amphibious landing infantry. Both
+sides remain visibly human, cute and absurd rather than a realistic war simulation.
+Exposed enemy skin must retain enough value / hue separation from warm sand under
+the actual coastal lighting.
+
 ## Player
 
 ### Intent
@@ -151,7 +171,8 @@ communicate control, aiming or power.
 
 ### Body
 
-Use only a few broad armor / clothing forms.
+Remain clothed and organized, with a clean uniform / body treatment. Do not adopt
+the enemy bare-torso language. Use only a few broad armor / clothing forms.
 
 Avoid realistic tactical equipment.
 
@@ -200,7 +221,8 @@ They are the primary crimson intrusion into the beautiful coast.
 
 - Approximately two-head proportion.
 - Proportionally large helmet.
-- Small compact body.
+- Small compact body with a generally bare upper torso.
+- Original, simplified camouflage shorts.
 - Large active shoes.
 - Readable detached hand motion.
 
@@ -218,7 +240,12 @@ Do not communicate threat through evil facial expressions.
 
 ### Equipment
 
-Keep equipment minimal.
+Use an exposed skin torso, simplified camouflage shorts, large shoes and
+simplified / detached hands beneath the oversized helmet. Do not cover Grunt in
+a conventional military vest unless a later gameplay role requires it.
+
+Keep equipment minimal. Shorts should read as "camouflage shorts" through a few
+broad patches, without historical or national identification.
 
 Do not add a prominent firearm while the gameplay archetype remains a
 contact / charging threat.
@@ -226,6 +253,9 @@ contact / charging threat.
 ### Palette
 
 Use the existing raspberry / crimson enemy family as the starting point.
+
+The color hierarchy is helmet / enemy-role color, warm human skin, camouflage
+shorts, then dark shoes / small equipment. Keep exposed skin readable against sand.
 
 Avoid dirty military browns and global desaturation.
 
@@ -274,7 +304,16 @@ Use one or two unmistakable large forms rather than many small decorations.
 
 ### Body
 
-Use a wide short armor block.
+Heavy belongs to the same landing force and retains visible human skin beneath
+large equipment. It must not become a large bare-chested Grunt or a fully enclosed
+armored fantasy unit.
+
+A broad harness, one or two heavy straps, partial chest plate, heavy waist armor
+/ belt and reinforced short camouflage trousers may surround a substantially
+exposed torso. Larger gloves / hands and shoes support its independent silhouette.
+Prefer a few large forms over conventional detailed tactical kit.
+
+The silhouette priority is helmet → width → body mass → hands / shoes → equipment.
 
 Do not simply enlarge the Grunt torso.
 
