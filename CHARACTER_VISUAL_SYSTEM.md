@@ -11,8 +11,8 @@ assets, appearance and gameplay. Phase 2A introduced the accepted original
 procedural Player prototype. Phase 2B's refined Player grammar is accepted.
 Phase 3A established an amphibious Grunt prototype that was not accepted as
 the final direction. Phase 3B's clothed rounded Grunt is accepted as good enough
-for now. Phase 4A introduces dedicated Heavy and Giant threat prototypes and an
-explicit Level-7 review boot path. Further polish requires human review; the
+for now. Phase 4B refines dedicated Heavy/Giant threat prototypes and visible stepping,
+with a development-default Level-7 review boot path. Further polish requires human review; the
 complete system is not final.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
@@ -23,8 +23,9 @@ environment.
 
 **CURRENT SHIPPING:** Player retains the accepted Phase 2B two-head refinement.
 Grunt remains the accepted Phase 3B rounded shirt/shorts figurine. Heavy and Giant
-use Phase 4A procedural prototypes. Boss retains its explicit legacy resources
-and presentation. Player/Grunt polish and Boss/world redesign are outside Phase 4A.
+use Phase 4B procedural threat prototypes. Boss retains its explicit legacy resources
+and presentation. Player, Grunt body/clothing and Boss remain frozen; Phase 4B changes Grunt gait only.
+Naval palette restyling follows COASTAL_GREEK_OBJECT_LANGUAGE.md.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for coastal
 palette, lighting, composition and UI guardrails.
@@ -369,7 +370,10 @@ per enemy.
 textures, external authoring, atlas UV selectors or a runtime skeleton. This is
 an original human landing trooper, not a copied uniform or franchise character.
 Phase 3A's bare/faceted torso, camouflage and thumb mittens are superseded;
-Phase 3B is accepted as good enough for now and is frozen during Phase 4A.
+Phase 3B body/clothing is accepted as good enough for now. Phase 4B changes only gait:
+swing shoes lift 0.11 authored units and move 0.035 outward, hands counter-swing
+0.18 fore/aft, and restrained support-side shift/roll replaces root bouncing.
+Four poses, asynchronous 360 ms cadence, source silhouette/materials and feedback remain.
 
 One smooth-shaded ellipsoid (0.50 wide × 0.34 high × 0.38 deep) replaces the
 separate torso/shorts masses. A latitude boundary divides this one volume into
@@ -442,15 +446,15 @@ width and mass.
 
 The Heavy helmet is its strongest identifier.
 
-Use a wide, low crimson dome, thick double-layer rim and one broad muted-ochre
-brow. Keep the profile compressed and heavy, without tactical detail or spikes.
+Use a wide, low crimson dome and thick darker-crimson/navy double-layer rim.
+No ochre brow, eye-crossing stripe or crest. Keep the profile compressed and heavy, without tactical detail or spikes.
 
 ### Body
 
 Heavy belongs to the same landing force, with warm human head and hand cues.
 Use one squat rounded drum/bean, simple deep-crimson shirt and plain dark
 slate/navy lower region. No bare-torso base, camouflage, straps or pouches.
-One broad rounded muted-ochre chest/belly guard is enough. Large hand balls and
+No belly guard, vest or armor is required. Large hand balls and
 wide shoes carry the mass; avoid long legs or enclosed fantasy armor.
 
 The silhouette priority is helmet → width → body mass → hands / shoes → equipment.
@@ -461,15 +465,15 @@ Do not simply enlarge the Grunt torso.
 
 Heavy remains visibly enemy-aligned.
 
-Deep crimson remains dominant. Ochre / yellow armor may be retained as a muted
-role accent, less celebratory than the UI's sunlight / progression gold. This
-does not call for noisy grunge or muddy military browns.
+Deep crimson remains dominant with slate/navy lower clothing, navy-charcoal
+shoes and warm skin. Heavy has no ochre/gold body presentation; identity comes
+from shape. Stronger muted ochre is reserved for Giant.
 
 ### Motion
 
 Heavy motion is:
 
-**shift → plant → push**
+**shift → lift → plant → push**
 
 Use slower cadence, lower bounce and stronger weight transfer.
 
@@ -481,24 +485,26 @@ a large firearm automatically: current Heavy threat comes from its role,
 durability and movement, not an invented ranged attack. Death may release that
 stored mass through presentation without changing combat resolution.
 
-### Current Phase 4A Heavy prototype
+### Current Phase 4B Heavy prototype
 
 `createChibiHeavyFamily` in `ChibiThreatFamilies` owns a reference body, four
 650 ms rigid locomotion poses, grayscale death body, dedicated low double-rim
-helmet and one belly guard. The merged body contains one 0.68×0.46×0.47 rounded
-drum, human head/tiny eyes, two 0.10-radius hand balls, and two 0.32×0.14×0.38
+helmet and an invisible zero-vertex secondary-slot adapter. The merged body contains one 0.68×0.46×0.47 rounded
+drum, human head/larger unobstructed eyes, two 0.11-radius hand balls farther from
+the drum (±0.41), and two 0.32×0.14×0.38
 shoes on a wide stance. There is no weapon or secondary waist gear.
 
 Authored colors are crimson shirt `#9d3045`, slate/navy shorts `#303e4c`,
-crimson helmet `#b9324c`, muted ochre `#b09a63`, existing warm skin and navy shoes.
+crimson helmet `#b9324c`, darker rims `#8e293e` / `#493042`, warm skin and navy shoes.
 Body and gear use neutral instance tint, preserving their broad vertex regions.
 The helmet crown is 0.99; presentation compresses legacy projected Y by 0.80
 without changing collision or simulation scale. At equal portrait depth the
 standing silhouette measures 1.28× Grunt height and 1.73× width.
 
-The 650 ms asynchronous clock and existing low root bounce/weight transfer
-remain. Four poses alternate shoes by up to 0.10 fore/aft and 0.035 upward;
-fists counter-swing by 0.085. Rate-limited hits retain 100 ms / 250 ms timing,
+The asynchronous 650 ms clock remains. Four poses alternate shoes by up to
+0.13 fore/aft and 0.09 upward; swing shoes move 0.045 outward, fists counter-swing
+by 0.12. Support-side shift 0.045 and roll 0.04 carry weight; landing compression
+is 1.8% with only 0.007 root lift. `stepWeightPose` shares the baked-pose phase. Rate-limited hits retain 100 ms / 250 ms timing,
 using the actual active Heavy pose and a small 2.5% compression. Contact uses
 its reference silhouette; death uses its grayscale parts and existing 480 ms
 fade. The 48-slot pools rebind explicit role parts. HP layout comes from Heavy
@@ -512,7 +518,7 @@ Kenney atlas selector, skeleton or per-enemy hierarchy is used.
 
 ## Giant
 
-### Target and current Phase 4A Colossus prototype
+### Target and current Phase 4B Colossus prototype
 
 Giant is not a scaled Heavy. Its three dominant ideas are one huge crest helmet,
 one massive rounded clothed body, and one offset blunt maul. One chest plate
@@ -526,15 +532,20 @@ The body is one 0.84×0.64×0.58 rounded mass with dark crimson `#862d40` clothi
 and the same slate lower block. Head/hands stay human; shoes are structural
 0.38×0.17×0.45 blocks. The warm head begins at 0.72, crest crown is 1.355
 (approximately 47% head/helmet zone). The helmet has one broad longitudinal
-muted-ochre fin and thick rim; the front crest still reads narrower than its side.
+muted-ochre fin widened from 0.11 to 0.165 (one crest), and a thick rim.
+The one ochre chest plate is a shallow beveled 0.62×0.36×0.12 slab centered at
+height 0.56, replacing the lower oval patch. The existing slate lower color block
+follows a latitude ring to keep its newly exposed hem clean. The front eyes remain unobstructed.
 The maul has one thick navy handle, broad crimson rounded head and one ochre
 hardware band, evoking broad coastal hardware rather than a historical object.
 
 Three dedicated bounded render slots retain two live Giants plus a recent fall.
 Each has four primary mesh draws: posed body, crest helmet, chest plate, maul.
-The 850 ms asynchronous gait retains `giantWeightPose`, low body compression,
-delayed helmet response and maul rotation around a hand-height pivot. Shoes
-alternate up to 0.10 fore/aft and 0.035 upward; hands swing more slowly.
+The 850 ms asynchronous gait uses support-aligned `giantWeightPose`: 0.052
+lateral weight transfer, 0.036 roll, at most 0.009 root lift and 1.8% landing
+compression. Shoes alternate 0.14 fore/aft, lift 0.085 and move 0.035 outward.
+Helmet response is delayed; the maul swings up to 0.14 radians with 0.85-radian
+phase lag around its hand-height pivot. Timing, reveal and combat remain unchanged.
 The 1.5-second reveal/HP delay remains, with haze heights derived from the new
 motion envelope. Hit registration follows the dedicated active body matrix;
 body/gear share a restrained emissive response and existing bounded hit timing.
@@ -553,7 +564,9 @@ inspection, actual-projection silhouettes and helmet comparison, complete gait
 strips, hit/death/contact/reveal/crash/bar views and matching 50/100/150/200
 crowd and two-Giant metrics. Player, Grunt and Boss render guards remain
 pixel-identical, including protected feedback states and the world-only view.
-Heavy/Giant are prototypes pending human review, not a final polished design.
+Phase 4B evidence in `artifacts/threat-chibi-polish/` adds matched front/rear
+comparisons, complete gait strips and 2.5-second deterministic real-app sequences.
+Heavy/Giant remain pending human review; Boss remains legacy.
 
 ## Animation principles
 

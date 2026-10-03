@@ -41,38 +41,44 @@ function gray(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
   return result;
 }
 const matte = () => new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1, metalness: 0 });
-function face(y: number, z: number): Part[] {
-  return [-1, 1].map(side => ({ geometry: ball(side * .095, y, z, .018, .02, .01, 4, 2), color: ART.faction.weapon }));
+function face(y: number, z: number, radius = .018): Part[] {
+  return [-1, 1].map(side => ({ geometry: ball(side * .095, y, z, radius, radius * 1.12, .012, 4, 2), color: ART.faction.weapon }));
 }
 
 function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
     { geometry: ball(0, .35, 0, .34, .23, .235, 16, 7), color: THREAT_COLORS.shirt, lower: .30 },
     { geometry: ball(0, .65, 0, .29, .20, .25), color: ART.faction.skin },
-    ...face(.65, .238),
-    ...[-1, 1].map(side => ({ geometry: ball(side * .355, .34, side * stride * .085, .10, .105, .105, 8, 4), color: ART.faction.skin })),
-    { geometry: block(-.235, .07 + liftLeft, stride * .10, .32, .14, .38), color: ART.faction.equipment },
-    { geometry: block(.235, .07 + liftRight, -stride * .10, .32, .14, .38), color: ART.faction.equipment },
+    ...face(.655, .254, .026),
+    ...[-1, 1].map(side => ({ geometry: ball(side * .41, .34, side * stride * .12, .11, .115, .115, 8, 4), color: ART.faction.skin })),
+    { geometry: block(-.25 - (liftLeft > .05 ? .045 : 0), .07 + liftLeft, stride * .13, .32, .14, .38), color: ART.faction.equipment },
+    { geometry: block(.25 + (liftRight > .05 ? .045 : 0), .07 + liftRight, -stride * .13, .32, .14, .38), color: ART.faction.equipment },
   ]);
 }
 
 export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose(): void } {
-  const idle = heavyPose(0), runs = [heavyPose(1, .025), heavyPose(.2, .035, .005),
-    heavyPose(-1, 0, .025), heavyPose(-.2, .005, .035)], death = gray(idle);
+  const idle = heavyPose(0), runs = [heavyPose(1, 0, .09), heavyPose(-.25, .018, 0),
+    heavyPose(-1, .09, 0), heavyPose(.25, 0, .018)], death = gray(idle);
   const helmetGeometry = merge([
     { geometry: new THREE.SphereGeometry(1, 16, 5, 0, Math.PI * 2, 0, Math.PI / 2)
       .scale(.44, .22, .32).translate(0, .77, 0), color: THREAT_COLORS.helmet },
     { geometry: band(.76, .465, .345, .065), color: '#8e293e' },
-    { geometry: band(.715, .47, .35, .035), color: THREAT_COLORS.helmet },
-    { geometry: block(0, .775, .304, .67, .065, .085), color: THREAT_COLORS.ochre },
+    { geometry: band(.715, .47, .35, .035), color: '#493042' },
   ]);
-  const armorGeometry = merge([{ geometry: ball(0, .36, .22, .27, .17, .07, 12, 6), color: THREAT_COLORS.ochre }]);
+  // Invisible contract adapter, matching Grunt. Heavy has no armor/ochre region.
+  const armorGeometry = new THREE.BufferGeometry();
+  for (const attribute of ['position', 'normal', 'color'])
+    armorGeometry.setAttribute(attribute, new THREE.Float32BufferAttribute([], 3));
+  armorGeometry.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+  armorGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 0);
   const bodyMaterial = matte(), gearMaterial = matte(), deathMaterial = matte();
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial);
+  vest.visible = false;
   return { role: 'heavy', id: 'topwar-heavy-prototype', body, helmet, vest,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)), gaitCycleMs: HEAVY_GAIT_CYCLE_MS,
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored', scaleY: .80, hitCompression: .025,
+      stepWeight: { shift: .045, roll: .04, compression: .018 },
       hpAnchor: { top: 1.025, width: .78 }, shadow: { width: .84, depth: .44 } },
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
@@ -83,26 +89,27 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
 
 function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
-    { geometry: ball(0, .46, 0, .42, .32, .29, 16, 7), color: '#862d40', lower: .33 },
+    // Follow a latitude ring so the higher plate does not expose a zigzag hem.
+    { geometry: ball(0, .46, 0, .42, .32, .29, 16, 7), color: '#862d40', lower: .46 + .32 * Math.cos(4 * Math.PI / 7) },
     { geometry: ball(0, .94, 0, .33, .22, .29, 12, 6), color: ART.faction.skin },
     ...face(.885, .28),
-    ...[-1, 1].map(side => ({ geometry: ball(side * .46, .40, side * stride * .08, .14, .145, .145, 8, 4), color: ART.faction.skin })),
-    { geometry: block(-.27, .085 + liftLeft, stride * .10, .38, .17, .45), color: ART.faction.equipment },
-    { geometry: block(.27, .085 + liftRight, -stride * .10, .38, .17, .45), color: ART.faction.equipment },
+    ...[-1, 1].map(side => ({ geometry: ball(side * .46, .40, side * stride * .10, .14, .145, .145, 8, 4), color: ART.faction.skin })),
+    { geometry: block(-.27 - (liftLeft > .05 ? .035 : 0), .085 + liftLeft, stride * .14, .38, .17, .45), color: ART.faction.equipment },
+    { geometry: block(.27 + (liftRight > .05 ? .035 : 0), .085 + liftRight, -stride * .14, .38, .17, .45), color: ART.faction.equipment },
   ]);
 }
 
 export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void } {
-  const idle = giantPose(0), runs = [giantPose(1, .02), giantPose(.2, .035, .005),
-    giantPose(-1, 0, .02), giantPose(-.2, .005, .035)], death = gray(idle);
+  const idle = giantPose(0), runs = [giantPose(1, 0, .085), giantPose(-.25, .018, 0),
+    giantPose(-1, .085, 0), giantPose(.25, 0, .018)], death = gray(idle);
   const helmetGeometry = merge([
     { geometry: new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2)
       .scale(.405, .255, .355).translate(0, .97, 0), color: THREAT_COLORS.helmet },
     { geometry: band(.96, .425, .37, .065), color: THREAT_COLORS.ochre },
     // One broad longitudinal fin, no spikes or little fittings.
-    { geometry: block(0, 1.21, 0, .11, .29, .47), color: THREAT_COLORS.ochre },
+    { geometry: block(0, 1.21, 0, .165, .29, .47), color: THREAT_COLORS.ochre },
   ]);
-  const armorGeometry = merge([{ geometry: ball(0, .48, .265, .31, .245, .08, 12, 6), color: THREAT_COLORS.ochre }]);
+  const armorGeometry = merge([{ geometry: block(0, .56, .275, .62, .36, .12), color: THREAT_COLORS.ochre }]);
   // Weapon authored in character space; the renderer adds only small delayed rotation.
   const weaponGeometry = merge([
     { geometry: new THREE.CylinderGeometry(.044, .055, .64, 8).translate(.60, .42, .08), color: ART.faction.weapon },

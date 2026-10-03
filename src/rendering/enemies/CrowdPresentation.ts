@@ -11,6 +11,7 @@ export interface CrowdPresentation {
   readonly hitCompression?: number;
   readonly hpAnchor?: { readonly top: number; readonly width: number };
   readonly shadow?: { readonly width: number; readonly depth: number };
+  readonly stepWeight?: { readonly shift: number; readonly roll: number; readonly compression: number };
 }
 
 export const LEGACY_CROWD_PRESENTATION: CrowdPresentation = {

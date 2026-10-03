@@ -1,0 +1,15 @@
+{
+  "excluded": "bottom build SHA footer only, below pixel Y=1640",
+  "comparisons": {
+    "player-guard": null,
+    "world-guard": null,
+    "boss-guard": null,
+    "boss-death-guard": null,
+    "grunt-death-guard": null,
+    "grunt-contact-guard": null,
+    "grunt-silhouette": null,
+    "grunt-helmet-color": null,
+    "player-silhouette": null,
+    "player-helmet-color": null
+  }
+}

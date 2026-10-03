@@ -39,7 +39,7 @@ it('keeps Giant weight and secondary motion small, asynchronous and independent 
   for(let t=0;t<1700;t+=10) {
     const p=giantWeightPose(1,t,850);
     expect(p.compression).toBeGreaterThanOrEqual(0);expect(p.compression).toBeLessThanOrEqual(.018);
-    expect(Math.abs(p.sway)).toBeLessThanOrEqual(.026);
+    expect(Math.abs(p.sway)).toBeLessThanOrEqual(.036);
   }
 });
 it('bounds ambient/dust buffers and never allocates another emitter during a long Giant walk', () => {

@@ -13,10 +13,14 @@ export function laneLocomotion(ageMs: number, direction: number, member: number,
   return { stride, lean: previousLean * Math.exp(-ageMs / 35) + direction * (.16 * weight - .035 * Math.sin(p * Math.PI * 2) - (p < .10 ? .045 * Math.sin(p * Math.PI / .10) : 0)),
     bob: Math.abs(stride) * .025, lag: direction * .035 * Math.sin(p * Math.PI) };
 }
+export function stepWeightPose(id: number, nowMs: number, cycleMs: number) {
+  // Same phase as the four baked A/B/C/D frames: A/C support, B/D landing.
+  const phase = (nowMs / (cycleMs / 4) + id * 1.52788745) * Math.PI / 2;
+  return { phase, support: Math.cos(phase), landing: Math.pow(Math.abs(Math.sin(phase)), 8) };
+}
 export function giantWeightPose(id: number, nowMs: number, cycleMs: number) {
-  const phase = nowMs * Math.PI * 2 / cycleMs + id * 2.399963;
-  const stride = Math.sin(phase), landing = Math.pow(Math.abs(Math.cos(phase)), 10);
-  return { phase, sway: stride * .026, compression: landing * .018,
-    bob: (1 - landing) * .022, arm: Math.sin(phase - .3) * .15,
-    weapon: Math.sin(phase - .65) * .09, shoulder: Math.sin(phase - .2) * .025 };
+  const { phase, support, landing } = stepWeightPose(id, nowMs, cycleMs);
+  return { phase, shift: support * .052, sway: support * .036, compression: landing * .018,
+    bob: (1 - landing) * .009, arm: Math.cos(phase - .3) * .15,
+    weapon: Math.cos(phase - .85) * .14, shoulder: Math.cos(phase - .2) * .025 };
 }

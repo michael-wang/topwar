@@ -101,8 +101,8 @@ export class GiantRenderer {
       const cycle = enemy.gaitCycleMs ?? 850, weight = giantWeightPose(enemy.id, nowMs, cycle), hit = hits.strength(enemy.id, nowMs);
       this.body.geometry = this.family.runFrames[Math.floor(nowMs / (cycle / 4) + enemy.id * 1.52788745) & 3].geometry;
       this.weapon.rotation.set(weight.weapon + .03 * hit, 0, Math.sin(weight.phase - .8) * .045);
-      this.helmet.rotation.z = Math.sin(weight.phase - .25) * .012;
-      this.group.position.set(-enemy.x, weight.bob, enemy.z + hit * .11);
+      this.helmet.rotation.z = Math.cos(weight.phase - .25) * .012;
+      this.group.position.set(-enemy.x + weight.shift * (enemy.visualScaleX ?? enemy.visualScale ?? 1), weight.bob, enemy.z + hit * .11);
       this.group.rotation.set(-.12 + hit * .06, Math.PI, weight.sway);
       const scale = enemy.visualScale ?? 1;
       this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression), enemy.visualScaleZ ?? scale);

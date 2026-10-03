@@ -1,6 +1,7 @@
 import { canShareCrowdBatch, ENEMY_GAIT_CYCLE_MS, type CharacterVisualFamilies,
   type CharacterParts, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_CRASH_MS } from '../../presentation/GiantDrama';
+import { stepWeightPose } from '../../presentation/CharacterMotion';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
@@ -268,16 +269,20 @@ export class EnemyRenderer {
       const pose = enemyWalkPose(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const transform = this.transform;
       const heavy = enemy.archetype === 'heavy';
+      const presentation = this.crowdFamily(enemy).presentation;
+      const step = presentation.stepWeight && stepWeightPose(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       // Low bounce, stronger alternating weight transfer distinguish a Heavy.
-      const sway = pose.leftArm * (heavy ? .18 : .075);
-      transform.position.set(-enemy.x, pose.bob * (heavy ? .38 : .80), enemy.z);
+      const sway = step ? step.support * presentation.stepWeight!.roll : pose.leftArm * (heavy ? .18 : .075);
+      transform.position.set(-enemy.x + (step ? step.support * presentation.stepWeight!.shift
+        * (enemy.visualScaleX ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) : 0),
+        step ? (1 - step.landing) * .007 : pose.bob * (heavy ? .38 : .80), enemy.z);
       transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
         sway);
       const hitStrength = this.heavyHits.strength(enemy.id, nowMs);
       transform.position.z += .07 * hitStrength;
       transform.rotation.x += .045 * hitStrength;
-      const presentation = this.crowdFamily(enemy).presentation;
       setEnemyScale(transform.scale, enemy, presentation.scaleY);
+      if (step) transform.scale.y *= 1 - step.landing * presentation.stepWeight!.compression;
       transform.scale.y *= 1 - (presentation.hitCompression ?? 0) * hitStrength;
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);

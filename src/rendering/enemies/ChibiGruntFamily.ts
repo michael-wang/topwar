@@ -80,7 +80,7 @@ function merge(parts: Part[]): THREE.BufferGeometry {
 // +Z faces forward, ground origin is zero. No skeleton or per-entity motion object.
 function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   const hands = [-1, 1].map(side => ({
-    geometry: sphere(side * (.335 + Math.abs(stride) * .015), .365, side * stride * .125,
+    geometry: sphere(side * (.335 + Math.abs(stride) * .015), .365, side * stride * .18,
       .057, .057, .057), color: ART.faction.skin,
   }));
   return merge([
@@ -88,9 +88,9 @@ function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeom
       shortsBelowY: .34 + .17 * Math.cos(Math.PI * 4 / 7) },
     { geometry: sphere(0, .67, 0, .28, .20, .255, 12, 6), color: ART.faction.skin },
     ...hands,
-    { geometry: rounded(-.165 - Math.abs(stride) * .02, .06 + liftLeft, stride * .16,
+    { geometry: rounded(-.165 - Math.abs(stride) * .02 - (liftLeft > .05 ? .035 : 0), .06 + liftLeft, stride * .16,
       .25, .12, .35, .04), color: ART.faction.equipment },
-    { geometry: rounded(.165 + Math.abs(stride) * .02, .06 + liftRight, -stride * .16,
+    { geometry: rounded(.165 + Math.abs(stride) * .02 + (liftRight > .05 ? .035 : 0), .06 + liftRight, -stride * .16,
       .25, .12, .35, .04), color: ART.faction.equipment },
     ...[-1, 1].map(side => ({ geometry: sphere(side * .095, .675, .236, .018, .022, .012, 4, 2), color: ART.faction.weapon })),
     { geometry: sphere(0, .645, .25, .027, .025, .029, 4, 2), color: ART.faction.skin },
@@ -100,8 +100,8 @@ function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeom
 
 export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose(): void } {
   const idle = bodyPose(0);
-  const runs = [bodyPose(1, .055, 0), bodyPose(.3, .08, .015),
-    bodyPose(-1, 0, .055), bodyPose(-.3, .015, .08)];
+  const runs = [bodyPose(1, 0, .11), bodyPose(-.25, .025, 0),
+    bodyPose(-1, .11, 0), bodyPose(.25, 0, .025)];
   const death = idle.clone();
   const deathColors = death.getAttribute('color');
   for (let i = 0; i < deathColors.count; i++) {
@@ -133,7 +133,8 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
   vest.visible = false;
   return {
     role: 'grunt', id: 'topwar-amphibious-prototype', body, helmet, vest,
-    presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored' },
+    presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored',
+      stepWeight: { shift: .028, roll: .028, compression: .012 } },
     runFrames: runs.map(geometry => new THREE.Mesh(geometry, bodyMaterial)), gaitCycleMs: ENEMY_GAIT_CYCLE_MS,
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
