@@ -7,6 +7,15 @@ violent assault**. The supplied reference informs color, shape hierarchy and
 breeze, not its village, assets, layout or identity. All scenery is original
 procedural geometry/shading. No reference pixels or downloaded textures ship.
 
+Character proportions and archetype construction are now defined by
+[CHARACTER_VISUAL_SYSTEM.md](CHARACTER_VISUAL_SYSTEM.md), superseding the earlier
+three-head direction and shared-geometry assumptions for future replacements.
+Reusable non-character object design, including future naval and defensive
+forms, is defined by [COASTAL_GREEK_OBJECT_LANGUAGE.md](COASTAL_GREEK_OBJECT_LANGUAGE.md).
+This document remains canonical for coastal palette, lighting, environment
+composition and UI guardrails. Phase 0 changes documentation only; shipping
+geometry, environment layout and UI remain unchanged.
+
 ## Palette and value hierarchy
 
 `ART.coastalDefense` in `src/art/ArtDirection.ts` owns the coastal palette.
@@ -98,8 +107,11 @@ per-frame CPU vertex updates. Water, foliage and cloth use renderer clocks only.
 
 ## Faction presentation — Phase 1.1
 
-`ART.faction` owns the coastal character swatches. Meshes, UVs, four baked run
-poses, proportions, gait and hit/death timing are unchanged.
+`ART.faction` owns the current shipping coastal character swatches. This section
+records the retained baseline; its shared geometry, UV remapping and four baked
+run poses are not requirements for future character families. The target
+proportions, helmet identity, dedicated Heavy construction and enemy-red Heavy
+palette with ochre accents are governed by `CHARACTER_VISUAL_SYSTEM.md`.
 
 | Family | Colors |
 | --- | --- |
