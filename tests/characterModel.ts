@@ -1,4 +1,32 @@
 import * as THREE from 'three';
+import { createLegacyCharacterVisualFamilies, type CharacterModel, type LegacyCharacterResources } from '../src/rendering/CharacterVisualFamilies';
+
+export function characterFamilies(overrides: Partial<LegacyCharacterResources> = {}) {
+  return createLegacyCharacterVisualFamilies({ normalIdle: bodyModel(), normalRuns: runFrames(),
+    grayIdle: grayBodyModel(), playerBody: bodyModel(), helmet: helmetModel(), vest: vestModel(),
+    rifle: rifleModel(), bossIdle: bodyModel(), bossRuns: runFrames(), bossSlams: runFrames(),
+    bossVest: vestModel(), ...overrides });
+}
+
+export function playerFamily(body: CharacterModel, helmet: CharacterModel, vest: CharacterModel, weapon: CharacterModel) {
+  return characterFamilies({ playerBody: body, helmet, vest, rifle: weapon }).player;
+}
+
+export function enemyFamilies(body: CharacterModel, helmet: CharacterModel, vest: CharacterModel,
+  frames: readonly CharacterModel[], gray: CharacterModel) {
+  return characterFamilies({ normalIdle: body, helmet, vest, normalRuns: frames, grayIdle: gray });
+}
+
+export function giantFamily(body: CharacterModel, helmet: CharacterModel, vest: CharacterModel,
+  frames: readonly CharacterModel[], gray: CharacterModel) {
+  return enemyFamilies(body, helmet, vest, frames, gray).giant;
+}
+
+export function bossFamily(body: CharacterModel, helmet: CharacterModel, vest: CharacterModel,
+  runs: readonly CharacterModel[], slams: readonly CharacterModel[], gray: CharacterModel) {
+  return characterFamilies({ bossIdle: body, helmet, bossVest: vest, bossRuns: runs,
+    bossSlams: slams, grayIdle: gray }).boss;
+}
 
 export function bodyModel(): THREE.Mesh<THREE.BufferGeometry, THREE.Material> {
   const material = new THREE.MeshStandardMaterial({ color: '#d8a275' });

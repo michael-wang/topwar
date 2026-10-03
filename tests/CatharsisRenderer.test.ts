@@ -1,3 +1,4 @@
+import { enemyFamilies } from './characterModel';
 import { expect, it } from 'vitest';
 import { ART } from '../src/art/ArtDirection';
 import * as THREE from 'three';
@@ -23,7 +24,7 @@ it('renders configured corridor positions and grows beyond the initial experimen
 
 it('renders a larger amber Heavy and preserves configured scale through death', () => {
   const scene = new THREE.Scene();
-  const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+  const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel()));
   renderer.update([{ id: 1, tier: 1, archetype: 'grunt', x: 0, z: 4, hp: 1, visualScale: 1.4 },
     { id: 2, tier: 1, archetype: 'heavy', x: 2.8, z: 4, hp: 5, visualScale: 1.89 }], 0);
   const helmets = scene.getObjectByName('0-toy-soldier-helmet') as THREE.InstancedMesh;
@@ -49,7 +50,7 @@ it('renders a larger amber Heavy and preserves configured scale through death', 
 
 it('projects Heavy and Giant health using red fills without altering HP fraction or bar dimensions', () => {
   const scene = new THREE.Scene();
-  const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+  const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel()));
   const enemies = [
     {id:1,tier:1,archetype:'heavy' as const,hp:10,maxHp:15,x:1.4,z:10},
     {id:2,tier:1,archetype:'giant' as const,hp:86,maxHp:172,x:-1.4,z:30,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04}];
@@ -66,7 +67,7 @@ it('projects Heavy and Giant health using red fills without altering HP fraction
 });
 
 it('punches only the damaged elite health bar for 100ms, rate limits repeats and settles without changing HP', () => {
-  const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel());
+  const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,enemyFamilies(bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel()));
   const enemies=[1,2].map(id=>({id,tier:1,archetype:'heavy' as const,hp:15,maxHp:15,x:id*1.4,z:10}));
   renderer.update(enemies,0); renderer.update([{...enemies[0],hp:14},enemies[1]],100);
   const bars=scene.children.filter(c=>c.name==='heavy-hp-fill') as THREE.Sprite[];

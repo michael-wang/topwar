@@ -1,3 +1,4 @@
+import type { BossVisualFamily } from '../CharacterVisualFamilies';
 import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
@@ -108,13 +109,9 @@ export class BossRenderer {
   private deathStartY = 0;
   private slamAtMs = -Infinity;
 
-  constructor(private readonly scene: THREE.Scene,
-    bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    walkFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[],
-    slamFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[],
-    grayBodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+  constructor(private readonly scene: THREE.Scene, family: BossVisualFamily) {
+    const { body: bodyModel, helmet: helmetModel, vest: vestModel,
+      runFrames: walkFrames, slamFrames, grayBody: grayBodyModel } = family;
     if (walkFrames.length !== 4) throw new Error('Boss locomotion requires four baked poses');
     if (slamFrames.length !== 4) throw new Error('Boss slam requires four baked poses');
     this.walkGeometries = walkFrames.map((frame) => frame.geometry);

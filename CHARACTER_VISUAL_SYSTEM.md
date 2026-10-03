@@ -5,9 +5,10 @@
 This document defines the canonical character-art direction for TopWar's
 Beachhead Defense presentation.
 
-Phase 0 freezes the visual direction and future asset contract only. Shipping
-assets, runtime rendering and gameplay are unchanged. Phase 1 requires a separate
-instruction; the plan below does not authorize implementation.
+Phase 0 and its Phase 0.1 amendment freeze the visual direction and future asset
+contract. Phase 1 adds named runtime role families while preserving shipping
+assets, appearance and gameplay. Character replacement starts only with a
+separately authorized Phase 2; the plan below does not authorize it.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
 existing gameplay model, faction semantics and Sunlit Coastal Battlefield
@@ -371,18 +372,34 @@ microdetail.
 
 ## Technical asset contract
 
+### Current Phase 1 adapter
+
+`CharacterAssets` loads named legacy resources once and assembles explicit
+`player`, `grunt`, `heavy`, `giant` and `boss` families. Heavy and Giant reference
+raw legacy normal-soldier resources, independently of the resolved Grunt role.
+Boss retains dedicated idle/run/slam/vest resources and explicit shared helmet
+and gray-body dependencies. Reward helmets also retain a separate legacy reference.
+
+Crowd batches share live geometry/material resources when identical and split
+when different. Grunt/Heavy death and contact parts are explicit per role; Giant
+retains its intentional legacy normal-soldier contact fallback. Pooled feedback
+rebinds resources when reused across distinct families. Gait cadence is family
+metadata; scale remains in the existing render projection. The full future
+parts/anchors contract below is not yet implemented: legacy attachment pivots,
+UV/material assumptions, shadows and Player `_MOTION` remain in their renderers.
+
 ### Ownership and role selection
 
 The future contract is renderer-owned presentation data, versioned independently
 of gameplay snapshots. Logical role identifiers are `player`, `grunt`, `heavy`,
-and, when implemented, `giant` and `boss`. Tank uses the world-object contract,
+`giant` and `boss`. Tank uses the world-object contract,
 not a humanoid role by default.
 
 Each role resolves a named visual family. Runtime selection must use names, not
 positions in an asset array. Sharing is an explicit asset reference, not a
-fallback inferred from another role's geometry. Phase 1 may explicitly alias
-Heavy to the existing Grunt family to preserve shipping appearance; Phase 4
-must replace that alias with dedicated Heavy body and helmet geometry.
+fallback inferred from another role's geometry. Phase 1 explicitly pins Heavy to
+legacy normal-soldier resources independently of Grunt role resolution; Phase 4
+must replace those references with dedicated Heavy body and helmet geometry.
 
 Simulation continues to provide gameplay truth through the existing render
 projection. The art contract contains no HP, damage, collision/targeting radius,
@@ -574,11 +591,11 @@ Define technical ownership and naming without replacing shipping character art.
 
 ### Phase 1 — Runtime role separation
 
-Refactor asset loading / renderer selection so Player, Grunt and Heavy can own
+Refactor asset loading / renderer selection so Player, Grunt, Heavy, Giant and Boss own
 separate visual families while the current shipping appearance remains intact.
 
-Introduce named role resolution and centralized legacy metadata for attachments,
-bounds and feedback. Preserve Player's current `_MOTION` shader, shared
+Introduce named role resolution and legacy pose, gait and feedback dependencies.
+Retain current attachment pivots and bounds calculations. Preserve Player's current `_MOTION` shader, shared
 Grunt/Heavy batches, and Giant/Boss legacy dependencies, including shared helmet,
 gray materials and feedback geometry. No new silhouette,
 palette, cadence, source bake or gameplay change belongs to this phase.
@@ -619,5 +636,5 @@ stable.
 
 The Phase 0-5 order is unchanged. The only planning clarification is to isolate
 legacy dependencies in Phase 1 before replacing the Grunt. Each later phase
-requires explicit authorization and its own acceptance checks; stop after
-Phase 0 for the current task.
+requires explicit authorization and its own acceptance checks. Phase 1 does not
+authorize Player replacement or any Phase 2+ character art.

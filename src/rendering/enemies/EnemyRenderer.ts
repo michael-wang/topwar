@@ -1,3 +1,5 @@
+import { canShareCrowdBatch, ENEMY_GAIT_CYCLE_MS, type CharacterVisualFamilies,
+  type CharacterParts, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_CRASH_MS } from '../../presentation/GiantDrama';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
@@ -11,17 +13,18 @@ import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
 import { ENEMY_DEATH_MS, ENEMY_DEATH_POP, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
 
+export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
+
 const HIT_FLASH_MS = 80;
 const MAX_DEATH_VISUALS = 48;
 export const ENEMY_CONTACT_MS = 240;
 const MAX_CONTACT_VISUALS = 48;
 const CONTACT_FLASH_MS = 150;
 export const ENEMY_VISUAL_SCALE = 0.82;
-export const ENEMY_GAIT_CYCLE_MS = 360;
-export const HEAVY_GAIT_CYCLE_MS = 650;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  parts: CharacterParts;
   scale: THREE.Vector3;
   group: THREE.Group;
   bodyMaterial: THREE.MeshStandardMaterial;
@@ -31,6 +34,7 @@ interface DeathVisual {
 }
 
 interface ContactVisual {
+  parts: CharacterParts;
   scale: THREE.Vector3;
   group: THREE.Group;
   materials: THREE.MeshStandardMaterial[];
@@ -57,16 +61,26 @@ function setEnemyScale(target: THREE.Vector3, enemy?: EnemyRenderState): void {
   target.set(enemy?.visualScaleX ?? base, enemy?.visualScaleY ?? base, enemy?.visualScaleZ ?? base);
 }
 
+interface CrowdBatch {
+  family: CrowdVisualFamily;
+  modelTop: number;
+  helmetMaterial: THREE.MeshStandardMaterial;
+  capacity: number[];
+  bodyCapacity: number[];
+  bodyMeshes: THREE.InstancedMesh[];
+  helmetMeshes: THREE.InstancedMesh[];
+  vestMeshes: THREE.InstancedMesh[];
+}
+
 export class EnemyRenderer {
   getDebugStats(): { current: number; bodyCapacities: number[]; tierCapacities: number[];
     deathVisuals: number; contactVisuals: number } {
-    return { current: this.previousEnemies.size, bodyCapacities: [...this.bodyCapacity],
-      tierCapacities: [...this.capacity], deathVisuals: this.deathVisuals.length,
+    return { current: this.previousEnemies.size, bodyCapacities: this.batches.flatMap(batch => batch.bodyCapacity),
+      tierCapacities: this.batches.flatMap(batch => batch.capacity), deathVisuals: this.deathVisuals.length,
       contactVisuals: this.contactVisuals.length };
   }
-  private readonly modelTop: number;
-  private readonly helmetMaterial: THREE.MeshStandardMaterial;
-  private readonly grayBodyMaterial: THREE.MeshStandardMaterial;
+  private readonly batches: CrowdBatch[] = [];
+  private readonly roleBatches: Record<'grunt' | 'heavy', CrowdBatch>;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));
   private readonly flashColor = new THREE.Color(ART.fx.core);
   private readonly gruntBodyColor = new THREE.Color(ART.faction.grunt);
@@ -92,40 +106,47 @@ export class EnemyRenderer {
   private readonly barBackingMaterial = new THREE.SpriteMaterial({ map: this.barFrameTexture, depthTest: false, toneMapped: false });
   private readonly barFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.heavy, depthTest: false, toneMapped: false });
   private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.giant, depthTest: false, toneMapped: false });
-  private readonly capacity = PALETTES.map(() => 1);
-  private readonly bodyCapacity = [1, 1, 1, 1];
-  private readonly bodyMeshes: THREE.InstancedMesh[];
-  private readonly helmetMeshes: THREE.InstancedMesh[];
-  private readonly vestMeshes: THREE.InstancedMesh[];
-
   constructor(private readonly scene: THREE.Scene,
-    private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly runFrames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[],
-    private readonly grayBodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    private readonly families: Pick<CharacterVisualFamilies, 'grunt' | 'heavy' | 'giant'>) {
+    const grunt = this.createBatch(families.grunt);
+    const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
+    this.roleBatches = { grunt, heavy };
+    this.deathBurst = new DeathBurst(scene);
+    this.heavyHits = new HeavyHitFeedback(scene);
+    this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant));
+    this.giantBurst = new DeathBurst(scene, true);
+  }
+
+  private createBatch(family: CrowdVisualFamily): CrowdBatch {
+    const { body: bodyModel, helmet: helmetModel, runFrames } = family;
     if (runFrames.length !== 4) throw new Error('Toy soldier run requires four baked poses');
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
-    if (!(grayBodyModel.material instanceof THREE.MeshStandardMaterial)) {
-      throw new Error('Gray death body needs a standard material');
-    }
-    this.modelTop = Math.max(...[helmetModel, ...runFrames].map(model => {
+    const modelTop = Math.max(...[helmetModel, ...runFrames].map(model => {
       model.geometry.computeBoundingBox();
       return model.geometry.boundingBox!.max.y;
     }));
     if (bodyModel.material instanceof THREE.MeshStandardMaterial) illustratedMaterial(bodyModel.material, 'enemy');
-    this.grayBodyMaterial = illustratedMaterial(grayBodyModel.material);
-    this.helmetMaterial = illustratedMaterial(source.clone());
-    this.helmetMaterial.color.set('white');
-    this.bodyMeshes = runFrames.map((_, frame) => this.createBody(frame, 1));
-    this.helmetMeshes = PALETTES.map((palette) => this.createTier(palette, 1));
-    this.vestMeshes = PALETTES.map((palette) => this.createTier(palette, 1, true));
-    this.scene.add(...this.bodyMeshes, ...this.helmetMeshes, ...this.vestMeshes);
-    this.deathBurst = new DeathBurst(scene);
-    this.heavyHits = new HeavyHitFeedback(scene);
-    this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, bodyModel, helmetModel, vestModel, runFrames, grayBodyModel));
-    this.giantBurst = new DeathBurst(scene, true);
+    if (!(family.death.body.material instanceof THREE.MeshStandardMaterial)) throw new Error('Gray death body needs a standard material');
+    illustratedMaterial(family.death.body.material);
+    const helmetMaterial = illustratedMaterial(source.clone());
+    helmetMaterial.color.set('white');
+    const batch: CrowdBatch = { family, modelTop, helmetMaterial, capacity: PALETTES.map(() => 1),
+      bodyCapacity: [1, 1, 1, 1], bodyMeshes: [], helmetMeshes: [], vestMeshes: [] };
+    batch.bodyMeshes = runFrames.map((_, frame) => this.createBody(batch, frame, 1));
+    batch.helmetMeshes = PALETTES.map(palette => this.createTier(batch, palette, 1));
+    batch.vestMeshes = PALETTES.map(palette => this.createTier(batch, palette, 1, true));
+    this.scene.add(...batch.bodyMeshes, ...batch.helmetMeshes, ...batch.vestMeshes);
+    this.batches.push(batch);
+    return batch;
+  }
+
+  private crowdFamily(enemy?: EnemyRenderState): CrowdVisualFamily {
+    return enemy?.archetype === 'heavy' ? this.families.heavy : this.families.grunt;
+  }
+
+  private batchFor(enemy: EnemyRenderState): CrowdBatch {
+    return this.roleBatches[enemy.archetype === 'heavy' ? 'heavy' : 'grunt'];
   }
 
   present(events: readonly PresentationEvent[], nowMs: number): void {
@@ -197,7 +218,7 @@ export class EnemyRenderer {
       const fraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
       const giantBar = enemy.archetype === 'giant' ? giantSlot!.healthBarLayout(enemy) : undefined;
       const width = giantBar ? giantBar.width * (giantCount > 1 ? .8 : 1) : 1.1;
-      const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.modelTop + .3;
+      const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.roleBatches.heavy.modelTop + .3;
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
       bar.backing.position.set(-enemy.x, y, enemy.z);
@@ -213,30 +234,34 @@ export class EnemyRenderer {
       this.healthBars[barIndex].backing.visible = false;
       this.healthBars[barIndex].fill.visible = false;
     }
+    for (const batch of this.batches) this.updateBatch(batch, enemies, nowMs);
+  }
+
+  private updateBatch(batch: CrowdBatch, enemies: readonly EnemyRenderState[], nowMs: number): void {
     const counts = PALETTES.map(() => 0);
     const bodyCounts = [0, 0, 0, 0];
     for (const enemy of enemies) {
-      if (enemy.archetype === 'giant') continue;
+      if (enemy.archetype === 'giant' || this.batchFor(enemy) !== batch) continue;
       counts[paletteIndex(enemy.tier, PALETTES.length)]++;
-      bodyCounts[enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS)]++;
+      bodyCounts[enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs)]++;
     }
     for (let frame = 0; frame < 4; frame++) {
-      if (bodyCounts[frame] > this.bodyCapacity[frame]) this.growBody(frame, bodyCounts[frame]);
-      this.bodyMeshes[frame].count = bodyCounts[frame];
+      if (bodyCounts[frame] > batch.bodyCapacity[frame]) this.growBody(batch, frame, bodyCounts[frame]);
+      batch.bodyMeshes[frame].count = bodyCounts[frame];
     }
     for (const palette of PALETTES) {
-      if (counts[palette] > this.capacity[palette]) this.growTier(palette, counts[palette]);
-      this.helmetMeshes[palette].count = counts[palette];
-      this.vestMeshes[palette].count = counts[palette];
+      if (counts[palette] > batch.capacity[palette]) this.growTier(batch, palette, counts[palette]);
+      batch.helmetMeshes[palette].count = counts[palette];
+      batch.vestMeshes[palette].count = counts[palette];
     }
     const indices = PALETTES.map(() => 0);
     const bodyIndices = [0, 0, 0, 0];
     for (let bodyIndex = 0; bodyIndex < enemies.length; bodyIndex++) {
       const enemy = enemies[bodyIndex];
-      if (enemy.archetype === 'giant') continue;
+      if (enemy.archetype === 'giant' || this.batchFor(enemy) !== batch) continue;
       const palette = paletteIndex(enemy.tier, PALETTES.length);
       const index = indices[palette]++;
-      const pose = enemyWalkPose(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
+      const pose = enemyWalkPose(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const transform = this.transform;
       const heavy = enemy.archetype === 'heavy';
       // Low bounce, stronger alternating weight transfer distinguish a Heavy.
@@ -249,18 +274,18 @@ export class EnemyRenderer {
       transform.rotation.x += .045 * hitStrength;
       setEnemyScale(transform.scale, enemy);
       transform.updateMatrix();
-      const frame = enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
+      const frame = enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const bodySlot = bodyIndices[frame]++;
-      this.bodyMeshes[frame].setMatrixAt(bodySlot, transform.matrix);
+      batch.bodyMeshes[frame].setMatrixAt(bodySlot, transform.matrix);
       // Instance color selects only the tunic swatch, never skin/hair/equipment.
-      this.bodyMeshes[frame].setColorAt(bodySlot, heavy ? this.heavyBodyColor : this.gruntBodyColor);
-      this.heavyHits.setBody(enemy.id, this.runFrames[frame].geometry, transform.matrix, nowMs);
-      const helmet = this.helmetMeshes[palette];
+      batch.bodyMeshes[frame].setColorAt(bodySlot, heavy ? this.heavyBodyColor : this.gruntBodyColor);
+      this.heavyHits.setBody(enemy.id, batch.family.runFrames[frame].geometry, transform.matrix, nowMs);
+      const helmet = batch.helmetMeshes[palette];
       // Gear follows the torso a little late; retain the same instancing batches.
       transform.rotation.z = sway * .82;
       transform.updateMatrix();
       helmet.setMatrixAt(index, transform.matrix);
-      const vest = this.vestMeshes[palette];
+      const vest = batch.vestMeshes[palette];
       transform.rotation.z = sway * .92;
       transform.updateMatrix();
       vest.setMatrixAt(index, transform.matrix);
@@ -270,15 +295,15 @@ export class EnemyRenderer {
       helmet.setColorAt(index, flashing ? this.flashColor : color);
       vest.setColorAt(index, flashing ? this.flashColor : color);
     }
-    for (const mesh of this.bodyMeshes) {
+    for (const mesh of batch.bodyMeshes) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
     for (const palette of PALETTES) {
-      this.helmetMeshes[palette].instanceMatrix.needsUpdate = true;
-      if (this.helmetMeshes[palette].instanceColor) this.helmetMeshes[palette].instanceColor.needsUpdate = true;
-      this.vestMeshes[palette].instanceMatrix.needsUpdate = true;
-      if (this.vestMeshes[palette].instanceColor) this.vestMeshes[palette].instanceColor.needsUpdate = true;
+      batch.helmetMeshes[palette].instanceMatrix.needsUpdate = true;
+      if (batch.helmetMeshes[palette].instanceColor) batch.helmetMeshes[palette].instanceColor.needsUpdate = true;
+      batch.vestMeshes[palette].instanceMatrix.needsUpdate = true;
+      if (batch.vestMeshes[palette].instanceColor) batch.vestMeshes[palette].instanceColor.needsUpdate = true;
     }
   }
 
@@ -295,7 +320,7 @@ export class EnemyRenderer {
   }
 
   dispose(): void {
-    for (const mesh of [...this.bodyMeshes, ...this.helmetMeshes, ...this.vestMeshes]) {
+    for (const batch of this.batches) for (const mesh of [...batch.bodyMeshes, ...batch.helmetMeshes, ...batch.vestMeshes]) {
       this.scene.remove(mesh);
       mesh.dispose();
     }
@@ -320,32 +345,48 @@ export class EnemyRenderer {
     this.deathBurst.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose()); this.giantBurst.dispose();
-    this.helmetMaterial.dispose();
+    for (const batch of this.batches) batch.helmetMaterial.dispose();
     this.contactFlashMaterial.dispose();
   }
 
   private spawnContact(tier: number, x: number, z: number, id: number, nowMs: number): void {
+    const enemy = this.previousEnemies.get(id);
+    const parts = enemy?.archetype === 'giant' ? this.families.giant.contact : this.crowdFamily(enemy).contact;
     let visual = this.contactVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.contactVisuals.length < MAX_CONTACT_VISUALS) {
-      const models = [this.bodyModel, this.helmetModel, this.vestModel];
+      const models = [parts.body, parts.helmet, parts.vest];
       const group = new THREE.Group();
       group.name = 'enemy-contact-exchange';
-      const materials = models.map((model) => {
+      const materials = models.map((model, index) => {
         if (!(model.material instanceof THREE.MeshStandardMaterial)) {
           throw new Error('Enemy contact visuals require standard materials');
         }
-        const material = illustratedMaterial(model.material.clone(), model === this.bodyModel ? 'enemy' : 'world');
+        const material = illustratedMaterial(model.material.clone(), index === 0 ? 'enemy' : 'world');
         material.transparent = true;
         material.depthWrite = false;
         return material;
       });
       models.forEach((model, index) => group.add(new THREE.Mesh(model.geometry, materials[index])));
       this.scene.add(group);
-      visual = { group, materials, startedAtMs: nowMs, x, z, direction: 1, scale: new THREE.Vector3() };
+      visual = { parts, group, materials, startedAtMs: nowMs, x, z, direction: 1, scale: new THREE.Vector3() };
       this.contactVisuals.push(visual);
     }
     if (!visual) visual = this.contactVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+    if (!this.sameParts(visual.parts, parts)) {
+      const models = [parts.body, parts.helmet, parts.vest];
+      models.forEach((model, index) => {
+        if (!(model.material instanceof THREE.MeshStandardMaterial)) throw new Error('Enemy contact visuals require standard materials');
+        visual!.materials[index].dispose();
+        const material = illustratedMaterial(model.material.clone(), index === 0 ? 'enemy' : 'world');
+        material.transparent = true; material.depthWrite = false;
+        visual!.materials[index] = material;
+        const mesh = visual!.group.children[index] as THREE.Mesh;
+        mesh.geometry = model.geometry;
+        mesh.material = material;
+      });
+      visual.parts = parts;
+    }
     visual.startedAtMs = nowMs;
     visual.x = x;
     visual.z = z;
@@ -382,26 +423,41 @@ export class EnemyRenderer {
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {
+    const parts = this.crowdFamily(enemy).death;
     this.deathBurst.spawn(enemy, nowMs);
     let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
-      const bodyMaterial = illustratedMaterial(this.grayBodyMaterial.clone());
+      const bodyMaterial = illustratedMaterial((parts.body.material as THREE.MeshStandardMaterial).clone());
       bodyMaterial.transparent = true;
       bodyMaterial.depthWrite = false;
-      const gearMaterial = illustratedMaterial(this.helmetMaterial.clone());
+      const gearMaterial = illustratedMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone());
       gearMaterial.transparent = true;
       gearMaterial.depthWrite = false;
-      const body = new THREE.Mesh(this.grayBodyModel.geometry, bodyMaterial);
-      const helmet = new THREE.Mesh(this.helmetModel.geometry, gearMaterial);
-      const vest = new THREE.Mesh(this.vestModel.geometry, gearMaterial);
+      const body = new THREE.Mesh(parts.body.geometry, bodyMaterial);
+      const helmet = new THREE.Mesh(parts.helmet.geometry, gearMaterial);
+      const vest = new THREE.Mesh(parts.vest.geometry, gearMaterial);
       group.add(body, helmet, vest);
       this.scene.add(group);
-      visual = { group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false };
+      visual = { parts, group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
+    if (!this.sameParts(visual.parts, parts)) {
+      visual.bodyMaterial.dispose(); visual.gearMaterial.dispose();
+      visual.bodyMaterial = illustratedMaterial((parts.body.material as THREE.MeshStandardMaterial).clone());
+      visual.gearMaterial = illustratedMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone());
+      for (const material of [visual.bodyMaterial, visual.gearMaterial]) {
+        material.transparent = true; material.depthWrite = false;
+      }
+      [parts.body, parts.helmet, parts.vest].forEach((model, index) => {
+        const mesh = visual!.group.children[index] as THREE.Mesh;
+        mesh.geometry = model.geometry;
+        mesh.material = index === 0 ? visual!.bodyMaterial : visual!.gearMaterial;
+      });
+      visual.parts = parts;
+    }
     visual.startedAtMs = nowMs;
     visual.heavy = enemy.archetype === 'heavy';
     setEnemyScale(visual.scale, enemy);
@@ -432,9 +488,13 @@ export class EnemyRenderer {
     }
   }
 
-  private createBody(frame: number, capacity: number): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(this.runFrames[frame].geometry,
-      this.bodyModel.material, capacity);
+  private sameParts(a: CharacterParts, b: CharacterParts): boolean {
+    return a.body === b.body && a.helmet === b.helmet && a.vest === b.vest;
+  }
+
+  private createBody(batch: CrowdBatch, frame: number, capacity: number): THREE.InstancedMesh {
+    const mesh = new THREE.InstancedMesh(batch.family.runFrames[frame].geometry,
+      batch.family.body.material, capacity);
     mesh.name = `toy-soldier-run-${frame}`;
     mesh.count = 0;
     mesh.frustumCulled = false;
@@ -442,9 +502,9 @@ export class EnemyRenderer {
     return mesh;
   }
 
-  private createTier(tier: number, capacity: number, vest = false): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(vest ? this.vestModel.geometry : this.helmetModel.geometry,
-      this.helmetMaterial, capacity);
+  private createTier(batch: CrowdBatch, tier: number, capacity: number, vest = false): THREE.InstancedMesh {
+    const mesh = new THREE.InstancedMesh(vest ? batch.family.vest.geometry : batch.family.helmet.geometry,
+      batch.helmetMaterial, capacity);
     mesh.name = `${tier}-toy-soldier-${vest ? 'vest' : 'helmet'}`;
     mesh.count = 0;
     mesh.frustumCulled = false;
@@ -452,23 +512,23 @@ export class EnemyRenderer {
     return mesh;
   }
 
-  private growBody(frame: number, required: number): void {
-    while (this.bodyCapacity[frame] < required) this.bodyCapacity[frame] *= 2;
-    this.scene.remove(this.bodyMeshes[frame]);
-    this.bodyMeshes[frame].dispose();
-    this.bodyMeshes[frame] = this.createBody(frame, this.bodyCapacity[frame]);
-    this.scene.add(this.bodyMeshes[frame]);
+  private growBody(batch: CrowdBatch, frame: number, required: number): void {
+    while (batch.bodyCapacity[frame] < required) batch.bodyCapacity[frame] *= 2;
+    this.scene.remove(batch.bodyMeshes[frame]);
+    batch.bodyMeshes[frame].dispose();
+    batch.bodyMeshes[frame] = this.createBody(batch, frame, batch.bodyCapacity[frame]);
+    this.scene.add(batch.bodyMeshes[frame]);
   }
 
-  private growTier(tier: number, required: number): void {
-    while (this.capacity[tier] < required) this.capacity[tier] *= 2;
-    this.scene.remove(this.helmetMeshes[tier]);
-    this.helmetMeshes[tier].dispose();
-    this.helmetMeshes[tier] = this.createTier(tier, this.capacity[tier]);
-    this.scene.add(this.helmetMeshes[tier]);
-    this.scene.remove(this.vestMeshes[tier]);
-    this.vestMeshes[tier].dispose();
-    this.vestMeshes[tier] = this.createTier(tier, this.capacity[tier], true);
-    this.scene.add(this.vestMeshes[tier]);
+  private growTier(batch: CrowdBatch, tier: number, required: number): void {
+    while (batch.capacity[tier] < required) batch.capacity[tier] *= 2;
+    this.scene.remove(batch.helmetMeshes[tier]);
+    batch.helmetMeshes[tier].dispose();
+    batch.helmetMeshes[tier] = this.createTier(batch, tier, batch.capacity[tier]);
+    this.scene.add(batch.helmetMeshes[tier]);
+    this.scene.remove(batch.vestMeshes[tier]);
+    batch.vestMeshes[tier].dispose();
+    batch.vestMeshes[tier] = this.createTier(batch, tier, batch.capacity[tier], true);
+    this.scene.add(batch.vestMeshes[tier]);
   }
 }

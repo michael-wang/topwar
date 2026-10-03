@@ -1,3 +1,4 @@
+import { giantFamily } from './characterModel';
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
@@ -8,7 +9,7 @@ it('adds an armored silhouette, heavier rate-limited sparks and a stronger dispo
   const scene = new THREE.Scene(), geometry = new THREE.BoxGeometry(.5, 1, .5);
   const gray = new THREE.BoxGeometry(.5, 1, .5), material = new THREE.MeshStandardMaterial();
   const source = new THREE.Mesh(geometry, material);
-  const renderer = new GiantRenderer(scene, source, source, source, [source,source,source,source], new THREE.Mesh(gray,material));
+  const renderer = new GiantRenderer(scene, giantFamily(source, source, source, [source,source,source,source], new THREE.Mesh(gray,material)));
   const hits = new HeavyHitFeedback(scene);
   const enemy = { id: 1, tier: 1, archetype: 'giant' as const, hp: 210, maxHp: 210, x: 0, z: 14,
     visualScaleX: 3.4272, visualScaleY: 5.04, visualScaleZ: 5.04, gaitCycleMs: 850 };

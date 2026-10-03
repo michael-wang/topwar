@@ -1,3 +1,4 @@
+import { enemyFamilies } from './characterModel';
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { giantReveal, giantDeathPose, GIANT_REVEAL_MS } from '../src/presentation/GiantDrama';
@@ -19,7 +20,7 @@ it('preserves a full visible body until collapse, then lingers as armor rubble',
   expect(giantDeathPose(2400).debrisVisible).toBe(false);
 });
 it('renders two independent Giants, delays both HP bars, and preserves the other when one dies', () => {
-  const scene = new THREE.Scene(), renderer = new EnemyRenderer(scene,bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel());
+  const scene = new THREE.Scene(), renderer = new EnemyRenderer(scene,enemyFamilies(bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel()));
   const a={id:1,tier:1,archetype:'giant' as const,hp:172,maxHp:172,x:-1.4,z:30,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04};
   const b={...a,id:2,x:1.4,z:40}; renderer.update([a,b],0);
   const giants=scene.children.filter(child=>child.name==='giant-assault-soldier');

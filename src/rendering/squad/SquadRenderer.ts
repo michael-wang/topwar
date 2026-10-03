@@ -1,3 +1,4 @@
+import type { PlayerVisualFamily, CharacterModel } from '../CharacterVisualFamilies';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { laneLocomotion, recoilEnvelope, RECOIL_SETTLE_MS } from '../../presentation/CharacterMotion';
@@ -101,11 +102,13 @@ export class SquadRenderer {
     for (const member of this.members) if (member.group.visible) visit(member.group.position);
   }
 
-  constructor(private readonly scene: THREE.Scene,
-    private readonly bodyModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly helmetModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly vestModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly rifleModel: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+  private readonly bodyModel: CharacterModel;
+  private readonly helmetModel: CharacterModel;
+  private readonly vestModel: CharacterModel;
+  private readonly rifleModel: CharacterModel;
+  constructor(private readonly scene: THREE.Scene, family: PlayerVisualFamily) {
+    const { body: bodyModel, helmet: helmetModel, vest: vestModel, weapon: rifleModel } = family;
+    this.bodyModel = bodyModel; this.helmetModel = helmetModel; this.vestModel = vestModel; this.rifleModel = rifleModel;
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');

@@ -65,12 +65,10 @@ export class GameRenderer {
   private coastalLighting = false;
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
-    this.squadRenderer = new SquadRenderer(this.scene, assets.playerBody, assets.helmet, assets.vest, assets.rifle);
-    this.enemyRenderer = new EnemyRenderer(this.scene, assets.body, assets.helmet,
-      assets.vest, assets.runFrames, assets.grayBody);
-    this.bossRenderer = new BossRenderer(this.scene, assets.bossBody, assets.helmet, assets.bossVest,
-      assets.bossRunFrames, assets.bossSlamFrames, assets.grayBody);
-    this.streamRewardRenderer = new StreamRewardRenderer(this.scene, assets.helmet);
+    this.squadRenderer = new SquadRenderer(this.scene, assets.families.player);
+    this.enemyRenderer = new EnemyRenderer(this.scene, assets.families);
+    this.bossRenderer = new BossRenderer(this.scene, assets.families.boss);
+    this.streamRewardRenderer = new StreamRewardRenderer(this.scene, assets.rewardHelmet);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);

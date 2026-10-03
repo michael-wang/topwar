@@ -1,3 +1,4 @@
+import { playerFamily, enemyFamilies, bossFamily } from './characterModel';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { bodyModel, grayBodyModel, runFrames, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
@@ -41,7 +42,7 @@ describe('Modern Toy Soldier presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const rifle = rifleModel();
-    const renderer = new SquadRenderer(scene, body, helmetModel(), vestModel(), rifle);
+    const renderer = new SquadRenderer(scene, playerFamily(body, helmetModel(), vestModel(), rifle));
     for (let tier = 1; tier <= 20; tier++) {
       renderer.update(state(tier), tier * 1000);
       renderer.update(state(tier), tier * 1000 + 400);
@@ -58,7 +59,7 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('shows rifle recoil and muzzle flash while retaining spawn and tier-up feedback', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+    const renderer = new SquadRenderer(scene, playerFamily(bodyModel(), helmetModel(), vestModel(), rifleModel()));
     renderer.update(state(1), 0);
     expect(soldier(scene).scale.x).toBeCloseTo(PLAYER_VISUAL_SCALE * 1.35);
     renderer.update(state(1), 400);
@@ -84,7 +85,7 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('gives merged rifles a larger but capped muzzle flash', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+    const renderer = new SquadRenderer(scene, playerFamily(bodyModel(), helmetModel(), vestModel(), rifleModel()));
     const scales: number[] = [];
     for (const tier of [1, 2, 3, 20]) {
       renderer.update(state(tier), tier * 1000);
@@ -100,7 +101,7 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('separates four rendered soldiers without changing squad state or road bounds', () => {
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+    const renderer = new SquadRenderer(scene, playerFamily(bodyModel(), helmetModel(), vestModel(), rifleModel()));
     const four = { ...state(1),
       squad: { count: 4, rocketCount: 0, rifleCounts: [4], formationSpacing: .45 } };
     renderer.update(four, 400);
@@ -124,7 +125,7 @@ describe('Modern Toy Soldier presentation', () => {
     )).toEqual([{ index: 1, tier: 2, rocket: false },
       { index: 0, tier: 1, rocket: false }]);
     const scene = new THREE.Scene();
-    const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+    const renderer = new SquadRenderer(scene, playerFamily(bodyModel(), helmetModel(), vestModel(), rifleModel()));
     const before = { ...state(1), squad: { count: 2, rocketCount: 0,
       rifleCounts: [2], formationSpacing: .45 } };
     renderer.update(before, 0);
@@ -159,8 +160,8 @@ describe('Modern Toy Soldier presentation', () => {
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new EnemyRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), grayBodyModel());
+    const renderer = new EnemyRenderer(scene, enemyFamilies(body, helmetModel(), vestModel(),
+      runFrames(), grayBodyModel()));
     const families = () => scene.children.filter((child): child is THREE.InstancedMesh =>
       child instanceof THREE.InstancedMesh);
     expect(families()).toHaveLength(16);
@@ -188,8 +189,8 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('grows crowd capacity, flashes gear, and pops out fallen grunts', () => {
     const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(),
-      runFrames(), grayBodyModel());
+    const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
+      runFrames(), grayBodyModel()));
     const enemies = Array.from({ length: 900 }, (_, index) =>
       ({ id: index + 1, tier: 5, x: index % 20, z: 10, hp: 3 }));
     renderer.update(enemies, 0);
@@ -223,7 +224,7 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps complete Heavy proportions in active, hit, pooled death and contact paths', () => {
     const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+    const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel()));
     const heavy = { id: 2, tier: 1, archetype: 'heavy' as const, x: 0, z: 8, hp: 15,
       visualScale: 1.89, visualScaleX: 1.9845, visualScaleY: 2.1735, visualScaleZ: 2.1735 };
     const matrix = new THREE.Matrix4();
@@ -260,8 +261,8 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('uses a distinct contact exchange for only the attacking grunt', () => {
     const scene = new THREE.Scene();
-    const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(),
-      runFrames(), grayBodyModel());
+    const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
+      runFrames(), grayBodyModel()));
     const enemies = [{ id: 1, tier: 1, x: 0, z: 2, hp: 3 },
       { id: 2, tier: 1, x: 1, z: 2, hp: 3 }];
     renderer.update(enemies, 0);
@@ -293,8 +294,8 @@ describe('Modern Toy Soldier presentation', () => {
   it('colors giant soldier helmet and vest by enemy tier and keeps HP, hit and death presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), [body, body, body, body], grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(),
+      runFrames(), [body, body, body, body], grayBodyModel()));
     const [active, death] = scene.children as THREE.Group[];
     for (let tier = 1; tier <= 20; tier++) {
       const boss = { id: tier, tier, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
@@ -381,8 +382,8 @@ describe('Modern Toy Soldier presentation', () => {
   it('grays while upright, holds, then falls toward the player and fades with owned materials', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), runFrames(), grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(),
+      runFrames(), runFrames(), grayBodyModel()));
     const active = scene.children[0] as THREE.Group;
     const death = scene.getObjectByName('boss-death') as THREE.Group;
     const fallPivot = death.getObjectByName('boss-death-fall-pivot') as THREE.Group;
@@ -473,8 +474,8 @@ describe('Modern Toy Soldier presentation', () => {
       const body = bodyModel();
       const walks = runFrames();
       const slams = runFrames();
-      const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-        walks, slams, grayBodyModel());
+      const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(),
+        walks, slams, grayBodyModel()));
       const boss = { id: 7, tier: 3, x: 1.2, z: 19, hp: 100, maxHp: 100,
         visualScale: 7, engaged, slamCooldownRemainingSeconds: engaged ? 1.9 : 0,
         slamCount: engaged ? 1 : 0 };
@@ -539,8 +540,8 @@ describe('Modern Toy Soldier presentation', () => {
   it('reveals the Boss HP plate only as the real Boss emerges from distance haze', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), runFrames(), grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(),
+      runFrames(), runFrames(), grayBodyModel()));
     const anchor = scene.getObjectByName('boss-hp-anchor') as THREE.Group;
     const frame = scene.getObjectByName('boss-hp-frame') as THREE.Mesh;
     const boss = { id: 1, tier: 1, x: 0, z: 100, hp: 100, maxHp: 100,
@@ -563,8 +564,8 @@ describe('Modern Toy Soldier presentation', () => {
     const factors = new Float32Array(vest.geometry.getAttribute('position').count * 3).fill(1);
     factors.fill(.6, 0, 3);
     vest.geometry.setAttribute('color', new THREE.BufferAttribute(factors, 3));
-    const renderer = new BossRenderer(scene, body, helmetModel(), vest,
-      runFrames(), runFrames(), grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vest,
+      runFrames(), runFrames(), grayBodyModel()));
     const pose = ((scene.children[0] as THREE.Group).children[0] as THREE.Group);
     const armor = pose.children[2] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
     const charcoal = new THREE.Color('#303238');
@@ -589,8 +590,8 @@ describe('Modern Toy Soldier presentation', () => {
     const body = bodyModel();
     const frames = [0, 1, 2, 3].map(() => bodyModel());
     const walks = runFrames();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks,
-      frames, grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(), walks,
+      frames, grayBodyModel()));
     const active = scene.children[0] as THREE.Group;
     const pose = active.children[0] as THREE.Group;
     const mesh = pose.children[0] as THREE.Mesh;
@@ -622,8 +623,8 @@ describe('Modern Toy Soldier presentation', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
     const walks = runFrames();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(), walks,
-      runFrames(), grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(), walks,
+      runFrames(), grayBodyModel()));
     const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
     const boss = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
       engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
@@ -640,8 +641,8 @@ describe('Modern Toy Soldier presentation', () => {
   it('shows brief warm transparent hit washes with gaps under sustained fire', () => {
     const scene = new THREE.Scene();
     const body = bodyModel();
-    const renderer = new BossRenderer(scene, body, helmetModel(), vestModel(),
-      runFrames(), runFrames(), grayBodyModel());
+    const renderer = new BossRenderer(scene, bossFamily(body, helmetModel(), vestModel(),
+      runFrames(), runFrames(), grayBodyModel()));
     const mesh = ((scene.children[0] as THREE.Group).children[0] as THREE.Group).children[0] as THREE.Mesh;
     const pose = (scene.children[0] as THREE.Group).children[0] as THREE.Group;
     const washes = pose.children.slice(3, 6) as THREE.Mesh[];
@@ -711,7 +712,7 @@ describe('Modern Toy Soldier presentation', () => {
 
 it('keeps Heavy-only floating health bars live, proportionate and reusable', () => {
   const scene = new THREE.Scene();
-  const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+  const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel()));
   const heavy = { id: 1, tier: 1, archetype: 'heavy' as const, x: 0, z: 15, hp: 15, maxHp: 15, visualScaleY: 2.1735 };
   const grunt = { id: 2, tier: 1, archetype: 'grunt' as const, x: 1.4, z: 15, hp: 1 };
   renderer.update([heavy, grunt], 0);
@@ -731,7 +732,7 @@ it('keeps Heavy-only floating health bars live, proportionate and reusable', () 
 
 it('presents progression power independently of tiers with reusable member bursts and temporary muzzle afterglow', () => {
   const scene = new THREE.Scene();
-  const renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+  const renderer = new SquadRenderer(scene, playerFamily(bodyModel(), helmetModel(), vestModel(), rifleModel()));
   const frame = { ...state(1),
     squad: { count: 2, rocketCount: 0, rifleCounts: [2], formationSpacing: .45 },
     projectiles: [{ id: 1, tier: 1, kind: 'rifle' as const, x: 0, z: 1, hitRadiusBonus: 0 }] };
@@ -778,7 +779,7 @@ it('makes tracers warmer/louder temporarily and resets the afterglow on Retry', 
 
 
 it('runs reinforcement in from below, raises its rifle, then flashes only the member who fired', () => {
-  const scene = new THREE.Scene(), renderer = new SquadRenderer(scene, bodyModel(), helmetModel(), vestModel(), rifleModel());
+  const scene = new THREE.Scene(), renderer = new SquadRenderer(scene, playerFamily(bodyModel(), helmetModel(), vestModel(), rifleModel()));
   const pending: GameRenderState = { ...state(1), defenseMode: true, squad: { ...state(1).squad,
     reinforcement: { progress: 0, reinforcementSpacing: .72, reinforcementStagger: .18 } } };
   renderer.update(pending, 0);

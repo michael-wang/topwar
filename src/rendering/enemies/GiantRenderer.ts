@@ -1,3 +1,4 @@
+import type { GiantVisualFamily, CharacterModel } from '../CharacterVisualFamilies';
 import { GIANT_REVEAL_MS, GIANT_DEATH_MS, GIANT_CRASH_MS, giantReveal, giantDeathPose } from '../../presentation/GiantDrama';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
@@ -57,12 +58,11 @@ export class GiantRenderer {
   private bornAt = -Infinity;
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
-  constructor(private readonly scene: THREE.Scene,
-    body: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    helmet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    vest: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
-    private readonly frames: readonly THREE.Mesh<THREE.BufferGeometry, THREE.Material>[],
-    private readonly grayBody: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+  private readonly frames: readonly CharacterModel[];
+  private readonly grayBody: CharacterModel;
+  constructor(private readonly scene: THREE.Scene, family: GiantVisualFamily) {
+    const { body, helmet, vest, runFrames: frames, grayBody } = family;
+    this.frames = frames; this.grayBody = grayBody;
     if (!(body.material instanceof THREE.MeshStandardMaterial)
       || !(grayBody.material instanceof THREE.MeshStandardMaterial)) throw new Error('Giant requires soldier materials');
     this.bodyMaterial = illustratedMaterial(body.material.clone(), 'enemy'); this.bodyMaterial.color.set('white');

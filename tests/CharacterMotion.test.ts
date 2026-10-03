@@ -1,3 +1,4 @@
+import { playerFamily, enemyFamilies, giantFamily } from './characterModel';
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { laneLocomotion, recoilEnvelope, giantWeightPose, LANE_LOCOMOTION_MS } from '../src/presentation/CharacterMotion';
@@ -16,7 +17,7 @@ it('anticipates, steps with independent member phases, and settles by 220ms', ()
   expect(recoilEnvelope(150)).toBe(0);
 });
 it('keeps player anchors and independent recoil while lane locomotion settles and resets', () => {
-  const scene = new THREE.Scene(), renderer = new SquadRenderer(scene, bodyModel(),helmetModel(),vestModel(),rifleModel());
+  const scene = new THREE.Scene(), renderer = new SquadRenderer(scene, playerFamily(bodyModel(),helmetModel(),vestModel(),rifleModel()));
   const frame = { defenseMode:true, player:{x:0,z:0,selectedLane:2},squad:{count:2,rocketCount:0,rifleCounts:[2],formationSpacing:.45},
     track:{halfWidth:3.2,defenseLineZ:-1.5},enemies:[],boss:null,streamRewards:[],gates:[],pickups:[],projectiles:[] };
   renderer.update(frame,0); const initialX = (scene.children.find(child => child instanceof THREE.Group) as THREE.Group).position.x;renderer.update({...frame,player:{x:1.4,z:0,selectedLane:3}},400);
@@ -62,7 +63,7 @@ import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
 import { grayBodyModel, runFrames } from './characterModel';
 it('keeps Heavy locomotion underneath additive hits and gives its death a short physical collapse', () => {
-  const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel());
+  const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,enemyFamilies(bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel()));
   const enemy={id:1,tier:1,archetype:'heavy' as const,x:0,z:14,hp:15,maxHp:15};
   renderer.update([enemy],100);renderer.update([{...enemy,hp:14}],120);
   const matrix=new THREE.Matrix4();
@@ -76,7 +77,7 @@ it('keeps Heavy locomotion underneath additive hits and gives its death a short 
   renderer.update([],700);expect(corpse?.visible).toBe(false);renderer.reset();renderer.dispose();
 });
 it('articulates Giant forearm/mace lag and collapses physically before breakup', () => {
-  const scene=new THREE.Scene(), body=bodyModel(), renderer=new GiantRenderer(scene,body,helmetModel(),vestModel(),runFrames(),grayBodyModel()), hits=new HeavyHitFeedback(scene);
+  const scene=new THREE.Scene(), body=bodyModel(), renderer=new GiantRenderer(scene,giantFamily(body,helmetModel(),vestModel(),runFrames(),grayBodyModel())), hits=new HeavyHitFeedback(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,x:0,z:14,hp:210,maxHp:210,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04};
   renderer.update(enemy,100,hits);
   const group=scene.getObjectByName('giant-assault-soldier')!, mace=group.getObjectByName('giant-mace')!, arm=group.getObjectByName('giant-arm')!, forearm=group.getObjectByName('giant-forearm')!;
