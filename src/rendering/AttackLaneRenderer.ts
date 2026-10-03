@@ -13,10 +13,10 @@ export class AttackLaneRenderer {
   private capacity = 1;
   private readonly transform = new THREE.Object3D();
   private readonly beachDetails = new THREE.Group();
-  private readonly beamGeometry = paintedBlockGeometry().scale(1.1, .15, .15);
-  private readonly beamMaterial = new THREE.MeshStandardMaterial({ color: ART.world.steel, roughness: 1 });
-  private readonly trackMaterial = new THREE.MeshBasicMaterial({ color: ART.world.sandShade, transparent: true,
-    opacity: .28, depthWrite: false });
+  private readonly beamGeometry = paintedBlockGeometry().scale(.78, .12, .12);
+  private readonly beamMaterial = new THREE.MeshStandardMaterial({ color: ART.coastalDefense.secondaryShadow, roughness: 1 });
+  private readonly trackMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalDefense.sandShade, transparent: true,
+    opacity: .16, depthWrite: false });
   private layoutKey = '';
   private readonly daub = paintDaubTexture();
 

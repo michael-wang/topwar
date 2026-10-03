@@ -1,3 +1,4 @@
+import { ART } from '../art/ArtDirection';
 import { GIANT_CRASH_MS } from '../presentation/GiantDrama';
 import { BattlefieldAir } from './environment/BattlefieldAir';
 import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
@@ -59,6 +60,9 @@ export class GameRenderer {
   private giantDefeatAtMs = -Infinity;
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
+  private readonly skyFill = new THREE.HemisphereLight('#c8e0e9', '#bda57e', 1.9);
+  private readonly sunlight = new THREE.DirectionalLight('#fff0d4', 1.55);
+  private coastalLighting = false;
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
     this.squadRenderer = new SquadRenderer(this.scene, assets.playerBody, assets.helmet, assets.vest, assets.rifle);
@@ -73,10 +77,9 @@ export class GameRenderer {
     this.environment = new BridgeEnvironment(this.scene);
     this.contactShadows = new ContactShadowRenderer(this.scene);
 
-    this.scene.add(new THREE.HemisphereLight('#c8e0e9', '#bda57e', 1.9));
-    const sunlight = new THREE.DirectionalLight('#fff0d4', 1.55);
-    sunlight.position.set(-4, 9, -3);
-    this.scene.add(sunlight);
+    this.sunlight.position.set(-4, 9, -3);
+    this.scene.add(this.skyFill, this.sunlight);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.camera.position.set(0, 6.5, -10);
     this.camera.lookAt(0, 0, 12.5);
@@ -100,6 +103,7 @@ export class GameRenderer {
 
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
+    this.updateCoastalLighting(!!state.defenseMode);
     this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
     const giantIds = state.enemies.filter(enemy => enemy.archetype === 'giant').map(enemy => enemy.id);
     if (this.previousGiantIds.some(id => !giantIds.includes(id) && !this.contactedEnemyIds.has(id))) this.giantDefeatAtMs = nowMs + GIANT_CRASH_MS;
@@ -164,6 +168,22 @@ export class GameRenderer {
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     this.disposed = true;
+  }
+
+  private updateCoastalLighting(defense: boolean): void {
+    if (defense === this.coastalLighting) return;
+    this.coastalLighting = defense;
+    const light = ART.coastalDefense.lighting;
+    this.skyFill.color.set(defense ? light.sky : '#c8e0e9');
+    this.skyFill.groundColor.set(defense ? light.ground : '#bda57e');
+    this.skyFill.intensity = defense ? light.hemisphereIntensity : 1.9;
+    this.sunlight.color.set(defense ? light.sun : '#fff0d4');
+    this.sunlight.intensity = defense ? light.sunIntensity : 1.55;
+    if (defense) this.sunlight.position.set(...light.sunPosition);
+    else this.sunlight.position.set(-4, 9, -3);
+    // Defense-specific filmic highlight rolloff; legacy bridge retains its previous output.
+    this.renderer.toneMapping = defense ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    this.renderer.toneMappingExposure = defense ? light.exposure : 1;
   }
 
   private readonly resize = (): void => {

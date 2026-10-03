@@ -19,14 +19,11 @@ it('hides bridge road/rails/joints and presents sand, shore and fixed corridor o
     environment.update(0, halfWidth, 0, true);
     scene.updateMatrixWorld(true);
     for (const side of ['left', 'right']) {
-      const wrecks = scene.getObjectByName(`beach-wreckage-${side}`) as THREE.InstancedMesh;
-      expect(wrecks.count).toBe(18);
-      wrecks.geometry.computeBoundingBox();
-      for (let index = 0; index < wrecks.count; index++) {
-        const matrix = new THREE.Matrix4();
-        wrecks.getMatrixAt(index, matrix);
-        matrix.premultiply(wrecks.matrixWorld);
-        const bounds = wrecks.geometry.boundingBox!.clone().applyMatrix4(matrix);
+      const compound = scene.getObjectByName(`coastal-compound-${side}`)!;
+      expect(compound.children.length).toBeGreaterThan(5);
+      for (const child of compound.children as THREE.Mesh[]) {
+        if (child.name === 'coastal-shadow-forms') continue; // transparent ground patches may spill toward sand
+        const bounds = new THREE.Box3().setFromObject(child);
         if (side === 'left') expect(bounds.max.x).toBeLessThan(-halfWidth - .4);
         else expect(bounds.min.x).toBeGreaterThan(halfWidth + .4);
         expect(bounds.min.z).toBeGreaterThan(3);

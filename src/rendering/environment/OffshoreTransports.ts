@@ -8,10 +8,10 @@ import { paintedBlockGeometry } from '../art/PaintedGeometry';
 export class OffshoreTransports {
   readonly group = new THREE.Group();
   private readonly geometry = paintedBlockGeometry();
-  private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.world.steel, roughness: 1 }));
-  private readonly deck = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.world.midAccent, roughness: 1 }));
-  private readonly hold = new THREE.MeshStandardMaterial({ color: ART.world.near, roughness: 1 });
-  private readonly wake = new THREE.MeshBasicMaterial({ color: ART.world.foam, transparent: true, opacity: .16, depthWrite: false });
+  private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.coastalDefense.secondaryShadow, roughness: 1 }));
+  private readonly deck = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.coastalDefense.plasterShade, roughness: 1 }));
+  private readonly hold = new THREE.MeshStandardMaterial({ color: ART.coastalDefense.shadow, roughness: 1 });
+  private readonly wake = new THREE.MeshBasicMaterial({ color: ART.coastalDefense.foam, transparent: true, opacity: .16, depthWrite: false });
   private readonly baked: THREE.BufferGeometry[] = [];
   private readonly ships: THREE.Group[] = [];
   private readonly craft = new THREE.Group();
@@ -22,7 +22,7 @@ export class OffshoreTransports {
       const mesh = new THREE.Mesh(this.geometry, material); mesh.name = name;
       mesh.position.set(x, y, z); mesh.scale.set(width, height, depth); parent.add(mesh); return mesh;
     };
-    for (const [i, x, z, scale, angle] of [[0,-5,67,.8,.16],[1,11,82,.7,-.22],[2,-12,94,.75,.34]]) {
+    for (const [i, x, z, scale, angle] of [[0,-8,76,.58,.16],[1,12,91,.50,-.22],[2,-14,110,.48,.34]]) {
       const ship = new THREE.Group(); ship.name = `troop-carrier-${i}`;
       part(ship, 'long-low-transport-hull', 0, .65, 0, 16, 1.8, 4.2, this.hull);
       part(ship, 'open-troop-deck', 0, 1.7, 0, 13.6, .55, 3.8, this.deck);

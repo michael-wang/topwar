@@ -86,9 +86,9 @@ continues advancing without spawning. Assault clocks and the pending follow-up
 Giant timestamp serialize as plain data. Old snapshots without that timestamp
 remain valid; their saved balance defaults to the previous one-Giant policy.
 
-Three muted asymmetric troop carriers, their distant fog treatment, slow bob and
-faint wakes remain unchanged. The simple craft's shoreward approach/ramp still
-telegraphs landing. No naval collision or new scenery is added in this pass.
+Three muted asymmetric troop carriers retain distant fog treatment, slow bob and
+faint wakes; the coastal art pass adjusts their apparent size and spacing. The simple craft's shoreward approach/ramp still
+telegraphs landing. No naval collision is added; defense scenery follows the coastal art section below.
 
 ### Local checks and limits
 
@@ -125,58 +125,34 @@ single, 12.75–12.98 s pair). The previously authored HP tuning is retained; 12
 the first encounter timing and all player/ordinary-enemy stats stay fixed. Giant reveal/death and post-assault elite scheduling follow the current experiment above.
 Snapshots retain their saved effective balance; existing snapshots need no migration.
 
-Side scenery has four uneven authored clusters per side, with independently
-sampled static offsets, dimensions and rotations. Left/right clusters have
-unequal depth gaps and different 3–6-piece densities rather than mirrored piles.
-There are still **18 pieces per side / two instanced draws**. The existing
-corridor-edge barricades are staggered, independently angled and occasionally
-broken (32 beams instead of 36). They remain anchored to lane boundaries; side
-wreckage stays at least 0.4 units outside the track. No gameplay collision,
-pathfinding or lane changes are introduced. Sampling is stable between runs and
-never consumes gameplay RNG. Chipped forms and the existing world palette remain.
+## Art Phase 1 — Sunlit Coastal Battlefield
 
-## Illustrated battlefield art direction
+The defense presentation now follows **a sunlit coastal diorama under violent
+assault**: large warm off-white plaster masses, turquoise shallows/deeper blue
+sea, clean blue sky, cool navy graphic shadows, broad olive crowns and two soft
+moving cyan/ivory awnings. Side flowers stay away from combat. The quiet sand
+channel keeps smaller boundary beams and restrained scuffs; its five lanes,
+shoreline and camera are unchanged. A few recognizable broken walls/arches,
+terraces and wrecked machines replace the small gray rubble clusters.
 
-This is a **presentation-only art direction pass** over the existing animation.
-It uses a painted coastal toy-world language: warm ochre/cream sand, cool
-blue-gray fog and ruins, ink-blue steel and muted rust/concrete. Cobalt defenders,
-crimson Grunts, ochre Heavies and crimson/gold Giant armor share matte surfaces
-and broad, quiet tonal washes. The face/leather atlas regions and all baked
-character geometry are retained. There is no photorealistic texture noise,
-external artwork, postprocess stack or new lighting/shadow pipeline.
+`ART.coastalDefense` centralizes the new defense palette and lighting. The
+existing illustrated material, chipped geometry and generated sand wash are
+reused. Water has a small depth/ripple shader, vegetation is instanced, fabric
+wind runs in the vertex shader, and static graphic shadows avoid character
+shadow-map cost. Defense uses ACES/sRGB; legacy lights/fog/scenery are restored
+when leaving defense mode. No external reference assets or gameplay changes.
 
-`src/art/ArtDirection.ts` is the shared presentation palette. Surface shading
-composes with the existing player limb shader rather than replacing animation.
-Chipped, beveled prop silhouettes retain normalized placement bounds. The sand
-uses a small generated cream/ochre wash texture; corridor scuffs have irregular
-soft brush edges instead of rectangular stamps. Warm sunlight/cool hemisphere
-fill separates saturated characters from the quieter distance. Shoreline,
-lane membership and shoreline remain unchanged; obstacle composition follows the cleanup above.
+Smoke, fire, artillery, aircraft and three muted asymmetric offshore transports
+remain. Fires move beside the new side wreckage; carriers sit smaller/farther
+out to leave the sea readable. Legacy industrial skyline/blanket haze is hidden
+only in defense mode. The 10-second power window and landing-craft cue remain.
 
-XP and Heavy/Giant HP now share a **rounded brass-and-ink frame family**: warm
-upper rim, dark blue outline/backing, inset fill and restrained depth. World bars
-use two shared generated textures, with gold Heavy fill and hot coral Giant fill.
-HP truth, placement and update timing remain unchanged. XP retains the full-width
-masked blue/white/ivory/gold progression, 70/90% anticipation, flash and label pop.
-HUD controls use the same rim/backing and friendly weighted typography; lower-left
-instructions remain compact, transparent and pointer-transparent.
-
-Muzzle/tracer/level-up highlights share a warm white core/gold family; Heavy/Giant
-impacts use hot coral sparks; death debris mixes warm white/gold/ember and gray
-bodies retain their short collapse/fade. Dust/ash use quiet sand/cream tones.
-Existing particle budgets, animation timing, hit rate limits and level-up intensity
-are retained. Reinforcement arrival, fire scheduling and all combat/progression
-values are unchanged except for the explicitly authored Giant HP above. No simulation, snapshot schema
-or input edits are part of this pass; Post-LV7 balance is governed by the landing-assault experiment above.
-
-The bevels add approximately **6,200 fixed environment triangles**, and sand,
-scuffs and bars add **four shared small textures**. Crowd instancing, pooled
-feedback, geometry count and draw-call structure are retained. Software-rendered
-portrait checks cover 50/100/150/200 enemies; they are not physical-phone FPS
-claims. Matching before/after portrait evidence covers early play, Grunts/Heavy,
-Giant and HUD details. Distant cranes remain deliberately simple silhouettes;
-the small atlas accessories and faceted Giant ornaments remain visible style
-limitations for a future asset-authoring pass.
+The brass/ink HP/XP frame family, fixed-width blue-to-gold XP reveal, 70/90%
+anticipation, level-up spectacle, hit/death effects and all faction colors are
+retained. Simulation, snapshots, authored data, population, progression, input
+and animation are unchanged. [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) records
+reusable palette/material/lighting/composition/motion guardrails. Portrait
+before/after evidence is in `artifacts/sunlit-coast/`.
 
 ## Retained animation presentation
 
@@ -569,19 +545,14 @@ maximum bob **0.038 → 0.052 model units**, and base forward lean
 **0.11 → 0.15 rad**. Existing per-enemy phase offsets remain. Gait is independent
 of enemy velocity; simulation speeds stay **0.6 / 0.25 / 0.12**.
 
-Four asymmetric 3–6-piece clusters on each side use shared chipped/beveled
-geometry and two instanced draw calls. Depth gaps, rotation, lateral offset and
-piece size vary independently, with the retained muted concrete/steel/rust colors. Every piece stays at
-least 0.4 units outside the configured track; nothing adds collision/pathfinding.
-The central five approaches, player and nearest outer-lane enemies remain clear.
-Existing shoreline, smoke, fire and distant atmosphere remain unchanged.
-
-Defenders stand at the bottom of a sandy beach, with sea and broken shoreline
-toward the upper battlefield. Staggered crossed obstacles and muted sand scuffs
-suggest corridor openings. Bridge road, rails, road markings and bright corridor
-lines are hidden. Existing generic industrial silhouettes, smoke, ships and aircraft
-remain. Simulation still advances internally in Z; rendering subtracts player Z
-and holds the environment fixed so the player reads as defending a position.
+The new coastal compound and sparse vegetation frame the central five
+approaches. Opaque architecture and equipment stay at least 0.4 units outside
+the configured track; no scenery adds collision/pathfinding. Defenders stand
+at the bottom of the sunlit beach, with aqua sea toward the upper battlefield.
+Bridge road/rails/markings and bright arcade lane lines remain hidden.
+Simulation still advances internally in Z; rendering holds the coastal world
+fixed relative to the defense line. Localized war smoke/fire and naval/air
+activity remain, while the legacy industrial vista is preserved outside defense.
 
 Boss spawning/showdown, normal enemy tier escalation, the ENEMY LV HUD and yellow
 recruitment rewards are temporarily disabled. Their implementations remain available

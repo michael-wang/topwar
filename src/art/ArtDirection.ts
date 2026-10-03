@@ -1,5 +1,17 @@
 // Presentation palette only. No combat values or faction gameplay live here.
 export const ART = {
+  // Defense-only coastal diorama. Keep faction colors and the legacy bridge palette independent.
+  coastalDefense: {
+    plaster: '#f1efe6', plasterShade: '#c5cdd0', sand: '#d8c49b', sandShade: '#b69d78',
+    shallowAqua: '#58c8c1', deepSea: '#247e9c', waterLight: '#c4efdf', foam: '#e5f6ee',
+    sky: '#78bde0', horizon: '#b7d8e3', shadow: '#2c4158', secondaryShadow: '#405a6d',
+    foliageDark: '#294735', foliageLight: '#507455', bark: '#685a45',
+    cloth: '#84cbd4', clothIvory: '#e1e5d6', flower: '#c51e67',
+    rust: '#985e49', charcoal: '#3a4348', fire: '#f58a48', scorch: '#53606a',
+    fogNear: 105, fogFar: 168, shorelineZ: 53,
+    lighting: { sky: '#c5e5f2', ground: '#405a6d', sun: '#fff0d5',
+      hemisphereIntensity: 1.65, sunIntensity: 2.2, exposure: 1.35, sunPosition: [-8, 12, -6] },
+  },
   world: { sand: '#e0c79b', sandShade: '#9c805e', foam: '#e6dcbc', sea: '#638c99',
     fog: '#96aeb9', near: '#465e6d', nearAccent: '#768793', mid: '#718893',
     midAccent: '#9aa9ad', far: '#8da4ae', concrete: '#a29a85', steel: '#455c6a', rust: '#9c705a' },
