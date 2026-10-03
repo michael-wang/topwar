@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as ball, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { ART } from '../../art/ArtDirection';
+import { COMBAT_COLORS, toyClothBand, toyWaistBand } from '../characters/ToyCombatGear';
 import { HEAVY_GAIT_CYCLE_MS, type CrowdVisualFamily, type GiantVisualFamily } from '../CharacterVisualFamilies';
 
-export const THREAT_COLORS = { shirt: ART.raider.body, shorts: ART.raider.shorts,
+export const THREAT_COLORS = { shirt: COMBAT_COLORS.heavy.shirt, shorts: COMBAT_COLORS.heavy.trousers,
   stone: ART.raider.stone, helmet: ART.raider.helmet } as const;
-type Part = { geometry: THREE.BufferGeometry; color?: string; lower?: number };
+type Part = { geometry: THREE.BufferGeometry; color?: string; lower?: number; lowerColor?: string };
 function merge(parts: Part[]): THREE.BufferGeometry {
   const geometries = parts.map(part => {
     const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
@@ -17,7 +18,7 @@ function merge(parts: Part[]): THREE.BufferGeometry {
     const color = new THREE.Color(part.color);
     for (let i = 0; i < positions.count; i += 3) {
       const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
-      color.set(part.lower !== undefined && y < part.lower ? THREAT_COLORS.shorts : part.color);
+      color.set(part.lower !== undefined && y < part.lower ? part.lowerColor ?? THREAT_COLORS.shorts : part.color);
       for (let j = i; j < i + 3; j++) color.toArray(colors, j * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); return geometry;
@@ -43,6 +44,9 @@ function face(y: number, z: number, radius = .018): Part[] {
 function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
     { geometry: ball(0, .35, 0, .34, .24, .275, 20, 12), color: THREAT_COLORS.shirt, lower: .30 },
+    ...[-1,1].map(side => ({ geometry: ball(side*.26,.205,0,.105,.045,.125,8,4), color: THREAT_COLORS.shorts })),
+    { geometry: toyClothBand(.34,.24,.275,.35,Math.PI/2,.18,-.85), color: COMBAT_COLORS.heavy.harness },
+    ...[-1,1].map(side => ({ geometry: ball(side*.33,.225,.12,.085,.09,.095,8,5), color: COMBAT_COLORS.heavy.pouch })),
     { geometry: ball(0, .65, 0, .32, .20, .26, 20, 12), color: ART.faction.skin },
     ...face(.655, .264, .027),
     ...[-1, 1].map(side => ({ geometry: ball(side * .495, .34, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin })),
@@ -60,7 +64,7 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
     // Unique deep shell: open forehead, lowered curved cheek sides and rear.
     rx: .425, ry: .225, rz: .37, y: .765, front: 1.30, side: 2.05, rear: 2.30,
     segments: 24, rings: 10, thickness: .02,
-  }), color: THREAT_COLORS.helmet }]);
+  }), color: COMBAT_COLORS.heavy.helmet }]);
   // Invisible contract adapter, matching Grunt. Heavy has no secondary armor region.
   const armorGeometry = new THREE.BufferGeometry();
   for (const attribute of ['position', 'normal', 'color'])
@@ -86,7 +90,11 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
 function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
     // Follow a latitude ring for a clean shorts color boundary.
-    { geometry: ball(0, .46, 0, .42, .32, .29, 24, 12), color: ART.raider.bodyDeep, lower: .46 + .32 * Math.cos(7 * Math.PI / 12) },
+    { geometry: ball(0, .46, 0, .42, .32, .29, 24, 12), color: ART.raider.bodyDeep,
+      lower: .40, lowerColor: ART.raider.shorts },
+    ...[-1,1].map(side => ({ geometry: ball(side*.285,.235,0,.13,.045,.13,8,4), color: ART.raider.shorts })),
+    { geometry: toyWaistBand(.42,.32,.29,.46,.39,.055), color: COMBAT_COLORS.giant.sash },
+    { geometry: ball(-.425,.31,.13,.125,.16,.12,10,5), color: COMBAT_COLORS.giant.satchel },
     { geometry: ball(0, .94, 0, .33, .22, .29, 24, 12), color: ART.faction.skin },
     ...face(.885, .28),
     ...[-1, 1].map(side => ({ geometry: ball(side * .48, .40, side * stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin })),

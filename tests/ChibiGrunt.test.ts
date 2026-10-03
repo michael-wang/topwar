@@ -5,6 +5,7 @@ import { prepareCrowdMaterial, type CrowdPresentation } from '../src/rendering/e
 import { canShareCrowdBatch } from '../src/rendering/CharacterVisualFamilies';
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
 import { ART } from '../src/art/ArtDirection';
+import { COMBAT_COLORS } from '../src/rendering/characters/ToyCombatGear';
 import { ENEMY_PALETTE } from '../src/rendering/tierPalettes';
 import { characterFamilies } from './characterModel';
 import type { EnemyRenderState } from '../src/rendering/RenderState';
@@ -37,7 +38,7 @@ describe('original amphibious Grunt prototype', () => {
     expect(bounds.min.y).toBeCloseTo(0);
     expect(bounds.max.x - bounds.min.x).toBeLessThan(.907635 * 1.1);
     expect(a).not.toHaveProperty('weapon');
-    // The compatibility secondary slot is empty: no visible belt or gear.
+    // The compatibility secondary slot stays empty; belt/canteen live in body.
     expect(a.vest.geometry.getAttribute('position').count).toBe(0);
     expect(a.vest.visible).toBe(false);
     a.dispose(); b.dispose();
@@ -57,7 +58,8 @@ describe('original amphibious Grunt prototype', () => {
         clothingColors.add(new THREE.Color().fromBufferAttribute(colors, i).getHexString());
       }
     }
-    expect(clothingColors).toEqual(new Set(Object.values(GRUNT_CLOTHING).map(color => new THREE.Color(color).getHexString())));
+    expect(clothingColors).toEqual(new Set([...Object.values(GRUNT_CLOTHING), ...Object.values(COMBAT_COLORS.grunt)]
+      .map(color => new THREE.Color(color).getHexString())));
     const gray = family.death.body.geometry.getAttribute('color');
     for (let i = 0; i < gray.count; i++) {
       expect(gray.getX(i)).toBeCloseTo(gray.getY(i)); expect(gray.getY(i)).toBeCloseTo(gray.getZ(i));
@@ -67,10 +69,12 @@ describe('original amphibious Grunt prototype', () => {
 
   it('uses detached spherical hands with no thumb or connecting arm mass', () => {
     const family = createChibiGruntFamily(), positions = family.body.geometry.getAttribute('position');
+    const colors = family.body.geometry.getAttribute('color'), skin = new THREE.Color(ART.faction.skin);
     let handVertices = 0;
     for (let i = 0; i < positions.count; i++) {
       const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
       if (Math.abs(x) <= .27 || y <= .30 || y >= .43) continue;
+      if (Math.abs(colors.getX(i)-skin.r)+Math.abs(colors.getY(i)-skin.g)+Math.abs(colors.getZ(i)-skin.b) > .00001) continue;
       expect(Math.hypot(Math.abs(x) - .335, y - .365, z)).toBeCloseTo(.057, 5);
       handVertices++;
     }

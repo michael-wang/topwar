@@ -4,8 +4,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ART } from '../../art/ArtDirection';
 import type { PlayerVisualFamily } from '../CharacterVisualFamilies';
 import { ChibiPlayerMotion } from './ChibiPlayerMotion';
+import { COMBAT_COLORS, toyWaistBand } from '../characters/ToyCombatGear';
 
-type Part = { geometry: THREE.BufferGeometry; color?: string; region?: number };
+type Part = { geometry: THREE.BufferGeometry; color?: string; region?: number; trousersBelow?: number };
 
 function merged(parts: Part[], moving = false): THREE.BufferGeometry {
   const geometries = parts.map(part => {
@@ -15,7 +16,12 @@ function merged(parts: Part[], moving = false): THREE.BufferGeometry {
     const count = geometry.getAttribute('position').count;
     if (part.color) {
       const color = new THREE.Color(part.color), colors = new Float32Array(count * 3);
-      for (let i = 0; i < count; i++) colors.set(color.toArray(), i * 3);
+      const positions = geometry.getAttribute('position');
+      for (let i = 0; i < count; i += 3) {
+        const y = (positions.getY(i) + positions.getY(i+1) + positions.getY(i+2)) / 3;
+        color.set(part.trousersBelow !== undefined && y < part.trousersBelow ? COMBAT_COLORS.player.trousers : part.color);
+        for (let j = i; j < i+3; j++) color.toArray(colors, j*3);
+      }
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     }
     if (moving) geometry.setAttribute('playerPart', new THREE.BufferAttribute(new Float32Array(count).fill(part.region ?? 0), 1));
@@ -57,7 +63,10 @@ export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): voi
   uniform.setAttribute('position', new THREE.Float32BufferAttribute(panelPositions, 3));
   uniform.setAttribute('normal', new THREE.Float32BufferAttribute(panelNormals, 3));
   const bodyGeometry = merged([
-    { geometry: torso, color: ART.faction.player },
+    { geometry: torso, color: ART.faction.player, trousersBelow: .30 },
+    ...[-1,1].map(side => ({ geometry: ellipsoid(side*.15,.205,.01,.085,.045,.085,8,4), color: COMBAT_COLORS.player.trousers })),
+    { geometry: toyWaistBand(.24,.19,.165,.345,.31,.036), color: COMBAT_COLORS.player.gear },
+    { geometry: ellipsoid(-.23,.295,.035,.075,.075,.055,10,5), color: COMBAT_COLORS.player.gear },
     { geometry: ellipsoid(0, .685, -.015, .275, .20, .255, 20, 12), color: ART.faction.skin },
     hand(offhand, 3), hand(weaponHand, 4),
     { geometry: toyShoe({ x: -.17, y: 0, z: -.015, width: .27, height: .14, depth: .23,

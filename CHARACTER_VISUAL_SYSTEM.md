@@ -61,8 +61,9 @@ The body must no longer look like a beveled tunic box.
 ## Grunt target
 
 A tiny round enemy toy that runs hard. Keep the simplest olive helmet/head,
-one shirt/shorts bean with plain color division, tiny ball hands and soft shoes.
-No armor, weapon, camouflage, belt or secondary gear. Preserve four static
+one shirt/trouser bean with plain color division, tiny ball hands and soft shoes.
+One broad belt and one rounded canteen add light-infantry identity. No armor,
+weapon, camouflage or additional gear. Preserve four static
 locomotion poses, asynchronous 360 ms gait, foot lift, support-side transfer,
 hand counter-swing, instancing and bounded hit/contact/death presentation.
 
@@ -70,7 +71,8 @@ hand counter-swing, instancing and bounded hit/contact/death presentation.
 
 A short, wide, plump brawler toy. One deeper/wider oval barrel, huge separated
 spherical fists, large rounded shoes and a broad planted stance distinguish it.
-No torso plate, straps, equipment or weapon. It is only moderately taller than
+One broad diagonal cloth harness and two hip pouches distinguish the assault
+brawler. No torso plate or weapon. It is only moderately taller than
 Grunt and must not steal Giant's vertical scale.
 
 Heavy's unique deep steel-helmet abstraction must wrap the head. Use a thick
@@ -84,8 +86,8 @@ shell depth. Preserve 650 ms shift/lift/plant/push and absorbed hit feedback.
 
 A giant rounded war-chief toy: one huge smooth pear/bell/bean body, a deep olive
 helmet with one thick limestone crest and one enormous blunt maul. No billboard
-chest plate. Prefer no chest gear; an optional soft collar/yoke must follow the
-body curvature and leave the torso uninterrupted. Hands are enormous spheres,
+chest plate or collar. One broad curved waist sash and one side satchel opposite
+the maul leave the torso uninterrupted. Hands are enormous spheres,
 feet are scaled soft toy shoes. The maul head is a rounded drum/capsule, not a
 sharp cuboid or spiked mace. Preserve the 850 ms stepping and delayed weapon
 inertia, reveal/haze, weighty hit, fall/crash timing and bounded debris.
@@ -133,17 +135,17 @@ contains only geometry, motion strategy, materials and presentation anchors.
 
 **CURRENT SHIPPING:**
 
-- Player = R1 rounded toy defender.
-- Grunt = R1 rounded toy enemy.
-- Heavy = R1 rounded toy brawler.
-- Giant = R1 rounded toy colossus.
+- Player = R1 rounded toy base + R2 combat identity.
+- Grunt = R1 rounded toy base + R2 combat identity.
+- Heavy = R1 rounded toy base + R2 assault-brawler identity.
+- Giant = R1 rounded toy base + R2 war-chief waist equipment.
 - Boss = legacy, deferred. **Boss Rounded Toy migration** remains outstanding.
 
 R1 follows separately revertable documentation, base-role and threat-role commits.
 The Player/Grunt checkpoint was captured and reviewed before rebuilding threats;
 actual portrait composition retained clear feet, weapon direction and two defenders.
 
-### Actual R1 implementation
+### Retained rounded foundation
 
 `ToyGeometry` provides smooth ellipsoids, colored bean shoes and curved thick
 helmet shells. Shoe uppers/soles share one merged vertex-colored geometry. The
@@ -166,7 +168,7 @@ accent slot; it adds no hard body mass. Existing four primary meshes, moving
 part regions, motion factory, grips, 8° rifle cant, muzzle anchor, root scale,
 shadow and Level-Up/tracer metadata remain. Hit/casualty use the new parts.
 
-Grunt uses one 20×12 rounded shirt/shorts body, smooth head and tiny ball hands.
+Grunt uses one 20×12 rounded shirt/trouser body, smooth head and tiny ball hands.
 The helmet is a curved shell without hard cylinder rims. Its secondary adapter
 remains explicitly empty/hidden. Crown 1.025, four 360 ms poses, 0.11 shoe lift,
 0.035 outward swing and 0.18 hand swing are preserved.
@@ -175,7 +177,7 @@ Heavy has a 0.68×0.48×0.55 barrel, 0.13-radius spherical fists centered at ±0
 and wide rounded shoes. Its unique shell has radii 0.425/0.225/0.37 centered at
 Y=0.765; crown remains 0.99. Opening angles front/side/rear are 1.30/2.05/2.30
 radians, making the front opening higher than cheek sides and rear skirt.
-Shell thickness is 0.02. There is no cylinder brim, facial band, torso gear or
+Shell thickness is 0.02. There is no cylinder brim, facial band, chest plate or
 weapon. Eye sightlines are tested, including legitimate rear-shell geometry
 behind the head. The 0.80 visual Y compression, 650 ms clock, 0.09 shoe lift,
 0.045 lateral step and weight transfer/hit/contact/death timings remain.
@@ -211,5 +213,39 @@ Phase 4C comparisons. Measure normal/mixed/50/100/150/200/two-Giant draws,
 triangles, resources and bundle bytes. Preserve gameplay/role-isolation/Boss
 asset protections; run tests, typecheck, build and live/production sanity.
 
-The rounded grammar is pending human form-language review. Stop after R1;
-Boss migration and all world redesign remain deferred.
+The R1 rounded grammar is accepted as the base. R2 combat identity is pending
+human review; Boss migration and all world redesign remain deferred.
+
+## R2 combat identity layer
+
+Equipment is subordinate to the rounded silhouette and must read at 390×844.
+Each role has a strict detail budget:
+
+- Player: waist belt + one hip ammo/utility pouch, without a tactical vest.
+- Grunt: broad belt + one flattened round canteen, without a firearm.
+- Heavy: one broad diagonal harness + exactly two large side pouches.
+- Giant: broad waist sash + one oversized side satchel opposite the maul;
+  crest/body/maul retain priority. No chest gear or harness.
+
+All four have explicit trouser-colored lower volumes and two very short soft
+ellipsoidal cuffs, without anatomical legs. R1 detached bean footwear is frozen.
+Player trousers are deep blue #365973, belt/pouch #4C6673. Grunt retains olive
+shirt/slate trousers, with belt #526358 and canteen #8E9987. Heavy uses deeper
+olive #59674C, darker slate #4E6067, deep helmet #626F51, broad muted-khaki
+harness #989077 and pouches #7E836A. Giant retains deep olive/slate with sash
+#85856D and satchel #747F66. No enemy costume red or bright progression gold.
+
+`ToyCombatGear` creates low-segment curved cloth bands on each body's ellipsoid;
+the diagonal Heavy strip wraps the curved surface. Pouches/canteen/cuffs use
+8–10 radial segments and 4–5 rings. All are merged into reference/run bodies:
+no new Player/Grunt/Heavy/Giant gear draw or material, and role resources remain
+independent. Contact/death/hit inherit the owning body's equipment. Player
+equipment/cuffs use its fixed torso region; hands/shoes retain their existing
+motion regions. Gait clocks, root scales, muzzle, R1 Giant HP, shadow, gameplay
+and review/production starts remain unchanged.
+
+The Giant surviving-hit correction is a separate follow-up commit. Ordinary
+surviving-hit wash/sparks/emissive are distinct from lethal/death flash, whose
+timing and intensity remain unchanged. Evidence and performance comparisons
+belong in `artifacts/rounded-toy-r2/`, including the required equal-height
+Grunt/Heavy color and silhouette comparisons.

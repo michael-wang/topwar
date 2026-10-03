@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as sphere, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { ART } from '../../art/ArtDirection';
+import { COMBAT_COLORS, toyWaistBand } from '../characters/ToyCombatGear';
 import { ENEMY_GAIT_CYCLE_MS, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 
 export const GRUNT_CLOTHING = { shirt: ART.raider.body, shorts: ART.raider.shorts } as const;
@@ -19,7 +20,7 @@ function merge(parts: Part[]): THREE.BufferGeometry {
     for (let i = 0; i < positions.count; i += 3) {
       if (part.shortsBelowY !== undefined) {
         // One continuous rounded volume, two plain color blocks. The boundary
-        // follows a latitude ring, without a separate belt or garment layer.
+        // follows a latitude ring; field gear is merged into this same draw.
         const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
         color.set(y < part.shortsBelowY ? GRUNT_CLOTHING.shorts : part.color);
       }
@@ -45,6 +46,9 @@ function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeom
   return merge([
     { geometry: sphere(0, .34, 0, .25, .17, .19, 20, 12), color: GRUNT_CLOTHING.shirt,
       shortsBelowY: .34 + .17 * Math.cos(Math.PI * 7 / 12) },
+    ...[-1,1].map(side => ({ geometry: sphere(side*.15,.185,0,.075,.045,.09,8,4), color: GRUNT_CLOTHING.shorts })),
+    { geometry: toyWaistBand(.25,.17,.19,.34,.30,.032), color: COMBAT_COLORS.grunt.belt },
+    { geometry: sphere(-.25,.26,.04,.06,.067,.055,10,5), color: COMBAT_COLORS.grunt.canteen },
     { geometry: sphere(0, .67, 0, .28, .20, .255, 20, 12), color: ART.faction.skin },
     ...hands,
     { geometry: toyShoe({ x: -.165 - Math.abs(stride) * .02 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .16,
