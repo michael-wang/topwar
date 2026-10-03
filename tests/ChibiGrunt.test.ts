@@ -1,0 +1,149 @@
+import * as THREE from 'three';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { createChibiGruntFamily, GRUNT_CAMO } from '../src/rendering/enemies/ChibiGruntFamily';
+import { prepareCrowdMaterial, type CrowdPresentation } from '../src/rendering/enemies/CrowdPresentation';
+import { canShareCrowdBatch } from '../src/rendering/CharacterVisualFamilies';
+import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
+import { ART } from '../src/art/ArtDirection';
+import { ENEMY_PALETTE } from '../src/rendering/tierPalettes';
+import { characterFamilies } from './characterModel';
+import type { EnemyRenderState } from '../src/rendering/RenderState';
+import type { PresentationEvent } from '../src/simulation/PresentationEvent';
+
+const enemy = (id: number, archetype: 'grunt' | 'heavy' | 'giant', tier = 1): EnemyRenderState =>
+  ({ id, archetype, tier, hp: 2, maxHp: 2, x: 0, z: 10, visualScale: .82 });
+const contact = (id: number): PresentationEvent => ({ kind: 'normalEnemyContact', enemyId: id,
+  enemyTier: 1, attackerX: 0, attackerZ: 10, playerX: 0, playerZ: 0,
+  before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
+  after: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 } });
+
+describe('original amphibious Grunt prototype', () => {
+  it('authors deterministic static, texture-free resources at the retained crown and bounded width', () => {
+    const a = createChibiGruntFamily(), b = createChibiGruntFamily();
+    const models = [a.body, ...a.runFrames, a.helmet, a.vest, a.death.body];
+    const other = [b.body, ...b.runFrames, b.helmet, b.vest, b.death.body];
+    for (const [index, model] of models.entries()) {
+      const material = model.material as THREE.MeshStandardMaterial;
+      expect(material.vertexColors).toBe(true); expect(material.map).toBeNull();
+      expect(material.roughness).toBe(1); expect(material.metalness).toBe(0);
+      expect(model.geometry.getAttribute('uv')).toBeUndefined();
+      expect(model.geometry.getAttribute('skinIndex')).toBeUndefined();
+      expect(Array.from(model.geometry.getAttribute('position').array))
+        .toEqual(Array.from(other[index].geometry.getAttribute('position').array));
+      expect(Array.from(model.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
+    }
+    expect(a.helmet.geometry.boundingBox!.max.y).toBeCloseTo(1.025);
+    const bounds = a.body.geometry.boundingBox!;
+    expect(bounds.min.y).toBeCloseTo(0);
+    expect(bounds.max.x - bounds.min.x).toBeLessThan(.907635 * 1.1);
+    expect(a).not.toHaveProperty('weapon');
+    // Only a low waistband occupies the compatibility vest slot.
+    expect(a.vest.geometry.boundingBox!.max.y).toBeLessThan(.32);
+    a.dispose(); b.dispose();
+  });
+
+  it('retains warm human skin and three broad camo families as authored vertex colors', () => {
+    const family = createChibiGruntFamily(), colors = family.body.geometry.getAttribute('color');
+    for (const value of [ART.faction.skin, ART.faction.equipment, ...Object.values(GRUNT_CAMO)]) {
+      const target = new THREE.Color(value);
+      expect(Array.from({ length: colors.count }, (_, i) => new THREE.Color().fromBufferAttribute(colors, i))
+        .some(color => Math.abs(color.r - target.r) + Math.abs(color.g - target.g) + Math.abs(color.b - target.b) < .00001)).toBe(true);
+    }
+    const gray = family.death.body.geometry.getAttribute('color');
+    for (let i = 0; i < gray.count; i++) {
+      expect(gray.getX(i)).toBeCloseTo(gray.getY(i)); expect(gray.getY(i)).toBeCloseTo(gray.getZ(i));
+    }
+    family.dispose();
+  });
+
+  it('uses four distinct poses, one shared body material, and the unchanged asynchronous 360 ms clock', () => {
+    const family = createChibiGruntFamily();
+    expect(family.gaitCycleMs).toBe(360); expect(family.runFrames).toHaveLength(4);
+    const positions = family.runFrames.map(frame => Array.from(frame.geometry.getAttribute('position').array));
+    expect(new Set(positions.map(p => JSON.stringify(p))).size).toBe(4);
+    expect(family.runFrames.every(frame => frame.material === family.body.material)).toBe(true);
+    expect([0, 90, 180, 270, 360].map(t => enemyRunFrame(0, t, family.gaitCycleMs))).toEqual([0, 1, 2, 3, 0]);
+    expect(new Set([0, 1, 2, 3, 4].map(id => enemyRunFrame(id, 0, family.gaitCycleMs))).size).toBeGreaterThan(1);
+    family.dispose();
+  });
+
+  it('bypasses legacy UV hooks and keeps all authored body instance colors white while helmet tiers still vary', () => {
+    const grunt = createChibiGruntFamily(), families = { ...characterFamilies(), grunt }, scene = new THREE.Scene();
+    const material = grunt.body.material as THREE.MeshStandardMaterial, hook = material.onBeforeCompile;
+    expect(prepareCrowdMaterial(material, grunt.presentation, 'body')).toBe(material);
+    expect(material.onBeforeCompile).toBe(hook);
+    const renderer = new EnemyRenderer(scene, families);
+    const enemies = Array.from({ length: 200 }, (_, i) => enemy(i, 'grunt', i % 2 + 1));
+    renderer.update(enemies, 1000);
+    const bodies = scene.children.filter(c => c instanceof THREE.InstancedMesh && c.material === material) as THREE.InstancedMesh[];
+    expect(bodies).toHaveLength(4);
+    expect(bodies.reduce((sum, mesh) => sum + mesh.count, 0)).toBe(200);
+    const color = new THREE.Color();
+    for (const mesh of bodies) for (let i = 0; i < mesh.count; i++) { mesh.getColorAt(i, color); expect(color.getHexString()).toBe('ffffff'); }
+    for (const [tier, palette] of ENEMY_PALETTE.slice(0, 2).entries()) {
+      const helmet = scene.children.find(c => c.name === `${tier}-toy-soldier-helmet`
+        && (c as THREE.InstancedMesh).geometry === grunt.helmet.geometry) as THREE.InstancedMesh;
+      helmet.getColorAt(0, color); expect(color.getHexString()).toBe(new THREE.Color(palette.body).getHexString());
+    }
+    expect(canShareCrowdBatch(grunt, families.heavy)).toBe(false);
+    expect(material.onBeforeCompile).toBe(hook);
+    renderer.dispose(); grunt.dispose();
+  });
+
+  it('retains the 80 ms helmet hit flash without tinting skin or allocating per-instance materials', () => {
+    const grunt = createChibiGruntFamily(), scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene, { ...characterFamilies(), grunt });
+    const e = enemy(0, 'grunt'); renderer.update([e], 1000); renderer.update([{ ...e, hp: 1 }], 1010);
+    const helmet = scene.children.find(c => c.name === '0-toy-soldier-helmet'
+      && (c as THREE.InstancedMesh).geometry === grunt.helmet.geometry) as THREE.InstancedMesh;
+    const color = new THREE.Color(); helmet.getColorAt(0, color); expect(color.getHexString()).toBe(new THREE.Color(ART.fx.core).getHexString());
+    renderer.update([{ ...e, hp: 1 }], 1089); helmet.getColorAt(0, color); expect(color.getHexString()).toBe(new THREE.Color(ART.fx.core).getHexString());
+    renderer.update([{ ...e, hp: 1 }], 1090); helmet.getColorAt(0, color); expect(color.getHexString()).toBe(new THREE.Color(ENEMY_PALETTE[0].body).getHexString());
+    renderer.dispose(); grunt.dispose();
+  });
+
+  it('rebinds pooled contact and death parts between procedural Grunt and explicit legacy Heavy/Giant dependencies', () => {
+    const legacy = characterFamilies(), grunt = createChibiGruntFamily(), scene = new THREE.Scene();
+    const renderer = new EnemyRenderer(scene, { ...legacy, grunt });
+    const g = enemy(0, 'grunt'), h = enemy(1, 'heavy'), giant = enemy(2, 'giant');
+    renderer.update([g], 1000); renderer.present([contact(0)], 1010); renderer.update([], 1010); renderer.update([], 1170);
+    const exchange = scene.getObjectByName('enemy-contact-exchange')!;
+    expect((exchange.children[0] as THREE.Mesh).geometry).toBe(grunt.contact.body.geometry);
+    expect((exchange.children[0] as THREE.Mesh).material).not.toBe(grunt.body.material);
+    for (const [e, parts, now] of [[h, legacy.heavy.contact, 1400], [giant, legacy.giant.contact, 1800], [g, grunt.contact, 2200]] as const) {
+      renderer.update([], now - 10); renderer.update([e], now); renderer.present([contact(e.id)], now + 10); renderer.update([], now + 10);
+      expect((exchange.children[0] as THREE.Mesh).geometry).toBe(parts.body.geometry);
+    }
+    renderer.update([], 2500); renderer.update([g], 2600); renderer.update([], 2610);
+    const corpse = scene.children.find(c => c instanceof THREE.Group && (c.children[0] as THREE.Mesh)?.geometry === grunt.death.body.geometry)!;
+    expect(corpse).toBeDefined();
+    renderer.update([], 3200); renderer.update([h], 3300); renderer.update([], 3310);
+    expect((corpse.children[0] as THREE.Mesh).geometry).toBe(legacy.heavy.death.body.geometry);
+    renderer.update([], 3900); renderer.update([g], 4000); renderer.update([], 4010);
+    expect((corpse.children[0] as THREE.Mesh).geometry).toBe(grunt.death.body.geometry);
+    expect(renderer.getDebugStats().contactVisuals).toBe(1); expect(renderer.getDebugStats().deathVisuals).toBe(1);
+    renderer.dispose(); grunt.dispose();
+  });
+
+  it('owns its eight geometries and three materials; renderer disposal never disposes borrowed sources', () => {
+    const grunt = createChibiGruntFamily(), scene = new THREE.Scene();
+    const models = [grunt.body, ...grunt.runFrames, grunt.death.body, grunt.helmet, grunt.vest];
+    const geometries = models.map(model => vi.spyOn(model.geometry, 'dispose'));
+    const materials = [...new Set(models.map(model => model.material))].map(material => vi.spyOn(material, 'dispose'));
+    const renderer = new EnemyRenderer(scene, { ...characterFamilies(), grunt });
+    renderer.update([enemy(0, 'grunt')], 1000); renderer.update([], 1100); renderer.dispose();
+    [...geometries, ...materials].forEach(spy => expect(spy).not.toHaveBeenCalled());
+    expect(geometries).toHaveLength(8); expect(materials).toHaveLength(3);
+    grunt.dispose(); [...geometries, ...materials].forEach(spy => expect(spy).toHaveBeenCalledTimes(1));
+    expect(scene.children).toHaveLength(0);
+  });
+
+  it('keeps the crowd presentation contract free of combat/simulation data', () => {
+    expectTypeOf<CrowdPresentation>().not.toHaveProperty('hp');
+    expectTypeOf<CrowdPresentation>().not.toHaveProperty('damage');
+    expectTypeOf<CrowdPresentation>().not.toHaveProperty('speed');
+    expectTypeOf<CrowdPresentation>().not.toHaveProperty('xp');
+    expectTypeOf<CrowdPresentation>().not.toHaveProperty('lane');
+    expectTypeOf<CrowdPresentation>().not.toHaveProperty('collision');
+  });
+});

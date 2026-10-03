@@ -1,0 +1,1561 @@
+{
+  "baseline": "69768dc8b7a1dacfcee9d3fafe45972933977f3e",
+  "errors": [],
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "dpr": 2
+  },
+  "characterDownloads": {
+    "requests": 19,
+    "bytes": 532448
+  },
+  "occupancy": {
+    "height": 36.57941317417385,
+    "width": 32.14723009646971,
+    "crown": 1.024999976158142,
+    "idleWidth": 0.9076346755027771
+  },
+  "stats": {
+    "normal": {
+      "drawCalls": 136,
+      "triangles": 32600,
+      "geometries": 61,
+      "textures": 7,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 35,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 0,
+        "contactVisuals": 0
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 35,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "mixed-heavy": {
+      "drawCalls": 138,
+      "triangles": 33280,
+      "geometries": 61,
+      "textures": 9,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 36,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 0,
+        "contactVisuals": 0
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 36,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "outer-lane": {
+      "drawCalls": 133,
+      "triangles": 9382,
+      "geometries": 61,
+      "textures": 9,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 0,
+        "contactVisuals": 0
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "near-contact": {
+      "drawCalls": 133,
+      "triangles": 9382,
+      "geometries": 61,
+      "textures": 9,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 0,
+        "contactVisuals": 0
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "hit": {
+      "drawCalls": 133,
+      "triangles": 9382,
+      "geometries": 61,
+      "textures": 9,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 0,
+        "contactVisuals": 0
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "death": {
+      "drawCalls": 132,
+      "triangles": 9398,
+      "geometries": 62,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 0
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "contact": {
+      "drawCalls": 132,
+      "triangles": 9398,
+      "geometries": 63,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "asynchronous": {
+      "drawCalls": 136,
+      "triangles": 14166,
+      "geometries": 63,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 8,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 8,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "player-guard": {
+      "drawCalls": 129,
+      "triangles": 8706,
+      "geometries": 63,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "heavy-guard": {
+      "drawCalls": 130,
+      "triangles": 7772,
+      "geometries": 63,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "heavy-hit-guard": {
+      "drawCalls": 135,
+      "triangles": 8310,
+      "geometries": 64,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "heavy-death-guard": {
+      "drawCalls": 127,
+      "triangles": 7784,
+      "geometries": 64,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "heavy-contact-guard": {
+      "drawCalls": 127,
+      "triangles": 7784,
+      "geometries": 64,
+      "textures": 10,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "giant-guard": {
+      "drawCalls": 175,
+      "triangles": 8651,
+      "geometries": 69,
+      "textures": 11,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "giant-contact-guard": {
+      "drawCalls": 127,
+      "triangles": 7784,
+      "geometries": 69,
+      "textures": 11,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "boss-guard": {
+      "drawCalls": 135,
+      "triangles": 7929,
+      "geometries": 76,
+      "textures": 12,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 1,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "boss-death-guard": {
+      "drawCalls": 130,
+      "triangles": 8388,
+      "geometries": 77,
+      "textures": 12,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 1,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "world-guard": {
+      "drawCalls": 124,
+      "triangles": 7092,
+      "geometries": 77,
+      "textures": 12,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 0,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 0,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "giants-two-guard": {
+      "drawCalls": 225,
+      "triangles": 10197,
+      "geometries": 82,
+      "textures": 13,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 2,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 2,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      }
+    },
+    "giants-collapse-guard": {
+      "drawCalls": 224,
+      "triangles": 10478,
+      "geometries": 84,
+      "textures": 13,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 0,
+      "enemies": {
+        "current": 1,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 0,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 1,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 1,
+        "shipSections": 5
+      }
+    },
+    "crowd-50": {
+      "drawCalls": 136,
+      "triangles": 42818,
+      "geometries": 84,
+      "textures": 13,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 50,
+        "bodyCapacities": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "tierCapacities": [
+          64,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 50,
+          "capacity": 64
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      },
+      "cpuUpdateMedianMs": 0.06699999999254942
+    },
+    "crowd-100": {
+      "drawCalls": 136,
+      "triangles": 76943,
+      "geometries": 84,
+      "textures": 13,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 100,
+        "bodyCapacities": [
+          32,
+          32,
+          32,
+          32
+        ],
+        "tierCapacities": [
+          128,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 100,
+          "capacity": 128
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      },
+      "cpuUpdateMedianMs": 0.13900000002235174
+    },
+    "crowd-150": {
+      "drawCalls": 136,
+      "triangles": 111068,
+      "geometries": 84,
+      "textures": 13,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 150,
+        "bodyCapacities": [
+          64,
+          64,
+          64,
+          64
+        ],
+        "tierCapacities": [
+          256,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 150,
+          "capacity": 256
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      },
+      "cpuUpdateMedianMs": 0.20700000002980232
+    },
+    "crowd-200": {
+      "drawCalls": 136,
+      "triangles": 145193,
+      "geometries": 84,
+      "textures": 13,
+      "devicePixelRatio": 2,
+      "rendererPixelRatio": 2,
+      "bufferWidth": 780,
+      "bufferHeight": 1688,
+      "visibleSquad": 1,
+      "enemies": {
+        "current": 200,
+        "bodyCapacities": [
+          64,
+          64,
+          64,
+          64
+        ],
+        "tierCapacities": [
+          256,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "deathVisuals": 1,
+        "contactVisuals": 1
+      },
+      "projectiles": {
+        "live": 0,
+        "pool": 8,
+        "pulseTrackers": 0
+      },
+      "shadows": {
+        "player": {
+          "active": 1,
+          "capacity": 8
+        },
+        "enemy": {
+          "active": 200,
+          "capacity": 256
+        },
+        "boss": {
+          "active": 0,
+          "capacity": 1
+        },
+        "reward": {
+          "active": 0,
+          "capacity": 8
+        }
+      },
+      "environment": {
+        "smoke": 11,
+        "infernoSources": 3,
+        "impactSlots": 5,
+        "activeImpacts": 0,
+        "flakSlots": 2,
+        "activeFlak": 0,
+        "aircraft": 2,
+        "activeAircraft": 0,
+        "shipSections": 5
+      },
+      "cpuUpdateMedianMs": 0.26
+    }
+  }
+}

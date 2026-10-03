@@ -42,12 +42,15 @@ describe('named character visual families', () => {
       expect(player.helmet).not.toBe(model('helmet'));
       expect(models.has('/models/toy-soldier-player-body.glb')).toBe(false);
       expect(models.has('/models/toy-soldier-rifle.glb')).toBe(false);
-      expect(grunt.body).toBe(model('body'));
-      expect(grunt.runFrames).toEqual([0, 1, 2, 3].map(i => model(`run-${i}`)));
-      expect(grunt.death.body).toBe(model('gray-body'));
+      expect(grunt.body).not.toBe(model('body'));
+      expect(grunt.presentation.bodyTint).toBe('authored');
+      expect(grunt.runFrames).toHaveLength(4);
+      expect(grunt.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
+      expect(grunt.death.body).not.toBe(model('gray-body'));
       expect(heavy).not.toBe(grunt);
-      expect(heavy.body).toBe(grunt.body);
-      expect(heavy.runFrames).toBe(grunt.runFrames);
+      expect(heavy.body).toBe(model('body'));
+      expect(heavy.runFrames).toEqual([0, 1, 2, 3].map(i => model(`run-${i}`)));
+      expect(heavy.runFrames).not.toBe(grunt.runFrames);
       expect(heavy.contact).not.toBe(grunt.contact);
       expect(giant.body).toBe(model('body'));
       expect(giant.contact.body).toBe(model('body'));
@@ -64,6 +67,9 @@ describe('named character visual families', () => {
       disposals.push(...[player.body, player.helmet, player.vest, player.weapon].map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
       disposals.push(...[...new Set([player.body, player.helmet, player.vest, player.weapon].map(mesh => mesh.material))]
         .map(material => vi.spyOn(material, 'dispose')));
+      const gruntModels = [grunt.body, ...grunt.runFrames, grunt.helmet, grunt.vest, grunt.death.body];
+      disposals.push(...gruntModels.map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
+      disposals.push(...[...new Set(gruntModels.map(mesh => mesh.material))].map(material => vi.spyOn(material, 'dispose')));
       assets.dispose();
       for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
     } finally { load.mockRestore(); }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { LEGACY_PLAYER_PRESENTATION, type PlayerPresentation } from './squad/PlayerPresentation';
+import { LEGACY_CROWD_PRESENTATION, type CrowdPresentation } from './enemies/CrowdPresentation';
 
 export type CharacterModel = THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
 export type CharacterRole = 'player' | 'grunt' | 'heavy' | 'giant' | 'boss';
@@ -22,6 +23,7 @@ export interface PlayerVisualFamily extends CharacterVisualFamily<'player'> {
 }
 
 export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heavy'> extends CharacterVisualFamily<R> {
+  readonly presentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly gaitCycleMs: number;
   // Legacy feedback uses idle meshes, independently of the active run pose.
@@ -30,6 +32,7 @@ export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heav
 }
 
 export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
+  readonly contactPresentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly grayBody: CharacterModel;
   // The legacy contact exchange intentionally uses a normal soldier, not the mace hierarchy.
@@ -99,12 +102,15 @@ export function createCharacterVisualFamilies(resources: Omit<LegacyCharacterRes
   return {
     player,
     grunt: { role: 'grunt', id: 'legacy-grunt', ...normal, runFrames: normalRuns,
+      presentation: LEGACY_CROWD_PRESENTATION,
       gaitCycleMs: ENEMY_GAIT_CYCLE_MS, death: { ...gray }, contact: { ...normal } },
     // Borrow raw legacy resources, never the resolved Grunt role. Replacing Grunt
     // later must leave these separate family/feedback records intact.
     heavy: { role: 'heavy', id: 'legacy-heavy', ...normal, runFrames: normalRuns,
+      presentation: LEGACY_CROWD_PRESENTATION,
       gaitCycleMs: HEAVY_GAIT_CYCLE_MS, death: { ...gray }, contact: { ...normal } },
     giant: { role: 'giant', id: 'legacy-giant', ...normal, runFrames: normalRuns,
+      contactPresentation: LEGACY_CROWD_PRESENTATION,
       grayBody: grayIdle, contact: { ...normal } },
     boss: { role: 'boss', id: 'legacy-boss', body: resources.bossIdle, helmet,
       vest: resources.bossVest, runFrames: resources.bossRuns, slamFrames: resources.bossSlams,
@@ -116,6 +122,8 @@ export function createCharacterVisualFamilies(resources: Omit<LegacyCharacterRes
 // feedback remain per role even when these live instancing resources coincide.
 export function canShareCrowdBatch(a: CrowdVisualFamily, b: CrowdVisualFamily): boolean {
   return a.body.material === b.body.material
+    && a.presentation.materialStyle === b.presentation.materialStyle
+    && a.presentation.bodyTint === b.presentation.bodyTint
     && a.helmet.material === b.helmet.material
     && a.helmet.geometry === b.helmet.geometry && a.vest.geometry === b.vest.geometry
     && a.runFrames.length === b.runFrames.length

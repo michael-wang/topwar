@@ -3,7 +3,7 @@ import { canShareCrowdBatch, ENEMY_GAIT_CYCLE_MS, type CharacterVisualFamilies,
 import { GIANT_CRASH_MS } from '../../presentation/GiantDrama';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
-import { illustratedMaterial } from '../art/IllustratedMaterial';
+import { prepareCrowdMaterial } from './CrowdPresentation';
 import { GiantRenderer } from './GiantRenderer';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
@@ -83,6 +83,7 @@ export class EnemyRenderer {
   private readonly roleBatches: Record<'grunt' | 'heavy', CrowdBatch>;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));
   private readonly flashColor = new THREE.Color(ART.fx.core);
+  private readonly authoredBodyColor = new THREE.Color('white');
   private readonly gruntBodyColor = new THREE.Color(ART.faction.grunt);
   private readonly heavyBodyColor = new THREE.Color(ART.faction.heavyBody);
   private readonly heavyColor = new THREE.Color(ART.faction.heavy);
@@ -126,10 +127,10 @@ export class EnemyRenderer {
       model.geometry.computeBoundingBox();
       return model.geometry.boundingBox!.max.y;
     }));
-    if (bodyModel.material instanceof THREE.MeshStandardMaterial) illustratedMaterial(bodyModel.material, 'enemy');
+    if (bodyModel.material instanceof THREE.MeshStandardMaterial) prepareCrowdMaterial(bodyModel.material, family.presentation, 'body');
     if (!(family.death.body.material instanceof THREE.MeshStandardMaterial)) throw new Error('Gray death body needs a standard material');
-    illustratedMaterial(family.death.body.material);
-    const helmetMaterial = illustratedMaterial(source.clone());
+    prepareCrowdMaterial(family.death.body.material, family.presentation, 'death');
+    const helmetMaterial = prepareCrowdMaterial(source.clone(), family.presentation);
     helmetMaterial.color.set('white');
     const batch: CrowdBatch = { family, modelTop, helmetMaterial, capacity: PALETTES.map(() => 1),
       bodyCapacity: [1, 1, 1, 1], bodyMeshes: [], helmetMeshes: [], vestMeshes: [] };
@@ -277,8 +278,9 @@ export class EnemyRenderer {
       const frame = enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const bodySlot = bodyIndices[frame]++;
       batch.bodyMeshes[frame].setMatrixAt(bodySlot, transform.matrix);
-      // Instance color selects only the tunic swatch, never skin/hair/equipment.
-      batch.bodyMeshes[frame].setColorAt(bodySlot, heavy ? this.heavyBodyColor : this.gruntBodyColor);
+      // Authored vertex colors stay neutral; legacy instances select the tunic swatch.
+      batch.bodyMeshes[frame].setColorAt(bodySlot, batch.family.presentation.bodyTint === 'authored' ? this.authoredBodyColor
+        : heavy ? this.heavyBodyColor : this.gruntBodyColor);
       this.heavyHits.setBody(enemy.id, batch.family.runFrames[frame].geometry, transform.matrix, nowMs);
       const helmet = batch.helmetMeshes[palette];
       // Gear follows the torso a little late; retain the same instancing batches.
@@ -351,7 +353,9 @@ export class EnemyRenderer {
 
   private spawnContact(tier: number, x: number, z: number, id: number, nowMs: number): void {
     const enemy = this.previousEnemies.get(id);
-    const parts = enemy?.archetype === 'giant' ? this.families.giant.contact : this.crowdFamily(enemy).contact;
+    const giant = enemy?.archetype === 'giant';
+    const parts = giant ? this.families.giant.contact : this.crowdFamily(enemy).contact;
+    const presentation = giant ? this.families.giant.contactPresentation : this.crowdFamily(enemy).presentation;
     let visual = this.contactVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.contactVisuals.length < MAX_CONTACT_VISUALS) {
       const models = [parts.body, parts.helmet, parts.vest];
@@ -361,7 +365,7 @@ export class EnemyRenderer {
         if (!(model.material instanceof THREE.MeshStandardMaterial)) {
           throw new Error('Enemy contact visuals require standard materials');
         }
-        const material = illustratedMaterial(model.material.clone(), index === 0 ? 'enemy' : 'world');
+        const material = prepareCrowdMaterial(model.material.clone(), presentation, index === 0 ? 'body' : 'gear');
         material.transparent = true;
         material.depthWrite = false;
         return material;
@@ -378,7 +382,7 @@ export class EnemyRenderer {
       models.forEach((model, index) => {
         if (!(model.material instanceof THREE.MeshStandardMaterial)) throw new Error('Enemy contact visuals require standard materials');
         visual!.materials[index].dispose();
-        const material = illustratedMaterial(model.material.clone(), index === 0 ? 'enemy' : 'world');
+        const material = prepareCrowdMaterial(model.material.clone(), presentation, index === 0 ? 'body' : 'gear');
         material.transparent = true; material.depthWrite = false;
         visual!.materials[index] = material;
         const mesh = visual!.group.children[index] as THREE.Mesh;
@@ -423,15 +427,15 @@ export class EnemyRenderer {
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {
-    const parts = this.crowdFamily(enemy).death;
+    const { death: parts, presentation } = this.crowdFamily(enemy);
     this.deathBurst.spawn(enemy, nowMs);
     let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
-      const bodyMaterial = illustratedMaterial((parts.body.material as THREE.MeshStandardMaterial).clone());
+      const bodyMaterial = prepareCrowdMaterial((parts.body.material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
       bodyMaterial.transparent = true;
       bodyMaterial.depthWrite = false;
-      const gearMaterial = illustratedMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone());
+      const gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
       gearMaterial.transparent = true;
       gearMaterial.depthWrite = false;
       const body = new THREE.Mesh(parts.body.geometry, bodyMaterial);
@@ -446,8 +450,8 @@ export class EnemyRenderer {
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     if (!this.sameParts(visual.parts, parts)) {
       visual.bodyMaterial.dispose(); visual.gearMaterial.dispose();
-      visual.bodyMaterial = illustratedMaterial((parts.body.material as THREE.MeshStandardMaterial).clone());
-      visual.gearMaterial = illustratedMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone());
+      visual.bodyMaterial = prepareCrowdMaterial((parts.body.material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
+      visual.gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
       for (const material of [visual.bodyMaterial, visual.gearMaterial]) {
         material.transparent = true; material.depthWrite = false;
       }

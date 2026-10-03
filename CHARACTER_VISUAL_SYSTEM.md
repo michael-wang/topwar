@@ -8,8 +8,8 @@ Beachhead Defense presentation.
 Phase 0 and its Phase 0.1 amendment freeze the visual direction and future asset
 contract. Phase 1 added named runtime role families while preserving shipping
 assets, appearance and gameplay. Phase 2A introduced the accepted original
-procedural Player prototype. Phase 2B refines that same grammar; Player's base
-visual language is now stabilized pending human approval. Further replacement
+procedural Player prototype. Phase 2B's refined Player grammar is accepted.
+Phase 3A introduces the original amphibious Grunt prototype for human review. Further replacement
 or polish requires separate authorization; the complete system is not final.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
@@ -18,9 +18,10 @@ environment.
 
 **TARGET:** the full two-head character system described below.
 
-**CURRENT SHIPPING:** Player uses the Phase 2B two-head refinement. Grunt, Heavy,
-Giant and Boss retain their legacy assets, palettes, motion and feedback. The
-amphibious enemy direction is a target only; no bare-torso enemies are shipping.
+**CURRENT SHIPPING:** Player retains the accepted Phase 2B two-head refinement.
+Grunt uses the Phase 3A bare-torso amphibious prototype. Heavy, Giant and Boss
+retain their explicit legacy assets, palettes, motion and feedback. Heavy's
+amphibious direction and the complete character system remain future targets.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for coastal
 palette, lighting, composition and UI guardrails.
@@ -281,8 +282,9 @@ and 360 ms knockout timing and fade semantics.
 The family owns four source geometries and three materials; `CharacterAssets`
 disposes them. `SquadRenderer` borrows those resources and owns its per-member
 motion materials, tier/effect variants (including the weapon wash) and casualty
-materials. Detached parts add no mesh draws. Relative to Phase 2A, matching
-one-defender fixtures retain 138 draws, 61 GPU geometries and 9 textures while
+materials. Detached parts add no mesh draws. At the Phase 2B checkpoint,
+relative to Phase 2A, matching one-defender fixtures retained 138 draws,
+61 GPU geometries and 9 textures while
 adding 316 triangles. Character downloads remain 19 legacy requests totaling
 532,448 bytes; no texture or asset is added.
 
@@ -291,8 +293,8 @@ Review evidence lives in `artifacts/player-chibi-polish/`, with direct Phase
 Level-Up/afterglow sequence and two-defender firing/movement are also sampled.
 The head remains subordinate from the rear, hands remain abstract mittens, and
 the forward shoe is partly occluded by the tunic at peak lifted stride. These
-are human review questions, not authorization for enemy replacement. Grunt and
-Heavy remain legacy; amphibious enemy art is still pending later implementation.
+remain known visual compromises. Phase 2B is accepted and unchanged by Phase 3A.
+Heavy retains legacy geometry; its amphibious art remains pending later implementation.
 
 ## Grunt
 
@@ -358,6 +360,68 @@ reinforce urgency. The body can be smaller and simpler than the Player's.
 
 The crowd should remain lively without requiring a high-cost skeletal hierarchy
 per enemy.
+
+### Current Phase 3A Grunt prototype
+
+`ChibiGruntFamily` builds original deterministic static geometry without GLBs,
+textures, external authoring, atlas UV selectors or a runtime skeleton. It is
+an original human landing trooper, with no identifiable uniform, insignia or
+national camouflage. The prototype awaits human visual review; it is not the
+final Grunt design.
+
+The live structure uses one body batch per run pose plus helmet and waistband
+batches per tier. The parts are one merged body (large head, bare torso, shorts, detached thumb mittens and
+large shoes), a broad low pot helmet with a thick lip, and a narrow waistband.
+The compatibility `vest` slot means waistband for this family, not chest armor.
+Tiny neutral face marks are merged into the body. There is no weapon or
+connecting limb anatomy. Low-segment ellipsoids/cylinders and 44-triangle
+beveled blocks bound the geometry cost; only shorts subdivide front/rear faces
+for a few broad irregular olive, taupe and navy vertex-color patches.
+
+Crown height remains 1.025 authored units, with the head zone starting at 0.47
+(about 54% of standing height). At the actual portrait camera, reference height
+is 36.07 CSS pixels versus legacy 36.58 (-1.4%). Idle body width is 0.80 versus
+legacy 0.908. Warm skin uses the same `ART.faction.skin` as Player; helmet and
+dark shoes provide contrast against coastal sand. No global lighting change is
+used to improve skin separation.
+
+Four authored rigid locomotion poses alternate shoes by up to 0.16 units
+fore/aft and 0.08 upward, with opposing hand displacement of 0.125. The existing
+360 ms `enemyRunFrame` clock, asynchronous ID phase and Grunt root lean/bob/sway
+remain unchanged. No per-Grunt hierarchy, loop, skeleton or material is added.
+
+`CrowdPresentation` explicitly distinguishes authored vertex colors/white body
+instance tint from legacy atlas/tunic tint. Helmet and waistband retain the
+existing enemy tier palette. Grunt's 80 ms live hit remains helmet/waistband
+dominant without recoloring skin. Contact uses its new reference silhouette;
+death uses a grayscale copy of that same merged body. Existing 240 ms contact,
+480 ms death, bounded 48-slot pools and DeathBurst timing remain unchanged.
+Pool reuse rebinds resources/material preparation when switching roles. The
+0.68×0.42 enemy shadow footprint remains appropriate for the compact feet/body;
+it is not enlarged to match the helmet.
+
+The family owns eight source geometries and three matte materials;
+`CharacterAssets` disposes them. EnemyRenderer borrows those resources and owns
+instancing buffers, cloned gear materials and pooled feedback materials.
+Heavy keeps raw legacy normal idle/run/gray resources and 650 ms gait. Giant's
+base/contact records and Boss's body/run/slam/shared helmet records remain
+independent of Grunt, including Giant's explicit legacy contact material policy.
+Matching legacy families can still share batches. The shipping new Grunt and
+legacy Heavy have different geometry/material policies and therefore split.
+
+The matching 35-Grunt/one-Heavy/one-Player portrait fixture changes from 138 to
+141 draws and 33,280 to 37,596 triangles. Pure 50/100/150/200-Grunt fixtures retain
+136 draws and add about 124 triangles per Grunt (pose-dependent). At 200 Grunts,
+triangles are 145,193→169,906. No textures/downloads are added: the 19 legacy
+character requests remain 532,448 bytes because Heavy/Giant/Boss still need them.
+The JS delta is +4,559 bytes (+1,508 gzipped). These are desktop Chrome software
+renderer measurements, not physical-phone performance claims.
+
+Evidence and reproducible QA scripts live in `artifacts/grunt-chibi-prototype/`:
+portrait crowds, mixed Heavy, outer/near-contact states, feedback, 0–360 ms gait
+strip, asynchronous group, close camouflage views, black silhouettes and
+helmet-only comparison. Isolated Player/Heavy/Giant/Boss and legacy feedback
+guards remain pixel-identical. Heavy, Giant, Boss and ships are not redesigned.
 
 ## Heavy
 
@@ -695,9 +759,8 @@ Level-Up, reinforcement and casualty presentation.
 Replace the Player's old anatomy-dependent pivots/weights only with the selected
 new family's motion strategy. Validate the weapon and its muzzle together.
 
-Phase 2A's core direction is accepted. Phase 2B stabilizes the Player base
-grammar pending human approval. Stop before Grunt, Heavy or any additional
-visual phase.
+Phase 2A's core direction and Phase 2B's refined Player grammar are accepted.
+Player remains unchanged during the separately authorized Phase 3A prototype.
 
 ### Phase 3 — Grunt
 
@@ -707,6 +770,9 @@ readability.
 Keep the legacy Heavy, Giant and Boss families pinned to their existing geometry
 until their own approved replacement. Changing Grunt must not silently restyle
 those consumers. Include role-correct hit, death and contact representations.
+
+Phase 3A currently implements the Grunt prototype described above. Stop for
+human review before final Grunt polish, Heavy or any additional visual phase.
 
 ### Phase 4 — Heavy
 

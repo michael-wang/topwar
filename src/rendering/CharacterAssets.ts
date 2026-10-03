@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { publicAssetUrl } from '../core/publicAssetUrl';
 import { createCharacterVisualFamilies, type CharacterModel, type CharacterVisualFamilies } from './CharacterVisualFamilies';
 import { createChibiPlayerFamily } from './squad/ChibiPlayerFamily';
+import { createChibiGruntFamily } from './enemies/ChibiGruntFamily';
 
 export interface CharacterAssets {
   readonly families: CharacterVisualFamilies;
@@ -41,17 +42,19 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
   }));
   const resources = Object.fromEntries(entries) as Record<keyof typeof files, CharacterModel>;
   const player = createChibiPlayerFamily();
+  const grunt = createChibiGruntFamily();
   return {
-    families: createCharacterVisualFamilies({
+    families: { ...createCharacterVisualFamilies({
       ...resources,
       normalRuns: [resources.normalRun0, resources.normalRun1, resources.normalRun2, resources.normalRun3],
       bossRuns: [resources.bossRun0, resources.bossRun1, resources.bossRun2, resources.bossRun3],
       bossSlams: [resources.bossSlam0, resources.bossSlam1, resources.bossSlam2, resources.bossSlam3],
-    }, player),
+    }, player), grunt },
     rewardHelmet: resources.helmet,
     bullet: resources.bullet,
     dispose(): void {
       player.dispose();
+      grunt.dispose();
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();
       for (const texture of textures) texture.dispose();
