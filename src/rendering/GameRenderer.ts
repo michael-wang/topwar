@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { AttackLaneRenderer } from './AttackLaneRenderer';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
-import { renderSize } from './renderSize';
+import { coastalCameraFov, renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
 import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
@@ -184,12 +184,14 @@ export class GameRenderer {
     // Defense-specific filmic highlight rolloff; legacy bridge retains its previous output.
     this.renderer.toneMapping = defense ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     this.renderer.toneMappingExposure = defense ? light.exposure : 1;
+    this.resize();
   }
 
   private readonly resize = (): void => {
     if (this.disposed || this.viewport.clientWidth === 0 || this.viewport.clientHeight === 0) return;
     const size = renderSize(this.viewport.clientWidth, this.viewport.clientHeight);
     this.camera.aspect = size.aspect;
+    this.camera.fov = this.coastalLighting ? coastalCameraFov(size.aspect) : 48;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(size.width, size.height, false);
   };

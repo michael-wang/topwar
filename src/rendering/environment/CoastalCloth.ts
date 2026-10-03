@@ -23,7 +23,7 @@ export class CoastalCloth {
   private readonly times: { value: number }[] = [];
   constructor() {
     this.group.name = 'coastal-shade-canvas';
-    for (const [i, side, x, z, y, width, depth] of [[0, -1, 2.5, 14.8, 3.05, 3.0, 2.4], [1, 1, 2.3, 20.5, 3.45, 2.6, 2.6]]) {
+    for (const [i, side, x, z, y, width, depth] of [[0, -1, 2.5, 21.8, 2.65, 2.5, 1.8], [1, 1, 2.3, 24.5, 3.45, 2.6, 2.0]]) {
       const geometry = coastalCanvasGeometry(width, depth); this.geometries.push(geometry);
       const material = illustratedMaterial(new THREE.MeshStandardMaterial({ color: i ? C.clothIvory : C.cloth, side: THREE.DoubleSide }));
       this.materials.push(material); const time = { value: 0 }; this.times.push(time);
@@ -32,7 +32,7 @@ export class CoastalCloth {
         before.call(material, shader, renderer); shader.uniforms.canvasTime = time;
         shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float canvasTime;')
           .replace('#include <begin_vertex>', `#include <begin_vertex>
-            float freeEdge=clamp((position.z+${depth / 2})/${depth},0.,1.);
+            float freeEdge=clamp((position.z+${(depth / 2).toFixed(3)})/${depth.toFixed(3)},0.,1.);
             transformed.y+=(sin(canvasTime*.65+position.x*1.5+${(i * 2.3).toFixed(2)})*.12
               +sin(canvasTime*.31+position.x*3.1+${i.toFixed(2)})*.035)*freeEdge;`);
       };

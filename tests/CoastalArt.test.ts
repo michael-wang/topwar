@@ -65,7 +65,9 @@ it('uses two low-segment sagging canvases with independent bounded wind shaders'
     const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <color_fragment>' };
     (canvas.material as THREE.MeshStandardMaterial).onBeforeCompile(shader as never, {} as THREE.WebGLRenderer);
     expect(shader.uniforms).toHaveProperty('canvasTime', { value: 1.5 });
-    expect(shader.vertexShader).toContain('freeEdge'); phases.push(shader.vertexShader);
+    expect(shader.vertexShader).toContain('freeEdge');
+    expect(shader.vertexShader).toMatch(/position.z\+\d+\.\d+\)\/\d+\.\d+/); // GLSL float literals even for whole-number authored dimensions
+    phases.push(shader.vertexShader);
   }
   expect(phases[0]).not.toBe(phases[1]); cloth.dispose(); geometry.dispose();
 });

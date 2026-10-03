@@ -1,3 +1,5 @@
+import { gameIcon, iconMarkup } from './GameIcons';
+import { loadoutPresentation, type LoadoutContext } from './loadoutPresentation';
 import { xpEdgeColor } from './xpPalette';
 import type { ProgressionState, ProgressionBalance } from '../simulation/progression';
 import { requiredXp } from '../simulation/progression';
@@ -10,7 +12,10 @@ export class XpHud {
   private readonly fill = document.createElement('div');
   private readonly edge = document.createElement('div');
   private readonly message = document.createElement('div');
-  private readonly detail = document.createElement('span');
+  private readonly loadout = document.createElement('div');
+  private readonly traitIcon = gameIcon('fireRate');
+  private traitKind = 'fireRate';
+  private readonly traitValue = document.createElement('strong');
   private event: ProgressionLevelUpEvent | null = null;
   private startedAtMs = -Infinity;
   private wasFlashing = false;
@@ -31,19 +36,28 @@ export class XpHud {
     this.message.className = 'level-up-message';
     const title = document.createElement('strong');
     title.textContent = 'LEVEL UP';
-    const detail = this.detail;
-    detail.className = 'level-up-detail';
-    detail.textContent = 'FIRE RATE ↑';
-    this.message.append(title, detail);
+    this.message.append(title);
+    this.loadout.className = 'xp-loadout'; this.loadout.hidden = true;
+    const trait = document.createElement('div'); trait.className = 'xp-power';
+    trait.append(this.traitIcon, this.traitValue);
+    this.loadout.append(gameIcon('rifle'), trait);
     track.append(this.fill, this.edge);
-    this.element.append(this.label, track, this.message);
+    this.element.append(this.label, track, this.message, this.loadout);
     viewport.append(this.element);
   }
   presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {
     this.event = event;
     this.startedAtMs = nowMs;
   }
-  update(state: Readonly<ProgressionState>, balance: ProgressionBalance, nowMs: number): void {
+  update(state: Readonly<ProgressionState>, balance: ProgressionBalance, nowMs: number, context?: LoadoutContext): void {
+    this.loadout.hidden = !context;
+    if (context) {
+      const model = loadoutPresentation(state, balance, context);
+      if (model.trait !== this.traitKind) {
+        this.traitIcon.innerHTML = iconMarkup(model.trait); this.traitKind = model.trait;
+      }
+      this.traitValue.textContent = model.value;
+    }
     const age = nowMs - this.startedAtMs;
     const active = this.event !== null && age >= 0 && age < LEVEL_UP_MS;
     const flashing = active && age < LEVEL_BAR_FLASH_MS;
@@ -53,8 +67,6 @@ export class XpHud {
       this.gainUntilMs = nowMs + 260;
     this.previousProgress = { ...state };
     const gainMs = nowMs < this.gainUntilMs ? 260 : 120;
-    const reinforcement = active && this.event!.fromLevel < balance.reinforcementLevel && this.event!.toLevel >= balance.reinforcementLevel;
-    this.detail.textContent = reinforcement ? '' : 'FIRE RATE ↑';
     this.levelNumber.textContent = String(active && age < 120 ? this.event!.fromLevel : state.level);
     this.element.classList.toggle('level-up', active);
     this.element.classList.toggle('level-flash', flashing);
@@ -74,6 +86,7 @@ export class XpHud {
   reset(): void {
     this.event = null; this.startedAtMs = -Infinity; this.wasFlashing = false;
     this.previousProgress = null; this.gainUntilMs = -Infinity;
+    this.loadout.hidden = true; this.traitValue.textContent = '';
     for (const name of ['level-up', 'level-flash', 'level-label-pop', 'xp-charged', 'xp-imminent']) this.element.classList.remove(name);
     this.fill.style.transition = 'none'; this.fill.style.clipPath = 'inset(0 100% 0 0 round .45rem)'; this.edge.style.visibility = 'hidden'; this.levelNumber.textContent = '1';
   }

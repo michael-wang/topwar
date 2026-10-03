@@ -64,3 +64,19 @@ it('projects Heavy and Giant health using red fills without altering HP fraction
   expect(enemies.map(enemy => enemy.hp)).toEqual([10,86]);
   renderer.dispose();
 });
+
+it('punches only the damaged elite health bar for 100ms, rate limits repeats and settles without changing HP', () => {
+  const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel());
+  const enemies=[1,2].map(id=>({id,tier:1,archetype:'heavy' as const,hp:15,maxHp:15,x:id*1.4,z:10}));
+  renderer.update(enemies,0); renderer.update([{...enemies[0],hp:14},enemies[1]],100);
+  const bars=scene.children.filter(c=>c.name==='heavy-hp-fill') as THREE.Sprite[];
+  expect(bars[0].material.color.getHexString()).toBe(ART.enemyHealth.hit.slice(1));
+  expect(bars[1].material.color.getHexString()).toBe(ART.enemyHealth.heavy.slice(1));
+  expect(bars[0].scale.y).toBeGreaterThan(.14);
+  renderer.update([{...enemies[0],hp:13},enemies[1]],150);
+  expect(bars[0].material.color.getHexString()).not.toBe(ART.enemyHealth.hit.slice(1));
+  renderer.update([{...enemies[0],hp:13},enemies[1]],201);
+  expect(bars[0].material.color.getHexString()).toBe(ART.enemyHealth.heavy.slice(1));
+  expect(bars[0].scale.x).toBeCloseTo(1.1*13/15); expect(bars[0].scale.y).toBe(.14);
+  expect(enemies[0].hp).toBe(15); renderer.dispose();
+});

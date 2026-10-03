@@ -1,3 +1,4 @@
+import { ART } from '../art/ArtDirection';
 export function renderSize(width: number, height: number): {
   width: number;
   height: number;
@@ -8,4 +9,11 @@ export function renderSize(width: number, height: number): {
   }
 
   return { width, height, aspect: width / height };
+}
+
+// Taller phones gain vertical world coverage while retaining the authored lane width.
+export function coastalCameraFov(aspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0) throw new Error('Camera aspect must be positive');
+  const { verticalFov, referenceAspect } = ART.coastalDefense.camera;
+  return 2 * Math.atan(Math.tan(verticalFov * Math.PI / 360) * referenceAspect / Math.min(aspect, referenceAspect)) * 180 / Math.PI;
 }

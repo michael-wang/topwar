@@ -71,13 +71,13 @@ export class CoastalVegetation {
               transform.scale.set(tree.size * 1.40, tree.size * .70, 1);
             } else {
               transform.position.set(side * (side < 0 ? 2.4 : 1.7), 2.3 + (i % 3)*.55,
-                (side < 0 ? 14.8 : 21.4) + (i % 3)*.35);
+                (side < 0 ? 21.3 : 24.4) + (i % 3)*.35);
               transform.rotation.set(.12, Math.sin(angle)*.45, Math.cos(angle)*.3);
               transform.scale.set(.72, .65, 1);
             }
           } else if (family === 1) {
             transform.position.set(side * (side < 0 ? 2.35 : 1.65),
-              2.45 + (i % 3)*.55, (side < 0 ? 14.4 : 21.05) + (i % 3)*.35);
+              2.45 + (i % 3)*.55, (side < 0 ? 20.95 : 24.05) + (i % 3)*.35);
             transform.rotation.set(.12, Math.sin(angle)*.2, Math.cos(angle)*.18);
             transform.scale.set(.50, .46, 1);
           } else if (family === 2) {

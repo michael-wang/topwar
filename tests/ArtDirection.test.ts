@@ -83,10 +83,13 @@ it('gives enemy health a cool navy frame and red-family semantic fills, leaving 
   const at = (128 + 5 * 256) * 4;
   const enemyPixel = Array.from(enemyFrame.image.data.slice(at, at+3));
   const legacyPixel = Array.from(legacyFrame.image.data.slice(at, at+3));
-  expect(enemyPixel[2]).toBeGreaterThan(enemyPixel[0]);
+  expect(enemyPixel[0]).toBeGreaterThan(230); // thin ivory keyline
+  const center = (128 + 24 * 256) * 4;
+  expect(enemyFrame.image.data[center + 2]).toBeGreaterThan(enemyFrame.image.data[center]);
   expect(legacyPixel[0]).toBeGreaterThan(legacyPixel[2]);
-  expect(ART.enemyHealth.heavy).toBe(ART.faction.grunt);
-  expect(ART.enemyHealth.giant).toBe(ART.faction.heavyBody);
+  expect(ART.enemyHealth.heavy).toBe('#f2555f');
+  expect(ART.enemyHealth.heavy).not.toBe(ART.faction.grunt);
+  expect(ART.enemyHealth.giant).toBe('#ef4d59');
   expect(ART.enemyHealth.heavy).not.toBe(ART.faction.gold);
   enemyFrame.dispose(); legacyFrame.dispose();
 });

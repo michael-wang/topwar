@@ -32,7 +32,7 @@ it('flashes full then resets cleanly to new-level truth, pops the label and expi
   hud.update({ level: 2, xp: 15 }, balance, 100);
   expect(root.classes.has('level-up')).toBe(true);
   expect(fill.style.clipPath).toBe('inset(0 0% 0 0 round .45rem)'); expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 1');
-  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', 'FIRE RATE ↑']);
+  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP']);
   hud.update({ level: 2, xp: 15 }, balance, 250);
   expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 2'); expect(root.classes.has('level-label-pop')).toBe(true);
   hud.update({ level: 2, xp: 15 }, balance, 341);
@@ -66,7 +66,7 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 6');
   hud.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 6, toLevel: 7 }, 500);
   hud.update({ level: 7, xp: 0 }, balance, 600);
-  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', '']);
+  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP']);
   hud.reset(); hud.update({ level: 1, xp: 1 }, balance, 1000);
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
 });
@@ -90,4 +90,18 @@ it('gives level a dedicated large number and keeps the HUD container structural'
   expect(badge.children.map(child => [child.className, child.textContent])).toEqual([
     ['xp-level-prefix', 'LV'], ['xp-level-number', '4']]);
   expect(root.children[1].className).toBe('xp-track');
+});
+
+it('uses icon-only loadout identity and truthful active reinforcement, resetting on Retry', () => {
+  const {hud,root}=make(), context={baseFireRate:3,squadCount:1,initialSquadCount:1,reinforcementArrived:false};
+  hud.update({level:3,xp:10},balance,0,context);
+  const loadout=root.children[3], trait=loadout.children[1];
+  expect((loadout.children[0] as unknown as HTMLElement).innerHTML).toContain('<svg');
+  expect(trait.children[1].textContent).toBe('+67%');
+  expect(loadout.children[0].textContent).toBe('');
+  hud.update({level:7,xp:0},balance,100,context);
+  expect(trait.children[1].textContent).toBe('+130%');
+  hud.update({level:7,xp:0},balance,1200,{...context,squadCount:2,reinforcementArrived:true});
+  expect(trait.children[1].textContent).toBe('×2');
+  hud.reset(); expect(trait.children[1].textContent).toBe('');
 });

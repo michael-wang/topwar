@@ -87,6 +87,7 @@ export class EnemyRenderer {
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
+  private readonly barHitColor = new THREE.Color(ART.enemyHealth.hit);
   private readonly barFillTexture = framedBarTexture(true);
   private readonly barBackingMaterial = new THREE.SpriteMaterial({ map: this.barFrameTexture, depthTest: false, toneMapped: false });
   private readonly barFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.heavy, depthTest: false, toneMapped: false });
@@ -185,7 +186,7 @@ export class EnemyRenderer {
       if (giantSlot && !giantSlot.barVisible(nowMs)) continue;
       let bar = this.healthBars[barIndex++];
       if (!bar) {
-        bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(this.barFillMaterial) };
+        bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(this.barFillMaterial.clone()) };
         bar.backing.name = 'heavy-hp-backing';
         bar.fill.name = 'heavy-hp-fill';
         bar.backing.renderOrder = 10;
@@ -200,10 +201,13 @@ export class EnemyRenderer {
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
       bar.backing.position.set(-enemy.x, y, enemy.z);
-      bar.fill.material = giantBar ? this.giantBarFillMaterial : this.barFillMaterial;
+      // Reuse the rate-limited additive hit impulse; each pooled bar owns its tint.
+      const hit = this.heavyHits.strength(enemy.id, nowMs);
+      (bar.fill.material as THREE.SpriteMaterial).color.copy(giantBar ? this.giantBarFillMaterial.color : this.barFillMaterial.color)
+        .lerp(this.barHitColor, hit);
       bar.backing.scale.set(width + .10, giantBar ? .36 : .26, 1);
       bar.fill.position.set(-enemy.x + width * (1 - fraction) / 2, y, enemy.z);
-      bar.fill.scale.set(width * fraction, giantBar ? .20 : .14, 1);
+      bar.fill.scale.set(width * fraction, (giantBar ? .20 : .14) * (1 + this.heavyHits.strength(enemy.id, nowMs) * .12), 1);
     }
     for (; barIndex < this.healthBars.length; barIndex++) {
       this.healthBars[barIndex].backing.visible = false;
@@ -308,7 +312,7 @@ export class EnemyRenderer {
     this.contactVisuals.length = 0;
     this.previousEnemies.clear();
     this.flashUntilMs.clear();
-    for (const bar of this.healthBars) this.scene.remove(bar.backing, bar.fill);
+    for (const bar of this.healthBars) { this.scene.remove(bar.backing, bar.fill); bar.fill.material.dispose(); }
     this.healthBars.length = 0;
     this.barBackingMaterial.dispose();
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();

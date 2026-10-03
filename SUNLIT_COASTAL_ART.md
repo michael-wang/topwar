@@ -1,7 +1,7 @@
 # Sunlit Coastal Battlefield
 
-Art Phase 1.3 cleans up **defense-mode presentation and inherited bridge assumptions**
-within the accepted coast. The direction is a
+Art Phase 1.4 finalizes **defense-mode hierarchy, civilian village composition and viewport behavior**.
+Environment/UI are provisionally locked before character-model redesign. The direction is a
 sunlit stylized Mediterranean coastal diorama: **a beautiful coast under
 violent assault**. The supplied reference informs color, shape hierarchy and
 breeze, not its village, assets, layout or identity. All scenery is original
@@ -33,8 +33,9 @@ architecture, dead-black building masses, noisy grunge or gray overall grading.
 
 Use a few large forms that remain recognizable at 390×844: square whitewashed
 building masses, low parapets, thick open arches, cyan shutters, short terraces,
-broken walls and two wrecked machine silhouettes. Damage is missing edges,
-tilted slabs and broken gear, not many tiny rubble cubes. Layout is asymmetric,
+cyan doors, stair/terrace silhouettes and open arches. Smaller staggered facades
+show roofs and windows rather than giant cropped slabs. No static military machinery,
+fallen parapets or pre-broken concrete edges populate the civilian village. Layout is asymmetric,
 stable between runs and adapts outward from the configured track edge.
 
 Environment surfaces use `illustratedMaterial()` with roughness 1 / metalness 0
@@ -60,11 +61,13 @@ outer-lane enemies, health bars or the XP spectacle with environment props.
 
 The settlement was civilian and did not expect war. The central five corridors
 keep only quiet sand scuffs: no X-shaped anti-landing obstacles or prepared beach
-fortifications. Scorch, wreckage and broken architecture represent consequences
-of the assault. Their placement remains driven by lane centers. Do not draw bright road
+fortifications. **Beauty is the canvas. War is the violation. Toy soldiers are the contradiction.**
+Static village architecture is mostly intact, beautiful and sunlit; smoke, fire and impacts
+are active contamination. Future residue/damage may tell consequences, but no persistent
+damage system is introduced here. Sand scuffs remain driven by lane centers. Do not draw bright road
 lane markings or add decorative clutter to sell the art. Keep red Grunts,
 ochre Heavies, blue defenders and crimson/gold Giants as clear foreground masses.
-Enemy health bars use crimson/red fills with cool navy frames. Defense HUD and progression
+Enemy health bars use bright coral/red fills with cool navy backing and a thin ivory keyline. Defense HUD and progression
 follow the coastal UI rules below, preserving the open center sky.
 
 ## Water and environmental life
@@ -128,9 +131,25 @@ slabs, ornamental gold borders, metallic bevels or fantasy typography.
 | Rare sun accent | `#F7CD76`; never the primary UI identity |
 
 XP/player progression = **SEA / AQUA / SUNLIGHT**; enemy health = **CRIMSON / RED / DEEP
-RED**. Never use normal gold enemy health fills. `ART.enemyHealth` owns Heavy crimson
-`#C83F5A`, Giant deep red `#A93449`, and cool navy frame colors. World bars retain shared
+RED**. Never use normal gold enemy health fills. `ART.enemyHealth` owns Heavy coral
+`#F2555F`, Giant coral `#EF4D59`, near-white coral hit `#FFE6DF`, and cool navy backing colors.
+The fill is brighter than enemy clothing. A 100 ms brightness/12% thickness punch reuses
+the existing 250 ms rate-limited elite hit impulse; HP/fraction/collision never changes.
+Each pooled bar owns its tint so damage does not flash other enemies. World bars retain shared
 rounded geometry; legacy Boss framing is unchanged.
+
+Bottom hierarchy is **LEVEL / XP / LOADOUT**, never one enclosing capsule. XP remains
+the widest continuous element; the compact loadout balances the level badge.
+
+**Icon first:** when a gameplay concept is visually recognizable, prefer an authored
+silhouette plus number/%/multiplier over English labels. Rifle identity is a chunky
+inline SVG, never visible `RIFLE`. Fire-rate trait uses a rapid-fire icon + cumulative
+percentage, calculated with the simulation's `effectiveRifleFireRate` relative to the
+current runtime LV1/base rate. Reinforcement uses two-soldier icon + actual squad/start
+count multiplier after arrival; the entrance does not prematurely claim doubled strength.
+Do not duplicate progression formulas in UI or select traits from arbitrary level strings.
+Future weapons can replace the silhouette map, without implementing those weapons now.
+Normal HUD has no RATE/SQUAD labels or numeric XP. Temporary `LEVEL UP` remains compact.
 
 Level is primary information: a compact plaster badge combines a small `LV` with a large
 1.9-rem number and aqua underline. The XP container has no outer capsule, border, panel
@@ -151,8 +170,10 @@ sound stay unchanged. Keep the beat short and energetic rather than a sustained
 healing aura. Gold may be a tiny sunlight accent, never a dominant meter/effect.
 
 Defense does not construct the old `DEFEND N / 5` HUD. Keep the top-center sky
-empty. Pause/TUNE use lightly translucent plaster, navy icons/text, minimum
-44-pixel hit targets, soft cool shadow and simple edges. Pause stays top-right;
+empty. Pause uses an icon-only, low-opacity aqua sea-glass surface with no heavy border/shadow.
+TUNE is a subordinate icon-only developer hatch with low opacity and no idle backing.
+Both retain accessible labels/titles and minimum 44-pixel hit targets; hover/focus/open
+clarifies the hatch. The open panel may show TUNE. Pause stays top-right;
 development-only TUNE has its own top-left anchor with an authored monochrome screwdriver
 SVG. Its scrollable popup opens below/right, constrained to the portrait viewport. TUNE uses
 the same
@@ -163,10 +184,18 @@ The lower-left hint has only `A / D or ← / →   STEP LANE` on desktop or
 `TAP LEFT / RIGHT` on coarse-pointer devices. Navy text with a pale shadow stays
 legible on sand. It holds briefly then fades over a nine-second CSS presentation
 animation; Pause suspends that animation. No gameplay/tutorial state is stored.
-The build label stays quiet above XP. Defense CSS defines `--hud-safe-top/left/right/bottom`
+The **world is full bleed** on portrait/coarse-pointer devices: 100vw × 100dvh.
+Camera aspect uses actual dimensions; defense-only vertical FOV expands on taller phones
+to preserve authored horizontal lane coverage (48° at 9:16, about 56.9° at 390×844).
+Legacy FOV/layout stays intact. Safe area insets UI, never reserves blank world strips.
+Desktop retains a centered portrait game with receding deep-sea `#24465A` → navy
+`#182F3B` gutters, without mirrored scenery.
+
+The tiny build label is debug metadata, pinned **3px** from the literal viewport
+bottom-right corner, independent of safe area. Defense CSS defines `--hud-safe-top/left/right/bottom`
 as the respective safe-area inset **plus 0.85rem**, never the maximum of those values.
 Shared `--hud-inset-*` inputs default to `env(safe-area-inset-*)`; they can be overridden
-for visual QA. Apply the sum to controls, XP, hint, build label and optional diagnostics;
+for visual QA. Apply the sum to important controls, XP, hint and optional diagnostics;
 keep hints above the taller level badge. XP and hints stay pointer-transparent.
 
 ## Defense-mode legacy premise audit
@@ -184,6 +213,9 @@ Do not apply presentation logic whose world premise no longer exists. Preserve s
 | Passing ship timing/aircraft/flak — `WarActivityScheduler` | Retained: timing only, no footprint/occlusion logic | War atmosphere still fits open coastal sky/sea |
 | New carriers/landing craft — `OffshoreTransports` | Retained: defense-only, asymmetric offshore positions, bob/wake and shoreward cue; no bridge mask | They tell the current invasion story (`rear-bridge` means ship cabin) |
 | Tier HUD / dormant Boss and reward presentation — UI/renderers | Already hidden or inactive in defense; implementations retained | Current experiment disables tier/Boss/reward gameplay, so no extra HUD appears |
+| Static steel/rust coastal machinery and burning wreck meshes — `CoastalArchitecture`, `BridgeEnvironment` | **Removed** coastal machinery; hide burning base/slab only in defense, restore in legacy | Peaceful village was not prepared/destroyed by default; active fire/smoke remains |
+| Pre-broken edges, fallen wall and oversized facades — `CoastalArchitecture` | **Replaced** with intact compact houses, steps, terrace and arch | Architecture should read as civilian village continuation |
+| Fixed 9:16 mobile viewport — CSS / `GameRenderer` | **Replaced** for touch portrait with full bleed and aspect-aware FOV | World must fill tall phones while important UI stays inset |
 | Explicit lane number / shared right-side development anchor — UI | Lane HUD already absent; **fixed** TUNE to separate left anchor | Preserve empty center sky and distinguish development control |
 
 Distant inferno/smoke and airborne flashes remain localized battle activity rather than
@@ -193,8 +225,8 @@ bridge geometry; no additional environment removal is warranted.
 
 Keep smoke, fire, artillery, aircraft, offshore troop carriers and the landing
 craft on top of the bright base. Legacy industrial slabs/cranes and blanket
-haze are hidden only in defense mode. Two burning machine sites and artillery
-sit near side wreckage; dark smoke is localized. Three smaller distant carriers
+haze are hidden only in defense mode. Two active fire/smoke sites and artillery remain beside the beach; their static
+wreck geometry is hidden in defense. Dark smoke is localized. Three smaller distant carriers
 have asymmetric depths/scales, slow bob and faint wakes. Their landing-craft
 assault cue remains. The weather stays beautiful even during heavy combat.
 
@@ -203,5 +235,5 @@ authorizing new gameplay. **Simulation, snapshots, balance data, input, enemy
 population, XP and player power are unchanged by this art phase.**
 
 Portrait before/after evidence, motion recording and performance observations
-are in `artifacts/coastal-presentation/REPORT.md`. Software-rendered FPS is diagnostic;
+are in `artifacts/coastal-finalization/REPORT.md`. Software-rendered FPS is diagnostic;
 physical-phone readability, cloth visibility and contrast still need review.

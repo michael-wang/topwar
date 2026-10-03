@@ -135,7 +135,7 @@ single, 12.75–12.98 s pair). The previously authored HP tuning is retained; 12
 the first encounter timing and all player/ordinary-enemy stats stay fixed. Giant reveal/death and post-assault elite scheduling follow the current experiment above.
 Snapshots retain their saved effective balance; existing snapshots need no migration.
 
-## Art Phase 1.3 — Presentation Cleanup + Legacy Assumption Audit
+## Art Phase 1.4 — Coastal Presentation Finalization
 
 The defense presentation now follows **a sunlit coastal diorama under violent
 assault**: large warm off-white plaster masses, turquoise shallows/deeper blue
@@ -143,8 +143,9 @@ sea, clean blue sky, cool navy graphic shadows, broad olive crowns and two soft
 moving cyan/ivory awnings. Side flowers stay away from combat. The quiet sand
 channel keeps restrained scuffs without anti-landing obstacles or prepared
 beach defenses: this civilian coast did not expect war. Its five lanes,
-shoreline and camera are unchanged. A few recognizable broken walls/arches,
-terraces and wrecked machines replace the small gray rubble clusters.
+shoreline are unchanged. Compact, asymmetric intact white houses, open arches and
+stairs now frame the civilian street. Static machinery wrecks, pre-broken edges and
+fallen parapets are removed; the central sand remains clean.
 
 `ART.coastalDefense` centralizes the new defense palette and lighting. The
 existing illustrated material, chipped geometry and generated sand wash are
@@ -155,7 +156,7 @@ shadow-map cost. Defense uses ACES/sRGB; legacy lights/fog/scenery are restored
 when leaving defense mode. No external reference assets or gameplay changes.
 
 Smoke, fire, artillery, aircraft and three muted asymmetric offshore transports
-remain. Fires move beside the new side wreckage; carriers sit smaller/farther
+remain. Static burning-wreck base/slab meshes are hidden only in defense; carriers sit smaller/farther
 out to leave the sea readable. Legacy industrial skyline/blanket haze is hidden
 only in defense mode. The 10-second power window and landing-craft cue remain.
 
@@ -163,22 +164,29 @@ Defense UI uses **PLASTER + SEA + SUNLIGHT**: a large-number level badge beside 
 0.85–1-rem navy-outlined XP track, with no enclosing white capsule. Fixed full-width
 sea/aqua reveal contrasts with a dark navy remainder. The 90%+ crest is sunlight-yellow, not
 white; foam is reserved for the actual level flash. TUNE has a separate top-left anchor with
-a monochrome screwdriver and a below/right scrollable popup; Pause remains top-right. All
-persistent HUD edges use safe-area inset **plus 0.85rem**, with hints/build above XP. Enemy
-HP uses crimson/deep red in a cool navy frame, distinct from sea/aqua progression. The
+an accessible icon-only maintenance hatch and below/right scrollable popup; the quiet
+sea-glass Pause remains top-right. Important HUD edges use safe-area inset **plus 0.85rem**;
+the tiny build label alone stays 3px from the literal viewport corner. Enemy HP uses bright
+coral/red, navy backing and thin ivory keyline; a 100ms rate-limited hit punch helps damage read.
+Bottom HUD is **Level / XP / Loadout**. Authored rifle/rapid-fire/squad SVGs plus numbers
+replace explanatory weapon/power text. Percentages use actual effective/base Rifle math;
+reinforcement multiplier uses arrived squad truth. XP remains widest. The
 top-center
 DEFEND HUD is no longer constructed. A single desktop/touch movement hint fades
 in presentation after nine seconds; no Pause/TUNE hints or tutorial state.
 Level Up keeps its timing/scale/audio but uses aqua/foam rings/motes, ivory body
-wash, cyan-white weapon afterglow and cool-shadowed text. Hit/death feedback and
-enemy health fractions/dimensions remain unchanged. Flowers are tiny procedural blossom cards
+wash, cyan-white weapon afterglow and cool-shadowed LEVEL UP text. Character hit/death
+feedback and enemy health fractions remain unchanged. Flowers are tiny procedural blossom cards
 attached to vines rather than large helmet-like magenta geometric masses. Centralized
 faction colors now use clean coastal blue, raspberry/crimson, gold-yellow, warm
 skin and navy equipment. Heavy has a separate darker crimson tunic; skin/hair
 are not multiplied by its instance tint. No character geometry is redesigned. Simulation, snapshots, authored data, population, progression, input
 and animation are unchanged. [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) records
 reusable palette/material/lighting/composition/motion guardrails. Portrait
-before/after evidence is in `artifacts/coastal-ui/`.
+before/after evidence is in `artifacts/coastal-finalization/`. Environment/UI are provisionally
+locked before character-model redesign. Touch portrait world is full bleed (100vw × 100dvh);
+actual-aspect defense FOV preserves horizontal lane coverage on taller phones. Desktop
+gutters recede in deep coastal blue/navy. No gameplay or authored balance changes.
 
 ## Retained animation presentation
 

@@ -20,7 +20,7 @@ it('hides bridge road/rails/joints and presents sand, shore and fixed corridor o
     scene.updateMatrixWorld(true);
     for (const side of ['left', 'right']) {
       const compound = scene.getObjectByName(`coastal-compound-${side}`)!;
-      expect(compound.children.length).toBeGreaterThan(5);
+      expect(compound.children.length).toBeGreaterThanOrEqual(5);
       for (const child of compound.children as THREE.Mesh[]) {
         if (child.name === 'coastal-shadow-forms') continue; // transparent ground patches may spill toward sand
         const bounds = new THREE.Box3().setFromObject(child);
@@ -39,4 +39,16 @@ it('hides bridge road/rails/joints and presents sand, shore and fixed corridor o
   lanes.dispose();
   environment.dispose();
   expect(scene.children).toHaveLength(0);
+});
+
+it('removes static military wrecks from defense while retaining active fire and legacy wrecks', () => {
+  const scene=new THREE.Scene(), environment=new BridgeEnvironment(scene);
+  environment.update(0,3.2,0,true);
+  expect(scene.getObjectByName('coastal-steel-forms')).toBeUndefined();
+  expect(scene.getObjectByName('coastal-rust-forms')).toBeUndefined();
+  for(const name of ['burning-wreck-base','burning-wreck-slab']) expect(scene.getObjectByName(name)!.visible).toBe(false);
+  expect(scene.getObjectByName('burning-fire-core')!.visible).toBe(true);
+  environment.update(0,3.2,0,false);
+  for(const name of ['burning-wreck-base','burning-wreck-slab']) expect(scene.getObjectByName(name)!.visible).toBe(true);
+  environment.dispose();
 });

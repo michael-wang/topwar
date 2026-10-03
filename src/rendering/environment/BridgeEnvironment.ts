@@ -205,6 +205,9 @@ export class BridgeEnvironment {
     this.coastalVegetation.update(trackHalfWidth, nowMs);
     this.coastalCloth.update(trackHalfWidth, nowMs);
     this.burningSites.forEach((site, index) => {
+      // Active flames/smoke survive; static military wrecks do not belong to the civilian beach.
+      for (const child of site.children)
+        if (child.name === 'burning-wreck-base' || child.name === 'burning-wreck-slab') child.visible = !defenseMode;
       if (defenseMode) site.position.set(index === 0 ? -trackHalfWidth - 2.5 : trackHalfWidth + 2.9,
         0, (index === 0 ? 34 : 44) - 76);
       else site.position.copy(site.userData.legacyPosition);

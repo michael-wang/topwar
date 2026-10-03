@@ -8,6 +8,7 @@ export const ART = {
     foliageDark: '#294735', foliageLight: '#507455', bark: '#685a45',
     cloth: '#84cbd4', clothIvory: '#e1e5d6', flower: '#c51e67',
     rust: '#985e49', charcoal: '#3a4348', fire: '#f58a48', scorch: '#53606a',
+    camera: { verticalFov: 48, referenceAspect: 9 / 16 },
     fogNear: 105, fogFar: 168, shorelineZ: 53,
     lighting: { sky: '#c5e5f2', ground: '#405a6d', sun: '#fff0d5',
       hemisphereIntensity: 1.65, sunIntensity: 2.2, exposure: 1.35, sunPosition: [-8, 12, -6] },
@@ -24,12 +25,12 @@ export const ART = {
     paper: '#f6e8c9', shadow: '#172d3a',
     cornerFraction: .45, edgeFraction: .07 },
   // Enemy health is danger, never the gold of rewards or progression.
-  enemyHealth: { heavy: '#c83f5a', giant: '#a93449',
-    deep: '#1c2d39', ink: '#24465a', frame: '#2c4158', highlight: '#405a6d', shadow: '#172d3a' },
+  enemyHealth: { heavy: '#f2555f', giant: '#ef4d59', depleted: '#c92f4e', hit: '#ffe6df',
+    deep: '#1c2d39', ink: '#24465a', frame: '#f1efe6', highlight: '#f7f4ea', shadow: '#172d3a' },
   // Plaster structures, sea progression, navy legibility; sun is a rare accent.
   coastalUi: { plaster: '#f1efe6', paper: '#f7f4ea', ink: '#24465a', sea: '#247e9c',
     aqua: '#58c8c1', foam: '#e5f6ee', shadow: '#2c4158', sun: '#f7cd76',
-    crest: '#bae9e0', energy: '#c6f4f2' },
+    crest: '#bae9e0', energy: '#c6f4f2', gutterOuter: '#182f3b' },
   // Fixed full-track sea-to-aqua palette, progressively revealed by the XP mask.
   xp: [{ at: 0, color: '#247e9c' }, { at: .4, color: '#329dac' },
     { at: .7, color: '#58c8c1' }, { at: 1, color: '#70d7cf' }],

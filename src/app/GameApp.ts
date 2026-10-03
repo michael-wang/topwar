@@ -326,7 +326,10 @@ export class GameApp {
           this.renderer.presentLevelUp(levelUp, this.presentationMs);
           this.audio.play('levelUp');
         }
-        this.xpHud?.update(state.progression, state.catharsis.balance.progression, this.presentationMs);
+        this.xpHud?.update(state.progression, state.catharsis.balance.progression, this.presentationMs, {
+          baseFireRate: this.runtimeTuning.fireRate, squadCount: state.squad.count,
+          initialSquadCount: this.config.player.startSquad, reinforcementArrived: state.reinforcement?.arrived ?? false,
+        });
       }
       const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();

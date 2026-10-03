@@ -190,7 +190,10 @@ it('uses a separate defense tuning anchor and a monochrome tool, retaining the l
   expect(viewport.children[0].className).toBe('tuning-panel tuning-panel--coastal-anchor');
   const summary = viewport.children[0].children[0];
   expect(summary.children[0].className).toBe('tune-tool');
-  expect(summary.children[1].textContent).toBe('TUNE');
+  expect(summary.children).toHaveLength(1);
+  expect((summary as unknown as HTMLElement).ariaLabel).toBe('TUNE');
+  expect((summary as unknown as HTMLElement).title).toBe('TUNE');
+  expect(viewport.children[0].children[1].children[0].textContent).toBe('TUNE');
   const legacy = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), false);
   expect(viewport.children[1].className).toBe('tuning-panel');
   expect(viewport.children[1].children[0].textContent).toBe('TUNE');
