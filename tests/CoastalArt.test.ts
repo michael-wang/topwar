@@ -5,6 +5,7 @@ import { CoastalArchitecture } from '../src/rendering/environment/CoastalArchite
 import { CoastalWater } from '../src/rendering/environment/CoastalWater';
 import { CoastalCloth, coastalCanvasGeometry } from '../src/rendering/environment/CoastalCloth';
 import { CoastalVegetation } from '../src/rendering/environment/CoastalVegetation';
+import { foliageMassTexture } from '../src/rendering/art/FoliageTexture';
 import { BridgeEnvironment, BATTLEFIELD_FOG_COLOR, BATTLEFIELD_FOG_NEAR } from '../src/rendering/environment/BridgeEnvironment';
 
 it('switches coastal sky/fog/scenery independently and restores the legacy vista', () => {
@@ -69,12 +70,24 @@ it('uses two low-segment sagging canvases with independent bounded wind shaders'
   expect(phases[0]).not.toBe(phases[1]); cloth.dispose(); geometry.dispose();
 });
 
-it('batches broad foliage/flowers outside the track and avoids overlapping shade-clone transforms', () => {
+it('batches crossed cutout foliage/flowers outside the track without transparent sorting', () => {
   const vegetation = new CoastalVegetation(); vegetation.update(3.2, 1000); vegetation.group.updateMatrixWorld(true);
   let count = 0;
   for (const side of vegetation.group.children) {
     const crowns = side.children.filter(mesh => mesh.name === 'coastal-leafy-masses') as THREE.InstancedMesh[];
-    expect(crowns[0].instanceMatrix.array).not.toEqual(crowns[1].instanceMatrix.array);
+    expect(crowns).toHaveLength(1);
+    expect(crowns[0].geometry.type).toBe('PlaneGeometry');
+    const material = crowns[0].material as THREE.MeshBasicMaterial;
+    expect(material.alphaTest).toBe(.4);
+    expect(material.depthWrite).toBe(true);
+    expect(material.transparent).toBe(false);
+    expect(material.side).toBe(THREE.DoubleSide);
+    expect(material.map).toBeDefined();
+    const rotations = Array.from({ length: 4 }, (_, i) => {
+      const matrix = new THREE.Matrix4(); crowns[0].getMatrixAt(i, matrix);
+      return new THREE.Euler().setFromRotationMatrix(matrix).y;
+    });
+    expect(new Set(rotations).size).toBe(4);
     for (const mesh of side.children as THREE.InstancedMesh[]) {
       count += mesh.count;
       mesh.geometry.computeBoundingBox();
@@ -86,4 +99,24 @@ it('batches broad foliage/flowers outside the track and avoids overlapping shade
     }
   }
   expect(count).toBeLessThan(80); vegetation.dispose();
+});
+
+it('generates repeatable porous foliage with transparent borders and releases the shared texture', () => {
+  const a = foliageMassTexture(), b = foliageMassTexture();
+  expect(a.image.data).toEqual(b.image.data);
+  const { width, height, data } = a.image;
+  const alphas = Array.from({ length: width * height }, (_, i) => data[i * 4 + 3]);
+  expect(alphas.filter(alpha => alpha > 128).length).toBeGreaterThan(width * height * .25);
+  expect(alphas.filter(alpha => alpha === 0).length).toBeGreaterThan(width * height * .3);
+  for (let x = 0; x < width; x++) {
+    expect(data[x * 4 + 3]).toBe(0);
+    expect(data[((height - 1) * width + x) * 4 + 3]).toBe(0);
+  }
+  expect(a.colorSpace).toBe(THREE.SRGBColorSpace);
+  const vegetation = new CoastalVegetation();
+  const mesh = vegetation.group.children[0].getObjectByName('coastal-leafy-masses') as THREE.InstancedMesh;
+  const texture = (mesh.material as THREE.MeshBasicMaterial).map!;
+  const dispose = vi.spyOn(texture, 'dispose');
+  vegetation.dispose(); expect(dispose).toHaveBeenCalledOnce();
+  a.dispose(); b.dispose();
 });

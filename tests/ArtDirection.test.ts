@@ -59,7 +59,7 @@ it('composes painted surfaces with the existing limb animation and installs only
   expect(shader.vertexShader).toContain('vPaintPosition = transformed');
   expect(shader.fragmentShader).toContain('clothValue');
   expect(shader.uniforms).toHaveProperty('playerRecoil');
-  expect(motion.normal.customProgramCacheKey()).toContain('player-limb-motion-v1|illustrated-player-v1');
+  expect(motion.normal.customProgramCacheKey()).toContain('player-limb-motion-v1|illustrated-player-v2');
   expect(motion.normal.roughness).toBe(1);
   expect(motion.normal.metalness).toBe(0);
   motion.dispose(); source.dispose();

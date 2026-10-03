@@ -1,6 +1,4 @@
 import { ART } from '../art/ArtDirection';
-import { paintedBlockGeometry } from './art/PaintedGeometry';
-import { illustratedMaterial } from './art/IllustratedMaterial';
 import { paintDaubTexture } from './art/PaintedTextures';
 import * as THREE from 'three';
 
@@ -13,8 +11,6 @@ export class AttackLaneRenderer {
   private capacity = 1;
   private readonly transform = new THREE.Object3D();
   private readonly beachDetails = new THREE.Group();
-  private readonly beamGeometry = paintedBlockGeometry().scale(.78, .12, .12);
-  private readonly beamMaterial = new THREE.MeshStandardMaterial({ color: ART.coastalDefense.secondaryShadow, roughness: 1 });
   private readonly trackMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalDefense.sandShade, transparent: true,
     opacity: .16, depthWrite: false });
   private layoutKey = '';
@@ -22,7 +18,6 @@ export class AttackLaneRenderer {
 
   constructor(private readonly scene: THREE.Scene) {
     this.trackMaterial.map = this.daub;
-    illustratedMaterial(this.beamMaterial);
     this.geometry.rotateX(-Math.PI / 2);
     this.mesh = new THREE.InstancedMesh(this.geometry, this.material, this.capacity);
     this.mesh.name = 'attack-corridors';
@@ -43,27 +38,7 @@ export class AttackLaneRenderer {
         this.layoutKey = key;
         this.beachDetails.clear();
         const spacing = positions[1] - positions[0];
-        const boundaries = [positions[0] - spacing / 2,
-          ...positions.slice(0, -1).map((x, index) => (x + positions[index + 1]) / 2), positions.at(-1)! + spacing / 2];
-        boundaries.forEach((x, index) => {
-          for (let patch = 0; patch < 3; patch++) {
-            // Broken/staggered barricades suggest openings without drawing rows.
-            // All offsets remain close to the configured corridor boundary.
-            const z = [7, 21, 37][patch] + Math.sin(index * 2.11 + patch * 3.4) * 3.1;
-            for (let member = 0; member < 2; member++) {
-              if ((index + patch) % 5 === 2 && member === 1) continue;
-              const phase = index * 2.87 + patch * 1.31 + member * 1.9;
-              const beam = new THREE.Mesh(this.beamGeometry, this.beamMaterial);
-              beam.name = 'beach-obstacle';
-              beam.position.set(-x + Math.sin(phase) * spacing * .035, .28,
-                z + Math.sin(phase * 1.7) * .35);
-              beam.rotation.set(0, Math.sin(phase) * .8,
-                (member === 0 ? -1 : 1) * (.7 + Math.sin(phase * 1.3) * .17));
-              beam.scale.setScalar(.92 + Math.cos(phase * 1.4) * .10);
-              this.beachDetails.add(beam);
-            }
-          }
-        });
+        // A civilian beach: only restrained sand scuffs, no prepared defenses.
         positions.forEach((x, lane) => {
           for (let patch = 0; patch < 9; patch++) {
             const scuff = new THREE.Mesh(this.geometry, this.trackMaterial);
@@ -102,8 +77,6 @@ export class AttackLaneRenderer {
 
   dispose(): void {
     this.scene.remove(this.beachDetails);
-    this.beamGeometry.dispose();
-    this.beamMaterial.dispose();
     this.trackMaterial.dispose();
     this.daub.dispose();
     this.scene.remove(this.mesh);

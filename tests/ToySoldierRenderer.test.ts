@@ -36,7 +36,7 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps helmet and vest blue through Tier 20 while rifle stays charcoal', () => {
     expect(PLAYER_PALETTE.map((entry) => entry.body)).toEqual([
-      '#2879cb', '#10429b', '#2938c7', '#1b8fd6', '#5d5ee8',
+      '#287fc6', '#10429b', '#2938c7', '#1b8fd6', '#5d5ee8',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
@@ -152,10 +152,10 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps four running body poses and six helmet/vest InstancedMesh pairs through Tier 20', () => {
     expect(ENEMY_PALETTE.map((entry) => entry.body)).toEqual([
-      '#ad3d4b', '#657236', '#62437c', '#a64e2d', '#46525a', '#896b29',
+      '#c83f5a', '#657236', '#62437c', '#a64e2d', '#46525a', '#896b29',
     ]);
     expect(ENEMY_PALETTE.map((entry) => entry.head)).toEqual([
-      '#d77869', '#87944a', '#815b9d', '#c66a42', '#68767f', '#ad8939',
+      '#e46b73', '#87944a', '#815b9d', '#c66a42', '#68767f', '#ad8939',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();

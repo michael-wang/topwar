@@ -35,17 +35,16 @@ it('keeps stable asymmetric debris with unequal gaps, sizes, rotations and clust
   expect(Math.min(...gaps)).toBeLessThan(.2);
 });
 
-it('staggered broken corridor barricades remain stable and anchored to lane boundaries', () => {
+it('keeps civilian beach sand free of prepared defenses with stable faint scuffs', () => {
   const positions = [-2.8, -1.4, 0, 1.4, 2.8], scene = new THREE.Scene();
   const renderer = new AttackLaneRenderer(scene);
   renderer.update(positions, 0, 0, true);
-  const objects = scene.getObjectByName('beach-corridor-openings')!.children.filter(p => p.name === 'beach-obstacle');
-  expect(objects.length).toBeLessThan(36);
-  const before = objects.map(p => ({ position: p.position.toArray(), rotation: p.rotation.toArray(), scale: p.scale.toArray() }));
-  expect(new Set(objects.map(p => p.position.z.toFixed(2))).size).toBeGreaterThan(20);
-  const boundaries = [-3.5, -2.1, -.7, .7, 2.1, 3.5];
-  for (const object of objects) expect(Math.min(...boundaries.map(x => Math.abs(x - object.position.x)))).toBeLessThan(.05);
+  expect(scene.getObjectByName('beach-obstacle')).toBeUndefined();
+  const objects = scene.getObjectByName('beach-corridor-openings')!.children;
+  expect(objects).toHaveLength(45);
+  expect(objects.every(object => object.name === 'sand-scuff')).toBe(true);
+  const before = objects.map(p => p.position.toArray());
   renderer.update(positions, 0, 2.8, true);
-  expect(objects.map(p => ({ position: p.position.toArray(), rotation: p.rotation.toArray(), scale: p.scale.toArray() }))).toEqual(before);
+  expect(objects.map(p => p.position.toArray())).toEqual(before);
   renderer.dispose();
 });

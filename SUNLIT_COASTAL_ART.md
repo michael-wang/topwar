@@ -1,6 +1,6 @@
 # Sunlit Coastal Battlefield
 
-Art Phase 1 is a **defense-mode presentation experiment**. The direction is a
+Art Phase 1.1 is a **defense-mode presentation cleanup**. The direction is a
 sunlit stylized Mediterranean coastal diorama: **a beautiful coast under
 violent assault**. The supplied reference informs color, shape hierarchy and
 breeze, not its village, assets, layout or identity. All scenery is original
@@ -57,8 +57,10 @@ outside the track; foliage/cloth also stay outside. Review this from the actual
 portrait camera, not only a wide desktop view. Never cover defenders, nearby
 outer-lane enemies, health bars or the XP spectacle with environment props.
 
-The central five corridors keep only small broken boundary beams and quiet sand
-scuffs. Their placement remains driven by lane centers. Do not draw bright road
+The settlement was civilian and did not expect war. The central five corridors
+keep only quiet sand scuffs: no X-shaped anti-landing obstacles or prepared beach
+fortifications. Scorch, wreckage and broken architecture represent consequences
+of the assault. Their placement remains driven by lane centers. Do not draw bright road
 lane markings or add decorative clutter to sell the art. Keep red Grunts,
 ochre Heavies, blue defenders and crimson/gold Giants as clear foreground masses.
 Existing rounded brass/ink HP and XP bars and level-up effects are retained.
@@ -70,14 +72,41 @@ unchanged Z=53 shore to deeper blue, shallow tonal variation and two slow ripple
 bands. A separate gradient sky plane opens the horizon. Shoreline foam remains
 bright and restrained. No reflection/refraction targets or ocean simulation.
 
-`CoastalVegetation` batches four olives plus a few climbing/flower masses into
-ten instanced draws. Use broad faceted crowns, not hundreds of leaves. Their
-wind shader has tiny asynchronous motion. Magenta is confined to side facades.
+`CoastalVegetation` uses four olives with simple trunks/forked branches and four
+crossed, depth-offset alpha foliage cards per crown, plus five climbing cards
+per side. A generated 256×128 sRGB texture layers broad oval brush masses into
+porous/scalloped silhouettes; no external imagery or individually modeled leaves.
+Cutouts use alpha test 0.4, double sides and depth writing without transparent
+sorting. Painted, unlit foliage preserves dark/light coastal greens and avoids
+hard planar lighting seams. Eight instanced draws / 50 instances include existing
+side flowers and ground shadow patches. Wind has asynchronous phase and at most
+0.044 lateral / 0.024 depth local displacement; no CPU vertex updates. Magenta
+flowers remain confined to side facades and separate from enemy crimson.
 
 `CoastalCloth` has two low-segment sloping, sagging awnings (36 vertices each),
 one cyan and one ivory. Wind is soft, continuous, asynchronous and anchored at
 one edge; maximum procedural displacement is 0.155 units. No cloth physics or
 per-frame CPU vertex updates. Water, foliage and cloth use renderer clocks only.
+
+
+## Faction presentation — Phase 1.1
+
+`ART.faction` owns the coastal character swatches. Meshes, UVs, four baked run
+poses, proportions, gait and hit/death timing are unchanged.
+
+| Family | Colors |
+| --- | --- |
+| Player | blue `#287FC6`, highlight `#67B9E3`, dark equipment `#243B4A` |
+| Grunt | clean raspberry/crimson `#C83F5A`, highlight `#E46B73` |
+| Heavy | gold-yellow helmet/vest `#E7B647`, secondary crimson tunic `#A93449` |
+| Skin / weapon | warm skin `#E4AD8A`, navy-charcoal weapon `#263A43` |
+
+The illustrated material remaps the existing tunic, skin and equipment atlas
+swatches. Hair is preserved; the hair/leather swatch is recolored only below the
+upper body. Enemy body instance color selects the tunic only, so Heavy crimson
+never tints its skin. Rifle surfaces retain source tonal detail in navy-charcoal.
+Giant crimson/gold identity and all gameplay/HUD/VFX rules remain intact. Side
+flower magenta `#C51E67` and impact orange/red remain separate accents.
 
 ## Localized catastrophe
 
@@ -93,5 +122,5 @@ authorizing new gameplay. **Simulation, snapshots, balance data, input, enemy
 population, XP and player power are unchanged by this art phase.**
 
 Portrait before/after evidence, motion recording and performance observations
-are in `artifacts/sunlit-coast/REPORT.md`. Software-rendered FPS is diagnostic;
+are in `artifacts/coastal-cleanup/REPORT.md`. Software-rendered FPS is diagnostic;
 physical-phone readability, cloth visibility and contrast still need review.

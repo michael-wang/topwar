@@ -69,6 +69,8 @@ export class EnemyRenderer {
   private readonly grayBodyMaterial: THREE.MeshStandardMaterial;
   private readonly helmetColors = ENEMY_PALETTE.map((entry) => new THREE.Color(entry.body));
   private readonly flashColor = new THREE.Color(ART.fx.core);
+  private readonly gruntBodyColor = new THREE.Color(ART.faction.grunt);
+  private readonly heavyBodyColor = new THREE.Color(ART.faction.heavyBody);
   private readonly heavyColor = new THREE.Color(ART.faction.heavy);
   private readonly transform = new THREE.Object3D();
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
@@ -244,7 +246,10 @@ export class EnemyRenderer {
       setEnemyScale(transform.scale, enemy);
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs, enemy.archetype === 'heavy' ? HEAVY_GAIT_CYCLE_MS : ENEMY_GAIT_CYCLE_MS);
-      this.bodyMeshes[frame].setMatrixAt(bodyIndices[frame]++, transform.matrix);
+      const bodySlot = bodyIndices[frame]++;
+      this.bodyMeshes[frame].setMatrixAt(bodySlot, transform.matrix);
+      // Instance color selects only the tunic swatch, never skin/hair/equipment.
+      this.bodyMeshes[frame].setColorAt(bodySlot, heavy ? this.heavyBodyColor : this.gruntBodyColor);
       this.heavyHits.setBody(enemy.id, this.runFrames[frame].geometry, transform.matrix, nowMs);
       const helmet = this.helmetMeshes[palette];
       // Gear follows the torso a little late; retain the same instancing batches.
@@ -261,7 +266,10 @@ export class EnemyRenderer {
       helmet.setColorAt(index, flashing ? this.flashColor : color);
       vest.setColorAt(index, flashing ? this.flashColor : color);
     }
-    for (const mesh of this.bodyMeshes) mesh.instanceMatrix.needsUpdate = true;
+    for (const mesh of this.bodyMeshes) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
     for (const palette of PALETTES) {
       this.helmetMeshes[palette].instanceMatrix.needsUpdate = true;
       if (this.helmetMeshes[palette].instanceColor) this.helmetMeshes[palette].instanceColor.needsUpdate = true;

@@ -125,19 +125,21 @@ single, 12.75–12.98 s pair). The previously authored HP tuning is retained; 12
 the first encounter timing and all player/ordinary-enemy stats stay fixed. Giant reveal/death and post-assault elite scheduling follow the current experiment above.
 Snapshots retain their saved effective balance; existing snapshots need no migration.
 
-## Art Phase 1 — Sunlit Coastal Battlefield
+## Art Phase 1.1 — Coastal Cleanup + Faction Palette
 
 The defense presentation now follows **a sunlit coastal diorama under violent
 assault**: large warm off-white plaster masses, turquoise shallows/deeper blue
 sea, clean blue sky, cool navy graphic shadows, broad olive crowns and two soft
 moving cyan/ivory awnings. Side flowers stay away from combat. The quiet sand
-channel keeps smaller boundary beams and restrained scuffs; its five lanes,
+channel keeps restrained scuffs without anti-landing obstacles or prepared
+beach defenses: this civilian coast did not expect war. Its five lanes,
 shoreline and camera are unchanged. A few recognizable broken walls/arches,
 terraces and wrecked machines replace the small gray rubble clusters.
 
 `ART.coastalDefense` centralizes the new defense palette and lighting. The
 existing illustrated material, chipped geometry and generated sand wash are
-reused. Water has a small depth/ripple shader, vegetation is instanced, fabric
+reused. Water has a small depth/ripple shader, vegetation uses four crossed procedural alpha foliage layers per olive crown
+with simple trunks/branches and gentle breeze; fabric
 wind runs in the vertex shader, and static graphic shadows avoid character
 shadow-map cost. Defense uses ACES/sRGB; legacy lights/fog/scenery are restored
 when leaving defense mode. No external reference assets or gameplay changes.
@@ -148,11 +150,13 @@ out to leave the sea readable. Legacy industrial skyline/blanket haze is hidden
 only in defense mode. The 10-second power window and landing-craft cue remain.
 
 The brass/ink HP/XP frame family, fixed-width blue-to-gold XP reveal, 70/90%
-anticipation, level-up spectacle, hit/death effects and all faction colors are
-retained. Simulation, snapshots, authored data, population, progression, input
+anticipation, level-up spectacle and hit/death effects are retained. Centralized
+faction colors now use clean coastal blue, raspberry/crimson, gold-yellow, warm
+skin and navy equipment. Heavy has a separate darker crimson tunic; skin/hair
+are not multiplied by its instance tint. No character geometry is redesigned. Simulation, snapshots, authored data, population, progression, input
 and animation are unchanged. [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) records
 reusable palette/material/lighting/composition/motion guardrails. Portrait
-before/after evidence is in `artifacts/sunlit-coast/`.
+before/after evidence is in `artifacts/coastal-cleanup/`.
 
 ## Retained animation presentation
 

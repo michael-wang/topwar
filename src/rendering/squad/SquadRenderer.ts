@@ -111,7 +111,7 @@ export class SquadRenderer {
     if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');
     illustratedMaterial(bodyModel.material, 'player');
     if (rifleModel.material instanceof THREE.MeshStandardMaterial) {
-      rifleModel.material.color.set(ART.world.steel); illustratedMaterial(rifleModel.material);
+      illustratedMaterial(rifleModel.material, 'weapon');
     }
     this.levelBodyMaterial = illustratedMaterial(bodyModel.material.clone(), 'player');
     this.levelBodyMaterial.emissive.set(ART.faction.gold);

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { ART } from '../src/art/ArtDirection';
 import * as THREE from 'three';
 import { AttackLaneRenderer } from '../src/rendering/AttackLaneRenderer';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
@@ -33,7 +34,12 @@ it('renders a larger amber Heavy and preserves configured scale through death', 
   expect(scale.x).toBeCloseTo(1.89);
   const color = new THREE.Color();
   helmets.getColorAt(1, color);
-  expect(color.getHexString()).toBe('daa34c');
+  expect(color.getHexString()).toBe(new THREE.Color(ART.faction.heavy).getHexString());
+  const bodies = scene.children.filter(mesh => mesh.name.startsWith('toy-soldier-run-')) as THREE.InstancedMesh[];
+  const tunics = bodies.flatMap(mesh => Array.from({ length: mesh.count }, (_, index) => {
+    mesh.getColorAt(index, color); return color.getHexString();
+  }));
+  expect(tunics.sort()).toEqual([ART.faction.grunt.slice(1), ART.faction.heavyBody.slice(1)].sort());
   renderer.update([], 100);
   const deaths = scene.children.filter((child) => child instanceof THREE.Group);
   expect(deaths.some((death) => Math.abs(death.scale.x - 1.89 * 1.07) < .001)).toBe(true);
