@@ -97,4 +97,16 @@ if (ROOT/'bundle-comparison.json').exists(): report['bundle']=json.loads((ROOT/'
 if (ROOT/'polish-giant-hit-peak.png').exists():
     sheet('giant-hit-comparison',[(label,load(f'{phase}-giant-hit-{state}.png').crop((230,370,500,760)))
       for phase,state,label in [('baseline','peak','R1 peak'),('polish','peak','R2 peak'),('polish','50','R2 50 ms'),('polish','settled','R2 settled')]],4,340,490)
+if (ROOT/'polish-temporal.json').exists():
+    b=json.loads((ROOT/'baseline-temporal.json').read_text(encoding='utf-8'))
+    a=json.loads((ROOT/'polish-temporal.json').read_text(encoding='utf-8'))
+    assert a['samples']==b['samples'],'Temporal simulation changed'
+    assert not a['errors'] and not b['errors']
+    report['temporalSimulationIdentical']=True
+    for phase in ['baseline','polish']:
+        frames=[load(f'{phase}-sequence/{i:02}.png').resize((390,844)) for i in range(51)]
+        frames[0].save(ROOT/(phase+'-running.gif'),save_all=True,append_images=frames[1:],duration=50,loop=0,optimize=False)
+        sheet(phase+'-temporal-contact-sheet',[(str(i*50)+' ms',frames[i].crop((70,140,320,500)))
+            for i in [0,10,20,30,40,50]],6,210,320)
+    (ROOT/'performance.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 print(json.dumps(report,indent=2))

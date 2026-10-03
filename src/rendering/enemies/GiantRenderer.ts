@@ -6,7 +6,7 @@ import { giantWeightPose } from '../../presentation/CharacterMotion';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { THREAT_COLORS } from './ChibiThreatFamilies';
 import type { EnemyRenderState } from '../RenderState';
-import type { HeavyHitFeedback } from './HeavyHitFeedback';
+import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
 
 function hazeTexture(): THREE.DataTexture {
   const size = 32, bytes = new Uint8Array(size * size * 4);
@@ -112,7 +112,9 @@ export class GiantRenderer {
       const reveal = giantReveal(nowMs - this.bornAt);
       for (const { material, color } of this.palette) {
         material.transparent = reveal.opacity < 1; material.opacity = reveal.opacity;
-        material.color.set(ART.world.near).lerp(color, reveal.color); material.emissiveIntensity = .45 * hit;
+        material.color.set(ART.world.near).lerp(color, reveal.color);
+        material.emissive.set(SURVIVING_HIT_STYLES.giant.overlayColor);
+        material.emissiveIntensity = SURVIVING_HIT_STYLES.giant.emissivePeak * hit;
       }
       this.haze.visible = nowMs - this.bornAt < GIANT_REVEAL_MS;
       this.hazeMaterial.color.set(ART.world.fog); this.hazeMaterial.opacity = reveal.haze;
@@ -139,6 +141,7 @@ export class GiantRenderer {
     this.group.position.set(-this.previous.x, .03 + .08 * (1 - fall) + .9 * fall, this.previous.z + .4 * fall);
     for (const { material, color } of this.palette) {
       material.color.copy(color).lerp(this.coreColor, pose.lethalFlash);
+      material.emissive.copy(this.coreColor);
       material.transparent = false; material.opacity = 1; material.emissiveIntensity = pose.lethalFlash * .6;
     }
     const impactAge = Math.max(0, age - GIANT_CRASH_MS);

@@ -48,13 +48,13 @@
       "r1": {
         "drawCalls": 164,
         "triangles": 135428,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 11
       },
       "r2": {
         "drawCalls": 164,
         "triangles": 148388,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 11
       },
       "delta": {
@@ -68,15 +68,15 @@
     },
     "mixed-100": {
       "r1": {
-        "drawCalls": 185,
-        "triangles": 257330,
-        "geometries": 89,
+        "drawCalls": 184,
+        "triangles": 257328,
+        "geometries": 90,
         "textures": 11
       },
       "r2": {
-        "drawCalls": 185,
-        "triangles": 282770,
-        "geometries": 89,
+        "drawCalls": 184,
+        "triangles": 282768,
+        "geometries": 90,
         "textures": 11
       },
       "delta": {
@@ -85,20 +85,20 @@
         "geometries": 0,
         "textures": 0
       },
-      "triangleIncreasePercent": 9.886138421482137,
+      "triangleIncreasePercent": 9.88621525834732,
       "exceeds15Percent": false
     },
     "mixed-150": {
       "r1": {
         "drawCalls": 204,
         "triangles": 379228,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 11
       },
       "r2": {
         "drawCalls": 204,
         "triangles": 417148,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 11
       },
       "delta": {
@@ -114,13 +114,13 @@
       "r1": {
         "drawCalls": 224,
         "triangles": 501128,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 11
       },
       "r2": {
         "drawCalls": 224,
         "triangles": 551528,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 11
       },
       "delta": {
@@ -136,13 +136,13 @@
       "r1": {
         "drawCalls": 144,
         "triangles": 21940,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 12
       },
       "r2": {
         "drawCalls": 144,
         "triangles": 22900,
-        "geometries": 89,
+        "geometries": 90,
         "textures": 12
       },
       "delta": {
@@ -173,15 +173,10 @@
       "changedPixels": 0
     },
     "boss-guard": {
-      "identical": false,
-      "differenceBounds": [
-        160,
-        36,
-        667,
-        1640
-      ],
-      "maxChannelDelta": 1,
-      "changedPixels": 464
+      "identical": true,
+      "differenceBounds": null,
+      "maxChannelDelta": 0,
+      "changedPixels": 0
     },
     "boss-death-guard": {
       "identical": true,
@@ -193,5 +188,20 @@
       "identical": true
     }
   },
-  "browserErrors": []
+  "browserErrors": [],
+  "bundle": {
+    "baseline": {
+      "jsBytes": 975474,
+      "jsGzipBytes": 263679,
+      "assetRequests": 13,
+      "assetBytes": 356172
+    },
+    "polish": {
+      "jsBytes": 977736,
+      "jsGzipBytes": 264444,
+      "assetRequests": 13,
+      "assetBytes": 356172
+    }
+  },
+  "temporalSimulationIdentical": true
 }

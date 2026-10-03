@@ -5,11 +5,22 @@ export const HEAVY_HIT_FLASH_MS = 100;
 export const HEAVY_HIT_GAP_MS = 250;
 const SPARK_MS = 170;
 const MAX_BURSTS = 12;
+// Ordinary surviving-hit presentation only. Death/reveal have separate timing
+// and materials. These styles are selected by explicit archetype, never IDs.
+export const SURVIVING_HIT_STYLES = {
+  heavy: { overlayColor: ART.fx.core, overlayOpacity: .72, sparkCount: 4, sparkScale: 1, sparkOpacity: 1, sparkSpread: .32 },
+  giant: { overlayColor: '#dda999', overlayOpacity: .24, sparkCount: 3, sparkScale: .9, sparkOpacity: .5, sparkSpread: .30,
+    emissivePeak: .10 },
+} as const;
 interface Burst { id: number; startedAt: number; body: THREE.Mesh; sparks: THREE.Group; material: THREE.MeshBasicMaterial; giant: boolean; x: number; z: number }
 export class HeavyHitFeedback {
   private readonly lastHit = new Map<number, number>();
   private readonly bursts: Burst[] = [];
-  private readonly flash = new THREE.MeshBasicMaterial({ color: ART.fx.core, transparent: true, opacity: .72,
+  private readonly flash = new THREE.MeshBasicMaterial({ color: SURVIVING_HIT_STYLES.heavy.overlayColor,
+    transparent: true, opacity: SURVIVING_HIT_STYLES.heavy.overlayOpacity,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, toneMapped: false });
+  private readonly giantFlash = new THREE.MeshBasicMaterial({ color: SURVIVING_HIT_STYLES.giant.overlayColor,
+    transparent: true, opacity: SURVIVING_HIT_STYLES.giant.overlayOpacity,
     depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, toneMapped: false });
   private readonly geometry = new THREE.SphereGeometry(.035, 5, 3);
   constructor(private readonly scene: THREE.Scene) {}
@@ -28,7 +39,9 @@ export class HeavyHitFeedback {
     burst ??= this.bursts.reduce((oldest, b) => b.startedAt < oldest.startedAt ? b : oldest);
     // HP deltas carry no impact coordinates: use the defender-facing Rifle-height surface.
     burst.giant = enemy.archetype === 'giant';
-    burst.sparks.children.forEach((spark, index) => spark.visible = burst!.giant || index < 4);
+    const style = SURVIVING_HIT_STYLES[burst.giant ? 'giant' : 'heavy'];
+    burst.body.material = burst.giant ? this.giantFlash : this.flash;
+    burst.sparks.children.forEach((spark, index) => spark.visible = index < style.sparkCount);
     burst.id = enemy.id; burst.startedAt = nowMs; burst.x = -enemy.x; burst.z = enemy.z - (burst.giant ? (enemy.visualScaleZ ?? enemy.visualScale ?? 1) * .32 : .25);
     burst.body.visible = true; burst.sparks.visible = true;
     return true;
@@ -47,12 +60,13 @@ export class HeavyHitFeedback {
       burst.body.visible = ids.has(burst.id) && age >= 0 && age < HEAVY_HIT_FLASH_MS;
       burst.sparks.visible = ids.has(burst.id) && age >= 0 && age < SPARK_MS;
       if (!burst.sparks.visible) continue;
-      const progress = age / SPARK_MS; burst.material.opacity = 1 - progress;
+      const style = SURVIVING_HIT_STYLES[burst.giant ? 'giant' : 'heavy'];
+      const progress = age / SPARK_MS; burst.material.opacity = style.sparkOpacity * (1 - progress);
       burst.sparks.children.forEach((spark, index) => {
         const angle = index * 2.4;
-        spark.position.set(burst.x + Math.cos(angle) * (burst.giant ? .5 : .32) * progress,
+        spark.position.set(burst.x + Math.cos(angle) * style.sparkSpread * progress,
           .7 + Math.sin(angle) * .2 * progress + .15 * progress, burst.z - .35 * progress);
-        spark.scale.setScalar((burst.giant ? 1.8 : 1) * (1 - .5 * progress));
+        spark.scale.setScalar(style.sparkScale * (1 - .5 * progress));
       });
     }
   }
@@ -60,6 +74,6 @@ export class HeavyHitFeedback {
   dispose(): void {
     for (const burst of this.bursts) { this.scene.remove(burst.body, burst.sparks); burst.material.dispose(); }
     // Body overlays borrow the renderer's baked pose geometry; only sparks own geometry here.
-    this.bursts.length = 0; this.lastHit.clear(); this.flash.dispose(); this.geometry.dispose();
+    this.bursts.length = 0; this.lastHit.clear(); this.flash.dispose(); this.giantFlash.dispose(); this.geometry.dispose();
   }
 }

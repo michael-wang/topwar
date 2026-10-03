@@ -2,7 +2,7 @@ import { createServer } from 'vite';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 const baseline = 'a36b3c5e09559ba0ea0b364ec3347e4d85eda25c';
-export const files = ['CharacterAssets.ts', 'CharacterVisualFamilies.ts', 'GameRenderer.ts', 'ContactShadowRenderer.ts', 'enemies/CrowdPresentation.ts', 'enemies/EnemyRenderer.ts', 'enemies/GiantHealthBar.ts', 'enemies/GiantRenderer.ts', 'enemies/ChibiThreatFamilies.ts', 'enemies/ChibiGruntFamily.ts', 'environment/OffshoreTransports.ts', 'squad/ChibiPlayerFamily.ts', 'boss/BossRenderer.ts', 'tierPalettes.ts', 'art/FramedBarTextures.ts'];
+export const files = ['CharacterAssets.ts', 'CharacterVisualFamilies.ts', 'GameRenderer.ts', 'ContactShadowRenderer.ts', 'enemies/CrowdPresentation.ts', 'enemies/EnemyRenderer.ts', 'enemies/GiantHealthBar.ts', 'enemies/GiantRenderer.ts', 'enemies/HeavyHitFeedback.ts', 'enemies/ChibiThreatFamilies.ts', 'enemies/ChibiGruntFamily.ts', 'environment/OffshoreTransports.ts', 'squad/ChibiPlayerFamily.ts', 'boss/BossRenderer.ts', 'tierPalettes.ts', 'art/FramedBarTextures.ts'];
 export async function baselineServer() {
   const sources = new Map([...files.map(file => `src/rendering/${file}`), 'src/presentation/CharacterMotion.ts', 'src/art/ArtDirection.ts'].map(path => {
     return [resolve(path).replaceAll('\\', '/'), execFileSync('git', ['show', `${baseline}:${path}`], { encoding: 'utf8' })];

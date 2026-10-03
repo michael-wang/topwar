@@ -27,7 +27,7 @@ await page.evaluate(async () => {
 });
 const stats = {};
 const cases = ['normal', 'review-opening', 'mixed-threats', 'one-heavy-crowd', 'heavy-hit', 'heavy-death', 'heavy-contact',
-  'giant-reveal', 'giant-hit', 'giant-fall', 'giant-crash', 'giant-debris', 'giant-hp', 'giant-hp-100', 'giant-hp-50', 'giant-hp-10', 'giant-hp-0',
+  'giant-reveal', 'giant-hit', 'giant-hit-peak', 'giant-hit-50', 'giant-hit-settled', 'giant-fall', 'giant-crash', 'giant-debris', 'giant-hp', 'giant-hp-100', 'giant-hp-50', 'giant-hp-10', 'giant-hp-0',
   'player-guard', 'grunt-guard', 'grunt-hit-guard', 'grunt-death-guard', 'grunt-contact-guard', 'world-guard', 'boss-guard', 'boss-death-guard',
   'mixed-50', 'mixed-100', 'mixed-150', 'mixed-200', 'giants-two'];
 for (const key of cases) {
@@ -52,7 +52,8 @@ for (const key of cases) {
     }
     if (/^mixed-\d+$/.test(key)) f.enemies = crowd(Number(key.split('-')[1]), .2);
     draw(f, 0, key === 'review-opening'); draw(f, key === 'giant-reveal' ? 500 : 2000, key === 'review-opening');
-    if (key.includes('-hit')) { f.enemies[0].hp -= .5; draw(f, 2010); draw(f, 2040); }
+    if (key.includes('-hit')) { f.enemies[0].hp -= .5; draw(f, 2010);
+      draw(f, ({ 'giant-hit-peak': 2010, 'giant-hit-50': 2060, 'giant-hit-settled': 2210 })[key] ?? 2040); }
     if (key === 'heavy-death' || key === 'grunt-death-guard') { f.enemies = []; draw(f, 2010); draw(f, 2180); }
     if (key === 'boss-death-guard') { f.boss = null; draw(f, 2010); draw(f, 2180); }
     if (['giant-fall', 'giant-crash', 'giant-debris'].includes(key)) {

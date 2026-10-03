@@ -244,8 +244,23 @@ equipment/cuffs use its fixed torso region; hands/shoes retain their existing
 motion regions. Gait clocks, root scales, muzzle, R1 Giant HP, shadow, gameplay
 and review/production starts remain unchanged.
 
-The Giant surviving-hit correction is a separate follow-up commit. Ordinary
-surviving-hit wash/sparks/emissive are distinct from lethal/death flash, whose
-timing and intensity remain unchanged. Evidence and performance comparisons
-belong in `artifacts/rounded-toy-r2/`, including the required equal-height
-Grunt/Heavy color and silhouette comparisons.
+### Giant ordinary surviving hits
+
+`SURVIVING_HIT_STYLES` selects explicit Heavy/Giant archetype styles without
+family-ID branches or combat data. Giant uses muted peach #DDA999 at 0.24
+overlay opacity for the existing 100 ms wash; warm emissive peaks at 0.10
+instead of 0.45. Three warm sparks replace six; scale peaks at 0.9 instead
+of 1.8, opacity at 0.5 instead of 1, spread at 0.30 instead of 0.50. Sparks
+retain their 170 ms decay, 250 ms impact gap and twelve-burst bounded pool.
+Each feedback instance owns one shared overlay material per role, reused
+across impacts; existing pooled spark materials remain. Heavy retains its
+stronger 0.72 core wash and four-spark response.
+
+The lethal/death path explicitly restores the original core emissive color
+and 0.6 lethal-flash multiplier. Death/reveal timing, surviving-hit impulse,
+compression and the R1 Giant HP bar are unchanged. Ordinary surviving feedback
+is deliberately softer, independently of the major lethal/crash beat.
+
+Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
+including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
+Giant peak/50 ms/settled impact captures. Stop after R2 for human review.
