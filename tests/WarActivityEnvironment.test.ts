@@ -227,3 +227,33 @@ describe('presentation-only water and sky activity', () => {
     environment.dispose();
   });
 });
+
+
+it('keeps all defense warship sections intact throughout a pass and restores legacy masking', () => {
+  const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene);
+  const scheduler = new WarActivityScheduler();
+  let shipAt = 0;
+  for (let i = 0; i < 10 && !shipAt; i++) {
+    const at = scheduler.nextEventMs, flags = scheduler.update(at);
+    environment.update(0, 3.2, at, true);
+    if (flags & SHIP_STARTED) shipAt = at;
+  }
+  expect(shipAt).toBeGreaterThan(0);
+  const ship = scene.getObjectByName('battlefield-warship')!;
+  const sections = ship.children.filter(child => child.name.startsWith('warship-section-'));
+  const material = (ship.getObjectByName('warship-hull') as THREE.Mesh).material as THREE.MeshStandardMaterial;
+  for (const progress of [0, .04, .1, .4, .5, .6, .9, .99]) {
+    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * progress, true);
+    expect(ship.visible).toBe(true);
+    expect(sections.filter(section => section.visible)).toHaveLength(5);
+    expect(material.opacity).toBeCloseTo(Math.min(1, progress / .08, (1-progress) / .08));
+  }
+  // A presentation-clock rewind and mode switch must also restore the right premise.
+  environment.update(0, 3.2, 0, false);
+  environment.update(0, 3.2, shipAt, false);
+  environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .5, false);
+  expect(sections.filter(section => section.visible)).toHaveLength(0);
+  environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .5, true);
+  expect(sections.filter(section => section.visible)).toHaveLength(5);
+  environment.dispose();
+});

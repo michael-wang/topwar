@@ -108,11 +108,23 @@ approximately50 ms median frame timing. Enemy-render update CPU medians were
 **0.119/0.249/0.288/0.221 ms**. Software frame timing is noisy/quantized and is not
 a physical-phone claim. Density and gameplay never vary with FPS.
 
+## Defense presentation repair
+
+The passing `battlefield-warship` still hid individual sections against the legacy bridge
+footprint, making it disassemble in open sea. Defense now keeps all five sections intact
+throughout the pass, while retaining edge fade; legacy mode still masks them behind its
+solid deck. The audit also inspected scheduler, offshore carriers, corridor overlays,
+deck/rails/joints, industrial layers, relative scenery placement and fire/artillery edge
+positioning. Other bridge-specific visuals were already mode-gated; carrier cabin naming and
+current war activity are valid coastal storytelling. The full audit and reusable UI rules
+are in [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md). No simulation, data, input,
+animation, progression or combat values changed.
+
 ## Retained visual cleanup
 
-XP presentation now follows **deep sea → aqua → foam**. The gradient remains
-fixed to the full track and progressively masked, with a matching leading edge.
-The slim plaster/navy frame, 70/90% crest anticipation, full flash/label pop and
+XP presentation now follows **deep sea → aqua**, with a sunlight crest at 90%+. The gradient remains
+fixed to the full track and progressively masked, with a dark unfilled remainder.
+The primary navy-outlined track / large level badge, 70/90% anticipation, full flash/label pop and
 no-numeric-XP rule follow the coastal UI guardrail. XP/progression logic is unchanged.
 
 The fixed authored Giant HP is now **172**. Isolated seeds 1/17/42, at 44/38/30
@@ -123,7 +135,7 @@ single, 12.75–12.98 s pair). The previously authored HP tuning is retained; 12
 the first encounter timing and all player/ordinary-enemy stats stay fixed. Giant reveal/death and post-assault elite scheduling follow the current experiment above.
 Snapshots retain their saved effective balance; existing snapshots need no migration.
 
-## Art Phase 1.2 — Coastal UI Integration
+## Art Phase 1.3 — Presentation Cleanup + Legacy Assumption Audit
 
 The defense presentation now follows **a sunlit coastal diorama under violent
 assault**: large warm off-white plaster masses, turquoise shallows/deeper blue
@@ -147,14 +159,19 @@ remain. Fires move beside the new side wreckage; carriers sit smaller/farther
 out to leave the sea readable. Legacy industrial skyline/blanket haze is hidden
 only in defense mode. The 10-second power window and landing-craft cue remain.
 
-Defense UI now uses **PLASTER + SEA + SUNLIGHT**: slim plaster XP signage,
-navy text, fixed full-width sea/aqua/foam reveal, 70/90% crest anticipation,
-light Pause/TUNE buttons and practical matching TUNE controls. The top-center
+Defense UI uses **PLASTER + SEA + SUNLIGHT**: a large-number level badge beside a taller
+0.85–1-rem navy-outlined XP track, with no enclosing white capsule. Fixed full-width
+sea/aqua reveal contrasts with a dark navy remainder. The 90%+ crest is sunlight-yellow, not
+white; foam is reserved for the actual level flash. TUNE has a separate top-left anchor with
+a monochrome screwdriver and a below/right scrollable popup; Pause remains top-right. All
+persistent HUD edges use safe-area inset **plus 0.85rem**, with hints/build above XP. Enemy
+HP uses crimson/deep red in a cool navy frame, distinct from sea/aqua progression. The
+top-center
 DEFEND HUD is no longer constructed. A single desktop/touch movement hint fades
 in presentation after nine seconds; no Pause/TUNE hints or tutorial state.
 Level Up keeps its timing/scale/audio but uses aqua/foam rings/motes, ivory body
 wash, cyan-white weapon afterglow and cool-shadowed text. Hit/death feedback and
-enemy health bars remain unchanged. Flowers are tiny procedural blossom cards
+enemy health fractions/dimensions remain unchanged. Flowers are tiny procedural blossom cards
 attached to vines rather than large helmet-like magenta geometric masses. Centralized
 faction colors now use clean coastal blue, raspberry/crimson, gold-yellow, warm
 skin and navy equipment. Heavy has a separate darker crimson tunic; skin/hair
@@ -238,11 +255,12 @@ TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 give
 6 Hz). These values are runtime-loaded and retained/validated in snapshots.
 Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs or enemy HP changes.
 
-The bottom HUD shows **LV N only**, with no routine numeric XP. Its slim plaster
-frame, translucent backing, navy text and cool shadow follow coastal UI rules.
-The sea→aqua→foam **gradient spans the full track width**, progressively revealed
-with a clip mask; it is never stretched across the filled segment. The leading
-edge brightens toward foam as a level approaches.
+The bottom HUD shows **LV N only**, with no routine numeric XP. A small plaster badge has a
+prominent level number and aqua underline; the enclosing capsule is gone. A taller
+navy-outlined track has a dark unfilled remainder. The sea→aqua **gradient spans the full
+track width**, progressively revealed with a clip mask; it is never stretched across the
+filled segment. At 90%+ the leading crest catches sunlight, preserving the visible dark
+remainder; only the actual level flash is foam-white.
 The traveling sheen remains subtle. At 70% glow strengthens; at 90% it pulses.
 Forward mask/edge updates interpolate over 120 ms. Large same-level gains
 (at least 20% of the requirement) use a brief **260 ms** reveal so the Giant
@@ -603,7 +621,7 @@ Portrait captures in `artifacts/reinforcement/` use **390×844 / DPR2**. The nat
 LV7/arrival/formation/firing sequence is seed 1; seed 17 supplies the crowded
 Giant death/reward sequence. A controlled isolated LV7 fixture supplies two soldiers
 fighting the same Giant without other natural encounters in that isolated fixture.
-The reward visibly moves the current sea-to-foam bar without numeric XP. The
+The reward visibly moves the current sea/aqua bar without numeric XP. The
 entrance comes from below the frame, both bodies remain distinct, and no multiplier
 label appears. The original level-up spectacle stays readable. Mobile left tap
 moves one lane with both members retained; Pause/TUNE respond. Actual Retry returns

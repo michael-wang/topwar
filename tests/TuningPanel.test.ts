@@ -181,3 +181,18 @@ describe('temporary tuning panel', () => {
     expect(root.removed).toBe(true);
   });
 });
+
+
+it('uses a separate defense tuning anchor and a monochrome tool, retaining the legacy anchor', () => {
+  vi.stubGlobal('document', {createElement: (tag: string) => new ElementStub(tag)});
+  const viewport = new ElementStub('div');
+  const defense = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
+  expect(viewport.children[0].className).toBe('tuning-panel tuning-panel--coastal-anchor');
+  const summary = viewport.children[0].children[0];
+  expect(summary.children[0].className).toBe('tune-tool');
+  expect(summary.children[1].textContent).toBe('TUNE');
+  const legacy = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), false);
+  expect(viewport.children[1].className).toBe('tuning-panel');
+  expect(viewport.children[1].children[0].textContent).toBe('TUNE');
+  defense.dispose(); legacy.dispose(); vi.unstubAllGlobals();
+});

@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 
-// One shared painted brass/ink frame and one tintable fill for every world bar.
+// Shared rounded frame geometry; callers may select a semantic frame palette.
 // No canvas, per-enemy textures or extra bar meshes.
-export function framedBarTexture(fill = false): THREE.DataTexture {
+type FrameColors = Record<'deep' | 'ink' | 'frame' | 'highlight' | 'shadow', string>;
+export function framedBarTexture(fill = false, palette: FrameColors = ART.bar): THREE.DataTexture {
   const width = 256, height = 48, data = new Uint8Array(width * height * 4);
-  const ink = new THREE.Color(ART.bar.deep), frame = new THREE.Color(ART.bar.frame);
-  const light = new THREE.Color(ART.bar.highlight), shadow = new THREE.Color(ART.bar.shadow);
-  const color = new THREE.Color(), track = new THREE.Color(ART.bar.ink);
+  const ink = new THREE.Color(palette.deep), frame = new THREE.Color(palette.frame);
+  const light = new THREE.Color(palette.highlight), shadow = new THREE.Color(palette.shadow);
+  const color = new THREE.Color(), track = new THREE.Color(palette.ink);
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const radius = height * ART.bar.cornerFraction;
     const dx = Math.max(radius - x, x - (width - 1 - radius), 0);

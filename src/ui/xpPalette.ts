@@ -4,9 +4,10 @@ import { ART } from '../art/ArtDirection';
 export const XP_FILL_GRADIENT = `linear-gradient(90deg, ${ART.xp.map(stop =>
   `${stop.color} ${stop.at * 100}%`).join(', ')})`;
 
-// The leading edge follows the same sea/aqua/foam stops as the full track.
+// The full fill stays sea/aqua; only the near-full crest catches sunlight.
 export function xpEdgeColor(progress: number): string {
   const fraction = Math.max(0, Math.min(1, progress));
+  if (fraction >= .9) return ART.coastalUi.sun;
   const right = ART.xp.findIndex(stop => stop.at >= fraction);
   if (right <= 0) return ART.xp[0].color;
   const a = ART.xp[right - 1], b = ART.xp[right];

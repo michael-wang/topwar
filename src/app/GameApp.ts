@@ -93,7 +93,7 @@ export class GameApp {
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
     this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
-    this.tuningPanel = new TuningPanel(this.hudActions.element, this.runtimeDefaults, (values) => {
+    this.tuningPanel = new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
         rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,

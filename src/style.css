@@ -306,6 +306,25 @@ body {
 
 /* Defense UI: plaster structure, sea energy, navy legibility. Legacy stays above. */
 body:has(.beachhead-defense) { background: var(--coast-paper); }
+.beachhead-defense {
+  --hud-margin: .85rem;
+  --hud-inset-top: env(safe-area-inset-top, 0px);
+  --hud-inset-left: env(safe-area-inset-left, 0px);
+  --hud-inset-right: env(safe-area-inset-right, 0px);
+  --hud-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --hud-safe-top: calc(var(--hud-inset-top) + var(--hud-margin));
+  --hud-safe-left: calc(var(--hud-inset-left) + var(--hud-margin));
+  --hud-safe-right: calc(var(--hud-inset-right) + var(--hud-margin));
+  --hud-safe-bottom: calc(var(--hud-inset-bottom) + var(--hud-margin));
+}
+.beachhead-defense .hud-actions { top: var(--hud-safe-top); right: var(--hud-safe-right); }
+.tuning-panel--coastal-anchor {
+  position: absolute; z-index: 3; top: var(--hud-safe-top); left: var(--hud-safe-left);
+  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+}
+.beachhead-defense .tuning-panel--coastal-anchor summary { display: flex; gap: .3rem; align-items: center; }
+.tune-tool { display: flex; width: 1rem; height: 1rem; }
+.tune-tool svg { width: 100%; height: 100%; }
 .beachhead-defense .pause-button, .beachhead-defense .tuning-panel summary {
   min-width: 44px; min-height: 44px; padding: 0 .65rem;
   background: color-mix(in srgb, var(--coast-plaster) 94%, transparent);
@@ -320,7 +339,10 @@ body:has(.beachhead-defense) { background: var(--coast-paper); }
   outline: 2px solid var(--coast-sea); outline-offset: 2px;
 }
 .beachhead-defense .tuning-panel-content {
-  width: min(15rem, calc(100vw - 1rem)); padding: .6rem .7rem;
+  left: 0; right: auto; width: min(15rem, calc(100vw - var(--hud-safe-left) - var(--hud-safe-right)));
+  max-height: min(65dvh, calc(100dvh - var(--hud-safe-top) - var(--hud-safe-bottom) - 8rem),
+    calc(177.7778vw - var(--hud-safe-top) - var(--hud-safe-bottom) - 8rem));
+  padding: .6rem .7rem;
   background: color-mix(in srgb, var(--coast-plaster) 97%, transparent);
   color: var(--coast-ink); border: 1px solid var(--coast-foam);
   border-radius: .65rem; box-shadow: 0 5px 18px color-mix(in srgb, var(--coast-shadow) 26%, transparent);
@@ -340,21 +362,24 @@ body:has(.beachhead-defense) { background: var(--coast-paper); }
 .beachhead-defense .game-over-overlay button { background: var(--coast-paper); color: var(--coast-ink); }
 .xp-hud {
   position: absolute; z-index: 2; pointer-events: none;
-  left: max(.75rem, env(safe-area-inset-left)); right: max(.75rem, env(safe-area-inset-right));
-  bottom: max(.6rem, env(safe-area-inset-bottom));
-  display: flex; align-items: center; gap: .55rem;
-  padding: .35rem .55rem; border-radius: .55rem;
-  border: 1px solid color-mix(in srgb, var(--coast-foam) 85%, transparent);
-  background: color-mix(in srgb, var(--coast-plaster) 88%, transparent);
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--coast-shadow) 18%, transparent);
+  left: var(--hud-safe-left); right: var(--hud-safe-right); bottom: var(--hud-safe-bottom);
+  display: flex; align-items: center; gap: .7rem;
   color: var(--coast-ink); font: 900 .75rem/1.3 "Trebuchet MS", sans-serif; letter-spacing: .03em;
 }
-.xp-level { min-width: 2.15rem; }
+.xp-level {
+  display: flex; align-items: baseline; justify-content: center; gap: .2rem;
+  min-width: 3.1rem; padding: .05rem .35rem .2rem; border-radius: .35rem;
+  background: color-mix(in srgb, var(--coast-plaster) 88%, transparent);
+  border-bottom: 3px solid var(--coast-aqua);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--coast-shadow) 18%, transparent);
+}
+.xp-level-prefix { font-size: .58rem; letter-spacing: .06em; }
+.xp-level-number { font-size: 1.9rem; line-height: 1.15; letter-spacing: -.03em; }
 .xp-track {
-  position: relative; flex: 1; height: .55rem; border-radius: .45rem;
-  background: color-mix(in srgb, var(--coast-sea) 12%, var(--coast-paper));
-  border: 1px solid var(--coast-foam);
-  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--coast-shadow) 20%, transparent);
+  position: relative; flex: 1; height: clamp(.85rem, 3.9vw, 1rem); border-radius: .45rem;
+  background: var(--coast-shadow); border: 2px solid var(--coast-ink);
+  box-shadow: inset 0 2px 3px color-mix(in srgb, var(--coast-ink) 65%, transparent),
+    0 2px 5px color-mix(in srgb, var(--coast-shadow) 25%, transparent);
 }
 .xp-fill {
   position: absolute; inset: 0; height: 100%; width: 100%; border-radius: inherit;
@@ -362,17 +387,16 @@ body:has(.beachhead-defense) { background: var(--coast-paper); }
   box-shadow: 0 0 5px color-mix(in srgb, var(--coast-aqua) 50%, transparent), inset 0 1px 0 var(--coast-crest);
   overflow: hidden;
 }
-.xp-edge { position: absolute; top: 0; bottom: 0; width: 2px; border-radius: .2rem;
+.xp-edge { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: .2rem;
   transform: translateX(-100%); background: currentColor; box-shadow: 0 0 5px 1px currentColor;
   pointer-events: none; }
-.xp-charged .xp-edge { box-shadow: 0 0 8px 2px currentColor; }
+.xp-charged .xp-edge { box-shadow: 0 0 5px 1px currentColor; }
 .xp-imminent .xp-edge { animation: xp-crest 1.2s ease-in-out infinite; }
 .level-flash .xp-edge { color: var(--coast-foam) !important; }
 .xp-fill::before { content: ''; position: absolute; inset: -40% -20%;
-  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--coast-foam) 45%, transparent) 50%, transparent 65%);
+  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--coast-crest) 25%, transparent) 50%, transparent 65%);
   animation: xp-sheen 3.2s ease-in-out infinite; }
-.xp-charged .xp-fill { box-shadow: 0 0 9px var(--coast-aqua), inset 0 1px 0 var(--coast-foam); }
-.xp-imminent .xp-fill { animation: xp-crest 1.2s ease-in-out infinite; }
+.xp-charged .xp-fill { box-shadow: 0 0 6px var(--coast-aqua), inset 0 1px 0 var(--coast-aqua); }
 .xp-imminent .xp-fill::before { animation-duration: 1.8s; }
 .level-up-message { position: absolute; bottom: calc(100% + .6rem); left: 0; right: 0;
   text-align: center; color: var(--coast-paper); opacity: 0;
@@ -380,15 +404,16 @@ body:has(.beachhead-defense) { background: var(--coast-paper); }
   transform: translateY(.3rem); }
 .level-up-message strong { display: block; font: 900 1.4rem/1.1 "Trebuchet MS", sans-serif; letter-spacing: .07em; }
 .level-up-message span { display: block; font: 800 .68rem/1.5 "Trebuchet MS", sans-serif; letter-spacing: .12em; color: var(--coast-foam); }
-.xp-hud.level-up { animation: xp-coastal-burst 800ms ease-out both; }
+.xp-hud.level-up .xp-track { animation: xp-coastal-burst 800ms ease-out both; }
 .level-up .level-up-message { animation: xp-announcement 800ms ease-out both; }
 .level-label-pop .xp-level { animation: xp-label-pop 320ms ease-out both; }
+.level-flash .xp-level { background: var(--coast-foam); box-shadow: 0 0 15px var(--coast-foam); }
 .level-flash .xp-fill { background: linear-gradient(90deg, var(--coast-aqua), var(--coast-foam)); box-shadow: 0 0 18px var(--coast-foam); }
 .xp-track::after { content: ''; position: absolute; inset: -.3rem; border-radius: inherit; opacity: 0;
   background: linear-gradient(110deg, transparent 35%, var(--coast-foam) 50%, transparent 65%); pointer-events: none; }
 .level-up .xp-track::after { animation: xp-level-sweep 650ms ease-out both; }
 @keyframes xp-sheen { 0%, 25% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
-@keyframes xp-crest { 50% { filter: brightness(1.15); box-shadow: 0 0 12px var(--coast-foam); } }
+@keyframes xp-crest { 50% { filter: brightness(1.12); box-shadow: 0 0 7px var(--coast-sun); } }
 @keyframes xp-coastal-burst { 0% { border-color: var(--coast-foam); box-shadow: 0 0 24px 4px var(--coast-foam); }
   35% { border-color: var(--coast-foam); box-shadow: 0 0 16px var(--coast-aqua); }
   100% { border-color: var(--coast-foam); } }
@@ -398,8 +423,8 @@ body:has(.beachhead-defense) { background: var(--coast-paper); }
 @keyframes xp-announcement { 0% { opacity: 0; transform: translateY(.3rem) scale(.85); }
   18%, 70% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-.25rem); } }
 .beachhead-defense .control-hint {
-  display: block; left: max(.7rem, env(safe-area-inset-left));
-  bottom: max(3rem, calc(env(safe-area-inset-bottom) + 2.7rem));
+  display: block; left: var(--hud-safe-left);
+  bottom: calc(var(--hud-safe-bottom) + 3.25rem);
   font-size: clamp(10px, 2.7vw, 12px); color: var(--coast-ink);
   text-shadow: 0 1px 0 var(--coast-paper), 0 0 3px var(--coast-foam);
   animation: coastal-hint-out 9s linear forwards;
@@ -407,8 +432,11 @@ body:has(.beachhead-defense) { background: var(--coast-paper); }
 @keyframes coastal-hint-out { 0%, 75% { opacity: .95; } 100% { opacity: 0; } }
 .game-paused .control-hint { animation-play-state: paused; }
 .beachhead-defense .build-label {
-  bottom: max(2.65rem, calc(env(safe-area-inset-bottom) + 2.35rem));
+  right: var(--hud-safe-right); bottom: calc(var(--hud-safe-bottom) + 2.8rem);
   color: var(--coast-ink); opacity: .6; text-shadow: 0 1px 1px var(--coast-paper);
+}
+.beachhead-defense .perf-hud {
+  left: var(--hud-safe-left); top: calc(var(--hud-safe-top) + 3.3rem);
 }
 .beachhead-defense:has(.xp-hud.level-up) .control-hint { visibility: hidden; }
 .hint-key { display: inline-block; min-width: 7.4em; color: var(--art-highlight); font-weight: 900; }

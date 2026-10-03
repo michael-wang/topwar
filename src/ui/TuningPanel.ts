@@ -49,9 +49,16 @@ export class TuningPanel {
     private readonly onChange: (values: RuntimeTuning) => void, defenseMode = false) {
     this.values = { ...defaults };
     this.element = document.createElement('details');
-    this.element.className = 'tuning-panel';
+    this.element.className = defenseMode ? 'tuning-panel tuning-panel--coastal-anchor' : 'tuning-panel';
     const summary = document.createElement('summary');
-    summary.textContent = 'TUNE';
+    if (defenseMode) {
+      const icon = document.createElement('span');
+      icon.className = 'tune-tool'; icon.ariaHidden = 'true';
+      // Authored monochrome screwdriver, independent of platform emoji fonts.
+      icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 19 9-9M3 21l2-5 3 3-5 2Z"/><path d="m12 8 4 4 4-4a2.8 2.8 0 0 0-4-4l-4 4Z"/></svg>';
+      const label = document.createElement('span'); label.textContent = 'TUNE';
+      summary.append(icon, label);
+    } else summary.textContent = 'TUNE';
     const content = document.createElement('div');
     content.className = 'tuning-panel-content';
     this.element.append(summary, content);

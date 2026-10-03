@@ -45,3 +45,22 @@ it('renders a larger amber Heavy and preserves configured scale through death', 
   expect(deaths.some((death) => Math.abs(death.scale.x - 1.89 * 1.07) < .001)).toBe(true);
   renderer.dispose();
 });
+
+
+it('projects Heavy and Giant health using red fills without altering HP fraction or bar dimensions', () => {
+  const scene = new THREE.Scene();
+  const renderer = new EnemyRenderer(scene, bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel());
+  const enemies = [
+    {id:1,tier:1,archetype:'heavy' as const,hp:10,maxHp:15,x:1.4,z:10},
+    {id:2,tier:1,archetype:'giant' as const,hp:86,maxHp:172,x:-1.4,z:30,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04}];
+  renderer.update(enemies, 0); renderer.update(enemies, 1600);
+  const fills = scene.children.filter(child => child.name === 'heavy-hp-fill') as THREE.Sprite[];
+  expect(fills).toHaveLength(2);
+  expect(fills.map(fill => fill.material.color.getHexString())).toEqual([ART.enemyHealth.heavy.slice(1), ART.enemyHealth.giant.slice(1)]);
+  expect(fills[0].scale.x).toBeCloseTo(1.1 * 10/15);
+  const before = fills[1].scale.x;
+  renderer.update([enemies[0], {...enemies[1], hp:172}], 1700);
+  expect(fills[1].scale.x).toBeCloseTo(before * 2);
+  expect(enemies.map(enemy => enemy.hp)).toEqual([10,86]);
+  renderer.dispose();
+});

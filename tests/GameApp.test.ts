@@ -52,6 +52,7 @@ const mock = vi.hoisted(() => ({
   hudSetPaused: vi.fn(),
   hudDispose: vi.fn(),
   panelConstructedWith: vi.fn(),
+  panelAnchor: vi.fn(),
   panelSetValues: vi.fn(),
   panelToggle: vi.fn(),
   panelDispose: vi.fn(),
@@ -139,7 +140,7 @@ vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
 } }));
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown) {
-    mock.panelConstructedWith(defaults, onChange);
+    mock.panelAnchor(_viewport); mock.panelConstructedWith(defaults, onChange);
   }
   setValues = mock.panelSetValues;
   toggle = mock.panelToggle;
@@ -990,6 +991,7 @@ it('constructs defense XP presentation without constructing the obsolete lane-nu
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
   expect(mock.xpConstructed).toHaveBeenCalledWith(viewport);
+  expect(mock.panelAnchor).toHaveBeenCalledWith(viewport);
   expect(mock.laneConstructed).not.toHaveBeenCalled();
   expect(viewport.classList.add).toHaveBeenCalledWith('beachhead-defense');
   app.dispose();

@@ -17,7 +17,7 @@ it('shows only the level and truthful fill percentage, with anticipation at 70/9
   const { hud, root } = make();
   hud.update({ level: 1, xp: 14 }, balance, 0);
   expect(root.style.pointerEvents).toBe('none');
-  expect(root.children[0].textContent).toBe('LV 1');
+  expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 1');
   expect(root.children[1].children[0].style.clipPath).toBe('inset(0 50% 0 0 round .45rem)');
   expect(root.classes.has('xp-charged')).toBe(false);
   hud.update({ level: 1, xp: 20 }, balance, 100);
@@ -31,17 +31,17 @@ it('flashes full then resets cleanly to new-level truth, pops the label and expi
   hud.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 }, 100);
   hud.update({ level: 2, xp: 15 }, balance, 100);
   expect(root.classes.has('level-up')).toBe(true);
-  expect(fill.style.clipPath).toBe('inset(0 0% 0 0 round .45rem)'); expect(root.children[0].textContent).toBe('LV 1');
+  expect(fill.style.clipPath).toBe('inset(0 0% 0 0 round .45rem)'); expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 1');
   expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', 'FIRE RATE ↑']);
   hud.update({ level: 2, xp: 15 }, balance, 250);
-  expect(root.children[0].textContent).toBe('LV 2'); expect(root.classes.has('level-label-pop')).toBe(true);
+  expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 2'); expect(root.classes.has('level-label-pop')).toBe(true);
   hud.update({ level: 2, xp: 15 }, balance, 341);
   expect(fill.style.clipPath).toBe('inset(0 75% 0 0 round .45rem)'); expect(fill.style.transition).toBe('none');
   hud.update({ level: 2, xp: 16 }, balance, 360);
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
   hud.update({ level: 2, xp: 16 }, balance, 901);
   expect(root.classes.has('level-up')).toBe(false);
-  hud.reset(); expect(fill.style.clipPath).toBe('inset(0 100% 0 0 round .45rem)'); expect(root.children[0].textContent).toBe('LV 1');
+  hud.reset(); expect(fill.style.clipPath).toBe('inset(0 100% 0 0 round .45rem)'); expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 1');
 });
 
 it('reveals a full-track gradient with a mask rather than resizing the gradient', () => {
@@ -52,7 +52,7 @@ it('reveals a full-track gradient with a mask rather than resizing the gradient'
     expect(Number.parseFloat(fill.style.clipPath.split(' ')[1])).toBeCloseTo(100-percentage);
     expect(fill.style.width).toBeUndefined();
     expect(Number.parseFloat(edge.style.left)).toBe(percentage);
-    expect(root.children[0].textContent).toBe('LV 3');
+    expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 3');
   }
 });
 
@@ -63,7 +63,7 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   hud.update({ level: 6, xp: 160 }, balance, 100);
   expect(fill.style.transition).toBe('clip-path 260ms ease-out');
   expect(Number.parseFloat(fill.style.clipPath.split(' ')[1])).toBeCloseTo(100 - 160 / 420 * 100);
-  expect(root.children[0].textContent).toBe('LV 6');
+  expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 6');
   hud.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 6, toLevel: 7 }, 500);
   hud.update({ level: 7, xp: 0 }, balance, 600);
   expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP', '']);
@@ -71,12 +71,23 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
 });
 
-it('uses a deep-sea XP edge early and a foam edge near full without changing the frame/mask semantics', () => {
+it('uses a deep-sea XP edge early and a sunlight crest near full without changing the frame/mask semantics', () => {
   const { hud, root } = make(), edge = root.children[1].children[1];
   const testBalance = { ...balance, xpRequirements: [100] };
   hud.update({ level: 1, xp: 20 }, testBalance, 0);
   expect(edge.style.color).toBe('#2b8ea4');
   hud.update({ level: 1, xp: 90 }, testBalance, 100);
-  expect(edge.style.color).toBe('#bae9e0');
+  expect(edge.style.color).toBe('#f7cd76');
   expect(root.classes.has('xp-imminent')).toBe(true);
+});
+
+
+it('gives level a dedicated large number and keeps the HUD container structural', () => {
+  const {hud, root} = make();
+  hud.update({level:4, xp:30}, balance, 0);
+  expect(root.className).toBe('xp-hud');
+  const badge = root.children[0];
+  expect(badge.children.map(child => [child.className, child.textContent])).toEqual([
+    ['xp-level-prefix', 'LV'], ['xp-level-number', '4']]);
+  expect(root.children[1].className).toBe('xp-track');
 });

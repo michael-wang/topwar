@@ -1,6 +1,7 @@
 # Sunlit Coastal Battlefield
 
-Art Phase 1.2 integrates **defense-mode UI and presentation** into the accepted coast. The direction is a
+Art Phase 1.3 cleans up **defense-mode presentation and inherited bridge assumptions**
+within the accepted coast. The direction is a
 sunlit stylized Mediterranean coastal diorama: **a beautiful coast under
 violent assault**. The supplied reference informs color, shape hierarchy and
 breeze, not its village, assets, layout or identity. All scenery is original
@@ -63,7 +64,7 @@ fortifications. Scorch, wreckage and broken architecture represent consequences
 of the assault. Their placement remains driven by lane centers. Do not draw bright road
 lane markings or add decorative clutter to sell the art. Keep red Grunts,
 ochre Heavies, blue defenders and crimson/gold Giants as clear foreground masses.
-Enemy health bars retain their readable combat styling. Defense HUD and progression
+Enemy health bars use crimson/red fills with cool navy frames. Defense HUD and progression
 follow the coastal UI rules below, preserving the open center sky.
 
 ## Water and environmental life
@@ -126,12 +127,22 @@ slabs, ornamental gold borders, metallic bevels or fantasy typography.
 | Crest / celebration | crest `#BAE9E0`, foam `#E5F6EE`, cyan-white energy `#C6F4F2` |
 | Rare sun accent | `#F7CD76`; never the primary UI identity |
 
-The slim XP sign has a translucent plaster backing, foam-light minimal edge,
-navy `LV N`, and soft cool shadow. No numeric XP. Its gradient is anchored to
-the **full track width**, progressively revealed by the fill mask. At 70% aqua
-glow strengthens; at 90% foam edging pulses and sheen speeds up like a cresting
-wave. Progression is simulation truth; the existing 120/260 ms gain reveal,
-240 ms full flash, level-label pop and 800 ms beat are preserved.
+XP/player progression = **SEA / AQUA / SUNLIGHT**; enemy health = **CRIMSON / RED / DEEP
+RED**. Never use normal gold enemy health fills. `ART.enemyHealth` owns Heavy crimson
+`#C83F5A`, Giant deep red `#A93449`, and cool navy frame colors. World bars retain shared
+rounded geometry; legacy Boss framing is unchanged.
+
+Level is primary information: a compact plaster badge combines a small `LV` with a large
+1.9-rem number and aqua underline. The XP container has no outer capsule, border, panel
+background or shadow. The track itself is primary, with a responsive 0.85–1-rem interior,
+2-pixel navy outline, dark cool-shadow unfilled remainder and modest grounding shadow. No
+numeric XP. Its sea-to-aqua gradient is anchored to the **full track width**, progressively
+revealed by the fill mask. At 70% aqua glow strengthens; at 90% the leading crest uses
+sunlight `#F7CD76`, with a restrained pulse and faster sheen. Normal near-full fill stays
+aqua, never foam-white, so the last 2–10% remains dark and visible. Foam/ivory is reserved
+for actual Level Up. The 120/260 ms gain reveal, 240 ms full flash, level-label pop and 800
+ms beat are preserved; the flash/sweep now belongs to the track and badge, not an enclosing
+panel.
 
 Level Up uses an aqua ground ring, ivory-white body/gear flash, eight aqua/foam
 motes per member, white/aqua HUD sweep, foam-white text with cool shadows, and
@@ -141,7 +152,10 @@ healing aura. Gold may be a tiny sunlight accent, never a dominant meter/effect.
 
 Defense does not construct the old `DEFEND N / 5` HUD. Keep the top-center sky
 empty. Pause/TUNE use lightly translucent plaster, navy icons/text, minimum
-44-pixel hit targets, soft cool shadow and simple edges. TUNE uses the same
+44-pixel hit targets, soft cool shadow and simple edges. Pause stays top-right;
+development-only TUNE has its own top-left anchor with an authored monochrome screwdriver
+SVG. Its scrollable popup opens below/right, constrained to the portrait viewport. TUNE uses
+the same
 plaster/navy palette, sea-colored range accents and subtle separators; input
 and focus ownership are unchanged. Legacy interface styling remains intact.
 
@@ -149,8 +163,31 @@ The lower-left hint has only `A / D or ← / →   STEP LANE` on desktop or
 `TAP LEFT / RIGHT` on coarse-pointer devices. Navy text with a pale shadow stays
 legible on sand. It holds briefly then fades over a nine-second CSS presentation
 animation; Pause suspends that animation. No gameplay/tutorial state is stored.
-The build label stays quiet above XP. Preserve safe-area spacing and pointer
-transparency: the HUD should not consume lane taps.
+The build label stays quiet above XP. Defense CSS defines `--hud-safe-top/left/right/bottom`
+as the respective safe-area inset **plus 0.85rem**, never the maximum of those values.
+Shared `--hud-inset-*` inputs default to `env(safe-area-inset-*)`; they can be overridden
+for visual QA. Apply the sum to controls, XP, hint, build label and optional diagnostics;
+keep hints above the taller level badge. XP and hints stay pointer-transparent.
+
+## Defense-mode legacy premise audit
+
+Do not apply presentation logic whose world premise no longer exists. Preserve supported legacy rendering behind its mode boundary.
+
+| Assumption / system | Defense handling | Why |
+| --- | --- | --- |
+| Bridge footprint occludes passing ship sections — `BridgeEnvironment.updateActivity` | **Fixed:** bypass section mask only in defense; preserve whole-ship edge fade and legacy mask | Open coastal sea has no deck to hide the ship |
+| Road deck, shoulders, rails and scrolling joints — `BridgeEnvironment` | Already hidden; retained for legacy | Stationary civilian beach replaces bridge travel |
+| Industrial slabs/crane, blanket gray haze, old beachhead/island silhouettes — `BridgeEnvironment` | Already hidden only in defense | Sunlit architecture/sea owns the coastal vista |
+| Forward-progress parallax and near-bridge ship band — `BridgeEnvironment`, `GameRenderer` projection | Already fixed relative to defender, ship band offshore at relative Z=98 | Internal progression must not move the coastal scene |
+| Bridge-width-dependent placement — fires/artillery | Already uses the configured combat edge in defense | Localized damage stays beside outer lanes; width is a valid channel bound, not bridge occlusion |
+| Bright road corridor strips/prepared obstacles — `AttackLaneRenderer` | Already hidden/removed in defense; quiet sand scuffs remain | Civilian coast was not fortified |
+| Passing ship timing/aircraft/flak — `WarActivityScheduler` | Retained: timing only, no footprint/occlusion logic | War atmosphere still fits open coastal sky/sea |
+| New carriers/landing craft — `OffshoreTransports` | Retained: defense-only, asymmetric offshore positions, bob/wake and shoreward cue; no bridge mask | They tell the current invasion story (`rear-bridge` means ship cabin) |
+| Tier HUD / dormant Boss and reward presentation — UI/renderers | Already hidden or inactive in defense; implementations retained | Current experiment disables tier/Boss/reward gameplay, so no extra HUD appears |
+| Explicit lane number / shared right-side development anchor — UI | Lane HUD already absent; **fixed** TUNE to separate left anchor | Preserve empty center sky and distinguish development control |
+
+Distant inferno/smoke and airborne flashes remain localized battle activity rather than
+bridge geometry; no additional environment removal is warranted.
 
 ## Localized catastrophe
 
@@ -166,5 +203,5 @@ authorizing new gameplay. **Simulation, snapshots, balance data, input, enemy
 population, XP and player power are unchanged by this art phase.**
 
 Portrait before/after evidence, motion recording and performance observations
-are in `artifacts/coastal-ui/REPORT.md`. Software-rendered FPS is diagnostic;
+are in `artifacts/coastal-presentation/REPORT.md`. Software-rendered FPS is diagnostic;
 physical-phone readability, cloth visibility and contrast still need review.

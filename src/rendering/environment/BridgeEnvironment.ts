@@ -705,8 +705,10 @@ export class BridgeEnvironment {
       this.shipMaterials[1].opacity = edgeFade;
       for (const section of this.shipSections) {
         const sectionX = x + (this.activity.shipSide === 1 ? section.x : -section.x);
-        // Hard section masking keeps every visible piece outside the solid bridge footprint.
-        section.group.visible = Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
+        // Only the legacy bridge occludes sections. Coastal defense has open sea,
+        // so keep the entire silhouette intact (including after a mode switch).
+        section.group.visible = this.defenseMode
+          || Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
       }
     }
     for (let index = 0; index < this.aircraft.length; index++) {

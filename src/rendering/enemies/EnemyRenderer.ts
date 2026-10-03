@@ -86,11 +86,11 @@ export class EnemyRenderer {
   private readonly giantBurst: DeathBurst;
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
-  private readonly barFrameTexture = framedBarTexture();
+  private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
   private readonly barFillTexture = framedBarTexture(true);
   private readonly barBackingMaterial = new THREE.SpriteMaterial({ map: this.barFrameTexture, depthTest: false, toneMapped: false });
-  private readonly barFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.faction.gold, depthTest: false, toneMapped: false });
-  private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.fx.impact, depthTest: false, toneMapped: false });
+  private readonly barFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.heavy, depthTest: false, toneMapped: false });
+  private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.giant, depthTest: false, toneMapped: false });
   private readonly capacity = PALETTES.map(() => 1);
   private readonly bodyCapacity = [1, 1, 1, 1];
   private readonly bodyMeshes: THREE.InstancedMesh[];

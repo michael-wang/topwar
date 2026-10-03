@@ -75,3 +75,18 @@ it('shares centralized legacy and coastal tokens with the DOM HUD', () => {
   expect(setProperty).toHaveBeenCalledWith('--coast-ink', ART.coastalUi.ink);
   expect(setProperty).toHaveBeenCalledWith('--coast-foam', ART.coastalUi.foam);
 });
+
+
+it('gives enemy health a cool navy frame and red-family semantic fills, leaving legacy frames intact', () => {
+  const enemyFrame = framedBarTexture(false, ART.enemyHealth);
+  const legacyFrame = framedBarTexture();
+  const at = (128 + 5 * 256) * 4;
+  const enemyPixel = Array.from(enemyFrame.image.data.slice(at, at+3));
+  const legacyPixel = Array.from(legacyFrame.image.data.slice(at, at+3));
+  expect(enemyPixel[2]).toBeGreaterThan(enemyPixel[0]);
+  expect(legacyPixel[0]).toBeGreaterThan(legacyPixel[2]);
+  expect(ART.enemyHealth.heavy).toBe(ART.faction.grunt);
+  expect(ART.enemyHealth.giant).toBe(ART.faction.heavyBody);
+  expect(ART.enemyHealth.heavy).not.toBe(ART.faction.gold);
+  enemyFrame.dispose(); legacyFrame.dispose();
+});

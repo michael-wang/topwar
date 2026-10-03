@@ -5,21 +5,14 @@ import { ART } from '../src/art/ArtDirection';
 import { defenseSideDebris } from '../src/rendering/environment/DefenseDebrisLayout';
 import { AttackLaneRenderer } from '../src/rendering/AttackLaneRenderer';
 
-it('reveals a fixed ocean-to-foam palette with steadily increasing edge brightness', () => {
+it('reveals a fixed sea/aqua fill and uses sunlight only on the near-full crest', () => {
   expect(xpEdgeColor(0)).toBe(ART.coastalUi.sea);
   expect(xpEdgeColor(.7)).toBe(ART.coastalUi.aqua);
-  expect(xpEdgeColor(1)).toBe(ART.coastalUi.foam);
   expect(XP_FILL_GRADIENT).toContain(`${ART.coastalUi.aqua} 70%`);
-  let previousBrightness = 0;
-  for (let percent = 0; percent <= 100; percent++) {
-    const hex = xpEdgeColor(percent / 100);
-    const [r, g, b] = [1, 3, 5].map(start => Number.parseInt(hex.slice(start, start + 2), 16));
-    const brightness = .2126*r + .7152*g + .0722*b;
-    expect(brightness).toBeGreaterThanOrEqual(previousBrightness);
-    previousBrightness = brightness;
-    if (percent <= 40) expect(b).toBeGreaterThan(r + 80);
-    if (percent >= 90) expect(r).toBeGreaterThanOrEqual(186);
-  }
+  expect(XP_FILL_GRADIENT).not.toContain(ART.coastalUi.foam);
+  expect(XP_FILL_GRADIENT).not.toContain(ART.coastalUi.sun);
+  for (const progress of [.9, .95, .99, 1]) expect(xpEdgeColor(progress)).toBe(ART.coastalUi.sun);
+  expect(xpEdgeColor(.89)).not.toBe(ART.coastalUi.sun);
   expect(xpEdgeColor(-1)).toBe(xpEdgeColor(0));
   expect(xpEdgeColor(2)).toBe(xpEdgeColor(1));
 });
