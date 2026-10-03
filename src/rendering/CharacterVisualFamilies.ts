@@ -40,6 +40,7 @@ export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
   readonly weapon?: CharacterModel;
   // Explicit full motion envelope, including delayed crest and maul motion.
   readonly presentation?: { readonly width: number; readonly height: number; readonly depth: number;
+    readonly healthBar?: { readonly width: number; readonly height: number };
     readonly shadow: { readonly width: number; readonly depth: number } };
 }
 

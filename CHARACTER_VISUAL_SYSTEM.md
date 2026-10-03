@@ -131,12 +131,74 @@ contains only geometry, motion strategy, materials and presentation anchors.
 
 ## Review workflow and current shipping
 
-At the R1 design commit, shipping runtime is still Phase 4C. Player/Grunt use
-the existing prototypes; Heavy uses a shallow bucket, Giant a shoulder yoke;
-Boss is legacy. Those forms are superseded as targets, not changed by this
-document-only commit. R1 proceeds through separately revertable base-role and
-threat-role commits. Capture actual Player/Grunt evidence before starting threats;
-stop if their battlefield readability regresses.
+**CURRENT SHIPPING:**
+
+- Player = R1 rounded toy defender.
+- Grunt = R1 rounded toy enemy.
+- Heavy = R1 rounded toy brawler.
+- Giant = R1 rounded toy colossus.
+- Boss = legacy, deferred. **Boss Rounded Toy migration** remains outstanding.
+
+R1 follows separately revertable documentation, base-role and threat-role commits.
+The Player/Grunt checkpoint was captured and reviewed before rebuilding threats;
+actual portrait composition retained clear feet, weapon direction and two defenders.
+
+### Actual R1 implementation
+
+`ToyGeometry` provides smooth ellipsoids, colored bean shoes and curved thick
+helmet shells. Shoe uppers/soles share one merged vertex-colored geometry. The
+lowest 12% of the underlying ellipsoid is flattened; dimensions/pose offsets
+are rendering-only. Player shoes are muted blue-gray #778E9C / #647B88;
+new enemy shoes are muted sage/slate #7D8B84 / #667770. Boss retains Phase 4C
+footwear pending its deferred migration.
+
+| Role | Nominal shoe width × height × depth |
+|---|---|
+| Player | 0.27 × 0.14 × 0.23 |
+| Grunt | 0.26 × 0.12 × 0.22 |
+| Heavy | 0.34 × 0.15 × 0.27 |
+| Giant | 0.40 × 0.18 × 0.32 |
+
+Player uses a 0.48×0.38×0.33 bean torso, smooth 20×12 head, ball hands and
+ellipsoidal receiver/stock/grip with a directional cylindrical barrel. A thin
+uniform color surface follows the same torso curvature in the existing tier
+accent slot; it adds no hard body mass. Existing four primary meshes, moving
+part regions, motion factory, grips, 8° rifle cant, muzzle anchor, root scale,
+shadow and Level-Up/tracer metadata remain. Hit/casualty use the new parts.
+
+Grunt uses one 20×12 rounded shirt/shorts body, smooth head and tiny ball hands.
+The helmet is a curved shell without hard cylinder rims. Its secondary adapter
+remains explicitly empty/hidden. Crown 1.025, four 360 ms poses, 0.11 shoe lift,
+0.035 outward swing and 0.18 hand swing are preserved.
+
+Heavy has a 0.68×0.48×0.55 barrel, 0.13-radius spherical fists centered at ±0.495,
+and wide rounded shoes. Its unique shell has radii 0.425/0.225/0.37 centered at
+Y=0.765; crown remains 0.99. Opening angles front/side/rear are 1.30/2.05/2.30
+radians, making the front opening higher than cheek sides and rear skirt.
+Shell thickness is 0.02. There is no cylinder brim, facial band, torso gear or
+weapon. Eye sightlines are tested, including legitimate rear-shell geometry
+behind the head. The 0.80 visual Y compression, 650 ms clock, 0.09 shoe lift,
+0.045 lateral step and weight transfer/hit/contact/death timings remain.
+
+Giant uses smooth 24×12 primary body/head, an olive deep shell, one soft
+limestone fin (0.18 wide, crown 1.355), large spheres for hands and a rounded
+ellipsoidal maul head with one soft limestone end accent. There is no chest or
+collar geometry: the secondary adapter is empty/hidden. It has three primary
+mesh draws per live Giant. Six soft instanced crest/clothing/maul debris masses
+retain crash timing. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
+
+The dedicated Giant bar defines authored billboard width 1.20 and height 0.20,
+both scaled by projected X scale: exactly 6:1. Two-Giant layout scales both
+by 0.8. It stays centered on lateral weight transfer and uses the existing
+rounded inner-track clipping at full/half/low/zero. Heavy bars retain their
+original layout. Frame/fill textures and coral semantics are unchanged.
+
+Smooth key forms use 20–24 radial segments, 10–12 head/body rings, 16 shoe
+segments and smooth normals. Existing resource counts and instancing remain;
+no GLB, texture, external art tool, skeleton or runtime package is introduced.
+The smoother curves substantially increase triangle counts; the review report
+records that cost rather than changing enemy population to hide it.
 
 Development default and `?review=threats` retain deterministic Level 7, XP 0,
 two defenders, reinforcement arrived and immediately visible Grunt/Heavy/Giant.

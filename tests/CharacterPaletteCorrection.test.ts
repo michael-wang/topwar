@@ -23,7 +23,7 @@ it('authors role footwear colors on every procedural reference and locomotion bo
 
   for (const create of [createChibiPlayerFamily, createChibiGruntFamily, createChibiHeavyFamily, createChibiGiantFamily]) {
     const values = create === createChibiPlayerFamily ? [ART.footwear.playerUpper, ART.footwear.playerSole]
-      : create === createChibiGruntFamily ? [ART.footwear.enemyUpper, ART.footwear.enemySole] : [ART.faction.shoes];
+      : [ART.footwear.enemyUpper, ART.footwear.enemySole];
     const expected = values.map(value => new THREE.Color(value));
     const family = create(), frames = 'runFrames' in family ? [family.body, ...family.runFrames] : [family.body];
     for (const mesh of frames) {

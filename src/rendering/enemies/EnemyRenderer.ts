@@ -234,7 +234,7 @@ export class EnemyRenderer {
       const hit = this.heavyHits.strength(enemy.id, nowMs);
       (bar.fill.material as THREE.SpriteMaterial).color.copy(giantBar ? this.giantBarFillMaterial.color : this.barFillMaterial.color)
         .lerp(this.barHitColor, hit);
-      bar.backing.scale.set(width + .10, giantBar ? .36 : .26, 1);
+      bar.backing.scale.set(giantBar ? width : width + .10, giantBar ? giantBar.height * (giantCount > 1 ? .8 : 1) : .26, 1);
       bar.clip.enabled.value = giantBar ? 1 : 0; bar.clip.fraction.value = fraction;
       if (giantBar) {
         bar.fill.position.copy(bar.backing.position);

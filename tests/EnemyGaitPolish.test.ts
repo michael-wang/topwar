@@ -21,7 +21,7 @@ it('alternates a grounded support shoe and visibly lifted outward swing shoe wit
   for (const [create, cycle, lift] of [[createChibiGruntFamily, 360, .11],
     [createChibiHeavyFamily, 650, .09], [createChibiGiantFamily, 850, .085]] as const) {
     const family = create();
-    const shoes = create === createChibiGruntFamily ? [ART.footwear.enemyUpper, ART.footwear.enemySole] : ART.faction.shoes;
+    const shoes = [ART.footwear.enemyUpper, ART.footwear.enemySole];
     expect(family.runFrames).toHaveLength(4);
     for (const [index, side] of [[0, 1], [2, -1]]) {
       const shoe = region(family.runFrames[index].geometry, shoes, side);
@@ -39,7 +39,7 @@ it('alternates a grounded support shoe and visibly lifted outward swing shoe wit
   }
 });
 
-it('keeps Heavy free of stone accents and secondary gear while keeping enlarged eyes clear below its rim', () => {
+it('keeps Heavy free of stone accents and secondary gear with clear eyes inside its deep shell', () => {
   const family = createChibiHeavyFamily();
   expect(family.vest.visible).toBe(false);
   expect(family.vest.geometry.getAttribute('position').count).toBe(0);
@@ -48,36 +48,49 @@ it('keeps Heavy free of stone accents and secondary gear while keeping enlarged 
   const eyes = region(family.body.geometry, ART.faction.weapon);
   expect(eyes.isEmpty()).toBe(false);
   expect(eyes.getSize(new THREE.Vector3()).y).toBeGreaterThan(.05);
-  expect(eyes.max.y).toBeLessThan(family.helmet.geometry.boundingBox!.min.y);
   expect(eyes.min.z).toBeGreaterThan(.24);
   const helmet = family.helmet.geometry.boundingBox!;
   expect(helmet.max.y).toBeCloseTo(.99);
-  expect(helmet.getSize(new THREE.Vector3()).x).toBeCloseTo(.89);
-  // The lip overhang is only .005 beyond the bucket wall, not the old .03 brim.
-  expect(region(family.helmet.geometry, ART.raider.rim).max.x - .44).toBeCloseTo(.005);
-  expect(family.contact.vest.visible).toBe(false); expect(family.death.vest.visible).toBe(false);
+  expect(helmet.getSize(new THREE.Vector3()).z).toBeGreaterThan(.70);
+  // Cheek and rear protection deliberately drop below the front opening.
   const positions = family.helmet.geometry.getAttribute('position');
-  const normals = family.helmet.geometry.getAttribute('normal');
+  let front = Infinity, side = Infinity, rear = Infinity;
   for (let i = 0; i < positions.count; i++) {
-    if (positions.getZ(i) > .25 && positions.getY(i) > .80) expect(normals.getZ(i)).toBeGreaterThan(0);
+    const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
+    if (Math.abs(x) < .03 && z > .2) front = Math.min(front, y);
+    if (Math.abs(x) > .3 && Math.abs(z) < .03) side = Math.min(side, y);
+    if (Math.abs(x) < .03 && z < -.2) rear = Math.min(rear, y);
   }
+  expect(front).toBeGreaterThan(eyes.max.y + .1);
+  expect(side).toBeLessThan(front - .1); expect(rear).toBeLessThan(side);
+  const mesh = new THREE.Mesh(family.helmet.geometry, new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
+  for (const x of [-.095,.095]) {
+    const ray = new THREE.Raycaster(new THREE.Vector3(x,.655,1), new THREE.Vector3(0,0,-1));
+    // No shell blocks a straight frontal eye sightline.
+    expect(ray.intersectObject(mesh).filter(hit=>hit.point.z>.264).length).toBe(0);
+  }
+  (mesh.material as THREE.Material).dispose();
+  expect(family.contact.vest.visible).toBe(false); expect(family.death.vest.visible).toBe(false);
+  const frontSurface = new THREE.Raycaster(new THREE.Vector3(0,.90,1),new THREE.Vector3(0,0,-1)).intersectObject(mesh);
+  expect(frontSurface.length).toBeGreaterThan(0);
+  expect(frontSurface[0].face!.normal.z).toBeGreaterThan(0);
   family.dispose();
 });
 
-it('gives Giant one 50% wider crest and a shallow open shoulder yoke instead of a front chest block', () => {
+it('gives Giant one rounded broad crest and an uninterrupted body with no chest geometry', () => {
   const family = createChibiGiantFamily(), crest = new THREE.Box3();
-  const p = family.helmet.geometry.getAttribute('position');
-  for (let i = 0; i < p.count; i++) if (p.getY(i) > 1.23)
-    crest.expandByPoint(new THREE.Vector3().fromBufferAttribute(p, i));
-  expect(crest.getSize(new THREE.Vector3()).x).toBeCloseTo(.11 * 1.5);
-  expect(crest.getCenter(new THREE.Vector3()).x).toBeCloseTo(0);
-  const plate = family.vest.geometry.boundingBox!, size = plate.getSize(new THREE.Vector3());
-  expect(size.x).toBeCloseTo(.86); expect(size.y).toBeCloseTo(.09);
-  expect(plate.min.y).toBeGreaterThan(.65);
-  const vertices = family.vest.geometry.getAttribute('position');
-  for (let i = 0; i < vertices.count; i++) {
-    // An open neck and no low central billboard panel.
-    expect(Math.hypot(vertices.getX(i), vertices.getZ(i) / .68)).toBeGreaterThanOrEqual(.249);
+  const p = family.helmet.geometry.getAttribute('position'), colors = family.helmet.geometry.getAttribute('color');
+  const stone = new THREE.Color(THREAT_COLORS.stone);
+  for (let i = 0; i < p.count; i++) {
+    const c = new THREE.Color().fromBufferAttribute(colors,i);
+    if (Math.abs(c.r-stone.r)+Math.abs(c.g-stone.g)+Math.abs(c.b-stone.b)<.00001)
+      crest.expandByPoint(new THREE.Vector3().fromBufferAttribute(p,i));
   }
+  expect(crest.getSize(new THREE.Vector3()).x).toBeCloseTo(.18);
+  expect(crest.getCenter(new THREE.Vector3()).x).toBeCloseTo(0);
+  expect(crest.max.y).toBeCloseTo(1.355);
+  expect(family.vest.visible).toBe(false);
+  expect(family.vest.geometry.getAttribute('position').count).toBe(0);
+  expect(family.contact.vest.visible).toBe(false);
   family.dispose();
 });

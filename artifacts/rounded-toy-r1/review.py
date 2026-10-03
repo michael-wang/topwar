@@ -18,21 +18,26 @@ def sheet(name,rows,columns,tiles,w=330,h=400):
             d.text((x*w+8,55+y*h+5),label,font=SMALL,fill='#243b4a')
     image.save(ROOT/(name+'.png'))
 def close(phase,role,view='front'):
-    return load(f'{phase}-{role}-isolated-{view}.png').crop((45,490,745,1300))
+    return load(f'{phase}-{role}-isolated-{view}.png').crop((0,490,780,1300))
 sheet('enemy-palette-before-after',['Grunt','Heavy','Giant'],2,
     [(f'{role.title()} {phase}',close(phase,role)) for role in ROLES[1:] for phase in ['baseline','polish']])
 sheet('player-vs-enemy-palette',['family'],4,[(r.title(),close('polish',r)) for r in ROLES])
+sheet('four-role-beauty-sheet',['rounded toys'],4,[(r.title(),close('polish',r)) for r in ROLES],430,540)
+sheet('four-role-before-after',ROLES,2,
+    [(f'{r.title()} {p}',close(p,r)) for r in ROLES for p in ['baseline','polish']],430,540)
+sheet('front-three-quarter-sheet',['rounded toys'],4,[(r.title(),close('polish',r)) for r in ROLES],430,540)
+sheet('side-view-sheet',['depth'],3,[(r.title(),close('polish',r,'side')) for r in ['player','heavy','giant']],430,540)
 for r in ['heavy','giant']:
     sheet(r+'-form-before-after',['front','rear'],2,
         [(f'{phase} {v}',close(phase,r,v)) for v in ['front','rear'] for phase in ['baseline','polish']])
     sheet(r+('-helmet-comparison' if r=='heavy' else '-upper-body-comparison'),['detail'],2,
         [(phase,close(phase,r).crop((0,0,700,580))) for phase in ['baseline','polish']],400,380)
 shoeTiles=[]
-for r in ROLES+['boss']:
+for r in ROLES:
     for phase in ['baseline','polish']:
         picture=load(f'{phase}-boss-guard.png').crop((275,690,500,820)) if r=='boss' else load(f'{phase}-{r}-isolated-front.png').crop((70,1000,700,1260))
         shoeTiles.append((f'{r.title()} {phase}',picture))
-sheet('footwear-before-after',ROLES+['boss'],2,shoeTiles,400,220)
+sheet('footwear-before-after',ROLES,2,shoeTiles,400,220)
 sheet('giant-hp-containment',['full','half','low','zero'],2,
     [(f'{phase} {hp}% HP',load(f'{phase}-giant-hp-{hp}.png').crop((250,290,550,385)))
      for hp in [100,50,10,0] for phase in ['baseline','polish']],420,185)
@@ -48,6 +53,8 @@ def silhouette(role):
     canvas=Image.new('RGB',(480,450),'white'); canvas.paste(crop,((480-crop.width)//2,430-crop.height))
     return canvas
 sheet('silhouette-sheet',['projection'],4,[(r.title(),silhouette(r)) for r in ROLES],350,390)
+sheet('helmet-comparison-sheet',['shells'],4,
+    [(r.title(),load(f'polish-{r}-helmet-color.png').crop(foreground_box(load(f'polish-{r}-helmet-color.png')))) for r in ROLES],350,300)
 for role in ROLES[1:]:
     samples=[0,12.5,25,37.5,50,62.5,75,87.5,100]
     pictures=[load(f'polish-{role}-gait-{t}.png') for t in samples]
@@ -55,20 +62,31 @@ for role in ROLES[1:]:
     union=(min(b[0] for b in boxes),min(b[1] for b in boxes),max(b[2] for b in boxes),max(b[3] for b in boxes))
     sheet(role+'-gait-confirmation',['complete cycle'],9,
         [(str(t)+'%',picture.crop(union)) for t,picture in zip(samples,pictures)],180,260)
-# World and frozen silhouettes must remain identical; omit only the build stamp.
+samples=[0,44,88,132,176,220]
+pictures=[load(f'polish-player-gait-{t}.png') for t in samples]
+boxes=[foreground_box(p) for p in pictures]
+union=(min(b[0] for b in boxes),min(b[1] for b in boxes),max(b[2] for b in boxes),max(b[3] for b in boxes))
+sheet('player-gait-confirmation',['lane movement'],6,
+    [(str(round(t/220*100))+'%',picture.crop(union)) for t,picture in zip(samples,pictures)],210,320)
+# Frozen world/Boss must remain identical; omit only the build stamp.
 guards={}
-for key in ['world-guard','player-silhouette','grunt-silhouette']:
+for key in ['world-guard','boss-guard','boss-death-guard']:
     a=load('baseline-'+key+'.png').crop((0,0,780,1640)); b=load('polish-'+key+'.png').crop((0,0,780,1640))
     box=ImageChops.difference(a,b).getbbox(); guards[key]={'identical':box is None,'differenceBounds':box}
     if box is not None: raise RuntimeError('Frozen guard changed: '+key)
+# Commit 3 may not change the already-reviewed Player/Grunt checkpoint.
+for key in ['player-guard','grunt-guard','grunt-hit-guard','grunt-death-guard','grunt-contact-guard']:
+    a=load('base-'+key+'.png').crop((0,0,780,1640)); b=load('polish-'+key+'.png').crop((0,0,780,1640))
+    box=ImageChops.difference(a,b).getbbox(); guards['checkpoint-'+key]={'identical':box is None,'differenceBounds':box}
+    if box is not None: raise RuntimeError('Base-role checkpoint changed: '+key)
 base=json.loads((ROOT/'baseline-stats.json').read_text(encoding='utf-8'))
 after=json.loads((ROOT/'polish-stats.json').read_text(encoding='utf-8'))
 metrics={}
 for key in ['normal','mixed-threats','mixed-50','mixed-100','mixed-150','mixed-200','giants-two']:
     keys=['drawCalls','triangles','geometries','textures']
     b={k:base['stats'][key][k] for k in keys}; a={k:after['stats'][key][k] for k in keys}
-    metrics[key]={'baseline':b,'phase4c':a,'delta':{k:a[k]-b[k] for k in keys}}
-    assert a['drawCalls']==b['drawCalls'] and a['textures']==b['textures'] and a['geometries']==b['geometries']
+    metrics[key]={'baseline':b,'r1':a,'delta':{k:a[k]-b[k] for k in keys}}
+    assert a['drawCalls']<=b['drawCalls'] and a['textures']==b['textures'] and a['geometries']<=b['geometries']
 for phase in ['baseline','polish']:
     frames=[load(f'{phase}-sequence/{i:02}.png').resize((390,844)) for i in range(51)]
     frames[0].save(ROOT/(phase+'-running.gif'),save_all=True,append_images=frames[1:],duration=50,loop=0,optimize=False)
@@ -100,6 +118,6 @@ for phase in ['baseline','polish']:
                     total+=1; outside+=mask.getpixel((x,y))==0
         hpPixels[phase][hp]={'coralPixels':total,'outsideTrack':outside}
         if phase=='polish': assert total>0 and outside==0, 'HP fill escaped the rendered frame'
-report={'hpPixelContainment':hpPixels,'guards':guards,'temporalSimulationIdentical':True,'performance':metrics,'occupancy':{'baseline':base['occupancy'],'phase4c':after['occupancy']},'browserErrors':after['errors']}
+report={'hpPixelContainment':hpPixels,'guards':guards,'temporalSimulationIdentical':True,'performance':metrics,'occupancy':{'baseline':base['occupancy'],'r1':after['occupancy']},'browserErrors':after['errors']}
 (ROOT/'review-validation.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 print(json.dumps(report,indent=2))

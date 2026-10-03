@@ -36,7 +36,7 @@ export class GiantRenderer {
   private readonly hazeMaterial = new THREE.SpriteMaterial({ map: this.hazeMap, color: ART.world.fog,
     transparent: true, opacity: 0, depthWrite: false });
   private readonly haze = new THREE.Group();
-  private readonly chunkGeometry = new THREE.BoxGeometry(1, 1, 1);
+  private readonly chunkGeometry = new THREE.SphereGeometry(.5, 10, 6);
   private readonly chunksMaterial = new THREE.MeshStandardMaterial({ color: 'white', roughness: 1, transparent: true });
   private readonly chunks = new THREE.InstancedMesh(this.chunkGeometry, this.chunksMaterial, 6);
   private readonly debrisGroup = new THREE.Object3D();
@@ -73,7 +73,7 @@ export class GiantRenderer {
     this.haze.name = 'giant-emergence-haze';
     for (let i = 0; i < 4; i++) this.haze.add(new THREE.Sprite(this.hazeMaterial));
     this.chunks.name = 'giant-armor-wreckage'; this.chunks.visible = false; this.chunks.frustumCulled = false;
-    for (let i = 0; i < 6; i++) this.chunks.setColorAt(i, new THREE.Color([THREAT_COLORS.stone, THREAT_COLORS.stone, THREAT_COLORS.helmet][i % 3]));
+    for (let i = 0; i < 6; i++) this.chunks.setColorAt(i, new THREE.Color([THREAT_COLORS.stone, ART.raider.bodyDeep, THREAT_COLORS.helmet][i % 3]));
     this.haze.visible = false; this.debrisGroup.add(this.chunks);
     scene.add(this.group, this.ring, this.haze, this.debrisGroup);
   }
@@ -81,9 +81,11 @@ export class GiantRenderer {
   available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= GIANT_DEATH_MS); }
   barVisible(nowMs: number): boolean { return giantReveal(nowMs - this.bornAt).barVisible; }
   getModelDimensions(): { width: number; height: number; depth: number } { return { ...this.dimensions }; }
-  healthBarLayout(enemy: EnemyRenderState): { width: number; y: number; x: number } {
+  healthBarLayout(enemy: EnemyRenderState): { width: number; height: number; y: number; x: number } {
     const base = enemy.visualScale ?? 1;
-    return { x: this.group.position.x, width: this.dimensions.width * (enemy.visualScaleX ?? base) * .75,
+    const scale = enemy.visualScaleX ?? base;
+    const bar = this.family.presentation?.healthBar ?? { width: this.dimensions.width * .75, height: this.dimensions.width * .75 / 6 };
+    return { x: this.group.position.x, width: bar.width * scale, height: bar.height * scale,
       y: this.dimensions.height * (enemy.visualScaleY ?? base) + .35 };
   }
   die(enemy: EnemyRenderState, nowMs: number): void {
@@ -156,8 +158,8 @@ export class GiantRenderer {
         this.transform.position.set(-this.previous.x + Math.cos(phase) * distance * (1 + seconds * .6),
           .13 + Math.max(0, Math.sin(seconds / .6 * Math.PI) * (.35 + (i % 3) * .15)), this.previous.z - 1.5 + Math.sin(phase) * distance * 1.4);
         this.transform.rotation.set(phase + seconds * 2, phase * .7, .4 + phase);
-        // Two crest slabs, two shoulder-yoke pieces, two blunt maul/armor masses.
-        const shapes = [[.18, .65, .8], [.75, .12, .35], [.75, .50, .6]];
+        // Two soft crest pieces, two clothing masses and two maul chunks.
+        const shapes = [[.18, .65, .8], [.60, .45, .48], [.75, .50, .6]];
         this.transform.scale.fromArray(shapes[i % 3]); this.transform.updateMatrix(); this.chunks.setMatrixAt(i, this.transform.matrix);
       }
       this.chunks.instanceMatrix.needsUpdate = true;

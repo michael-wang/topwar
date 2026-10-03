@@ -151,7 +151,7 @@ for (const role of (phase === 'final' ? [] : ['player', 'grunt', 'heavy', 'giant
         group.scale.setScalar(1); r.scene.overrideMaterial = null; r.scene.background = new THREE.Color('#d8c49b');
         const distance = window.__inspection.role === 'giant' ? 3.6 : 2.8;
         r.camera.position.set(view === 'side' ? distance : view === 'front' ? 1.4 : -1.4, 1.3, group.position.z + (view === 'side' ? 0 : view === 'front' ? -distance : distance));
-        r.camera.lookAt(-.15, .60, group.position.z); r.camera.zoom = window.__inspection.role === 'giant' ? 1 : 1.1;
+        r.camera.lookAt(0, .60, group.position.z); r.camera.zoom = window.__inspection.role === 'giant' ? 1 : window.__inspection.role === 'heavy' ? .90 : 1.1;
         r.camera.updateProjectionMatrix(); r.renderer.render(r.scene, r.camera);
       }, view);
       await page.locator('canvas').screenshot({ path: `${out}/${phase}-${role}-isolated-${view}.png` });

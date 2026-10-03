@@ -1,0 +1,336 @@
+{
+  "hpPixelContainment": {
+    "baseline": {
+      "100": {
+        "coralPixels": 2340,
+        "outsideTrack": 0
+      },
+      "50": {
+        "coralPixels": 1163,
+        "outsideTrack": 0
+      },
+      "10": {
+        "coralPixels": 203,
+        "outsideTrack": 0
+      }
+    },
+    "polish": {
+      "100": {
+        "coralPixels": 4206,
+        "outsideTrack": 0
+      },
+      "50": {
+        "coralPixels": 2091,
+        "outsideTrack": 0
+      },
+      "10": {
+        "coralPixels": 375,
+        "outsideTrack": 0
+      }
+    }
+  },
+  "guards": {
+    "world-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "boss-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "boss-death-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "checkpoint-player-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "checkpoint-grunt-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "checkpoint-grunt-hit-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "checkpoint-grunt-death-guard": {
+      "identical": true,
+      "differenceBounds": null
+    },
+    "checkpoint-grunt-contact-guard": {
+      "identical": true,
+      "differenceBounds": null
+    }
+  },
+  "temporalSimulationIdentical": true,
+  "performance": {
+    "normal": {
+      "baseline": {
+        "drawCalls": 135,
+        "triangles": 35236,
+        "geometries": 66,
+        "textures": 6
+      },
+      "r1": {
+        "drawCalls": 135,
+        "triangles": 91020,
+        "geometries": 66,
+        "textures": 6
+      },
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 55784,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "mixed-threats": {
+      "baseline": {
+        "drawCalls": 149,
+        "triangles": 39186,
+        "geometries": 72,
+        "textures": 9
+      },
+      "r1": {
+        "drawCalls": 148,
+        "triangles": 101410,
+        "geometries": 71,
+        "textures": 9
+      },
+      "delta": {
+        "drawCalls": -1,
+        "triangles": 62224,
+        "geometries": -1,
+        "textures": 0
+      }
+    },
+    "mixed-50": {
+      "baseline": {
+        "drawCalls": 164,
+        "triangles": 49340,
+        "geometries": 90,
+        "textures": 11
+      },
+      "r1": {
+        "drawCalls": 164,
+        "triangles": 135428,
+        "geometries": 89,
+        "textures": 11
+      },
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 86088,
+        "geometries": -1,
+        "textures": 0
+      }
+    },
+    "mixed-100": {
+      "baseline": {
+        "drawCalls": 185,
+        "triangles": 88362,
+        "geometries": 90,
+        "textures": 11
+      },
+      "r1": {
+        "drawCalls": 185,
+        "triangles": 257330,
+        "geometries": 89,
+        "textures": 11
+      },
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 168968,
+        "geometries": -1,
+        "textures": 0
+      }
+    },
+    "mixed-150": {
+      "baseline": {
+        "drawCalls": 204,
+        "triangles": 127380,
+        "geometries": 90,
+        "textures": 11
+      },
+      "r1": {
+        "drawCalls": 204,
+        "triangles": 379228,
+        "geometries": 89,
+        "textures": 11
+      },
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 251848,
+        "geometries": -1,
+        "textures": 0
+      }
+    },
+    "mixed-200": {
+      "baseline": {
+        "drawCalls": 224,
+        "triangles": 166400,
+        "geometries": 90,
+        "textures": 11
+      },
+      "r1": {
+        "drawCalls": 224,
+        "triangles": 501128,
+        "geometries": 89,
+        "textures": 11
+      },
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 334728,
+        "geometries": -1,
+        "textures": 0
+      }
+    },
+    "giants-two": {
+      "baseline": {
+        "drawCalls": 146,
+        "triangles": 13252,
+        "geometries": 90,
+        "textures": 12
+      },
+      "r1": {
+        "drawCalls": 144,
+        "triangles": 21940,
+        "geometries": 89,
+        "textures": 12
+      },
+      "delta": {
+        "drawCalls": -2,
+        "triangles": 8688,
+        "geometries": -1,
+        "textures": 0
+      }
+    }
+  },
+  "occupancy": {
+    "baseline": {
+      "player": {
+        "width": 30.262916051217644,
+        "height": 37.6062165915734,
+        "bounds": {
+          "min": [
+            182.95232660519912,
+            452.90387172021246
+          ],
+          "max": [
+            213.21524265641676,
+            490.51008831178586
+          ]
+        },
+        "authoredCrown": 1.024999976158142
+      },
+      "grunt": {
+        "width": 47.6840457064263,
+        "height": 62.050280950319745,
+        "bounds": {
+          "min": [
+            171.15797714678683,
+            429.53489335175504
+          ],
+          "max": [
+            218.84202285321314,
+            491.5851743020748
+          ]
+        },
+        "authoredCrown": 1.024999976158142
+      },
+      "heavy": {
+        "width": 89.83104066538257,
+        "height": 81.0208637305069,
+        "bounds": {
+          "min": [
+            150.0844796673087,
+            414.52854008125723
+          ],
+          "max": [
+            239.91552033269127,
+            495.54940381176414
+          ]
+        },
+        "authoredCrown": 0.9900000095367432
+      },
+      "giant": {
+        "width": 123.41951063313374,
+        "height": 179.91168411017185,
+        "bounds": {
+          "min": [
+            144.58660853642945,
+            186.49213507658186
+          ],
+          "max": [
+            268.0061191695632,
+            366.4038191867537
+          ]
+        },
+        "authoredCrown": 1.3550000190734863
+      }
+    },
+    "r1": {
+      "player": {
+        "width": 30.123392308682526,
+        "height": 36.31439672645058,
+        "bounds": {
+          "min": [
+            182.96631064841617,
+            453.01289219330243
+          ],
+          "max": [
+            213.0897029570987,
+            489.327288919753
+          ]
+        },
+        "authoredCrown": 1.024999976158142
+      },
+      "grunt": {
+        "width": 47.6840457064263,
+        "height": 60.12597690169264,
+        "bounds": {
+          "min": [
+            171.15797714678683,
+            429.5429726164443
+          ],
+          "max": [
+            218.84202285321314,
+            489.6689495181369
+          ]
+        },
+        "authoredCrown": 1.024999976158142
+      },
+      "heavy": {
+        "width": 107.97000476005485,
+        "height": 77.0768903630588,
+        "bounds": {
+          "min": [
+            141.01499761997258,
+            414.61230605232504
+          ],
+          "max": [
+            248.98500238002742,
+            491.68919641538383
+          ]
+        },
+        "authoredCrown": 0.9900000095367432
+      },
+      "giant": {
+        "width": 125.80327905600728,
+        "height": 173.20797998551603,
+        "bounds": {
+          "min": [
+            142.48605264549747,
+            189.46636267534524
+          ],
+          "max": [
+            268.28933170150475,
+            362.67434266086127
+          ]
+        },
+        "authoredCrown": 1.3550000190734863
+      }
+    }
+  },
+  "browserErrors": []
+}
