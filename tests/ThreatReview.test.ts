@@ -14,6 +14,19 @@ it('only enables the explicit threat review query', () => {
   expect(threatReviewEnabled('?review=threats')).toBe(true);
   for (const query of ['', '?review=other', '?threats', '?perf=1']) expect(threatReviewEnabled(query)).toBe(false);
 });
+it.each([
+  ['', true, 7], ['?review=threats', true, 7], ['?review=normal', true, 1],
+  ['', false, 1], ['?review=threats', false, 7], ['?review=normal', false, 1],
+])('resolves boot %s (development %s) to Level %s, including Retry', (search, development, level) => {
+  const enabled = threatReviewEnabled(search, development);
+  const boot = () => enabled ? make() : new Simulation(options);
+  for (const state of [boot().getState(), boot().getState()]) {
+    expect(state.progression).toEqual({ level, xp: 0 });
+    expect(state.squad.count).toBe(level === 7 ? 2 : 1);
+    expect(state.reinforcement!.arrived).toBe(level === 7);
+    expect(state.enemies.some(enemy => enemy.archetype === 'giant')).toBe(level === 7);
+  }
+});
 it('restores valid Level 7 XP, arrived reinforcement and all three actual threat roles', () => {
   const state = make().getState();
   expect(state.progression).toEqual({ level: 7, xp: 0 });

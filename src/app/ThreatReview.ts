@@ -4,8 +4,13 @@ import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectiveRifleFireRate } from '../simulation/progression';
 
 export const THREAT_REVIEW_SEED = 0x4a070;
-export function threatReviewEnabled(search: string): boolean {
-  return new URLSearchParams(search).get('review') === 'threats';
+export function threatReviewEnabled(search: string, development = false): boolean {
+  const review = new URLSearchParams(search).get('review');
+  if (review === 'threats') return true;
+  if (review === 'normal') return false;
+  // Temporary character-review default, resolved once at boot. Saves/combat
+  // never depend on the environment, and production remains opt-in.
+  return development;
 }
 
 // App-owned initialization only: ordinary validated state, ordinary combat thereafter.

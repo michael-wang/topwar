@@ -414,7 +414,11 @@ refinement requires separate authorization.
 The app restores validated Level 7 / 0 current-level XP with arrived reinforcement,
 two defenders and seed `0x4a070`. Grunt (lane 4, depth 8), Heavy (lane 3, depth 12)
 and Giant (lane 1, depth 22) immediately enter ordinary combat. Retry reconstructs
-the same initialization. Normal URLs retain Level 1 and normal encounter timing.
+the same initialization. During character review, Vite development URLs default
+to this preset; `?review=normal` opts out to Level 1. Production normal URLs
+retain Level 1 and normal encounter timing, with explicit `?review=threats`
+still available. The app resolves the environment/query once at boot; Retry
+preserves that selected mode without adding environment checks to simulation.
 No review flag, combat override or new HUD label is serialized or introduced.
 
 ### Intent
