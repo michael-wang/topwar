@@ -37,7 +37,8 @@ export class ProjectileRenderer {
     blending: THREE.AdditiveBlending, toneMapped: false });
 
   constructor(private readonly scene: THREE.Scene,
-    private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>) {
+    private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
+    private readonly rifleOrigin = { height: .64, offsetX: 0 }) {
     this.body = this.createBatch('rifle-tracers', this.tracerMaterial, this.capacity);
     this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
   }
@@ -58,7 +59,8 @@ export class ProjectileRenderer {
       const pulse = this.pulse.scaleFor(projectile.id, nowMs);
       const transform = this.transform;
       transform.rotation.y = -Math.atan(projectile.slopeX ?? 0);
-      transform.position.set(-projectile.x, projectile.kind === 'rocket' ? 0.66 : 0.64, projectile.z);
+      transform.position.set(-projectile.x + (projectile.kind === 'rifle' ? this.rifleOrigin.offsetX : 0),
+        projectile.kind === 'rocket' ? .66 : this.rifleOrigin.height, projectile.z);
       if (projectile.kind === 'rocket') {
         transform.scale.setScalar(1.8 * pulse);
       } else {

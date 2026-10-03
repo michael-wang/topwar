@@ -6,6 +6,7 @@ import type { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { BOSS_DEATH_MS } from '../src/presentation/BossDeathTiming';
 
 const squad = {
+  presentation: { shadow: { width: .72, depth: .43 } },
   forEachVisibleMemberPosition(visit: (position: THREE.Vector3) => void) {
     visit(new THREE.Vector3(-.3, 0, 2));
     visit(new THREE.Vector3(.3, 0, 2));

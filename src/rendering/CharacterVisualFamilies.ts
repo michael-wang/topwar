@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LEGACY_PLAYER_PRESENTATION, type PlayerPresentation } from './squad/PlayerPresentation';
 
 export type CharacterModel = THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
 export type CharacterRole = 'player' | 'grunt' | 'heavy' | 'giant' | 'boss';
@@ -9,7 +10,7 @@ export interface CharacterParts {
   readonly vest: CharacterModel;
 }
 
-// Presentation resources only. Combat truth and scale still arrive in RenderState.
+// Presentation resources only. Combat truth arrives independently in RenderState.
 export interface CharacterVisualFamily<R extends CharacterRole> extends CharacterParts {
   readonly role: R;
   readonly id: string;
@@ -17,6 +18,7 @@ export interface CharacterVisualFamily<R extends CharacterRole> extends Characte
 
 export interface PlayerVisualFamily extends CharacterVisualFamily<'player'> {
   readonly weapon: CharacterModel;
+  readonly presentation: PlayerPresentation;
 }
 
 export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heavy'> extends CharacterVisualFamily<R> {
@@ -67,7 +69,18 @@ export const ENEMY_GAIT_CYCLE_MS = 360;
 export const HEAVY_GAIT_CYCLE_MS = 650;
 
 export function createLegacyCharacterVisualFamilies(resources: LegacyCharacterResources): CharacterVisualFamilies {
-  for (const name of ['normalIdle', 'grayIdle', 'playerBody', 'helmet', 'vest', 'rifle',
+  for (const name of ['playerBody', 'rifle'] as const) {
+    if (!(resources[name] instanceof THREE.Mesh)) throw new Error(`Missing character resource: ${name}`);
+  }
+  return createCharacterVisualFamilies(resources, {
+    role: 'player', id: 'legacy-player', body: resources.playerBody, helmet: resources.helmet,
+    vest: resources.vest, weapon: resources.rifle, presentation: LEGACY_PLAYER_PRESENTATION,
+  });
+}
+
+export function createCharacterVisualFamilies(resources: Omit<LegacyCharacterResources, 'playerBody' | 'rifle'>,
+  player: PlayerVisualFamily): CharacterVisualFamilies {
+  for (const name of ['normalIdle', 'grayIdle', 'helmet', 'vest',
     'bossIdle', 'bossVest'] as const) {
     if (!(resources[name] instanceof THREE.Mesh)) throw new Error(`Missing character resource: ${name}`);
   }
@@ -76,12 +89,15 @@ export function createLegacyCharacterVisualFamilies(resources: LegacyCharacterRe
       throw new Error(`Character resource ${name} requires four baked poses`);
     }
   }
+  for (const part of ['body', 'helmet', 'vest', 'weapon'] as const) {
+    if (!(player?.[part] instanceof THREE.Mesh)) throw new Error(`Missing Player family resource: ${part}`);
+  }
+  if (typeof player.presentation?.createMotion !== 'function') throw new Error('Player family requires a motion factory');
   const { normalIdle, normalRuns, grayIdle, helmet, vest } = resources;
   const normal = { body: normalIdle, helmet, vest };
   const gray = { body: grayIdle, helmet, vest };
   return {
-    player: { role: 'player', id: 'legacy-player', body: resources.playerBody, helmet, vest,
-      weapon: resources.rifle },
+    player,
     grunt: { role: 'grunt', id: 'legacy-grunt', ...normal, runFrames: normalRuns,
       gaitCycleMs: ENEMY_GAIT_CYCLE_MS, death: { ...gray }, contact: { ...normal } },
     // Borrow raw legacy resources, never the resolved Grunt role. Replacing Grunt

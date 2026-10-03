@@ -8,14 +8,18 @@ const MOTES_PER_MEMBER = 8;
 export class PlayerLevelUpEffect {
   private startedAtMs = -Infinity;
   private readonly visuals: THREE.Group[] = [];
-  private readonly ringGeometry = new THREE.RingGeometry(.4, .49, 40);
+  private readonly ringGeometry: THREE.RingGeometry;
   private readonly moteGeometry = new THREE.SphereGeometry(.055, 6, 4);
   private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalUi.aqua, transparent: true,
     depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending, toneMapped: false });
   private readonly moteMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalUi.foam, transparent: true,
     depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
   private readonly aquaMoteMaterial = this.moteMaterial.clone();
-  constructor(private readonly scene: THREE.Scene) { this.aquaMoteMaterial.color.set(ART.coastalUi.energy); }
+  constructor(private readonly scene: THREE.Scene,
+    private readonly envelope = { radius: .49, height: 1.1 }) {
+    this.ringGeometry = new THREE.RingGeometry(envelope.radius * .82, envelope.radius, 40);
+    this.aquaMoteMaterial.color.set(ART.coastalUi.energy);
+  }
   present(nowMs: number): void { this.startedAtMs = nowMs; }
   update(members: readonly { group: THREE.Group }[], nowMs: number): void {
     const age = nowMs - this.startedAtMs;
@@ -34,9 +38,9 @@ export class PlayerLevelUpEffect {
       ring.scale.setScalar(.65 + 2 * progress);
       for (let mote = 0; mote < MOTES_PER_MEMBER; mote++) {
         const angle = mote * Math.PI * 2 / MOTES_PER_MEMBER + index * 2.4 + progress * .8;
-        const radius = .35 + .45 * progress;
+        const radius = this.envelope.radius * (.72 + .92 * progress);
         const spark = group.children[mote + 1];
-        spark.position.set(Math.cos(angle) * radius, .12 + progress * (1.1 + (mote % 3) * .3), Math.sin(angle) * radius);
+        spark.position.set(Math.cos(angle) * radius, .12 + progress * (this.envelope.height + (mote % 3) * .3), Math.sin(angle) * radius);
         spark.scale.setScalar(1.15 - .6 * progress);
       }
       index++;

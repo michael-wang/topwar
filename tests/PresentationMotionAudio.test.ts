@@ -23,7 +23,7 @@ describe('presentation-only motion', () => {
     const soldiers = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);
     const positions = soldiers.map((member) => [member.position.x, member.position.z]);
     const soldier = soldiers[0];
-    expect(soldier.children).toHaveLength(5);
+    expect(soldier.children).toHaveLength(4);
     const body = soldier.children[0];
     const rifle = soldier.getObjectByName('toy-rifle') as THREE.Mesh;
     const restingZ = rifle.position.z;
@@ -36,11 +36,11 @@ describe('presentation-only motion', () => {
     expect(body.scale.y).toBe(1);
     expect((soldier.getObjectByName('toy-soldier-helmet') as THREE.Mesh).rotation.x).toBe(0);
     expect((soldier.getObjectByName('toy-soldier-vest') as THREE.Mesh).scale.y).toBe(1);
-    expect(soldier.children[4].visible).toBe(true);
+    expect(soldier.getObjectByName('muzzle-flash')!.visible).toBe(true);
     renderer.update({ ...state, projectiles: [{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 4,
       hitRadiusBonus: 0 }] }, 600);
     expect(rifle.position.z).toBeCloseTo(restingZ);
-    expect(soldier.children[4].visible).toBe(false);
+    expect(soldier.getObjectByName('muzzle-flash')!.visible).toBe(false);
     renderer.dispose();
   });
 

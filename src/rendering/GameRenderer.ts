@@ -69,7 +69,7 @@ export class GameRenderer {
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.families);
     this.bossRenderer = new BossRenderer(this.scene, assets.families.boss);
     this.streamRewardRenderer = new StreamRewardRenderer(this.scene, assets.rewardHelmet);
-    this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet);
+    this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet, assets.families.player.presentation.tracer);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
     this.environment = new BridgeEnvironment(this.scene);

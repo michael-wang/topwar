@@ -6,16 +6,20 @@ This document defines the canonical character-art direction for TopWar's
 Beachhead Defense presentation.
 
 Phase 0 and its Phase 0.1 amendment freeze the visual direction and future asset
-contract. Phase 1 adds named runtime role families while preserving shipping
-assets, appearance and gameplay. Character replacement starts only with a
-separately authorized Phase 2; the plan below does not authorize it.
+contract. Phase 1 added named runtime role families while preserving shipping
+assets, appearance and gameplay. Phase 2A introduces the original procedural
+Player prototype for human visual review. Further replacement or polish requires
+separate authorization.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
 existing gameplay model, faction semantics and Sunlit Coastal Battlefield
 environment.
 
-Implementation is staged. This document defines the target system; it does not
-mean every character family already uses it.
+**TARGET:** the full two-head character system described below.
+
+**CURRENT SHIPPING:** Player uses the Phase 2A two-head prototype. Grunt, Heavy,
+Giant and Boss retain their legacy assets, palettes, motion and feedback. The
+amphibious enemy direction is a target only; no bare-torso enemies are shipping.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for coastal
 palette, lighting, composition and UI guardrails.
@@ -209,6 +213,63 @@ Hands communicate firing and recovery; large shoes communicate lane movement
 through firm planting. Detached parts must still read as one controlled soldier.
 Level-Up may briefly exaggerate the silhouette without changing normal motion.
 
+### Current Phase 2A prototype
+
+`ChibiPlayerFamily` deterministically builds original low-segment ellipsoids,
+rounded blocks and cylinders at runtime. No external authoring tool, texture,
+Kenney geometry, UV selector or `_MOTION` attribute is required. Legacy Player
+GLBs remain in the repository for rollback but are no longer downloaded by the
+shipping loader.
+
+Four primary meshes remain per defender:
+
+- one merged body containing the head, clothed tunic, small face marks, two
+  disconnected mittens and two disconnected navy shoes;
+- a rounded blue helmet with a broad rim and one simple rear panel;
+- one broad chest accent, using the existing tier colors;
+- an original short, thick rifle with a directional barrel.
+
+The helmet crown is 1.025 authored units and root scale remains 0.85. The
+head/helmet zone begins at 0.51 (about 50% of standing height); helmet width is
+about 1.27 times tunic width. Total projected height matches the legacy Player
+in the deterministic 390×844 portrait fixture. This prototype retains the legacy
+authoring height while the future shared-unit convention awaits enemy migration.
+
+`PlayerPresentation` selects a motion factory explicitly. `ChibiPlayerMotion`
+uses the body mesh's `playerPart` attribute to translate whole shoes alternately
+fore/aft and upward, counter-swing mittens and move both hands with recoil and
+reinforcement readiness. The head and torso stay rigid within that mesh; existing
+restrained root/helmet lean and plant/fire/recover timing remain. No skeleton or
+general animation framework is introduced. The legacy anatomical motion factory
+is retained only in the explicit rollback/test adapter.
+
+Presentation metadata contains only root scale, motion/material preparation,
+weapon transform, muzzle anchor, tracer origin, shadow footprint and Level-Up
+envelope. The muzzle flash is a rifle child at the barrel tip, so it follows
+recoil, roll and lowering. Rifle tracer height and lateral offset derive from
+the same rest anchor; trajectory and projectile simulation are unchanged.
+The dormant rocket member still uses its previous enlarged-rifle fallback.
+
+Level-Up retains its aqua ring, foam motes, body/gear wash and weapon afterglow,
+with radius 0.51 and a rising envelope covering the enlarged crown. Existing
+800 ms burst, 1400 ms afterglow, tier and reinforcement timing remain unchanged.
+Player contact shadows use a 0.64×0.46 footprint to ground the shoes. Hit and
+bounded casualty presentation reuse the new parts, preserving the 130 ms hit
+and 360 ms knockout timing and fade semantics.
+
+The family owns four source geometries and three materials; `CharacterAssets`
+disposes them. `SquadRenderer` borrows those resources and owns its per-member
+motion materials, tier/effect variants and casualty materials. Detached parts
+add no mesh draws. Matching one-defender fixtures retain 138 draws, add 540
+triangles and two GPU geometries, and remove one texture. Dropping the old body
+and rifle requests saves 56,552 bytes of character downloads.
+
+Review evidence lives in `artifacts/player-chibi-prototype/`. Rear head readability
+is mostly a skin band beneath the helmet, and the offhand is an abstract action
+cue rather than a precise two-handed grip. Boots and chest remain deliberately
+simple. These are prototype review questions, not authorization for further
+polish or enemy replacement.
+
 ## Grunt
 
 ### Intent
@@ -372,10 +433,11 @@ microdetail.
 
 ## Technical asset contract
 
-### Current Phase 1 adapter
+### Current runtime adapters
 
-`CharacterAssets` loads named legacy resources once and assembles explicit
-`player`, `grunt`, `heavy`, `giant` and `boss` families. Heavy and Giant reference
+`CharacterAssets` loads named legacy enemy resources once, creates the procedural
+Player and assembles explicit `player`, `grunt`, `heavy`, `giant` and `boss`
+families. Heavy and Giant reference
 raw legacy normal-soldier resources, independently of the resolved Grunt role.
 Boss retains dedicated idle/run/slam/vest resources and explicit shared helmet
 and gray-body dependencies. Reward helmets also retain a separate legacy reference.
@@ -385,8 +447,9 @@ when different. Grunt/Heavy death and contact parts are explicit per role; Giant
 retains its intentional legacy normal-soldier contact fallback. Pooled feedback
 rebinds resources when reused across distinct families. Gait cadence is family
 metadata; scale remains in the existing render projection. The full future
-parts/anchors contract below is not yet implemented: legacy attachment pivots,
-UV/material assumptions, shadows and Player `_MOTION` remain in their renderers.
+parts/anchors contract below is not fully implemented: enemy attachment pivots,
+UV/material assumptions and shadows remain in their renderers. Player uses the
+small explicit presentation contract described above.
 
 ### Ownership and role selection
 
@@ -607,6 +670,9 @@ Level-Up, reinforcement and casualty presentation.
 
 Replace the Player's old anatomy-dependent pivots/weights only with the selected
 new family's motion strategy. Validate the weapon and its muzzle together.
+
+Phase 2A is the current shipping prototype, awaiting human visual review. Stop
+before final Player polish, Grunt replacement or any additional visual phase.
 
 ### Phase 3 — Grunt
 

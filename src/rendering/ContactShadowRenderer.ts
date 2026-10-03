@@ -44,7 +44,7 @@ export class ContactShadowRenderer {
     this.ensureCapacity('enemy', state.enemies.length);
     this.ensureCapacity('reward', state.streamRewards.length);
     this.playerIndex = 0;
-    squad.forEachVisibleMemberPosition(this.placePlayer);
+    squad.forEachVisibleMemberPosition(position => this.placePlayer(position, squad.presentation.shadow));
     this.batches.player.mesh.count = this.playerIndex;
     this.batches.player.mesh.instanceMatrix.needsUpdate = true;
     for (let index = 0; index < state.enemies.length; index++) {
@@ -95,8 +95,8 @@ export class ContactShadowRenderer {
     this.texture.dispose();
   }
 
-  private readonly placePlayer = (position: THREE.Vector3): void => {
-    this.place('player', this.playerIndex++, position.x, position.z, .72, .43);
+  private readonly placePlayer = (position: THREE.Vector3, footprint: { width: number; depth: number }): void => {
+    this.place('player', this.playerIndex++, position.x, position.z, footprint.width, footprint.depth);
   };
 
   private place(kind: ShadowKind, index: number, x: number, z: number,

@@ -32,13 +32,16 @@ describe('named character visual families', () => {
       const assets = await loadCharacterAssets();
       const model = (name: string) => models.get(`/models/toy-soldier-${name}.glb`)!;
       const { player, grunt, heavy, giant, boss } = assets.families;
-      expect(load).toHaveBeenCalledTimes(21);
-      expect(models.size).toBe(21);
+      expect(load).toHaveBeenCalledTimes(19);
+      expect(models.size).toBe(19);
       expect([player.role, grunt.role, heavy.role, giant.role, boss.role])
         .toEqual(['player', 'grunt', 'heavy', 'giant', 'boss']);
-      expect(player.body).toBe(model('player-body'));
-      expect(player.weapon).toBe(model('rifle'));
-      expect(player.helmet).toBe(model('helmet'));
+      expect(player.body.geometry.getAttribute('playerPart')).toBeDefined();
+      expect(player.body).not.toBe(model('body'));
+      expect(player.weapon).not.toBe(model('rifle'));
+      expect(player.helmet).not.toBe(model('helmet'));
+      expect(models.has('/models/toy-soldier-player-body.glb')).toBe(false);
+      expect(models.has('/models/toy-soldier-rifle.glb')).toBe(false);
       expect(grunt.body).toBe(model('body'));
       expect(grunt.runFrames).toEqual([0, 1, 2, 3].map(i => model(`run-${i}`)));
       expect(grunt.death.body).toBe(model('gray-body'));
@@ -58,6 +61,9 @@ describe('named character visual families', () => {
       const disposals = [...models.values()].flatMap(mesh => [vi.spyOn(mesh.geometry, 'dispose'),
         vi.spyOn(mesh.material as THREE.Material, 'dispose'),
         vi.spyOn((mesh.material as THREE.MeshStandardMaterial).map!, 'dispose')]);
+      disposals.push(...[player.body, player.helmet, player.vest, player.weapon].map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
+      disposals.push(...[...new Set([player.body, player.helmet, player.vest, player.weapon].map(mesh => mesh.material))]
+        .map(material => vi.spyOn(material, 'dispose')));
       assets.dispose();
       for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
     } finally { load.mockRestore(); }

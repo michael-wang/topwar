@@ -1,8 +1,7 @@
 import type { PlayerVisualFamily, CharacterModel } from '../CharacterVisualFamilies';
 import { ART } from '../../art/ArtDirection';
-import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { laneLocomotion, recoilEnvelope, RECOIL_SETTLE_MS } from '../../presentation/CharacterMotion';
-import { PlayerBodyMotion } from './PlayerBodyMotion';
+import type { PlayerMotion, PlayerPresentation } from './PlayerPresentation';
 import { reinforcementArrivalPose } from '../../presentation/ReinforcementArrival';
 import { LEVEL_UP_MS, WEAPON_AFTERGLOW_MS, type ProgressionLevelUpEvent } from '../../presentation/ProgressionLevelUp';
 import { PlayerLevelUpEffect } from './PlayerLevelUpEffect';
@@ -43,7 +42,7 @@ interface SoldierVisual {
   rifle: THREE.Mesh;
   muzzle: THREE.Mesh;
   appearedAtMs: number;
-  motion: PlayerBodyMotion;
+  motion: PlayerMotion;
   recoil: number;
   lastFiredAtMs: number;
 }
@@ -102,32 +101,34 @@ export class SquadRenderer {
     for (const member of this.members) if (member.group.visible) visit(member.group.position);
   }
 
+  readonly presentation: PlayerPresentation;
   private readonly bodyModel: CharacterModel;
   private readonly helmetModel: CharacterModel;
   private readonly vestModel: CharacterModel;
   private readonly rifleModel: CharacterModel;
   constructor(private readonly scene: THREE.Scene, family: PlayerVisualFamily) {
     const { body: bodyModel, helmet: helmetModel, vest: vestModel, weapon: rifleModel } = family;
+    this.presentation = family.presentation;
     this.bodyModel = bodyModel; this.helmetModel = helmetModel; this.vestModel = vestModel; this.rifleModel = rifleModel;
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');
-    illustratedMaterial(bodyModel.material, 'player');
+    this.presentation.prepareMaterial(bodyModel.material, 'body');
     if (rifleModel.material instanceof THREE.MeshStandardMaterial) {
-      illustratedMaterial(rifleModel.material, 'weapon');
+      this.presentation.prepareMaterial(rifleModel.material, 'weapon');
     }
-    this.levelBodyMaterial = illustratedMaterial(bodyModel.material.clone(), 'player');
+    this.levelBodyMaterial = this.presentation.prepareMaterial(bodyModel.material.clone(), 'body');
     this.levelBodyMaterial.emissive.set(ART.coastalUi.paper);
-    this.levelGearMaterial = illustratedMaterial(source.clone());
+    this.levelGearMaterial = this.presentation.prepareMaterial(source.clone(), 'gear');
     this.levelGearMaterial.color.set(ART.coastalUi.paper);
     this.levelGearMaterial.emissive.set(ART.coastalUi.foam);
-    this.levelEffect = new PlayerLevelUpEffect(scene);
+    this.levelEffect = new PlayerLevelUpEffect(scene, this.presentation.levelUp);
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
-      const material = illustratedMaterial(source.clone());
+      const material = this.presentation.prepareMaterial(source.clone(), 'gear');
       material.color.set(entry.body);
       return material;
     });
-    this.upgradeMaterial = illustratedMaterial(source.clone());
+    this.upgradeMaterial = this.presentation.prepareMaterial(source.clone(), 'gear');
     this.upgradeMaterial.color.set(ART.faction.playerLight);
     this.tierRing.rotation.x = -Math.PI / 2;
     this.tierRing.position.y = 0.035;
@@ -252,7 +253,7 @@ export class SquadRenderer {
       if (index === 0) this.lastLaneLean = moving.lean;
       const spawnScale = soldierSpawnScale(nowMs - member.appearedAtMs);
       const upgrading = tierActive && tier === this.tierUpTier;
-      member.group.scale.setScalar(PLAYER_VISUAL_SCALE
+      member.group.scale.setScalar(this.presentation.rootScale
         * (levelActive ? 1 + .2 * Math.sin(Math.PI * Math.min(1, levelAge / 400))
           : upgrading ? tierUpScale(tierAgeMs) : spawnScale));
       const glowing = upgrading && tierAgeMs < TIER_GLOW_MS;
@@ -273,9 +274,10 @@ export class SquadRenderer {
       member.vest.rotation.z = moving.lean * .90 + idle * .5;
       member.vest.rotation.x = -.018 * recoil;
       member.rifle.rotation.z = moving.lean * .65 + idle * 1.3;
-      member.rifle.position.x = .13 + moving.lag;
+      member.rifle.position.x = this.presentation.weaponPosition[0] + moving.lag;
+      member.rifle.position.y = this.presentation.weaponPosition[1];
       member.rifle.rotation.x = (entrance?.weaponLower ?? 0) - 0.18 * recoil;
-      member.rifle.position.z = -0.08 * recoil;
+      member.rifle.position.z = this.presentation.weaponPosition[2] - 0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < (afterglow ? 90 : FLASH_MS);
       member.muzzle.material = afterglow ? this.poweredMuzzleMaterial : this.muzzleMaterial;
@@ -359,13 +361,13 @@ export class SquadRenderer {
         if (!(source.material instanceof THREE.MeshStandardMaterial)) {
           throw new Error('Player casualty visuals require standard materials');
         }
-        const material = illustratedMaterial(source.material.clone(), source === this.bodyModel ? 'player' : 'world');
+        const material = this.presentation.prepareMaterial(source.material.clone(), source === this.bodyModel ? 'body' : 'gear');
         material.transparent = true;
         material.depthWrite = false;
         return material;
       });
       sources.forEach((source, part) => group.add(new THREE.Mesh(source.geometry, materials[part])));
-      (group.children[3] as THREE.Mesh).position.x = .13;
+      (group.children[3] as THREE.Mesh).position.fromArray(this.presentation.weaponPosition);
       group.visible = false;
       this.scene.add(group);
       visual = { group, materials, tier, startedAtMs: nowMs,
@@ -382,7 +384,7 @@ export class SquadRenderer {
     visual.group.visible = true;
     visual.group.position.set(x, 0, z);
     visual.group.rotation.set(0, 0, 0);
-    visual.group.scale.setScalar(PLAYER_VISUAL_SCALE);
+    visual.group.scale.setScalar(this.presentation.rootScale);
     const color = PLAYER_PALETTE[paletteIndex(tier || 1, PLAYER_PALETTE.length)].body;
     for (const material of visual.materials) material.opacity = 1;
     visual.materials[1].color.set(color);
@@ -419,18 +421,19 @@ export class SquadRenderer {
     vest.name = 'toy-soldier-vest';
     const rifle = new THREE.Mesh(this.rifleModel.geometry, this.rifleModel.material);
     rifle.name = 'toy-rifle';
-    rifle.position.x = .13;
+    rifle.position.fromArray(this.presentation.weaponPosition);
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
     muzzle.name = 'muzzle-flash';
     muzzle.rotation.x = Math.PI / 2;
-    muzzle.position.set(.38, .46, .93);
+    muzzle.position.fromArray(this.presentation.muzzleAnchor);
     muzzle.add(new THREE.Mesh(this.muzzleCoreGeometry, this.muzzleCoreMaterial));
     muzzle.visible = false;
-    group.add(body, helmet, vest, rifle, muzzle);
+    rifle.add(muzzle);
+    group.add(body, helmet, vest, rifle);
     this.scene.add(group);
     group.visible = false;
     this.members.push({ group, body, helmet, vest, rifle, muzzle,
-      appearedAtMs: -Infinity, motion: new PlayerBodyMotion(this.bodyModel.material as THREE.MeshStandardMaterial, this.levelBodyMaterial),
+      appearedAtMs: -Infinity, motion: this.presentation.createMotion(this.bodyModel.material as THREE.MeshStandardMaterial, this.levelBodyMaterial),
       recoil: 0, lastFiredAtMs: -Infinity });
   }
 }
