@@ -1,9 +1,9 @@
 {
   "stats": {
     "opening": {
-      "drawCalls": 145,
-      "triangles": 24254,
-      "geometries": 70,
+      "drawCalls": 150,
+      "triangles": 26546,
+      "geometries": 75,
       "textures": 9,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -75,9 +75,9 @@
       }
     },
     "empty-beach": {
-      "drawCalls": 133,
-      "triangles": 14008,
-      "geometries": 66,
+      "drawCalls": 138,
+      "triangles": 16300,
+      "geometries": 71,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -149,9 +149,9 @@
       }
     },
     "outer-lanes": {
-      "drawCalls": 140,
-      "triangles": 22354,
-      "geometries": 66,
+      "drawCalls": 145,
+      "triangles": 24646,
+      "geometries": 71,
       "textures": 8,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -223,9 +223,9 @@
       }
     },
     "normal-crowd": {
-      "drawCalls": 139,
-      "triangles": 268608,
-      "geometries": 66,
+      "drawCalls": 144,
+      "triangles": 270900,
+      "geometries": 71,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -297,9 +297,9 @@
       }
     },
     "dense-mixed": {
-      "drawCalls": 184,
-      "triangles": 282768,
-      "geometries": 66,
+      "drawCalls": 189,
+      "triangles": 285060,
+      "geometries": 71,
       "textures": 8,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -371,9 +371,9 @@
       }
     },
     "death-peak": {
-      "drawCalls": 175,
-      "triangles": 218126,
-      "geometries": 68,
+      "drawCalls": 180,
+      "triangles": 220418,
+      "geometries": 72,
       "textures": 8,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -447,9 +447,9 @@
         "samples": [
           {
             "ageMs": 0,
-            "drawCalls": 222,
-            "triangles": 282700,
-            "geometries": 68,
+            "drawCalls": 227,
+            "triangles": 284992,
+            "geometries": 71,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -522,9 +522,9 @@
           },
           {
             "ageMs": 60,
-            "drawCalls": 222,
-            "triangles": 282700,
-            "geometries": 68,
+            "drawCalls": 227,
+            "triangles": 284992,
+            "geometries": 71,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -597,9 +597,9 @@
           },
           {
             "ageMs": 100,
-            "drawCalls": 222,
-            "triangles": 282700,
-            "geometries": 68,
+            "drawCalls": 227,
+            "triangles": 284992,
+            "geometries": 71,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -672,9 +672,9 @@
           },
           {
             "ageMs": 110,
-            "drawCalls": 222,
-            "triangles": 282700,
-            "geometries": 68,
+            "drawCalls": 180,
+            "triangles": 230272,
+            "geometries": 72,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -747,9 +747,9 @@
           },
           {
             "ageMs": 150,
-            "drawCalls": 222,
-            "triangles": 282700,
-            "geometries": 68,
+            "drawCalls": 180,
+            "triangles": 230272,
+            "geometries": 72,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -822,9 +822,9 @@
           },
           {
             "ageMs": 220,
-            "drawCalls": 222,
-            "triangles": 282700,
-            "geometries": 68,
+            "drawCalls": 180,
+            "triangles": 230272,
+            "geometries": 72,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -897,9 +897,9 @@
           },
           {
             "ageMs": 300,
-            "drawCalls": 223,
-            "triangles": 282702,
-            "geometries": 68,
+            "drawCalls": 181,
+            "triangles": 230274,
+            "geometries": 72,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -972,9 +972,9 @@
           },
           {
             "ageMs": 390,
-            "drawCalls": 223,
-            "triangles": 282702,
-            "geometries": 68,
+            "drawCalls": 180,
+            "triangles": 220418,
+            "geometries": 72,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -1047,9 +1047,9 @@
           },
           {
             "ageMs": 480,
-            "drawCalls": 175,
-            "triangles": 218126,
-            "geometries": 68,
+            "drawCalls": 180,
+            "triangles": 220418,
+            "geometries": 72,
             "textures": 8,
             "devicePixelRatio": 2,
             "rendererPixelRatio": 2,
@@ -1121,14 +1121,14 @@
             }
           }
         ],
-        "maximumDraws": 223,
-        "maximumTriangles": 282702
+        "maximumDraws": 227,
+        "maximumTriangles": 284992
       }
     },
     "warship-defense": {
-      "drawCalls": 149,
-      "triangles": 14852,
-      "geometries": 67,
+      "drawCalls": 143,
+      "triangles": 16484,
+      "geometries": 72,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -1200,9 +1200,9 @@
       }
     },
     "warship-legacy": {
-      "drawCalls": 123,
+      "drawCalls": 121,
       "triangles": 10298,
-      "geometries": 78,
+      "geometries": 83,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -1274,9 +1274,9 @@
       }
     },
     "right-house": {
-      "drawCalls": 36,
-      "triangles": 3080,
-      "geometries": 71,
+      "drawCalls": 34,
+      "triangles": 4040,
+      "geometries": 76,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -1348,9 +1348,9 @@
       }
     },
     "left-cluster": {
-      "drawCalls": 40,
-      "triangles": 2248,
-      "geometries": 71,
+      "drawCalls": 41,
+      "triangles": 3460,
+      "geometries": 76,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -1422,9 +1422,9 @@
       }
     },
     "right-cluster": {
-      "drawCalls": 41,
-      "triangles": 3152,
-      "geometries": 72,
+      "drawCalls": 43,
+      "triangles": 4592,
+      "geometries": 77,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -1498,7 +1498,7 @@
     "player-guard": {
       "drawCalls": 4,
       "triangles": 3456,
-      "geometries": 66,
+      "geometries": 71,
       "textures": 6,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,
@@ -1572,7 +1572,7 @@
     "boss-guard": {
       "drawCalls": 1,
       "triangles": 2,
-      "geometries": 73,
+      "geometries": 78,
       "textures": 7,
       "devicePixelRatio": 2,
       "rendererPixelRatio": 2,

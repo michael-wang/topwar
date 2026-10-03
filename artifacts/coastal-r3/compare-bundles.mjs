@@ -5,7 +5,7 @@ import { gzipSync } from 'node:zlib';
 import { statSync, readFileSync, writeFileSync } from 'node:fs';
 import { files } from './baseline-server.mjs';
 const baseline = '17fffdcac3abde4c08492cc66ab271c8cf777ad2';
-const sources = new Map([...files.map(f => `src/rendering/${f}`), 'src/app/GameApp.ts', 'src/main.ts', 'src/app/ThreatReview.ts', 'src/presentation/CharacterMotion.ts', 'src/art/ArtDirection.ts'].map(path =>
+const sources = new Map([...files.map(f => `src/rendering/${f}`), 'src/app/GameApp.ts', 'src/main.ts', 'src/app/ThreatReview.ts', 'src/presentation/CharacterMotion.ts', 'src/presentation/EnemyDeathTiming.ts', 'src/presentation/GiantDrama.ts', 'src/art/ArtDirection.ts'].map(path =>
   [resolve(path).replaceAll('\\', '/'), execFileSync('git', ['show', `${baseline}:${path}`], { encoding: 'utf8' })]));
 const result = {};
 for (const phase of ['baseline', 'polish']) {

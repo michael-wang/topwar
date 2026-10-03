@@ -30,8 +30,14 @@ for(const key of keys){
   if(key==='outer-lanes')f.enemies=[{...g,x:-2.8,z:6},{...h,x:2.8,z:8},{...g,id:103,x:-2.8,z:15}];
   if(['empty-beach','right-house','left-cluster','right-cluster','warship-defense','warship-legacy','player-guard','boss-guard'].includes(key))f.enemies=[];
   draw(f,0);draw(f,2000);
-  if(key==='death-peak'){f.enemies=f.enemies.slice(24);draw(f,2010);draw(f,2160);}
-  if(key.startsWith('warship')){if(key==='warship-legacy'){r.environment.update(0,3.2,0,false);r.renderer.render(r.scene,r.camera);}for(let t=100;t<=14000;t+=100){r.environment.update(0,3.2,t,key!=='warship-legacy');}r.renderer.render(r.scene,r.camera);}
+  let peak;
+  if(key==='death-peak'){
+   f.enemies=f.enemies.slice(24);const samples=[];
+   for(const age of [0,60,100,110,150,220,300,390,480]){draw(f,2010+age);samples.push({ageMs:age,...r.getDebugStats()});}
+   peak={samples,maximumDraws:Math.max(...samples.map(s=>s.drawCalls)),maximumTriangles:Math.max(...samples.map(s=>s.triangles))};
+   window.__peak=peak;
+  }
+  if(key.startsWith('warship')){if(key==='warship-legacy'){f.defenseMode=false;draw(f,0);}for(let t=100;t<=14000;t+=100){r.environment.update(0,3.2,t,key!=='warship-legacy');}draw(f,14000);}
   if(['right-house','left-cluster','right-cluster'].includes(key)){
    // Screen-right foreground house is the negative-X, Z=24 building.
    const target=key==='right-house'?[-6.6,1.3,21.7]:key==='left-cluster'?[5.2,.35,9]:[-5.4,.35,13];
@@ -43,7 +49,7 @@ for(const key of keys){
    draw(f,2000);for(const c of r.scene.children)if(c!==r.skyFill&&c!==r.sunlight&&!c.getObjectByName('toy-soldier-body')&&!c.name.includes('boss'))c.visible=false;
    r.scene.background.set('white');r.scene.fog=null;r.renderer.render(r.scene,r.camera);
   }
-  return r.getDebugStats();
+  return {...r.getDebugStats(),...(peak?{deathPeak:peak}:{})};
  },key);
  await page.screenshot({path:`${out}/${phase}-${key}.png`});
  // Rebuild app for isolated fixture state; environment clocks and inspection camera cannot leak.

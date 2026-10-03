@@ -3,6 +3,7 @@ import { CoastalWater } from './CoastalWater';
 import { CoastalArchitecture } from './CoastalArchitecture';
 import { CoastalVegetation } from './CoastalVegetation';
 import { CoastalCloth } from './CoastalCloth';
+import { CoastalForeground } from './CoastalForeground';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
@@ -95,6 +96,7 @@ export class BridgeEnvironment {
   private readonly coastalArchitecture = new CoastalArchitecture();
   private readonly coastalVegetation = new CoastalVegetation();
   private readonly coastalCloth = new CoastalCloth();
+  private readonly coastalForeground = new CoastalForeground();
   private defenseMode = false;
   private readonly legacyBackground = new THREE.Color(BATTLEFIELD_FOG_COLOR);
   private readonly coastalBackground = new THREE.Color(ART.coastalDefense.sky);
@@ -173,7 +175,7 @@ export class BridgeEnvironment {
     sand.rotation.x = -Math.PI / 2;
     sand.position.set(0, .005, 3);
     this.defenseBeach.add(sand, this.coastalWater.group, this.coastalArchitecture.group,
-      this.coastalVegetation.group, this.coastalCloth.group);
+      this.coastalVegetation.group, this.coastalCloth.group, this.coastalForeground.group);
     const foamMaterial = this.material(ART.coastalDefense.foam, true, .65);
     const duneMaterial = this.material(ART.coastalDefense.sandShade);
     for (let patch = 0; patch < 20; patch++) {
@@ -204,6 +206,7 @@ export class BridgeEnvironment {
     this.coastalArchitecture.update(trackHalfWidth);
     this.coastalVegetation.update(trackHalfWidth, nowMs);
     this.coastalCloth.update(trackHalfWidth, nowMs);
+    this.coastalForeground.update(trackHalfWidth);
     this.burningSites.forEach((site, index) => {
       // Active flames/smoke survive; static military wrecks do not belong to the civilian beach.
       for (const child of site.children)
@@ -279,6 +282,7 @@ export class BridgeEnvironment {
   dispose(): void {
     this.coastalWater.dispose(); this.coastalArchitecture.dispose();
     this.coastalVegetation.dispose(); this.coastalCloth.dispose();
+    this.coastalForeground.dispose();
     this.transports.dispose();
     this.scene.remove(this.defenseBeach, this.transports.group);
     this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,

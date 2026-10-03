@@ -9,9 +9,9 @@ It expands the existing environment direction beyond architecture so that
 civilian objects, ships, military intrusion and future defensive structures
 belong to one visual world.
 
-Phase 0 establishes design rules only. Current environment layout, ships,
-camera, UI and gameplay remain unchanged. This document does not introduce
-defense structures, vehicles, persistent damage or new simulation systems.
+The rules now include the implemented painted naval palette and R3 civilian
+foreground framing. Camera, UI and gameplay remain unchanged. This document does
+not introduce defense structures, persistent damage or new simulation systems.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for the coastal
 palette, lighting, composition and UI guardrails.
@@ -164,7 +164,7 @@ Metalness and high-gloss response should remain low.
 
 ### War intrusion
 
-- enemy crimson;
+- enemy olive/slate costume and coral HP;
 - charcoal smoke;
 - localized scorch;
 - fire orange;
@@ -291,6 +291,17 @@ legacy mode. Aircraft/flak and the Mediterranean `OffshoreTransports` landing
 craft/carriers remain. Openings use plaster frames and painted cyan leaves with
 small secondary-navy cores, rather than large deepest-shadow slabs.
 
+## Implemented R3 civilian foreground
+
+Two low, asymmetric side clusters frame the beach without occupying the five
+lanes: screen-left has a whitewashed bench, two rounded ceramic vessels and a
+fishing-rope coil (Z≈7.5–10.3); screen-right has a short plaster terrace, pale
+timber seat, folded cyan cloth and one vessel (Z≈12.7–14.1). Warm ceramics,
+quiet rope and painted plaster retain the civilian village identity. No military
+props, tall trees, collision or new external textures are added. Seven merged
+material/side batches adapt outward with track width; all opaque vertices stay
+outside track edge + 0.4. Center lanes retain restrained sand scuffs.
+
 ## Future defensive structures
 
 Defenses should feel locally improvised or integrated into the settlement.
@@ -406,24 +417,13 @@ The connection is semantic:
 - sea / aqua = player progression;
 - navy = readability / shadow;
 - sunlight = rare positive accent;
-- crimson = enemy pressure.
+- olive/slate = enemy costume; coral/red = enemy health and pressure.
 
 ## Scope
 
-This document defines rules for future work.
-
-It does not authorize an immediate full environment rebuild.
-
-Current architecture and UI remain provisional baseline.
-
-The first implementation pass beyond characters should target the most visibly
-mismatched object family, likely ships / landing craft, and should remain a
-small independently revertable phase.
-
-Phase 5 follows the Player, Grunt and Heavy pivots and requires a separate task.
-Select one object family after reviewing it in the actual portrait camera;
-ships/landing craft are the likely candidate, not an instruction to rebuild
-all naval assets now. Keep existing function, timing and gameplay unchanged.
+The implemented naval palette and R3 opening/foreground refinements are narrow
+presentation changes. Further object-family changes require a separate task;
+these rules do not authorize a full environment rebuild or UI redesign.
 
 Future defenses are conditional vocabulary. The current civilian beach remains
 unprepared, with no added fortifications or central-corridor clutter. Review any

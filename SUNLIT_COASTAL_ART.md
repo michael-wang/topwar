@@ -1,7 +1,7 @@
 # Sunlit Coastal Battlefield
 
 Art Phase 1.4 finalizes **defense-mode hierarchy, civilian village composition and viewport behavior**.
-Environment/UI are provisionally locked before character-model redesign. The direction is a
+R3 refines authored openings and foreground side framing; camera, lighting and UI remain fixed. The direction is a
 sunlit stylized Mediterranean coastal diorama: **a beautiful coast under
 violent assault**. The supplied reference informs color, shape hierarchy and
 breeze, not its village, assets, layout or identity. All scenery is original
@@ -13,8 +13,8 @@ three-head direction and shared-geometry assumptions for future replacements.
 Reusable non-character object design, including future naval and defensive
 forms, is defined by [COASTAL_GREEK_OBJECT_LANGUAGE.md](COASTAL_GREEK_OBJECT_LANGUAGE.md).
 This document remains canonical for coastal palette, lighting, environment
-composition and UI guardrails. Phase 0 changes documentation only; shipping
-geometry, environment layout and UI remain unchanged.
+composition and UI guardrails. The implemented naval palette and R3 civilian
+foreground follow the object language without changing gameplay.
 
 ## Palette and value hierarchy
 
@@ -75,7 +75,12 @@ outer-lane enemies, health bars or the XP spectacle with environment props.
 
 The settlement was civilian and did not expect war. The central five corridors
 keep only quiet sand scuffs: no X-shaped anti-landing obstacles or prepared beach
-fortifications. **Beauty is the canvas. War is the violation. Toy soldiers are the contradiction.**
+fortifications. R3 frames the side foreground at roughly Z=7–14 with a low plaster
+bench, pottery and rope on screen-left; a terrace step, pale timber seat, cyan
+cloth and pottery on screen-right. Opaque geometry stays outside track edge +
+0.4, adapts outward with track width and introduces no collision. Seven merged
+material/side draws keep the center quiet; no new textures or tall vegetation.
+**Beauty is the canvas. War is the violation. Toy soldiers are the contradiction.**
 Static village architecture is mostly intact, beautiful and sunlit; smoke, fire and impacts
 are active contamination. Future residue/damage may tell consequences, but no persistent
 damage system is introduced here. Sand scuffs remain driven by lane centers. Do not draw bright road
