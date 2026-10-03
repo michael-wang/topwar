@@ -7,6 +7,7 @@ import { publicAssetUrl } from './core/publicAssetUrl';
 import { loadCharacterAssets } from './rendering/CharacterAssets';
 import './style.css';
 import { perfEnabled } from './app/PerfDiagnostics';
+import { threatReviewEnabled } from './app/ThreatReview';
 import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
@@ -34,7 +35,7 @@ async function startGame(): Promise<void> {
   }
 
   const app = new GameApp(gameViewport, configStore, level, assets,
-    perfEnabled(window.location.search));
+    perfEnabled(window.location.search), threatReviewEnabled(window.location.search));
   app.start();
 }
 

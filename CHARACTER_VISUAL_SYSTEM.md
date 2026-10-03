@@ -407,6 +407,15 @@ human review before further Grunt refinement or any Heavy work.
 
 ## Heavy
 
+### Threat review boot path
+
+`?review=threats` is an explicit art-review/debug start, not normal balance.
+The app restores validated Level 7 / 0 current-level XP with arrived reinforcement,
+two defenders and seed `0x4a070`. Grunt (lane 4, depth 8), Heavy (lane 3, depth 12)
+and Giant (lane 1, depth 22) immediately enter ordinary combat. Retry reconstructs
+the same initialization. Normal URLs retain Level 1 and normal encounter timing.
+No review flag, combat override or new HUD label is serialized or introduced.
+
 ### Intent
 
 Heavy is a priority pressure threat and must become a separate visual archetype.

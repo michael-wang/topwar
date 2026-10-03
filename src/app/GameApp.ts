@@ -26,6 +26,7 @@ import { PerfDiagnostics } from './PerfDiagnostics';
 import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
+import { createThreatReview } from './ThreatReview';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -75,7 +76,8 @@ export class GameApp {
   private readonly perfHud: PerfHud | null;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
-    private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false) {
+    private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
+    private readonly reviewThreats = false) {
     this.perf = perfEnabled ? new PerfDiagnostics() : null;
     this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
     this.config = configStore.getConfig();
@@ -224,7 +226,7 @@ export class GameApp {
     const seed = randomWord[0] === this.lastRunSeed
       ? (randomWord[0] + 1) >>> 0 : randomWord[0];
     this.lastRunSeed = seed;
-    return new Simulation({ seed, level: this.level,
+    const options = { seed, level: this.level,
       ...(this.config.catharsis ? { catharsis: { trackHalfWidth: this.config.track.halfWidth,
         balance: { ...this.config.catharsis, enemyVisualScale: this.runtimeTuning.enemyVisualScale!,
           groupSize: this.runtimeTuning.groupSize ?? this.config.catharsis.groupSize,
@@ -237,7 +239,8 @@ export class GameApp {
         enemyHigherTierPowerMultiplier: this.runtimeTuning.enemyHigherTierPowerMultiplier,
         rifleHigherTierPowerMultiplier: this.runtimeTuning.rifleHigherTierPowerMultiplier },
       rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward,
-      bossHpScale: this.runtimeTuning.bossHpScale });
+      bossHpScale: this.runtimeTuning.bossHpScale };
+    return this.reviewThreats ? createThreatReview(options, this.runtimeTuning.fireRate) : new Simulation(options);
   }
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
