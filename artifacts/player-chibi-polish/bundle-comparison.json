@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "jsBytes": 967499,
+    "jsGzipBytes": 261094
+  },
+  "prototype": {
+    "jsBytes": 970092,
+    "jsGzipBytes": 261892
+  },
+  "characterDownloads": {
+    "baseline": 532448,
+    "prototype": 532448,
+    "removedRequests": []
+  }
+}

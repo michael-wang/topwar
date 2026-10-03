@@ -39,27 +39,52 @@ function merged(parts: Part[], moving = false): THREE.BufferGeometry {
 // Deterministic original geometry. Parts use ground origin, +Y up and +Z forward.
 // Crown 1.025 keeps the legacy total height; head zone starts at .51 (~50%).
 export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): void } {
+  const rootScale = .85, weaponPosition = [.31, .425, .04] as const;
+  const weaponRotation = [0, THREE.MathUtils.degToRad(8), 0] as const;
+  const muzzleAnchor = [0, .012, .49] as const;
+  const weaponRest = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(weaponPosition),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(...weaponRotation)), new THREE.Vector3(1, 1, 1));
+  const offhandGrip = new THREE.Vector3(.09, -.055, .19), weaponGrip = new THREE.Vector3(0, -.10, -.055);
+  const offhand = offhandGrip.clone().applyMatrix4(weaponRest), weaponHand = weaponGrip.clone().applyMatrix4(weaponRest);
+  const mitten = (center: THREE.Vector3, region: number): Part[] => [
+    { geometry: block(center.x, center.y, center.z, .13, .115, .10, .04), color: ART.faction.skin, region },
+    { geometry: ellipsoid(center.x - .055, center.y + .005, center.z + .025, .032, .028, .042, 6, 3), color: ART.faction.skin, region },
+    { geometry: new THREE.CylinderGeometry(.057, .055, .04, 8).scale(1, 1, .8)
+      .translate(center.x, center.y - .069, center.z - .01), color: ART.faction.equipment, region },
+  ];
+  const tunic = block(0, 0, 0, .51, .27, .34, .09);
+  const points = tunic.getAttribute('position');
+  const normals = tunic.getAttribute('normal'), normal = new THREE.Vector3();
+  // Broad bevels and a gentle top taper keep a short uniform volume, not anatomy.
+  for (let i = 0; i < points.count; i++) {
+    const x = points.getX(i), taper = .94 - .06 * points.getY(i) / .135;
+    normal.fromBufferAttribute(normals, i);
+    normal.set(normal.x / taper, normal.y + (.06 / .135) * x * normal.x / taper, normal.z).normalize();
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
+    points.setX(i, x * taper);
+  }
+  tunic.translate(0, .36, 0);
   const bodyGeometry = merged([
-    { geometry: block(0, .36, 0, .51, .25, .31), color: ART.faction.player },
-    { geometry: ellipsoid(0, .705, 0, .275, .195, .235, 12, 6), color: ART.faction.skin },
-    { geometry: ellipsoid(-.34, .365, .23, .075, .075, .07), color: ART.faction.skin, region: 3 },
-    { geometry: ellipsoid(.38, .365, .23, .075, .075, .07), color: ART.faction.skin, region: 4 },
-    { geometry: block(-.155, .075, .015, .24, .15, .35), color: ART.faction.equipment, region: 1 },
-    { geometry: block(.155, .075, .015, .24, .15, .35), color: ART.faction.equipment, region: 2 },
-    ...[-1, 1].map(side => ({ geometry: ellipsoid(side * .095, .71, .218, .019, .025, .011, 4, 2), color: ART.faction.weapon })),
-    { geometry: ellipsoid(0, .674, .239, .026, .023, .027, 4, 2), color: ART.faction.skin },
-    { geometry: new THREE.BoxGeometry(.045, .008, .012).translate(0, .628, .22), color: ART.faction.weapon },
+    { geometry: tunic, color: ART.faction.player },
+    { geometry: ellipsoid(0, .685, -.025, .275, .18, .26, 12, 6), color: ART.faction.skin },
+    ...mitten(offhand, 3), ...mitten(weaponHand, 4),
+    { geometry: block(-.17, .075, -.015, .235, .15, .35, .045), color: ART.faction.equipment, region: 1 },
+    { geometry: block(.17, .075, .025, .235, .15, .35, .045), color: ART.faction.equipment, region: 2 },
+    ...[-1, 1].map(side => ({ geometry: ellipsoid(side * .095, .69, .218, .019, .025, .011, 4, 2), color: ART.faction.weapon })),
+    { geometry: ellipsoid(0, .654, .239, .026, .023, .027, 4, 2), color: ART.faction.skin },
+    { geometry: new THREE.BoxGeometry(.045, .008, .012).translate(0, .608, .22), color: ART.faction.weapon },
   ], true);
-  const shell = new THREE.SphereGeometry(1, 12, 5, 0, Math.PI * 2, 0, Math.PI / 2)
+  const shell = new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2)
     .scale(.315, .25, .285).translate(0, .775, 0);
   const helmetGeometry = merged([
     { geometry: shell, color: 'white' },
-    { geometry: new THREE.CylinderGeometry(.325, .325, .035, 12).scale(1, 1, .93).translate(0, .775, 0), color: '#d6e5ef' },
+    { geometry: new THREE.CylinderGeometry(.325, .31, .05, 16).scale(1, 1, .93).translate(0, .77, 0), color: '#d6e5ef' },
     // One broad rear panel makes the clean defender helmet readable from behind.
     { geometry: block(0, .81, -.278, .15, .075, .03, .012), color: '#d6e5ef' },
   ]);
   const chestGeometry = merged([
-    { geometry: block(0, .375, .145, .32, .17, .065, .02), color: 'white' },
+    // One shallow wrap panel reads on the rear camera as well as the front.
+    { geometry: block(0, .315, 0, .46, .11, .345, .045), color: '#91b7d0' },
   ]);
   const weaponGeometry = merged([
     { geometry: block(0, 0, .045, .145, .14, .29, .02), color: ART.faction.weapon },
@@ -71,18 +96,17 @@ export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): voi
   const bodyMaterial = matte(), gearMaterial = matte(), weaponMaterial = matte();
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial);
   const vest = new THREE.Mesh(chestGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
-  const rootScale = .85, weaponPosition = [.38, .425, .14] as const, muzzleAnchor = [0, .012, .49] as const;
+  const muzzleRest = new THREE.Vector3().fromArray(muzzleAnchor).applyMatrix4(weaponRest).multiplyScalar(rootScale);
   return {
     role: 'player', id: 'topwar-two-head-prototype', body, helmet, vest, weapon,
     presentation: {
       rootScale,
-      createMotion: (normal, level) => new ChibiPlayerMotion(normal, level),
+      createMotion: (normal, level) => new ChibiPlayerMotion(normal, level, offhandGrip, weaponGrip, offhand, weaponHand),
       prepareMaterial: material => material,
-      weaponPosition, muzzleAnchor,
+      weaponPosition, weaponRotation, muzzleAnchor,
       shadow: { width: .64, depth: .46 },
       levelUp: { radius: .51, height: 1.025 * rootScale * 1.2 },
-      tracer: { height: (weaponPosition[1] + muzzleAnchor[1]) * rootScale,
-        offsetX: (weaponPosition[0] + muzzleAnchor[0]) * rootScale },
+      tracer: { height: muzzleRest.y, offsetX: muzzleRest.x },
     },
     dispose(): void {
       for (const geometry of [bodyGeometry, helmetGeometry, chestGeometry, weaponGeometry]) geometry.dispose();

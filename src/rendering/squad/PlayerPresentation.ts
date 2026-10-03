@@ -5,7 +5,7 @@ import { PlayerBodyMotion } from './PlayerBodyMotion';
 export interface PlayerMotion {
   readonly normal: THREE.MeshStandardMaterial;
   readonly level: THREE.MeshStandardMaterial;
-  update(stride: number, recoil: number, glow: number, ready: number): void;
+  update(stride: number, recoil: number, glow: number, ready: number, weaponTransform?: THREE.Matrix4): void;
   dispose(): void;
 }
 
@@ -14,6 +14,7 @@ export interface PlayerPresentation {
   readonly createMotion: (normal: THREE.MeshStandardMaterial, level: THREE.MeshStandardMaterial) => PlayerMotion;
   readonly prepareMaterial: (material: THREE.MeshStandardMaterial, surface: 'body' | 'gear' | 'weapon') => THREE.MeshStandardMaterial;
   readonly weaponPosition: readonly [number, number, number];
+  readonly weaponRotation?: readonly [number, number, number];
   readonly muzzleAnchor: readonly [number, number, number];
   readonly shadow: { readonly width: number; readonly depth: number };
   readonly levelUp: { readonly radius: number; readonly height: number };

@@ -69,6 +69,7 @@ export class SquadRenderer {
   private levelUpAtMs = -Infinity;
   private readonly levelBodyMaterial: THREE.MeshStandardMaterial;
   private readonly levelGearMaterial: THREE.MeshStandardMaterial;
+  private readonly levelWeaponMaterial: THREE.MeshStandardMaterial;
   private readonly poweredMuzzleMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalUi.energy, toneMapped: false });
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
@@ -80,6 +81,7 @@ export class SquadRenderer {
     transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false });
   private readonly tierRing = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
   private readonly members: SoldierVisual[] = [];
+  private readonly handWeaponTransform = new THREE.Matrix4();
   private readonly casualtyVisuals: CasualtyVisual[] = [];
   private readonly hitMemberIndices = new Map<number, number>();
   private lastRenderedSquadCount = 0;
@@ -113,15 +115,16 @@ export class SquadRenderer {
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');
+    if (!(rifleModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player weapon needs a standard material');
     this.presentation.prepareMaterial(bodyModel.material, 'body');
-    if (rifleModel.material instanceof THREE.MeshStandardMaterial) {
-      this.presentation.prepareMaterial(rifleModel.material, 'weapon');
-    }
+    this.presentation.prepareMaterial(rifleModel.material, 'weapon');
     this.levelBodyMaterial = this.presentation.prepareMaterial(bodyModel.material.clone(), 'body');
     this.levelBodyMaterial.emissive.set(ART.coastalUi.paper);
     this.levelGearMaterial = this.presentation.prepareMaterial(source.clone(), 'gear');
     this.levelGearMaterial.color.set(ART.coastalUi.paper);
     this.levelGearMaterial.emissive.set(ART.coastalUi.foam);
+    this.levelWeaponMaterial = this.presentation.prepareMaterial(rifleModel.material.clone(), 'weapon');
+    this.levelWeaponMaterial.emissive.set(ART.coastalUi.foam);
     this.levelEffect = new PlayerLevelUpEffect(scene, this.presentation.levelUp);
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
       const material = this.presentation.prepareMaterial(source.clone(), 'gear');
@@ -185,6 +188,9 @@ export class SquadRenderer {
     const afterglow = levelAge >= 0 && levelAge < WEAPON_AFTERGLOW_MS;
     this.levelBodyMaterial.emissiveIntensity = 1.8 * levelStrength;
     this.levelGearMaterial.emissiveIntensity = 1.6 * levelStrength;
+    this.levelWeaponMaterial.emissive.set(ART.coastalUi.aqua).lerp(this.levelGearMaterial.emissive, levelStrength);
+    this.levelWeaponMaterial.emissiveIntensity = 1.6 * levelStrength
+      + .45 * Math.max(0, 1 - levelAge / WEAPON_AFTERGLOW_MS);
     let higherTierDecreased = false;
     const tierSlots = Math.max(state.squad.rifleCounts.length, this.previousRifleCounts.length);
     for (let index = tierSlots - 1; index >= 1; index--) {
@@ -266,19 +272,23 @@ export class SquadRenderer {
       const entrance = recruit ? reinforcementArrivalPose(arrival!.progress) : undefined;
       const entranceStride = entrance ? Math.sin(arrival!.progress * Math.PI * 10 + index * .65)
         * Math.max(0, 1 - (arrival!.progress / .90) ** 3) : 0;
-      member.motion.update(moving.stride + entranceStride, recoil, 1.8 * levelStrength, entrance?.weaponLower ?? 0);
       member.body.rotation.set(-.025 * recoil, 0, moving.lean);
       member.body.position.z = -.015 * recoil;
       const idle = Math.sin(nowMs * .0026 + index * 1.7) * .007;
       member.helmet.rotation.z = moving.lean * .82 + idle;
       member.vest.rotation.z = moving.lean * .90 + idle * .5;
       member.vest.rotation.x = -.018 * recoil;
-      member.rifle.rotation.z = moving.lean * .65 + idle * 1.3;
+      member.rifle.rotation.z = (this.presentation.weaponRotation?.[2] ?? 0) + moving.lean * .65 + idle * 1.3;
+      member.rifle.rotation.y = this.presentation.weaponRotation?.[1] ?? 0;
       member.rifle.position.x = this.presentation.weaponPosition[0] + moving.lag;
       member.rifle.position.y = this.presentation.weaponPosition[1];
-      member.rifle.rotation.x = (entrance?.weaponLower ?? 0) - 0.18 * recoil;
+      member.rifle.rotation.x = (this.presentation.weaponRotation?.[0] ?? 0) + (entrance?.weaponLower ?? 0) - 0.18 * recoil;
       member.rifle.position.z = this.presentation.weaponPosition[2] - 0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
+      member.rifle.material = afterglow ? this.levelWeaponMaterial : this.rifleModel.material;
+      member.rifle.updateMatrix(); member.body.updateMatrix();
+      this.handWeaponTransform.copy(member.body.matrix).invert().multiply(member.rifle.matrix);
+      member.motion.update(moving.stride + entranceStride, recoil, 1.8 * levelStrength, entrance?.weaponLower ?? 0, this.handWeaponTransform);
       member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < (afterglow ? 90 : FLASH_MS);
       member.muzzle.material = afterglow ? this.poweredMuzzleMaterial : this.muzzleMaterial;
       member.muzzle.scale.setScalar((afterglow ? 1.9 : 1) * (1 + 0.2 * Math.min(2, Math.max(0, tier - 1))));
@@ -334,7 +344,7 @@ export class SquadRenderer {
     this.muzzleGeometry.dispose();
     this.muzzleCoreGeometry.dispose();
     for (const material of [...this.tierMaterials, this.upgradeMaterial, this.hitMaterial,
-      this.muzzleMaterial, this.muzzleCoreMaterial, this.levelBodyMaterial, this.levelGearMaterial, this.poweredMuzzleMaterial]) material.dispose();
+      this.muzzleMaterial, this.muzzleCoreMaterial, this.levelBodyMaterial, this.levelGearMaterial, this.levelWeaponMaterial, this.poweredMuzzleMaterial]) material.dispose();
   }
 
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
@@ -368,6 +378,7 @@ export class SquadRenderer {
       });
       sources.forEach((source, part) => group.add(new THREE.Mesh(source.geometry, materials[part])));
       (group.children[3] as THREE.Mesh).position.fromArray(this.presentation.weaponPosition);
+      (group.children[3] as THREE.Mesh).rotation.fromArray([...this.presentation.weaponRotation ?? [0, 0, 0]]);
       group.visible = false;
       this.scene.add(group);
       visual = { group, materials, tier, startedAtMs: nowMs,
@@ -422,6 +433,7 @@ export class SquadRenderer {
     const rifle = new THREE.Mesh(this.rifleModel.geometry, this.rifleModel.material);
     rifle.name = 'toy-rifle';
     rifle.position.fromArray(this.presentation.weaponPosition);
+    rifle.rotation.fromArray([...this.presentation.weaponRotation ?? [0, 0, 0]]);
     const muzzle = new THREE.Mesh(this.muzzleGeometry, this.muzzleMaterial);
     muzzle.name = 'muzzle-flash';
     muzzle.rotation.x = Math.PI / 2;

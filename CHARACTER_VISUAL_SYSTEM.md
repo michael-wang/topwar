@@ -7,9 +7,10 @@ Beachhead Defense presentation.
 
 Phase 0 and its Phase 0.1 amendment freeze the visual direction and future asset
 contract. Phase 1 added named runtime role families while preserving shipping
-assets, appearance and gameplay. Phase 2A introduces the original procedural
-Player prototype for human visual review. Further replacement or polish requires
-separate authorization.
+assets, appearance and gameplay. Phase 2A introduced the accepted original
+procedural Player prototype. Phase 2B refines that same grammar; Player's base
+visual language is now stabilized pending human approval. Further replacement
+or polish requires separate authorization; the complete system is not final.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
 existing gameplay model, faction semantics and Sunlit Coastal Battlefield
@@ -17,7 +18,7 @@ environment.
 
 **TARGET:** the full two-head character system described below.
 
-**CURRENT SHIPPING:** Player uses the Phase 2A two-head prototype. Grunt, Heavy,
+**CURRENT SHIPPING:** Player uses the Phase 2B two-head refinement. Grunt, Heavy,
 Giant and Boss retain their legacy assets, palettes, motion and feedback. The
 amphibious enemy direction is a target only; no bare-torso enemies are shipping.
 
@@ -213,7 +214,7 @@ Hands communicate firing and recovery; large shoes communicate lane movement
 through firm planting. Detached parts must still read as one controlled soldier.
 Level-Up may briefly exaggerate the silhouette without changing normal motion.
 
-### Current Phase 2A prototype
+### Current Phase 2B Player
 
 `ChibiPlayerFamily` deterministically builds original low-segment ellipsoids,
 rounded blocks and cylinders at runtime. No external authoring tool, texture,
@@ -225,50 +226,73 @@ Four primary meshes remain per defender:
 
 - one merged body containing the head, clothed tunic, small face marks, two
   disconnected mittens and two disconnected navy shoes;
-- a rounded blue helmet with a broad rim and one simple rear panel;
-- one broad chest accent, using the existing tier colors;
+- a rounded blue helmet with a modest thicker rim and one simple rear panel;
+- one shallow lower uniform wrap panel, using the existing tier colors;
 - an original short, thick rifle with a directional barrel.
 
 The helmet crown is 1.025 authored units and root scale remains 0.85. The
-head/helmet zone begins at 0.51 (about 50% of standing height); helmet width is
-about 1.27 times tunic width. Total projected height matches the legacy Player
-in the deterministic 390×844 portrait fixture. This prototype retains the legacy
+head/helmet zone begins at 0.505 (about 51% of standing height). Total projected
+height matches Phase 2A exactly in the deterministic 390×844 portrait fixture.
+This Player retains the legacy
 authoring height while the future shared-unit convention awaits enemy migration.
+
+The tunic is a short, broadly beveled soft trapezoid with a gentle top taper;
+its normals follow the taper without introducing faceted shading. The lower
+wrap panel replaces the inset front rectangle and reads from the rear camera.
+The head sits slightly lower with a deeper rounded rear contour; the dome is
+slightly smoother and the rim modestly thicker. No tactical detail is added.
+Hands are flattened rounded mittens with a cheap thumb lobe and navy cuff,
+all merged into the existing body draw and assigned the same moving part region.
 
 `PlayerPresentation` selects a motion factory explicitly. `ChibiPlayerMotion`
 uses the body mesh's `playerPart` attribute to translate whole shoes alternately
 fore/aft and upward, counter-swing mittens and move both hands with recoil and
-reinforcement readiness. The head and torso stay rigid within that mesh; existing
+reinforcement readiness. Shoe centers sit slightly farther apart with a small
+rest fore/aft stagger. Stride translation is 0.22 units fore/aft, up to 0.075
+units upward, and up to 0.035 units outward per shoe. The head and torso stay rigid within that mesh; existing
 restrained root/helmet lean and plant/fire/recover timing remain. No skeleton or
 general animation framework is introduced. The legacy anatomical motion factory
 is retained only in the explicit rollback/test adapter.
 
 Presentation metadata contains only root scale, motion/material preparation,
 weapon transform, muzzle anchor, tracer origin, shadow footprint and Level-Up
-envelope. The muzzle flash is a rifle child at the barrel tip, so it follows
+envelope. The rifle sits closer to the torso and has an 8° presentation yaw,
+remaining forward-facing. Weapon-local grip anchors drive both hands through
+the rendered weapon matrix, expressed in body-local coordinates to account for
+body lean. The support hand absorbs less shot recoil and temporarily
+counter-swings during lane movement. No connecting arms are introduced.
+The muzzle flash is a rifle child at the barrel tip, so it follows
 recoil, roll and lowering. Rifle tracer height and lateral offset derive from
-the same rest anchor; trajectory and projectile simulation are unchanged.
+the same rotated rest anchor; trajectory and projectile simulation are unchanged.
 The dormant rocket member still uses its previous enlarged-rifle fallback.
 
 Level-Up retains its aqua ring, foam motes, body/gear wash and weapon afterglow,
 with radius 0.51 and a rising envelope covering the enlarged crown. Existing
 800 ms burst, 1400 ms afterglow, tier and reinforcement timing remain unchanged.
+One renderer-owned shared weapon material gives the rifle the main foam wash
+and a smooth aqua afterglow without adding a mesh. All detached body parts,
+including cuffs, share the body wash and hit material. The rifle deliberately
+keeps its normal material during hit feedback. Casualties retain the refined
+parts and the same weapon cant, with no ragdoll or duration change.
 Player contact shadows use a 0.64×0.46 footprint to ground the shoes. Hit and
 bounded casualty presentation reuse the new parts, preserving the 130 ms hit
 and 360 ms knockout timing and fade semantics.
 
 The family owns four source geometries and three materials; `CharacterAssets`
 disposes them. `SquadRenderer` borrows those resources and owns its per-member
-motion materials, tier/effect variants and casualty materials. Detached parts
-add no mesh draws. Matching one-defender fixtures retain 138 draws, add 540
-triangles and two GPU geometries, and remove one texture. Dropping the old body
-and rifle requests saves 56,552 bytes of character downloads.
+motion materials, tier/effect variants (including the weapon wash) and casualty
+materials. Detached parts add no mesh draws. Relative to Phase 2A, matching
+one-defender fixtures retain 138 draws, 61 GPU geometries and 9 textures while
+adding 316 triangles. Character downloads remain 19 legacy requests totaling
+532,448 bytes; no texture or asset is added.
 
-Review evidence lives in `artifacts/player-chibi-prototype/`. Rear head readability
-is mostly a skin band beneath the helmet, and the offhand is an abstract action
-cue rather than a precise two-handed grip. Boots and chest remain deliberately
-simple. These are prototype review questions, not authorization for further
-polish or enemy replacement.
+Review evidence lives in `artifacts/player-chibi-polish/`, with direct Phase
+2A→2B comparisons and deterministic six-frame lane/recoil strips. The full
+Level-Up/afterglow sequence and two-defender firing/movement are also sampled.
+The head remains subordinate from the rear, hands remain abstract mittens, and
+the forward shoe is partly occluded by the tunic at peak lifted stride. These
+are human review questions, not authorization for enemy replacement. Grunt and
+Heavy remain legacy; amphibious enemy art is still pending later implementation.
 
 ## Grunt
 
@@ -671,8 +695,9 @@ Level-Up, reinforcement and casualty presentation.
 Replace the Player's old anatomy-dependent pivots/weights only with the selected
 new family's motion strategy. Validate the weapon and its muzzle together.
 
-Phase 2A is the current shipping prototype, awaiting human visual review. Stop
-before final Player polish, Grunt replacement or any additional visual phase.
+Phase 2A's core direction is accepted. Phase 2B stabilizes the Player base
+grammar pending human approval. Stop before Grunt, Heavy or any additional
+visual phase.
 
 ### Phase 3 — Grunt
 

@@ -22,6 +22,27 @@ const contact = (removed: boolean): PresentationEvent => ({ kind: 'normalEnemyCo
     : { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: .1 } });
 
 describe('original two-head Player prototype', () => {
+  it('moves both detached grips with the weapon while the support hand absorbs less recoil', () => {
+    const family = createChibiPlayerFamily();
+    const motion = family.presentation.createMotion(family.body.material as THREE.MeshStandardMaterial,
+      family.body.material as THREE.MeshStandardMaterial);
+    const shader = { uniforms: {} as Record<string, { value: THREE.Vector3 }>,
+      vertexShader: '#include <common>\n#include <begin_vertex>', fragmentShader: '' };
+    motion.normal.onBeforeCompile(shader as unknown as Parameters<typeof motion.normal.onBeforeCompile>[0], {} as THREE.WebGLRenderer);
+    const { weaponPosition, weaponRotation } = family.presentation;
+    const rest = new THREE.Matrix4().compose(new THREE.Vector3().fromArray(weaponPosition),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(...weaponRotation!)), new THREE.Vector3(1, 1, 1));
+    const shifted = rest.clone(); shifted.elements[13] += .05; shifted.elements[14] -= .12;
+    motion.update(0, 1, 0, 0, shifted);
+    expect(shader.uniforms.playerWeaponHandDelta.value.y).toBeCloseTo(.05);
+    expect(shader.uniforms.playerOffhandDelta.value.y).toBeCloseTo(.05);
+    expect(shader.uniforms.playerWeaponHandDelta.value.z).toBeCloseTo(-.12);
+    expect(shader.uniforms.playerOffhandDelta.value.z).toBeCloseTo(-.08);
+    motion.update(0, 0, 0, .8, rest);
+    expect(shader.uniforms.playerWeaponHandDelta.value.length()).toBeCloseTo(0);
+    expect(shader.uniforms.playerOffhandDelta.value.length()).toBeCloseTo(0);
+    motion.dispose(); family.dispose();
+  });
   it('requires explicit Player parts and motion when assembling role families', () => {
     const legacy = characterFamilies(), player = createChibiPlayerFamily();
     const resources = { normalIdle: legacy.grunt.body, normalRuns: legacy.grunt.runFrames,
@@ -124,9 +145,11 @@ describe('original two-head Player prototype', () => {
     const before = JSON.stringify(shots); projectiles.update(shots, 0);
     const tracer = scene.getObjectByName('rifle-tracers') as THREE.InstancedMesh;
     tracer.getMatrixAt(0, matrix); const origin = new THREE.Vector3().setFromMatrixPosition(matrix);
-    const { muzzleAnchor: m, weaponPosition: w, rootScale } = family.presentation;
-    expect(origin.y).toBeCloseTo((w[1] + m[1]) * rootScale);
-    expect(origin.x).toBeCloseTo((w[0] + m[0]) * rootScale);
+    const { muzzleAnchor: m, weaponPosition: w, weaponRotation: r, rootScale } = family.presentation;
+    const muzzleRest = new THREE.Vector3().fromArray(m).applyEuler(new THREE.Euler(...r!))
+      .add(new THREE.Vector3().fromArray(w)).multiplyScalar(rootScale);
+    expect(origin.y).toBeCloseTo(muzzleRest.y);
+    expect(origin.x).toBeCloseTo(muzzleRest.x);
     expect(origin.z).toBeCloseTo(shots[0].z);
     tracer.getMatrixAt(1, matrix); expect(new THREE.Vector3().setFromMatrixPosition(matrix).y).toBeCloseTo(.66);
     expect(JSON.stringify(shots)).toBe(before);
@@ -151,6 +174,7 @@ describe('original two-head Player prototype', () => {
     expect((corpse.children[0] as THREE.Mesh).geometry.getAttribute('playerPart')).toBeDefined();
     expect((corpse.children[0] as THREE.Mesh).material).toHaveProperty('opacity', expect.any(Number));
     expect(corpse.children[3].position.toArray()).toEqual([...family.presentation.weaponPosition]);
+    expect(corpse.children[3].rotation.y).toBe(family.presentation.weaponRotation![1]);
     renderer.update(empty, 700 + PLAYER_KNOCKOUT_MS); expect(corpse.visible).toBe(false);
     renderer.dispose(); family.dispose();
   });
@@ -170,6 +194,22 @@ describe('original two-head Player prototype', () => {
     expect(scene.getObjectByName('toy-rifle')!.scale.x).toBe(1.15);
     expect(scene.getObjectByName('muzzle-flash')!.visible).toBe(false);
     renderer.dispose(); family.dispose();
+  });
+
+  it('washes the rifle with the whole character, then retains a fading weapon afterglow without adding meshes', () => {
+    const family = createChibiPlayerFamily(), scene = new THREE.Scene(), renderer = new SquadRenderer(scene, family);
+    const state = frame(); renderer.update(state, 0); renderer.update(state, 500);
+    renderer.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 }, 600);
+    renderer.update(state, 680);
+    const rifle = scene.getObjectByName('toy-rifle') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    const wash = rifle.material, washIntensity = wash.emissiveIntensity, disposal = vi.spyOn(wash, 'dispose');
+    expect(wash).not.toBe(family.weapon.material); expect(washIntensity).toBeGreaterThan(1);
+    expect(rifle.parent!.children).toHaveLength(4);
+    renderer.update(state, 1400);
+    expect(rifle.material).toBe(wash); expect(wash.emissiveIntensity).toBeGreaterThan(0);
+    expect(wash.emissiveIntensity).toBeLessThan(washIntensity);
+    renderer.update(state, 2000); expect(rifle.material).toBe(family.weapon.material);
+    renderer.dispose(); expect(disposal).toHaveBeenCalledOnce(); family.dispose();
   });
 
   it('keeps source geometry/material ownership in the family and disposes renderer variants separately', () => {

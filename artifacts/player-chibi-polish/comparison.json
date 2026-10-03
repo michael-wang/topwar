@@ -1,0 +1,209 @@
+{
+  "baseline": "e0946f183f57b6331b9feac161d2edc0f6fa9a66",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "devicePixelRatio": 2,
+  "metrics": {
+    "idle": {
+      "differenceBounds": [
+        333,
+        1206,
+        438,
+        1328
+      ],
+      "changedPixels": 6565,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "firing": {
+      "differenceBounds": [
+        333,
+        1191,
+        434,
+        1330
+      ],
+      "changedPixels": 6899,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "lane": {
+      "differenceBounds": [
+        518,
+        1203,
+        631,
+        1342
+      ],
+      "changedPixels": 7302,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "reinforcement": {
+      "differenceBounds": [
+        299,
+        1200,
+        500,
+        1376
+      ],
+      "changedPixels": 13522,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 632,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "level-up": {
+      "differenceBounds": [
+        324,
+        1184,
+        447,
+        1330
+      ],
+      "changedPixels": 6369,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "tier-upgrade": {
+      "differenceBounds": [
+        322,
+        1183,
+        447,
+        1330
+      ],
+      "changedPixels": 9290,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "hit": {
+      "differenceBounds": [
+        333,
+        1206,
+        438,
+        1328
+      ],
+      "changedPixels": 2225,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "casualty": {
+      "differenceBounds": [
+        338,
+        1183,
+        447,
+        1299
+      ],
+      "changedPixels": 6829,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 316,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "two-defenders": {
+      "differenceBounds": [
+        285,
+        1200,
+        488,
+        1336
+      ],
+      "changedPixels": 13113,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 632,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "two-defenders-firing": {
+      "differenceBounds": [
+        285,
+        1191,
+        484,
+        1337
+      ],
+      "changedPixels": 13864,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 632,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "two-defenders-lane": {
+      "differenceBounds": [
+        469,
+        1197,
+        685,
+        1349
+      ],
+      "changedPixels": 14353,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 632,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "world-only": {
+      "differenceBounds": null,
+      "changedPixels": 0,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 0,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "giant-guard": {
+      "differenceBounds": null,
+      "changedPixels": 0,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 0,
+        "geometries": 0,
+        "textures": 0
+      }
+    },
+    "boss-guard": {
+      "differenceBounds": null,
+      "changedPixels": 0,
+      "delta": {
+        "drawCalls": 0,
+        "triangles": 0,
+        "geometries": 0,
+        "textures": 0
+      }
+    }
+  },
+  "projectedCrownHeight": {
+    "phase2a": 53.224880657010885,
+    "phase2b": 53.224880657010885
+  }
+}
