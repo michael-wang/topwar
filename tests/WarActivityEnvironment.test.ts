@@ -229,7 +229,7 @@ describe('presentation-only water and sky activity', () => {
 });
 
 
-it('keeps all defense warship sections intact throughout a pass and restores legacy masking', () => {
+it('hides the bridge-world ship throughout defense passes and restores legacy fade/masking', () => {
   const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene);
   const scheduler = new WarActivityScheduler();
   let shipAt = 0;
@@ -244,8 +244,9 @@ it('keeps all defense warship sections intact throughout a pass and restores leg
   const material = (ship.getObjectByName('warship-hull') as THREE.Mesh).material as THREE.MeshStandardMaterial;
   for (const progress of [0, .04, .1, .4, .5, .6, .9, .99]) {
     environment.update(0, 3.2, shipAt + SHIP_PASS_MS * progress, true);
+    expect(ship.visible).toBe(false);
+    environment.update(0, 3.2, shipAt + SHIP_PASS_MS * progress, false);
     expect(ship.visible).toBe(true);
-    expect(sections.filter(section => section.visible)).toHaveLength(5);
     expect(material.opacity).toBeCloseTo(Math.min(1, progress / .08, (1-progress) / .08));
   }
   // A presentation-clock rewind and mode switch must also restore the right premise.
@@ -254,6 +255,6 @@ it('keeps all defense warship sections intact throughout a pass and restores leg
   environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .5, false);
   expect(sections.filter(section => section.visible)).toHaveLength(0);
   environment.update(0, 3.2, shipAt + SHIP_PASS_MS * .5, true);
-  expect(sections.filter(section => section.visible)).toHaveLength(5);
+  expect(ship.visible).toBe(false);
   environment.dispose();
 });

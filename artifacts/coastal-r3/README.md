@@ -23,3 +23,19 @@ Sequence sources include alive, pale, initial shatter, spread and cleared states
 for Grunt/Heavy and lethal/fall/crash/shatter/cleared for Giant. QA refreshes
 renderer feedback per fixture and keeps original simulation/config untouched.
 Final environment comparisons, temporal media and performance follow in commits 2/3.
+
+## Commit 2 checkpoint — openings and legacy naval boundary
+
+`openings-*.png` records the coast before foreground dressing. The exact
+screen-right foreground house is the negative-X building at Z=24 (QA close
+camera is labeled; runtime framing is unchanged). Broad deep-shadow door/window
+blocks now have plaster jambs/lintels/surrounds, cyan painted leaves/shutters and
+small secondary-shadow inner cores. The broad navy painted side plane is lifted
+to cool plaster. Materials are still merged per side; lights remain unchanged.
+
+The dark ship came from `BridgeEnvironment.buildActivity()` (#303B40 hull,
+#39474B fittings), not the Mediterranean fleet. `updateActivity()` now gates
+whole-ship visibility on legacy mode. Schedule, rewind and mode-switch tests
+keep it hidden in defense while preserving legacy activity/fade/bridge masking.
+Aircraft/flak and `OffshoreTransports` are retained. Fifteen focused environment
+tests and typecheck pass at this checkpoint.

@@ -285,6 +285,12 @@ rather than:
 
 "a generic warship asset placed in this level."
 
+R3 hides the old dark `BridgeEnvironment.buildActivity()` warship unconditionally
+in coastal defense; it remains available with its existing activity/occlusion in
+legacy mode. Aircraft/flak and the Mediterranean `OffshoreTransports` landing
+craft/carriers remain. Openings use plaster frames and painted cyan leaves with
+small secondary-navy cores, rather than large deepest-shadow slabs.
+
 ## Future defensive structures
 
 Defenses should feel locally improvised or integrated into the settlement.

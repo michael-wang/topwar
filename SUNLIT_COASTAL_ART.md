@@ -47,6 +47,11 @@ show roofs and windows rather than giant cropped slabs. No static military machi
 fallen parapets or pre-broken concrete edges populate the civilian village. Layout is asymmetric,
 stable between runs and adapts outward from the configured track edge.
 
+R3 openings use plaster jambs/lintels, a broad cyan painted door leaf and a
+smaller #405A6D inner core (0.42×1.16). Windows use quiet 0.60×0.73 cores with
+plaster surrounds and partial shutters. Large painted side planes remain cool
+plaster, lifted from the former deepest navy slab; lighting is unchanged.
+
 Environment surfaces use `illustratedMaterial()` with roughness 1 / metalness 0
 and broad tonal washes. `paintedBlockGeometry()` supplies restrained bevels and
 chips. Sand retains the generated quiet cream/ochre wash. No photorealism,
@@ -56,7 +61,7 @@ Defense lighting uses warm sunlight from (-8,12,-6), intensity 2.2, sky fill
 `#C5E5F2` / cool ground fill `#405A6D`, hemisphere intensity 1.65. Renderer output
 is explicitly sRGB; defense uses ACES filmic highlight rolloff at exposure 1.35.
 Legacy mode restores its original lights and NoToneMapping. Hero water/sky and
-painted navy wall faces bypass filmic mapping so their authored color blocks
+painted cool-plaster wall faces bypass filmic mapping so their authored color blocks
 stay clear. Static navy ground patches suggest building, arch, cloth and olive
 shadows. Existing character contact shadows remain; no new shadow render pass.
 
@@ -74,8 +79,8 @@ fortifications. **Beauty is the canvas. War is the violation. Toy soldiers are t
 Static village architecture is mostly intact, beautiful and sunlit; smoke, fire and impacts
 are active contamination. Future residue/damage may tell consequences, but no persistent
 damage system is introduced here. Sand scuffs remain driven by lane centers. Do not draw bright road
-lane markings or add decorative clutter to sell the art. Keep red Grunts, blue
-defenders and crimson Heavy/Giant threats with muted ochre accents as clear
+lane markings or add decorative clutter to sell the art. Keep olive/slate Grunts,
+blue defenders and deeper-olive Heavy/Giant threats with restrained stone/khaki accents as clear
 foreground masses; character roles follow the Character Visual System.
 Enemy health bars use bright coral/red fills with cool navy backing and a thin ivory keyline. Defense HUD and progression
 follow the coastal UI rules below, preserving the open center sky.
@@ -98,7 +103,7 @@ shadow patches. Blossoms use a generated 128×128 cutout texture with eleven tin
 four-petal specks per card, attached to the climbing vine locations. No blossom
 approaches soldier-helmet size; no magenta sphere/icosahedron flower masses. Wind has asynchronous phase and at most
 0.044 lateral / 0.024 depth local displacement; no CPU vertex updates. Magenta
-flowers remain confined to side facades and separate from enemy crimson.
+flowers remain confined to side facades and separate from enemy olive/slate and coral HP.
 
 `CoastalCloth` has two low-segment sloping, sagging awnings (36 vertices each),
 one cyan and one ivory. Wind is soft, continuous, asynchronous and anchored at
@@ -106,27 +111,25 @@ one edge; maximum procedural displacement is 0.155 units. No cloth physics or
 per-frame CPU vertex updates. Water, foliage and cloth use renderer clocks only.
 
 
-## Faction presentation — Phase 1.1
+## Faction presentation — Rounded Toy baseline
 
-`ART.faction` owns the current shipping coastal character swatches. This section
-records the retained baseline; its shared geometry, UV remapping and four baked
-run poses are not requirements for future character families. The target
-proportions, helmet identity, dedicated Heavy construction and enemy-red Heavy
-palette with ochre accents are governed by `CHARACTER_VISUAL_SYSTEM.md`.
+`ART.faction`, `ART.raider`, `ART.footwear` and role-authored combat-gear colors
+define the current rounded-toy Player/Grunt/Heavy/Giant. Form, equipment budgets
+and pale-shatter lethal presentation are governed by `CHARACTER_VISUAL_SYSTEM.md`.
+Enemy costume is olive/slate/stone; enemy HP remains coral/red.
 
 | Family | Colors |
 | --- | --- |
 | Player | blue `#287FC6`, highlight `#67B9E3`, dark equipment `#243B4A` |
-| Grunt | clean raspberry/crimson `#C83F5A`, highlight `#E46B73` |
-| Heavy | gold-yellow helmet/vest `#E7B647`, secondary crimson tunic `#A93449` |
+| Grunt | olive helmet `#6F7C5A`, quiet shirt/slate trousers, simple belt/canteen |
+| Heavy | deep olive helmet `#626F51`, shirt `#59674C`, slate trousers `#4E6067`, khaki harness `#989077` |
+| Giant | deep olive body `#536246`, olive helmet, limestone crest `#C6B68C`, slate trousers |
 | Skin / weapon | warm skin `#E4AD8A`, navy-charcoal weapon `#263A43` |
 
-The illustrated material remaps the existing tunic, skin and equipment atlas
-swatches. Hair is preserved; the hair/leather swatch is recolored only below the
-upper body. Enemy body instance color selects the tunic only, so Heavy crimson
-never tints its skin. Rifle surfaces retain source tonal detail in navy-charcoal.
-Giant crimson/gold identity and all gameplay rules remain intact. Side
-flower magenta `#C51E67` and impact orange/red remain separate accents.
+The four procedural roles use matte vertex-color regions without legacy UV
+selectors. Boss remains legacy and its migration is deferred. Muted bean shoes
+keep motion readable without white/black dominance. Side flower magenta #C51E67,
+impact orange/red and coral HP remain separate semantic accents.
 
 ## Coastal UI — PLASTER + SEA + SUNLIGHT
 
@@ -217,13 +220,13 @@ Do not apply presentation logic whose world premise no longer exists. Preserve s
 
 | Assumption / system | Defense handling | Why |
 | --- | --- | --- |
-| Bridge footprint occludes passing ship sections — `BridgeEnvironment.updateActivity` | **Fixed:** bypass section mask only in defense; preserve whole-ship edge fade and legacy mask | Open coastal sea has no deck to hide the ship |
+| Legacy dark activity warship — `BridgeEnvironment.buildActivity/updateActivity` | **Hidden unconditionally in defense**, including schedule/rewind/mode switches; legacy edge fade and bridge mask retained | `OffshoreTransports` already owns the coastal invasion story |
 | Road deck, shoulders, rails and scrolling joints — `BridgeEnvironment` | Already hidden; retained for legacy | Stationary civilian beach replaces bridge travel |
 | Industrial slabs/crane, blanket gray haze, old beachhead/island silhouettes — `BridgeEnvironment` | Already hidden only in defense | Sunlit architecture/sea owns the coastal vista |
-| Forward-progress parallax and near-bridge ship band — `BridgeEnvironment`, `GameRenderer` projection | Already fixed relative to defender, ship band offshore at relative Z=98 | Internal progression must not move the coastal scene |
+| Forward-progress parallax — `BridgeEnvironment`, `GameRenderer` projection | Already fixed relative to defender; legacy activity ship is hidden in defense | Internal progression must not move the coastal scene |
 | Bridge-width-dependent placement — fires/artillery | Already uses the configured combat edge in defense | Localized damage stays beside outer lanes; width is a valid channel bound, not bridge occlusion |
 | Bright road corridor strips/prepared obstacles — `AttackLaneRenderer` | Already hidden/removed in defense; quiet sand scuffs remain | Civilian coast was not fortified |
-| Passing ship timing/aircraft/flak — `WarActivityScheduler` | Retained: timing only, no footprint/occlusion logic | War atmosphere still fits open coastal sky/sea |
+| Aircraft/flak and legacy ship scheduling — `WarActivityScheduler` | Aircraft/flak retained in defense; ship timing retained for legacy mode | Preserve airborne activity without duplicating the Mediterranean fleet |
 | New carriers/landing craft — `OffshoreTransports` | Retained: defense-only, asymmetric offshore positions, bob/wake and shoreward cue; no bridge mask | They tell the current invasion story (`rear-bridge` means ship cabin) |
 | Tier HUD / dormant Boss and reward presentation — UI/renderers | Already hidden or inactive in defense; implementations retained | Current experiment disables tier/Boss/reward gameplay, so no extra HUD appears |
 | Static steel/rust coastal machinery and burning wreck meshes — `CoastalArchitecture`, `BridgeEnvironment` | **Removed** coastal machinery; hide burning base/slab only in defense, restore in legacy | Peaceful village was not prepared/destroyed by default; active fire/smoke remains |

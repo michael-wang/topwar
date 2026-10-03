@@ -697,7 +697,9 @@ export class BridgeEnvironment {
   private updateActivity(nowMs: number, bridgeHalfWidth: number): void {
     const events = this.activity.update(nowMs);
     const shipAge = nowMs - this.activity.shipStartedAtMs;
-    this.ship.visible = shipAge >= 0 && shipAge < SHIP_PASS_MS;
+    // Coastal invasion already belongs to OffshoreTransports. This dark bridge
+    // activity actor survives only in legacy mode, including after mode switches.
+    this.ship.visible = !this.defenseMode && shipAge >= 0 && shipAge < SHIP_PASS_MS;
     if (this.ship.visible) {
       const progress = shipAge / SHIP_PASS_MS;
       const x = this.activity.shipSide * this.activity.shipX * (2 * progress - 1);
@@ -708,10 +710,7 @@ export class BridgeEnvironment {
       this.shipMaterials[1].opacity = edgeFade;
       for (const section of this.shipSections) {
         const sectionX = x + (this.activity.shipSide === 1 ? section.x : -section.x);
-        // Only the legacy bridge occludes sections. Coastal defense has open sea,
-        // so keep the entire silhouette intact (including after a mode switch).
-        section.group.visible = this.defenseMode
-          || Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
+        section.group.visible = Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
       }
     }
     for (let index = 0; index < this.aircraft.length; index++) {

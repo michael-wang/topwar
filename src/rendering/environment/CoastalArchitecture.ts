@@ -21,9 +21,11 @@ export class CoastalArchitecture {
   private readonly materials = {
     plaster: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.plaster })),
     shade: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.plasterShade })),
-    wallShadow: new THREE.MeshBasicMaterial({ color: C.shadow, toneMapped: false }),
+    // A cool plaster side plane, not a wall-sized navy interior.
+    wallShadow: new THREE.MeshBasicMaterial({ color: new THREE.Color(C.plasterShade)
+      .lerp(new THREE.Color(C.secondaryShadow), .22), toneMapped: false }),
     door: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.cloth })),
-    dark: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.shadow })),
+    dark: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.secondaryShadow })),
     shadow: new THREE.MeshBasicMaterial({ color: C.shadow, transparent: true, opacity: .36, depthWrite: false }),
   };
   private readonly baked: THREE.BufferGeometry[] = [];
@@ -43,9 +45,15 @@ export class CoastalArchitecture {
       this.part(building, 'roof-parapet', -w / 2, h + .16, 0, .35, .36, d, 'plaster');
       this.part(building, 'roof-cap', 0, h + .02, 0, w + .25, .12, d + .2, 'shade');
       this.part(building, 'cyan-shutter', -w * .20, h * .56, -d / 2 - .02, .92, 1.12, .12, 'door');
-      this.part(building, 'window-recess', w * .23, h * .58, -d / 2 - .03, .8, .95, .10, 'dark');
-      this.part(building, 'shutter-half', w * .27, h * .58, -d / 2 - .10, .38, .95, .10, 'door');
-      this.part(building, 'sun-bleached-door', 0, .72, -d / 2 - .06, .92, 1.44, .12, 'dark');
+      this.part(building, 'window-plaster-surround', w * .23, h * .58, -d / 2 - .04, .82, .95, .08, 'shade');
+      this.part(building, 'window-recess', w * .23, h * .58, -d / 2 - .10, .60, .73, .05, 'dark');
+      this.part(building, 'shutter-half', w * .28, h * .58, -d / 2 - .15, .28, .75, .08, 'door');
+      // Plaster jambs and painted leaf dominate; shadow occupies only the inner opening.
+      for (const x of [-.51, .51]) this.part(building, 'plaster-door-jamb', x, .78, -d / 2 - .08,
+        .14, 1.56, .18, 'plaster');
+      this.part(building, 'plaster-door-lintel', 0, 1.53, -d / 2 - .08, 1.14, .16, .18, 'plaster');
+      this.part(building, 'sun-bleached-door', 0, .72, -d / 2 - .07, .88, 1.42, .10, 'door');
+      this.part(building, 'door-inner-recess', .19, .68, -d / 2 - .14, .42, 1.16, .05, 'dark');
       this.part(building, 'plaster-door-step', 0, .12, -d / 2 - .4, 1.3, .24, .65, 'plaster');
       this.shadow(side, layout.side * layout.offset + 1.2, layout.z + 1.5, w + 2, d + 1, layout.angle - .18);
     }
