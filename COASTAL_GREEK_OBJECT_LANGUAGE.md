@@ -229,6 +229,11 @@ disguised with white paint.
 
 ## Naval object language
 
+Current Phase 4B landing craft and three distant transports use the painted-boat
+palette: sea-blue hulls, ivory upper sides/cabins, blue-gray wells/openings, small
+aqua bevel accents and a sun-worn timber ramp. Existing low functional masses,
+placement and approach timing remain; no architectural geometry is reused.
+
 Ships and landing craft must belong to the same world while remaining clearly
 functional military objects.
 

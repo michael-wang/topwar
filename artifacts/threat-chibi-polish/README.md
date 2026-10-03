@@ -33,3 +33,42 @@ Enemy-stage checks: 562 tests /77 files, typecheck and build passed. Existing
 Zod annotation and >500KB chunk warnings remain. No gameplay/config/snapshot,
 Player or Boss source changed. Quantized four-pose feet and tiny face readability
 remain matters for human review; no skeleton/interpolation framework was added.
+
+
+## Completed naval pass / final validation
+
+`compare-landing-craft.png` and `compare-wide-naval.png` show matching before/after
+painted boats. Close craft inspection uses only the real craft, coastal water and
+shipping lights, avoiding an occluding village roof. The wide view is a clearly
+supplemental 844×390 QA camera; production framing is unchanged.
+
+`final-live-*` repeats all development modes/input/combat/pause/Retry checks.
+`production-sanity.json` checks the actual built bundle at `/topwar/`: default
+Level 1, explicit threats Level 7, normal override Level 1. The QA server answers
+an absent browser favicon with 204; no shipping behavior is changed.
+
+`performance-final.json` uses the same warmed fixture sequence as the baseline:
+normal 135 draws /35236 triangles; mixed 150→149 /39358→39118;
+two Giants 146→146 /13044→13020. Representative 20% Heavy crowds:
+50: 165→164 /52100→49820; 100: 186→185 /93882→89322;
+150: 205→204 /135660→128820; 200: 225→224 /177440→168320.
+Final GPU geometry/texture counts match baseline in each fixture. One additional
+shared painted-hull geometry offsets removal of Heavy's visible guard geometry;
+there are no new textures or naval draws. Counts describe this Chrome capture,
+not phone FPS. Character download bytes remain unchanged.
+
+Final matched JS bundle: 972999→974188 bytes (+1189), gzip 262819→263275 (+456).
+The earlier enemy-only bundle was 973688 /263085. `bundle-comparison.json` records
+the complete final pass. Build stamp is matched for exact comparisons.
+
+`naval-pixel-guards.json` verifies no changes outside the ship horizon band
+(Y430..565 at DPR2) and changing build footer, including Player/Boss/normal crowd.
+Final validation: 563 tests across 77 files, typecheck and build passed, no runtime
+errors in development or production sanity. Existing two Zod annotation warnings
+and >500KB chunk warning remain. Nothing was deployed.
+
+Review concerns: four static locomotion poses still produce intentional stepping
+transitions; physical foot locking is approximate, not skeletal animation. Heavy
+face cues remain tiny under the broad brim. Boat paint is intentionally broad and
+flat; the retained pilot house remains a simple block. These need human review,
+not automatic further polish. Boss/defenses are untouched.

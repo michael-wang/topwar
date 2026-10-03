@@ -1,0 +1,100 @@
+{
+  "normal": {
+    "before": {
+      "draws": 135,
+      "triangles": 35236,
+      "geometries": 66,
+      "textures": 6
+    },
+    "after": {
+      "draws": 135,
+      "triangles": 35236,
+      "geometries": 66,
+      "textures": 6
+    }
+  },
+  "mixed-threats": {
+    "before": {
+      "draws": 150,
+      "triangles": 39358,
+      "geometries": 72,
+      "textures": 9
+    },
+    "after": {
+      "draws": 149,
+      "triangles": 39118,
+      "geometries": 72,
+      "textures": 9
+    }
+  },
+  "mixed-50": {
+    "before": {
+      "draws": 165,
+      "triangles": 52100,
+      "geometries": 90,
+      "textures": 11
+    },
+    "after": {
+      "draws": 164,
+      "triangles": 49820,
+      "geometries": 90,
+      "textures": 11
+    }
+  },
+  "mixed-100": {
+    "before": {
+      "draws": 186,
+      "triangles": 93882,
+      "geometries": 90,
+      "textures": 11
+    },
+    "after": {
+      "draws": 185,
+      "triangles": 89322,
+      "geometries": 90,
+      "textures": 11
+    }
+  },
+  "mixed-150": {
+    "before": {
+      "draws": 205,
+      "triangles": 135660,
+      "geometries": 90,
+      "textures": 11
+    },
+    "after": {
+      "draws": 204,
+      "triangles": 128820,
+      "geometries": 90,
+      "textures": 11
+    }
+  },
+  "mixed-200": {
+    "before": {
+      "draws": 225,
+      "triangles": 177440,
+      "geometries": 90,
+      "textures": 11
+    },
+    "after": {
+      "draws": 224,
+      "triangles": 168320,
+      "geometries": 90,
+      "textures": 11
+    }
+  },
+  "giants-two": {
+    "before": {
+      "draws": 146,
+      "triangles": 13044,
+      "geometries": 90,
+      "textures": 12
+    },
+    "after": {
+      "draws": 146,
+      "triangles": 13020,
+      "geometries": 90,
+      "textures": 12
+    }
+  }
+}

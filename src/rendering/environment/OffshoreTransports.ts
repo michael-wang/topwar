@@ -4,13 +4,32 @@ import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
 
+export const NAVAL_PALETTE = {
+  hull: ART.coastalDefense.deepSea, upper: ART.coastalDefense.plaster,
+  well: '#829da5', accent: ART.coastalDefense.shallowAqua, timber: '#b59268',
+} as const;
+
+function paintedHull(): THREE.BufferGeometry {
+  const geometry = paintedBlockGeometry(), positions = geometry.getAttribute('position');
+  const colors = new Float32Array(positions.count * 3), color = new THREE.Color();
+  for (let i = 0; i < positions.count; i += 3) {
+    // Broad paint on the existing upper bevel, no stripe mesh or texture.
+    const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
+    color.set(y > .32 ? NAVAL_PALETTE.accent : NAVAL_PALETTE.hull);
+    for (let j = i; j < i + 3; j++) color.toArray(colors, j * 3);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); return geometry;
+}
+
 // Authored background actors, with no simulation collision or random allocation.
 export class OffshoreTransports {
   readonly group = new THREE.Group();
   private readonly geometry = paintedBlockGeometry();
-  private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.coastalDefense.secondaryShadow, roughness: 1 }));
-  private readonly deck = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.coastalDefense.plasterShade, roughness: 1 }));
-  private readonly hold = new THREE.MeshStandardMaterial({ color: ART.coastalDefense.shadow, roughness: 1 });
+  private readonly hullGeometry = paintedHull();
+  private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1 }));
+  private readonly deck = illustratedMaterial(new THREE.MeshStandardMaterial({ color: NAVAL_PALETTE.upper, roughness: 1 }));
+  private readonly hold = new THREE.MeshStandardMaterial({ color: NAVAL_PALETTE.well, roughness: 1 });
+  private readonly timber = illustratedMaterial(new THREE.MeshStandardMaterial({ color: NAVAL_PALETTE.timber, roughness: 1 }));
   private readonly wake = new THREE.MeshBasicMaterial({ color: ART.coastalDefense.foam, transparent: true, opacity: .16, depthWrite: false });
   private readonly baked: THREE.BufferGeometry[] = [];
   private readonly ships: THREE.Group[] = [];
@@ -19,7 +38,7 @@ export class OffshoreTransports {
     this.group.name = 'offshore-troop-transports';
     const part = (parent: THREE.Group, name: string, x: number, y: number, z: number,
       width: number, height: number, depth: number, material: THREE.Material) => {
-      const mesh = new THREE.Mesh(this.geometry, material); mesh.name = name;
+      const mesh = new THREE.Mesh(material === this.hull ? this.hullGeometry : this.geometry, material); mesh.name = name;
       mesh.position.set(x, y, z); mesh.scale.set(width, height, depth); parent.add(mesh); return mesh;
     };
     for (const [i, x, z, scale, angle] of [[0,-8,76,.58,.16],[1,12,91,.50,-.22],[2,-14,110,.48,.34]]) {
@@ -30,7 +49,7 @@ export class OffshoreTransports {
       part(ship, 'bridge-windows', -4.6, 3.5, -1.6, 2.6, .45, .08, this.hold);
       part(ship, 'exhaust-stack', -5, 4.65, .3, .75, 1.4, .85, this.hull);
       for (let bay = 0; bay < 3; bay++) {
-        part(ship, 'troop-hold', -.6 + bay * 2.7, 2.15, 0, 2, .65, 2.6, this.hull);
+        part(ship, 'troop-hold', -.6 + bay * 2.7, 2.15, 0, 2, .65, 2.6, this.hold);
         part(ship, 'lifeboat', -1 + bay * 3, 2.1, -2, 1.65, .4, .5, this.deck);
       }
       const bow = part(ship, 'tapered-bow', 8, .7, 0, 2.7, 1.6, 3, this.hull); bow.rotation.y = .2;
@@ -39,7 +58,7 @@ export class OffshoreTransports {
       // Merge static parts per material once; each transport remains a cheap bobbing actor.
       for (const material of [this.hull, this.deck, this.hold, this.wake]) {
         const parts = ship.children.filter(child => child instanceof THREE.Mesh && child.material === material) as THREE.Mesh[];
-        const copies = parts.map(mesh => { mesh.updateMatrix(); return this.geometry.clone().applyMatrix4(mesh.matrix); });
+        const copies = parts.map(mesh => { mesh.updateMatrix(); return mesh.geometry.clone().applyMatrix4(mesh.matrix); });
         const geometry = mergeGeometries(copies)!; copies.forEach(copy => copy.dispose());
         this.baked.push(geometry); parts.forEach(mesh => ship.remove(mesh));
         ship.add(new THREE.Mesh(geometry, material));
@@ -49,7 +68,7 @@ export class OffshoreTransports {
     part(this.craft, 'landing-craft-hull', 0, .3, 0, 3.4, .7, 5.2, this.hull);
     part(this.craft, 'open-troop-well', 0, .7, 0, 2.5, .15, 3.4, this.hold);
     for (const side of [-1, 1]) part(this.craft, 'raised-side', side * 1.5, .9, 0, .3, .8, 5, this.deck);
-    part(this.craft, 'bow-ramp', 0, .7, -2.5, 3.1, 1, .25, this.deck);
+    part(this.craft, 'bow-ramp', 0, .7, -2.5, 3.1, 1, .25, this.timber);
     part(this.craft, 'pilot-house', 0, 1.3, 1.8, 1.2, 1.3, 1.1, this.deck);
     part(this.craft, 'craft-wake', 0, -.13, .8, 4.5, .025, 6.5, this.wake);
     this.craft.position.set(7, -.15, 61); this.craft.rotation.y = -.2;
@@ -70,6 +89,7 @@ export class OffshoreTransports {
   }
   dispose(): void {
     this.baked.forEach(geometry => geometry.dispose());
-    this.geometry.dispose(); this.hull.dispose(); this.deck.dispose(); this.hold.dispose(); this.wake.dispose();
+    this.geometry.dispose(); this.hullGeometry.dispose();
+    this.hull.dispose(); this.deck.dispose(); this.hold.dispose(); this.timber.dispose(); this.wake.dispose();
   }
 }

@@ -70,7 +70,7 @@ for (const key of cases) {
   await page.screenshot({ path: `${out}/${phase}-${key}.png` });
 }
 // Whole gait periods through the real bounded renderer (no alternate animation).
-for (const role of ['grunt', 'heavy', 'giant']) for (const percent of [0, 12.5, 25, 37.5, 50, 62.5, 75, 87.5, 100]) {
+for (const role of (phase === 'final' ? [] : ['grunt', 'heavy', 'giant'])) for (const percent of [0, 12.5, 25, 37.5, 50, 62.5, 75, 87.5, 100]) {
   await page.evaluate(({ role, percent }) => {
     const a = window.__testApp, f = structuredClone(window.__fixture), e = f.enemies.find(e => e.archetype === role);
     f.enemies = [{ ...e, id: 0, x: 0, z: role === 'giant' ? 22 : 8 }];
@@ -85,7 +85,7 @@ for (const role of ['grunt', 'heavy', 'giant']) for (const percent of [0, 12.5, 
   await page.screenshot({ path: `${out}/${phase}-${role}-gait-${percent}.png` });
 }
 const occupancy = {};
-for (const role of ['player', 'grunt', 'heavy', 'giant']) {
+for (const role of (phase === 'final' ? [] : ['player', 'grunt', 'heavy', 'giant'])) {
   occupancy[role] = await page.evaluate(async role => {
     const r = window.__testApp.renderer, THREE = await import('/node_modules/.vite/deps/three.js');
     const f = structuredClone(window.__fixture); f.enemies = []; f.squad.count = 0; f.squad.rifleCounts = [];
