@@ -84,11 +84,12 @@ it('registers Heavy hit geometry, anchors its HP bar, and reuses dedicated conta
   expect((contact.children[0] as THREE.Mesh).geometry).toBe(heavy.contact.body.geometry);
   expect(contact.scale.y).toBeCloseTo(heavy.presentation.scaleY! * 1.12);
   renderer.update([e], 1500); renderer.update([], 1510);
-  const death = scene.children.find(c => c instanceof THREE.Group && (c.children[0] as THREE.Mesh)?.geometry === heavy.death.body.geometry)!;
+  const death = scene.getObjectByName('enemy-pale-death-body')!;
+  expect((death.children[0] as THREE.Mesh).geometry).toBe(heavy.runFrames[enemyRunFrame(e.id,1500,650)].geometry);
   expect(death).toBeDefined(); expect((death.children[1] as THREE.Mesh).geometry).toBe(heavy.helmet.geometry);
   renderer.dispose(); heavy.dispose(); giant.dispose(); expect(scene.children).toHaveLength(0);
 });
-it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hit and six broad crash chunks', () => {
+it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hit and twelve pale crash chunks', () => {
   const family = createChibiGiantFamily(), scene = new THREE.Scene(), hits = new HeavyHitFeedback(scene);
   const renderer = new GiantRenderer(scene, family), e = enemy(1, 'giant');
   renderer.update(e, 0, hits); expect(renderer.barVisible(0)).toBe(false); expect(renderer.barVisible(1500)).toBe(true);
@@ -109,7 +110,7 @@ it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hi
   renderer.die(e, 2700); renderer.update(undefined, 3300, hits);
   expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(true);
   renderer.update(undefined, 3400, hits);
-  expect((scene.getObjectByName('giant-armor-wreckage') as THREE.InstancedMesh).count).toBe(6);
+  expect((scene.getObjectByName('giant-armor-wreckage') as THREE.InstancedMesh).count).toBe(12);
   expect(group.visible).toBe(false);
   renderer.dispose(); hits.dispose(); family.dispose(); expect(scene.children).toHaveLength(0);
 });

@@ -163,7 +163,7 @@ describe('Modern Toy Soldier presentation', () => {
     const renderer = new EnemyRenderer(scene, enemyFamilies(body, helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));
     const families = () => scene.children.filter((child): child is THREE.InstancedMesh =>
-      child instanceof THREE.InstancedMesh);
+      child instanceof THREE.InstancedMesh && child.name !== 'enemy-pale-shatter');
     expect(families()).toHaveLength(16);
     const bodyMeshes = Array.from({ length: 4 }, (_, frame) =>
       scene.getObjectByName(`toy-soldier-run-${frame}`) as THREE.InstancedMesh);
@@ -187,7 +187,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('grows crowd capacity, flashes gear, and pops out fallen grunts', () => {
+  it('grows crowd capacity, flashes gear, and shatters fallen grunts without a rising corpse', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));
@@ -207,15 +207,16 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.update(damaged.slice(1), 100);
     const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death).toBeDefined();
-    expect(death.rotation.z).toBe(0);
-    expect(death.position.y).toBe(.12);
+    const plantedY = death.position.y;
+    expect(plantedY).toBeLessThan(.06);
     renderer.update(damaged.slice(1), 320);
-    expect(death.position.y).toBeGreaterThan(0);
+    expect(death.position.y).toBe(plantedY); expect(death.visible).toBe(false);
     const gray = (death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     expect(gray.color.getHexString()).toBe('aeb4b7');
-    expect(gray.opacity).toBeLessThan(1);
+    expect(gray.opacity).toBe(1);
     expect(((death.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color
-      .getHexString()).toBe('a2b2b8');
+      .getHexString()).toBe('596b61');
+    expect((scene.getObjectByName('enemy-pale-shatter') as THREE.InstancedMesh).count).toBe(6);
     renderer.update(damaged.slice(1), 800);
     expect(death.visible).toBe(false);
     renderer.reset();
@@ -241,10 +242,10 @@ describe('Modern Toy Soldier presentation', () => {
     }
     renderer.update([], 200);
     const death = scene.children.find(child => child instanceof THREE.Group && child.visible) as THREE.Group;
-    expect(death.scale.x).toBeCloseTo(heavy.visualScaleX * 1.07);
-    expect(death.scale.y).toBeCloseTo(heavy.visualScaleY * 1.07);
+    expect(death.scale.x).toBeCloseTo(heavy.visualScaleX);
+    expect(death.scale.y).toBeCloseTo(heavy.visualScaleY);
     renderer.update([], 440);
-    expect(death.scale.x).toBeCloseTo(heavy.visualScaleX * .81);
+    expect(death.visible).toBe(false); expect(death.scale.x).toBeCloseTo(heavy.visualScaleX);
     expect(death.scale.y / death.scale.x).toBeCloseTo(heavy.visualScaleY / heavy.visualScaleX);
     renderer.update([heavy], 1000);
     renderer.present([{ kind: 'normalEnemyContact', enemyId: 2, enemyTier: 1,

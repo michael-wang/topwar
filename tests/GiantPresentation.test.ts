@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
-import { DeathBurst } from '../src/rendering/enemies/DeathBurst';
+import { PALE_DEATH_COLORS } from '../src/rendering/enemies/PaleDeathMaterial';
 
 it('uses the dedicated crest/maul silhouette, bounded sparks and the existing crash timing', () => {
   const scene = new THREE.Scene(), family = createChibiGiantFamily();
@@ -27,21 +27,20 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the existing cr
   expect(group.position.z).toBeCloseTo(14.11);
   hits.update(new Set([1]), 120); renderer.update(enemy, 120, hits);
   expect(group.position.z).toBe(14);
-  const burst = new DeathBurst(scene, true); burst.spawn(enemy, 200);
-  expect(burst.activeCount).toBe(36);
   renderer.die(enemy, 200); renderer.update(undefined, 320, hits);
   expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(false);
   expect(group.visible).toBe(true);
   renderer.update(undefined, 750, hits);
   expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(true);
   expect(family.runFrames.map(frame => frame.geometry)).toContain((group.children[0] as THREE.Mesh).geometry);
-  burst.update(500); expect(burst.activeCount).toBe(36);
-  burst.update(651); expect(burst.activeCount).toBe(0);
+  const fragments=scene.getObjectByName('giant-armor-wreckage') as THREE.InstancedMesh;
+  expect(fragments.count).toBe(12);expect(fragments.visible).toBe(true);
+  const color=new THREE.Color();for(let i=0;i<12;i++){fragments.getColorAt(i,color);expect(PALE_DEATH_COLORS).toContain('#'+color.getHexString());}
   renderer.update(undefined, 851, hits); expect(group.visible).toBe(false);
   expect(scene.getObjectByName('giant-armor-wreckage')!.visible).toBe(true);
   renderer.update(undefined, 2601, hits); expect(scene.getObjectByName('giant-armor-wreckage')!.visible).toBe(false);
   let borrowedDisposed = false; family.body.geometry.addEventListener('dispose', () => { borrowedDisposed = true; });
-  renderer.reset(); renderer.dispose(); hits.dispose(); burst.dispose();
+  renderer.reset(); renderer.dispose(); hits.dispose();
   expect(scene.children).toHaveLength(0); expect(borrowedDisposed).toBe(false);
   family.dispose();
 });

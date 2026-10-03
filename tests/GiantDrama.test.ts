@@ -11,10 +11,12 @@ it('reveals silhouette over 1.5s and withholds bars until mostly readable', () =
   expect(giantReveal(1200).barVisible).toBe(true); expect(giantReveal(1500).haze).toBe(0);
   expect(giantReveal(1500).opacity).toBe(1);
 });
-it('preserves a full visible body until collapse, then lingers as armor rubble', () => {
-  expect(giantDeathPose(50).falling).toBe(0); expect(giantDeathPose(50).lethalFlash).toBeGreaterThan(0);
+it('pales the full body before its existing fall/crash, then lingers as plaster fragments', () => {
+  expect(giantDeathPose(50).falling).toBe(0); expect(giantDeathPose(50).pale).toBeGreaterThan(0);
   expect(giantDeathPose(400).bodyVisible).toBe(true); expect(giantDeathPose(400).debrisVisible).toBe(false);
   expect(giantDeathPose(520).falling).toBe(1); expect(giantDeathPose(550).crash).toBe(true);
+  expect(giantDeathPose(519).bodyVisible).toBe(true); expect(giantDeathPose(520).bodyVisible).toBe(false);
+  expect(giantDeathPose(520).debrisVisible).toBe(true); expect(giantDeathPose(120).pale).toBe(1);
   expect(giantDeathPose(650).bodyVisible).toBe(false); expect(giantDeathPose(650).debrisVisible).toBe(true);
   expect(giantDeathPose(1200).debrisOpacity).toBe(1); expect(giantDeathPose(2000).debrisOpacity).toBeLessThan(1);
   expect(giantDeathPose(2400).debrisVisible).toBe(false);

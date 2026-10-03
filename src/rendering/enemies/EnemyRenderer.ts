@@ -1,6 +1,5 @@
 import { canShareCrowdBatch, ENEMY_GAIT_CYCLE_MS, type CharacterVisualFamilies,
   type CharacterParts, type CrowdVisualFamily } from '../CharacterVisualFamilies';
-import { GIANT_CRASH_MS } from '../../presentation/GiantDrama';
 import { stepWeightPose } from '../../presentation/CharacterMotion';
 import { prepareGiantBarFill } from './GiantHealthBar';
 import { framedBarTexture } from '../art/FramedBarTextures';
@@ -13,7 +12,8 @@ import type { EnemyRenderState } from '../RenderState';
 import { DeathBurst } from './DeathBurst';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
-import { ENEMY_DEATH_MS, ENEMY_DEATH_POP, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_SHATTER_MS, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
+import { preparePaleDeathMaterial } from './PaleDeathMaterial';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
 
@@ -33,6 +33,8 @@ interface DeathVisual {
   gearMaterial: THREE.MeshStandardMaterial;
   startedAtMs: number;
   heavy: boolean;
+  bodyPale: { value: number };
+  gearPale: { value: number };
 }
 
 interface ContactVisual {
@@ -99,8 +101,7 @@ export class EnemyRenderer {
     color: ART.fx.core, toneMapped: false });
   private readonly heavyHits: HeavyHitFeedback;
   private readonly giantRenderers: GiantRenderer[];
-  private readonly pendingGiantBursts: { enemy: EnemyRenderState; at: number }[] = [];
-  private readonly giantBurst: DeathBurst;
+  private lastRenderedAtMs = 0;
   private readonly deathBurst: DeathBurst;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
@@ -117,7 +118,6 @@ export class EnemyRenderer {
     this.deathBurst = new DeathBurst(scene);
     this.heavyHits = new HeavyHitFeedback(scene);
     this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant));
-    this.giantBurst = new DeathBurst(scene, true);
   }
 
   private createBatch(family: CrowdVisualFamily): CrowdBatch {
@@ -168,7 +168,6 @@ export class EnemyRenderer {
         if (!this.contactIds.has(previous.id)) {
           if (previous.archetype === 'giant') {
             this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs);
-            this.pendingGiantBursts.push({ enemy: previous, at: nowMs + GIANT_CRASH_MS });
           }
           else this.spawnDeath(previous, nowMs);
         }
@@ -197,10 +196,6 @@ export class EnemyRenderer {
       renderer?.update(enemy, nowMs, this.heavyHits);
     }
     for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits);
-    for (let i = this.pendingGiantBursts.length - 1; i >= 0; i--) if (nowMs >= this.pendingGiantBursts[i].at) {
-      const pending = this.pendingGiantBursts.splice(i, 1)[0]; this.giantBurst.spawn(pending.enemy, pending.at);
-    }
-    this.giantBurst.update(nowMs);
 
     const giantCount = enemies.reduce((count, enemy) => count + (enemy.archetype === 'giant' ? 1 : 0), 0);
     let barIndex = 0;
@@ -249,6 +244,7 @@ export class EnemyRenderer {
       this.healthBars[barIndex].fill.visible = false;
     }
     for (const batch of this.batches) this.updateBatch(batch, enemies, nowMs);
+    this.lastRenderedAtMs = nowMs;
   }
 
   private updateBatch(batch: CrowdBatch, enemies: readonly EnemyRenderState[], nowMs: number): void {
@@ -338,7 +334,7 @@ export class EnemyRenderer {
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.deathBurst.reset();
     this.heavyHits.reset();
-    this.giantRenderers.forEach(renderer => renderer.reset()); this.pendingGiantBursts.length = 0; this.giantBurst.reset();
+    this.giantRenderers.forEach(renderer => renderer.reset()); this.lastRenderedAtMs = 0;
   }
 
   dispose(): void {
@@ -366,7 +362,7 @@ export class EnemyRenderer {
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.deathBurst.dispose();
     this.heavyHits.dispose();
-    this.giantRenderers.forEach(renderer => renderer.dispose()); this.giantBurst.dispose();
+    this.giantRenderers.forEach(renderer => renderer.dispose());
     for (const batch of this.batches) batch.helmetMaterial.dispose();
     this.contactFlashMaterial.dispose();
   }
@@ -452,35 +448,34 @@ export class EnemyRenderer {
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): void {
-    const { death: parts, presentation } = this.crowdFamily(enemy);
-    this.deathBurst.spawn(enemy, nowMs);
+    const family = this.crowdFamily(enemy), { death: parts, presentation } = family;
+    const procedural = presentation.materialStyle === 'vertex-colors';
+    this.deathBurst.spawn(enemy, nowMs + ENEMY_SHATTER_MS, presentation.scaleY);
     let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
-      const bodyMaterial = prepareCrowdMaterial((parts.body.material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
-      bodyMaterial.transparent = true;
-      bodyMaterial.depthWrite = false;
+      group.name = 'enemy-pale-death-body';
+      const bodyMaterial = prepareCrowdMaterial(((procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
+      const bodyPale = preparePaleDeathMaterial(bodyMaterial);
       const gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
-      gearMaterial.transparent = true;
-      gearMaterial.depthWrite = false;
+      const gearPale = preparePaleDeathMaterial(gearMaterial);
       const body = new THREE.Mesh(parts.body.geometry, bodyMaterial);
       const helmet = new THREE.Mesh(parts.helmet.geometry, gearMaterial);
       const vest = new THREE.Mesh(parts.vest.geometry, gearMaterial);
       vest.visible = parts.vest.visible;
       group.add(body, helmet, vest);
       this.scene.add(group);
-      visual = { parts, group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false };
+      visual = { parts, group, bodyMaterial, gearMaterial, bodyPale, gearPale, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     if (!this.sameParts(visual.parts, parts)) {
       visual.bodyMaterial.dispose(); visual.gearMaterial.dispose();
-      visual.bodyMaterial = prepareCrowdMaterial((parts.body.material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
+      visual.bodyMaterial = prepareCrowdMaterial(((procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
       visual.gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
-      for (const material of [visual.bodyMaterial, visual.gearMaterial]) {
-        material.transparent = true; material.depthWrite = false;
-      }
+      visual.bodyPale = preparePaleDeathMaterial(visual.bodyMaterial);
+      visual.gearPale = preparePaleDeathMaterial(visual.gearMaterial);
       [parts.body, parts.helmet, parts.vest].forEach((model, index) => {
         const mesh = visual!.group.children[index] as THREE.Mesh;
         mesh.geometry = model.geometry;
@@ -494,28 +489,34 @@ export class EnemyRenderer {
     setEnemyScale(visual.scale, enemy, presentation.scaleY);
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
-    visual.gearMaterial.color.set(ART.fx.core);
+    visual.bodyPale.value = visual.gearPale.value = 0;
+    visual.gearMaterial.color.copy(presentation.gearTint === 'authored' ? this.authoredBodyColor
+      : visual.heavy ? this.heavyColor : this.helmetColors[paletteIndex(enemy.tier, PALETTES.length)]);
     visual.group.visible = true;
-    visual.group.scale.copy(visual.scale).multiplyScalar(enemyDeathPose(0).scale);
-    visual.group.position.set(-enemy.x, ENEMY_DEATH_POP, enemy.z);
-    visual.group.rotation.set(0, Math.PI, 0);
+    // Freeze the last drawn baked pose, including its planted weight transfer.
+    const pose = enemyWalkPose(enemy.id, this.lastRenderedAtMs, family.gaitCycleMs);
+    const step = presentation.stepWeight && stepWeightPose(enemy.id, this.lastRenderedAtMs, family.gaitCycleMs);
+    const hit = this.heavyHits.strength(enemy.id, this.lastRenderedAtMs);
+    if (procedural) (visual.group.children[0] as THREE.Mesh).geometry = family.runFrames[
+      enemyRunFrame(enemy.id, this.lastRenderedAtMs, family.gaitCycleMs)].geometry;
+    visual.group.position.set(-enemy.x + (step ? step.support * presentation.stepWeight!.shift * visual.scale.x : 0),
+      step ? (1 - step.landing) * .007 : pose.bob * (visual.heavy ? .38 : .80), enemy.z + .07 * hit);
+    const sway = step ? step.support * presentation.stepWeight!.roll : pose.leftArm * (visual.heavy ? .18 : .075);
+    visual.group.rotation.set(-.15 + pose.leftLeg * .035 + .045 * hit, Math.PI, sway);
+    visual.scale.y *= (1 - (step ? step.landing * presentation.stepWeight!.compression : 0))
+      * (1 - (presentation.hitCompression ?? 0) * hit);
+    visual.group.scale.copy(visual.scale);
   }
 
   private updateDeaths(nowMs: number): void {
     for (const visual of this.deathVisuals) {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
-      if (elapsed >= ENEMY_DEATH_MS) { visual.group.visible = false; continue; }
-      const { scale, opacity, rise } = enemyDeathPose(elapsed);
-      visual.gearMaterial.color.set(elapsed < 35 ? ART.fx.core : ART.fx.gray);
-      visual.bodyMaterial.opacity = opacity;
-      visual.gearMaterial.opacity = opacity;
-      visual.group.scale.copy(visual.scale).multiplyScalar(scale);
-      visual.group.position.y = rise;
-      // Short knee/torso loss of weight layered onto the existing gray dissolve.
-      const collapse = 1 - Math.exp(-elapsed / (visual.heavy ? 110 : 65));
-      visual.group.rotation.x = -.55 * collapse;
-      visual.group.rotation.z = (visual.heavy ? .26 : .16) * collapse;
+      const pose = enemyDeathPose(elapsed);
+      visual.group.visible = pose.bodyVisible;
+      visual.bodyPale.value = visual.gearPale.value = pose.pale;
+      visual.group.scale.copy(visual.scale);
+      visual.group.scale.y *= 1 - pose.squash;
     }
   }
 

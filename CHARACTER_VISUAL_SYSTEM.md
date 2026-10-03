@@ -186,8 +186,8 @@ Giant uses smooth 24×12 primary body/head, an olive deep shell, one soft
 limestone fin (0.18 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
-mesh draws per live Giant. Six soft instanced crest/clothing/maul debris masses
-retain crash timing. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+mesh draws per live Giant. R3 replaces colored debris with twelve pale rounded
+fragments at the existing crash. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 The dedicated Giant bar defines authored billboard width 1.20 and height 0.20,
@@ -213,8 +213,8 @@ Phase 4C comparisons. Measure normal/mixed/50/100/150/200/two-Giant draws,
 triangles, resources and bundle bytes. Preserve gameplay/role-isolation/Boss
 asset protections; run tests, typecheck, build and live/production sanity.
 
-The R1 rounded grammar is accepted as the base. R2 combat identity is pending
-human review; Boss migration and all world redesign remain deferred.
+The R1 rounded grammar and R2 combat identity are accepted as the character
+baseline. Boss Rounded Toy migration remains deferred.
 
 ## R2 combat identity layer
 
@@ -256,11 +256,36 @@ Each feedback instance owns one shared overlay material per role, reused
 across impacts; existing pooled spark materials remain. Heavy retains its
 stronger 0.72 core wash and four-spark response.
 
-The lethal/death path explicitly restores the original core emissive color
-and 0.6 lethal-flash multiplier. Death/reveal timing, surviving-hit impulse,
-compression and the R1 Giant HP bar are unchanged. Ordinary surviving feedback
-is deliberately softer, independently of the major lethal/crash beat.
+Ordinary surviving feedback remains independently controlled from lethal/crash
+presentation. R3 supersedes the former core-color/0.6 emissive lethal wash with
+the naturally lit pale-shatter language below. Reveal, surviving-hit impulse,
+compression and the R1 Giant HP bar remain unchanged.
 
 Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
-Giant peak/50 ms/settled impact captures. Stop after R2 for human review.
+Giant peak/50 ms/settled impact captures.
+
+## R3 canonical lethal language — Pale Shatter
+
+**Color → warm gray-white → shatter.** A defeated enemy briefly becomes a lit
+plaster/stone toy, then breaks into rounded pale pieces. No blood, faction/tier
+fragment colors, emissive white corpse, long corpse or rising ghost dissolve.
+Surviving hits and Player Level-Up remain separate semantics.
+
+Grunt/Heavy freeze the last drawn role-owned run geometry and planted root pose.
+Albedo drains to #D8D9D1 within 80 ms; the intact silhouette hides at 110 ms.
+Six Grunt/eight Heavy rounded fragments then move ballistically for 280 ms,
+with a quick final fade/shrink: total 390 ms. No upward corpse launch. Forty-eight
+reusable intact slots and one shared 384-instance fragment pool bound dense kills.
+Fragment velocity is deterministic from enemy ID/index; palette alternates
+#D8D9D1 / #E7E4D9 / #BFC5C1 and uses matte, non-emissive standard lighting.
+Materials/uniforms belong to renderer slots; role geometry is borrowed.
+
+Giant drains albedo over 120 ms without lethal emission. Its existing 90–520 ms
+heavy fall, 520 ms crash, sand dust/ring and 2400 ms clear clock remain. The
+intact Giant now breaks at crash, into twelve larger pale rounded fragments per
+bounded slot, replacing both colored armor rubble and the 36-point burst.
+Fragments settle rapidly, fade from 1550 ms and clear at 2400 ms. Reveal timing,
+ordinary R2 hits, HP layout and gameplay removal are unchanged. Boss is excluded.
+
+R3 evidence belongs in `artifacts/coastal-r3/`. Stop after R3 for human review.

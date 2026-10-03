@@ -63,7 +63,7 @@ import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRend
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
 import { grayBodyModel, runFrames } from './characterModel';
-it('keeps Heavy locomotion underneath additive hits and gives its death a short physical collapse', () => {
+it('keeps Heavy locomotion underneath additive hits and gives its death a planted pale/shatter beat', () => {
   const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,enemyFamilies(bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel()));
   const enemy={id:1,tier:1,archetype:'heavy' as const,x:0,z:14,hp:15,maxHp:15};
   renderer.update([enemy],100);renderer.update([{...enemy,hp:14}],120);
@@ -72,9 +72,11 @@ it('keeps Heavy locomotion underneath additive hits and gives its death a short 
   const hitMatrix=matrix.clone();renderer.update([{...enemy,hp:14}],170);
   (scene.getObjectByName(`toy-soldier-run-${enemyRunFrame(1,170,650)}`) as THREE.InstancedMesh).getMatrixAt(0,matrix);
   expect(matrix.equals(hitMatrix)).toBe(false);
-  renderer.update([],200);renderer.update([],310);
-  const corpse=scene.children.find(child => child instanceof THREE.Group && child.children.some(part=>part instanceof THREE.Mesh && part.material instanceof THREE.MeshStandardMaterial && part.material.transparent));
-  expect(corpse?.rotation.x).toBeLessThan(-.3);
+  renderer.update([],200);
+  const corpse=scene.getObjectByName('enemy-pale-death-body')!, planted=corpse.position.clone();
+  renderer.update([],260);expect(corpse.visible).toBe(true);expect(corpse.position).toEqual(planted);
+  renderer.update([],310);expect(corpse.visible).toBe(false);
+  expect((scene.getObjectByName('enemy-pale-shatter') as THREE.InstancedMesh).count).toBe(8);
   renderer.update([],700);expect(corpse?.visible).toBe(false);renderer.reset();renderer.dispose();
 });
 it('delays the Giant maul independently and collapses before the bounded breakup', () => {

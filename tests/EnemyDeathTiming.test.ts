@@ -1,21 +1,17 @@
 import { expect, it } from 'vitest';
-import { ENEMY_DEATH_MS, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_MS, ENEMY_SHATTER_MS, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
 
-it('vaporizes with a low pop, bounded rise and pronounced shrink during a short fade', () => {
-  expect(ENEMY_DEATH_MS).toBe(480);
-  expect(enemyDeathPose(0)).toEqual({ progress: 0, rise: .12, opacity: 1, scale: 1.07 });
-  expect(enemyDeathPose(120).opacity).toBe(1);
-  expect(enemyDeathPose(240).opacity).toBeCloseTo(2 / 3);
-  expect(enemyDeathPose(240).scale).toBeCloseTo(.81);
-  expect(enemyDeathPose(480).opacity).toBe(0);
-  expect(enemyDeathPose(480).scale).toBeCloseTo(.55);
-  for (let age = 0; age <= 480; age += 10) {
+it('pales a planted toy then hides it at shatter, without rising or ghost fading', () => {
+  expect(ENEMY_DEATH_MS).toBe(390); expect(ENEMY_SHATTER_MS).toBe(110);
+  expect(enemyDeathPose(0)).toEqual({ progress: 0, pale: 0, bodyVisible: true, squash: 0 });
+  expect(enemyDeathPose(80).pale).toBe(1);
+  expect(enemyDeathPose(109).bodyVisible).toBe(true);
+  expect(enemyDeathPose(110).bodyVisible).toBe(false);
+  for (let age = 0; age <= 390; age += 10) {
     const pose = enemyDeathPose(age);
-    expect(pose.rise).toBeGreaterThanOrEqual(.12);
-    expect(pose.rise).toBeLessThanOrEqual(.72);
-    expect(pose.opacity).toBeLessThanOrEqual(enemyDeathPose(age - 10).opacity);
-    expect(pose.scale).toBeLessThanOrEqual(enemyDeathPose(age - 10).scale);
+    expect(pose).not.toHaveProperty('rise'); expect(pose).not.toHaveProperty('opacity');
+    expect(pose.squash).toBeGreaterThanOrEqual(0); expect(pose.squash).toBeLessThanOrEqual(.035);
+    expect(pose.pale).toBeGreaterThanOrEqual(enemyDeathPose(age - 10).pale);
   }
-  expect(enemyDeathPose(-50)).toEqual(enemyDeathPose(0));
-  expect(enemyDeathPose(1000)).toEqual(enemyDeathPose(480));
+  expect(enemyDeathPose(1000)).toEqual(enemyDeathPose(390));
 });

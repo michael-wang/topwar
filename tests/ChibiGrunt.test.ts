@@ -146,14 +146,14 @@ describe('original amphibious Grunt prototype', () => {
       expect(exchange.children[2].visible).toBe(parts.vest.visible);
     }
     renderer.update([], 2500); renderer.update([g], 2600); renderer.update([], 2610);
-    const corpse = scene.children.find(c => c instanceof THREE.Group && (c.children[0] as THREE.Mesh)?.geometry === grunt.death.body.geometry)!;
+    const corpse = scene.getObjectByName('enemy-pale-death-body')!;
     expect(corpse).toBeDefined();
     expect(corpse.children[2].visible).toBe(false);
     renderer.update([], 3200); renderer.update([h], 3300); renderer.update([], 3310);
     expect((corpse.children[0] as THREE.Mesh).geometry).toBe(legacy.heavy.death.body.geometry);
     expect(corpse.children[2].visible).toBe(true);
     renderer.update([], 3900); renderer.update([g], 4000); renderer.update([], 4010);
-    expect((corpse.children[0] as THREE.Mesh).geometry).toBe(grunt.death.body.geometry);
+    expect(grunt.runFrames.map(frame=>frame.geometry)).toContain((corpse.children[0] as THREE.Mesh).geometry);
     expect(corpse.children[2].visible).toBe(false);
     expect(renderer.getDebugStats().contactVisuals).toBe(1); expect(renderer.getDebugStats().deathVisuals).toBe(1);
     renderer.dispose(); grunt.dispose();

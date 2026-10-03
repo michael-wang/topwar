@@ -4,7 +4,6 @@ import { HeavyHitFeedback, SURVIVING_HIT_STYLES } from '../src/rendering/enemies
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { ART } from '../src/art/ArtDirection';
-import { giantDeathPose } from '../src/presentation/GiantDrama';
 
 it('uses a soft Giant style without leaking intensity to Heavy or allocating materials per hit', () => {
   const scene=new THREE.Scene(), feedback=new HeavyHitFeedback(scene);
@@ -35,7 +34,7 @@ it('uses a soft Giant style without leaking intensity to Heavy or allocating mat
   borrowed.dispose();
 });
 
-it('limits ordinary emissive while preserving Giant reveal, lethal flash and dedicated HP dimensions', () => {
+it('limits ordinary emissive while preserving Giant reveal and dedicated HP dimensions; lethal pales without emission', () => {
   const scene=new THREE.Scene(), family=createChibiGiantFamily(), renderer=new GiantRenderer(scene,family);
   const feedback=new HeavyHitFeedback(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,x:0,z:10,hp:100,visualScale:3};
@@ -48,7 +47,6 @@ it('limits ordinary emissive while preserving Giant reveal, lethal flash and ded
   expect(body.material.emissive.getHexString()).toBe('dda999');
   const bar=renderer.healthBarLayout(enemy); expect(bar.width).toBeCloseTo(3.6); expect(bar.height).toBeCloseTo(.6);
   renderer.die(enemy,2100); renderer.update(undefined,2110,feedback);
-  expect(body.material.emissive.getHexString()).toBe(new THREE.Color(ART.fx.core).getHexString());
-  expect(body.material.emissiveIntensity).toBeCloseTo(giantDeathPose(10).lethalFlash*.6);
+  expect(body.material.emissiveIntensity).toBe(0);
   renderer.dispose(); feedback.dispose(); family.dispose();
 });
