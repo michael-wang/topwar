@@ -1,6 +1,6 @@
 # Sunlit Coastal Battlefield
 
-Art Phase 1.1 is a **defense-mode presentation cleanup**. The direction is a
+Art Phase 1.2 integrates **defense-mode UI and presentation** into the accepted coast. The direction is a
 sunlit stylized Mediterranean coastal diorama: **a beautiful coast under
 violent assault**. The supplied reference informs color, shape hierarchy and
 breeze, not its village, assets, layout or identity. All scenery is original
@@ -63,7 +63,8 @@ fortifications. Scorch, wreckage and broken architecture represent consequences
 of the assault. Their placement remains driven by lane centers. Do not draw bright road
 lane markings or add decorative clutter to sell the art. Keep red Grunts,
 ochre Heavies, blue defenders and crimson/gold Giants as clear foreground masses.
-Existing rounded brass/ink HP and XP bars and level-up effects are retained.
+Enemy health bars retain their readable combat styling. Defense HUD and progression
+follow the coastal UI rules below, preserving the open center sky.
 
 ## Water and environmental life
 
@@ -78,8 +79,10 @@ per side. A generated 256×128 sRGB texture layers broad oval brush masses into
 porous/scalloped silhouettes; no external imagery or individually modeled leaves.
 Cutouts use alpha test 0.4, double sides and depth writing without transparent
 sorting. Painted, unlit foliage preserves dark/light coastal greens and avoids
-hard planar lighting seams. Eight instanced draws / 50 instances include existing
-side flowers and ground shadow patches. Wind has asynchronous phase and at most
+hard planar lighting seams. Eight instanced draws / 50 instances include sparse blossom cards and ground
+shadow patches. Blossoms use a generated 128×128 cutout texture with eleven tiny
+four-petal specks per card, attached to the climbing vine locations. No blossom
+approaches soldier-helmet size; no magenta sphere/icosahedron flower masses. Wind has asynchronous phase and at most
 0.044 lateral / 0.024 depth local displacement; no CPU vertex updates. Magenta
 flowers remain confined to side facades and separate from enemy crimson.
 
@@ -105,8 +108,49 @@ The illustrated material remaps the existing tunic, skin and equipment atlas
 swatches. Hair is preserved; the hair/leather swatch is recolored only below the
 upper body. Enemy body instance color selects the tunic only, so Heavy crimson
 never tints its skin. Rifle surfaces retain source tonal detail in navy-charcoal.
-Giant crimson/gold identity and all gameplay/HUD/VFX rules remain intact. Side
+Giant crimson/gold identity and all gameplay rules remain intact. Side
 flower magenta `#C51E67` and impact orange/red remain separate accents.
+
+## Coastal UI — PLASTER + SEA + SUNLIGHT
+
+`ART.coastalUi` owns interface and progression-effect tokens; CSS consumes them
+through `--coast-*`. Plaster is structure, sea is progression/action, navy gives
+legibility, and sunlight/gold is a rare celebration accent. Avoid dominant dark
+slabs, ornamental gold borders, metallic bevels or fantasy typography.
+
+| Role | Color |
+| --- | --- |
+| Structure / paper | plaster `#F1EFE6`, light paper `#F7F4EA` |
+| Readability / shadow | navy `#24465A`, cool shadow `#2C4158` |
+| Progression | sea `#247E9C`, intermediate cyan `#329DAC`, aqua `#58C8C1` |
+| Crest / celebration | crest `#BAE9E0`, foam `#E5F6EE`, cyan-white energy `#C6F4F2` |
+| Rare sun accent | `#F7CD76`; never the primary UI identity |
+
+The slim XP sign has a translucent plaster backing, foam-light minimal edge,
+navy `LV N`, and soft cool shadow. No numeric XP. Its gradient is anchored to
+the **full track width**, progressively revealed by the fill mask. At 70% aqua
+glow strengthens; at 90% foam edging pulses and sheen speeds up like a cresting
+wave. Progression is simulation truth; the existing 120/260 ms gain reveal,
+240 ms full flash, level-label pop and 800 ms beat are preserved.
+
+Level Up uses an aqua ground ring, ivory-white body/gear flash, eight aqua/foam
+motes per member, white/aqua HUD sweep, foam-white text with cool shadows, and
+1400 ms cyan-white tracer/muzzle afterglow. Scale pulse, timings and positive
+sound stay unchanged. Keep the beat short and energetic rather than a sustained
+healing aura. Gold may be a tiny sunlight accent, never a dominant meter/effect.
+
+Defense does not construct the old `DEFEND N / 5` HUD. Keep the top-center sky
+empty. Pause/TUNE use lightly translucent plaster, navy icons/text, minimum
+44-pixel hit targets, soft cool shadow and simple edges. TUNE uses the same
+plaster/navy palette, sea-colored range accents and subtle separators; input
+and focus ownership are unchanged. Legacy interface styling remains intact.
+
+The lower-left hint has only `A / D or ← / →   STEP LANE` on desktop or
+`TAP LEFT / RIGHT` on coarse-pointer devices. Navy text with a pale shadow stays
+legible on sand. It holds briefly then fades over a nine-second CSS presentation
+animation; Pause suspends that animation. No gameplay/tutorial state is stored.
+The build label stays quiet above XP. Preserve safe-area spacing and pointer
+transparency: the HUD should not consume lane taps.
 
 ## Localized catastrophe
 
@@ -122,5 +166,5 @@ authorizing new gameplay. **Simulation, snapshots, balance data, input, enemy
 population, XP and player power are unchanged by this art phase.**
 
 Portrait before/after evidence, motion recording and performance observations
-are in `artifacts/coastal-cleanup/REPORT.md`. Software-rendered FPS is diagnostic;
+are in `artifacts/coastal-ui/REPORT.md`. Software-rendered FPS is diagnostic;
 physical-phone readability, cloth visibility and contrast still need review.

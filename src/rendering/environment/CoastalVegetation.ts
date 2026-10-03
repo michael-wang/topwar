@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
-import { foliageMassTexture } from '../art/FoliageTexture';
+import { foliageMassTexture, flowerSpeckTexture } from '../art/FoliageTexture';
 
 const C = ART.coastalDefense;
 const TREES = [
@@ -16,32 +16,36 @@ export class CoastalVegetation {
   private readonly sides = [new THREE.Group(), new THREE.Group()];
   private readonly foliageTexture = foliageMassTexture();
   private readonly crown = new THREE.PlaneGeometry(2, 2, 4, 2);
-  private readonly flower = new THREE.IcosahedronGeometry(1, 1);
+  private readonly flowerTexture = flowerSpeckTexture();
+  private readonly flower = new THREE.PlaneGeometry(2, 2, 2, 2);
   private readonly trunk = new THREE.CylinderGeometry(.12, .22, 1, 5);
   private readonly patch = new THREE.CircleGeometry(1, 7).rotateX(-Math.PI / 2);
   private readonly foliage = new THREE.MeshBasicMaterial({
     map: this.foliageTexture, alphaTest: .4, side: THREE.DoubleSide,
     toneMapped: false,
   });
-  private readonly flowers = illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.flower, flatShading: true }));
+  private readonly flowers = new THREE.MeshBasicMaterial({ map: this.flowerTexture,
+    alphaTest: .4, side: THREE.DoubleSide, toneMapped: false });
   private readonly bark = illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.bark, flatShading: true }));
   private readonly shadow = new THREE.MeshBasicMaterial({ color: C.shadow, transparent: true, opacity: .24, depthWrite: false });
   private readonly time = { value: 0 };
   private readonly meshes: THREE.InstancedMesh[] = [];
   constructor() {
     this.group.name = 'coastal-olive-and-vines'; this.group.add(...this.sides);
-    const before = this.foliage.onBeforeCompile;
-    this.foliage.onBeforeCompile = (shader, renderer) => {
-      before.call(this.foliage, shader, renderer); shader.uniforms.coastalWind = this.time;
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float coastalWind;')
-        .replace('#include <begin_vertex>', `#include <begin_vertex>
-          #ifdef USE_INSTANCING
-          float phase = instanceMatrix[3].z*.31 + instanceMatrix[3].y*.73;
-          transformed.x += sin(coastalWind*.42 + phase)*.022*(position.y+1.);
-          transformed.z += cos(coastalWind*.35 + phase)*.012*(position.y+1.);
-          #endif`);
-    };
-    this.foliage.customProgramCacheKey = () => 'coastal-layered-foliage-v2';
+    for (const material of [this.foliage, this.flowers]) {
+      const before = material.onBeforeCompile;
+      material.onBeforeCompile = (shader, renderer) => {
+        before.call(material, shader, renderer); shader.uniforms.coastalWind = this.time;
+        shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nuniform float coastalWind;')
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+            #ifdef USE_INSTANCING
+            float phase = instanceMatrix[3].z*.31 + instanceMatrix[3].y*.73;
+            transformed.x += sin(coastalWind*.42 + phase)*.022*(position.y+1.);
+            transformed.z += cos(coastalWind*.35 + phase)*.012*(position.y+1.);
+            #endif`);
+      };
+      material.customProgramCacheKey = () => 'coastal-layered-foliage-v2';
+    }
     const transform = new THREE.Object3D();
     for (const side of [-1, 1]) {
       const root = this.sides[side < 0 ? 0 : 1], trees = TREES.filter(tree => tree.side === side);
@@ -72,9 +76,10 @@ export class CoastalVegetation {
               transform.scale.set(.72, .65, 1);
             }
           } else if (family === 1) {
-            transform.position.set(side * ((side < 0 ? 2.6 : 1.8) + (i % 2)*.25),
-              4.0 + Math.sin(angle)*.3, side < 0 ? 14.7 + i*.25 : 21.4 + i*.25);
-            transform.rotation.y = angle; transform.scale.set(.42, .3, .37);
+            transform.position.set(side * (side < 0 ? 2.35 : 1.65),
+              2.45 + (i % 3)*.55, (side < 0 ? 14.4 : 21.05) + (i % 3)*.35);
+            transform.rotation.set(.12, Math.sin(angle)*.2, Math.cos(angle)*.18);
+            transform.scale.set(.50, .46, 1);
           } else if (family === 2) {
             const tree = trees[Math.floor(i / 3)], branch = i % 3;
             transform.position.set(side * tree.x + (branch ? (branch === 1 ? -.25 : .25) : 0),
@@ -99,6 +104,6 @@ export class CoastalVegetation {
   dispose(): void {
     this.meshes.forEach(mesh => mesh.dispose());
     this.crown.dispose(); this.flower.dispose(); this.trunk.dispose(); this.patch.dispose();
-    this.foliage.dispose(); this.flowers.dispose(); this.bark.dispose(); this.shadow.dispose(); this.foliageTexture.dispose();
+    this.foliage.dispose(); this.flowers.dispose(); this.bark.dispose(); this.shadow.dispose(); this.foliageTexture.dispose(); this.flowerTexture.dispose();
   }
 }

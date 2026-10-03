@@ -4,8 +4,7 @@ import { ART } from '../art/ArtDirection';
 export const XP_FILL_GRADIENT = `linear-gradient(90deg, ${ART.xp.map(stop =>
   `${stop.color} ${stop.at * 100}%`).join(', ')})`;
 
-// Match the revealed edge to the same deliberate stops, including the white
-// bridge between blue and gold. No independent red/orange glow at low XP.
+// The leading edge follows the same sea/aqua/foam stops as the full track.
 export function xpEdgeColor(progress: number): string {
   const fraction = Math.max(0, Math.min(1, progress));
   const right = ART.xp.findIndex(stop => stop.at >= fraction);

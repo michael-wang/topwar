@@ -5,17 +5,20 @@ import { ART } from '../src/art/ArtDirection';
 import { defenseSideDebris } from '../src/rendering/environment/DefenseDebrisLayout';
 import { AttackLaneRenderer } from '../src/rendering/AttackLaneRenderer';
 
-it('matches the XP edge to fixed blue/white/ivory/gold stops without a green middle', () => {
-  expect(xpEdgeColor(0)).toBe(ART.xp[0].color);
-  expect(xpEdgeColor(1)).toBe(ART.xp.at(-1)!.color);
-  expect(XP_FILL_GRADIENT).toContain('#f1f8fa 70%');
+it('reveals a fixed ocean-to-foam palette with steadily increasing edge brightness', () => {
+  expect(xpEdgeColor(0)).toBe(ART.coastalUi.sea);
+  expect(xpEdgeColor(.7)).toBe(ART.coastalUi.aqua);
+  expect(xpEdgeColor(1)).toBe(ART.coastalUi.foam);
+  expect(XP_FILL_GRADIENT).toContain(`${ART.coastalUi.aqua} 70%`);
+  let previousBrightness = 0;
   for (let percent = 0; percent <= 100; percent++) {
-    const color = new THREE.Color(xpEdgeColor(percent / 100));
-    const hex = color.getHexString();
-    const [r, g, b] = [0, 2, 4].map(start => Number.parseInt(hex.slice(start, start + 2), 16));
-    expect(g - Math.max(r, b)).toBeLessThan(8);
-    if (percent <= 60) expect(b).toBeGreaterThan(r);
-    if (percent >= 90) expect(r).toBeGreaterThan(b + 70);
+    const hex = xpEdgeColor(percent / 100);
+    const [r, g, b] = [1, 3, 5].map(start => Number.parseInt(hex.slice(start, start + 2), 16));
+    const brightness = .2126*r + .7152*g + .0722*b;
+    expect(brightness).toBeGreaterThanOrEqual(previousBrightness);
+    previousBrightness = brightness;
+    if (percent <= 40) expect(b).toBeGreaterThan(r + 80);
+    if (percent >= 90) expect(r).toBeGreaterThanOrEqual(186);
   }
   expect(xpEdgeColor(-1)).toBe(xpEdgeColor(0));
   expect(xpEdgeColor(2)).toBe(xpEdgeColor(1));

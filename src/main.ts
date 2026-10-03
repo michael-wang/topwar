@@ -14,7 +14,7 @@ if (!viewport) {
   throw new Error('Game viewport is missing');
 }
 const gameViewport = viewport;
-applyArtTheme(gameViewport);
+applyArtTheme(document.documentElement);
 const buildLabel = mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 if (import.meta.env.DEV) void refreshDevBuildLabel(buildLabel, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 

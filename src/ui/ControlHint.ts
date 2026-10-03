@@ -4,7 +4,12 @@ export class ControlHint {
   constructor(viewport: HTMLElement, defenseMode = false) {
     this.element = document.createElement('div');
     this.element.className = 'control-hint';
-    this.element.innerHTML = `<span class="hint-key">A / D or ← / →</span> <span>${defenseMode ? 'STEP LANE' : 'MOVE'}</span><br><span class="hint-key">P / SPACE</span> <span>PAUSE</span><br><span class="hint-key">ESC</span> <span>TUNE</span>${defenseMode ? '<br><span class="hint-touch">TAP LEFT / RIGHT · ONE LANE</span>' : ''}`;
+    if (defenseMode) {
+      const touch = window.matchMedia?.('(any-pointer: coarse)').matches ?? false;
+      this.element.textContent = touch ? 'TAP LEFT / RIGHT' : 'A / D or ← / →   STEP LANE';
+    } else {
+      this.element.innerHTML = '<span class="hint-key">A / D or ← / →</span> <span>MOVE</span><br><span class="hint-key">P / SPACE</span> <span>PAUSE</span><br><span class="hint-key">ESC</span> <span>TUNE</span>';
+    }
     viewport.append(this.element);
   }
 

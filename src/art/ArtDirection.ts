@@ -23,8 +23,11 @@ export const ART = {
   bar: { ink: '#293e4c', deep: '#1c2d39', frame: '#ac865a', highlight: '#e3c596',
     paper: '#f6e8c9', shadow: '#172d3a',
     cornerFraction: .45, edgeFraction: .07 },
-  // Pass through cyan-white/ivory before gold; direct blue/yellow mixing reads green.
-  xp: [{ at: 0, color: '#a9d4ef' }, { at: .4, color: '#b9e0f7' },
-    { at: .6, color: '#daf3ff' }, { at: .7, color: '#f1f8fa' },
-    { at: .82, color: '#f7e9bf' }, { at: .9, color: '#ffdb6f' }, { at: 1, color: '#fff28f' }],
+  // Plaster structures, sea progression, navy legibility; sun is a rare accent.
+  coastalUi: { plaster: '#f1efe6', paper: '#f7f4ea', ink: '#24465a', sea: '#247e9c',
+    aqua: '#58c8c1', foam: '#e5f6ee', shadow: '#2c4158', sun: '#f7cd76',
+    crest: '#bae9e0', energy: '#c6f4f2' },
+  // Fixed full-track sea-to-foam palette, progressively revealed by the XP mask.
+  xp: [{ at: 0, color: '#247e9c' }, { at: .4, color: '#329dac' },
+    { at: .7, color: '#58c8c1' }, { at: .9, color: '#bae9e0' }, { at: 1, color: '#e5f6ee' }],
 } as const;

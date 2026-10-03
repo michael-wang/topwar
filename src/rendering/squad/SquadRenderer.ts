@@ -69,7 +69,7 @@ export class SquadRenderer {
   private levelUpAtMs = -Infinity;
   private readonly levelBodyMaterial: THREE.MeshStandardMaterial;
   private readonly levelGearMaterial: THREE.MeshStandardMaterial;
-  private readonly poweredMuzzleMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core, toneMapped: false });
+  private readonly poweredMuzzleMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalUi.energy, toneMapped: false });
   private readonly tierMaterials: THREE.MeshStandardMaterial[];
   private readonly upgradeMaterial: THREE.MeshStandardMaterial;
   private readonly hitMaterial = new THREE.MeshBasicMaterial({ color: '#ff3030', toneMapped: false });
@@ -114,10 +114,10 @@ export class SquadRenderer {
       illustratedMaterial(rifleModel.material, 'weapon');
     }
     this.levelBodyMaterial = illustratedMaterial(bodyModel.material.clone(), 'player');
-    this.levelBodyMaterial.emissive.set(ART.faction.gold);
+    this.levelBodyMaterial.emissive.set(ART.coastalUi.paper);
     this.levelGearMaterial = illustratedMaterial(source.clone());
-    this.levelGearMaterial.color.set('#fff0ae');
-    this.levelGearMaterial.emissive.set(ART.fx.gold);
+    this.levelGearMaterial.color.set(ART.coastalUi.paper);
+    this.levelGearMaterial.emissive.set(ART.coastalUi.foam);
     this.levelEffect = new PlayerLevelUpEffect(scene);
     this.tierMaterials = PLAYER_PALETTE.map((entry) => {
       const material = illustratedMaterial(source.clone());

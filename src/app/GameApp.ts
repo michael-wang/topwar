@@ -26,7 +26,6 @@ import { PerfDiagnostics } from './PerfDiagnostics';
 import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
-import { LaneHud } from '../ui/LaneHud';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -57,7 +56,6 @@ export class GameApp {
   private readonly laneInput: LaneStepInput | null;
   private readonly progressionObserver = new ProgressionLevelObserver();
   private readonly xpHud: XpHud | null;
-  private readonly laneHud: LaneHud | null;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
@@ -94,7 +92,6 @@ export class GameApp {
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
     this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
-    this.laneHud = this.config.catharsis?.defenseMode ? new LaneHud(viewport) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.tuningPanel = new TuningPanel(this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
@@ -169,7 +166,6 @@ export class GameApp {
     this.keyboardInput.dispose();
     this.touchInput.dispose();
     this.laneInput?.dispose();
-    this.laneHud?.dispose();
     this.xpHud?.dispose();
     this.gameOverOverlay.dispose();
     this.tuningPanel.dispose();
@@ -323,7 +319,6 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
-      if (state.player.selectedLane !== undefined) this.laneHud?.update(state.player.selectedLane, state.catharsis!.balance.laneCount);
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);
         if (levelUp) {

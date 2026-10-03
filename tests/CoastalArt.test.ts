@@ -5,7 +5,7 @@ import { CoastalArchitecture } from '../src/rendering/environment/CoastalArchite
 import { CoastalWater } from '../src/rendering/environment/CoastalWater';
 import { CoastalCloth, coastalCanvasGeometry } from '../src/rendering/environment/CoastalCloth';
 import { CoastalVegetation } from '../src/rendering/environment/CoastalVegetation';
-import { foliageMassTexture } from '../src/rendering/art/FoliageTexture';
+import { foliageMassTexture, flowerSpeckTexture } from '../src/rendering/art/FoliageTexture';
 import { BridgeEnvironment, BATTLEFIELD_FOG_COLOR, BATTLEFIELD_FOG_NEAR } from '../src/rendering/environment/BridgeEnvironment';
 
 it('switches coastal sky/fog/scenery independently and restores the legacy vista', () => {
@@ -119,4 +119,19 @@ it('generates repeatable porous foliage with transparent borders and releases th
   const dispose = vi.spyOn(texture, 'dispose');
   vegetation.dispose(); expect(dispose).toHaveBeenCalledOnce();
   a.dispose(); b.dispose();
+});
+
+it('keeps sparse tiny blossoms on vine cards instead of helmet-sized geometric masses', () => {
+  const texture = flowerSpeckTexture();
+  const data = texture.image.data;
+  const opaque = Array.from({ length: texture.image.width * texture.image.height }, (_, i) => data[i * 4 + 3])
+    .filter(alpha => alpha > 128).length;
+  expect(opaque).toBeGreaterThan(100);
+  expect(opaque).toBeLessThan(texture.image.width * texture.image.height * .04);
+  const vegetation = new CoastalVegetation();
+  const flowers = vegetation.group.children[0].getObjectByName('side-flower-masses') as THREE.InstancedMesh;
+  expect(flowers.geometry.type).toBe('PlaneGeometry');
+  expect((flowers.material as THREE.MeshBasicMaterial).alphaTest).toBe(.4);
+  const dispose = vi.spyOn((flowers.material as THREE.MeshBasicMaterial).map!, 'dispose');
+  vegetation.dispose(); expect(dispose).toHaveBeenCalledOnce(); texture.dispose();
 });

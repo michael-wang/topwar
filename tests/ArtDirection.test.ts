@@ -65,10 +65,13 @@ it('composes painted surfaces with the existing limb animation and installs only
   motion.dispose(); source.dispose();
 });
 
-it('feeds the DOM HUD from the same palette as the world bars', () => {
+it('shares centralized legacy and coastal tokens with the DOM HUD', () => {
   const setProperty = vi.fn();
   applyArtTheme({ style: { setProperty } } as unknown as HTMLElement);
   expect(setProperty).toHaveBeenCalledWith('--art-frame', ART.bar.frame);
   expect(setProperty).toHaveBeenCalledWith('--art-ink', ART.bar.ink);
   expect(setProperty).toHaveBeenCalledWith('--art-xp-gradient', XP_FILL_GRADIENT);
+  expect(setProperty).toHaveBeenCalledWith('--coast-plaster', ART.coastalUi.plaster);
+  expect(setProperty).toHaveBeenCalledWith('--coast-ink', ART.coastalUi.ink);
+  expect(setProperty).toHaveBeenCalledWith('--coast-foam', ART.coastalUi.foam);
 });

@@ -10,11 +10,12 @@ export class PlayerLevelUpEffect {
   private readonly visuals: THREE.Group[] = [];
   private readonly ringGeometry = new THREE.RingGeometry(.4, .49, 40);
   private readonly moteGeometry = new THREE.SphereGeometry(.055, 6, 4);
-  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold, transparent: true,
-    depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false });
-  private readonly moteMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core, transparent: true,
+  private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalUi.aqua, transparent: true,
+    depthWrite: false, side: THREE.DoubleSide, blending: THREE.NormalBlending, toneMapped: false });
+  private readonly moteMaterial = new THREE.MeshBasicMaterial({ color: ART.coastalUi.foam, transparent: true,
     depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
-  constructor(private readonly scene: THREE.Scene) {}
+  private readonly aquaMoteMaterial = this.moteMaterial.clone();
+  constructor(private readonly scene: THREE.Scene) { this.aquaMoteMaterial.color.set(ART.coastalUi.energy); }
   present(nowMs: number): void { this.startedAtMs = nowMs; }
   update(members: readonly { group: THREE.Group }[], nowMs: number): void {
     const age = nowMs - this.startedAtMs;
@@ -22,6 +23,7 @@ export class PlayerLevelUpEffect {
     const progress = Math.max(0, Math.min(1, age / LEVEL_UP_MS));
     this.ringMaterial.opacity = .95 * (1 - progress);
     this.moteMaterial.opacity = Math.min(1, (1 - progress) * 1.8);
+    this.aquaMoteMaterial.opacity = this.moteMaterial.opacity;
     let index = 0;
     if (active) for (const member of members) {
       if (!member.group.visible || index >= MAX_EFFECT_MEMBERS) continue;
@@ -46,14 +48,14 @@ export class PlayerLevelUpEffect {
     for (const visual of this.visuals) this.scene.remove(visual);
     this.visuals.length = 0;
     this.ringGeometry.dispose(); this.moteGeometry.dispose();
-    this.ringMaterial.dispose(); this.moteMaterial.dispose();
+    this.ringMaterial.dispose(); this.moteMaterial.dispose(); this.aquaMoteMaterial.dispose();
   }
   private createVisual(): THREE.Group {
     const group = new THREE.Group(); group.name = 'player-level-up-burst';
     const ring = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
     ring.name = 'progression-ground-ring'; ring.rotation.x = -Math.PI / 2; ring.position.y = .055;
     group.add(ring);
-    for (let mote = 0; mote < MOTES_PER_MEMBER; mote++) group.add(new THREE.Mesh(this.moteGeometry, this.moteMaterial));
+    for (let mote = 0; mote < MOTES_PER_MEMBER; mote++) group.add(new THREE.Mesh(this.moteGeometry, mote % 2 ? this.moteMaterial : this.aquaMoteMaterial));
     this.scene.add(group); this.visuals.push(group); return group;
   }
 }

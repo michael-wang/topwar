@@ -47,6 +47,8 @@ export class ProjectileRenderer {
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
     this.ensureCapacity(projectiles.length);
     const afterglow = nowMs < this.afterglowUntilMs;
+    this.glowMaterial.color.set(afterglow ? ART.coastalUi.aqua : ART.fx.gold);
+    this.tracerMaterial.color.set(afterglow ? ART.coastalUi.energy : ART.fx.core);
     this.glowMaterial.opacity = afterglow ? .55 : .28;
     const activeIds = new Set<number>();
     for (let index = 0; index < projectiles.length; index++) {

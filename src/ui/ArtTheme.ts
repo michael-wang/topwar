@@ -5,4 +5,5 @@ export function applyArtTheme(viewport: HTMLElement): void {
     highlight: ART.bar.highlight, paper: ART.bar.paper, shadow: ART.bar.shadow,
     'xp-gradient': XP_FILL_GRADIENT, 'xp-glow': ART.xp[0].color };
   for (const [name, value] of Object.entries(values)) viewport.style.setProperty(`--art-${name}`, value);
+  for (const [name, value] of Object.entries(ART.coastalUi)) viewport.style.setProperty(`--coast-${name}`, value);
 }

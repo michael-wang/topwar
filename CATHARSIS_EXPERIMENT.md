@@ -110,12 +110,10 @@ a physical-phone claim. Density and gameplay never vary with FPS.
 
 ## Retained visual cleanup
 
-XP now has distinct **pale-blue → cyan-white → warm ivory → bright gold** resource
-semantics. Deliberate stops at 0/40/60/70/82/90/100% keep blue and yellow separated
-by a near-white bridge, avoiding an obvious green middle. The gradient remains
-fixed to the full track and is progressively masked. Its leading-edge glow uses
-the same palette stops. The frame, 70/90% anticipation, level-up flash/label pop,
-no-numeric-XP rule and underlying XP/progression logic are retained.
+XP presentation now follows **deep sea → aqua → foam**. The gradient remains
+fixed to the full track and progressively masked, with a matching leading edge.
+The slim plaster/navy frame, 70/90% crest anticipation, full flash/label pop and
+no-numeric-XP rule follow the coastal UI guardrail. XP/progression logic is unchanged.
 
 The fixed authored Giant HP is now **172**. Isolated seeds 1/17/42, at 44/38/30
 units respectively, each measure **24.48 s** from first damage to death at LV6
@@ -125,7 +123,7 @@ single, 12.75–12.98 s pair). The previously authored HP tuning is retained; 12
 the first encounter timing and all player/ordinary-enemy stats stay fixed. Giant reveal/death and post-assault elite scheduling follow the current experiment above.
 Snapshots retain their saved effective balance; existing snapshots need no migration.
 
-## Art Phase 1.1 — Coastal Cleanup + Faction Palette
+## Art Phase 1.2 — Coastal UI Integration
 
 The defense presentation now follows **a sunlit coastal diorama under violent
 assault**: large warm off-white plaster masses, turquoise shallows/deeper blue
@@ -149,14 +147,21 @@ remain. Fires move beside the new side wreckage; carriers sit smaller/farther
 out to leave the sea readable. Legacy industrial skyline/blanket haze is hidden
 only in defense mode. The 10-second power window and landing-craft cue remain.
 
-The brass/ink HP/XP frame family, fixed-width blue-to-gold XP reveal, 70/90%
-anticipation, level-up spectacle and hit/death effects are retained. Centralized
+Defense UI now uses **PLASTER + SEA + SUNLIGHT**: slim plaster XP signage,
+navy text, fixed full-width sea/aqua/foam reveal, 70/90% crest anticipation,
+light Pause/TUNE buttons and practical matching TUNE controls. The top-center
+DEFEND HUD is no longer constructed. A single desktop/touch movement hint fades
+in presentation after nine seconds; no Pause/TUNE hints or tutorial state.
+Level Up keeps its timing/scale/audio but uses aqua/foam rings/motes, ivory body
+wash, cyan-white weapon afterglow and cool-shadowed text. Hit/death feedback and
+enemy health bars remain unchanged. Flowers are tiny procedural blossom cards
+attached to vines rather than large helmet-like magenta geometric masses. Centralized
 faction colors now use clean coastal blue, raspberry/crimson, gold-yellow, warm
 skin and navy equipment. Heavy has a separate darker crimson tunic; skin/hair
 are not multiplied by its instance tint. No character geometry is redesigned. Simulation, snapshots, authored data, population, progression, input
 and animation are unchanged. [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) records
 reusable palette/material/lighting/composition/motion guardrails. Portrait
-before/after evidence is in `artifacts/coastal-cleanup/`.
+before/after evidence is in `artifacts/coastal-ui/`.
 
 ## Retained animation presentation
 
@@ -233,30 +238,30 @@ TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 give
 6 Hz). These values are runtime-loaded and retained/validated in snapshots.
 Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs or enemy HP changes.
 
-The bottom HUD shows **LV N only**, with no routine numeric XP. Its shaped dark
-track keeps beveled warm borders and inset depth. The pale-blue→white→gold
-**gradient spans the full track width**, progressively revealed with a clip mask;
-it is never stretched across the filled segment. At 20% pale blue is revealed,
-50% is brighter blue/cyan, 75% reaches warm ivory, and 90–100% reveals bright yellow/gold. The leading-edge glow follows that progression.
+The bottom HUD shows **LV N only**, with no routine numeric XP. Its slim plaster
+frame, translucent backing, navy text and cool shadow follow coastal UI rules.
+The sea→aqua→foam **gradient spans the full track width**, progressively revealed
+with a clip mask; it is never stretched across the filled segment. The leading
+edge brightens toward foam as a level approaches.
 The traveling sheen remains subtle. At 70% glow strengthens; at 90% it pulses.
 Forward mask/edge updates interpolate over 120 ms. Large same-level gains
 (at least 20% of the requirement) use a brief **260 ms** reveal so the Giant
 reward is visible; XP and level power are granted immediately in simulation.
 
 One disposable `progressionLevelUp` event coordinates the entire presentation:
-**800 ms** HUD gold/white pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message
+**800 ms** HUD aqua/foam pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message
 (the reinforcement unlock omits the explanatory subtitle).
 For the first **240 ms** the bar flashes full, then resets immediately to actual
 new-level overflow; the old level label becomes the new one with a pop at 120 ms.
 Combat does not pause. Multi-level grants carry a from/to range and share one
 coherent beat instead of stacking duplicate visual/audio bursts.
 
-Each visible soldier gets an **800 ms** expanding warm ground ring, emissive
+Each visible soldier gets an **800 ms** expanding aqua ground ring, emissive
 body/helmet/vest wash, a brief 20% presentation scale pulse, and eight rising
-energy motes. A reusable pool covers up to 24 members, sharing geometry/materials;
+aqua/foam energy motes. A reusable pool covers up to 24 members, sharing geometry/materials;
 the current single soldier and multiple-member fixtures are verified. Rifle tiers
 and gameplay hitboxes are untouched. The next **1400 ms** uses a 1.9× brighter
-warm muzzle flash (90 ms rather than 50 ms) and stronger tracer glow (.55 opacity
+cyan-white muzzle flash (90 ms rather than 50 ms) and stronger tracer glow (.55 opacity
 versus .28, 1.2× Rifle width). Damage, range and the weapon model stay unchanged.
 The existing modest ascending two-tone audio cue remains at its prior volume.
 
@@ -411,11 +416,11 @@ crash and armor-breakup sequence above; normal enemy deaths remain six points /
 260 ms. Renderer-owned geometry/materials reset/dispose; borrowed soldier geometry
 remains intact. No collision avoidance or new animation framework is added.
 
-The lower-left instruction group now has **transparent backing**, quiet small
-text/shadow, and includes the mobile tap hint. The separate bottom-center hint
-is removed. Safe-area positioning leaves a gap above the XP bar, and the group
-remains pointer-transparent. The existing temporary instruction hide during the
-level-up announcement is retained.
+The lower-left instruction uses transparent backing and navy text/pale shadow.
+Defense shows only desktop lane stepping or coarse-pointer touch stepping and
+fades after a short CSS onboarding duration. Pause/TUNE instructions and the
+separate bottom-center hint are absent. Safe-area spacing keeps it above XP;
+all hint/XP presentation is pointer-transparent.
 
 The one LV7 reinforcement is the only squad-growth reward. No new player weapon,
 upgrade choice or further recruitment is introduced. XP thresholds, Grunt 1 HP /
@@ -432,7 +437,7 @@ key-up, focus entering a HUD control, window blur, Pause/stop and Retry clear ti
 
 Mobile remains one tap released on the gameplay area's left/right half = one lane.
 Swipes and mobile holds do not steer. HUD, Pause, TUNE and Retry receive their own
-input. The compact DEFEND label shows the selected lane immediately. Retry starts
+input. Selected-lane state stays internal without the DEFEND label. Retry starts
 at the middle lane and retains live tuning.
 
 TUNE previously left focus on a hidden slider after closing, so lane input correctly
@@ -598,7 +603,7 @@ Portrait captures in `artifacts/reinforcement/` use **390×844 / DPR2**. The nat
 LV7/arrival/formation/firing sequence is seed 1; seed 17 supplies the crowded
 Giant death/reward sequence. A controlled isolated LV7 fixture supplies two soldiers
 fighting the same Giant without other natural encounters in that isolated fixture.
-The reward visibly moves the current pale-blue-to-gold bar without numeric XP. The
+The reward visibly moves the current sea-to-foam bar without numeric XP. The
 entrance comes from below the frame, both bodies remain distinct, and no multiplier
 label appears. The original level-up spectacle stays readable. Mobile left tap
 moves one lane with both members retained; Pause/TUNE respond. Actual Retry returns

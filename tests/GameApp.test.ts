@@ -46,6 +46,8 @@ const mock = vi.hoisted(() => ({
   pauseVisible: vi.fn(),
   pauseDispose: vi.fn(),
   hintDispose: vi.fn(),
+  xpConstructed: vi.fn(),
+  laneConstructed: vi.fn(),
   hudConstructedWith: vi.fn(),
   hudSetPaused: vi.fn(),
   hudDispose: vi.fn(),
@@ -119,6 +121,13 @@ vi.mock('../src/ui/PauseOverlay', () => ({ PauseOverlay: class {
 } }));
 vi.mock('../src/ui/ControlHint', () => ({ ControlHint: class {
   dispose = mock.hintDispose;
+} }));
+vi.mock('../src/ui/LaneHud', () => ({ LaneHud: class {
+  constructor() { mock.laneConstructed(); }
+} }));
+vi.mock('../src/ui/XpHud', () => ({ XpHud: class {
+  constructor(viewport: HTMLElement) { mock.xpConstructed(viewport); }
+  update = vi.fn(); reset = vi.fn(); presentLevelUp = vi.fn(); dispose = vi.fn();
 } }));
 vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
   element = {} as HTMLElement;
@@ -972,4 +981,16 @@ it('dispatches one shared progression beat per gain, coalesces overflow and rese
   expect(mock.presentLevelUp.mock.lastCall?.[0]).toEqual({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 });
   expect(mock.presentLevelUp).toHaveBeenCalledTimes(3);
   app.dispose(); play.mockRestore();
+});
+
+it('constructs defense XP presentation without constructing the obsolete lane-number HUD', () => {
+  createRaf();
+  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+  const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
+  const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+  const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+  expect(mock.xpConstructed).toHaveBeenCalledWith(viewport);
+  expect(mock.laneConstructed).not.toHaveBeenCalled();
+  expect(viewport.classList.add).toHaveBeenCalledWith('beachhead-defense');
+  app.dispose();
 });

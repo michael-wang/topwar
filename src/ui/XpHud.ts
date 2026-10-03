@@ -17,6 +17,7 @@ export class XpHud {
   private gainUntilMs = -Infinity;
   constructor(viewport: HTMLElement) {
     this.element.className = 'xp-hud';
+    this.element.style.pointerEvents = 'none';
     this.label.className = 'xp-level';
     const track = document.createElement('div');
     track.className = 'xp-track';

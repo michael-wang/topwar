@@ -16,6 +16,7 @@ afterEach(() => vi.unstubAllGlobals());
 it('shows only the level and truthful fill percentage, with anticipation at 70/90 percent', () => {
   const { hud, root } = make();
   hud.update({ level: 1, xp: 14 }, balance, 0);
+  expect(root.style.pointerEvents).toBe('none');
   expect(root.children[0].textContent).toBe('LV 1');
   expect(root.children[1].children[0].style.clipPath).toBe('inset(0 50% 0 0 round .45rem)');
   expect(root.classes.has('xp-charged')).toBe(false);
@@ -70,12 +71,12 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
 });
 
-it('uses a blue XP edge early and a gold edge near full without changing the frame/mask semantics', () => {
+it('uses a deep-sea XP edge early and a foam edge near full without changing the frame/mask semantics', () => {
   const { hud, root } = make(), edge = root.children[1].children[1];
   const testBalance = { ...balance, xpRequirements: [100] };
   hud.update({ level: 1, xp: 20 }, testBalance, 0);
-  expect(edge.style.color).toBe('#b1daf3');
+  expect(edge.style.color).toBe('#2b8ea4');
   hud.update({ level: 1, xp: 90 }, testBalance, 100);
-  expect(edge.style.color).toBe('#ffdb6f');
+  expect(edge.style.color).toBe('#bae9e0');
   expect(root.classes.has('xp-imminent')).toBe(true);
 });
