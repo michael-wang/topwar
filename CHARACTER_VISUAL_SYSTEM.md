@@ -9,8 +9,10 @@ Phase 0 and its Phase 0.1 amendment freeze the visual direction and future asset
 contract. Phase 1 added named runtime role families while preserving shipping
 assets, appearance and gameplay. Phase 2A introduced the accepted original
 procedural Player prototype. Phase 2B's refined Player grammar is accepted.
-Phase 3A introduces the original amphibious Grunt prototype for human review. Further replacement
-or polish requires separate authorization; the complete system is not final.
+Phase 3A established an amphibious Grunt prototype that was not accepted as
+the final direction. Phase 3B simplifies Grunt into a clothed rounded figurine
+for human review. Further replacement or polish requires separate authorization;
+the complete system is not final.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
 existing gameplay model, faction semantics and Sunlit Coastal Battlefield
@@ -19,7 +21,7 @@ environment.
 **TARGET:** the full two-head character system described below.
 
 **CURRENT SHIPPING:** Player retains the accepted Phase 2B two-head refinement.
-Grunt uses the Phase 3A bare-torso amphibious prototype. Heavy, Giant and Boss
+Grunt uses the Phase 3B rounded shirt/shorts simplification. Heavy, Giant and Boss
 retain their explicit legacy assets, palettes, motion and feedback. Heavy's
 amphibious direction and the complete character system remain future targets.
 
@@ -134,21 +136,21 @@ an unrelated style.
 
 The enemies across the sea are still human beings. TopWar's original sea-borne
 landing troops should feel human, physical, vulnerable, numerous and determined,
-with slightly absurd effort within the two-head system. Exposed warm skin and
-simple human anatomy make that humanity readable beneath oversized helmets;
+with slightly absurd effort within the two-head system. Visible warm faces and
+hands make that humanity readable beneath oversized helmets;
 avoid monsters, robots and anonymous armored blobs.
 
 Derive an original visual family. Do not copy Republic of China Marine Corps
 uniforms, real unit insignia or patches, exact helmet models, exact camouflage
 patterns, rank markings or identifiable contemporary military loadouts.
-Camouflage uses only a few broad original shapes that read at mobile scale.
-Helmet-first identity matters more than uniform detail.
+The basic Grunt wears plain graphic clothing, without camouflage or tactical
+detail. Helmet-first identity matters more than uniform detail.
 
 Faction contrast is intentional: Player is the organized, clothed coastal
 defender; enemies are improvised, aggressive amphibious landing infantry. Both
 sides remain visibly human, cute and absurd rather than a realistic war simulation.
-Exposed enemy skin must retain enough value / hue separation from warm sand under
-the actual coastal lighting.
+Grunt's cool muted shirt must separate from warm sand under the actual coastal
+lighting. Visible skin remains a human cue, not a faction color code.
 
 ## Player
 
@@ -179,7 +181,7 @@ communicate control, aiming or power.
 ### Body
 
 Remain clothed and organized, with a clean uniform / body treatment. Do not adopt
-the enemy bare-torso language. Use only a few broad armor / clothing forms.
+bare-torso styling. Use only a few broad armor / clothing forms.
 
 Avoid realistic tactical equipment.
 
@@ -293,7 +295,7 @@ Review evidence lives in `artifacts/player-chibi-polish/`, with direct Phase
 Level-Up/afterglow sequence and two-defender firing/movement are also sampled.
 The head remains subordinate from the rear, hands remain abstract mittens, and
 the forward shoe is partly occluded by the tunic at peak lifted stride. These
-remain known visual compromises. Phase 2B is accepted and unchanged by Phase 3A.
+remain known visual compromises. Phase 2B is accepted and unchanged by Phase 3B.
 Heavy retains legacy geometry; its amphibious art remains pending later implementation.
 
 ## Grunt
@@ -309,10 +311,10 @@ They are the primary crimson intrusion into the beautiful coast.
 
 - Approximately two-head proportion.
 - Proportionally large helmet.
-- Small compact body with a generally bare upper torso.
-- Original, simplified camouflage shorts.
-- Large active shoes.
-- Readable detached hand motion.
+- One short, rounded egg/bean body with a simple shirt.
+- Plain shorts as a darker lower color block.
+- Large active detached shoes.
+- Small detached spherical hands with readable swing.
 
 ### Helmet
 
@@ -328,12 +330,11 @@ Do not communicate threat through evil facial expressions.
 
 ### Equipment
 
-Use an exposed skin torso, simplified camouflage shorts, large shoes and
-simplified / detached hands beneath the oversized helmet. Do not cover Grunt in
-a conventional military vest unless a later gameplay role requires it.
-
-Keep equipment minimal. Shorts should read as "camouflage shorts" through a few
-broad patches, without historical or national identification.
+Use one main rounded body volume with a broad plain shirt and coordinated
+plain shorts. The basic Grunt is clothed; bare torso and camouflage shorts are
+superseded. No anatomical chest, layered costume masses, tactical vest, pouches,
+straps or military detail. Hands are small spheres without thumbs or arms;
+large shoes remain detached. Avoid a belt unless it clearly improves the read.
 
 Do not add a prominent firearm while the gameplay archetype remains a
 contact / charging threat.
@@ -342,10 +343,10 @@ contact / charging threat.
 
 Use the existing raspberry / crimson enemy family as the starting point.
 
-The color hierarchy is helmet / enemy-role color, warm human skin, camouflage
-shorts, then dark shoes / small equipment. Keep exposed skin readable against sand.
-
-Avoid dirty military browns and global desaturation.
+The color hierarchy is crimson helmet, cool muted shirt, darker companion
+shorts, navy-charcoal shoes, then warm skin. The shirt must separate from sand
+without becoming Player-blue or competing with the helmet. Each garment uses
+one broad color: no patches, camouflage, texture noise or realistic folds.
 
 ### Motion
 
@@ -361,67 +362,48 @@ reinforce urgency. The body can be smaller and simpler than the Player's.
 The crowd should remain lively without requiring a high-cost skeletal hierarchy
 per enemy.
 
-### Current Phase 3A Grunt prototype
+### Current Phase 3B Grunt simplification
 
 `ChibiGruntFamily` builds original deterministic static geometry without GLBs,
-textures, external authoring, atlas UV selectors or a runtime skeleton. It is
-an original human landing trooper, with no identifiable uniform, insignia or
-national camouflage. The prototype awaits human visual review; it is not the
-final Grunt design.
+textures, external authoring, atlas UV selectors or a runtime skeleton. This is
+an original human landing trooper, not a copied uniform or franchise character.
+Phase 3A's bare/faceted torso, camouflage and thumb mittens are superseded;
+Phase 3B remains a design correction pending human review, not a final approval.
 
-The live structure uses one body batch per run pose plus helmet and waistband
-batches per tier. The parts are one merged body (large head, bare torso, shorts, detached thumb mittens and
-large shoes), a broad low pot helmet with a thick lip, and a narrow waistband.
-The compatibility `vest` slot means waistband for this family, not chest armor.
-Tiny neutral face marks are merged into the body. There is no weapon or
-connecting limb anatomy. Low-segment ellipsoids/cylinders and 44-triangle
-beveled blocks bound the geometry cost; only shorts subdivide front/rear faces
-for a few broad irregular olive, taupe and navy vertex-color patches.
+One smooth-shaded ellipsoid (0.50 wide × 0.34 high × 0.38 deep) replaces the
+separate torso/shorts masses. A latitude boundary divides this one volume into
+plain cool gray-green shirt `#a4bcb6` and darker slate-green shorts `#526967`.
+There is no belt or secondary visible gear. The required compatibility `vest`
+slot is an explicitly hidden zero-vertex adapter. Live and pooled crowd meshes
+honor that secondary visibility, restoring legacy gear when a feedback slot
+is reused by Heavy/Giant. Batch sharing also compares secondary visibility.
 
-Crown height remains 1.025 authored units, with the head zone starting at 0.47
-(about 54% of standing height). At the actual portrait camera, reference height
-is 36.07 CSS pixels versus legacy 36.58 (-1.4%). Idle body width is 0.80 versus
-legacy 0.908. Warm skin uses the same `ART.faction.skin` as Player; helmet and
-dark shoes provide contrast against coastal sand. No global lighting change is
-used to improve skin separation.
+The merged body still includes the unchanged large head/tiny neutral face,
+two detached spherical hands (radius 0.057), and unchanged large navy shoes.
+The pot helmet, thick lip and enemy tier palette are unchanged. Crown remains
+1.025 authored units; actual portrait reference height is unchanged from
+Phase 3A. Skin remains Player's `ART.faction.skin`. No lighting/world change is
+used to create the new clothing contrast.
 
-Four authored rigid locomotion poses alternate shoes by up to 0.16 units
-fore/aft and 0.08 upward, with opposing hand displacement of 0.125. The existing
-360 ms `enemyRunFrame` clock, asynchronous ID phase and Grunt root lean/bob/sway
-remain unchanged. No per-Grunt hierarchy, loop, skeleton or material is added.
+Four authored rigid poses retain shoe translation up to 0.16 fore/aft and 0.08
+upward, hand counter-swing up to 0.125, the 360 ms `enemyRunFrame` clock,
+asynchronous ID phase and existing Grunt root lean/bob/sway. No motion timing
+or gameplay changes. `CrowdPresentation` retains vertex colors and neutral
+white body instance tint. Contact uses these revised reference parts; death
+uses their grayscale copy. The 80 ms helmet hit, 240 ms contact, 480 ms death,
+48-slot feedback pools and DeathBurst semantics remain. Shadow stays 0.68×0.42.
 
-`CrowdPresentation` explicitly distinguishes authored vertex colors/white body
-instance tint from legacy atlas/tunic tint. Helmet and waistband retain the
-existing enemy tier palette. Grunt's 80 ms live hit remains helmet/waistband
-dominant without recoloring skin. Contact uses its new reference silhouette;
-death uses a grayscale copy of that same merged body. Existing 240 ms contact,
-480 ms death, bounded 48-slot pools and DeathBurst timing remain unchanged.
-Pool reuse rebinds resources/material preparation when switching roles. The
-0.68×0.42 enemy shadow footprint remains appropriate for the compact feet/body;
-it is not enlarged to match the helmet.
+The family still owns eight source geometries (including the empty adapter)
+and three matte materials, disposed by CharacterAssets. EnemyRenderer owns
+its instancing buffers/cloned gear and feedback materials. No new texture or
+asset download is introduced. Heavy, Giant and Boss retain independent legacy
+resources and presentation; Player remains the accepted Phase 2B family.
 
-The family owns eight source geometries and three matte materials;
-`CharacterAssets` disposes them. EnemyRenderer borrows those resources and owns
-instancing buffers, cloned gear materials and pooled feedback materials.
-Heavy keeps raw legacy normal idle/run/gray resources and 650 ms gait. Giant's
-base/contact records and Boss's body/run/slam/shared helmet records remain
-independent of Grunt, including Giant's explicit legacy contact material policy.
-Matching legacy families can still share batches. The shipping new Grunt and
-legacy Heavy have different geometry/material policies and therefore split.
-
-The matching 35-Grunt/one-Heavy/one-Player portrait fixture changes from 138 to
-141 draws and 33,280 to 37,596 triangles. Pure 50/100/150/200-Grunt fixtures retain
-136 draws and add about 124 triangles per Grunt (pose-dependent). At 200 Grunts,
-triangles are 145,193→169,906. No textures/downloads are added: the 19 legacy
-character requests remain 532,448 bytes because Heavy/Giant/Boss still need them.
-The JS delta is +4,559 bytes (+1,508 gzipped). These are desktop Chrome software
-renderer measurements, not physical-phone performance claims.
-
-Evidence and reproducible QA scripts live in `artifacts/grunt-chibi-prototype/`:
-portrait crowds, mixed Heavy, outer/near-contact states, feedback, 0–360 ms gait
-strip, asynchronous group, close camouflage views, black silhouettes and
-helmet-only comparison. Isolated Player/Heavy/Giant/Boss and legacy feedback
-guards remain pixel-identical. Heavy, Giant, Boss and ships are not redesigned.
+Review evidence lives in `artifacts/grunt-chibi-simplify/`: Phase 3A/3B isolated
+and crowd comparisons, Player/Grunt colors and silhouettes, plain clothing
+inspection, full gait strip, mixed Heavy, near-contact and outer-lane views,
+feedback, untouched-role guards and matching performance metrics. Stop for
+human review before further Grunt refinement or any Heavy work.
 
 ## Heavy
 
@@ -455,7 +437,7 @@ Use one or two unmistakable large forms rather than many small decorations.
 ### Body
 
 Heavy belongs to the same landing force and retains visible human skin beneath
-large equipment. It must not become a large bare-chested Grunt or a fully enclosed
+large equipment. It must not simply enlarge the basic Grunt or become a fully enclosed
 armored fantasy unit.
 
 A broad harness, one or two heavy straps, partial chest plate, heavy waist armor
@@ -760,7 +742,7 @@ Replace the Player's old anatomy-dependent pivots/weights only with the selected
 new family's motion strategy. Validate the weapon and its muzzle together.
 
 Phase 2A's core direction and Phase 2B's refined Player grammar are accepted.
-Player remains unchanged during the separately authorized Phase 3A prototype.
+Player remains unchanged during the separately authorized Phase 3 Grunt passes.
 
 ### Phase 3 — Grunt
 
@@ -771,8 +753,8 @@ Keep the legacy Heavy, Giant and Boss families pinned to their existing geometry
 until their own approved replacement. Changing Grunt must not silently restyle
 those consumers. Include role-correct hit, death and contact representations.
 
-Phase 3A currently implements the Grunt prototype described above. Stop for
-human review before final Grunt polish, Heavy or any additional visual phase.
+Phase 3B currently implements the simplified Grunt described above. Stop for
+human review before further Grunt work, Heavy or any additional visual phase.
 
 ### Phase 4 — Heavy
 

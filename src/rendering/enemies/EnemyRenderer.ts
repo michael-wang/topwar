@@ -370,7 +370,11 @@ export class EnemyRenderer {
         material.depthWrite = false;
         return material;
       });
-      models.forEach((model, index) => group.add(new THREE.Mesh(model.geometry, materials[index])));
+      models.forEach((model, index) => {
+        const mesh = new THREE.Mesh(model.geometry, materials[index]);
+        mesh.visible = model.visible;
+        group.add(mesh);
+      });
       this.scene.add(group);
       visual = { parts, group, materials, startedAtMs: nowMs, x, z, direction: 1, scale: new THREE.Vector3() };
       this.contactVisuals.push(visual);
@@ -388,6 +392,7 @@ export class EnemyRenderer {
         const mesh = visual!.group.children[index] as THREE.Mesh;
         mesh.geometry = model.geometry;
         mesh.material = material;
+        mesh.visible = model.visible;
       });
       visual.parts = parts;
     }
@@ -441,6 +446,7 @@ export class EnemyRenderer {
       const body = new THREE.Mesh(parts.body.geometry, bodyMaterial);
       const helmet = new THREE.Mesh(parts.helmet.geometry, gearMaterial);
       const vest = new THREE.Mesh(parts.vest.geometry, gearMaterial);
+      vest.visible = parts.vest.visible;
       group.add(body, helmet, vest);
       this.scene.add(group);
       visual = { parts, group, bodyMaterial, gearMaterial, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false };
@@ -459,6 +465,7 @@ export class EnemyRenderer {
         const mesh = visual!.group.children[index] as THREE.Mesh;
         mesh.geometry = model.geometry;
         mesh.material = index === 0 ? visual!.bodyMaterial : visual!.gearMaterial;
+        mesh.visible = model.visible;
       });
       visual.parts = parts;
     }
@@ -510,6 +517,9 @@ export class EnemyRenderer {
     const mesh = new THREE.InstancedMesh(vest ? batch.family.vest.geometry : batch.family.helmet.geometry,
       batch.helmetMaterial, capacity);
     mesh.name = `${tier}-toy-soldier-${vest ? 'vest' : 'helmet'}`;
+    // An explicitly hidden secondary source retains the legacy resource slot
+    // while contributing no live draw (the simplified Grunt has no waistband).
+    mesh.visible = !vest || batch.family.vest.visible;
     mesh.count = 0;
     mesh.frustumCulled = false;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

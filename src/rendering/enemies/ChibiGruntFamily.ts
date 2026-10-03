@@ -3,13 +3,12 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ART } from '../../art/ArtDirection';
 import { ENEMY_GAIT_CYCLE_MS, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 
-export const GRUNT_CAMO = { olive: '#68734f', taupe: '#b9a785', dark: ART.faction.equipment } as const;
-type Part = { geometry: THREE.BufferGeometry; color: string; camouflage?: boolean };
+export const GRUNT_CLOTHING = { shirt: '#a4bcb6', shorts: '#526967' } as const;
+type Part = { geometry: THREE.BufferGeometry; color: string; shortsBelowY?: number };
 
 function rounded(x: number, y: number, z: number, width: number, height: number, depth: number,
-  radius = .035, patchGrid = false): THREE.BufferGeometry {
+  radius = .035): THREE.BufferGeometry {
   // One bevel per edge: 44 triangles instead of 108 for a segmented rounded box.
-  // The shorts alone split front/rear faces into broad color-patch regions.
   const half = [width / 2, height / 2, depth / 2], inset = half.map(value => value - radius);
   const positions: number[] = [];
   const polygon = (vertices: THREE.Vector3[]) => {
@@ -20,14 +19,12 @@ function rounded(x: number, y: number, z: number, width: number, height: number,
     for (let i = 1; i < vertices.length - 1; i++) for (const point of [vertices[0], vertices[i], vertices[i + 1]]) positions.push(...point.toArray());
   };
   for (let axis = 0; axis < 3; axis++) for (const sign of [-1, 1]) {
-    const a = (axis + 1) % 3, b = (axis + 2) % 3, grid = patchGrid && axis === 2 ? 3 : 1;
-    for (let row = 0; row < grid; row++) for (let col = 0; col < grid; col++) {
-      polygon([[row, col], [row + 1, col], [row + 1, col + 1], [row, col + 1]].map(([u, v]) => {
-        const point = [0, 0, 0]; point[axis] = sign * half[axis];
-        point[a] = inset[a] * (u * 2 / grid - 1); point[b] = inset[b] * (v * 2 / grid - 1);
-        return new THREE.Vector3(...point);
-      }));
-    }
+    const a = (axis + 1) % 3, b = (axis + 2) % 3;
+    polygon([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sa, sb]) => {
+      const point = [0, 0, 0]; point[axis] = sign * half[axis];
+      point[a] = inset[a] * sa; point[b] = inset[b] * sb;
+      return new THREE.Vector3(...point);
+    }));
   }
   for (let axis = 0; axis < 3; axis++) {
     const a = (axis + 1) % 3, b = (axis + 2) % 3;
@@ -61,16 +58,11 @@ function merge(parts: Part[]): THREE.BufferGeometry {
     const colors = new Float32Array(positions.count * 3);
     const color = new THREE.Color(part.color);
     for (let i = 0; i < positions.count; i += 3) {
-      if (part.camouflage) {
-        // Few broad, original patches, flat within each triangle. No UV selector
-        // or recognizable national pattern; both front and rear read as shorts.
-        const x = (positions.getX(i) + positions.getX(i + 1) + positions.getX(i + 2)) / 3;
+      if (part.shortsBelowY !== undefined) {
+        // One continuous rounded volume, two plain color blocks. The boundary
+        // follows a latitude ring, without a separate belt or garment layer.
         const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
-        const z = (positions.getZ(i) + positions.getZ(i + 1) + positions.getZ(i + 2)) / 3;
-        const side = z >= 0 ? x : -x;
-        const taupePatch = ((side + .09) / .12) ** 2 + ((y - .265) / .055) ** 2 < 1.3;
-        color.set(taupePatch ? GRUNT_CAMO.taupe
-          : side > -.02 && y < .235 + side * .25 ? GRUNT_CAMO.dark : GRUNT_CAMO.olive);
+        color.set(y < part.shortsBelowY ? GRUNT_CLOTHING.shorts : part.color);
       }
       for (let vertex = i; vertex < i + 3; vertex++) color.toArray(colors, vertex * 3);
     }
@@ -87,17 +79,14 @@ function merge(parts: Part[]): THREE.BufferGeometry {
 // Four authored rigid poses retain the existing asynchronous 360 ms crowd clock.
 // +Z faces forward, ground origin is zero. No skeleton or per-entity motion object.
 function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
-  const hands = [-1, 1].flatMap(side => {
-    const x = side * (.335 + Math.abs(stride) * .015), z = side * stride * .125;
-    return [
-      { geometry: rounded(x, .365, z, .13, .115, .10, .04), color: ART.faction.skin },
-      { geometry: sphere(x - side * .055, .37, z + .025, .032, .026, .04, 6, 3), color: ART.faction.skin },
-    ];
-  });
+  const hands = [-1, 1].map(side => ({
+    geometry: sphere(side * (.335 + Math.abs(stride) * .015), .365, side * stride * .125,
+      .057, .057, .057), color: ART.faction.skin,
+  }));
   return merge([
-    { geometry: rounded(0, .385, 0, .47, .22, .32, .08), color: ART.faction.skin },
+    { geometry: sphere(0, .34, 0, .25, .17, .19, 12, 7), color: GRUNT_CLOTHING.shirt,
+      shortsBelowY: .34 + .17 * Math.cos(Math.PI * 4 / 7) },
     { geometry: sphere(0, .67, 0, .28, .20, .255, 12, 6), color: ART.faction.skin },
-    { geometry: rounded(0, .23, 0, .45, .14, .34, .035, true), color: GRUNT_CAMO.olive, camouflage: true },
     ...hands,
     { geometry: rounded(-.165 - Math.abs(stride) * .02, .06 + liftLeft, stride * .16,
       .25, .12, .35, .04), color: ART.faction.equipment },
@@ -129,13 +118,19 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
     { geometry: new THREE.CylinderGeometry(.37, .37, .035, 16).scale(1, 1, .92)
       .translate(0, .74, 0), color: '#c0aaaa' },
   ]);
-  // Compatibility slot "vest" holds only a waistband; the upper torso is bare.
-  const waistGeometry = merge([{ geometry: new THREE.CylinderGeometry(.237, .237, .035, 8)
-    .scale(1, 1, .73).translate(0, .297, 0), color: '#8e7777' }]);
+  // The shared legacy contract still requires a vest resource. A zero-vertex
+  // adapter removes visible secondary gear without changing other role renderers
+  // or allocating a new material. It contributes no triangles or mesh draw.
+  const waistGeometry = new THREE.BufferGeometry();
+  for (const attribute of ['position', 'normal', 'color'])
+    waistGeometry.setAttribute(attribute, new THREE.Float32BufferAttribute([], 3));
+  waistGeometry.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+  waistGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 0);
   const matte = () => new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1, metalness: 0 });
   const bodyMaterial = matte(), gearMaterial = matte(), deathMaterial = matte();
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial);
   const vest = new THREE.Mesh(waistGeometry, gearMaterial);
+  vest.visible = false;
   return {
     role: 'grunt', id: 'topwar-amphibious-prototype', body, helmet, vest,
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored' },

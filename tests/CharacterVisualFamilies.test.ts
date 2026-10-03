@@ -112,6 +112,12 @@ describe('named character visual families', () => {
     expect(scene.children).toHaveLength(0);
   });
 
+  it('splits a batch when otherwise shared secondary geometry has different visibility', () => {
+    const families = characterFamilies();
+    const hidden = families.grunt.vest.clone(); hidden.visible = false;
+    expect(canShareCrowdBatch({ ...families.grunt, vest: hidden }, families.heavy)).toBe(false);
+  });
+
   it('isolates live geometry, hit overlays, HP bounds and pooled feedback when only Grunt changes', () => {
     const legacy = characterFamilies(), replacement = characterFamilies();
     replacement.grunt.helmet.geometry.scale(1, 8, 1);

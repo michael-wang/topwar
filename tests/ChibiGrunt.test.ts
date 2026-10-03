@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
-import { createChibiGruntFamily, GRUNT_CAMO } from '../src/rendering/enemies/ChibiGruntFamily';
+import { createChibiGruntFamily, GRUNT_CLOTHING } from '../src/rendering/enemies/ChibiGruntFamily';
 import { prepareCrowdMaterial, type CrowdPresentation } from '../src/rendering/enemies/CrowdPresentation';
 import { canShareCrowdBatch } from '../src/rendering/CharacterVisualFamilies';
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
@@ -37,22 +37,44 @@ describe('original amphibious Grunt prototype', () => {
     expect(bounds.min.y).toBeCloseTo(0);
     expect(bounds.max.x - bounds.min.x).toBeLessThan(.907635 * 1.1);
     expect(a).not.toHaveProperty('weapon');
-    // Only a low waistband occupies the compatibility vest slot.
-    expect(a.vest.geometry.boundingBox!.max.y).toBeLessThan(.32);
+    // The compatibility secondary slot is empty: no visible belt or gear.
+    expect(a.vest.geometry.getAttribute('position').count).toBe(0);
+    expect(a.vest.visible).toBe(false);
     a.dispose(); b.dispose();
   });
 
-  it('retains warm human skin and three broad camo families as authored vertex colors', () => {
+  it('retains warm human skin and two plain clothing blocks as authored vertex colors', () => {
     const family = createChibiGruntFamily(), colors = family.body.geometry.getAttribute('color');
-    for (const value of [ART.faction.skin, ART.faction.equipment, ...Object.values(GRUNT_CAMO)]) {
+    for (const value of [ART.faction.skin, ART.faction.equipment, ...Object.values(GRUNT_CLOTHING)]) {
       const target = new THREE.Color(value);
       expect(Array.from({ length: colors.count }, (_, i) => new THREE.Color().fromBufferAttribute(colors, i))
         .some(color => Math.abs(color.r - target.r) + Math.abs(color.g - target.g) + Math.abs(color.b - target.b) < .00001)).toBe(true);
     }
+    const positions = family.body.geometry.getAttribute('position');
+    const clothingColors = new Set<string>();
+    for (let i = 0; i < positions.count; i++) {
+      if (positions.getY(i) > .16 && positions.getY(i) < .46 && Math.abs(positions.getX(i)) <= .251) {
+        clothingColors.add(new THREE.Color().fromBufferAttribute(colors, i).getHexString());
+      }
+    }
+    expect(clothingColors).toEqual(new Set(Object.values(GRUNT_CLOTHING).map(color => new THREE.Color(color).getHexString())));
     const gray = family.death.body.geometry.getAttribute('color');
     for (let i = 0; i < gray.count; i++) {
       expect(gray.getX(i)).toBeCloseTo(gray.getY(i)); expect(gray.getY(i)).toBeCloseTo(gray.getZ(i));
     }
+    family.dispose();
+  });
+
+  it('uses detached spherical hands with no thumb or connecting arm mass', () => {
+    const family = createChibiGruntFamily(), positions = family.body.geometry.getAttribute('position');
+    let handVertices = 0;
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
+      if (Math.abs(x) <= .27 || y <= .30 || y >= .43) continue;
+      expect(Math.hypot(Math.abs(x) - .335, y - .365, z)).toBeCloseTo(.057, 5);
+      handVertices++;
+    }
+    expect(handVertices).toBeGreaterThan(0);
     family.dispose();
   });
 
@@ -86,6 +108,9 @@ describe('original amphibious Grunt prototype', () => {
       helmet.getColorAt(0, color); expect(color.getHexString()).toBe(new THREE.Color(palette.body).getHexString());
     }
     expect(canShareCrowdBatch(grunt, families.heavy)).toBe(false);
+    const secondary = scene.children.filter(c => c.name.endsWith('toy-soldier-vest')
+      && (c as THREE.InstancedMesh).geometry === grunt.vest.geometry);
+    expect(secondary.every(mesh => !mesh.visible)).toBe(true);
     expect(material.onBeforeCompile).toBe(hook);
     renderer.dispose(); grunt.dispose();
   });
@@ -110,17 +135,22 @@ describe('original amphibious Grunt prototype', () => {
     const exchange = scene.getObjectByName('enemy-contact-exchange')!;
     expect((exchange.children[0] as THREE.Mesh).geometry).toBe(grunt.contact.body.geometry);
     expect((exchange.children[0] as THREE.Mesh).material).not.toBe(grunt.body.material);
+    expect(exchange.children[2].visible).toBe(false);
     for (const [e, parts, now] of [[h, legacy.heavy.contact, 1400], [giant, legacy.giant.contact, 1800], [g, grunt.contact, 2200]] as const) {
       renderer.update([], now - 10); renderer.update([e], now); renderer.present([contact(e.id)], now + 10); renderer.update([], now + 10);
       expect((exchange.children[0] as THREE.Mesh).geometry).toBe(parts.body.geometry);
+      expect(exchange.children[2].visible).toBe(parts.vest.visible);
     }
     renderer.update([], 2500); renderer.update([g], 2600); renderer.update([], 2610);
     const corpse = scene.children.find(c => c instanceof THREE.Group && (c.children[0] as THREE.Mesh)?.geometry === grunt.death.body.geometry)!;
     expect(corpse).toBeDefined();
+    expect(corpse.children[2].visible).toBe(false);
     renderer.update([], 3200); renderer.update([h], 3300); renderer.update([], 3310);
     expect((corpse.children[0] as THREE.Mesh).geometry).toBe(legacy.heavy.death.body.geometry);
+    expect(corpse.children[2].visible).toBe(true);
     renderer.update([], 3900); renderer.update([g], 4000); renderer.update([], 4010);
     expect((corpse.children[0] as THREE.Mesh).geometry).toBe(grunt.death.body.geometry);
+    expect(corpse.children[2].visible).toBe(false);
     expect(renderer.getDebugStats().contactVisuals).toBe(1); expect(renderer.getDebugStats().deathVisuals).toBe(1);
     renderer.dispose(); grunt.dispose();
   });

@@ -126,6 +126,7 @@ export function canShareCrowdBatch(a: CrowdVisualFamily, b: CrowdVisualFamily): 
     && a.presentation.bodyTint === b.presentation.bodyTint
     && a.helmet.material === b.helmet.material
     && a.helmet.geometry === b.helmet.geometry && a.vest.geometry === b.vest.geometry
+    && a.vest.visible === b.vest.visible
     && a.runFrames.length === b.runFrames.length
     && a.runFrames.every((frame, index) => frame.geometry === b.runFrames[index].geometry);
 }

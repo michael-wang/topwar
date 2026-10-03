@@ -1,0 +1,129 @@
+{
+  "normal": {
+    "baseline": {
+      "drawCalls": 136,
+      "triangles": 36916,
+      "geometries": 67,
+      "textures": 7
+    },
+    "prototype": {
+      "drawCalls": 135,
+      "triangles": 35236,
+      "geometries": 66,
+      "textures": 7
+    }
+  },
+  "mixed-heavy": {
+    "baseline": {
+      "drawCalls": 141,
+      "triangles": 37596,
+      "geometries": 67,
+      "textures": 9
+    },
+    "prototype": {
+      "drawCalls": 140,
+      "triangles": 35916,
+      "geometries": 66,
+      "textures": 9
+    }
+  },
+  "crowd-50": {
+    "baseline": {
+      "drawCalls": 136,
+      "triangles": 49006,
+      "geometries": 92,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.07100000001490116
+    },
+    "prototype": {
+      "drawCalls": 135,
+      "triangles": 46606,
+      "geometries": 91,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.07699999999254942
+    }
+  },
+  "crowd-100": {
+    "baseline": {
+      "drawCalls": 136,
+      "triangles": 89306,
+      "geometries": 92,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.13899999998509885
+    },
+    "prototype": {
+      "drawCalls": 135,
+      "triangles": 84506,
+      "geometries": 91,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.14300000000745058
+    }
+  },
+  "crowd-150": {
+    "baseline": {
+      "drawCalls": 136,
+      "triangles": 129606,
+      "geometries": 92,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.20599999997764826
+    },
+    "prototype": {
+      "drawCalls": 135,
+      "triangles": 122406,
+      "geometries": 91,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.21
+    }
+  },
+  "crowd-200": {
+    "baseline": {
+      "drawCalls": 136,
+      "triangles": 169906,
+      "geometries": 92,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.27200000002980235
+    },
+    "prototype": {
+      "drawCalls": 135,
+      "triangles": 160306,
+      "geometries": 91,
+      "textures": 13,
+      "cpuUpdateMedianMs": 0.28
+    }
+  },
+  "characterDownloads": {
+    "baseline": {
+      "requests": 19,
+      "bytes": 532448
+    },
+    "prototype": {
+      "requests": 19,
+      "bytes": 532448
+    }
+  },
+  "bundles": {
+    "baseline": {
+      "jsBytes": 974651,
+      "jsGzipBytes": 263399
+    },
+    "prototype": {
+      "jsBytes": 974520,
+      "jsGzipBytes": 263327
+    },
+    "characterDownloads": {
+      "baseline": 532448,
+      "prototype": 532448,
+      "removedRequests": []
+    }
+  },
+  "measurement": {
+    "viewport": {
+      "width": 390,
+      "height": 844,
+      "dpr": 2
+    },
+    "baselineCommit": "ee59abdf7c41b3fd8b22bd6fe9fcc700dc360238",
+    "geometryTextureCounts": "WebGL uploaded/cache counts at the same point in the identical QA sequence; feedback history is retained.",
+    "cpu": "Median of 7 warmed trials, 100 EnemyRenderer.update calls each. Chrome desktop software renderer, not phone FPS."
+  }
+}
