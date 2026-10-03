@@ -4,7 +4,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { ART } from '../../art/ArtDirection';
 import { HEAVY_GAIT_CYCLE_MS, type CrowdVisualFamily, type GiantVisualFamily } from '../CharacterVisualFamilies';
 
-export const THREAT_COLORS = { shirt: '#9d3045', shorts: '#303e4c', ochre: '#b09a63', helmet: '#b9324c' } as const;
+export const THREAT_COLORS = { shirt: ART.raider.body, shorts: ART.raider.shorts,
+  stone: ART.raider.stone, helmet: ART.raider.helmet } as const;
 type Part = { geometry: THREE.BufferGeometry; color: string; lower?: number };
 const ball = (x: number, y: number, z: number, rx: number, ry: number, rz: number, segments = 12, rings = 6) =>
   new THREE.SphereGeometry(1, segments, rings).scale(rx, ry, rz).translate(x, y, z);
@@ -51,8 +52,8 @@ function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeo
     { geometry: ball(0, .65, 0, .29, .20, .25), color: ART.faction.skin },
     ...face(.655, .254, .026),
     ...[-1, 1].map(side => ({ geometry: ball(side * .41, .34, side * stride * .12, .11, .115, .115, 8, 4), color: ART.faction.skin })),
-    { geometry: block(-.25 - (liftLeft > .05 ? .045 : 0), .07 + liftLeft, stride * .13, .32, .14, .38), color: ART.faction.equipment },
-    { geometry: block(.25 + (liftRight > .05 ? .045 : 0), .07 + liftRight, -stride * .13, .32, .14, .38), color: ART.faction.equipment },
+    { geometry: block(-.25 - (liftLeft > .05 ? .045 : 0), .07 + liftLeft, stride * .13, .32, .14, .38), color: ART.faction.shoes },
+    { geometry: block(.25 + (liftRight > .05 ? .045 : 0), .07 + liftRight, -stride * .13, .32, .14, .38), color: ART.faction.shoes },
   ]);
 }
 
@@ -62,8 +63,8 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
   const helmetGeometry = merge([
     { geometry: new THREE.SphereGeometry(1, 16, 5, 0, Math.PI * 2, 0, Math.PI / 2)
       .scale(.44, .22, .32).translate(0, .77, 0), color: THREAT_COLORS.helmet },
-    { geometry: band(.76, .465, .345, .065), color: '#8e293e' },
-    { geometry: band(.715, .47, .35, .035), color: '#493042' },
+    { geometry: band(.76, .465, .345, .065), color: ART.raider.rim },
+    { geometry: band(.715, .47, .35, .035), color: ART.raider.hardware },
   ]);
   // Invisible contract adapter, matching Grunt. Heavy has no armor/ochre region.
   const armorGeometry = new THREE.BufferGeometry();
@@ -90,12 +91,12 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
 function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
     // Follow a latitude ring so the higher plate does not expose a zigzag hem.
-    { geometry: ball(0, .46, 0, .42, .32, .29, 16, 7), color: '#862d40', lower: .46 + .32 * Math.cos(4 * Math.PI / 7) },
+    { geometry: ball(0, .46, 0, .42, .32, .29, 16, 7), color: ART.raider.bodyDeep, lower: .46 + .32 * Math.cos(4 * Math.PI / 7) },
     { geometry: ball(0, .94, 0, .33, .22, .29, 12, 6), color: ART.faction.skin },
     ...face(.885, .28),
     ...[-1, 1].map(side => ({ geometry: ball(side * .46, .40, side * stride * .10, .14, .145, .145, 8, 4), color: ART.faction.skin })),
-    { geometry: block(-.27 - (liftLeft > .05 ? .035 : 0), .085 + liftLeft, stride * .14, .38, .17, .45), color: ART.faction.equipment },
-    { geometry: block(.27 + (liftRight > .05 ? .035 : 0), .085 + liftRight, -stride * .14, .38, .17, .45), color: ART.faction.equipment },
+    { geometry: block(-.27 - (liftLeft > .05 ? .035 : 0), .085 + liftLeft, stride * .14, .38, .17, .45), color: ART.faction.shoes },
+    { geometry: block(.27 + (liftRight > .05 ? .035 : 0), .085 + liftRight, -stride * .14, .38, .17, .45), color: ART.faction.shoes },
   ]);
 }
 
@@ -105,16 +106,16 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const helmetGeometry = merge([
     { geometry: new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2)
       .scale(.405, .255, .355).translate(0, .97, 0), color: THREAT_COLORS.helmet },
-    { geometry: band(.96, .425, .37, .065), color: THREAT_COLORS.ochre },
+    { geometry: band(.96, .425, .37, .065), color: THREAT_COLORS.stone },
     // One broad longitudinal fin, no spikes or little fittings.
-    { geometry: block(0, 1.21, 0, .165, .29, .47), color: THREAT_COLORS.ochre },
+    { geometry: block(0, 1.21, 0, .165, .29, .47), color: THREAT_COLORS.stone },
   ]);
-  const armorGeometry = merge([{ geometry: block(0, .56, .275, .62, .36, .12), color: THREAT_COLORS.ochre }]);
+  const armorGeometry = merge([{ geometry: block(0, .56, .275, .62, .36, .12), color: THREAT_COLORS.stone }]);
   // Weapon authored in character space; the renderer adds only small delayed rotation.
   const weaponGeometry = merge([
-    { geometry: new THREE.CylinderGeometry(.044, .055, .64, 8).translate(.60, .42, .08), color: ART.faction.weapon },
+    { geometry: new THREE.CylinderGeometry(.044, .055, .64, 8).translate(.60, .42, .08), color: ART.raider.hardware },
     { geometry: block(.60, .77, .08, .44, .30, .34), color: THREAT_COLORS.helmet },
-    { geometry: block(.60, .77, .08, .11, .32, .36), color: THREAT_COLORS.ochre },
+    { geometry: block(.60, .77, .08, .11, .32, .36), color: THREAT_COLORS.stone },
   ]);
   // Contact's bounded three-mesh adapter includes the signature maul explicitly.
   const contactGeometry = mergeGeometries([idle, weaponGeometry]);

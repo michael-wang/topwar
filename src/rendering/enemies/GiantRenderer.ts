@@ -73,7 +73,7 @@ export class GiantRenderer {
     this.haze.name = 'giant-emergence-haze';
     for (let i = 0; i < 4; i++) this.haze.add(new THREE.Sprite(this.hazeMaterial));
     this.chunks.name = 'giant-armor-wreckage'; this.chunks.visible = false; this.chunks.frustumCulled = false;
-    for (let i = 0; i < 6; i++) this.chunks.setColorAt(i, new THREE.Color([THREAT_COLORS.ochre, THREAT_COLORS.ochre, THREAT_COLORS.helmet][i % 3]));
+    for (let i = 0; i < 6; i++) this.chunks.setColorAt(i, new THREE.Color([THREAT_COLORS.stone, THREAT_COLORS.stone, THREAT_COLORS.helmet][i % 3]));
     this.haze.visible = false; this.debrisGroup.add(this.chunks);
     scene.add(this.group, this.ring, this.haze, this.debrisGroup);
   }

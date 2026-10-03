@@ -23,11 +23,11 @@ it('alternates a grounded support shoe and visibly lifted outward swing shoe wit
     const family = create();
     expect(family.runFrames).toHaveLength(4);
     for (const [index, side] of [[0, 1], [2, -1]]) {
-      const shoe = region(family.runFrames[index].geometry, ART.faction.equipment, side);
-      const support = region(family.runFrames[index].geometry, ART.faction.equipment, -side);
+      const shoe = region(family.runFrames[index].geometry, ART.faction.shoes, side);
+      const support = region(family.runFrames[index].geometry, ART.faction.shoes, -side);
       expect(shoe.min.y - support.min.y).toBeCloseTo(lift);
       expect(support.min.y).toBeCloseTo(0);
-      const idle = region(family.body.geometry, ART.faction.equipment, side);
+      const idle = region(family.body.geometry, ART.faction.shoes, side);
       expect(Math.abs(shoe.getCenter(new THREE.Vector3()).x)).toBeGreaterThan(Math.abs(idle.getCenter(new THREE.Vector3()).x));
     }
     expect(stepWeightPose(0, 0, cycle).support).toBeCloseTo(1);
@@ -38,12 +38,12 @@ it('alternates a grounded support shoe and visibly lifted outward swing shoe wit
   }
 });
 
-it('removes all Heavy ochre and secondary gear while keeping enlarged eyes clear below its rim', () => {
+it('keeps Heavy free of stone accents and secondary gear while keeping enlarged eyes clear below its rim', () => {
   const family = createChibiHeavyFamily();
   expect(family.vest.visible).toBe(false);
   expect(family.vest.geometry.getAttribute('position').count).toBe(0);
   for (const mesh of [family.body, ...family.runFrames, family.helmet, family.contact.body])
-    expect(region(mesh.geometry, THREAT_COLORS.ochre).isEmpty()).toBe(true);
+    expect(region(mesh.geometry, THREAT_COLORS.stone).isEmpty()).toBe(true);
   const eyes = region(family.body.geometry, ART.faction.weapon);
   expect(eyes.isEmpty()).toBe(false);
   expect(eyes.getSize(new THREE.Vector3()).y).toBeGreaterThan(.05);

@@ -154,6 +154,26 @@ sides remain visibly human, cute and absurd rather than a realistic war simulati
 Grunt's cool muted shirt must separate from warm sand under the actual coastal
 lighting. Visible skin remains a human cue, not a faction color code.
 
+## Enemy palette and footwear — Phase 4C
+
+The original human coastal raider family uses muted olive/slate/limestone,
+replacing crimson costume identity. Helmet `#6f7c5a` is the first read; shirt
+`#61704f` (Giant `#536246`), lower cloth `#62727a`, limestone `#c6b68c`, darker rim
+`#4c5945` and weathered hardware `#49555c` provide broad variation. Grunt has the
+simplest treatment, Heavy uses width rather than a torso accent, and Giant owns
+the strongest limestone crest/gear/maul accents. Six retained helmet tiers now
+stay within the muted olive/slate family. Player remains blue, with its tier
+semantics unchanged. Coral/red HP, blood and damage semantics remain independent.
+
+All shipping soldier shoes use light desaturated slate `#a7b6bd`, separating from
+sand without becoming the darkest shape. Player, Grunt, Heavy and Giant author
+this region into their existing merged bodies; no added mesh or texture is used.
+Boss retains its silhouette and GLBs. A narrow legacy-material adapter recolors
+only the lower leather-atlas footwear region (U=.09375, authored Y<.32), preserving
+higher hair/skin. Its live and live-colored death material share that correction;
+the existing gray death fade remains neutral. This adapter is not a requirement
+for future procedural Boss art.
+
 ## Player
 
 ### Intent
@@ -230,7 +250,7 @@ shipping loader.
 Four primary meshes remain per defender:
 
 - one merged body containing the head, clothed tunic, small face marks, two
-  disconnected mittens and two disconnected navy shoes;
+  disconnected mittens and two disconnected light-slate shoes;
 - a rounded blue helmet with a modest thicker rim and one simple rear panel;
 - one shallow lower uniform wrap panel, using the existing tier colors;
 - an original short, thick rifle with a directional barrel.
@@ -307,7 +327,7 @@ Player remains unchanged by Phase 4A.
 Grunts are numerous, eager and absurdly cute rather than realistically
 menacing.
 
-They are the primary crimson intrusion into the beautiful coast.
+They are the primary olive intrusion into the beautiful coast.
 
 ### Form
 
@@ -322,7 +342,7 @@ They are the primary crimson intrusion into the beautiful coast.
 
 The Grunt helmet should use an oversized rounded or pot-like family.
 
-Dense groups should first read as a wave of moving crimson helmets.
+Dense groups should first read as a wave of moving olive helmets.
 
 ### Face
 
@@ -343,10 +363,10 @@ contact / charging threat.
 
 ### Palette
 
-Use the existing raspberry / crimson enemy family as the starting point.
+Use the muted olive/slate/limestone enemy family.
 
-The color hierarchy is crimson helmet, cool muted shirt, darker companion
-shorts, navy-charcoal shoes, then warm skin. The shirt must separate from sand
+The color hierarchy is olive helmet, deeper dusty-olive shirt, slate companion
+shorts, light-slate shoes, then warm skin. The shirt must separate from sand
 without becoming Player-blue or competing with the helmet. Each garment uses
 one broad color: no patches, camouflage, texture noise or realistic folds.
 
@@ -384,8 +404,8 @@ honor that secondary visibility, restoring role-specific gear when a feedback sl
 is reused by Heavy/Giant. Batch sharing also compares secondary visibility.
 
 The merged body still includes the unchanged large head/tiny neutral face,
-two detached spherical hands (radius 0.057), and unchanged large navy shoes.
-The pot helmet, thick lip and enemy tier palette are unchanged. Crown remains
+two detached spherical hands (radius 0.057), and large light-slate shoes.
+The pot helmet and thick lip are unchanged; Phase 4C recolors the tier palette. Crown remains
 1.025 authored units; actual portrait reference height is unchanged from
 Phase 3A. Skin remains Player's `ART.faction.skin`. No lighting/world change is
 used to create the new clothing contrast.
@@ -446,14 +466,14 @@ width and mass.
 
 The Heavy helmet is its strongest identifier.
 
-Use a wide, low crimson dome and thick darker-crimson/navy double-layer rim.
+Use a wide, low olive dome and darker olive/charcoal double-layer rim.
 No ochre brow, eye-crossing stripe or crest. Keep the profile compressed and heavy, without tactical detail or spikes.
 
 ### Body
 
 Heavy belongs to the same landing force, with warm human head and hand cues.
-Use one squat rounded drum/bean, simple deep-crimson shirt and plain dark
-slate/navy lower region. No bare-torso base, camouflage, straps or pouches.
+Use one squat rounded drum/bean, simple deeper-olive shirt and plain
+slate lower region. No bare-torso base, camouflage, straps or pouches.
 No belly guard, vest or armor is required. Large hand balls and
 wide shoes carry the mass; avoid long legs or enclosed fantasy armor.
 
@@ -465,9 +485,9 @@ Do not simply enlarge the Grunt torso.
 
 Heavy remains visibly enemy-aligned.
 
-Deep crimson remains dominant with slate/navy lower clothing, navy-charcoal
-shoes and warm skin. Heavy has no ochre/gold body presentation; identity comes
-from shape. Stronger muted ochre is reserved for Giant.
+Olive remains dominant with slate lower clothing, light-slate shoes and warm
+skin. Heavy has no large limestone torso accent; identity comes from shape.
+Stronger limestone accents are reserved for Giant.
 
 ### Motion
 
@@ -494,8 +514,8 @@ drum, human head/larger unobstructed eyes, two 0.11-radius hand balls farther fr
 the drum (±0.41), and two 0.32×0.14×0.38
 shoes on a wide stance. There is no weapon or secondary waist gear.
 
-Authored colors are crimson shirt `#9d3045`, slate/navy shorts `#303e4c`,
-crimson helmet `#b9324c`, darker rims `#8e293e` / `#493042`, warm skin and navy shoes.
+Phase 4C authored colors are olive shirt `#61704f`, slate shorts `#62727a`,
+olive helmet `#6f7c5a`, darker rims `#4c5945` / `#49555c`, warm skin and light-slate shoes.
 Body and gear use neutral instance tint, preserving their broad vertex regions.
 The helmet crown is 0.99; presentation compresses legacy projected Y by 0.80
 without changing collision or simulation scale. At equal portrait depth the
@@ -528,15 +548,15 @@ supports that hierarchy. No shoulder forest, spikes, little plates or belt kit.
 grayscale reference, helmet/crest, chest plate, maul, and a merged body/maul
 contact adapter: ten geometries and three matte vertex-color materials.
 It consumes no Grunt, Heavy or legacy normal-soldier geometry.
-The body is one 0.84×0.64×0.58 rounded mass with dark crimson `#862d40` clothing
+The body is one 0.84×0.64×0.58 rounded mass with deep olive `#536246` clothing
 and the same slate lower block. Head/hands stay human; shoes are structural
 0.38×0.17×0.45 blocks. The warm head begins at 0.72, crest crown is 1.355
 (approximately 47% head/helmet zone). The helmet has one broad longitudinal
-muted-ochre fin widened from 0.11 to 0.165 (one crest), and a thick rim.
-The one ochre chest plate is a shallow beveled 0.62×0.36×0.12 slab centered at
+limestone fin widened from 0.11 to 0.165 (one crest), and a thick rim.
+The one limestone chest plate is a shallow beveled 0.62×0.36×0.12 slab centered at
 height 0.56, replacing the lower oval patch. The existing slate lower color block
 follows a latitude ring to keep its newly exposed hem clean. The front eyes remain unobstructed.
-The maul has one thick navy handle, broad crimson rounded head and one ochre
+The maul has one weathered-charcoal handle, broad olive rounded head and one limestone
 hardware band, evoking broad coastal hardware rather than a historical object.
 
 Three dedicated bounded render slots retain two live Giants plus a recent fall.

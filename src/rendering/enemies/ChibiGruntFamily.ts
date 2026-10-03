@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ART } from '../../art/ArtDirection';
 import { ENEMY_GAIT_CYCLE_MS, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 
-export const GRUNT_CLOTHING = { shirt: '#a4bcb6', shorts: '#526967' } as const;
+export const GRUNT_CLOTHING = { shirt: ART.raider.body, shorts: ART.raider.shorts } as const;
 type Part = { geometry: THREE.BufferGeometry; color: string; shortsBelowY?: number };
 
 function rounded(x: number, y: number, z: number, width: number, height: number, depth: number,
@@ -89,9 +89,9 @@ function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeom
     { geometry: sphere(0, .67, 0, .28, .20, .255, 12, 6), color: ART.faction.skin },
     ...hands,
     { geometry: rounded(-.165 - Math.abs(stride) * .02 - (liftLeft > .05 ? .035 : 0), .06 + liftLeft, stride * .16,
-      .25, .12, .35, .04), color: ART.faction.equipment },
+      .25, .12, .35, .04), color: ART.faction.shoes },
     { geometry: rounded(.165 + Math.abs(stride) * .02 + (liftRight > .05 ? .035 : 0), .06 + liftRight, -stride * .16,
-      .25, .12, .35, .04), color: ART.faction.equipment },
+      .25, .12, .35, .04), color: ART.faction.shoes },
     ...[-1, 1].map(side => ({ geometry: sphere(side * .095, .675, .236, .018, .022, .012, 4, 2), color: ART.faction.weapon })),
     { geometry: sphere(0, .645, .25, .027, .025, .029, 4, 2), color: ART.faction.skin },
     { geometry: new THREE.BoxGeometry(.042, .008, .012).translate(0, .60, .239), color: ART.faction.weapon },

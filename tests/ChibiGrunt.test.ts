@@ -45,7 +45,7 @@ describe('original amphibious Grunt prototype', () => {
 
   it('retains warm human skin and two plain clothing blocks as authored vertex colors', () => {
     const family = createChibiGruntFamily(), colors = family.body.geometry.getAttribute('color');
-    for (const value of [ART.faction.skin, ART.faction.equipment, ...Object.values(GRUNT_CLOTHING)]) {
+    for (const value of [ART.faction.skin, ART.faction.shoes, ...Object.values(GRUNT_CLOTHING)]) {
       const target = new THREE.Color(value);
       expect(Array.from({ length: colors.count }, (_, i) => new THREE.Color().fromBufferAttribute(colors, i))
         .some(color => Math.abs(color.r - target.r) + Math.abs(color.g - target.g) + Math.abs(color.b - target.b) < .00001)).toBe(true);

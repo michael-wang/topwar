@@ -153,10 +153,10 @@ describe('Modern Toy Soldier presentation', () => {
 
   it('keeps four running body poses and six helmet/vest InstancedMesh pairs through Tier 20', () => {
     expect(ENEMY_PALETTE.map((entry) => entry.body)).toEqual([
-      '#c83f5a', '#657236', '#62437c', '#a64e2d', '#46525a', '#896b29',
+      '#6f7c5a', '#7d8966', '#626f50', '#838975', '#596b61', '#8b8969',
     ]);
     expect(ENEMY_PALETTE.map((entry) => entry.head)).toEqual([
-      '#e46b73', '#87944a', '#815b9d', '#c66a42', '#68767f', '#ad8939',
+      '#94a081', '#a0ac8c', '#899673', '#a7ad97', '#83978d', '#b3af89',
     ]);
     const scene = new THREE.Scene();
     const body = bodyModel();
@@ -203,7 +203,7 @@ describe('Modern Toy Soldier presentation', () => {
     helmet.getColorAt(0, color);
     expect(color.getHexString()).toBe('fff7e8');
     helmet.getColorAt(1, color);
-    expect(color.getHexString()).toBe('46525a');
+    expect(color.getHexString()).toBe('596b61');
     renderer.update(damaged.slice(1), 100);
     const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death).toBeDefined();

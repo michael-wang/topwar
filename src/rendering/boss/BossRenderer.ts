@@ -2,6 +2,7 @@ import type { BossVisualFamily } from '../CharacterVisualFamilies';
 import * as THREE from 'three';
 import type { BossRenderState } from '../RenderState';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
+import { prepareBossFootwear } from './BossFootwear';
 import { BOSS_DEATH_FADE_START_MS, BOSS_DEATH_FALL_START_MS,
   BOSS_DEATH_FALL_DURATION_MS, BOSS_DEATH_GRAY_IN_MS,
   BOSS_DEATH_IMPACT_MS, BOSS_DEATH_MS } from '../../presentation/BossDeathTiming';
@@ -138,7 +139,7 @@ export class BossRenderer {
     this.helmet = new THREE.Mesh(helmetModel.geometry, this.tierMaterials[0]);
     fitCommanderHelmet(this.helmet);
     this.vest = new THREE.Mesh(this.vestGeometries[0], this.vestMaterials[0]);
-    this.bodyMesh = new THREE.Mesh(bodyModel.geometry, bodyModel.material);
+    this.bodyMesh = new THREE.Mesh(bodyModel.geometry, prepareBossFootwear(bodyModel.material));
     this.bodyHitWash = new THREE.Mesh(bodyModel.geometry, this.hitWashMaterial);
     this.helmetHitWash = new THREE.Mesh(helmetModel.geometry, this.hitWashMaterial);
     this.helmetHitWash.position.copy(this.helmet.position);
@@ -151,7 +152,7 @@ export class BossRenderer {
     this.body.add(this.bodyMesh, this.helmet, this.vest);
     this.body.rotation.y = Math.PI;
     this.active.add(this.body);
-    this.deathBodyLiveMaterial = bodyModel.material.clone();
+    this.deathBodyLiveMaterial = prepareBossFootwear(bodyModel.material.clone());
     this.deathBodyGrayMaterial = grayBodyModel.material.clone();
     this.deathHelmetMaterial = source.clone();
     this.deathVestMaterial = source.clone();
