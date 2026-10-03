@@ -5,12 +5,12 @@ import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamil
 import { createChibiHeavyFamily, createChibiGiantFamily, THREAT_COLORS } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { stepWeightPose } from '../src/presentation/CharacterMotion';
 
-function region(geometry: THREE.BufferGeometry, color: string, side?: number): THREE.Box3 {
+function region(geometry: THREE.BufferGeometry, color: string | string[], side?: number): THREE.Box3 {
   const positions = geometry.getAttribute('position'), colors = geometry.getAttribute('color');
-  const target = new THREE.Color(color), bounds = new THREE.Box3();
+  const targets = (Array.isArray(color) ? color : [color]).map(c => new THREE.Color(c)), bounds = new THREE.Box3();
   for (let i = 0; i < positions.count; i++) {
     const c = new THREE.Color().fromBufferAttribute(colors, i);
-    if (Math.abs(c.r - target.r) + Math.abs(c.g - target.g) + Math.abs(c.b - target.b) > .00001) continue;
+    if (!targets.some(target => Math.abs(c.r - target.r) + Math.abs(c.g - target.g) + Math.abs(c.b - target.b) < .00001)) continue;
     if (side !== undefined && positions.getX(i) * side <= 0) continue;
     bounds.expandByPoint(new THREE.Vector3().fromBufferAttribute(positions, i));
   }
@@ -21,13 +21,14 @@ it('alternates a grounded support shoe and visibly lifted outward swing shoe wit
   for (const [create, cycle, lift] of [[createChibiGruntFamily, 360, .11],
     [createChibiHeavyFamily, 650, .09], [createChibiGiantFamily, 850, .085]] as const) {
     const family = create();
+    const shoes = create === createChibiGruntFamily ? [ART.footwear.enemyUpper, ART.footwear.enemySole] : ART.faction.shoes;
     expect(family.runFrames).toHaveLength(4);
     for (const [index, side] of [[0, 1], [2, -1]]) {
-      const shoe = region(family.runFrames[index].geometry, ART.faction.shoes, side);
-      const support = region(family.runFrames[index].geometry, ART.faction.shoes, -side);
+      const shoe = region(family.runFrames[index].geometry, shoes, side);
+      const support = region(family.runFrames[index].geometry, shoes, -side);
       expect(shoe.min.y - support.min.y).toBeCloseTo(lift);
       expect(support.min.y).toBeCloseTo(0);
-      const idle = region(family.body.geometry, ART.faction.shoes, side);
+      const idle = region(family.body.geometry, shoes, side);
       expect(Math.abs(shoe.getCenter(new THREE.Vector3()).x)).toBeGreaterThan(Math.abs(idle.getCenter(new THREE.Vector3()).x));
     }
     expect(stepWeightPose(0, 0, cycle).support).toBeCloseTo(1);

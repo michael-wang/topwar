@@ -1,21 +1,11 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { toyEllipsoid as ellipsoid, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ART } from '../../art/ArtDirection';
 import type { PlayerVisualFamily } from '../CharacterVisualFamilies';
 import { ChibiPlayerMotion } from './ChibiPlayerMotion';
 
-type Part = { geometry: THREE.BufferGeometry; color: string; region?: number };
-
-function ellipsoid(x: number, y: number, z: number, sx: number, sy: number, sz: number,
-  segments = 8, rings = 4): THREE.BufferGeometry {
-  return new THREE.SphereGeometry(1, segments, rings).scale(sx, sy, sz).translate(x, y, z);
-}
-
-function block(x: number, y: number, z: number, sx: number, sy: number, sz: number,
-  round = .035): THREE.BufferGeometry {
-  return new RoundedBoxGeometry(sx, sy, sz, 1, round).translate(x, y, z);
-}
+type Part = { geometry: THREE.BufferGeometry; color?: string; region?: number };
 
 function merged(parts: Part[], moving = false): THREE.BufferGeometry {
   const geometries = parts.map(part => {
@@ -23,9 +13,11 @@ function merged(parts: Part[], moving = false): THREE.BufferGeometry {
     if (geometry !== part.geometry) part.geometry.dispose();
     geometry.deleteAttribute('uv');
     const count = geometry.getAttribute('position').count;
-    const color = new THREE.Color(part.color), colors = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) colors.set(color.toArray(), i * 3);
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (part.color) {
+      const color = new THREE.Color(part.color), colors = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) colors.set(color.toArray(), i * 3);
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    }
     if (moving) geometry.setAttribute('playerPart', new THREE.BufferAttribute(new Float32Array(count).fill(part.region ?? 0), 1));
     return geometry;
   });
@@ -46,51 +38,42 @@ export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): voi
     new THREE.Quaternion().setFromEuler(new THREE.Euler(...weaponRotation)), new THREE.Vector3(1, 1, 1));
   const offhandGrip = new THREE.Vector3(.09, -.055, .19), weaponGrip = new THREE.Vector3(0, -.10, -.055);
   const offhand = offhandGrip.clone().applyMatrix4(weaponRest), weaponHand = weaponGrip.clone().applyMatrix4(weaponRest);
-  const mitten = (center: THREE.Vector3, region: number): Part[] => [
-    { geometry: block(center.x, center.y, center.z, .13, .115, .10, .04), color: ART.faction.skin, region },
-    { geometry: ellipsoid(center.x - .055, center.y + .005, center.z + .025, .032, .028, .042, 6, 3), color: ART.faction.skin, region },
-    { geometry: new THREE.CylinderGeometry(.057, .055, .04, 8).scale(1, 1, .8)
-      .translate(center.x, center.y - .069, center.z - .01), color: ART.faction.equipment, region },
-  ];
-  const tunic = block(0, 0, 0, .51, .27, .34, .09);
-  const points = tunic.getAttribute('position');
-  const normals = tunic.getAttribute('normal'), normal = new THREE.Vector3();
-  // Broad bevels and a gentle top taper keep a short uniform volume, not anatomy.
-  for (let i = 0; i < points.count; i++) {
-    const x = points.getX(i), taper = .94 - .06 * points.getY(i) / .135;
-    normal.fromBufferAttribute(normals, i);
-    normal.set(normal.x / taper, normal.y + (.06 / .135) * x * normal.x / taper, normal.z).normalize();
-    normals.setXYZ(i, normal.x, normal.y, normal.z);
-    points.setX(i, x * taper);
+  const hand = (center: THREE.Vector3, region: number): Part => ({
+    geometry: ellipsoid(center.x, center.y, center.z, .062, .058, .059, 12, 8), color: ART.faction.skin, region,
+  });
+  const torso = ellipsoid(0, .345, 0, .24, .19, .165, 20, 10);
+  // A uniform color surface follows the same bean, with no additional torso mass.
+  const panel = torso.toNonIndexed(), pp = panel.getAttribute('position'), pn = panel.getAttribute('normal');
+  const panelPositions: number[] = [], panelNormals: number[] = [];
+  for (let i = 0; i < pp.count; i += 3) {
+    if ((pp.getY(i) + pp.getY(i + 1) + pp.getY(i + 2)) / 3 > .29) continue;
+    for (let j = i; j < i + 3; j++) {
+      panelPositions.push(pp.getX(j) * 1.002, .345 + (pp.getY(j) - .345) * 1.002, pp.getZ(j) * 1.002);
+      panelNormals.push(pn.getX(j), pn.getY(j), pn.getZ(j));
+    }
   }
-  tunic.translate(0, .36, 0);
+  panel.dispose();
+  const uniform = new THREE.BufferGeometry();
+  uniform.setAttribute('position', new THREE.Float32BufferAttribute(panelPositions, 3));
+  uniform.setAttribute('normal', new THREE.Float32BufferAttribute(panelNormals, 3));
   const bodyGeometry = merged([
-    { geometry: tunic, color: ART.faction.player },
-    { geometry: ellipsoid(0, .685, -.025, .275, .18, .26, 12, 6), color: ART.faction.skin },
-    ...mitten(offhand, 3), ...mitten(weaponHand, 4),
-    { geometry: block(-.17, .075, -.015, .235, .15, .35, .045), color: ART.faction.shoes, region: 1 },
-    { geometry: block(.17, .075, .025, .235, .15, .35, .045), color: ART.faction.shoes, region: 2 },
-    ...[-1, 1].map(side => ({ geometry: ellipsoid(side * .095, .69, .218, .019, .025, .011, 4, 2), color: ART.faction.weapon })),
-    { geometry: ellipsoid(0, .654, .239, .026, .023, .027, 4, 2), color: ART.faction.skin },
-    { geometry: new THREE.BoxGeometry(.045, .008, .012).translate(0, .608, .22), color: ART.faction.weapon },
+    { geometry: torso, color: ART.faction.player },
+    { geometry: ellipsoid(0, .685, -.015, .275, .20, .255, 20, 12), color: ART.faction.skin },
+    hand(offhand, 3), hand(weaponHand, 4),
+    { geometry: toyShoe({ x: -.17, y: 0, z: -.015, width: .27, height: .14, depth: .23,
+      upper: ART.footwear.playerUpper, sole: ART.footwear.playerSole }), region: 1 },
+    { geometry: toyShoe({ x: .17, y: 0, z: .025, width: .27, height: .14, depth: .23,
+      upper: ART.footwear.playerUpper, sole: ART.footwear.playerSole }), region: 2 },
+    ...[-1, 1].map(side => ({ geometry: ellipsoid(side * .095, .69, .224, .015, .019, .009, 8, 4), color: ART.faction.weapon })),
   ], true);
-  const shell = new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2)
-    .scale(.315, .25, .285).translate(0, .775, 0);
-  const helmetGeometry = merged([
-    { geometry: shell, color: 'white' },
-    { geometry: new THREE.CylinderGeometry(.325, .31, .05, 16).scale(1, 1, .93).translate(0, .77, 0), color: '#d6e5ef' },
-    // One broad rear panel makes the clean defender helmet readable from behind.
-    { geometry: block(0, .81, -.278, .15, .075, .03, .012), color: '#d6e5ef' },
-  ]);
-  const chestGeometry = merged([
-    // One shallow wrap panel reads on the rear camera as well as the front.
-    { geometry: block(0, .315, 0, .46, .11, .345, .045), color: '#91b7d0' },
-  ]);
+  const helmetGeometry = merged([{ geometry: toyHelmetShell({ rx: .325, ry: .27, rz: .285, y: .755,
+    front: Math.PI / 2, side: 1.77, rear: 1.88, segments: 24, rings: 10 }), color: 'white' }]);
+  const chestGeometry = merged([{ geometry: uniform, color: '#91b7d0' }]);
   const weaponGeometry = merged([
-    { geometry: block(0, 0, .045, .145, .14, .29, .02), color: ART.faction.weapon },
-    { geometry: block(0, -.01, -.17, .12, .115, .17, .025), color: ART.faction.equipment },
-    { geometry: block(0, -.045, .035, .075, .13, .08, .012), color: ART.faction.weapon },
-    { geometry: new THREE.CylinderGeometry(.045, .045, .30, 6).rotateX(Math.PI / 2).translate(0, .012, .34), color: ART.faction.weapon },
+    { geometry: ellipsoid(0, 0, .045, .075, .07, .145, 12, 8), color: ART.faction.weapon },
+    { geometry: ellipsoid(0, -.01, -.17, .065, .06, .09, 12, 6), color: ART.faction.equipment },
+    { geometry: ellipsoid(0, -.065, .035, .04, .09, .045, 10, 6), color: ART.faction.weapon },
+    { geometry: new THREE.CylinderGeometry(.04, .04, .30, 12).rotateX(Math.PI / 2).translate(0, .012, .34), color: ART.faction.weapon },
   ]);
   const matte = () => new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1, metalness: 0 });
   const bodyMaterial = matte(), gearMaterial = matte(), weaponMaterial = matte();

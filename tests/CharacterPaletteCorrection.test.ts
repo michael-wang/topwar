@@ -19,17 +19,19 @@ it('keeps enemy costumes muted olive/slate/stone, Player blue and health indepen
   expect(ART.enemyHealth.heavy).toBe('#f2555f'); expect(ART.enemyHealth.giant).toBe('#ef4d59');
 });
 
-it('authors light slate into footwear on every procedural reference and locomotion body', () => {
-  const expected = new THREE.Color(ART.faction.shoes);
-  expect(Math.min(expected.r, expected.g, expected.b)).toBeGreaterThan(.35);
+it('authors role footwear colors on every procedural reference and locomotion body', () => {
+
   for (const create of [createChibiPlayerFamily, createChibiGruntFamily, createChibiHeavyFamily, createChibiGiantFamily]) {
+    const values = create === createChibiPlayerFamily ? [ART.footwear.playerUpper, ART.footwear.playerSole]
+      : create === createChibiGruntFamily ? [ART.footwear.enemyUpper, ART.footwear.enemySole] : [ART.faction.shoes];
+    const expected = values.map(value => new THREE.Color(value));
     const family = create(), frames = 'runFrames' in family ? [family.body, ...family.runFrames] : [family.body];
     for (const mesh of frames) {
       const p = mesh.geometry.getAttribute('position'), c = mesh.geometry.getAttribute('color');
       const footwear = Array.from({ length: p.count }, (_, i) => i).filter(i => p.getY(i) < .10);
       expect(footwear.length).toBeGreaterThan(0);
-      expect(footwear.every(i => new THREE.Color().fromBufferAttribute(c, i).equals(expected)
-        || new THREE.Color().fromBufferAttribute(c, i).toArray().every((v, j) => Math.abs(v - expected.toArray()[j]) < 1e-6))).toBe(true);
+      expect(footwear.every(i => expected.some(target => new THREE.Color().fromBufferAttribute(c, i).toArray()
+        .every((v, j) => Math.abs(v - target.toArray()[j]) < 1e-6)))).toBe(true);
     }
     family.dispose();
   }

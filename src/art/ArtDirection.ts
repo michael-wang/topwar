@@ -19,6 +19,7 @@ export const ART = {
   faction: { player: '#287fc6', playerLight: '#67b9e3', grunt: '#6f7c5a', gruntLight: '#94a081',
     heavy: '#6f7c5a', heavyBody: '#61704f', equipment: '#243b4a', weapon: '#263a43',
     giant: '#6f7c5a', gold: '#edb64f', skin: '#e4ad8a', leather: '#65534f', shoes: '#a7b6bd' },
+  footwear: { playerUpper: '#778e9c', playerSole: '#647b88', enemyUpper: '#7d8b84', enemySole: '#667770' },
   raider: { helmet: '#6f7c5a', helmetLight: '#94a081', body: '#61704f', bodyDeep: '#536246',
     shorts: '#62727a', stone: '#c6b68c', rim: '#4c5945', hardware: '#49555c' },
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
