@@ -10,9 +10,10 @@ contract. Phase 1 added named runtime role families while preserving shipping
 assets, appearance and gameplay. Phase 2A introduced the accepted original
 procedural Player prototype. Phase 2B's refined Player grammar is accepted.
 Phase 3A established an amphibious Grunt prototype that was not accepted as
-the final direction. Phase 3B simplifies Grunt into a clothed rounded figurine
-for human review. Further replacement or polish requires separate authorization;
-the complete system is not final.
+the final direction. Phase 3B's clothed rounded Grunt is accepted as good enough
+for now. Phase 4A introduces dedicated Heavy and Giant threat prototypes and an
+explicit Level-7 review boot path. Further polish requires human review; the
+complete system is not final.
 
 It supersedes the earlier three-head designer-toy direction while preserving the
 existing gameplay model, faction semantics and Sunlit Coastal Battlefield
@@ -21,9 +22,9 @@ environment.
 **TARGET:** the full two-head character system described below.
 
 **CURRENT SHIPPING:** Player retains the accepted Phase 2B two-head refinement.
-Grunt uses the Phase 3B rounded shirt/shorts simplification. Heavy, Giant and Boss
-retain their explicit legacy assets, palettes, motion and feedback. Heavy's
-amphibious direction and the complete character system remain future targets.
+Grunt remains the accepted Phase 3B rounded shirt/shorts figurine. Heavy and Giant
+use Phase 4A procedural prototypes. Boss retains its explicit legacy resources
+and presentation. Player/Grunt polish and Boss/world redesign are outside Phase 4A.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for coastal
 palette, lighting, composition and UI guardrails.
@@ -296,7 +297,7 @@ Level-Up/afterglow sequence and two-defender firing/movement are also sampled.
 The head remains subordinate from the rear, hands remain abstract mittens, and
 the forward shoe is partly occluded by the tunic at peak lifted stride. These
 remain known visual compromises. Phase 2B is accepted and unchanged by Phase 3B.
-Heavy retains legacy geometry; its amphibious art remains pending later implementation.
+Player remains unchanged by Phase 4A.
 
 ## Grunt
 
@@ -368,14 +369,14 @@ per enemy.
 textures, external authoring, atlas UV selectors or a runtime skeleton. This is
 an original human landing trooper, not a copied uniform or franchise character.
 Phase 3A's bare/faceted torso, camouflage and thumb mittens are superseded;
-Phase 3B remains a design correction pending human review, not a final approval.
+Phase 3B is accepted as good enough for now and is frozen during Phase 4A.
 
 One smooth-shaded ellipsoid (0.50 wide × 0.34 high × 0.38 deep) replaces the
 separate torso/shorts masses. A latitude boundary divides this one volume into
 plain cool gray-green shirt `#a4bcb6` and darker slate-green shorts `#526967`.
 There is no belt or secondary visible gear. The required compatibility `vest`
 slot is an explicitly hidden zero-vertex adapter. Live and pooled crowd meshes
-honor that secondary visibility, restoring legacy gear when a feedback slot
+honor that secondary visibility, restoring role-specific gear when a feedback slot
 is reused by Heavy/Giant. Batch sharing also compares secondary visibility.
 
 The merged body still includes the unchanged large head/tiny neutral face,
@@ -396,14 +397,14 @@ uses their grayscale copy. The 80 ms helmet hit, 240 ms contact, 480 ms death,
 The family still owns eight source geometries (including the empty adapter)
 and three matte materials, disposed by CharacterAssets. EnemyRenderer owns
 its instancing buffers/cloned gear and feedback materials. No new texture or
-asset download is introduced. Heavy, Giant and Boss retain independent legacy
-resources and presentation; Player remains the accepted Phase 2B family.
+asset download is introduced. Grunt remains unchanged by Phase 4A; Heavy/Giant
+now own dedicated procedural resources and Boss remains legacy.
 
 Review evidence lives in `artifacts/grunt-chibi-simplify/`: Phase 3A/3B isolated
 and crowd comparisons, Player/Grunt colors and silhouettes, plain clothing
 inspection, full gait strip, mixed Heavy, near-contact and outer-lane views,
-feedback, untouched-role guards and matching performance metrics. Stop for
-human review before further Grunt refinement or any Heavy work.
+feedback, untouched-role guards and matching performance metrics. Further Grunt
+refinement requires separate authorization.
 
 ## Heavy
 
@@ -418,9 +419,8 @@ No review flag, combat override or new HUD label is serialized or introduced.
 
 ### Intent
 
-Heavy is a priority pressure threat and must become a separate visual archetype.
-
-The final Heavy must not be a Grunt body enlarged through XYZ scaling.
+Heavy is a priority pressure threat: a short, very wide walking wall.
+It must remain a distinct archetype rather than an enlarged Grunt.
 
 ### Form
 
@@ -438,21 +438,16 @@ width and mass.
 
 The Heavy helmet is its strongest identifier.
 
-It may use a broad brim, thick side protection, ridge, crest block or similarly
-large geometric features.
-
-Use one or two unmistakable large forms rather than many small decorations.
+Use a wide, low crimson dome, thick double-layer rim and one broad muted-ochre
+brow. Keep the profile compressed and heavy, without tactical detail or spikes.
 
 ### Body
 
-Heavy belongs to the same landing force and retains visible human skin beneath
-large equipment. It must not simply enlarge the basic Grunt or become a fully enclosed
-armored fantasy unit.
-
-A broad harness, one or two heavy straps, partial chest plate, heavy waist armor
-/ belt and reinforced short camouflage trousers may surround a substantially
-exposed torso. Larger gloves / hands and shoes support its independent silhouette.
-Prefer a few large forms over conventional detailed tactical kit.
+Heavy belongs to the same landing force, with warm human head and hand cues.
+Use one squat rounded drum/bean, simple deep-crimson shirt and plain dark
+slate/navy lower region. No bare-torso base, camouflage, straps or pouches.
+One broad rounded muted-ochre chest/belly guard is enough. Large hand balls and
+wide shoes carry the mass; avoid long legs or enclosed fantasy armor.
 
 The silhouette priority is helmet → width → body mass → hands / shoes → equipment.
 
@@ -481,6 +476,80 @@ Hands and shoes move more slowly and carry more mass than a Grunt's. Do not add
 a large firearm automatically: current Heavy threat comes from its role,
 durability and movement, not an invented ranged attack. Death may release that
 stored mass through presentation without changing combat resolution.
+
+### Current Phase 4A Heavy prototype
+
+`createChibiHeavyFamily` in `ChibiThreatFamilies` owns a reference body, four
+650 ms rigid locomotion poses, grayscale death body, dedicated low double-rim
+helmet and one belly guard. The merged body contains one 0.68×0.46×0.47 rounded
+drum, human head/tiny eyes, two 0.10-radius hand balls, and two 0.32×0.14×0.38
+shoes on a wide stance. There is no weapon or secondary waist gear.
+
+Authored colors are crimson shirt `#9d3045`, slate/navy shorts `#303e4c`,
+crimson helmet `#b9324c`, muted ochre `#b09a63`, existing warm skin and navy shoes.
+Body and gear use neutral instance tint, preserving their broad vertex regions.
+The helmet crown is 0.99; presentation compresses legacy projected Y by 0.80
+without changing collision or simulation scale. At equal portrait depth the
+standing silhouette measures 1.28× Grunt height and 1.73× width.
+
+The 650 ms asynchronous clock and existing low root bounce/weight transfer
+remain. Four poses alternate shoes by up to 0.10 fore/aft and 0.035 upward;
+fists counter-swing by 0.085. Rate-limited hits retain 100 ms / 250 ms timing,
+using the actual active Heavy pose and a small 2.5% compression. Contact uses
+its reference silhouette; death uses its grayscale parts and existing 480 ms
+fade. The 48-slot pools rebind explicit role parts. HP layout comes from Heavy
+metadata (top 1.025, width 0.78 before projected scale), with existing bar style
+and HP fraction. A 0.84×0.44 authored footprint grounds the shoes.
+
+Heavy has a separate instanced batch because its resources differ from Grunt.
+Eight geometries and three materials are owned/disposed by CharacterAssets;
+renderers borrow them and own instancing/effect resources. No texture, GLB,
+Kenney atlas selector, skeleton or per-enemy hierarchy is used.
+
+## Giant
+
+### Target and current Phase 4A Colossus prototype
+
+Giant is not a scaled Heavy. Its three dominant ideas are one huge crest helmet,
+one massive rounded clothed body, and one offset blunt maul. One chest plate
+supports that hierarchy. No shoulder forest, spikes, little plates or belt kit.
+
+`createChibiGiantFamily` owns dedicated original reference/four locomotion bodies,
+grayscale reference, helmet/crest, chest plate, maul, and a merged body/maul
+contact adapter: ten geometries and three matte vertex-color materials.
+It consumes no Grunt, Heavy or legacy normal-soldier geometry.
+The body is one 0.84×0.64×0.58 rounded mass with dark crimson `#862d40` clothing
+and the same slate lower block. Head/hands stay human; shoes are structural
+0.38×0.17×0.45 blocks. The warm head begins at 0.72, crest crown is 1.355
+(approximately 47% head/helmet zone). The helmet has one broad longitudinal
+muted-ochre fin and thick rim; the front crest still reads narrower than its side.
+The maul has one thick navy handle, broad crimson rounded head and one ochre
+hardware band, evoking broad coastal hardware rather than a historical object.
+
+Three dedicated bounded render slots retain two live Giants plus a recent fall.
+Each has four primary mesh draws: posed body, crest helmet, chest plate, maul.
+The 850 ms asynchronous gait retains `giantWeightPose`, low body compression,
+delayed helmet response and maul rotation around a hand-height pivot. Shoes
+alternate up to 0.10 fore/aft and 0.035 upward; hands swing more slowly.
+The 1.5-second reveal/HP delay remains, with haze heights derived from the new
+motion envelope. Hit registration follows the dedicated active body matrix;
+body/gear share a restrained emissive response and existing bounded hit timing.
+
+Fall/crash timing remains 90–520 ms, crash at 520 ms, breakup at 650 ms and
+clear at 2400 ms. The existing impact ring, reused haze/dust, burst and restrained
+camera/audio impulse remain. Six broad instanced crest/plate/maul-color chunks
+replace twelve miscellaneous fantasy armor pieces. Contact includes the maul
+inside its bounded three-mesh representation. HP layout uses a tested full
+motion envelope 1.60 wide × 1.43 high × 0.96 deep rather than construction-only
+bounds. The shoe/body shadow footprint is 1.02×0.48 authored units.
+
+Phase 4A review evidence is in `artifacts/threat-chibi-prototype/`: 390×844
+opening/Level-7 HUD, live normal/review/Retry, side-by-side composition, source
+inspection, actual-projection silhouettes and helmet comparison, complete gait
+strips, hit/death/contact/reveal/crash/bar views and matching 50/100/150/200
+crowd and two-Giant metrics. Player, Grunt and Boss render guards remain
+pixel-identical, including protected feedback states and the world-only view.
+Heavy/Giant are prototypes pending human review, not a final polished design.
 
 ## Animation principles
 
@@ -514,21 +583,21 @@ microdetail.
 
 ### Current runtime adapters
 
-`CharacterAssets` loads named legacy enemy resources once, creates the procedural
-Player and assembles explicit `player`, `grunt`, `heavy`, `giant` and `boss`
-families. Heavy and Giant reference
-raw legacy normal-soldier resources, independently of the resolved Grunt role.
-Boss retains dedicated idle/run/slam/vest resources and explicit shared helmet
-and gray-body dependencies. Reward helmets also retain a separate legacy reference.
+`CharacterAssets` assembles explicit procedural `player`, `grunt`, `heavy` and
+`giant` families and a named legacy `boss` record. Boss keeps dedicated idle,
+run/slam and vest resources, shared legacy helmet and gray-body material;
+reward helmets retain a separate legacy reference. The superseded normal idle,
+four run GLBs and normal vest are no longer downloaded; repository assets and
+legacy rollback/test adapters remain intact. Thirteen required legacy GLBs
+remain for Boss, rewards and projectiles.
 
-Crowd batches share live geometry/material resources when identical and split
-when different. Grunt/Heavy death and contact parts are explicit per role; Giant
-retains its intentional legacy normal-soldier contact fallback. Pooled feedback
-rebinds resources when reused across distinct families. Gait cadence is family
-metadata; scale remains in the existing render projection. The full future
-parts/anchors contract below is not fully implemented: enemy attachment pivots,
-UV/material assumptions and shadows remain in their renderers. Player uses the
-small explicit presentation contract described above.
+Crowd batches share resources only when their geometry, materials, tint policy
+and secondary visibility match. Distinct Heavy and Grunt resources split cleanly.
+Death/contact parts are explicit per role and pooled effects rebind borrowed
+resources. Gait, authored gear tint, Heavy Y compression/HP layout, threat shadow
+footprints and Giant motion bounds are presentation metadata only. Player uses
+its existing specific motion/weapon/effect contract; Boss retains legacy pivots
+and atlas handling. No generalized character engine or external manifest exists.
 
 ### Ownership and role selection
 
@@ -539,9 +608,9 @@ not a humanoid role by default.
 
 Each role resolves a named visual family. Runtime selection must use names, not
 positions in an asset array. Sharing is an explicit asset reference, not a
-fallback inferred from another role's geometry. Phase 1 explicitly pins Heavy to
-legacy normal-soldier resources independently of Grunt role resolution; Phase 4
-must replace those references with dedicated Heavy body and helmet geometry.
+fallback inferred from another role's geometry. Heavy and Giant now resolve
+dedicated procedural resources independently of Grunt. Legacy borrowing remains
+only in the explicit rollback/test assembly.
 
 Simulation continues to provide gameplay truth through the existing render
 projection. The art contract contains no HP, damage, collision/targeting radius,
@@ -688,7 +757,7 @@ Measure readability and cost from the real portrait camera.
 Later replacement acceptance includes actual-size black silhouettes, helmet-only
 role identification, dense crowds, two defenders, hit/death/contact states,
 Level-Up and reinforcement. Compare draws, triangles, textures and frame/CPU
-timing in matching 50/100/150/200-enemy portrait fixtures. Include two live legacy
+timing in matching 50/100/150/200-enemy portrait fixtures. Include two live
 Giants and a recent collapse. Do not change population or gameplay to hide cost;
 software-renderer results are not physical-phone performance claims.
 
@@ -706,8 +775,8 @@ Giant must remain in the same super-deformed helmet-first universe.
 
 It must not become a scaled Heavy.
 
-Its future silhouette should introduce a new large-form hierarchy while
-retaining the common face, material and motion grammar.
+Its crest, bell body and blunt maul establish a distinct large-form hierarchy
+while retaining the common face, material and motion grammar described above.
 
 ### Boss
 
@@ -762,27 +831,24 @@ Keep the legacy Heavy, Giant and Boss families pinned to their existing geometry
 until their own approved replacement. Changing Grunt must not silently restyle
 those consumers. Include role-correct hit, death and contact representations.
 
-Phase 3B currently implements the simplified Grunt described above. Stop for
-human review before further Grunt work, Heavy or any additional visual phase.
+Phase 3B implements the accepted simplified Grunt described above. It remains
+frozen while Heavy and Giant are reviewed.
 
-### Phase 4 — Heavy
+### Phase 4A — Heavy and Giant prototypes
 
-Introduce dedicated Heavy geometry, helmet and motion.
-
-Heavy must no longer depend on scaled Grunt geometry as its final presentation.
-
-Recalibrate its HP-bar, shadow and feedback from Heavy metadata. Visual width
-does not authorize new collision or lane behavior.
+Dedicated Heavy and Colossus geometry, role metadata and feedback are implemented
+with the explicit Level-7 threat review path. Visual dimensions do not authorize
+new collision or lane behavior. Stop for human review before further polish.
 
 ### Phase 5 — Limited world-language pass
 
 Apply the Coastal Greek Object Language to the clearest mismatched non-character
 object family without reopening the whole environment.
 
-Giant, Boss and Tank redesign remain deferred until the base visual grammar is
-stable.
+Boss and Tank redesign remain deferred. Giant's Phase 4A prototype also requires
+human review before further refinement.
 
-The Phase 0-5 order is unchanged. The only planning clarification is to isolate
-legacy dependencies in Phase 1 before replacing the Grunt. Each later phase
+Phase 4A explicitly includes Giant alongside Heavy. Legacy dependencies were
+isolated in Phase 1 before replacement. Each later phase
 requires explicit authorization and its own acceptance checks. Phase 1 does not
 authorize Player replacement or any Phase 2+ character art.

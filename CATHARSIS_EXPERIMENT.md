@@ -19,7 +19,7 @@ collapse and debris are disposable presentation.
 ### Giant arrival and defeat
 
 Every Giant has a **1.5-second smoke-emergence reveal**: a subdued partial
-silhouette, four drifting haze sprites, then full crimson/gold clarity. HP bars
+silhouette, four drifting haze sprites, then full crimson/muted-ochre clarity. HP bars
 stay hidden for roughly the first second, appearing when the body is mostly
 readable. Giants can be hit throughout this reveal; it grants no invulnerability,
 movement change or delay to spawning. Loading a snapshot rebuilds presentation
@@ -28,12 +28,12 @@ rather than saving meshes or effects.
 Death is now a short staged near-boss beat, rather than a 650 ms shrink/fade:
 
 - 0–110 ms: warm lethal flash and a low impact cue, with no gameplay hit-stop.
-- 90–520 ms: full-size body, arms and mace lose balance and fall; prone armor is
+- 90–520 ms: full-size body and maul lose balance and fall; the fallen silhouette is
   lifted slightly so it does not disappear into the beach.
 - 520 ms: ground crash, expanding impact ring, four reused dust sprites and the
   existing 36-point Giant burst. A restrained 0.045-unit / 240 ms camera impulse
   and delayed crash/rumble/metal cue support the impact.
-- 650 ms: the fallen body breaks into **12 large crimson/gold/steel armor chunks**.
+- 650 ms: the fallen body breaks into **6 broad crest/plate/maul-color chunks** (Phase 4A).
   Chunks settle rapidly, remain visible until 1.55 s, then fade and clear by 2.4 s.
 
 There are three bounded Giant render slots for two live threats plus a recent

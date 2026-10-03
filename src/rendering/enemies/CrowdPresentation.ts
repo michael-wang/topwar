@@ -6,6 +6,11 @@ import { illustratedMaterial } from '../art/IllustratedMaterial';
 export interface CrowdPresentation {
   readonly materialStyle: 'legacy-atlas' | 'vertex-colors';
   readonly bodyTint: 'legacy-tunic' | 'authored';
+  readonly gearTint?: 'authored';
+  readonly scaleY?: number;
+  readonly hitCompression?: number;
+  readonly hpAnchor?: { readonly top: number; readonly width: number };
+  readonly shadow?: { readonly width: number; readonly depth: number };
 }
 
 export const LEGACY_CROWD_PRESENTATION: CrowdPresentation = {

@@ -32,8 +32,10 @@ describe('named character visual families', () => {
       const assets = await loadCharacterAssets();
       const model = (name: string) => models.get(`/models/toy-soldier-${name}.glb`)!;
       const { player, grunt, heavy, giant, boss } = assets.families;
-      expect(load).toHaveBeenCalledTimes(19);
-      expect(models.size).toBe(19);
+      expect(load).toHaveBeenCalledTimes(13);
+      expect(models.size).toBe(13);
+      for (const name of ['body', 'vest', 'run-0', 'run-1', 'run-2', 'run-3'])
+        expect(models.has(`/models/toy-soldier-${name}.glb`)).toBe(false);
       expect([player.role, grunt.role, heavy.role, giant.role, boss.role])
         .toEqual(['player', 'grunt', 'heavy', 'giant', 'boss']);
       expect(player.body.geometry.getAttribute('playerPart')).toBeDefined();
@@ -48,12 +50,14 @@ describe('named character visual families', () => {
       expect(grunt.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
       expect(grunt.death.body).not.toBe(model('gray-body'));
       expect(heavy).not.toBe(grunt);
-      expect(heavy.body).toBe(model('body'));
-      expect(heavy.runFrames).toEqual([0, 1, 2, 3].map(i => model(`run-${i}`)));
+      expect(heavy.body).not.toBe(model('body'));
+      expect(heavy.body).not.toBe(grunt.body);
+      expect(heavy.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
       expect(heavy.runFrames).not.toBe(grunt.runFrames);
       expect(heavy.contact).not.toBe(grunt.contact);
-      expect(giant.body).toBe(model('body'));
-      expect(giant.contact.body).toBe(model('body'));
+      expect(giant.body).not.toBe(model('body'));
+      expect(giant.contact.body).not.toBe(model('body'));
+      expect(giant.weapon).toBeDefined();
       expect(boss.body).toBe(model('boss-body'));
       expect(boss.vest).toBe(model('boss-vest'));
       expect(boss.runFrames).toEqual([0, 1, 2, 3].map(i => model(`boss-run-${i}`)));
@@ -70,6 +74,10 @@ describe('named character visual families', () => {
       const gruntModels = [grunt.body, ...grunt.runFrames, grunt.helmet, grunt.vest, grunt.death.body];
       disposals.push(...gruntModels.map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
       disposals.push(...[...new Set(gruntModels.map(mesh => mesh.material))].map(material => vi.spyOn(material, 'dispose')));
+      const threatModels = [heavy.body, ...heavy.runFrames, heavy.helmet, heavy.vest, heavy.death.body,
+        giant.body, ...giant.runFrames, giant.grayBody, giant.helmet, giant.vest, giant.weapon!, giant.contact.body];
+      disposals.push(...[...new Set(threatModels.map(mesh => mesh.geometry))].map(g => vi.spyOn(g, 'dispose')));
+      disposals.push(...[...new Set(threatModels.map(mesh => mesh.material))].map(m => vi.spyOn(m, 'dispose')));
       assets.dispose();
       for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
     } finally { load.mockRestore(); }

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { publicAssetUrl } from '../core/publicAssetUrl';
-import { createCharacterVisualFamilies, type CharacterModel, type CharacterVisualFamilies } from './CharacterVisualFamilies';
+import type { CharacterModel, CharacterVisualFamilies } from './CharacterVisualFamilies';
 import { createChibiPlayerFamily } from './squad/ChibiPlayerFamily';
 import { createChibiGruntFamily } from './enemies/ChibiGruntFamily';
+import { createChibiHeavyFamily, createChibiGiantFamily } from './enemies/ChibiThreatFamilies';
 
 export interface CharacterAssets {
   readonly families: CharacterVisualFamilies;
@@ -13,9 +14,7 @@ export interface CharacterAssets {
 }
 
 const files = {
-  normalIdle: 'body', grayIdle: 'gray-body',
-  normalRun0: 'run-0', normalRun1: 'run-1', normalRun2: 'run-2', normalRun3: 'run-3',
-  helmet: 'helmet', vest: 'vest', bossVest: 'boss-vest', bullet: 'bullet',
+  grayIdle: 'gray-body', helmet: 'helmet', bossVest: 'boss-vest', bullet: 'bullet',
   bossSlam0: 'boss-slam-0', bossSlam1: 'boss-slam-1', bossSlam2: 'boss-slam-2', bossSlam3: 'boss-slam-3',
   bossIdle: 'boss-body',
   bossRun0: 'boss-run-0', bossRun1: 'boss-run-1', bossRun2: 'boss-run-2', bossRun3: 'boss-run-3',
@@ -43,18 +42,20 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
   const resources = Object.fromEntries(entries) as Record<keyof typeof files, CharacterModel>;
   const player = createChibiPlayerFamily();
   const grunt = createChibiGruntFamily();
+  const heavy = createChibiHeavyFamily(), giant = createChibiGiantFamily();
   return {
-    families: { ...createCharacterVisualFamilies({
-      ...resources,
-      normalRuns: [resources.normalRun0, resources.normalRun1, resources.normalRun2, resources.normalRun3],
-      bossRuns: [resources.bossRun0, resources.bossRun1, resources.bossRun2, resources.bossRun3],
-      bossSlams: [resources.bossSlam0, resources.bossSlam1, resources.bossSlam2, resources.bossSlam3],
-    }, player), grunt },
+    families: { player, grunt, heavy, giant, boss: {
+      role: 'boss', id: 'legacy-boss', body: resources.bossIdle,
+      helmet: resources.helmet, vest: resources.bossVest, grayBody: resources.grayIdle,
+      runFrames: [resources.bossRun0, resources.bossRun1, resources.bossRun2, resources.bossRun3],
+      slamFrames: [resources.bossSlam0, resources.bossSlam1, resources.bossSlam2, resources.bossSlam3],
+    } },
     rewardHelmet: resources.helmet,
     bullet: resources.bullet,
     dispose(): void {
       player.dispose();
       grunt.dispose();
+      heavy.dispose(); giant.dispose();
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();
       for (const texture of textures) texture.dispose();

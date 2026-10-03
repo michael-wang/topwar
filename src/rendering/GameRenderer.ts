@@ -73,7 +73,7 @@ export class GameRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
     this.environment = new BridgeEnvironment(this.scene);
-    this.contactShadows = new ContactShadowRenderer(this.scene);
+    this.contactShadows = new ContactShadowRenderer(this.scene, assets.families);
 
     this.sunlight.position.set(-4, 9, -3);
     this.scene.add(this.skyFill, this.sunlight);

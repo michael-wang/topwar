@@ -5,6 +5,7 @@ import { laneLocomotion, recoilEnvelope, giantWeightPose, LANE_LOCOMOTION_MS } f
 import { BattlefieldAir, AMBIENT_MOTES, FOOT_DUST_CAPACITY } from '../src/rendering/environment/BattlefieldAir';
 import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { bodyModel, helmetModel, vestModel, rifleModel } from './characterModel';
+import { createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 
 it('anticipates, steps with independent member phases, and settles by 220ms', () => {
   expect(LANE_LOCOMOTION_MS).toBe(220);
@@ -76,17 +77,18 @@ it('keeps Heavy locomotion underneath additive hits and gives its death a short 
   expect(corpse?.rotation.x).toBeLessThan(-.3);
   renderer.update([],700);expect(corpse?.visible).toBe(false);renderer.reset();renderer.dispose();
 });
-it('articulates Giant forearm/mace lag and collapses physically before breakup', () => {
-  const scene=new THREE.Scene(), body=bodyModel(), renderer=new GiantRenderer(scene,giantFamily(body,helmetModel(),vestModel(),runFrames(),grayBodyModel())), hits=new HeavyHitFeedback(scene);
+it('delays the Giant maul independently and collapses before the bounded breakup', () => {
+  const family = createChibiGiantFamily();
+  const scene=new THREE.Scene(), renderer=new GiantRenderer(scene,family), hits=new HeavyHitFeedback(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,x:0,z:14,hp:210,maxHp:210,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04};
   renderer.update(enemy,100,hits);
-  const group=scene.getObjectByName('giant-assault-soldier')!, mace=group.getObjectByName('giant-mace')!, arm=group.getObjectByName('giant-arm')!, forearm=group.getObjectByName('giant-forearm')!;
-  expect(mace.parent?.name).toBe('giant-forearm'); expect(arm.rotation.x).not.toBe(forearm.rotation.x);
+  const group=scene.getObjectByName('giant-assault-soldier')!, mace=group.getObjectByName('giant-maul')!, helmet=group.getObjectByName('giant-crest-helmet')!;
+  expect(mace.parent).toBe(group); expect(mace.rotation.x).not.toBe(helmet.rotation.z);
   const angle=mace.rotation.x;hits.observe({...enemy,hp:209},120);renderer.update({...enemy,hp:209},120,hits);
   expect(mace.rotation.x).not.toBe(angle);
   renderer.die(enemy,200);renderer.update(undefined,550,hits);
   expect(group.rotation.x).toBeLessThan(-.5);expect(group.position.y).toBeLessThan(1.05); // Lift the prone armor thickness above the ground.expect(group.visible).toBe(true);
   renderer.update(undefined,850,hits);expect(group.visible).toBe(false);
-  renderer.reset();renderer.update(enemy,1000,hits);expect(arm.rotation.z).toBe(0);
-  renderer.dispose();hits.dispose();
+  renderer.reset();renderer.update(enemy,1000,hits);expect(mace.rotation.x).toBeLessThan(.15);
+  renderer.dispose();hits.dispose();family.dispose();
 });

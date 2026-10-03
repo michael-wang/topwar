@@ -1,0 +1,10 @@
+{
+  "player-guard": null,
+  "grunt-guard": null,
+  "grunt-hit-guard": null,
+  "grunt-death-guard": null,
+  "grunt-contact-guard": null,
+  "world-guard": null,
+  "boss-guard": null,
+  "boss-death-guard": null
+}

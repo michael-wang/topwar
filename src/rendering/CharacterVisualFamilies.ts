@@ -26,7 +26,7 @@ export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heav
   readonly presentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly gaitCycleMs: number;
-  // Legacy feedback uses idle meshes, independently of the active run pose.
+  // Reference feedback parts are independent of the active locomotion pose.
   readonly death: CharacterParts;
   readonly contact: CharacterParts;
 }
@@ -35,8 +35,12 @@ export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
   readonly contactPresentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly grayBody: CharacterModel;
-  // The legacy contact exchange intentionally uses a normal soldier, not the mace hierarchy.
+  // Explicit reference contact silhouette; the procedural family includes its maul.
   readonly contact: CharacterParts;
+  readonly weapon?: CharacterModel;
+  // Explicit full motion envelope, including delayed crest and maul motion.
+  readonly presentation?: { readonly width: number; readonly height: number; readonly depth: number;
+    readonly shadow: { readonly width: number; readonly depth: number } };
 }
 
 export interface BossVisualFamily extends CharacterVisualFamily<'boss'> {
@@ -124,6 +128,7 @@ export function canShareCrowdBatch(a: CrowdVisualFamily, b: CrowdVisualFamily): 
   return a.body.material === b.body.material
     && a.presentation.materialStyle === b.presentation.materialStyle
     && a.presentation.bodyTint === b.presentation.bodyTint
+    && a.presentation.gearTint === b.presentation.gearTint
     && a.helmet.material === b.helmet.material
     && a.helmet.geometry === b.helmet.geometry && a.vest.geometry === b.vest.geometry
     && a.vest.visible === b.vest.visible

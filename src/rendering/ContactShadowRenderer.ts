@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { GameRenderState } from './RenderState';
 import type { SquadRenderer } from './squad/SquadRenderer';
 import { BOSS_DEATH_MS } from '../presentation/BossDeathTiming';
+import type { CharacterVisualFamilies } from './CharacterVisualFamilies';
 
 type ShadowKind = 'player' | 'enemy' | 'boss' | 'reward';
 type ShadowBatch = { mesh: THREE.InstancedMesh; capacity: number };
@@ -29,7 +30,8 @@ export class ContactShadowRenderer {
   private lastBoss: { x: number; z: number; visualScale: number } | null = null;
   private bossDeathStartedAtMs = -Infinity;
 
-  constructor(private readonly scene: THREE.Scene) {
+  constructor(private readonly scene: THREE.Scene,
+    private readonly threats?: Pick<CharacterVisualFamilies, 'heavy' | 'giant'>) {
     this.geometry.rotateX(-Math.PI / 2);
     this.batches = {
       player: this.createBatch('player', 8),
@@ -51,7 +53,11 @@ export class ContactShadowRenderer {
       const enemy = state.enemies[index];
       const widthScale = (enemy.visualScaleX ?? enemy.visualScale ?? .82) / .82;
       const depthScale = (enemy.visualScaleZ ?? enemy.visualScale ?? .82) / .82;
-      this.place('enemy', index, -enemy.x, enemy.z, .68 * widthScale, .42 * depthScale);
+      const footprint = enemy.archetype === 'heavy' ? this.threats?.heavy.presentation.shadow
+        : enemy.archetype === 'giant' ? this.threats?.giant.presentation?.shadow : undefined;
+      this.place('enemy', index, -enemy.x, enemy.z,
+        footprint ? footprint.width * widthScale * .82 : .68 * widthScale,
+        footprint ? footprint.depth * depthScale * .82 : .42 * depthScale);
     }
     this.batches.enemy.mesh.count = state.enemies.length;
     this.batches.enemy.mesh.instanceMatrix.needsUpdate = true;

@@ -56,9 +56,9 @@ export function enemyRunFrame(id: number, nowMs: number, cycleMs = ENEMY_GAIT_CY
   return Math.floor(nowMs / (cycleMs / 4) + id * 1.52788745) & 3;
 }
 
-function setEnemyScale(target: THREE.Vector3, enemy?: EnemyRenderState): void {
+function setEnemyScale(target: THREE.Vector3, enemy?: EnemyRenderState, scaleY = 1): void {
   const base = enemy?.visualScale ?? ENEMY_VISUAL_SCALE;
-  target.set(enemy?.visualScaleX ?? base, enemy?.visualScaleY ?? base, enemy?.visualScaleZ ?? base);
+  target.set(enemy?.visualScaleX ?? base, (enemy?.visualScaleY ?? base) * scaleY, enemy?.visualScaleZ ?? base);
 }
 
 interface CrowdBatch {
@@ -218,8 +218,11 @@ export class EnemyRenderer {
       }
       const fraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
       const giantBar = enemy.archetype === 'giant' ? giantSlot!.healthBarLayout(enemy) : undefined;
-      const width = giantBar ? giantBar.width * (giantCount > 1 ? .8 : 1) : 1.1;
-      const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) * this.roleBatches.heavy.modelTop + .3;
+      const presentation = this.families.heavy.presentation;
+      const width = giantBar ? giantBar.width * (giantCount > 1 ? .8 : 1)
+        : presentation.hpAnchor ? presentation.hpAnchor.width * (enemy.visualScaleX ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) : 1.1;
+      const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE)
+        * (presentation.scaleY ?? 1) * (presentation.hpAnchor?.top ?? this.roleBatches.heavy.modelTop) + .3;
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
       bar.backing.position.set(-enemy.x, y, enemy.z);
@@ -273,7 +276,9 @@ export class EnemyRenderer {
       const hitStrength = this.heavyHits.strength(enemy.id, nowMs);
       transform.position.z += .07 * hitStrength;
       transform.rotation.x += .045 * hitStrength;
-      setEnemyScale(transform.scale, enemy);
+      const presentation = this.crowdFamily(enemy).presentation;
+      setEnemyScale(transform.scale, enemy, presentation.scaleY);
+      transform.scale.y *= 1 - (presentation.hitCompression ?? 0) * hitStrength;
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const bodySlot = bodyIndices[frame]++;
@@ -293,7 +298,8 @@ export class EnemyRenderer {
       vest.setMatrixAt(index, transform.matrix);
       const flashing = (this.flashUntilMs.get(enemy.id) ?? 0) > nowMs;
       if (!flashing) this.flashUntilMs.delete(enemy.id);
-      const color = enemy.archetype === 'heavy' ? this.heavyColor : this.helmetColors[palette];
+      const color = batch.family.presentation.gearTint === 'authored' ? this.authoredBodyColor
+        : enemy.archetype === 'heavy' ? this.heavyColor : this.helmetColors[palette];
       helmet.setColorAt(index, flashing ? this.flashColor : color);
       vest.setColorAt(index, flashing ? this.flashColor : color);
     }
@@ -400,13 +406,13 @@ export class EnemyRenderer {
     visual.x = x;
     visual.z = z;
     visual.direction = id % 2 === 0 ? -1 : 1;
-    setEnemyScale(visual.scale, this.previousEnemies.get(id));
+    setEnemyScale(visual.scale, enemy, giant ? 1 : this.crowdFamily(enemy).presentation.scaleY);
     visual.group.visible = true;
     visual.group.rotation.set(0, Math.PI, 0);
     visual.group.position.set(-x, 0, z);
     visual.group.scale.copy(visual.scale);
     for (const material of visual.materials) material.opacity = 1;
-    const color = this.previousEnemies.get(id)?.archetype === 'heavy' ? this.heavyColor
+    const color = presentation.gearTint === 'authored' ? this.authoredBodyColor : enemy?.archetype === 'heavy' ? this.heavyColor
       : this.helmetColors[paletteIndex(tier, PALETTES.length)];
     visual.materials[1].color.copy(color);
     visual.materials[2].color.copy(color);
@@ -471,7 +477,7 @@ export class EnemyRenderer {
     }
     visual.startedAtMs = nowMs;
     visual.heavy = enemy.archetype === 'heavy';
-    setEnemyScale(visual.scale, enemy);
+    setEnemyScale(visual.scale, enemy, presentation.scaleY);
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
     visual.gearMaterial.color.set(ART.fx.core);

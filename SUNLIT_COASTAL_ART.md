@@ -74,8 +74,9 @@ fortifications. **Beauty is the canvas. War is the violation. Toy soldiers are t
 Static village architecture is mostly intact, beautiful and sunlit; smoke, fire and impacts
 are active contamination. Future residue/damage may tell consequences, but no persistent
 damage system is introduced here. Sand scuffs remain driven by lane centers. Do not draw bright road
-lane markings or add decorative clutter to sell the art. Keep red Grunts,
-ochre Heavies, blue defenders and crimson/gold Giants as clear foreground masses.
+lane markings or add decorative clutter to sell the art. Keep red Grunts, blue
+defenders and crimson Heavy/Giant threats with muted ochre accents as clear
+foreground masses; character roles follow the Character Visual System.
 Enemy health bars use bright coral/red fills with cool navy backing and a thin ivory keyline. Defense HUD and progression
 follow the coastal UI rules below, preserving the open center sky.
 

@@ -1,8 +1,8 @@
 import { createServer } from 'vite';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 const baseline = '83234e8877e3dc3803aa9029520aef6317409d6f';
-export const files = ['CharacterAssets.ts', 'CharacterVisualFamilies.ts', 'enemies/CrowdPresentation.ts', 'enemies/EnemyRenderer.ts', 'enemies/GiantRenderer.ts'];
+export const files = ['CharacterAssets.ts', 'CharacterVisualFamilies.ts', 'GameRenderer.ts', 'ContactShadowRenderer.ts', 'enemies/CrowdPresentation.ts', 'enemies/EnemyRenderer.ts', 'enemies/GiantRenderer.ts'];
 export async function baselineServer() {
   const sources = new Map(files.map(file => {
     const path = `src/rendering/${file}`;
