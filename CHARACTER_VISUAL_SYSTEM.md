@@ -11,7 +11,7 @@ assets, appearance and gameplay. Phase 2A introduced the accepted original
 procedural Player prototype. Phase 2B's refined Player grammar is accepted.
 Phase 3A established an amphibious Grunt prototype that was not accepted as
 the final direction. Phase 3B's clothed rounded Grunt is accepted as good enough
-for now. Phase 4B refines dedicated Heavy/Giant threat prototypes and visible stepping,
+for now. Phase 4C corrects the olive/slate enemy palette, footwear, Heavy/Giant forms and Giant HP bar, retaining Phase 4B stepping,
 with a development-default Level-7 review boot path. Further polish requires human review; the
 complete system is not final.
 
@@ -23,8 +23,9 @@ environment.
 
 **CURRENT SHIPPING:** Player retains the accepted Phase 2B two-head refinement.
 Grunt remains the accepted Phase 3B rounded shirt/shorts figurine. Heavy and Giant
-use Phase 4B procedural threat prototypes. Boss retains its explicit legacy resources
-and presentation. Player, Grunt body/clothing and Boss remain frozen; Phase 4B changes Grunt gait only.
+use Phase 4C procedural threat corrections. Boss retains its explicit legacy resources
+and silhouette. Player/Grunt silhouettes remain frozen; all soldier footwear is lighter,
+and enemy costume colors use olive/slate/stone. Gameplay and Phase 4B gait remain unchanged.
 Naval palette restyling follows COASTAL_GREEK_OBJECT_LANGUAGE.md.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for coastal
@@ -397,7 +398,7 @@ Four poses, asynchronous 360 ms cadence, source silhouette/materials and feedbac
 
 One smooth-shaded ellipsoid (0.50 wide × 0.34 high × 0.38 deep) replaces the
 separate torso/shorts masses. A latitude boundary divides this one volume into
-plain cool gray-green shirt `#a4bcb6` and darker slate-green shorts `#526967`.
+plain dusty-olive shirt `#61704f` and slate shorts `#62727a` after the Phase 4C palette correction.
 There is no belt or secondary visible gear. The required compatibility `vest`
 slot is an explicitly hidden zero-vertex adapter. Live and pooled crowd meshes
 honor that secondary visibility, restoring role-specific gear when a feedback slot
@@ -410,8 +411,8 @@ The pot helmet and thick lip are unchanged; Phase 4C recolors the tier palette. 
 Phase 3A. Skin remains Player's `ART.faction.skin`. No lighting/world change is
 used to create the new clothing contrast.
 
-Four authored rigid poses retain shoe translation up to 0.16 fore/aft and 0.08
-upward, hand counter-swing up to 0.125, the 360 ms `enemyRunFrame` clock,
+Four authored rigid poses retain shoe translation up to 0.16 fore/aft and 0.11
+upward, hand counter-swing up to 0.18, the 360 ms `enemyRunFrame` clock,
 asynchronous ID phase and existing Grunt root lean/bob/sway. No motion timing
 or gameplay changes. `CrowdPresentation` retains vertex colors and neutral
 white body instance tint. Contact uses these revised reference parts; death
@@ -466,7 +467,8 @@ width and mass.
 
 The Heavy helmet is its strongest identifier.
 
-Use a wide, low olive dome and darker olive/charcoal double-layer rim.
+Use a wide, thick olive bucket crown with a nearly flush darker olive lower rim.
+Avoid a thin cap above an oversized horizontal brim. Keep the human head visible.
 No ochre brow, eye-crossing stripe or crest. Keep the profile compressed and heavy, without tactical detail or spikes.
 
 ### Body
@@ -505,21 +507,25 @@ a large firearm automatically: current Heavy threat comes from its role,
 durability and movement, not an invented ranged attack. Death may release that
 stored mass through presentation without changing combat resolution.
 
-### Current Phase 4B Heavy prototype
+### Current Phase 4C Heavy correction
 
 `createChibiHeavyFamily` in `ChibiThreatFamilies` owns a reference body, four
-650 ms rigid locomotion poses, grayscale death body, dedicated low double-rim
+650 ms rigid locomotion poses, grayscale death body, dedicated thick bucket
 helmet and an invisible zero-vertex secondary-slot adapter. The merged body contains one 0.68×0.46×0.47 rounded
 drum, human head/larger unobstructed eyes, two 0.11-radius hand balls farther from
 the drum (±0.41), and two 0.32×0.14×0.38
 shoes on a wide stance. There is no weapon or secondary waist gear.
 
 Phase 4C authored colors are olive shirt `#61704f`, slate shorts `#62727a`,
-olive helmet `#6f7c5a`, darker rims `#4c5945` / `#49555c`, warm skin and light-slate shoes.
+olive helmet `#6f7c5a`, darker rim `#4c5945`, warm skin and light-slate shoes.
+The crown uses a rounded lathed profile (maximum radius 0.44), a short 0.035-high
+lip of radius 0.445, and depth ratio 0.32/0.44. Only 0.005 of radial overhang remains.
+The head is wider (0.32 radius), eyes slightly enlarged (0.028), and the rim starts
+above the eye line. No cheek obstruction, crest, chest block or extra gear is added.
 Body and gear use neutral instance tint, preserving their broad vertex regions.
 The helmet crown is 0.99; presentation compresses legacy projected Y by 0.80
 without changing collision or simulation scale. At equal portrait depth the
-standing silhouette measures 1.28× Grunt height and 1.73× width.
+standing silhouette retains moderate height and a strongly wider footprint than Grunt.
 
 The asynchronous 650 ms clock remains. Four poses alternate shoes by up to
 0.13 fore/aft and 0.09 upward; swing shoes move 0.045 outward, fists counter-swing
@@ -538,14 +544,14 @@ Kenney atlas selector, skeleton or per-enemy hierarchy is used.
 
 ## Giant
 
-### Target and current Phase 4B Colossus prototype
+### Target and current Phase 4C Colossus correction
 
 Giant is not a scaled Heavy. Its three dominant ideas are one huge crest helmet,
-one massive rounded clothed body, and one offset blunt maul. One chest plate
-supports that hierarchy. No shoulder forest, spikes, little plates or belt kit.
+one massive rounded clothed body, and one offset blunt maul. One shallow shoulder
+yoke supports that hierarchy while leaving the main torso readable. No shoulder forest, spikes, little plates or belt kit.
 
 `createChibiGiantFamily` owns dedicated original reference/four locomotion bodies,
-grayscale reference, helmet/crest, chest plate, maul, and a merged body/maul
+grayscale reference, helmet/crest, shoulder yoke, maul, and a merged body/maul
 contact adapter: ten geometries and three matte vertex-color materials.
 It consumes no Grunt, Heavy or legacy normal-soldier geometry.
 The body is one 0.84×0.64×0.58 rounded mass with deep olive `#536246` clothing
@@ -553,14 +559,15 @@ and the same slate lower block. Head/hands stay human; shoes are structural
 0.38×0.17×0.45 blocks. The warm head begins at 0.72, crest crown is 1.355
 (approximately 47% head/helmet zone). The helmet has one broad longitudinal
 limestone fin widened from 0.11 to 0.165 (one crest), and a thick rim.
-The one limestone chest plate is a shallow beveled 0.62×0.36×0.12 slab centered at
-height 0.56, replacing the lower oval patch. The existing slate lower color block
-follows a latitude ring to keep its newly exposed hem clean. The front eyes remain unobstructed.
+The former large front slab is removed. One limestone annular shoulder yoke
+spans 0.86 wide, 0.09 high and 0.585 deep at heights 0.665–0.755, with an open
+neck. It wraps the shoulders instead of dominating the belly. The existing slate
+lower color boundary remains clean, and the front eyes remain unobstructed.
 The maul has one weathered-charcoal handle, broad olive rounded head and one limestone
 hardware band, evoking broad coastal hardware rather than a historical object.
 
 Three dedicated bounded render slots retain two live Giants plus a recent fall.
-Each has four primary mesh draws: posed body, crest helmet, chest plate, maul.
+Each has four primary mesh draws: posed body, crest helmet, shoulder yoke, maul.
 The 850 ms asynchronous gait uses support-aligned `giantWeightPose`: 0.052
 lateral weight transfer, 0.036 roll, at most 0.009 root lift and 1.8% landing
 compression. Shoes alternate 0.14 fore/aft, lift 0.085 and move 0.035 outward.
@@ -572,11 +579,21 @@ body/gear share a restrained emissive response and existing bounded hit timing.
 
 Fall/crash timing remains 90–520 ms, crash at 520 ms, breakup at 650 ms and
 clear at 2400 ms. The existing impact ring, reused haze/dust, burst and restrained
-camera/audio impulse remain. Six broad instanced crest/plate/maul-color chunks
+camera/audio impulse remain. Six broad instanced crest/yoke/maul-color chunks
 replace twelve miscellaneous fantasy armor pieces. Contact includes the maul
 inside its bounded three-mesh representation. HP layout uses a tested full
 motion envelope 1.60 wide × 1.43 high × 0.96 deep rather than construction-only
 bounds. The shoe/body shadow footprint is 1.02×0.48 authored units.
+
+Phase 4C fixes Giant HP fill protrusion by keeping fill and frame on the same
+full sprite quad. A shader clips fill to the frame texture's rounded inner
+track and clamped HP endpoint, using shared 256×48 layout, radius 21.6 and
+track inset 8.16 texels. The left cap and border inset remain fixed at every HP
+fraction and world scale. The bar center follows Giant's lateral weight shift.
+Heavy keeps its existing fill placement/scale; pooled materials switch via
+uniforms, without another texture, mesh or draw. Full/half/low/zero states are
+covered by layout tests and actual portrait captures. Yoke debris replaces the
+old chest-block debris mass while retaining six chunks and existing timing.
 
 Phase 4A review evidence is in `artifacts/threat-chibi-prototype/`: 390×844
 opening/Level-7 HUD, live normal/review/Retry, side-by-side composition, source
@@ -586,6 +603,9 @@ crowd and two-Giant metrics. Player, Grunt and Boss render guards remain
 pixel-identical, including protected feedback states and the world-only view.
 Phase 4B evidence in `artifacts/threat-chibi-polish/` adds matched front/rear
 comparisons, complete gait strips and 2.5-second deterministic real-app sequences.
+Phase 4C evidence is in `artifacts/threat-chibi-correction/`: palette/footwear,
+Heavy bucket and Giant yoke comparisons, full/half/low HP, silhouettes, complete
+gait strips, review opening and matched performance/guard captures.
 Heavy/Giant remain pending human review; Boss remains legacy.
 
 ## Animation principles

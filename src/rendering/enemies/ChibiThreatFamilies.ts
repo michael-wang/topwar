@@ -49,8 +49,8 @@ function face(y: number, z: number, radius = .018): Part[] {
 function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
     { geometry: ball(0, .35, 0, .34, .23, .235, 16, 7), color: THREAT_COLORS.shirt, lower: .30 },
-    { geometry: ball(0, .65, 0, .29, .20, .25), color: ART.faction.skin },
-    ...face(.655, .254, .026),
+    { geometry: ball(0, .65, 0, .32, .20, .26), color: ART.faction.skin },
+    ...face(.655, .264, .028),
     ...[-1, 1].map(side => ({ geometry: ball(side * .41, .34, side * stride * .12, .11, .115, .115, 8, 4), color: ART.faction.skin })),
     { geometry: block(-.25 - (liftLeft > .05 ? .045 : 0), .07 + liftLeft, stride * .13, .32, .14, .38), color: ART.faction.shoes },
     { geometry: block(.25 + (liftRight > .05 ? .045 : 0), .07 + liftRight, -stride * .13, .32, .14, .38), color: ART.faction.shoes },
@@ -61,12 +61,15 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
   const idle = heavyPose(0), runs = [heavyPose(1, 0, .09), heavyPose(-.25, .018, 0),
     heavyPose(-1, .09, 0), heavyPose(.25, 0, .018)], death = gray(idle);
   const helmetGeometry = merge([
-    { geometry: new THREE.SphereGeometry(1, 16, 5, 0, Math.PI * 2, 0, Math.PI / 2)
-      .scale(.44, .22, .32).translate(0, .77, 0), color: THREAT_COLORS.helmet },
-    { geometry: band(.76, .465, .345, .065), color: ART.raider.rim },
-    { geometry: band(.715, .47, .35, .035), color: ART.raider.hardware },
+    // Thick bucket crown with a nearly flush lip; the face opening stays clear.
+    { geometry: new THREE.LatheGeometry([
+      new THREE.Vector2(0, .99), new THREE.Vector2(.22, .975),
+      new THREE.Vector2(.36, .925), new THREE.Vector2(.425, .86),
+      new THREE.Vector2(.44, .79), new THREE.Vector2(.43, .765),
+    ].reverse(), 16).scale(1, 1, .32 / .44), color: THREAT_COLORS.helmet },
+    { geometry: band(.775, .445, .325, .035), color: ART.raider.rim },
   ]);
-  // Invisible contract adapter, matching Grunt. Heavy has no armor/ochre region.
+  // Invisible contract adapter, matching Grunt. Heavy has no secondary armor region.
   const armorGeometry = new THREE.BufferGeometry();
   for (const attribute of ['position', 'normal', 'color'])
     armorGeometry.setAttribute(attribute, new THREE.Float32BufferAttribute([], 3));
@@ -90,7 +93,7 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
 
 function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
-    // Follow a latitude ring so the higher plate does not expose a zigzag hem.
+    // Follow a latitude ring for a clean shorts color boundary.
     { geometry: ball(0, .46, 0, .42, .32, .29, 16, 7), color: ART.raider.bodyDeep, lower: .46 + .32 * Math.cos(4 * Math.PI / 7) },
     { geometry: ball(0, .94, 0, .33, .22, .29, 12, 6), color: ART.faction.skin },
     ...face(.885, .28),
@@ -110,7 +113,13 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
     // One broad longitudinal fin, no spikes or little fittings.
     { geometry: block(0, 1.21, 0, .165, .29, .47), color: THREAT_COLORS.stone },
   ]);
-  const armorGeometry = merge([{ geometry: block(0, .56, .275, .62, .36, .12), color: THREAT_COLORS.stone }]);
+  // A shallow annular shoulder yoke leaves the torso and neck opening readable.
+  const armorGeometry = merge([{ geometry: new THREE.LatheGeometry([
+    new THREE.Vector2(.25, .735), new THREE.Vector2(.29, .755),
+    new THREE.Vector2(.39, .755), new THREE.Vector2(.43, .715),
+    new THREE.Vector2(.40, .665), new THREE.Vector2(.29, .665),
+    new THREE.Vector2(.25, .695), new THREE.Vector2(.25, .735),
+  ].reverse(), 16).scale(1, 1, .68), color: THREAT_COLORS.stone }]);
   // Weapon authored in character space; the renderer adds only small delayed rotation.
   const weaponGeometry = merge([
     { geometry: new THREE.CylinderGeometry(.044, .055, .64, 8).translate(.60, .42, .08), color: ART.raider.hardware },

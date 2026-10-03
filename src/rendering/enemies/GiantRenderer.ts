@@ -55,7 +55,7 @@ export class GiantRenderer {
     this.body = new THREE.Mesh(family.body.geometry, bodyMaterial);
     this.body.name = 'giant-body';
     this.helmet = new THREE.Mesh(family.helmet.geometry, gearMaterial); this.helmet.name = 'giant-crest-helmet';
-    const armor = new THREE.Mesh(family.vest.geometry, gearMaterial); armor.name = 'giant-chest-plate'; armor.visible = family.vest.visible;
+    const armor = new THREE.Mesh(family.vest.geometry, gearMaterial); armor.name = 'giant-shoulder-yoke'; armor.visible = family.vest.visible;
     this.group.name = 'giant-assault-soldier'; this.group.add(this.body, this.helmet, armor);
     this.weapon.name = 'giant-maul';
     if (family.weapon) {
@@ -81,9 +81,9 @@ export class GiantRenderer {
   available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= GIANT_DEATH_MS); }
   barVisible(nowMs: number): boolean { return giantReveal(nowMs - this.bornAt).barVisible; }
   getModelDimensions(): { width: number; height: number; depth: number } { return { ...this.dimensions }; }
-  healthBarLayout(enemy: EnemyRenderState): { width: number; y: number } {
+  healthBarLayout(enemy: EnemyRenderState): { width: number; y: number; x: number } {
     const base = enemy.visualScale ?? 1;
-    return { width: this.dimensions.width * (enemy.visualScaleX ?? base) * .75,
+    return { x: this.group.position.x, width: this.dimensions.width * (enemy.visualScaleX ?? base) * .75,
       y: this.dimensions.height * (enemy.visualScaleY ?? base) + .35 };
   }
   die(enemy: EnemyRenderState, nowMs: number): void {
@@ -156,8 +156,8 @@ export class GiantRenderer {
         this.transform.position.set(-this.previous.x + Math.cos(phase) * distance * (1 + seconds * .6),
           .13 + Math.max(0, Math.sin(seconds / .6 * Math.PI) * (.35 + (i % 3) * .15)), this.previous.z - 1.5 + Math.sin(phase) * distance * 1.4);
         this.transform.rotation.set(phase + seconds * 2, phase * .7, .4 + phase);
-        // Two crest slabs, two chest plates, two blunt maul/armor masses.
-        const shapes = [[.18, .65, .8], [.85, .7, .16], [.75, .50, .6]];
+        // Two crest slabs, two shoulder-yoke pieces, two blunt maul/armor masses.
+        const shapes = [[.18, .65, .8], [.75, .12, .35], [.75, .50, .6]];
         this.transform.scale.fromArray(shapes[i % 3]); this.transform.updateMatrix(); this.chunks.setMatrixAt(i, this.transform.matrix);
       }
       this.chunks.instanceMatrix.needsUpdate = true;

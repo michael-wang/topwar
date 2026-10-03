@@ -2,6 +2,7 @@ import { canShareCrowdBatch, ENEMY_GAIT_CYCLE_MS, type CharacterVisualFamilies,
   type CharacterParts, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_CRASH_MS } from '../../presentation/GiantDrama';
 import { stepWeightPose } from '../../presentation/CharacterMotion';
+import { prepareGiantBarFill } from './GiantHealthBar';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
@@ -101,7 +102,7 @@ export class EnemyRenderer {
   private readonly pendingGiantBursts: { enemy: EnemyRenderState; at: number }[] = [];
   private readonly giantBurst: DeathBurst;
   private readonly deathBurst: DeathBurst;
-  private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite }[] = [];
+  private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
   private readonly barHitColor = new THREE.Color(ART.enemyHealth.hit);
   private readonly barFillTexture = framedBarTexture(true);
@@ -209,7 +210,9 @@ export class EnemyRenderer {
       if (giantSlot && !giantSlot.barVisible(nowMs)) continue;
       let bar = this.healthBars[barIndex++];
       if (!bar) {
-        bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(this.barFillMaterial.clone()) };
+        const material = this.barFillMaterial.clone();
+        bar = { backing: new THREE.Sprite(this.barBackingMaterial), fill: new THREE.Sprite(material),
+          clip: prepareGiantBarFill(material) };
         bar.backing.name = 'heavy-hp-backing';
         bar.fill.name = 'heavy-hp-fill';
         bar.backing.renderOrder = 10;
@@ -226,14 +229,20 @@ export class EnemyRenderer {
         * (presentation.scaleY ?? 1) * (presentation.hpAnchor?.top ?? this.roleBatches.heavy.modelTop) + .3;
       bar.backing.visible = true;
       bar.fill.visible = fraction > 0;
-      bar.backing.position.set(-enemy.x, y, enemy.z);
+      bar.backing.position.set(giantBar?.x ?? -enemy.x, y, enemy.z);
       // Reuse the rate-limited additive hit impulse; each pooled bar owns its tint.
       const hit = this.heavyHits.strength(enemy.id, nowMs);
       (bar.fill.material as THREE.SpriteMaterial).color.copy(giantBar ? this.giantBarFillMaterial.color : this.barFillMaterial.color)
         .lerp(this.barHitColor, hit);
       bar.backing.scale.set(width + .10, giantBar ? .36 : .26, 1);
-      bar.fill.position.set(-enemy.x + width * (1 - fraction) / 2, y, enemy.z);
-      bar.fill.scale.set(width * fraction, (giantBar ? .20 : .14) * (1 + this.heavyHits.strength(enemy.id, nowMs) * .12), 1);
+      bar.clip.enabled.value = giantBar ? 1 : 0; bar.clip.fraction.value = fraction;
+      if (giantBar) {
+        bar.fill.position.copy(bar.backing.position);
+        bar.fill.scale.copy(bar.backing.scale);
+      } else {
+        bar.fill.position.set(-enemy.x + width * (1 - fraction) / 2, y, enemy.z);
+        bar.fill.scale.set(width * fraction, .14 * (1 + this.heavyHits.strength(enemy.id, nowMs) * .12), 1);
+      }
     }
     for (; barIndex < this.healthBars.length; barIndex++) {
       this.healthBars[barIndex].backing.visible = false;

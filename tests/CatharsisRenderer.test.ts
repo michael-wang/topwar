@@ -48,7 +48,7 @@ it('renders a larger amber Heavy and preserves configured scale through death', 
 });
 
 
-it('projects Heavy and Giant health using red fills without altering HP fraction or bar dimensions', () => {
+it('preserves coral health semantics and Heavy dimensions while Giant clips a fixed frame quad', () => {
   const scene = new THREE.Scene();
   const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel()));
   const enemies = [
@@ -61,7 +61,11 @@ it('projects Heavy and Giant health using red fills without altering HP fraction
   expect(fills[0].scale.x).toBeCloseTo(1.1 * 10/15);
   const before = fills[1].scale.x;
   renderer.update([enemies[0], {...enemies[1], hp:172}], 1700);
-  expect(fills[1].scale.x).toBeCloseTo(before * 2);
+  expect(fills[1].scale.x).toBeCloseTo(before);
+  const shader = { uniforms: {} as Record<string, { value: number }>, vertexShader: '', fragmentShader: '#include <map_fragment>' };
+  fills[1].material.onBeforeCompile(shader as THREE.WebGLProgramParametersWithUniforms, {} as THREE.WebGLRenderer);
+  expect(shader.uniforms.giantBarFraction.value).toBe(1);
+  expect(shader.uniforms.giantBarEnabled.value).toBe(1);
   expect(enemies.map(enemy => enemy.hp)).toEqual([10,86]);
   renderer.dispose();
 });
