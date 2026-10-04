@@ -176,19 +176,13 @@ export class BridgeEnvironment {
     sand.position.set(0, .005, 3);
     this.defenseBeach.add(sand, this.coastalWater.group, this.coastalArchitecture.group,
       this.coastalVegetation.group, this.coastalCloth.group, this.coastalForeground.group);
-    const foamMaterial = this.material(ART.coastalDefense.foam, true, .65);
     const duneMaterial = this.material(ART.coastalDefense.sandShade);
-    for (let patch = 0; patch < 20; patch++) {
-      const foam = this.mesh(new THREE.PlaneGeometry(7, .75), foamMaterial, 'shoreline-foam');
-      foam.rotation.x = -Math.PI / 2;
-      foam.position.set((patch - 9.5) * 7, .02, ART.coastalDefense.shorelineZ - .2 + Math.sin(patch * 1.7) * .65);
-      this.defenseBeach.add(foam);
-      if (patch % 3 === 0) {
+    // CoastalWater owns surf; retain only the existing side dunes here.
+    for (let patch = 0; patch < 20; patch += 3) {
         const dune = this.mesh(new THREE.SphereGeometry(1, 8, 5), duneMaterial, 'beach-dune');
         dune.position.set((patch % 2 ? 1 : -1) * (9 + patch), -.2, 10 + patch * 2);
         dune.scale.set(4, .55, 6);
         this.defenseBeach.add(dune);
-      }
     }
     this.defenseBeach.name = 'stationary-defense-beach';
     this.defenseBeach.visible = false;

@@ -14,7 +14,8 @@ it('hides bridge road/rails/joints and presents sand, shore and fixed corridor o
   expect(scene.getObjectByName('stationary-defense-beach')!.visible).toBe(true);
   expect(scene.getObjectByName('defense-sand')).toBeDefined();
   expect(scene.getObjectByName('defense-sea')).toBeDefined();
-  expect(scene.getObjectByName('shoreline-foam')).toBeDefined();
+  expect(scene.getObjectByName('coastal-wet-sand-and-surf')).toBeDefined();
+  expect(scene.getObjectByName('shoreline-foam')).toBeUndefined();
   for (const halfWidth of [3.2, 4.2]) {
     environment.update(0, halfWidth, 0, true);
     scene.updateMatrixWorld(true);

@@ -42,7 +42,7 @@ it('drifts four sky cards gently with deterministic rewind and disposes owned re
   clouds.dispose(); disposals.forEach(dispose => expect(dispose).toHaveBeenCalledOnce());
 });
 
-it('adds foam/tide only in the sea shader without moving the shoreline or gameplay-space geometry', () => {
+it('animates surf only in shaders without moving the canonical shoreline or gameplay-space geometry', () => {
   const water = new CoastalWater(), sea = water.group.getObjectByName('defense-sea') as THREE.Mesh;
   const material = sea.material as THREE.ShaderMaterial;
   const positions = Array.from(sea.geometry.getAttribute('position').array), transform = sea.position.clone();
@@ -52,7 +52,7 @@ it('adds foam/tide only in the sea shader without moving the shoreline or gamepl
   sea.geometry.computeBoundingBox();
   expect(sea.geometry.boundingBox!.min.z + sea.position.z).toBe(ART.coastalDefense.shorelineZ);
   expect(material.uniforms.foam.value.getHexString()).toBe(ART.coastalDefense.foam.slice(1));
-  expect(material.fragmentShader).toContain('float tide=');
+  expect(material.fragmentShader).toContain('shoreOffset');
   expect(material.fragmentShader).toContain('color=mix(color,foam');
   water.dispose();
 });

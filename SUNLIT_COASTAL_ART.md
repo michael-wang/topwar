@@ -76,10 +76,15 @@ sphere assemblies or cartoon outlines. One instanced draw shares one 1024×128
 RGBA texture. Slow lateral drift stays below 0.1 world units/second, with tiny
 vertical motion; clouds are defense-only atmosphere behind village/combat.
 
-The existing turquoise depth wash and slow water ripples now include a narrow,
-broken white-foam edge. A restrained ±0.20-unit, roughly 13-second shader tide
-breath moves foam on the sea side of the unchanged Z=53 shoreline. No water
-geometry, collision, lanes, camera, lighting or weather system changes.
+E1 adds one two-triangle shoreline overlay spanning Z=46–61 above the sand.
+Muted beige/taupe wet sand (`#B1B29A`) occupies a 3.8-unit beach-side band;
+alpha feathering preserves the existing dry sand wash. A broad irregular shore
+curve (±0.85 plus ±0.25 units) breathes by ±0.4 units over 12 seconds with local
+phase variation. Coverage includes the entire beach-side envelope, not only
+the old sea plane. Broken incoming foam has variable widths and gaps; thinner,
+quieter retreat foam and sparse detached patches share this pass. The 20 static
+defense foam strips are removed. These are visual offsets only: simulation
+shoreline Z=53, paths, collision, lanes, camera and lighting are unchanged.
 
 ## Composition and gameplay readability
 
