@@ -17,6 +17,10 @@ This document remains canonical for coastal palette, lighting, environment
 composition and UI guardrails. The implemented naval palette and R4 near-field
 foreground follow the object language without changing gameplay.
 
+Visual QA output is now local and ignored under `artifacts/`; historical evidence
+references in this document are recoverable from Git history. Reusable browser
+sanity scripts live in `scripts/qa/`, with correctness tests in `tests/`.
+
 ## Palette and value hierarchy
 
 `ART.coastalDefense` in `src/art/ArtDirection.ts` owns the coastal palette.

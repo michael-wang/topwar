@@ -138,6 +138,11 @@ contains only geometry, motion strategy, materials and presentation anchors.
 
 ## Review workflow and current shipping
 
+Visual/performance evidence is generated locally under ignored `artifacts/`.
+Historical phase paths below describe evidence recoverable from Git history,
+not shipping dependencies. Current correctness tests remain in `tests/` and
+reusable live/production checks in `scripts/qa/`.
+
 **CURRENT SHIPPING:**
 
 - Player = R1 rounded toy base + R2 combat identity.
@@ -277,7 +282,7 @@ stronger 0.72 core wash and four-spark response.
 
 Ordinary surviving feedback remains independently controlled from lethal/crash
 presentation. R3 supersedes the former core-color/0.6 emissive lethal wash with
-the naturally lit pale-shatter language below. Reveal, surviving-hit impulse,
+the naturally lit threat-specific lethal language below. Reveal, surviving-hit impulse,
 compression and the R1 Giant HP bar remain unchanged.
 
 Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
@@ -332,7 +337,7 @@ less vertical radius. Shell radii are 0.285606/0.22/0.250346 at Y=1.095;
 one proportional limestone crest remains. Crown stays 1.355. The head zone is
 0.4555 (33.62% of height), giving approximately 2.975 heads. The R4 torso remains
 0.84×0.76×0.58, from Y=0.135 to
-0.895, with a straight padded middle. Total role/root scales stay unchanged.
+0.895, with a straight padded middle. R5 presentation scales are recorded below.
 A flat 0.055-high belt wraps the waist; one 0.245×0.275×0.12 flapped canvas
 satchel sits opposite the unchanged maul. No center-chest gear.
 

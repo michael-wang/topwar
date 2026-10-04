@@ -1,9 +1,0 @@
-{
-  "excluded": "ship horizon band Y=430..565 and build SHA footer below Y=1640",
-  "comparisons": {
-    "normal": null,
-    "player-guard": null,
-    "boss-guard": null,
-    "world-guard": null
-  }
-}
