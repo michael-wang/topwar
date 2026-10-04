@@ -232,11 +232,11 @@ export class SquadRenderer {
     const arrival = state.squad.reinforcement;
     const entering = !!arrival && arrival.progress < 1 && state.squad.count > 0;
     const offsets = createDefenseSquadFormation(entering ? 2 : state.squad.count,
-      state.squad.formationSpacing, state.defenseMode ? arrival : undefined);
+      state.squad.formationSpacing, state.defenseMode ? state.squad.defenseFormation ?? arrival : undefined);
     if (entering && state.squad.count === 1) offsets[0].x *= Math.min(1, arrival!.progress / .82);
     const maxOffsetX = offsets.reduce((max, offset) => Math.max(max, Math.abs(offset.x)), 0);
     // Only the rendered anchors spread out; simulation formation and collision stay unchanged.
-    const visualSpread = state.defenseMode && arrival ? 1 : maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
+    const visualSpread = state.defenseMode ? 1 : maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
       (state.track.halfWidth - 0.4) / maxOffsetX));
     while (this.members.length < offsets.length) this.addMember();
 

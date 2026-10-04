@@ -25,6 +25,10 @@ export function projectRenderState(state: SimulationFrameState,
     player: defenseMode ? { ...state.player, z: 0 } : state.player,
     squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
       rifleCounts: state.squad.rifleCounts, formationSpacing: config.formationSpacing,
+      ...(defenseMode ? { defenseFormation: {
+        reinforcementSpacing: config.catharsis!.balance.progression.reinforcementSpacing,
+        reinforcementStagger: config.catharsis!.balance.progression.reinforcementStagger,
+      } } : {}),
       ...(defenseMode && state.reinforcement?.startedAtSeconds !== null && state.reinforcement?.startedAtSeconds !== undefined ? {
         reinforcement: {
           progress: state.reinforcement.arrived ? 1 : Math.min(1, Math.max(0,

@@ -7,6 +7,7 @@ export interface GameRenderState {
     readonly z: number;
   };
   readonly squad: {
+    readonly defenseFormation?: { reinforcementSpacing: number; reinforcementStagger: number };
     readonly reinforcement?: { progress: number; reinforcementSpacing: number; reinforcementStagger: number };
     readonly count: number;
     readonly rocketCount: number;

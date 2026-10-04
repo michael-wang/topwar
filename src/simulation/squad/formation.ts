@@ -31,9 +31,14 @@ export function createSquadFormation(count: number, spacing: number): FormationO
 }
 
 
-// Both Rifle members remain within the same corridor; no independent lane targets.
+// The first three Rifle members remain within the same corridor; no independent lane targets.
 export function createDefenseSquadFormation(count: number, spacing: number,
   pair?: { reinforcementSpacing: number; reinforcementStagger: number }): FormationOffset[] {
+  if (count === 3 && pair) return [
+    { x: -pair.reinforcementSpacing / 2, z: pair.reinforcementStagger * 2 },
+    { x: 0, z: -pair.reinforcementStagger * 4 },
+    { x: pair.reinforcementSpacing / 2, z: pair.reinforcementStagger * 2 },
+  ];
   return count === 2 && pair ? [
     { x: -pair.reinforcementSpacing / 2, z: pair.reinforcementStagger / 2 },
     { x: pair.reinforcementSpacing / 2, z: -pair.reinforcementStagger / 2 },

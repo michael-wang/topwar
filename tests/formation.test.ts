@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSquadFormation } from '../src/simulation/squad/formation';
+import { createSquadFormation, createDefenseSquadFormation } from '../src/simulation/squad/formation';
 
 const distance = (a: { x: number; z: number }, b: { x: number; z: number }) =>
   Math.hypot(a.x - b.x, a.z - b.z);
@@ -55,4 +55,18 @@ describe('createSquadFormation', () => {
     'rejects invalid spacing %s',
     (spacing) => expect(() => createSquadFormation(1, spacing as number)).toThrow(/spacing/),
   );
+});
+
+it('authors the 1/2/3 defense formation inside the lane, with shallow depth and no helmet stacking',()=>{
+  const corridor={reinforcementSpacing:.72,reinforcementStagger:.18};
+  expect(createDefenseSquadFormation(1,.45,corridor)).toEqual([{x:0,z:0}]);
+  for(const count of [2,3]) {
+    const offsets=createDefenseSquadFormation(count,.45,corridor);
+    expect(offsets).toHaveLength(count);
+    expect(Math.max(...offsets.map(o=>Math.abs(o.x)))).toBe(.36);
+    expect(new Set(offsets.map(o=>o.x)).size).toBe(count);
+    expect(offsets.reduce((sum,o)=>sum+o.x,0)).toBeCloseTo(0);
+    expect(offsets.reduce((sum,o)=>sum+o.z,0)).toBeCloseTo(0);
+    expect(Math.max(...offsets.map(o=>o.z))-Math.min(...offsets.map(o=>o.z))).toBeLessThanOrEqual(1.08);
+  }
 });

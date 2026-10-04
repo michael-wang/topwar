@@ -1,6 +1,6 @@
-# Giant Drama + Post-LV7 Elite Escalation
+# Catharsis Experiment — P1 Progression and Deferred Late Game
 
-This is a focused **progression experiment**, not final progression pacing.
+Current P1 progression is specified in `GAME_SPEC.md`: Lv1–Lv5 only. The late-game experiment below is retained infrastructure and is unreachable in normal P1 play; its earlier timing measurements are historical, not the current Rifle curve.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
@@ -242,26 +242,22 @@ recorded separately; physical-phone feel remains the final check.
 
 ## Earned progression
 
-Defense runs start at **LV1 / XP0**. XP measures progress within the current level.
-Authored per-level requirements are **28 / 60 / 110 / 180 / 280 / 420** XP for
-LV1→2 through LV6→7. These are current-level costs, not cumulative totals.
-After the table, each requirement is **ceil(previous × 1.45)** (609, 884…);
-`xpFallbackMultiplier` is configurable and there is no authored cap.
-The old linear formula/fields are removed.
-A player-caused Grunt death awards **1 XP**; a Heavy
-awards **10 XP**. Hits, contact casualties and leaks award nothing. Rifle penetration
-can award each kill; retained rocket kill resolution uses the same award boundary.
-Overflow repeatedly advances levels and retains the remainder; there is no authored cap.
+Defense runs start at **Lv1 / XP0** and naturally stop at **Lv5**. The explicit
+`levelPlan` maps Lv1–5 to Rifle stages **I / II / III / III / III** and squad
+stages **1 / 1 / 1 / 2 / 3**. `fireRateMultipliers = [1, 1.25, 1.5]` multiplies
+the independently tunable base: at base 3 Hz this is **3 / 3.75 / 4.5 / 4.5 / 4.5 Hz**.
+No taper or rate gain exists beyond Stage III, including debug levels.
 
-Effective Rifle rate adds authored level bonuses to the independent TUNE base.
-LV1–4 remain **3 / 4 / 5 / 6 Hz**. From `fireRateTaperStartLevel=5`, the first gain
-is `fireRateTaperFirstGain=0.5` Hz; each subsequent gain is multiplied by
-`fireRateTaperDecay=0.8`. LV7 is now the configurable **reinforcementLevel=7**, so that level skips its
-per-soldier rate gain. Thus LV5–9 are **6.5 / 6.9 / 6.9 / 7.22 / 7.476 Hz** per
-soldier, with diminishing gains resuming at LV8. `fireRatePerLevel=1` controls the earlier gains.
-TUNE still edits **Base fire rate**, never the level bonus (2.5 base at LV5 gives
-6 Hz). These values are runtime-loaded and retained/validated in snapshots.
-Levels shorten the pending Rifle cooldown when necessary; no damage, XP costs or enemy HP changes.
+Current-level XP costs remain **28 / 60 / 110 / 180**. Grunt kills grant 1 XP,
+Heavy kills 10; hits, contact casualties and leaks grant nothing. Every crossed
+level applies its squad-stage delta. Lv4 and Lv5 each add exactly one Tier-1
+Rifle soldier, without healing casualties back to the unlocked stage target.
+At Lv5 XP is discarded and the XP bar stays full without imminent pulsing.
+Grenades are deferred to P2 and enemy difficulty is frozen during P1 validation.
+
+The HUD uses three cartridge pips at Lv1–3, then three soldier pips at Lv4–5.
+Filled counts are **1 / 2 / 3 / 2 / 3**. Soldier pips represent permanent unlocks,
+not current living members. The enlarged Rifle weapon slot is unchanged.
 
 The bottom HUD shows **LV N only**, with no routine numeric XP. A small plaster badge has a
 prominent level number and aqua underline; the enclosing capsule is gone. A taller
@@ -275,8 +271,7 @@ Forward mask/edge updates interpolate over 120 ms. Large same-level gains
 reward is visible; XP and level power are granted immediately in simulation.
 
 One disposable `progressionLevelUp` event coordinates the entire presentation:
-**800 ms** HUD aqua/foam pulse, track sweep and `LEVEL UP` / `FIRE RATE ↑` message
-(the reinforcement unlock omits the explanatory subtitle).
+**800 ms** HUD aqua/foam pulse, track sweep and `LEVEL UP` message.
 For the first **240 ms** the bar flashes full, then resets immediately to actual
 new-level overflow; the old level label becomes the new one with a pop at 120 ms.
 Combat does not pause. Multi-level grants carry a from/to range and share one
@@ -291,58 +286,27 @@ cyan-white muzzle flash (90 ms rather than 50 ms) and stronger tracer glow (.55 
 versus .28, 1.2× Rifle width). Damage, range and the weapon model stay unchanged.
 The existing modest ascending two-tone audio cue remains at its prior volume.
 
-Progression and progression balance are plain snapshot data. Validation checks
-current-level XP, positive integer level, nonempty positive requirement table and
-finite fallback multiplier >1. Phase 3.0 snapshots carrying explicit linear
-`firstLevelXp`/`xpRequirementStep` balance are **intentionally rejected**, not
-silently reinterpreted; save a new snapshot for this pacing experiment. Older
-pre-XP defense snapshots without progression initialize LV1/XP0 and use current
-balance defaults; non-defense runs remain without XP. Retry resets level/XP,
-observer, HUD beat, soldier burst and weapon afterglow, retaining runtime TUNE.
-Edit `catharsis.progression.xpRequirements` / `xpFallbackMultiplier` in runtime JSON.
-Kill awards remain `gruntKillXp=1`, `heavyKillXp=10`; `fireRatePerLevel=1`.
+Progression remains plain `{ level, xp }` snapshot data; derived stages are not
+serialized. Validation requires a five-entry non-decreasing stage plan, three
+non-decreasing positive rate multipliers, four positive XP costs, and zero XP at
+or above the cap. Superseded formula config fields are rejected explicitly.
+Missing plan/multiplier fields receive current defaults; pre-XP defense states
+initialize Lv1/XP0. Retry resets progression and effects while preserving tuning.
 
-## LV7 reinforcement
+## Deferred Lv7 reinforcement
 
-LV6→LV7 still costs **420 current-level XP** (1,078 XP cumulatively from LV1).
-This unlock replaces the usual per-soldier fire-rate gain: after arrival, both
-Tier-1 Rifle soldiers fire at **6.9 Hz each**, exactly **13.8 shots/second total**.
-There is no hidden damage bonus or extra rate gain at LV7. TUNE Base fire rate
-remains independent; each member receives the same base plus level bonus.
-LV8 resumes the small diminishing per-soldier gain (7.22 Hz each).
+The existing one-time serialized entrance/landing-assault mechanism remains
+available only to explicit late-game/debug fixtures. P1 Lv4/Lv5 grants do not
+start it. Its level remains seven, beyond the normal cap; its Rifle rate now
+clamps to the final designed Stage III rather than the removed taper formula.
+The 1.1-second entrance and snapshot restore behavior remain available.
 
-Simulation serializes a one-time reinforcement start clock and arrived flag.
-At the unlock, Soldier A continues fighting while a disposable Soldier B visual
-runs from below the screen into formation, with bob/lean and a lowered Rifle.
-The weapon rises during the final quarter of the **1.1-second** entrance. Only
-when the arrival finishes does simulation add one Tier-1 soldier and enable its
-fire. The world never pauses. The existing warm level-up ring/body wash/motes,
-positive audio, level-label pop and 1.4-second weapon afterglow remain intact.
-No damage-multiplier text is added; the visible arrival communicates the reward.
-
-Both soldiers share the one selected lane. The two-member formation uses **0.72
-units** between centers and **0.18 units** of longitudinal stagger, with the same
-explicit lane identity on both members' Rifle shots. There is no independent
-lane targeting or wider Rifle targeting. Formation values and unlock/arrival
-values are runtime-loaded under `catharsis.progression`:
-`reinforcementLevel`, `reinforcementArrivalSeconds`, `reinforcementSpacing`,
-`reinforcementStagger`. Other legacy formations and Merge rules remain intact.
-
-Defense Rifle timing uses serialized per-member cooldowns. Soldier B joins with
-half a shot interval offset from A's next shot: **~72.46 ms** at 6.9 Hz. Fixed-step
-rounding produces alternating **66.7 / 83.3 ms** gaps, without reducing total DPS.
-A ten-second check emits 69 shots from each member (138 total), with identical
-Tier-1 damage. Projectiles carry optional `memberIndex` so recoil and muzzle
-flashes belong to the actual shooter rather than both members of the same tier.
-Legacy non-defense firing retains its existing volley behavior.
-
-Snapshots retain pending arrival, completed grant, member clocks and projectile
-member identity. Restore mid-entrance resumes from simulation time; pause also
-holds that clock. Older defense snapshots without reinforcement state initialize
-an unclaimed reward; at/above the unlock it starts once. Missing member clocks
-initialize deterministically. Retry resets to LV1/XP0/one soldier, clears arrival
-and presentation, and retains existing runtime TUNE semantics. A lost reinforcement
-is not repeatedly granted at later levels; Game Over does not resurrect the squad.
+P1 member clocks are independent; new members enter the largest unused firing
+phase gap. The authored pair is 0.72 units wide with 0.18 depth stagger. Three
+members use the same lateral width, with a forward center member so all bodies
+remain readable. Rendered anchors and simulation origins share these offsets.
+No member independently selects another lane; legacy non-defense volley firing
+and Merge infrastructure remain unchanged.
 
 ## Heavy lane leader
 

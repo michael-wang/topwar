@@ -1,8 +1,12 @@
+import * as THREE from 'three';
+import { createChibiPlayerFamily } from '../src/rendering/squad/ChibiPlayerFamily';
+import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
+import { createDefenseSquadFormation } from '../src/simulation/squad/formation';
 import { expect, it } from 'vitest';
 import data from '../public/game-data/game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { Simulation } from '../src/simulation/Simulation';
-import { requiredXp, grantXp, effectiveRifleFireRate } from '../src/simulation/progression';
+import { requiredXp, grantXp, effectiveRifleFireRate, progressionStage, maxProgressionLevel } from '../src/simulation/progression';
 import { laneCompositionForRow, attackLanePositions } from '../src/simulation/enemies/laneComposition';
 import { projectRenderState } from '../src/app/projectRenderState';
 import { enemyRunFrame, enemyWalkPose } from '../src/rendering/enemies/EnemyRenderer';
@@ -16,7 +20,7 @@ const tuning = { moveSpeed: 5, forwardSpeed: 0, trackHalfWidth: 3.2, defenseLine
   rifle: config.weapon.rifle, rocket: config.weapon.rocket };
 it('starts at level one and uses the authored increasing XP curve with repeated overflow', () => {
   expect(make().getState().progression).toEqual({ level: 1, xp: 0 });
-  expect([1, 2, 3, 4, 5, 6].map(level => requiredXp(level, curve))).toEqual([28, 60, 110, 180, 280, 420]);
+  expect([1, 2, 3, 4].map(level => requiredXp(level, curve))).toEqual([28, 60, 110, 180]);
   expect(grantXp({ level: 1, xp: 27 }, 10, curve)).toEqual({ level: 2, xp: 9 });
   expect(grantXp({ level: 1, xp: 0 }, 205, curve)).toEqual({ level: 4, xp: 7 });
 });
@@ -47,12 +51,12 @@ it('does not award XP for direct contact casualties', () => {
   expect(sim.getState().progression).toEqual({ level: 1, xp: 0 });
 });
 it.each([1, 2, 3])('schedules effective Rifle fire at level %i without mutating base tuning', level => {
-  expect(effectiveRifleFireRate(3, level, curve)).toBe(level + 2);
-  expect(effectiveRifleFireRate(2.5, level, curve)).toBe(level + 1.5);
+  expect(effectiveRifleFireRate(3, level, curve)).toBe([3, 3.75, 4.5][level - 1]);
+  expect(effectiveRifleFireRate(2.5, level, curve)).toBe(2.5 * [1, 1.25, 1.5][level - 1]);
   const sim = make(); const state = sim.getState(); state.progression = { level, xp: 0 }; sim.restoreState(state);
   for (let tick = 0; tick < 120; tick++) sim.step(1 / 60, { targetX: 0 }, tuning);
-  expect(sim.getState().weapons.nextProjectileId - 1).toBeGreaterThanOrEqual(2 * (level + 2));
-  expect(sim.getState().weapons.nextProjectileId - 1).toBeLessThanOrEqual(2 * (level + 2) + 1);
+  expect(sim.getState().weapons.nextProjectileId - 1).toBeGreaterThanOrEqual(2 * [3, 3.75, 4.5][level - 1]);
+  expect(sim.getState().weapons.nextProjectileId - 1).toBeLessThanOrEqual(2 * [3, 3.75, 4.5][level - 1] + 1);
   expect(tuning.rifle.fireRate).toBe(3);
   expect(sim.getState().catharsis!.balance.heavyHp).toBe(15);
 });
@@ -61,7 +65,7 @@ it('shortens the pending shot promptly when a kill levels up', () => {
   state.enemies = [{ id: 1, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: 3, hp: 1 }];
   sim.restoreState(state); sim.step(.06, { targetX: 0 }, tuning);
   expect(sim.getState().progression).toEqual({ level: 2, xp: 0 });
-  expect(sim.getState().weapons.rifleCooldownRemainingSeconds).toBeLessThanOrEqual(.25);
+  expect(sim.getState().weapons.rifleCooldownRemainingSeconds).toBeLessThanOrEqual(1 / 3.75);
 });
 it('restores progression deterministically, validates it, and new runs reset it', () => {
   const sim = make(); const state = sim.getState(); state.progression = { level: 3, xp: 11 }; sim.restoreState(state);
@@ -117,52 +121,86 @@ it('uses the tuned base rate in actual level-three scheduling', () => {
   const sim = make(); const state = sim.getState(); state.progression = { level: 3, xp: 0 }; sim.restoreState(state);
   const live = { ...tuning, rifle: { ...tuning.rifle, fireRate: 2.5 } };
   for (let tick = 0; tick < 120; tick++) sim.step(1 / 60, { targetX: 0 }, live);
-  expect(sim.getState().weapons.nextProjectileId - 1).toBe(9);
+  expect(sim.getState().weapons.nextProjectileId - 1).toBe(8);
   expect(live.rifle.fireRate).toBe(2.5);
 });
 
-it('uses successive ceil growth beyond the table without a level cap', () => {
-  expect(requiredXp(7, curve)).toBe(609);
-  expect(requiredXp(8, curve)).toBe(884);
-  expect(requiredXp(9, { ...curve, xpFallbackMultiplier: 2 })).toBe(3360);
-  expect(grantXp({ level: 6, xp: 419 }, 620, curve)).toEqual({ level: 8, xp: 10 });
+it('caps natural XP at five, including large grants, while debug levels clamp to Stage III', () => {
+  expect(maxProgressionLevel(curve)).toBe(5);
+  expect(curve.levelPlan).toEqual([
+    {fireRateStage:1,squadStage:1}, {fireRateStage:2,squadStage:1},
+    {fireRateStage:3,squadStage:1}, {fireRateStage:3,squadStage:2}, {fireRateStage:3,squadStage:3},
+  ]);
+  expect(grantXp({level:1,xp:0},100000,curve)).toEqual({level:5,xp:0});
+  expect(grantXp({level:5,xp:0},100000,curve)).toEqual({level:5,xp:0});
+  expect([1,2,3,4,5,7,100].map(level=>effectiveRifleFireRate(3,level,curve)))
+    .toEqual([3,3.75,4.5,4.5,4.5,4.5,4.5]);
 });
-it('validates the table balance in snapshots and rejects superseded linear fields', () => {
-  const sim = make(); const state = sim.getState();
-  state.catharsis!.balance.progression.xpRequirements = [30, 70];
-  state.progression = { level: 3, xp: 100 };
-  sim.restoreState(JSON.parse(JSON.stringify(state)));
-  expect(requiredXp(3, sim.getState().catharsis!.balance.progression)).toBe(102);
-  const bad = sim.getState(); bad.catharsis!.balance.progression.xpRequirements = [];
-  expect(() => sim.restoreState(bad)).toThrow();
-  const old = sim.getState() as any;
-  old.catharsis.balance.progression = { firstLevelXp: 16, xpRequirementStep: 12, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1 };
-  expect(() => sim.restoreState(old)).toThrow();
+it('restores explicit stages and rejects obsolete formula snapshots or invalid stages', () => {
+  const sim=make(), state=sim.getState();
+  state.catharsis!.balance.progression.fireRateMultipliers=[1,1.2,1.4];
+  state.progression={level:4,xp:100}; sim.restoreState(JSON.parse(JSON.stringify(state)));
+  expect(effectiveRifleFireRate(3,4,sim.getState().catharsis!.balance.progression)).toBeCloseTo(4.2);
+  const bad=sim.getState(); bad.catharsis!.balance.progression.levelPlan[2].fireRateStage=1;
+  expect(()=>sim.restoreState(bad)).toThrow();
+  const old=sim.getState() as any; old.catharsis.balance.progression.fireRatePerLevel=1;
+  expect(()=>sim.restoreState(old)).toThrow();
+  const max=sim.getState();max.progression={level:5,xp:1};expect(()=>sim.restoreState(max)).toThrow(/progression/);
+});
+function killForXp(level:number,xp:number,count:number, reward:number) {
+  const sim=make(), state=sim.getState(); state.progression={level,xp};
+  state.squad={count,rocketCount:0,rifleCounts:[count],rifleRemainder:0};
+  state.weapons.rifleCooldownRemainingSeconds=.12;
+  state.weapons.rifleMemberCooldowns=Array.from({length:count},(_,i)=>.12+i*.07);
+  state.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:3,hp:1}];
+  state.catharsis!.balance.progression.heavyKillXp=reward;
+  state.projectiles=[{id:1,kind:'rifle',tier:1,lane:2,slopeX:0,x:0,z:2,speed:60,damage:config.tiers.tier1Power,
+    remainingRange:30,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
+  state.weapons.nextProjectileId=2;sim.restoreState(state);sim.step(.02,{targetX:0},tuning);return sim;
+}
+it.each([[3,109,1,4,2],[4,179,2,5,3],[4,179,1,5,2]])(
+  'rewards one new Rifle for %i (XP %i, living %i), without healing to stage target', (level,xp,count,nextLevel,nextCount)=>{
+    const sim=killForXp(level,xp,count,1),s=sim.getState();
+    expect(s.progression).toEqual({level:nextLevel,xp:0});expect(s.squad.rifleCounts).toEqual([nextCount]);
+    expect(progressionStage(s.progression!.level,curve).squadStage).toBe(nextLevel-2);
+    expect(s.weapons.rifleMemberCooldowns![0]).toBeCloseTo(.10);
+    expect(new Set(s.weapons.rifleMemberCooldowns).size).toBe(nextCount);
+    expect(s.reinforcement).toEqual({startedAtSeconds:null,arrived:false});
+    expect(s.landingAssault!.reinforcementActiveAtSeconds).toBeNull();
+  });
+it('applies both crossed squad rewards in one XP event and gives independent clocks',()=>{
+  const sim=killForXp(3,0,1,290),s=sim.getState();
+  expect(s.progression).toEqual({level:5,xp:0});expect(s.squad.rifleCounts).toEqual([3]);
+  expect(s.weapons.rifleMemberCooldowns).toHaveLength(3);
+  expect(new Set(s.weapons.rifleMemberCooldowns).size).toBe(3);
+  const fired:number[][]=[[],[],[]];let id=s.weapons.nextProjectileId;
+  for(let tick=0;tick<60;tick++) {
+    sim.step(1/60,{targetX:0},tuning);
+    const frame=sim.getState();for(const shot of frame.projectiles.filter(p=>p.id>=id)) fired[shot.memberIndex!].push(frame.tick);
+    id=frame.weapons.nextProjectileId;
+  }
+  expect(fired.every(shots=>shots.length>=4)).toBe(true);expect(fired[0]).not.toEqual(fired[1]);expect(fired[1]).not.toEqual(fired[2]);
 });
 
-it('keeps LV1–4 rates fixed and tapers LV5 and later gains without changing base or enemies', () => {
-  expect([1,2,3,4,5,6,7,8].map(level => effectiveRifleFireRate(3, level, curve)))
-    .toEqual([3,4,5,6,6.5,6.9,6.9,7.22]);
-  expect(effectiveRifleFireRate(2.5, 5, curve)).toBe(6);
-  const sim = make(); const state = sim.getState(); state.progression = { level: 5, xp: 0 };
-  sim.restoreState(state);
-  for (let tick=0;tick<120;tick++) sim.step(1/60,{targetX:0},tuning);
-  expect(sim.getState().weapons.nextProjectileId - 1).toBe(13);
-  expect(sim.getState().catharsis!.balance.heavyHp).toBe(15);
-  expect(sim.getState().catharsis!.balance.groupSize).toBe(24);
+it('validates plan shape, monotonic stages and snapshot defaults without serialized derived stages',()=>{
+  for(const patch of [
+    {levelPlan:curve.levelPlan.slice(0,4)}, {xpRequirements:[28,60,110]},
+    {fireRateMultipliers:[1,.9,1.5]}, {levelPlan:curve.levelPlan.map((p,i)=>({...p,squadStage:i===2?0:p.squadStage}))},
+  ]) expect(()=>GameConfigSchema.parse({...data,catharsis:{...data.catharsis,progression:{...data.catharsis.progression,...patch}}})).toThrow();
+  const source=structuredClone(data) as any;delete source.catharsis.progression.levelPlan;delete source.catharsis.progression.fireRateMultipliers;
+  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toEqual(curve.levelPlan);
+  expect(Object.keys(make().getState().progression!)).toEqual(['level','xp']);
 });
 
-
-it('restores and validates runtime Rifle taper balance independently from XP costs', () => {
-  const sim = make(); const state = sim.getState();
-  state.catharsis!.balance.progression.fireRateTaperFirstGain = .3;
-  state.catharsis!.balance.progression.fireRateTaperDecay = .5;
-  state.progression = { level: 6, xp: 10 };
-  sim.restoreState(JSON.parse(JSON.stringify(state)));
-  const restored = sim.getState();
-  expect(effectiveRifleFireRate(3, 6, restored.catharsis!.balance.progression)).toBe(6.45);
-  expect(restored.progression).toEqual({ level: 6, xp: 10 });
-  expect(restored.catharsis!.balance.progression.xpRequirements).toEqual([28,60,110,180,280,420]);
-  restored.catharsis!.balance.progression.fireRateTaperDecay = 1;
-  expect(() => sim.restoreState(restored)).toThrow();
+it.each([1,2,3])('keeps %i rendered defense anchors consistent with authoritative Rifle origins',count=>{
+  const sim=make(),s=sim.getState();s.squad={count,rocketCount:0,rifleCounts:[count],rifleRemainder:0};
+  sim.restoreState(s);sim.step(1/60,{targetX:0},tuning);
+  const state=sim.getFrameState(),frame=projectRenderState(state,{catharsis:state.catharsis,formationSpacing:.45,trackHalfWidth:3.2,defenseLineOffset:1.5,bossVisualScale:7});
+  const family=createChibiPlayerFamily(),scene=new THREE.Scene(),renderer=new SquadRenderer(scene,family),positions:THREE.Vector3[]=[];
+  renderer.update(frame,0);renderer.update(frame,3000);renderer.forEachVisibleMemberPosition(p=>positions.push(p.clone()));
+  const offsets=createDefenseSquadFormation(count,.45,curve);
+  expect(positions).toHaveLength(count);
+  positions.forEach((p,i)=>{expect(p.x).toBeCloseTo(-(state.player.x+offsets[i].x));expect(p.z).toBeCloseTo(offsets[i].z);});
+  state.projectiles.forEach(shot=>{expect(shot.x).toBeCloseTo(state.player.x+offsets[shot.memberIndex!].x);});
+  renderer.dispose();family.dispose();
 });

@@ -15,25 +15,25 @@ it('only enables the explicit threat review query', () => {
   for (const query of ['', '?review=other', '?threats', '?perf=1']) expect(threatReviewEnabled(query)).toBe(false);
 });
 it.each([
-  ['', true, 1], ['?review=threats', true, 7], ['?review=normal', true, 1],
-  ['', false, 1], ['?review=threats', false, 7], ['?review=normal', false, 1],
+  ['', true, 1], ['?review=threats', true, 5], ['?review=normal', true, 1],
+  ['', false, 1], ['?review=threats', false, 5], ['?review=normal', false, 1],
 ])('resolves boot %s (development %s) to Level %s, including Retry', (search, development, level) => {
   const enabled = threatReviewEnabled(search);
   const boot = () => enabled ? make() : new Simulation(options);
   for (const state of [boot().getState(), boot().getState()]) {
     expect(state.progression).toEqual({ level, xp: 0 });
-    expect(state.squad.count).toBe(level === 7 ? 2 : 1);
-    expect(state.reinforcement!.arrived).toBe(level === 7);
-    expect(state.enemies.some(enemy => enemy.archetype === 'giant')).toBe(level === 7);
+    expect(state.squad.count).toBe(level === 5 ? 3 : 1);
+    expect(state.reinforcement!.arrived).toBe(false);
+    expect(state.enemies.some(enemy => enemy.archetype === 'giant')).toBe(level === 5);
   }
 });
-it('restores valid Level 7 XP, arrived reinforcement and all three actual threat roles', () => {
+it('restores valid Level 5 XP, no late reinforcement and all three actual threat roles', () => {
   const state = make().getState();
-  expect(state.progression).toEqual({ level: 7, xp: 0 });
+  expect(state.progression).toEqual({ level: 5, xp: 0 });
   expect(state.seed).toBe(THREAT_REVIEW_SEED);
-  expect(state.reinforcement).toEqual({ startedAtSeconds: 0, arrived: true });
-  expect(state.squad.count).toBe(2);
-  expect(state.weapons.rifleMemberCooldowns).toHaveLength(2);
+  expect(state.reinforcement).toEqual({ startedAtSeconds: null, arrived: false });
+  expect(state.squad.count).toBe(3);
+  expect(state.weapons.rifleMemberCooldowns).toHaveLength(3);
   expect(state.enemies.map(e => e.archetype)).toEqual(['grunt', 'heavy', 'giant']);
   expect(new Set(state.enemies.map(e => e.lane)).size).toBe(3);
   expect(state.enemies.every(e => e.z >= 8)).toBe(true);
@@ -68,5 +68,5 @@ it('runs ordinary movement, firing and damage after the opening', () => {
   expect(next.weapons.nextProjectileId).toBeGreaterThan(initial.weapons.nextProjectileId);
   expect(next.enemies.find(e => e.id === 3)!.z).toBeLessThan(initial.enemies[2].z);
   expect(next.enemies.find(e => e.id === 2)?.hp ?? 0).toBeLessThan(initial.enemies[1].hp);
-  expect(next.squad.count).toBe(2);
+  expect(next.squad.count).toBe(3);
 });

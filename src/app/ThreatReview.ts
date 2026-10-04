@@ -18,12 +18,13 @@ export function createThreatReview(options: SimulationOptions, baseFireRate: num
   if (!catharsis?.balance.defenseMode || !state.enemyStream || catharsis.balance.laneCount !== 5)
     throw new Error('Threat review requires the five-lane defense level');
   const balance = catharsis.balance;
-  state.progression = { level: 7, xp: 0 };
+  state.progression = { level: 5, xp: 0 };
   state.elapsedSeconds = balance.progression.reinforcementArrivalSeconds;
   state.tick = Math.round(state.elapsedSeconds * 60);
-  state.reinforcement = { startedAtSeconds: 0, arrived: true };
-  state.squad = addRifleSoldiers(state.squad, 1, 1, options.tiers.mergeCount);
-  state.landingAssault!.reinforcementActiveAtSeconds = state.elapsedSeconds;
+
+  state.squad = addRifleSoldiers(state.squad, 2, 1, options.tiers.mergeCount);
+
+  // Force art-review threats without entering the deferred natural Lv6 encounter.
   state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   const lanes = attackLanePositions(5, catharsis.trackHalfWidth, balance.edgeInset);
   state.enemies = [
@@ -32,8 +33,8 @@ export function createThreatReview(options: SimulationOptions, baseFireRate: num
     { id: 3, tier: 1, archetype: 'giant', lane: 1, x: lanes[1], z: 22, hp: balance.giant.hp },
   ];
   state.enemyStream.nextEnemyId = Math.max(state.enemyStream.nextEnemyId, 4);
-  const interval = 1 / effectiveRifleFireRate(baseFireRate, 7, balance.progression);
-  state.weapons.rifleMemberCooldowns = [0, interval / 2];
+  const interval = 1 / effectiveRifleFireRate(baseFireRate, 5, balance.progression);
+  state.weapons.rifleMemberCooldowns = [0, interval / 3, 2 * interval / 3];
   simulation.restoreState(state);
   return simulation;
 }

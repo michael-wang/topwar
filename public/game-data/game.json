@@ -26,14 +26,17 @@
     "heavyDepthMultiplier": 1.15,
     "rewardAimRadius": 0.5,
     "progression": {
-      "xpRequirements": [28, 60, 110, 180, 280, 420],
-      "xpFallbackMultiplier": 1.45,
+      "xpRequirements": [28, 60, 110, 180],
+      "levelPlan": [
+        { "fireRateStage": 1, "squadStage": 1 },
+        { "fireRateStage": 2, "squadStage": 1 },
+        { "fireRateStage": 3, "squadStage": 1 },
+        { "fireRateStage": 3, "squadStage": 2 },
+        { "fireRateStage": 3, "squadStage": 3 }
+      ],
+      "fireRateMultipliers": [1, 1.25, 1.5],
       "gruntKillXp": 1,
       "heavyKillXp": 10,
-      "fireRatePerLevel": 1,
-      "fireRateTaperStartLevel": 5,
-      "fireRateTaperFirstGain": 0.5,
-      "fireRateTaperDecay": 0.8,
       "reinforcementLevel": 7,
       "reinforcementArrivalSeconds": 1.1,
       "reinforcementSpacing": 0.72,

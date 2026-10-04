@@ -62,15 +62,15 @@ it('schedules exactly one LV6 introduction, restores its pending clock and never
 
 it('awards Giant XP only on a player kill, while HP and movement stay independent from power', () => {
   const sim = make(), state = sim.getState();
-  state.progression = { level: 6, xp: 0 }; state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
+  state.progression = { level: 1, xp: 0 }; state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   state.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: 3, hp: 28 }];
   state.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(state); step(sim, 60);
   expect(sim.getState().enemies[0].z).toBeCloseTo(2.92);
   const injured = sim.getState(); injured.enemies[0].hp = 1; injured.weapons.rifleCooldownRemainingSeconds = 0;
   sim.restoreState(injured); step(sim, 60);
-  expect(sim.getState().progression!.xp).toBe(120);
-  step(sim, 60); expect(sim.getState().progression!.xp).toBe(120);
+  expect(sim.getState().progression).toEqual({level:3,xp:32});
+  step(sim, 60); expect(sim.getState().progression).toEqual({level:3,xp:32});
   injured.enemies[0].z = injured.player.z - 2; injured.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(injured); step(sim, 1);
   expect(sim.getState().progression!.xp).toBe(0);
@@ -94,7 +94,7 @@ it('projects Giant maximum, proportions and gait without persisting renderer sta
 });
 
 
-it.each([[1, 44], [17, 38], [42, 30]])('takes 24–25 seconds of LV6 focused fire to kill the fixed Giant (seed %i)', (seed, distance) => {
+it.each([[1, 44], [17, 38], [42, 30]])('takes 37–39 seconds of LV6 focused fire to kill the fixed Giant (seed %i)', (seed, distance) => {
   const sim = new Simulation({ seed, level: { id: 'focus', length: 1000, enemyGroups: [], upgradeGates: [] },
     startSquad: 1, startRocketCount: 0, tiers: config.tiers, catharsis: { balance, trackHalfWidth: 3.2 } });
   const initial = sim.getState(); initial.progression = { level: 6, xp: 0 };
@@ -102,7 +102,7 @@ it.each([[1, 44], [17, 38], [42, 30]])('takes 24–25 seconds of LV6 focused fir
   initial.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: distance, hp: balance.giant.hp }];
   sim.restoreState(initial);
   let firstHit: number | undefined;
-  while (sim.getFrameState().enemies.length && sim.getFrameState().elapsedSeconds < 40) {
+  while (sim.getFrameState().enemies.length && sim.getFrameState().elapsedSeconds < 45) {
     step(sim, 1);
     const frame = sim.getFrameState();
     if (firstHit === undefined && frame.enemies[0]?.hp < balance.giant.hp) firstHit = frame.elapsedSeconds;
@@ -111,8 +111,8 @@ it.each([[1, 44], [17, 38], [42, 30]])('takes 24–25 seconds of LV6 focused fir
   expect(balance.giant.hp).toBe(172);
   expect(result.enemies).toHaveLength(0);
   expect(result.squad.count).toBe(1);
-  expect(result.progression).toEqual({ level: 6, xp: 120 });
+  expect(result.progression).toEqual({ level: 6, xp: 0 });
   expect(firstHit).toBeDefined();
-  expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(24);
-  expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(25);
+  expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(37);
+  expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(39);
 });

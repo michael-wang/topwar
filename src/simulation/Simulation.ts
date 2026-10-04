@@ -1,6 +1,6 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { pressureGroupSize, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
-import { grantXp, requiredXp, effectiveRifleFireRate } from './progression';
+import { grantXp, requiredXp, effectiveRifleFireRate, progressionStage, maxProgressionLevel } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
@@ -304,6 +304,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
     || (progression.level as number) < 1 || !Number.isSafeInteger(progression.xp)
     || (progression.xp as number) < 0
+    || ((progression.level as number) >= maxProgressionLevel(catharsis.balance.progression) && progression.xp !== 0)
     || (progression.xp as number) >= requiredXp(progression.level as number, catharsis.balance.progression))) {
     throw new Error('Simulation progression must have a valid level and current-level XP');
   }
@@ -338,6 +339,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       || (progression.level as number) < catharsis.balance.progression.reinforcementLevel)))) {
     throw new Error('Invalid reinforcement state');
   }
+  // An already-spawned threat may be forced by an art fixture below natural unlock.
   const giantEncounter = state.giantEncounter;
   if (giantEncounter !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(giantEncounter)
     || Object.keys(giantEncounter).length !== 2 || typeof giantEncounter.spawned !== 'boolean'
@@ -345,7 +347,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       && Number.isFinite(giantEncounter.scheduledAtSeconds) && giantEncounter.scheduledAtSeconds >= 0))
     || (giantEncounter.spawned && giantEncounter.scheduledAtSeconds === null)
     || (giantEncounter.scheduledAtSeconds !== null && (!isPlainObject(progression)
-      || (progression.level as number) < catharsis.balance.giant.unlockLevel)))) {
+      || (!giantEncounter.spawned && (progression.level as number) < catharsis.balance.giant.unlockLevel))))) {
     throw new Error('Invalid first Giant encounter state');
   }
   if (!Number.isSafeInteger(state.tick) || (state.tick as number) < 0) {
@@ -1252,6 +1254,32 @@ export class Simulation {
       const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression);
       memberCooldowns.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
     }
+    // Apply every crossed stage as a reward delta, never a living-squad target.
+    if (progression && this.state.progression && catharsis) {
+      for (let level = this.state.progression.level + 1; level <= progression.level; level++) {
+        const delta = progressionStage(level, catharsis.balance.progression).squadStage
+          - progressionStage(level - 1, catharsis.balance.progression).squadStage;
+        if (delta > 0) {
+          const before = squad.count - squad.rocketCount;
+          squad = addRifleSoldiers(squad, delta, 1, this.tiers.mergeCount);
+          const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, level, catharsis.balance.progression);
+          if (memberCooldowns) {
+            memberCooldowns.length = before;
+            // Place newcomers in the largest gap between existing shot phases.
+            while (memberCooldowns.length < squad.count - squad.rocketCount) {
+              const phases = memberCooldowns.map(clock => clock % interval).sort((a, b) => a - b);
+              let gap = -1, phase = interval / 2;
+              phases.forEach((start, index) => {
+                const end = phases[(index + 1) % phases.length] + (index === phases.length - 1 ? interval : 0);
+                if (end - start > gap) { gap = end - start; phase = (start + gap / 2) % interval; }
+              });
+              memberCooldowns.push(phase || interval);
+            }
+          }
+        }
+      }
+    }
+    // Deferred late-game behavior, independent of the P1 Lv4/Lv5 rewards.
     let reinforcement = this.state.reinforcement;
     if (reinforcement && progression && catharsis && squad.count > 0) {
       const balance = catharsis.balance.progression;

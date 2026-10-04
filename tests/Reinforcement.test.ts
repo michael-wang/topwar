@@ -18,19 +18,19 @@ function twoSoldiers(seed = 17): Simulation {
   state.progression = { level: 7, xp: 0 };
   state.reinforcement = { startedAtSeconds: 0, arrived: true };
   state.squad = { ...state.squad, count: 2, rifleCounts: [2] };
-  state.weapons.rifleMemberCooldowns = [0, .5 / 6.9];
+  state.weapons.rifleMemberCooldowns = [0, .5 / 4.5];
   sim.restoreState(state); return sim;
 }
-it('holds LV7 per-soldier rate at LV6, then resumes taper without changing thresholds or enemies', () => {
+it('clamps deferred debug levels at Stage III without changing enemies', () => {
   expect([1,2,3,4,5,6,7,8,9].map(level => effectiveRifleFireRate(3, level, balance.progression)))
-    .toEqual([3,4,5,6,6.5,6.9,6.9,7.22,7.476]);
-  expect(effectiveRifleFireRate(2.5, 7, balance.progression)).toBe(6.4);
-  expect(requiredXp(6, balance.progression)).toBe(420);
+    .toEqual([3,3.75,4.5,4.5,4.5,4.5,4.5,4.5,4.5]);
+  expect(effectiveRifleFireRate(2.5, 7, balance.progression)).toBe(3.75);
+  expect(requiredXp(6, balance.progression)).toBe(Infinity);
   expect(balance.giant.hp).toBe(172); expect(balance.giant.xp).toBe(120);
   expect(balance.heavyHp).toBe(15); expect(balance.pressureMultipliers).toEqual([1,1,1,1,1.25,1.35,1.45,1.55,1.6,1.65]);
 });
 it('grants one soldier after the nonblocking arrival, survives snapshots and never grants twice', () => {
-  const sim = make(), state = sim.getState(); state.progression = { level: 6, xp: 419 };
+  const sim = make(), state = sim.getState(); state.progression = { level: 7, xp: 0 };
   state.enemies = [{ id: 1, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: 3, hp: 1 }];
   sim.restoreState(state); step(sim, 4);
   expect(sim.getState().progression).toEqual({ level: 7, xp: 0 });
@@ -55,18 +55,18 @@ it('fires identical damage at twice the rate in alternating half-interval phases
     }
     nextId = state.weapons.nextProjectileId;
   }
-  expect(shots.filter(s => s.member === 0)).toHaveLength(69);
-  expect(shots.filter(s => s.member === 1)).toHaveLength(69);
+  expect(shots.filter(s => s.member === 0)).toHaveLength(45);
+  expect(shots.filter(s => s.member === 1)).toHaveLength(45);
   for (let i = 1; i < shots.length; i++) {
     expect(shots[i].member).not.toBe(shots[i - 1].member);
-    expect(shots[i].time - shots[i - 1].time).toBeCloseTo(.5 / 6.9, 1);
+    expect(shots[i].time - shots[i - 1].time).toBeCloseTo(.5 / 4.5, 1);
   }
   const saved = sim.getState(), clone = twoSoldiers(); clone.restoreState(JSON.parse(JSON.stringify(saved)));
   saved.weapons.rifleMemberCooldowns![0] = 10;
   step(sim, 120); step(clone, 120); expect(sim.getState()).toEqual(clone.getState());
   const bad = sim.getState(); bad.weapons.rifleMemberCooldowns = [0]; expect(() => sim.restoreState(bad)).toThrow(/clocks/);
 });
-it.each([1,17,42])('kills the same authored Giant in 12–13 seconds at LV7 (seed %i)', seed => {
+it.each([1,17,42])('kills the same authored Giant in 18–20 seconds at LV7 (seed %i)', seed => {
   const sim = twoSoldiers(seed), state = sim.getState(); state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   state.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: 38, hp: balance.giant.hp }];
   sim.restoreState(state); let firstHit: number | undefined;
@@ -74,9 +74,9 @@ it.each([1,17,42])('kills the same authored Giant in 12–13 seconds at LV7 (see
     step(sim, 1); const frame = sim.getFrameState();
     if (firstHit === undefined && frame.enemies[0]?.hp < balance.giant.hp) firstHit = frame.elapsedSeconds;
   }
-  const result = sim.getState(); expect(result.squad.count).toBe(2); expect(result.progression).toEqual({ level: 7, xp: 120 });
-  expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(12);
-  expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(13);
+  const result = sim.getState(); expect(result.squad.count).toBe(2); expect(result.progression).toEqual({ level: 7, xp: 0 });
+  expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(18);
+  expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(20);
 });
 it('projects the pending entrance from simulation time and settles both members within one corridor', () => {
   const sim = make(), state = sim.getState(); state.progression = { level: 7, xp: 0 };
@@ -95,13 +95,10 @@ it('projects the pending entrance from simulation time and settles both members 
 
 
 
-it('a Giant reward can cross into LV7 with truthful overflow, but never awards twice', () => {
-  const sim = make(), state = sim.getState(); state.progression = { level: 6, xp: 350 };
-  state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
-  state.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: 3, hp: 1 }];
-  sim.restoreState(state); step(sim, 4);
-  expect(sim.getState().progression).toEqual({ level: 7, xp: 50 });
-  expect(sim.getState().reinforcement!.arrived).toBe(false); expect(sim.getState().squad.count).toBe(1);
-  step(sim, 120); expect(sim.getState().progression).toEqual({ level: 7, xp: 50 });
-  expect(sim.getState().squad.rifleCounts).toEqual([2]);
+it('keeps the deferred Lv7 entrance isolated from capped natural XP',()=>{
+  const sim=make(),state=sim.getState();state.progression={level:5,xp:0};
+  state.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:3,hp:1}];
+  sim.restoreState(state);step(sim,120);
+  expect(sim.getState().progression).toEqual({level:5,xp:0});
+  expect(sim.getState().reinforcement).toEqual({startedAtSeconds:null,arrived:false});
 });

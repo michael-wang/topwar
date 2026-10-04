@@ -3,19 +3,35 @@ import { z } from 'zod';
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
   progression: z.strictObject({
-    xpRequirements: z.array(z.number().int().positive()).min(1).default([28, 60, 110, 180, 280, 420]),
-    xpFallbackMultiplier: z.number().finite().gt(1).default(1.45),
+    xpRequirements: z.array(z.number().int().positive()).length(4).default([28, 60, 110, 180]),
+    levelPlan: z.array(z.strictObject({
+      fireRateStage: z.number().int().min(1).max(3),
+      squadStage: z.number().int().min(1).max(3),
+    })).length(5).default([
+      { fireRateStage: 1, squadStage: 1 }, { fireRateStage: 2, squadStage: 1 },
+      { fireRateStage: 3, squadStage: 1 }, { fireRateStage: 3, squadStage: 2 },
+      { fireRateStage: 3, squadStage: 3 },
+    ]),
+    fireRateMultipliers: z.array(z.number().finite().positive()).length(3).default([1, 1.25, 1.5]),
     gruntKillXp: z.number().int().nonnegative().default(1),
     heavyKillXp: z.number().int().nonnegative().default(10),
-    fireRatePerLevel: z.number().finite().nonnegative().default(1),
-    fireRateTaperStartLevel: z.number().int().min(2).default(5),
-    fireRateTaperFirstGain: z.number().finite().nonnegative().default(.5),
-    fireRateTaperDecay: z.number().finite().min(0).lt(1).default(.8),
-    reinforcementLevel: z.number().int().min(2).default(7),
+    // Deferred late-game entrance/assault only; natural P1 progression cannot reach it.
+    reinforcementLevel: z.number().int().min(6).default(7),
     reinforcementArrivalSeconds: z.number().finite().positive().default(1.1),
     reinforcementSpacing: z.number().finite().positive().default(.72),
     reinforcementStagger: z.number().finite().nonnegative().default(.18),
-  }).default({ xpRequirements: [28, 60, 110, 180, 280, 420], xpFallbackMultiplier: 1.45, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1, fireRateTaperStartLevel: 5, fireRateTaperFirstGain: .5, fireRateTaperDecay: .8, reinforcementLevel: 7, reinforcementArrivalSeconds: 1.1, reinforcementSpacing: .72, reinforcementStagger: .18 }),
+  }).refine(value => value.levelPlan[0].fireRateStage === 1 && value.levelPlan[0].squadStage === 1
+    && value.levelPlan.every((stage, index) => index === 0
+      || (stage.fireRateStage >= value.levelPlan[index - 1].fireRateStage
+        && stage.squadStage >= value.levelPlan[index - 1].squadStage)),
+    { message: 'Progression starts at stage one and stages must not decrease' })
+    .refine(value => value.fireRateMultipliers.every((rate, index) => index === 0
+      || rate >= value.fireRateMultipliers[index - 1]), { message: 'Rifle rate stages must not decrease' })
+    .default({ xpRequirements: [28, 60, 110, 180],
+      levelPlan: [{ fireRateStage: 1, squadStage: 1 }, { fireRateStage: 2, squadStage: 1 },
+        { fireRateStage: 3, squadStage: 1 }, { fireRateStage: 3, squadStage: 2 }, { fireRateStage: 3, squadStage: 3 }],
+      fireRateMultipliers: [1, 1.25, 1.5], gruntKillXp: 1, heavyKillXp: 10,
+      reinforcementLevel: 7, reinforcementArrivalSeconds: 1.1, reinforcementSpacing: .72, reinforcementStagger: .18 }),
   landingAssault: z.strictObject({
     enabled: z.boolean().default(false),
     powerWindowSeconds: z.number().finite().nonnegative().default(10),

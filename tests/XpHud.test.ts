@@ -1,3 +1,5 @@
+import data from '../public/game-data/game.json';
+import { GameConfigSchema } from '../src/config/configSchema';
 import { afterEach, expect, it, vi } from 'vitest';
 import { XpHud } from '../src/ui/XpHud';
 class Element {
@@ -6,7 +8,7 @@ class Element {
   append(...children: Element[]): void { this.children.push(...children); }
   remove(): void {}
 }
-const balance = { xpRequirements: [28, 60, 110, 180, 280, 420], xpFallbackMultiplier: 1.45, gruntKillXp: 1, heavyKillXp: 10, fireRatePerLevel: 1, fireRateTaperStartLevel: 5, fireRateTaperFirstGain: .5, fireRateTaperDecay: .8, reinforcementLevel: 7, reinforcementArrivalSeconds: 1.1, reinforcementSpacing: .72, reinforcementStagger: .18 };
+const balance = GameConfigSchema.parse(data).catharsis!.progression;
 function make() {
   vi.stubGlobal('document', { createElement: () => new Element() });
   const viewport = new Element(); const hud = new XpHud(viewport as unknown as HTMLElement);
@@ -59,11 +61,11 @@ it('reveals a full-track gradient with a mask rather than resizing the gradient'
 
 it('visibly interpolates a large Giant XP grant without numeric text and keeps the reinforcement beat free of explanatory text', () => {
   const { hud, root } = make(); const fill = root.children[1].children[0];
-  hud.update({ level: 6, xp: 40 }, balance, 0);
-  hud.update({ level: 6, xp: 160 }, balance, 100);
+  hud.update({ level: 4, xp: 40 }, balance, 0);
+  hud.update({ level: 4, xp: 160 }, balance, 100);
   expect(fill.style.transition).toBe('clip-path 260ms ease-out');
-  expect(Number.parseFloat(fill.style.clipPath.split(' ')[1])).toBeCloseTo(100 - 160 / 420 * 100);
-  expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 6');
+  expect(Number.parseFloat(fill.style.clipPath.split(' ')[1])).toBeCloseTo(100 - 160 / 180 * 100);
+  expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 4');
   hud.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 6, toLevel: 7 }, 500);
   hud.update({ level: 7, xp: 0 }, balance, 600);
   expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP']);
@@ -99,10 +101,10 @@ it('uses icon-only loadout identity and truthful active reinforcement, resetting
   expect(loadout.children[0].className).toBe('xp-weapon-slot');
   expect(trait.className).toBe('xp-enhancement-slot xp-power');
   expect((loadout.children[0].children[0] as unknown as HTMLElement).innerHTML).toContain('viewBox="0 0 44 20"');
-  expect(trait.children[1].textContent).toBe('+67%');
+  expect(trait.children[1].textContent).toBe('+50%');
   expect(loadout.children[0].textContent).toBe('');
   hud.update({level:7,xp:0},balance,100,context);
-  expect(trait.children[1].textContent).toBe('+130%');
+  expect(trait.children[1].textContent).toBe('+50%');
   hud.update({level:7,xp:0},balance,1200,{...context,squadCount:2,reinforcementArrived:true});
   expect(trait.children[1].textContent).toBe('×2');
   hud.reset(); expect(trait.children[1].textContent).toBe('');

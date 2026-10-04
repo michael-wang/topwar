@@ -10,7 +10,7 @@ const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={};
 try {
-for(const [query,level]of [['',1],['?review=threats',7],['?review=normal',1]]){
+for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await page.route('**/favicon.ico',route=>route.fulfill({status:204}));
