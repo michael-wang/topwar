@@ -4,11 +4,9 @@ import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { foliageMassTexture, flowerSpeckTexture } from '../art/FoliageTexture';
 
 const C = ART.coastalDefense;
-const TREES = [
-  { side: -1, x: 3.2, z: 19, h: 4.3, size: 1.35 },
-  { side: 1, x: 3.8, z: 30, h: 5.3, size: 1.65 },
-  { side: -1, x: 5.1, z: 39, h: 5.7, size: 1.9 },
-  { side: 1, x: 13, z: 53, h: 6.1, size: 2.0 },
+export const COASTAL_TREES = [
+  { side: -1, x: 3.2, z: 19, h: 3.4, size: 1.25 },
+  { side: 1, x: 2.5, z: 21, h: 3.6, size: 1.25 },
 ] as const;
 
 export class CoastalVegetation {
@@ -48,7 +46,7 @@ export class CoastalVegetation {
     }
     const transform = new THREE.Object3D();
     for (const side of [-1, 1]) {
-      const root = this.sides[side < 0 ? 0 : 1], trees = TREES.filter(tree => tree.side === side);
+      const root = this.sides[side < 0 ? 0 : 1], trees = COASTAL_TREES.filter(tree => tree.side === side);
       const families = [
         { geometry: this.crown, material: this.foliage, count: trees.length * 4 + 5, name: 'coastal-leafy-masses' },
         { geometry: this.flower, material: this.flowers, count: 4, name: 'side-flower-masses' },

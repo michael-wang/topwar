@@ -83,6 +83,16 @@ geometry, collision, lanes, camera, lighting or weather system changes.
 
 ## Composition and gameplay readability
 
+E1 uses three depth zones: strongest village framing near the defenders,
+lighter side facades and vegetation in the middle, then open beach/sea.
+Z=42–55 is the shoreline showcase: no tall house or tree interrupts the surf.
+The former Z=58 house is removed; the Z=43 house becomes a compact 2.8×2.2×3.2
+right-side mass at Z=20. The Z=24 left and Z=35 right houses remain, as do R4's
+foreground corners. Only two shorter olives remain at Z=19/21, with trunks,
+forks and ground shadows; the Z=30 olive moves to Z=21 beside the compact house
+so its foot/trunk are visible, and the Z=39/53 trees are removed. The village opens onto
+the beach rather than occupying the surf. Camera, lighting and collision stay fixed.
+
 Dark/detail-rich side frame → open bright sand combat channel → turquoise sea
 and pale horizon. All opaque architecture/gear stays at least 0.4 world units
 outside the track; foliage/cloth also stay outside. Review this from the actual
@@ -115,7 +125,7 @@ unchanged Z=53 shore to deeper blue, shallow tonal variation and two slow ripple
 bands. A separate gradient sky plane opens the horizon. Shoreline foam remains
 bright and restrained. No reflection/refraction targets or ocean simulation.
 
-`CoastalVegetation` uses four olives with simple trunks/forked branches and four
+`CoastalVegetation` uses two olives with simple trunks/forked branches and four
 crossed, depth-offset alpha foliage cards per crown, plus five climbing cards
 per side. A generated 256×128 sRGB texture layers broad oval brush masses into
 porous/scalloped silhouettes; no external imagery or individually modeled leaves.

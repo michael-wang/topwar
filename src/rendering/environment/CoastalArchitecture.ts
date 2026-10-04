@@ -5,12 +5,12 @@ import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
 
 const C = ART.coastalDefense;
-// Authored asymmetric civilian village. X is measured outward from the track edge.
+// Village weight recedes before the open Z 42–55 shoreline showcase.
+// X is measured outward from the track edge; foreground corners live separately.
 export const COASTAL_BUILDINGS = [
   { side: -1, offset: 2.6, z: 24, width: 3.7, height: 3.2, depth: 4.5, angle: .07 },
   { side: 1, offset: 3.1, z: 35, width: 4.5, height: 3.8, depth: 5.5, angle: -.09 },
-  { side: -1, offset: 3.5, z: 43, width: 3.9, height: 2.9, depth: 4.6, angle: -.06 },
-  { side: 1, offset: 8, z: 58, width: 6, height: 3.3, depth: 6, angle: .04 },
+  { side: 1, offset: 4.5, z: 20, width: 2.8, height: 2.2, depth: 3.2, angle: .04 },
 ] as const;
 
 export class CoastalArchitecture {

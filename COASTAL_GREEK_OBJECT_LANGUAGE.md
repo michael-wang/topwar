@@ -59,6 +59,12 @@ War is the visual interruption.
 
 Prefer a few large readable forms.
 
+Village density recedes toward the coast: near-camera corners and mid-depth
+side facades frame the battle, while Z=42–55 remains an open shoreline showcase.
+Keep tall houses and trees out of this zone; retained trees need visible trunks
+and ground contact/shadows. Do not replace removed shoreline masses with dense
+foreground clutter.
+
 Native architectural shapes include:
 
 - thick rectangular plaster masses;
