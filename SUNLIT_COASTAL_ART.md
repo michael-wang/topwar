@@ -77,7 +77,7 @@ RGBA texture. Slow lateral drift stays below 0.1 world units/second, with tiny
 vertical motion; clouds are defense-only atmosphere behind village/combat.
 
 E1 adds one two-triangle shoreline overlay spanning Z=46–61 above the sand.
-Muted beige/taupe wet sand (`#B1B29A`) occupies a 3.8-unit beach-side band;
+Muted beige/taupe wet sand (`#B3AD97`) occupies a 3.8-unit beach-side band;
 alpha feathering preserves the existing dry sand wash. A broad irregular shore
 curve (±0.85 plus ±0.25 units) breathes by ±0.4 units over 12 seconds with local
 phase variation. Coverage includes the entire beach-side envelope, not only
@@ -125,10 +125,18 @@ follow the coastal UI rules below, preserving the open center sky.
 
 ## Water and environmental life
 
-`CoastalWater` uses one simple shader plane: a depth wash from aqua near the
-unchanged Z=53 shore to deeper blue, shallow tonal variation and two slow ripple
-bands. A separate gradient sky plane opens the horizon. Shoreline foam remains
-bright and restrained. No reflection/refraction targets or ocean simulation.
+`CoastalWater` uses an opaque two-triangle sea and the narrow shore overlay.
+Color implies depth/clarity: light `#9BDED0` at the visual edge, existing turquoise
+in the first seven units, richer `#389EAF` in the middle, then existing deep blue.
+Three unequal slow sine phases create restrained crossing shallow-light ridges;
+their 8.5% highlight contribution vanishes by 24 units offshore. Two broader
+low-contrast ripples replace the repetitive stripe pattern; a sparse 2.5% glint
+is shallow-only. Both passes share the color/motion functions to avoid seams.
+A separate gradient sky plane and the accepted drifting clouds are unchanged.
+No generated water texture, reflection/refraction target, additional camera,
+CPU geometry deformation or physical ocean simulation is used. Time is a
+render clock uniform, so reset/rewind is deterministic and never moves simulation
+coordinates. E1 does not change progression, difficulty or combat.
 
 `CoastalVegetation` uses two olives with simple trunks/forked branches and four
 crossed, depth-offset alpha foliage cards per crown, plus five climbing cards

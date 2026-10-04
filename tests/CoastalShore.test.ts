@@ -24,7 +24,22 @@ it('covers the full irregular wet-sand/tide envelope with a narrow two-triangle 
   expect(S.tideAmplitude).toBe(.4); expect(S.tidePeriodSeconds).toBe(12);
   const shader = shore.material as THREE.ShaderMaterial;
   expect(shader.defines).toHaveProperty('SHORE_OVERLAY'); expect(shader.transparent).toBe(true);
-  expect(shader.depthWrite).toBe(false); expect(shader.uniforms.wetSand.value.getHexString()).toBe('b1b29a');
+  expect(shader.depthWrite).toBe(false); expect(shader.uniforms.wetSand.value.getHexString()).toBe('b3ad97');
+  water.dispose();
+});
+
+it('shares restrained shallow-only light and depth colors across the two cheap water passes', () => {
+  const water = new CoastalWater();
+  const sea = water.group.getObjectByName('defense-sea') as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  const shore = water.group.getObjectByName('coastal-wet-sand-and-surf') as THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  expect(sea.material.uniforms).toBe(shore.material.uniforms);
+  expect(sea.material.fragmentShader).toBe(shore.material.fragmentShader);
+  expect(sea.material.uniforms.clearAqua.value.getHexString()).toBe('9bded0');
+  expect(sea.material.uniforms.middleBlue.value.getHexString()).toBe('389eaf');
+  expect(sea.geometry.index!.count).toBe(6);
+  expect(sea.material.fragmentShader).toContain('smoothstep(5.,24.,depth)');
+  expect(sea.material.fragmentShader).not.toContain('pow(');
+  expect(Object.values(sea.material.uniforms).some(u => u.value instanceof THREE.Texture)).toBe(false);
   water.dispose();
 });
 

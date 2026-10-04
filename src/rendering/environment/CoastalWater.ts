@@ -5,17 +5,24 @@ import { COASTAL_SHORE, COASTAL_SHORE_GLSL } from './CoastalShore';
 
 const C = ART.coastalDefense;
 // Opaque sea plus one narrow, alpha-blended shore strip; no physical water pass.
-const WATER_FRAGMENT = `uniform float time; uniform vec3 aqua,blue,shine,foam,wetSand; varying vec3 coastPosition;
+const WATER_FRAGMENT = `uniform float time; uniform vec3 aqua,blue,shine,foam,wetSand,clearAqua,middleBlue; varying vec3 coastPosition;
   ${COASTAL_SHORE_GLSL}
   void main(){
     float depth=coastPosition.z;
     float edge=depth-shoreOffset(coastPosition.x);
-    vec3 color=mix(aqua,blue,smoothstep(0.,58.,max(depth,0.)));
-    float shallows=1.-smoothstep(0.,23.,depth);
-    float wash=sin(coastPosition.x*.43+sin(depth*.21)*1.7)*.035*shallows;
-    float ripple=pow(.5+.5*sin(depth*1.5+sin(coastPosition.x*.32)*1.4-time*.38),12.);
-    float crossed=pow(.5+.5*sin(depth*.79-coastPosition.x*.28+time*.19),18.);
-    color=mix(color,shine,clamp(wash+.065*ripple+.025*crossed,0.,.13));
+    vec3 color=mix(clearAqua,aqua,smoothstep(0.,7.,max(edge,0.)));
+    color=mix(color,middleBlue,smoothstep(6.,28.,depth));
+    color=mix(color,blue,smoothstep(25.,65.,depth));
+    float shallows=1.-smoothstep(5.,24.,depth);
+    // Three unequal crossing phases imply moving shallow light, not refraction.
+    float waveA=sin(coastPosition.x*.68+depth*.82-time*.19);
+    float waveB=sin(coastPosition.x*-.53+depth*.61+time*.14);
+    float waveC=sin(coastPosition.x*.31-depth*.47+time*.11);
+    float caustic=(1.-smoothstep(.10,.36,abs(waveA+.45*waveC)))*(.45+.55*(.5+.5*waveB));
+    float ripple=.5+.5*sin(coastPosition.x*.17+depth*.39+waveB*.6-time*.13);
+    float crossed=.5+.5*sin(coastPosition.x*-.24+depth*.23+time*.09);
+    float glint=smoothstep(.965,1.,waveA)*smoothstep(.975,1.,waveB);
+    color=mix(color,shine,shallows*(.085*caustic+.025*glint)+.013*ripple+.009*crossed);
     float alpha=1.;
     #ifdef SHORE_OVERLAY
       color=mix(wetSand,color,smoothstep(-.25,.85,edge));
@@ -47,7 +54,8 @@ export class CoastalWater {
     toneMapped: false,
     uniforms: { time: { value: 0 }, foam: { value: new THREE.Color(C.foam) }, aqua: { value: new THREE.Color(C.shallowAqua) },
       blue: { value: new THREE.Color(C.deepSea) }, shine: { value: new THREE.Color(C.waterLight) },
-      wetSand: { value: new THREE.Color('#B1B29A') } },
+      clearAqua: { value: new THREE.Color('#9BDED0') }, middleBlue: { value: new THREE.Color('#389EAF') },
+      wetSand: { value: new THREE.Color('#B3AD97') } },
     vertexShader: `varying vec3 coastPosition;
       void main(){ coastPosition=position; coastPosition.z+=90.; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
     fragmentShader: WATER_FRAGMENT,
