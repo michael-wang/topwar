@@ -225,8 +225,8 @@ no GLB, texture, external art tool, skeleton or runtime package is introduced.
 The smoother curves substantially increase triangle counts; the review report
 records that cost rather than changing enemy population to hide it.
 
-Explicit `?review=threats` retains deterministic Level 7, XP 0,
-two defenders, reinforcement arrived and immediately visible Grunt/Heavy/Giant.
+Explicit `?review=threats` uses deterministic P1 Level 5, XP 0,
+three defenders and forced visible Grunt/Heavy/Giant; late reinforcement is dormant.
 `/` and `?review=normal` gives Level 1; production defaults Level 1. Retry preserves mode.
 
 Evidence belongs in `artifacts/rounded-toy-r1/`: four-role beauty sheet, front
@@ -336,8 +336,12 @@ normal alpha and no glow. Relative role diameters remain **1 / 1.45 / 2.2**;
 base card diameter 1.25 units with bounded scale adaptation. Hit blood is a
 separate pool described below. Surviving hits never create ground stains.
 
-Persistent ground stains remain unchanged: **1024 slots**, **#6D2528**, opacity
-**0.58**, Y=0.025; diameters **0.33 / 0.525 / 0.825**, deterministic ±10% variation.
+Enemy ground stains share the fuller four-mask lethal atlas in **one draw / 1024
+slots**. Base diameters are **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
+(1 : 1.88 : 2.79). Deterministic variation selects mask, rotation, ±12% size,
+area-preserving aspect 0.85–1.20, opacity 0.50–0.66 and dried-blood tones
+**#602327 / #6D2528 / #792A30**. Position offsets stay within ±0.035 / 0.055 /
+0.08 units of the casualty; Y=0.032 keeps marks above dry/wet beach overlays.
 They represent lethal casualties and survive until Retry/renderer reset/mode
 change, with oldest-slot reuse only as a safety bound. No gameplay collision.
 
@@ -345,7 +349,7 @@ The superseded fragment/fall systems stay removed. Rate-limited emphasis,
 Giant HP layout/reveal, audio, simulation removal, Player casualty and Boss
 remain unchanged. Generated evidence is local/untracked under
 `artifacts/r8-impact-pacing/`. Development `/` and `?review=normal` start normal
-Level 1; explicit `?review=threats` retains deterministic Level 7. Production
+Level 1; explicit `?review=threats` uses P1 Level 5 with forced threats. Production
 root is Level 1. Retry preserves the selected mode.
 
 ### R7 Player casualty
@@ -374,8 +378,8 @@ enemy ID and hit sequence; adjacent anchor and mask never repeat. Emission is
 evaluated after rendering the actor transform and follows its recoil/lean, not
 an unrelated world-space crown offset. Four masks vary 2–4 satellites and their
 placement. Rotation is fixed per hit and mostly lateral, with an asymmetric
-side bias; size varies ±15%, aspect 0.82–1.20. Player masks and ground stains
-retain their accepted appearance. Hit scales remain 45% / 40% / 30% of lethal roles.
+side bias; size varies ±15%, aspect 0.82–1.20. Player blood and stains retain
+their accepted appearance. Hit scales remain 45% / 40% / 30% of lethal roles.
 
 `EnemyHitImpulse` snaps back over 20 ms, holds through 70 ms, then smoothly
 returns by 250 ms. Single-hit +Z displacement is 0.27 / 0.25 / 0.17 world units

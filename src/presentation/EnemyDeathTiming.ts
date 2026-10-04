@@ -1,11 +1,11 @@
 // Presentation only. Gameplay removal is independent of these clocks.
 export const ENEMY_DEATH_TIMING = {
   grunt: { grayEndMs: 260, bloodStartMs: 10, bloodPulseEndMs: 170, bloodEndMs: 520,
-    breakupStartMs: 260, breakupDistance: .07, fadeStartMs: 300, totalMs: 520, bloodPulseCount: 2, bloodScale: 1, stainDiameter: .33 },
+    breakupStartMs: 260, breakupDistance: .07, fadeStartMs: 300, totalMs: 520, bloodPulseCount: 2, bloodScale: 1, stainDiameter: .34 },
   heavy: { grayEndMs: 560, bloodStartMs: 15, bloodPulseEndMs: 420, bloodEndMs: 1100,
-    breakupStartMs: 520, breakupDistance: .10, fadeStartMs: 650, totalMs: 1100, bloodPulseCount: 3, bloodScale: 1.45, stainDiameter: .525 },
+    breakupStartMs: 520, breakupDistance: .10, fadeStartMs: 650, totalMs: 1100, bloodPulseCount: 3, bloodScale: 1.45, stainDiameter: .64 },
   giant: { grayEndMs: 1400, bloodStartMs: 35, bloodPulseEndMs: 1100, bloodEndMs: 2600,
-    breakupStartMs: 1200, breakupDistance: .12, fadeStartMs: 1550, totalMs: 2600, bloodPulseCount: 5, bloodScale: 2.2, stainDiameter: .825 },
+    breakupStartMs: 1200, breakupDistance: .12, fadeStartMs: 1550, totalMs: 2600, bloodPulseCount: 5, bloodScale: 2.2, stainDiameter: .95 },
 } as const;
 export type EnemyDeathRole = keyof typeof ENEMY_DEATH_TIMING;
 export type EnemyDeathTiming = typeof ENEMY_DEATH_TIMING[EnemyDeathRole];

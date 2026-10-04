@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { bloodSplatPose, ENEMY_DEATH_TIMING, type BloodSplatTiming, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
+import { bloodStainVariation, STAIN_COLORS } from './BloodStainVariation';
 
 export const BLOOD_SPLAT_CAPACITY = 64;
 export const BLOOD_STAIN_CAPACITY = 1024;
@@ -61,8 +62,8 @@ export function bloodSplatTexture(variant = 0, fuller = false): THREE.DataTextur
   return texture;
 }
 
-// Four 96px cells, one texture and one draw. Ground stains/Player retain the
-// original single mask; their accepted appearance is unaffected.
+// Four 96px cells, one texture and one draw. Enemy stains share the fuller atlas;
+// Player blood retains its original single mask.
 function bloodAtlas(fuller: boolean): THREE.DataTexture {
   const size = 192, data = new Uint8Array(size * size * 4);
   for (let variant = 0; variant < 4; variant++) {
@@ -185,22 +186,40 @@ gl_Position = projectionMatrix * mvPosition;`);
 export class GroundBloodStains {
   private readonly mesh: THREE.InstancedMesh;
   private readonly transform = new THREE.Object3D();
+  private readonly color = new THREE.Color();
+  private readonly variant = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_STAIN_CAPACITY), 1);
+  private readonly alpha = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_STAIN_CAPACITY).fill(1), 1);
+  private readonly atlas: boolean;
   private cursor = 0;
   constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture, name = 'enemy-ground-blood-stains') {
-    const material = new THREE.MeshBasicMaterial({ map: texture, color: BLOOD_STAIN_COLOR,
-      transparent: true, opacity: BLOOD_STAIN_OPACITY, depthWrite: false, toneMapped: false });
-    // Read only map alpha: the sand stain has its own quiet, uniform dark-red tint.
+    this.atlas = texture.image.width === 192;
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    geometry.setAttribute('stainVariant', this.variant); geometry.setAttribute('stainOpacity', this.alpha);
+    const material = new THREE.MeshBasicMaterial({ map: texture, color: this.atlas ? '#ffffff' : BLOOD_STAIN_COLOR,
+      transparent: true, opacity: this.atlas ? 1 : BLOOD_STAIN_OPACITY, depthWrite: false, toneMapped: false });
+    // Borrow the mask alpha; dried blood has independent quiet tint/opacity.
     material.onBeforeCompile = shader => {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>',
-        '#ifdef USE_MAP\ndiffuseColor.a *= texture2D(map, vMapUv).a;\n#endif');
+      shader.vertexShader = `attribute float stainVariant; attribute float stainOpacity; varying float vStainOpacity;\n${shader.vertexShader}`
+        .replace('#include <uv_vertex>', `#include <uv_vertex>\n${this.atlas ? 'vMapUv = (vMapUv + vec2(mod(stainVariant, 2.), floor(stainVariant / 2.))) * .5;' : ''}\nvStainOpacity = stainOpacity;`);
+      shader.fragmentShader = `varying float vStainOpacity;\n${shader.fragmentShader}`.replace('#include <map_fragment>',
+        '#ifdef USE_MAP\ndiffuseColor.a *= texture2D(map, vMapUv).a * vStainOpacity;\n#endif');
     };
-    material.customProgramCacheKey = () => 'flat-persistent-blood-mask';
-    this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), material, BLOOD_STAIN_CAPACITY);
+    material.customProgramCacheKey = () => `flat-persistent-blood-mask-${texture.image.width}`;
+    this.mesh = new THREE.InstancedMesh(geometry, material, BLOOD_STAIN_CAPACITY);
     this.mesh.name = name; this.mesh.count = 0; this.mesh.visible = false; this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1; this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(this.mesh);
   }
   spawn(id: number, role: EnemyDeathRole, x: number, z: number): void {
-    this.spawnSized(id, ENEMY_DEATH_TIMING[role].stainDiameter, x, z);
+    if (!this.atlas) { this.spawnSized(id, ENEMY_DEATH_TIMING[role].stainDiameter, x, z); return; }
+    const index = this.cursor++ % BLOOD_STAIN_CAPACITY, v = bloodStainVariation(id, role);
+    const diameter = ENEMY_DEATH_TIMING[role].stainDiameter * v.scale;
+    this.transform.position.set(x + v.offsetX, .032, z + v.offsetZ);
+    this.transform.rotation.set(-Math.PI / 2, 0, v.angle);
+    this.transform.scale.set(diameter * v.aspect, diameter / v.aspect, 1); this.transform.updateMatrix();
+    this.mesh.setMatrixAt(index, this.transform.matrix); this.mesh.setColorAt(index, this.color.set(STAIN_COLORS[v.color]));
+    this.variant.setX(index, v.variant); this.alpha.setX(index, v.opacity);
+    this.variant.needsUpdate = this.alpha.needsUpdate = true; this.mesh.instanceColor!.needsUpdate = true;
+    this.mesh.count = Math.min(this.cursor, BLOOD_STAIN_CAPACITY); this.mesh.visible = true; this.mesh.instanceMatrix.needsUpdate = true;
   }
   spawnSized(id: number, diameter: number, x: number, z: number): void {
     const index = this.cursor++ % BLOOD_STAIN_CAPACITY;

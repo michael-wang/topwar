@@ -13,7 +13,7 @@ import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY 
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
-import { BloodSplat, GroundBloodStains, bloodSplatTexture, hitBloodAtlas, lethalBloodAtlas } from './BloodSplat';
+import { BloodSplat, GroundBloodStains, hitBloodAtlas, lethalBloodAtlas } from './BloodSplat';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -116,7 +116,6 @@ export class EnemyRenderer {
   private readonly feedbackScale = new THREE.Vector3();
   private readonly feedbackMatrix = new THREE.Matrix4();
   private readonly pendingHitBlood = new Map<number, number>();
-  private readonly bloodTexture = bloodSplatTexture();
   private readonly hitTexture = hitBloodAtlas();
   private readonly lethalTexture = lethalBloodAtlas();
   private readonly stains: GroundBloodStains;
@@ -144,7 +143,7 @@ export class EnemyRenderer {
     this.roleBatches = { grunt, heavy };
     this.blood = new BloodSplat(scene, this.lethalTexture);
     this.hitBlood = new BloodSplat(scene, this.hitTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
-    this.stains = new GroundBloodStains(scene, this.bloodTexture);
+    this.stains = new GroundBloodStains(scene, this.lethalTexture);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
     this.heavyHits = new HeavyHitFeedback(scene);
     this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant));
@@ -422,7 +421,7 @@ export class EnemyRenderer {
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
-    this.stains.dispose(); this.bloodTexture.dispose(); this.hitTexture.dispose(); this.lethalTexture.dispose();
+    this.stains.dispose(); this.hitTexture.dispose(); this.lethalTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose());
