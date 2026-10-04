@@ -70,6 +70,17 @@ painted cool-plaster wall faces bypass filmic mapping so their authored color bl
 stay clear. Static navy ground patches suggest building, arch, cloth and olive
 shadows. Existing character contact shadows remain; no new shadow render pass.
 
+R6.1 adds four distant cloud cards with a deterministic painted-density atlas:
+soft irregular white silhouettes, sunlit tops and cool undersides, without
+sphere assemblies or cartoon outlines. One instanced draw shares one 1024×128
+RGBA texture. Slow lateral drift stays below 0.1 world units/second, with tiny
+vertical motion; clouds are defense-only atmosphere behind village/combat.
+
+The existing turquoise depth wash and slow water ripples now include a narrow,
+broken white-foam edge. A restrained ±0.20-unit, roughly 13-second shader tide
+breath moves foam on the sea side of the unchanged Z=53 shoreline. No water
+geometry, collision, lanes, camera, lighting or weather system changes.
+
 ## Composition and gameplay readability
 
 Dark/detail-rich side frame → open bright sand combat channel → turquoise sea
