@@ -30,11 +30,11 @@ export class ProjectileRenderer {
   private afterglowUntilMs = -Infinity;
   private body: THREE.InstancedMesh;
   private glow: THREE.InstancedMesh;
-  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.core,
+  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.projectile.core,
     toneMapped: false });
-  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.gold,
-    transparent: true, opacity: 0.28, depthWrite: false,
-    blending: THREE.AdditiveBlending, toneMapped: false });
+  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: ART.projectile.accent,
+    transparent: true, opacity: ART.projectile.accentOpacity, depthWrite: false,
+    blending: THREE.NormalBlending, toneMapped: false });
 
   constructor(private readonly scene: THREE.Scene,
     private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
@@ -48,9 +48,11 @@ export class ProjectileRenderer {
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now()): void {
     this.ensureCapacity(projectiles.length);
     const afterglow = nowMs < this.afterglowUntilMs;
-    this.glowMaterial.color.set(afterglow ? ART.coastalUi.aqua : ART.fx.gold);
-    this.tracerMaterial.color.set(afterglow ? ART.coastalUi.energy : ART.fx.core);
-    this.glowMaterial.opacity = afterglow ? .55 : .28;
+    this.glowMaterial.color.set(afterglow ? ART.coastalUi.aqua : ART.projectile.accent);
+    this.tracerMaterial.color.set(afterglow ? ART.coastalUi.energy : ART.projectile.core);
+    // A red edge must darken pale sand, rather than add more yellow light to it.
+    this.glowMaterial.blending = afterglow ? THREE.AdditiveBlending : THREE.NormalBlending;
+    this.glowMaterial.opacity = afterglow ? .55 : ART.projectile.accentOpacity;
     const activeIds = new Set<number>();
     for (let index = 0; index < projectiles.length; index++) {
       const projectile = projectiles[index];

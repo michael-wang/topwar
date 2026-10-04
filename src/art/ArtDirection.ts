@@ -24,6 +24,7 @@ export const ART = {
     shorts: '#62727a', stone: '#c6b68c', rim: '#4c5945', hardware: '#49555c' },
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
     ash: '#e9dfc2', dust: '#cfb994', gray: '#a2b2b8' },
+  projectile: { core: '#fff4e5', accent: '#d84c4b', accentOpacity: .60 },
   bar: { ink: '#293e4c', deep: '#1c2d39', frame: '#ac865a', highlight: '#e3c596',
     paper: '#f6e8c9', shadow: '#172d3a',
     cornerFraction: .45, edgeFraction: .07 },

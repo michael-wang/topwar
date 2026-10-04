@@ -1,6 +1,7 @@
 import { playerFamily, enemyFamilies, bossFamily } from './characterModel';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
+import { ART } from '../src/art/ArtDirection';
 import { bodyModel, grayBodyModel, runFrames, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
 import { ENEMY_PALETTE, PLAYER_PALETTE, paletteIndex } from '../src/rendering/tierPalettes';
 import { PLAYER_VISUAL_SCALE, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
@@ -684,7 +685,7 @@ describe('Modern Toy Soldier presentation', () => {
       expect(mesh.geometry).toBe(bullet.geometry);
       const glow = scene.children[1] as THREE.InstancedMesh;
       expect(glow.geometry).toBe(bullet.geometry);
-      expect((glow.material as THREE.MeshBasicMaterial).blending).toBe(THREE.AdditiveBlending);
+      expect((glow.material as THREE.MeshBasicMaterial).blending).toBe(THREE.NormalBlending);
       mesh.getMatrixAt(0, matrix);
       matrix.decompose(position, rotation, scale);
       expect(scale.x).toBeCloseTo(1 + 0.45 * Math.min(0.9, (tier - 1) * 0.45));
@@ -769,12 +770,12 @@ it('makes tracers warmer/louder temporarily and resets the afterglow on Retry', 
   const shots = [{ id: 1, tier: 1, kind: 'rifle' as const, x: 0, z: 3, hitRadiusBonus: 0 }];
   renderer.update(shots, 0);
   const glow = scene.getObjectByName('tracer-glows') as THREE.InstancedMesh;
-  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
+  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
   renderer.presentLevelUp(100); renderer.update(shots, 200);
   expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.55);
-  renderer.update(shots, 1501); expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
+  renderer.update(shots, 1501); expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
   renderer.presentLevelUp(1600); renderer.reset(); renderer.update(shots, 1700);
-  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.28);
+  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
   renderer.dispose();
 });
 
