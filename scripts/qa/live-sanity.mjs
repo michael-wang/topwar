@@ -40,13 +40,13 @@ for (const mode of ['default', 'normal', 'review']) {
   });
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   const retry = await sample();
-  const checks = { correctLevel: opening.level === (mode !== 'normal' ? 7 : 1),
-    correctSquad: opening.count === (mode !== 'normal' ? 2 : 1),
-    roles: mode === 'normal' ? !opening.roles.includes('giant') : ['grunt', 'heavy', 'giant'].every(r => opening.roles.includes(r)),
-    reinforcement: opening.arrived === (mode !== 'normal'), keyboard: right.lane === opening.lane + 1,
+  const checks = { correctLevel: opening.level === (mode === 'review' ? 7 : 1),
+    correctSquad: opening.count === (mode === 'review' ? 2 : 1),
+    roles: mode !== 'review' ? !opening.roles.includes('giant') : ['grunt', 'heavy', 'giant'].every(r => opening.roles.includes(r)),
+    reinforcement: opening.arrived === (mode === 'review'), keyboard: right.lane === opening.lane + 1,
     touch: left.lane === opening.lane, combat: left.nextShot > opening.nextShot,
     pauseResume: paused && resumed, retry: retry.level === opening.level && retry.count === opening.count
-      && (mode === 'normal' || (retry.seed === opening.seed && ['grunt', 'heavy', 'giant'].every(r => retry.roles.includes(r)))),
+      && (mode !== 'review' || (retry.seed === opening.seed && ['grunt', 'heavy', 'giant'].every(r => retry.roles.includes(r)))),
     noErrors: errors.length === 0 };
   results[mode] = { opening, right, left, retry, checks, errors };
   await page.close();

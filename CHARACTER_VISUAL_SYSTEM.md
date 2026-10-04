@@ -225,9 +225,9 @@ no GLB, texture, external art tool, skeleton or runtime package is introduced.
 The smoother curves substantially increase triangle counts; the review report
 records that cost rather than changing enemy population to hide it.
 
-Development default and `?review=threats` retain deterministic Level 7, XP 0,
+Explicit `?review=threats` retains deterministic Level 7, XP 0,
 two defenders, reinforcement arrived and immediately visible Grunt/Heavy/Giant.
-`?review=normal` gives Level 1; production defaults Level 1. Retry preserves mode.
+`/` and `?review=normal` gives Level 1; production defaults Level 1. Retry preserves mode.
 
 Evidence belongs in `artifacts/rounded-toy-r1/`: four-role beauty sheet, front
 three-quarter and side views, helmets, shoes, black silhouettes, actual 390×844

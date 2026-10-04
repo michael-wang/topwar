@@ -35,7 +35,7 @@ async function startGame(): Promise<void> {
   }
 
   const app = new GameApp(gameViewport, configStore, level, assets,
-    perfEnabled(window.location.search), threatReviewEnabled(window.location.search, import.meta.env.DEV));
+    perfEnabled(window.location.search), threatReviewEnabled(window.location.search));
   app.start();
 }
 

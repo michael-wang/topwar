@@ -15,10 +15,10 @@ it('only enables the explicit threat review query', () => {
   for (const query of ['', '?review=other', '?threats', '?perf=1']) expect(threatReviewEnabled(query)).toBe(false);
 });
 it.each([
-  ['', true, 7], ['?review=threats', true, 7], ['?review=normal', true, 1],
+  ['', true, 1], ['?review=threats', true, 7], ['?review=normal', true, 1],
   ['', false, 1], ['?review=threats', false, 7], ['?review=normal', false, 1],
 ])('resolves boot %s (development %s) to Level %s, including Retry', (search, development, level) => {
-  const enabled = threatReviewEnabled(search, development);
+  const enabled = threatReviewEnabled(search);
   const boot = () => enabled ? make() : new Simulation(options);
   for (const state of [boot().getState(), boot().getState()]) {
     expect(state.progression).toEqual({ level, xp: 0 });
