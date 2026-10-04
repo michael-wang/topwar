@@ -291,16 +291,19 @@ legacy mode. Aircraft/flak and the Mediterranean `OffshoreTransports` landing
 craft/carriers remain. Openings use plaster frames and painted cyan leaves with
 small secondary-navy cores, rather than large deepest-shadow slabs.
 
-## Implemented R3 civilian foreground
+## Implemented R4 near-field village
 
-Two low, asymmetric side clusters frame the beach without occupying the five
-lanes: screen-left has a whitewashed bench, two rounded ceramic vessels and a
-fishing-rope coil (Z≈7.5–10.3); screen-right has a short plaster terrace, pale
-timber seat, folded cyan cloth and one vessel (Z≈12.7–14.1). Warm ceramics,
-quiet rope and painted plaster retain the civilian village identity. No military
-props, tall trees, collision or new external textures are added. Seven merged
-material/side batches adapt outward with track width; all opaque vertices stay
-outside track edge + 0.4. Center lanes retain restrained sand scuffs.
+Foreground framing is architectural continuation, rather than isolated prop
+decoration. R4 replaces the R3 bench/pottery/rope/seat/cloth clusters entirely.
+Screen-left has a cropped whitewashed house corner at Z≈7.2, short front stairs,
+cyan shutter and low terrace; screen-right has a smaller facade at Z≈11.85,
+plaster arch, cyan recessed doorway, short steps and a low terrace wall. Flat
+roofs/parapets and cool plaster shading continue the upper village grammar.
+Only the small inner openings use secondary navy; no broad dark facade or tall
+foreground cliff. Six material/side batches replace seven R3 prop draws. Every
+opaque vertex stays outside track edge + 0.4 at four tested widths. No collision,
+new texture, military prop or standalone decorative vessel row; center lanes
+and defenders remain open. Upper village layout, lighting and naval art remain fixed.
 
 ## Future defensive structures
 

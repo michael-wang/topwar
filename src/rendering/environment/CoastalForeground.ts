@@ -5,67 +5,74 @@ import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
 
 export const COASTAL_FOREGROUND_CLEARANCE = .4;
-const SIDE_OFFSET = .8;
 const C = ART.coastalDefense;
 
-// Two low civilian clusters, authored outward from the configured track edge.
-// Screen-left is positive X under the gameplay camera; neither side has collision.
+// Village corners continue toward the defenders; only side anchors move with
+// track width. No collision, standalone pottery or central-lane dressing.
 export class CoastalForeground {
   readonly group = new THREE.Group();
   private readonly sides = [new THREE.Group(), new THREE.Group()];
   private readonly geometries: THREE.BufferGeometry[] = [];
   private readonly materials = {
     plaster: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.plaster })),
-    wood: illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#c8ae83' })),
-    ceramic: illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#b58b70' })),
-    rope: illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#a99c7e' })),
-    canvas: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.cloth })),
+    shade: illustratedMaterial(new THREE.MeshStandardMaterial({ color: C.plasterShade })),
+    paint: illustratedMaterial(new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true })),
   };
   constructor() {
-    this.group.name = 'coastal-foreground-life';
+    this.group.name = 'coastal-foreground-village';
     this.sides.forEach((side,i)=>{side.name=i?'foreground-screen-left':'foreground-screen-right';this.group.add(side);});
     const block=paintedBlockGeometry();
-    const pot=new THREE.LatheGeometry([[.12,0],[.22,.06],[.30,.20],[.27,.44],[.14,.59],[.14,.70]]
-      .map(([x,y])=>new THREE.Vector2(x,y)),10);
-    const rim=new THREE.TorusGeometry(.145,.035,4,10).rotateX(Math.PI/2);
-    const coil=new THREE.TorusGeometry(.23,.045,4,12).rotateX(Math.PI/2);
     const pieces = this.sides.map(()=>new Map<THREE.Material,THREE.BufferGeometry[]>());
-    const part=(side:0|1,geometry:THREE.BufferGeometry,material:keyof CoastalForeground['materials'],
-      x:number,y:number,z:number,w=1,h=1,d=1,angle=0)=>{
-      const baked=geometry.index?geometry.toNonIndexed():geometry.clone();
-      for(const key of Object.keys(baked.attributes))if(key!=='position'&&key!=='normal')baked.deleteAttribute(key);
-      const matrix=new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),
-        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),angle),new THREE.Vector3(w,h,d));
-      baked.applyMatrix4(matrix);const resource=this.materials[material];
+    const part=(side:0|1,x:number,y:number,z:number,w:number,h:number,d:number,
+      material:keyof CoastalForeground['materials']='plaster',tint?:string,source=block)=>{
+      const baked=source.index?source.toNonIndexed():source.clone();
+      baked.deleteAttribute('uv');baked.scale(w,h,d).translate(side===1?x-.3:x,y,side===0?z-1.5:z);
+      if(material==='paint'){
+        const color=new THREE.Color(tint),p=baked.getAttribute('position'),colors=new Float32Array(p.count*3);
+        for(let i=0;i<p.count;i++)color.toArray(colors,i*3);
+        baked.setAttribute('color',new THREE.BufferAttribute(colors,3));
+      }
+      const resource=this.materials[material];
       const list=pieces[side].get(resource)??[];list.push(baked);pieces[side].set(resource,list);
     };
-    const vessel=(side:0|1,x:number,z:number,size:number)=>{
-      part(side,pot,'ceramic',x,.025,z,size,size,size);
-      part(side,rim,'ceramic',x,.025+.70*size,z,size,size,size);
-    };
-    // Screen-left: whitewashed low bench, two vessels, one quiet fishing-rope coil.
-    part(1,block,'plaster',1.05,.18,7.5,2.1,.36,.48,.04);
-    vessel(1,.32,8.55,.9);vessel(1,.95,10.3,.75);
-    part(1,coil,'rope',.18,.065,9.65);
-    part(1,coil,'rope',.18,.07,9.65,.65,1,.65);
-    // Screen-right: short terrace step, pale timber seat, folded cyan cloth, vessel.
-    part(0,block,'plaster',-1.15,.12,12.7,2.25,.24,.75,-.035);
-    part(0,block,'wood',-.95,.39,13.05,1.05,.14,.48,-.05);
-    for(const x of [-1.32,-.58])part(0,block,'wood',x,.25,13.05,.15,.28,.36);
-    part(0,block,'canvas',-.75,.49,12.98,.62,.06,.40,.08);
-    vessel(0,-1.8,14.05,.85);
-    // One merged draw per material/side; seven draws total, regardless of prop count.
+    // Screen-left: cropped house corner, inner stair and low terrace at Z 6–11.
+    part(1,1.65,.85,7.2,2.8,1.7,2.25);
+    part(1,1.65,1.73,7.2,2.94,.12,2.38,'shade');
+    part(1,1.65,1.88,8.26,2.94,.28,.24);
+    part(1,2.97,1.88,7.2,.24,.28,2.25);
+    part(1,.64,.96,6.04,.77,.87,.09,'shade');
+    part(1,.64,.96,5.98,.59,.69,.07,'paint',C.cloth);
+    part(1,.84,.96,5.93,.13,.64,.04,'paint',C.secondaryShadow);
+    for(let step=0;step<4;step++)part(1,.62,.12+step*.12,5.8+step*.38,.68,.24+step*.24,.40);
+    part(1,1.20,.18,10.4,1.80,.36,.42);
+    // Screen-right: smaller facade, one arched cyan doorway and short steps.
+    part(0,-1.65,.78,13.35,2.8,1.56,2.05);
+    part(0,-1.65,1.59,13.35,2.94,.12,2.18,'shade');
+    part(0,-1.65,1.75,14.30,2.94,.28,.24);
+    part(0,-2.97,1.75,13.35,.24,.28,2.05);
+    part(0,-1.10,.56,12.29,.76,1.10,.07,'paint',C.cloth);
+    part(0,-1.04,.54,12.23,.34,.92,.035,'paint',C.secondaryShadow);
+    for(const x of [-1.62,-.58])part(0,x,.55,12.20,.18,1.10,.17);
+    const shape=new THREE.Shape();shape.moveTo(-.61,0);shape.lineTo(-.61,.49);
+    shape.lineTo(.61,.49);shape.lineTo(.61,0);shape.lineTo(.43,0);
+    shape.absarc(0,0,.43,0,Math.PI,false);shape.closePath();
+    const arch=new THREE.ExtrudeGeometry(shape,{depth:.17,bevelEnabled:false,curveSegments:8});
+    part(0,-1.10,1.10,12.11,1,1,1,'plaster',undefined,arch);arch.dispose();
+    for(let step=0;step<2;step++)part(0,-1.10,.08+step*.08,11.55+step*.42,1.18,.16+step*.16,.45);
+    part(0,-.58,.18,14.8,.36,.36,1.35);
+    // Three material batches per side: stairs/parapets/door frames add no draws.
     pieces.forEach((batches,side)=>batches.forEach((sources,material)=>{
-      const geometry=mergeGeometries(sources)!;sources.forEach(source=>source.dispose());
+      const geometry=mergeGeometries(sources);sources.forEach(source=>source.dispose());
+      if(!geometry)throw new Error('Foreground village parts must merge');
       this.geometries.push(geometry);const mesh=new THREE.Mesh(geometry,material);
-      mesh.name='foreground-'+Object.entries(this.materials).find(([,value])=>value===material)![0];
+      mesh.name='foreground-village-'+Object.entries(this.materials).find(([,value])=>value===material)![0];
       this.sides[side].add(mesh);
     }));
-    block.dispose();pot.dispose();rim.dispose();coil.dispose();
+    block.dispose();
   }
   update(trackHalfWidth:number):void {
-    this.sides[0].position.x=-trackHalfWidth-SIDE_OFFSET;
-    this.sides[1].position.x=trackHalfWidth+SIDE_OFFSET;
+    this.sides[0].position.x=-trackHalfWidth-.8;
+    this.sides[1].position.x=trackHalfWidth+.8;
   }
   dispose():void {
     this.geometries.forEach(geometry=>geometry.dispose());
