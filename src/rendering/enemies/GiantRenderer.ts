@@ -8,6 +8,7 @@ import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage } from '../../presentation/EnemyDeathTiming';
 import type { EnemyRenderState } from '../RenderState';
+import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
 
 function hazeTexture(): THREE.DataTexture {
@@ -103,19 +104,20 @@ export class GiantRenderer {
       material.color.copy(color); material.opacity = 1; material.transparent = false; material.depthWrite = true; material.emissiveIntensity = 0;
     }
   }
-  update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback): void {
+  update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback, impulse?: EnemyHitImpulse): void {
     if (enemy) {
       this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = true;
       if (this.previous?.id !== enemy.id) this.bornAt = nowMs;
       this.previous = enemy; this.deathAt = -Infinity;
       const cycle = enemy.gaitCycleMs ?? 850, weight = giantWeightPose(enemy.id, nowMs, cycle), hit = hits.strength(enemy.id, nowMs);
+      const kick = impulse?.strength(enemy.id, nowMs) ?? 0;
       this.body.geometry = this.family.runFrames[Math.floor(nowMs / (cycle / 4) + enemy.id * 1.52788745) & 3].geometry;
       const grip = giantGripMotion(weight.phase);
       this.weapon.position.set(this.weaponRest.x + grip.x, this.weaponRest.y + grip.y, this.weaponRest.z + grip.z);
       this.weapon.rotation.set(weight.weapon + .03 * hit, 0, Math.sin(weight.phase - .8) * .045);
       this.helmet.rotation.z = Math.cos(weight.phase - .25) * .012;
-      this.group.position.set(-enemy.x + weight.shift * (enemy.visualScaleX ?? enemy.visualScale ?? 1), weight.bob, enemy.z + hit * .11);
-      this.group.rotation.set(-.12 + hit * .06, Math.PI, weight.sway);
+      this.group.position.set(-enemy.x + weight.shift * (enemy.visualScaleX ?? enemy.visualScale ?? 1), weight.bob, enemy.z + kick * ENEMY_HIT_STYLE.giant.distance);
+      this.group.rotation.set(-.12 + kick * ENEMY_HIT_STYLE.giant.lean, Math.PI, weight.sway);
       const scale = enemy.visualScale ?? 1;
       this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression), enemy.visualScaleZ ?? scale);
       this.group.visible = true; this.restorePalette();

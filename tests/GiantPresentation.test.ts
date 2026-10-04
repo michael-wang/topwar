@@ -24,7 +24,7 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the shared froz
   expect(hits.observe(enemy, 146)).toBe(false);
   hits.update(new Set([1]), 1); renderer.update(enemy, 1, hits);
   expect(scene.getObjectByName('heavy-hit-sparks')!.children.filter(s => s.visible)).toHaveLength(3);
-  expect(group.position.z).toBeCloseTo(14.11);
+  expect(group.position.z).toBe(14); // emphasis alone never moves the root
   hits.update(new Set([1]), 120); renderer.update(enemy, 120, hits);
   expect(group.position.z).toBe(14);
   renderer.die(enemy, 200); renderer.update(undefined, 320, hits);

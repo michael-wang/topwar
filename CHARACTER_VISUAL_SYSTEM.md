@@ -56,7 +56,7 @@ An organized blue defender toy: close-wrapping rounded helmet, spherical head,
 one compact bean torso, simple hand balls and soft bean shoes. The separate
 chunky rifle remains directional and gains softer toy proportions. Preserve
 weapon-local muzzle coordination, controlled plant/fire/recover motion, hand
-tracking, reinforcement, tier colors, Level-Up, hit and casualty timings.
+tracking, reinforcement, tier colors and Level-Up remain; R7 updates casualty and impact presentation.
 The body must no longer look like a beveled tunic box.
 
 ## Grunt target
@@ -343,7 +343,7 @@ a bounded safety fallback. No decals on buildings or gameplay collision.
 
 The superseded `LethalBloodSpray` and `EnemyShatterBurst`, fragment geometry and
 shatter-specific tests are removed. Effect resources are owned/disposed; one
-mask is shared by both batches. Surviving-hit feedback, Giant HP layout, reveal,
+mask is shared by both batches. Rate-limited hit emphasis, Giant HP layout, reveal,
 audio, simulation removal and Boss remain unchanged. Generated local review
 media/performance JSON belongs in `artifacts/r6_4-blood-kill/`, untracked.
 
@@ -361,6 +361,27 @@ holds on the sand. Translation is only about 0.10–0.115 lateral and 0.18 backw
 world units. Fade is 450–700 ms. Ground support is sampled from real family
 vertices once, including the attached rifle; no airborne arc, gray wash,
 fragmentation, separate flying weapon or generic enemy-fall system.
+
+### R7 surviving enemy impact
+
+Every observed surviving HP decrease (all roles, including future multi-HP
+Grunts) emits one small irregular blood pulse lasting 100 ms, with no gray/red
+transition or stain. Scale is 45% of Grunt lethal, 40% of Heavy lethal, 30% of
+Giant lethal. Upper-body placement varies deterministically by enemy ID and
+hit sequence. A separate 128-slot instanced pool shares the lethal mask and
+cannot evict a Giant kill payoff.
+
+A rendering-only `EnemyHitImpulse` blends each observed hit into a 140 ms kick:
+12 ms attack, then smooth return to the authoritative simulation transform.
+Single-hit strength is 0.85; repeated hits add 0.85 to the current impulse,
+capped at 1, without resetting displacement to zero. Maximum +Z displacement
+is 0.14 / 0.10 / 0.055 world units for Grunt / Heavy / Giant; maximum backward
+lean is 0.06 / 0.04 / 0.025 radians. No simulation position/speed/contact changes.
+
+Existing Heavy/Giant overlay, sparks, tint and compression remain independently
+rate-limited at 250 ms. Their old root translation/lean is replaced by the
+every-hit impulse, avoiding double knockback. Lethal removal cancels hit blood,
+prunes the impulse, then owns the frame through the captured lethal reaction.
 
 ## R4 — rounded organic mass + structured functional gear
 

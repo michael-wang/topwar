@@ -43,7 +43,7 @@ export function bloodSplatTexture(): THREE.DataTexture {
   return texture;
 }
 
-interface BurstSlot { startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3; diameter: number; angle: number }
+interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3; diameter: number; angle: number }
 
 export class BloodSplat {
   private readonly mesh: THREE.InstancedMesh;
@@ -56,7 +56,7 @@ export class BloodSplat {
     private readonly capacity = BLOOD_SPLAT_CAPACITY, name = 'enemy-blood-splats') {
     this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
-    this.slots = Array.from({ length: capacity }, () => ({ startedAt: -Infinity,
+    this.slots = Array.from({ length: capacity }, () => ({ owner: -1, startedAt: -Infinity,
       timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), diameter: 1, angle: 0 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('splatOpacity', this.alpha); geometry.setAttribute('splatAngle', this.angle);
@@ -84,7 +84,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   spawn(id: number, role: EnemyDeathRole, nowMs: number, origin: THREE.Vector3, adaptation: number): void {
     this.spawnStyled(id, ENEMY_DEATH_TIMING[role], nowMs, origin, adaptation);
   }
-  spawnStyled(id: number, timing: BloodSplatTiming, nowMs: number, origin: THREE.Vector3, adaptation = 1): void {
+  spawnStyled(id: number, timing: BloodSplatTiming, nowMs: number, origin: THREE.Vector3, adaptation = 1, owner = id): void {
     // Reuse expired bursts before interrupting a longer threat payoff.
     let index = this.cursor, oldest = index;
     for (let offset = 0; offset < this.capacity; offset++) {
@@ -96,7 +96,7 @@ gl_Position = projectionMatrix * mvPosition;`);
     }
     this.cursor = (index + 1) % this.capacity;
     const slot = this.slots[index];
-    slot.startedAt = nowMs; slot.timing = timing; slot.origin.copy(origin);
+    slot.owner = owner; slot.startedAt = nowMs; slot.timing = timing; slot.origin.copy(origin);
     slot.diameter = 1.25 * timing.bloodScale * Math.max(.8, Math.min(1.25, adaptation));
     slot.angle = id * 2.3999632297;
   }
@@ -112,6 +112,7 @@ gl_Position = projectionMatrix * mvPosition;`);
     this.mesh.count = count; this.mesh.visible = count > 0;
     this.mesh.instanceMatrix.needsUpdate = true; this.alpha.needsUpdate = this.angle.needsUpdate = true;
   }
+  cancel(owner: number): void { for (const slot of this.slots) if (slot.owner === owner) slot.startedAt = -Infinity; }
   reset(): void { this.slots.forEach(slot => slot.startedAt = -Infinity); this.cursor = 0; this.mesh.count = 0; this.mesh.visible = false; }
   dispose(): void { this.scene.remove(this.mesh); this.mesh.dispose(); this.mesh.geometry.dispose(); (this.mesh.material as THREE.Material).dispose(); }
 }

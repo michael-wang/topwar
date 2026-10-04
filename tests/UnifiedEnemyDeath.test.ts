@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { createChibiGiantFamily, createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
-import { ENEMY_DEATH_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, ENEMY_REACTION_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
 function matrixClose(a: THREE.Matrix4,b: THREE.Matrix4) { a.elements.forEach((value,i)=>expect(value).toBeCloseTo(b.elements[i],6)); }
 it('captures the exact lethal capture, then holds an authored reaction without root movement', () => {
   for(const role of ['grunt','heavy','giant'] as const){
@@ -27,10 +27,10 @@ it('captures the exact lethal capture, then holds an authored reaction without r
     const corpse=scene.getObjectByName(role==='giant'?'giant-assault-soldier':'enemy-pale-death-body')!;
     const parts=[corpse.children[0],corpse.children[1],...(role==='giant'?[corpse.getObjectByName('giant-maul')!]:[])];
     const root=corpse.matrix.clone();
-    for(const age of [0,20,timing.redCompleteMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
+    for(const age of [0,20,ENEMY_REACTION_TIMING[role].startMs-1,ENEMY_REACTION_TIMING[role].endMs,timing.redCompleteMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
       renderer.update([],2031+age);corpse.updateMatrixWorld(true);expect(corpse.visible).toBe(true);
       matrixClose(corpse.matrix,root);
-      if(age < 35) {
+      if(age < ENEMY_REACTION_TIMING[role].startMs) {
         parts.forEach((part,index)=>matrixClose(part.matrixWorld,before[index]));
         geometries.forEach((geometry,index)=>expect((parts[index] as THREE.Mesh).geometry).toBe(geometry));
       } else {

@@ -7,6 +7,7 @@ import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
+import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY } from './EnemyHitImpulse';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
@@ -114,6 +115,9 @@ export class EnemyRenderer {
   private readonly stains: GroundBloodStains;
   private sceneMode: boolean | undefined;
   private readonly blood: BloodSplat;
+  private readonly hitBlood: BloodSplat;
+  private readonly hitImpulse = new EnemyHitImpulse();
+  private readonly hitTop: Record<'grunt' | 'heavy' | 'giant', number>;
   private readonly reactionMatrices = new Map<string, readonly [THREE.Matrix4, THREE.Matrix4]>();
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
@@ -133,6 +137,11 @@ export class EnemyRenderer {
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
     this.blood = new BloodSplat(scene, this.bloodTexture);
+    this.hitBlood = new BloodSplat(scene, this.bloodTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
+    const top = (family: CrowdVisualFamily | CharacterVisualFamilies['giant']) => {
+      family.helmet.geometry.computeBoundingBox(); return family.helmet.geometry.boundingBox!.max.y;
+    };
+    this.hitTop = { grunt: top(families.grunt), heavy: top(families.heavy), giant: top(families.giant) };
     this.stains = new GroundBloodStains(scene, this.bloodTexture);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
     this.heavyHits = new HeavyHitFeedback(scene);
@@ -188,6 +197,7 @@ export class EnemyRenderer {
     const currentIds = new Set(enemies.map((enemy) => enemy.id));
     for (const previous of this.previousEnemies.values()) {
       if (!currentIds.has(previous.id)) {
+        this.hitBlood.cancel(previous.id);
         if (!this.contactIds.has(previous.id)) {
           const frozen = previous.archetype === 'giant'
             ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs)
@@ -204,24 +214,27 @@ export class EnemyRenderer {
     }
     for (const enemy of enemies) {
       const previous = this.previousEnemies.get(enemy.id);
-      if (previous && enemy.hp < previous.hp) {
+      if (previous && enemy.hp > 0 && enemy.hp < previous.hp) {
+        this.presentSurvivingHit(enemy, nowMs);
         if (enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
         else if (this.heavyHits.observe(enemy, nowMs)) this.flashUntilMs.set(enemy.id, nowMs + HEAVY_HIT_FLASH_MS);
       }
       this.previousEnemies.set(enemy.id, { ...enemy });
     }
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
+    this.hitImpulse.prune(currentIds);
     this.contactIds.clear();
     this.updateDeaths(nowMs);
     this.updateContacts(nowMs);
     this.blood.update(nowMs);
+    this.hitBlood.update(nowMs);
     this.heavyHits.update(currentIds, nowMs);
     for (const enemy of enemies) if (enemy.archetype === 'giant') {
       const renderer = this.giantRenderers.find(slot => slot.id === enemy.id)
         ?? this.giantRenderers.find(slot => slot.available(nowMs));
-      renderer?.update(enemy, nowMs, this.heavyHits);
+      renderer?.update(enemy, nowMs, this.heavyHits, this.hitImpulse);
     }
-    for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits);
+    for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits, this.hitImpulse);
 
     const giantCount = enemies.reduce((count, enemy) => count + (enemy.archetype === 'giant' ? 1 : 0), 0);
     let barIndex = 0;
@@ -309,8 +322,9 @@ export class EnemyRenderer {
       transform.rotation.set(-0.15 + pose.leftLeg * 0.035, Math.PI,
         sway);
       const hitStrength = this.heavyHits.strength(enemy.id, nowMs);
-      transform.position.z += .07 * hitStrength;
-      transform.rotation.x += .045 * hitStrength;
+      const impact = this.hitImpulse.strength(enemy.id, nowMs), style = ENEMY_HIT_STYLE[heavy ? 'heavy' : 'grunt'];
+      transform.position.z += style.distance * impact;
+      transform.rotation.x += style.lean * impact;
       setEnemyScale(transform.scale, enemy, presentation.scaleY);
       if (step) transform.scale.y *= 1 - step.landing * presentation.stepWeight!.compression;
       transform.scale.y *= 1 - (presentation.hitCompression ?? 0) * hitStrength;
@@ -363,7 +377,7 @@ export class EnemyRenderer {
     for (const visual of this.deathVisuals) visual.group.visible = false;
     for (const visual of this.contactVisuals) visual.group.visible = false;
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
-    this.blood.reset();
+    this.blood.reset(); this.hitBlood.reset(); this.hitImpulse.reset();
     this.stains.reset();
     this.deathBatches.reset();
     this.heavyHits.reset();
@@ -394,7 +408,7 @@ export class EnemyRenderer {
     this.barBackingMaterial.dispose();
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
-    this.blood.dispose();
+    this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
     this.stains.dispose(); this.bloodTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();
@@ -481,6 +495,18 @@ export class EnemyRenderer {
       visual.group.rotation.z = visual.direction * .45 * progress;
       visual.group.scale.copy(visual.scale).multiplyScalar(1.12 - .26 * progress);
     }
+  }
+
+  private presentSurvivingHit(enemy: EnemyRenderState, nowMs: number): void {
+    const role = enemy.archetype ?? 'grunt', sequence = this.hitImpulse.observe(enemy.id, nowMs);
+    setEnemyScale(this.feedbackScale, enemy, role === 'heavy' ? this.families.heavy.presentation.scaleY : 1);
+    const hash = (Math.imul(enemy.id + 1, 1597334677) ^ Math.imul(sequence, 3812015801)) >>> 0;
+    const jitter = (hash % 101) / 100 - .5;
+    this.feedbackOrigin.set(-enemy.x + jitter * .07 * this.feedbackScale.x,
+      (this.hitTop[role] * .64 + jitter * .04) * this.feedbackScale.y,
+      enemy.z - .12 * this.feedbackScale.z);
+    const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
+    this.hitBlood.spawnStyled(hash, HIT_BLOOD_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id);
   }
 
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {

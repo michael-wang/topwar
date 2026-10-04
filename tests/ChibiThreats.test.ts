@@ -143,7 +143,7 @@ it('keeps two Giant slots and their hit registration independent, including the 
   expect(groups.filter(g => g.visible)).toHaveLength(2);
   const overlay = scene.getObjectByName('heavy-hit-body') as THREE.Mesh;
   expect(overlay.geometry).toBe((groups[0].children[0] as THREE.Mesh).geometry);
-  expect(overlay.matrix.elements[14]).toBeCloseTo(a.z + .11);
+  expect(overlay.matrix.elements[14]).toBeCloseTo(a.z); // flash clock does not move the Giant root
   const before = { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 };
   renderer.present([{ kind: 'normalEnemyContact', enemyId: 1, enemyTier: 1, attackerX: 0, attackerZ: 10, playerX: 0, playerZ: 0, before, after: before }], 1600);
   renderer.update([b], 1600);
