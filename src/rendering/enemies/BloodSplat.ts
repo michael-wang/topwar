@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { bloodSplatPose, ENEMY_DEATH_TIMING, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
+import { bloodSplatPose, ENEMY_DEATH_TIMING, type BloodSplatTiming, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 
 export const BLOOD_SPLAT_CAPACITY = 64;
 export const BLOOD_STAIN_CAPACITY = 1024;
@@ -43,17 +43,21 @@ export function bloodSplatTexture(): THREE.DataTexture {
   return texture;
 }
 
-interface BurstSlot { startedAt: number; role: EnemyDeathRole; origin: THREE.Vector3; diameter: number; angle: number }
+interface BurstSlot { startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3; diameter: number; angle: number }
 
 export class BloodSplat {
   private readonly mesh: THREE.InstancedMesh;
-  private readonly alpha = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_SPLAT_CAPACITY), 1);
-  private readonly angle = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_SPLAT_CAPACITY), 1);
-  private readonly slots: BurstSlot[] = Array.from({ length: BLOOD_SPLAT_CAPACITY }, () => ({
-    startedAt: -Infinity, role: 'grunt', origin: new THREE.Vector3(), diameter: 1, angle: 0 }));
+  private readonly alpha: THREE.InstancedBufferAttribute;
+  private readonly angle: THREE.InstancedBufferAttribute;
+  private readonly slots: BurstSlot[];
   private readonly transform = new THREE.Object3D();
   private cursor = 0;
-  constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture) {
+  constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture,
+    private readonly capacity = BLOOD_SPLAT_CAPACITY, name = 'enemy-blood-splats') {
+    this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+    this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+    this.slots = Array.from({ length: capacity }, () => ({ startedAt: -Infinity,
+      timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), diameter: 1, angle: 0 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('splatOpacity', this.alpha); geometry.setAttribute('splatAngle', this.angle);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false,
@@ -70,33 +74,36 @@ gl_Position = projectionMatrix * mvPosition;`);
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vSplatOpacity;');
     };
     material.customProgramCacheKey = () => 'pooled-camera-blood-blot';
-    this.mesh = new THREE.InstancedMesh(geometry, material, BLOOD_SPLAT_CAPACITY);
-    this.mesh.name = 'enemy-blood-splats'; this.mesh.renderOrder = 6;
+    this.mesh = new THREE.InstancedMesh(geometry, material, capacity);
+    this.mesh.name = name; this.mesh.renderOrder = 6;
     this.mesh.frustumCulled = false; this.mesh.count = 0; this.mesh.visible = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.alpha.setUsage(THREE.DynamicDrawUsage); this.angle.setUsage(THREE.DynamicDrawUsage);
     scene.add(this.mesh);
   }
   spawn(id: number, role: EnemyDeathRole, nowMs: number, origin: THREE.Vector3, adaptation: number): void {
-    // Reuse expired Grunt bursts before interrupting a longer threat payoff.
+    this.spawnStyled(id, ENEMY_DEATH_TIMING[role], nowMs, origin, adaptation);
+  }
+  spawnStyled(id: number, timing: BloodSplatTiming, nowMs: number, origin: THREE.Vector3, adaptation = 1): void {
+    // Reuse expired bursts before interrupting a longer threat payoff.
     let index = this.cursor, oldest = index;
-    for (let offset = 0; offset < BLOOD_SPLAT_CAPACITY; offset++) {
-      const candidate = (this.cursor + offset) % BLOOD_SPLAT_CAPACITY;
+    for (let offset = 0; offset < this.capacity; offset++) {
+      const candidate = (this.cursor + offset) % this.capacity;
       const slot = this.slots[candidate];
-      if (nowMs >= slot.startedAt + ENEMY_DEATH_TIMING[slot.role].bloodEndMs) { index = candidate; break; }
+      if (nowMs >= slot.startedAt + slot.timing.bloodEndMs) { index = candidate; break; }
       if (slot.startedAt < this.slots[oldest].startedAt) oldest = candidate;
-      if (offset === BLOOD_SPLAT_CAPACITY - 1) index = oldest;
+      if (offset === this.capacity - 1) index = oldest;
     }
-    this.cursor = (index + 1) % BLOOD_SPLAT_CAPACITY;
+    this.cursor = (index + 1) % this.capacity;
     const slot = this.slots[index];
-    slot.startedAt = nowMs; slot.role = role; slot.origin.copy(origin);
-    slot.diameter = 1.25 * ENEMY_DEATH_TIMING[role].bloodScale * Math.max(.8, Math.min(1.25, adaptation));
+    slot.startedAt = nowMs; slot.timing = timing; slot.origin.copy(origin);
+    slot.diameter = 1.25 * timing.bloodScale * Math.max(.8, Math.min(1.25, adaptation));
     slot.angle = id * 2.3999632297;
   }
   update(nowMs: number): void {
     let count = 0;
     for (const slot of this.slots) {
-      const pose = bloodSplatPose(nowMs - slot.startedAt, ENEMY_DEATH_TIMING[slot.role]);
+      const pose = bloodSplatPose(nowMs - slot.startedAt, slot.timing);
       if (!pose.visible) continue;
       this.transform.position.copy(slot.origin); this.transform.scale.setScalar(slot.diameter * pose.scale);
       this.transform.updateMatrix(); this.mesh.setMatrixAt(count, this.transform.matrix);
@@ -113,7 +120,7 @@ export class GroundBloodStains {
   private readonly mesh: THREE.InstancedMesh;
   private readonly transform = new THREE.Object3D();
   private cursor = 0;
-  constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture) {
+  constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture, name = 'enemy-ground-blood-stains') {
     const material = new THREE.MeshBasicMaterial({ map: texture, color: BLOOD_STAIN_COLOR,
       transparent: true, opacity: BLOOD_STAIN_OPACITY, depthWrite: false, toneMapped: false });
     // Read only map alpha: the sand stain has its own quiet, uniform dark-red tint.
@@ -123,13 +130,16 @@ export class GroundBloodStains {
     };
     material.customProgramCacheKey = () => 'flat-persistent-blood-mask';
     this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), material, BLOOD_STAIN_CAPACITY);
-    this.mesh.name = 'enemy-ground-blood-stains'; this.mesh.count = 0; this.mesh.visible = false; this.mesh.frustumCulled = false;
+    this.mesh.name = name; this.mesh.count = 0; this.mesh.visible = false; this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1; this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(this.mesh);
   }
   spawn(id: number, role: EnemyDeathRole, x: number, z: number): void {
+    this.spawnSized(id, ENEMY_DEATH_TIMING[role].stainDiameter, x, z);
+  }
+  spawnSized(id: number, diameter: number, x: number, z: number): void {
     const index = this.cursor++ % BLOOD_STAIN_CAPACITY;
     const variation = .9 + ((Math.imul(id, 1597334677) >>> 0) % 1000) / 5000;
-    const diameter = ENEMY_DEATH_TIMING[role].stainDiameter * variation;
+    diameter *= variation;
     this.transform.position.set(x, .025, z); this.transform.rotation.set(-Math.PI / 2, 0, id * 2.3999632297);
     this.transform.scale.set(diameter, diameter, 1); this.transform.updateMatrix();
     this.mesh.setMatrixAt(index, this.transform.matrix); this.mesh.count = Math.min(this.cursor, BLOOD_STAIN_CAPACITY);

@@ -21,7 +21,8 @@ export function enemyDeathPose(ageMs: number, timing: EnemyDeathTiming) {
     bodyOpacity: 1 - smooth((ageMs - timing.fadeStartMs) / (timing.totalMs - timing.fadeStartMs)) };
 }
 
-export function bloodSplatPose(ageMs: number, timing: EnemyDeathTiming) {
+export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number }
+export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming) {
   const progress = clamp((ageMs - timing.bloodStartMs) / (timing.bloodEndMs - timing.bloodStartMs));
   const beat = (1 - Math.cos(progress * timing.bloodPulseCount * Math.PI * 2)) / 2;
   return { visible: ageMs >= timing.bloodStartMs && ageMs < timing.bloodEndMs,

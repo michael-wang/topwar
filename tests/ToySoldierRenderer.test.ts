@@ -115,7 +115,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('maps exact demotion to old visible members and shows a red player knockout', () => {
+  it('maps exact demotion to visible members and shows blood with a grounded Player fall', () => {
     expect(removedVisualMembers(
       { count: 1, rocketCount: 0, rifleCounts: [0, 0, 1], rifleRemainder: 0 },
       { count: 9, rocketCount: 0, rifleCounts: [9], rifleRemainder: 0 },
@@ -139,8 +139,8 @@ describe('Modern Toy Soldier presentation', () => {
     expect(casualty.visible).toBe(true);
     renderer.update({ ...state(1), track: { halfWidth: 3, defenseLineZ: -1.5 } }, 100);
     expect(((casualty.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial)
-      .color.getHexString()).toBe('ff3030');
-    renderer.update(state(1), 280);
+      .color.getHexString()).not.toBe('ff3030');
+    renderer.update(state(1), 650);
     expect(casualty.position.y).toBeGreaterThan(0);
     expect(((casualty.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial)
       .opacity).toBeLessThan(1);

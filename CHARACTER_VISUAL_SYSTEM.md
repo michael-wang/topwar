@@ -347,6 +347,21 @@ mask is shared by both batches. Surviving-hit feedback, Giant HP layout, reveal,
 audio, simulation removal and Boss remain unchanged. Generated local review
 media/performance JSON belongs in `artifacts/r6_4-blood-kill/`, untracked.
 
+### R7 Player casualty
+
+An actually removed visible squad member gets the same non-emissive irregular
+blood mask (two pulses, 0–220 ms, scale 1.10) and one 0.35-unit dark sand stain.
+Remainder damage without a removed soldier creates neither. Player effects own
+separate bounded pools (64 splats, 1024 stains) using the common renderer class;
+Player stains survive the 700 ms casualty and clear on Retry/reset/mode change.
+
+The intact blue soldier/helmet/gear/rifle recoils for 80 ms, falls backward to
+77.3° by 350 ms with deterministic slight left/right roll (about 8–9°), then
+holds on the sand. Translation is only about 0.10–0.115 lateral and 0.18 backward
+world units. Fade is 450–700 ms. Ground support is sampled from real family
+vertices once, including the attached rifle; no airborne arc, gray wash,
+fragmentation, separate flying weapon or generic enemy-fall system.
+
 ## R4 — rounded organic mass + structured functional gear
 
 Body/head/fists/shoes remain rounded toy abstractions. Functional equipment

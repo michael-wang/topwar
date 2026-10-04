@@ -10,6 +10,8 @@ import { createSquadFormation, createDefenseSquadFormation } from '../../simulat
 import type { GameRenderState, ProjectileRenderState } from '../RenderState';
 import { PLAYER_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
+import { BloodSplat, GroundBloodStains, bloodSplatTexture } from '../enemies/BloodSplat';
+import { PLAYER_CASUALTY_MS, PLAYER_CASUALTY_BLOOD, PLAYER_STAIN_DIAMETER, playerCasualtyPose, PlayerCasualtyGround } from './PlayerCasualty';
 import { removedVisualMembers } from './casualtyVisuals';
 
 const FLASH_MS = 50;
@@ -19,7 +21,7 @@ const TIER_GLOW_MS = 150;
 export const PLAYER_VISUAL_SCALE = 0.85;
 const VISUAL_FORMATION_SPREAD = 2;
 export const PLAYER_HIT_FLASH_MS = 130;
-export const PLAYER_KNOCKOUT_MS = 360;
+export const PLAYER_KNOCKOUT_MS = PLAYER_CASUALTY_MS;
 export const MAX_PLAYER_CASUALTY_VISUALS = 48;
 
 export function soldierSpawnScale(ageMs: number): number {
@@ -82,6 +84,13 @@ export class SquadRenderer {
   private readonly tierRing = new THREE.Mesh(this.ringGeometry, this.ringMaterial);
   private readonly members: SoldierVisual[] = [];
   private readonly handWeaponTransform = new THREE.Matrix4();
+  private readonly bloodTexture = bloodSplatTexture();
+  private readonly blood: BloodSplat;
+  private readonly stains: GroundBloodStains;
+  private readonly casualtyBloodOrigin = new THREE.Vector3();
+  private casualtyGround: PlayerCasualtyGround | undefined;
+  private casualtySequence = 0;
+  private sceneMode: boolean | undefined;
   private readonly casualtyVisuals: CasualtyVisual[] = [];
   private readonly hitMemberIndices = new Map<number, number>();
   private lastRenderedSquadCount = 0;
@@ -109,6 +118,8 @@ export class SquadRenderer {
   private readonly vestModel: CharacterModel;
   private readonly rifleModel: CharacterModel;
   constructor(private readonly scene: THREE.Scene, family: PlayerVisualFamily) {
+    this.blood = new BloodSplat(scene, this.bloodTexture, 64, 'player-blood-splats');
+    this.stains = new GroundBloodStains(scene, this.bloodTexture, 'player-ground-blood-stains');
     const { body: bodyModel, helmet: helmetModel, vest: vestModel, weapon: rifleModel } = family;
     this.presentation = family.presentation;
     this.bodyModel = bodyModel; this.helmetModel = helmetModel; this.vestModel = vestModel; this.rifleModel = rifleModel;
@@ -173,6 +184,9 @@ export class SquadRenderer {
   }
 
   update(state: GameRenderState, nowMs = performance.now()): void {
+    const mode = !!state.defenseMode;
+    if (this.sceneMode !== undefined && this.sceneMode !== mode) this.reset();
+    this.sceneMode = mode;
     this.observeShots(state.projectiles, nowMs);
     if (this.lastLane !== undefined && state.player.selectedLane !== this.lastLane) {
       this.laneLeanStart = this.lastLaneLean;
@@ -302,10 +316,12 @@ export class SquadRenderer {
       if (until <= nowMs) this.hitMemberIndices.delete(index);
     }
     this.updateCasualties(nowMs);
+    this.blood.update(nowMs);
     this.levelEffect.update(this.members, nowMs);
   }
 
   reset(): void {
+    this.blood.reset(); this.stains.reset(); this.casualtySequence = 0;
     this.lastLane = undefined; this.laneMotionAt = -Infinity; this.lastUpdateMs = -Infinity;
     this.lastLaneLean = this.laneLeanStart = 0;
     this.levelUpAtMs = -Infinity;
@@ -330,6 +346,7 @@ export class SquadRenderer {
   }
 
   dispose(): void {
+    this.blood.dispose(); this.stains.dispose(); this.bloodTexture.dispose();
     this.levelEffect.dispose();
     for (const member of this.members) { this.scene.remove(member.group); member.motion.dispose(); }
     this.members.length = 0;
@@ -379,6 +396,7 @@ export class SquadRenderer {
       sources.forEach((source, part) => group.add(new THREE.Mesh(source.geometry, materials[part])));
       (group.children[3] as THREE.Mesh).position.fromArray(this.presentation.weaponPosition);
       (group.children[3] as THREE.Mesh).rotation.fromArray([...this.presentation.weaponRotation ?? [0, 0, 0]]);
+      this.casualtyGround ??= new PlayerCasualtyGround(group);
       group.visible = false;
       this.scene.add(group);
       visual = { group, materials, tier, startedAtMs: nowMs,
@@ -391,7 +409,7 @@ export class SquadRenderer {
     visual.startedAtMs = nowMs;
     visual.originX = x;
     visual.originZ = z;
-    visual.spread = (index % 2 === 0 ? -.24 : .24) + Math.sign(attackerDeltaX) * .16;
+    visual.spread = (index % 2 === 0 ? -1 : 1) + Math.sign(attackerDeltaX) * .15;
     visual.group.visible = true;
     visual.group.position.set(x, 0, z);
     visual.group.rotation.set(0, 0, 0);
@@ -400,6 +418,10 @@ export class SquadRenderer {
     for (const material of visual.materials) material.opacity = 1;
     visual.materials[1].color.set(color);
     visual.materials[2].color.set(color);
+    const id = this.casualtySequence++;
+    this.casualtyBloodOrigin.set(x, .65 * this.presentation.rootScale, z);
+    this.blood.spawnStyled(id, PLAYER_CASUALTY_BLOOD, nowMs, this.casualtyBloodOrigin);
+    this.stains.spawnSized(id, PLAYER_STAIN_DIAMETER, x, z);
   }
 
   private updateCasualties(nowMs: number): void {
@@ -407,18 +429,14 @@ export class SquadRenderer {
       if (!visual.group.visible) continue;
       const age = nowMs - visual.startedAtMs;
       if (age >= PLAYER_KNOCKOUT_MS) { visual.group.visible = false; continue; }
-      const progress = Math.max(0, age / PLAYER_KNOCKOUT_MS);
-      const flashing = age < PLAYER_HIT_FLASH_MS;
+      const pose = playerCasualtyPose(age, visual.spread);
       visual.group.children.forEach((part, index) => {
-        (part as THREE.Mesh).material = flashing ? this.hitMaterial : visual.materials[index];
-        visual.materials[index].opacity = flashing ? 1
-          : Math.max(0, 1 - (age - PLAYER_HIT_FLASH_MS)
-            / (PLAYER_KNOCKOUT_MS - PLAYER_HIT_FLASH_MS));
+        (part as THREE.Mesh).material = visual.materials[index];
+        visual.materials[index].opacity = pose.opacity;
       });
-      visual.group.position.set(visual.originX + visual.spread * progress,
-        .38 * Math.sin(Math.PI * progress) + .24 * progress,
-        visual.originZ - .65 * progress);
-      visual.group.rotation.set(-.65 * progress, 0, visual.spread * 1.8 * progress);
+      visual.group.rotation.set(pose.pitch, 0, pose.roll);
+      visual.group.position.set(visual.originX + pose.x,
+        this.casualtyGround!.floorY(visual.group.rotation, this.presentation.rootScale), visual.originZ + pose.z);
     }
   }
 
