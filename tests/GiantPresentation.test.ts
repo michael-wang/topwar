@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
-import { ENEMY_DEATH_DURATION_MS } from '../src/presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 
-it('uses the dedicated crest/maul silhouette, bounded sparks and the shared intact fall and no crash resources', () => {
+it('uses the dedicated crest/maul silhouette, bounded sparks and the shared frozen intact phase and no crash resources', () => {
   const scene = new THREE.Scene(), family = createChibiGiantFamily();
   const renderer = new GiantRenderer(scene, family);
   const hits = new HeavyHitFeedback(scene);
@@ -31,12 +31,12 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the shared inta
   expect(scene.getObjectByName('giant-death-impact')).toBeUndefined();
   expect(group.visible).toBe(true);
   const weapon=group.getObjectByName('giant-maul')!, localGrip=weapon.matrix.clone();
-  renderer.update(undefined, 200+ENEMY_DEATH_DURATION_MS.giant*.5, hits);
-  expect(group.rotation.x).toBeCloseTo(-80*Math.PI/180);
+  renderer.update(undefined, 200+ENEMY_DEATH_TIMING.giant.shatterMs-1, hits);
+  expect(group.rotation.x).toBeCloseTo(-.12);
   expect(family.runFrames.map(frame => frame.geometry)).toContain((group.children[0] as THREE.Mesh).geometry);
   expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();
   expect(group.visible).toBe(true);expect(weapon.matrix.equals(localGrip)).toBe(true);
-  renderer.update(undefined, 200+ENEMY_DEATH_DURATION_MS.giant, hits);expect(group.visible).toBe(false);
+  renderer.update(undefined, 200+ENEMY_DEATH_TIMING.giant.totalMs, hits);expect(group.visible).toBe(false);
   let borrowedDisposed = false; family.body.geometry.addEventListener('dispose', () => { borrowedDisposed = true; });
   renderer.reset(); renderer.dispose(); hits.dispose();
   expect(scene.children).toHaveLength(0); expect(borrowedDisposed).toBe(false);

@@ -125,7 +125,7 @@ hands/shoes and an explicit motion factory. Keep weapon/muzzle anchors and
 presentation-only shadow/effect metadata, without combat data. No skeleton,
 AnimationMixer or general character engine. Crowd roles retain four static
 poses and instancing; Giant has bounded dedicated slots for two live Giants
-plus a recent collapse. Feedback/contact/death use the owning role's geometry.
+plus a recent lethal freeze. Feedback/contact/death use the owning role's geometry.
 
 A small shared ellipsoid/shoe/shell geometry helper is appropriate. Shoes may
 accept dimensions, upper/sole colors and pose offsets; helpers contain no role
@@ -191,14 +191,14 @@ radians, making the front opening higher than cheek sides and rear skirt.
 Shell thickness is 0.02. There is no cylinder brim, facial band, chest plate or
 weapon. Eye sightlines are tested, including legitimate rear-shell geometry
 behind the head. The 0.80 visual Y compression, 650 ms clock, 0.09 shoe lift,
-0.045 lateral step and weight transfer/hit/contact/death timings remain.
+0.045 lateral step and weight transfer/hit/contact timings remain.
 
 Giant uses a 24-radial padded barrel and smooth 24×12 head, an olive deep shell, one soft
 limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
 mesh draws per live Giant. Death retains the intact role geometry through
-the shared fall/gray/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+the shared freeze/gray/burst/shatter/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 R5 removes the grip hand from body/reference/run/death geometry and merges it
@@ -208,10 +208,10 @@ The other hand remains pose-baked. A typed character-space grip anchor
 additional mesh/material or draw is introduced. The whole assembly translates
 ±0.015 X, ±0.009 Y and ±0.075 Z at the 850ms gait phase offset 0.3 radians.
 Existing ±0.14 pitch / ±0.045 roll retain their delayed response; pitch lags
-grip translation by 0.55 radians (about 74ms). Fall holds the last grip position
-and rotates the same assembly with the existing collapse. Contact also borrows
+grip translation by 0.55 radians (about 74ms). Lethal presentation freezes the last
+grip/maul transform together until shatter. Contact also borrows
 the complete composed body + hand/maul reference. Tests verify coupling and
-shaft/head clearance across all four poses and the fall.
+shaft/head clearance across all four poses and the lethal freeze.
 
 The dedicated Giant bar defines authored billboard width 1.20 and height 0.20,
 both scaled by projected X scale: exactly 6:1. Two-Giant layout scales both
@@ -289,37 +289,51 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Unified Enemy Death (R6.2)
+## Unified Enemy Kill Feedback (R6.3)
 
-All current beachhead enemies use **blood → fall → gray → fade**. One
-presentation-only `enemyDeathPose(ageMs, totalMs)` supplies identical normalized
-curves: fall at 0–45%, smooth gray transition at 38–65%, and opacity fade at
-65–100%. The intact role-owned figure settles at an 80° backward fall with a
-small deterministic ±0.09-radian lateral roll. Ground support derives from its
-frozen part bounds; the fallen figure stays full-size and stationary during fade.
+All current beachhead enemies use **Freeze → Gray → Upward Blood Burst →
+Shatter → Fade**. The lethal frame captures the exact last drawn geometry and
+world matrices, including crowd support-side weight transfer, hit compression
+and delayed helmet tilt. Giant also freezes its current helmet and merged
+grip-hand/maul transform. Nothing moves during the intact phase. There is no
+fall, whole-body rise, corpse, ground debris, shrink, crash ring or death dust.
 
-Threat pacing differs only by total duration: **Grunt 425 ms < Heavy 750 ms <
-Giant 1450 ms**. Grunt/Heavy freeze their last rendered locomotion geometry.
-Giant freezes its complete body and weapon-local grip pose; the merged grip hand
-and maul share the parent fall throughout. The naturally lit neutral gray target
-is #AEB5B3, with no lethal emissive wash.
+One presentation-only phase policy supplies the same semantics at different
+threat pacing:
 
-One shared bounded `LethalBloodSpray` pool emits six matte ellipsoid droplets
-per lethal event in #B93E45 / #D95652, lasting 150 ms. Its 384 instances support
-64 simultaneous sprays in one instanced draw, with deterministic velocities and
-bounded circular reuse. Contacts and ordinary surviving hits produce no blood.
-The existing 48 reusable crowd corpse slots and three dedicated Giant slots
-remain bounded. Crowd corpse slots submit to per-geometry instanced batches
-(at most four body poses plus one helmet batch per shipping crowd role), with
-per-instance gray/opacity. Only batch geometry copies and materials are owned;
-role geometry remains borrowed and unchanged. No per-kill effects hierarchy is allocated after slot warmup.
+| Role | Gray complete | Blood begins | Intact body shatters | Fully gone |
+| --- | ---: | ---: | ---: | ---: |
+| Grunt | 45 ms | 35 ms | 110 ms | 280 ms |
+| Heavy | 65 ms | 45 ms | 160 ms | 450 ms |
+| Giant | 100 ms | 65 ms | 250 ms | 850 ms |
 
-There is no vaporization, rise, shrink, shatter, grounded fragment residue,
-death ring, crash dust or Giant-specific crash camera movement. Superseded
-fragment resources and timing helpers are removed. Giant reveal haze,
-ordinary surviving-hit feedback, HP layout, gameplay removal and Boss remain
-unchanged. Local generated review evidence belongs in
-`artifacts/r6_2-unified-death/` and stays untracked.
+The intact gray target is naturally lit **#9EA5A3**, with no lethal emissive
+wash. The 48 pooled crowd pose holders submit to per-geometry instanced batches
+(four body poses plus a helmet per shipping crowd role), preserving independent
+gray amounts. Three dedicated Giant slots retain their owning geometry.
+
+One shared `LethalBloodSpray` emits **eight** elongated matte droplets per kill,
+in **#9F2734 / #C93443 / #E05258**, lasting **210 ms**. Authored velocity is
+2.6–4.0 units/second upward and 0.80–1.01 radial, with modest square-root role
+scale adaptation. The origin derives from the frozen upper-body bounds, and a
+small initial crown separates the splashes. Blood fades before reaching the
+beach. Its 384-instance pool holds 48 simultaneous sprays in one draw. Contacts
+and surviving hits produce no blood.
+
+One shared `EnemyShatterBurst` captures **eight semantic gray pieces** per role:
+helmet/body/lower-foot/hand or field-gear masses; Giant includes its crest and
+maul head. Five curved chunks and three soft structured chunks use two fixed
+instanced batches whose capacities sum to **384**, with bounded circular reuse.
+Colors are **#929A98 / #A6ACAA / #858E8C**. Pieces appear at the captured silhouette,
+expand only 0.24/0.32/0.45 world units by role, and fade over 170/290/600 ms.
+Their scale stays constant. There is no gravity, ground contact, landing or
+resting state, and nothing remains at the role's total duration.
+
+The superseded fall-transform helper and support-corner calculations are
+removed. Family geometry stays borrowed; effect geometry/materials are owned
+and disposed. Giant reveal, surviving-hit feedback, HP layout, audio, gameplay
+removal and Boss are unchanged. Local generated review media and performance
+measurements belong in `artifacts/r6_3-kill-feedback/` and remain untracked.
 
 ## R4 — rounded organic mass + structured functional gear
 

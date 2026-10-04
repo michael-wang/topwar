@@ -29,7 +29,7 @@ it('owns exactly one grip hand in the single maul mesh, never in any body/run po
   expect(weapon.groups).toHaveLength(0); // Skin region does not create a separate draw.
   family.dispose();
 });
-it('keeps shaft and grip coupled throughout all four poses and through the fall, while the grip actually moves',()=>{
+it('keeps shaft and grip coupled throughout all four poses and through the lethal freeze, while the grip actually moves',()=>{
   const family=createChibiGiantFamily(),scene=new THREE.Scene(),renderer=new GiantRenderer(scene,family),hits=new HeavyHitFeedback(scene);
   const e={id:0,tier:1,archetype:'giant' as const,x:0,z:16,hp:172,maxHp:172,visualScaleX:2.5004,visualScaleY:2.66,visualScaleZ:2.66};
   const anchor=new THREE.Vector3(...GIANT_WEAPON_GRIP),positions:number[][]=[];
@@ -51,8 +51,8 @@ it('keeps shaft and grip coupled throughout all four poses and through the fall,
   expect(Math.max(...positions.map(p=>p[2]))-Math.min(...positions.map(p=>p[2]))).toBeGreaterThan(.14);
   expect(Math.max(...positions.map(p=>p[1]))-Math.min(...positions.map(p=>p[1]))).toBeLessThan(.019);
   const last=weapon.position.clone();renderer.die(e,2600);
-  for(const age of [0,100,250,450,519]){renderer.update(undefined,2600+age,hits);assertGrip();expect(weapon.position).toEqual(last);}
-  renderer.update(undefined,4050,hits);expect(group.visible).toBe(false);
+  for(const age of [0,50,100,200,249]){renderer.update(undefined,2600+age,hits);assertGrip();expect(weapon.position).toEqual(last);}
+  renderer.update(undefined,3450,hits);expect(group.visible).toBe(false);
   renderer.reset();expect(weapon.position.toArray()).toEqual([...GIANT_WEAPON_GRIP]);
   renderer.dispose();hits.dispose();family.dispose();expect(scene.children).toHaveLength(0);
 });

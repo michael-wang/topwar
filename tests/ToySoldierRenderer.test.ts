@@ -188,7 +188,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('grows crowd capacity, flashes gear, and falls and fades intact grunts quickly without debris', () => {
+  it('grows crowd capacity, flashes gear, and freezes grunts then shatters and clears them quickly', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));
@@ -210,16 +210,13 @@ describe('Modern Toy Soldier presentation', () => {
     expect(death).toBeDefined();
     const plantedY = death.position.y;
     expect(plantedY).toBeLessThan(.06);
-    renderer.update(damaged.slice(1), 420);
-    expect(death.rotation.x).toBeCloseTo(-80*Math.PI/180); expect(death.visible).toBe(true);
-    const gray = (death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-    expect(gray.color.getHexString()).toBe('aeb4b7');
-    expect(gray.opacity).toBeGreaterThan(0); expect(gray.opacity).toBeLessThan(1);
-    expect(((death.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color
-      .getHexString()).toBe('596b61');
-    expect(scene.getObjectByName('enemy-pale-shatter')).toBeUndefined();
-    renderer.update(damaged.slice(1), 800);
-    expect(death.visible).toBe(false);
+    const frozen=death.matrix.clone();
+    renderer.update(damaged.slice(1), 150);
+    expect(death.visible).toBe(true);expect(death.matrix.equals(frozen)).toBe(true);
+    expect(((death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity).toBe(1);
+    renderer.update(damaged.slice(1), 210);expect(death.visible).toBe(false);
+    expect(scene.getObjectByName('enemy-shatter-rounded')!.visible).toBe(true);
+    renderer.update(damaged.slice(1), 380);expect(scene.getObjectByName('enemy-shatter-rounded')!.visible).toBe(false);
     renderer.reset();
     renderer.dispose();
   });
@@ -245,7 +242,7 @@ describe('Modern Toy Soldier presentation', () => {
     const death = scene.children.find(child => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death.scale.x).toBeCloseTo(heavy.visualScaleX);
     expect(death.scale.y).toBeCloseTo(heavy.visualScaleY);
-    renderer.update([], 440);
+    renderer.update([], 330);
     expect(death.visible).toBe(true); expect(death.scale.x).toBeCloseTo(heavy.visualScaleX);
     expect(death.scale.y / death.scale.x).toBeCloseTo(heavy.visualScaleY / heavy.visualScaleX);
     renderer.update([heavy], 1000);

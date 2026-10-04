@@ -147,10 +147,10 @@ describe('named character visual families', () => {
 
     renderer.update([grunt], 2200); renderer.update([], 2250);
     const corpse = scene.children.find(c => c instanceof THREE.Group
-      && (c.children[0] as THREE.Mesh)?.geometry === replacement.grunt.death.body.geometry)!;
+      && replacement.grunt.runFrames.some(frame=>frame.geometry === (c.children[0] as THREE.Mesh)?.geometry))!;
     expect(corpse).toBeDefined();
     renderer.update([], 2800); renderer.update([heavy], 2850); renderer.update([], 2900);
-    expect((corpse.children[0] as THREE.Mesh).geometry).toBe(legacy.heavy.death.body.geometry);
+    expect(legacy.heavy.runFrames.map(frame=>frame.geometry)).toContain((corpse.children[0] as THREE.Mesh).geometry);
     expect((corpse.children[1] as THREE.Mesh).geometry).toBe(legacy.heavy.death.helmet.geometry);
     expect(renderer.getDebugStats().deathVisuals).toBe(1);
     renderer.dispose();

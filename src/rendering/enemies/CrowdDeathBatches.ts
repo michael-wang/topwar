@@ -7,7 +7,7 @@ interface DeathBatch {
   count: number;
 }
 
-// Corpse slots own pose state, while shared per-geometry batches own the draws.
+// Frozen lethal slots own pose state, while shared per-geometry batches own the draws.
 // Only cloned geometry carries instance attributes; family resources stay intact.
 export class CrowdDeathBatches {
   private readonly batches = new Map<string, DeathBatch>();
@@ -38,7 +38,7 @@ varying float vDeathGray; varying float vDeathOpacity;\n${shader.vertexShader}`
         };
         material.customProgramCacheKey = () => 'instanced-intact-enemy-death-v1';
         const mesh = new THREE.InstancedMesh(geometry, material, this.capacity);
-        mesh.name = 'enemy-fallen-body-batch'; mesh.count = 0; mesh.frustumCulled = false;
+        mesh.name = 'enemy-frozen-body-batch'; mesh.count = 0; mesh.frustumCulled = false;
         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         gray.setUsage(THREE.DynamicDrawUsage); opacity.setUsage(THREE.DynamicDrawUsage);
         batch = { mesh, gray, opacity, count: 0 }; this.batches.set(source.geometry.uuid, batch); this.scene.add(mesh);

@@ -5,8 +5,7 @@ import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
-import { ENEMY_DEATH_DURATION_MS, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
-import { EnemyDeathTransform } from './EnemyDeathTransform';
+import { ENEMY_DEATH_TIMING, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
 import type { EnemyRenderState } from '../RenderState';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
 
@@ -21,7 +20,7 @@ function hazeTexture(): THREE.DataTexture {
   texture.magFilter = texture.minFilter = THREE.LinearFilter; return texture;
 }
 
-// Three bounded slots allow two live Colossi and one recent collapse. Resources
+// Three bounded slots allow two live Colossi and one recent lethal freeze. Resources
 // are borrowed from the Giant family; only slot materials and effects are owned.
 export class GiantRenderer {
   private readonly group = new THREE.Group();
@@ -35,7 +34,6 @@ export class GiantRenderer {
   private readonly hazeMaterial = new THREE.SpriteMaterial({ map: this.hazeMap, color: ART.world.fog,
     transparent: true, opacity: 0, depthWrite: false });
   private readonly haze = new THREE.Group();
-  private readonly deathTransform = new EnemyDeathTransform();
   private bornAt = -Infinity;
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
@@ -72,7 +70,7 @@ export class GiantRenderer {
     scene.add(this.group, this.haze);
   }
   get id(): number | undefined { return this.previous?.id; }
-  available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= ENEMY_DEATH_DURATION_MS.giant); }
+  available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= ENEMY_DEATH_TIMING.giant.totalMs); }
   barVisible(nowMs: number): boolean { return giantReveal(nowMs - this.bornAt).barVisible; }
   getModelDimensions(): { width: number; height: number; depth: number } { return { ...this.dimensions }; }
   healthBarLayout(enemy: EnemyRenderState): { width: number; height: number; y: number; x: number } {
@@ -82,9 +80,11 @@ export class GiantRenderer {
     return { x: this.group.position.x, width: bar.width * scale, height: bar.height * scale,
       y: this.dimensions.height * (enemy.visualScaleY ?? base) + .35 };
   }
-  die(enemy: EnemyRenderState, nowMs: number): void {
+  die(enemy: EnemyRenderState, nowMs: number): THREE.Group {
     this.previous = enemy; this.deathAt = nowMs;
-    this.deathTransform.capture(this.group, enemy.id);
+    // Current body geometry, root, helmet lag and grip/maul stay untouched.
+    this.group.updateMatrixWorld(true);
+    return this.group;
   }
   private restorePalette(): void {
     for (const { material, color, pale } of this.palette) {
@@ -127,16 +127,13 @@ export class GiantRenderer {
     }
     this.haze.visible = false;
     const age = nowMs - this.deathAt;
-    const pose = enemyDeathPose(age, ENEMY_DEATH_DURATION_MS.giant);
+    const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
     this.group.visible = !!this.previous && pose.bodyVisible;
     if (!this.group.visible) return;
-    // Freeze weapon-local grip motion at lethal time. The whole intact assembly
-    // then shares the same normalized fall as every crowd role.
-    this.deathTransform.apply(this.group, pose);
     for (const { material, color, pale } of this.palette) {
       material.color.copy(color); pale.value = pose.gray;
-      material.transparent = true; material.depthWrite = false;
-      material.opacity = pose.opacity; material.emissiveIntensity = 0;
+      material.transparent = false; material.depthWrite = true;
+      material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
     }
   }
   reset(): void {

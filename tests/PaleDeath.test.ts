@@ -5,9 +5,9 @@ import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamil
 import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { characterFamilies } from './characterModel';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
-import { ENEMY_DEATH_DURATION_MS, ENEMY_DEATH_GRAY } from '../src/presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, ENEMY_DEATH_GRAY } from '../src/presentation/EnemyDeathTiming';
 
-it('freezes role-owned run geometry, falls full-size and leaves no fragment resources', () => {
+it('freezes role-owned run geometry, stays full-size and frozen until the gray shatter', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   for(const [role,family,id,start] of [['grunt',grunt,0,1000],['heavy',heavy,1,2000]] as const){
@@ -18,13 +18,12 @@ it('freezes role-owned run geometry, falls full-size and leaves no fragment reso
     const scale=corpse.scale.clone();renderer.update([],start+90);
     expect(corpse.visible).toBe(true);expect(corpse.scale).toEqual(scale);
     expect((corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.emissiveIntensity).toBe(0);
-    renderer.update([],start+10+ENEMY_DEATH_DURATION_MS[role]*.75);expect(corpse.visible).toBe(true);
-    const resting=new THREE.Box3().setFromObject(corpse);
-    expect(resting.min.y).toBeGreaterThanOrEqual(-.00001);
-    expect(corpse.rotation.x).toBeCloseTo(-80*Math.PI/180);
-    expect(corpse.scale).toEqual(scale);
-    expect(scene.getObjectByName('enemy-pale-shatter')).toBeUndefined();
-    renderer.update([],start+10+ENEMY_DEATH_DURATION_MS[role]);expect(corpse.visible).toBe(false);
+    const timing=ENEMY_DEATH_TIMING[role],matrix=corpse.matrix.clone();
+    renderer.update([],start+10+timing.grayMs);expect(corpse.visible).toBe(true);
+    expect(corpse.matrix.equals(matrix)).toBe(true);expect(corpse.scale).toEqual(scale);
+    renderer.update([],start+10+timing.shatterMs);expect(corpse.visible).toBe(false);
+    expect(scene.getObjectByName('enemy-shatter-rounded')!.visible).toBe(true);
+    renderer.update([],start+10+timing.totalMs);expect(scene.getObjectByName('enemy-shatter-rounded')!.visible).toBe(false);
   }
   renderer.reset();expect(scene.getObjectByName('enemy-lethal-blood')!.visible).toBe(false);
   renderer.dispose();grunt.dispose();heavy.dispose();expect(scene.children).toHaveLength(0);

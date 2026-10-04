@@ -9,15 +9,15 @@ it('batches dense intact deaths by pose, keeps per-instance gray/fade and dispos
   const grunt=createChibiGruntFamily(),heavy=createChibiHeavyFamily(),scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   const enemies=Array.from({length:24},(_,id)=>({id,tier:1,hp:1,x:0,z:8,archetype:'heavy' as const}));
-  renderer.update(enemies,0);renderer.update([],10);renderer.update([],10+750*.75);
-  const batches=scene.children.filter(c=>c.name==='enemy-fallen-body-batch') as THREE.InstancedMesh[];
+  renderer.update(enemies,0);renderer.update([],10);renderer.update([],10+65);
+  const batches=scene.children.filter(c=>c.name==='enemy-frozen-body-batch') as THREE.InstancedMesh[];
   expect(batches.filter(c=>c.visible).length).toBeLessThanOrEqual(5);
   expect(batches.filter(c=>c.visible).reduce((n,c)=>n+c.count,0)).toBe(48); // body + helmet, not 48 draws.
   for(const mesh of batches){
     expect(mesh.geometry).not.toBe(heavy.helmet.geometry);
     expect(heavy.runFrames.some(frame=>frame.geometry===mesh.geometry)).toBe(false);
     expect(mesh.geometry.getAttribute('deathGray').getX(0)).toBe(1);
-    expect(mesh.geometry.getAttribute('deathOpacity').getX(0)).toBeLessThan(1);
+    expect(mesh.geometry.getAttribute('deathOpacity').getX(0)).toBe(1);
   }
   const borrowed=vi.spyOn(heavy.helmet.geometry,'dispose');
   const owned=batches.flatMap(mesh=>[vi.spyOn(mesh.geometry,'dispose'),vi.spyOn(mesh.material as THREE.Material,'dispose')]);

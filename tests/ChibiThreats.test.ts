@@ -107,12 +107,12 @@ it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hi
   const bar = renderer.healthBarLayout(e); expect(bar.y).toBeCloseTo(family.presentation!.height + .35);
   expect(hits.observe(e, 2600)).toBe(true); renderer.update(e, 2600, hits);
   expect((scene.getObjectByName('heavy-hit-body') as THREE.Mesh).geometry).toBe((group.children[0] as THREE.Mesh).geometry);
-  renderer.die(e, 2700); renderer.update(undefined, 3300, hits);
+  renderer.die(e, 2700); renderer.update(undefined, 2800, hits);
   expect(scene.getObjectByName('giant-death-impact')).toBeUndefined();
-  renderer.update(undefined, 3400, hits);
+  renderer.update(undefined, 2949, hits);
   expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();
   expect(group.visible).toBe(true);
-  renderer.update(undefined, 4150, hits);expect(group.visible).toBe(false);
+  renderer.update(undefined, 2950, hits);expect(group.visible).toBe(false);
   renderer.dispose(); hits.dispose(); family.dispose(); expect(scene.children).toHaveLength(0);
 });
 it('borrows threat geometry while each family disposes all its resources exactly once', () => {
