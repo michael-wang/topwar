@@ -77,7 +77,7 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial);
   vest.visible = false;
-  return { role: 'heavy', id: 'topwar-heavy-prototype', body, helmet, vest,
+  return { role: 'heavy', id: 'topwar-heavy', body, helmet, vest,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)), gaitCycleMs: HEAVY_GAIT_CYCLE_MS,
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored', scaleY: .80, hitCompression: .025,
       stepWeight: { shift: .045, roll: .04, compression: .018 },
@@ -113,7 +113,7 @@ function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeo
 
 export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void } {
   const idle = giantPose(0), runs = [giantPose(1, 0, .085), giantPose(-.25, .018, 0),
-    giantPose(-1, .085, 0), giantPose(.25, 0, .018)], death = gray(idle);
+    giantPose(-1, .085, 0), giantPose(.25, 0, .018)];
   const helmetGeometry = merge([
     { geometry: toyHelmetShell({ rx: .285606, ry: .22, rz: .250346, y: 1.095,
       front: 1.45, side: 1.94, rear: 2.05, segments: 24, rings: 10 }), color: THREAT_COLORS.helmet },
@@ -137,17 +137,17 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const contactGeometry = mergeGeometries([idle, weaponGeometry]);
   if (!contactGeometry) throw new Error('Giant contact requires body and maul');
   contactGeometry.computeBoundingBox(); contactGeometry.computeBoundingSphere();
-  const bodyMaterial = matte(), gearMaterial = matte(), deathMaterial = matte();
+  const bodyMaterial = matte(), gearMaterial = matte();
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, gearMaterial);
   vest.visible = false;
-  return { role: 'giant', id: 'topwar-colossus-prototype', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
-    runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)), grayBody: new THREE.Mesh(death, deathMaterial),
+  return { role: 'giant', id: 'topwar-colossus', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
+    runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)),
     contactPresentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored' },
     presentation: { width: 1.60, height: 1.43, depth: .96, healthBar: { width: 1.20, height: .20 }, shadow: { width: 1.02, depth: .48 } },
     contact: { body: new THREE.Mesh(contactGeometry, bodyMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, death, helmetGeometry, armorGeometry, weaponGeometry, contactGeometry].forEach(g => g.dispose());
-      [bodyMaterial, gearMaterial, deathMaterial].forEach(m => m.dispose());
+      [idle, ...runs, helmetGeometry, armorGeometry, weaponGeometry, contactGeometry].forEach(g => g.dispose());
+      [bodyMaterial, gearMaterial].forEach(m => m.dispose());
     } };
 }

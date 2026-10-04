@@ -1,4 +1,4 @@
-import { playerFamily, enemyFamilies, giantFamily } from './characterModel';
+import { playerFamily, enemyFamilies } from './characterModel';
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { laneLocomotion, recoilEnvelope, giantWeightPose, LANE_LOCOMOTION_MS } from '../src/presentation/CharacterMotion';

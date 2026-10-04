@@ -117,7 +117,7 @@ it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hi
 it('borrows threat geometry while each family disposes all its resources exactly once', () => {
   const heavy = createChibiHeavyFamily(), giant = createChibiGiantFamily();
   const models = [heavy.body, ...heavy.runFrames, heavy.death.body, heavy.helmet, heavy.vest,
-    giant.body, ...giant.runFrames, giant.grayBody, giant.helmet, giant.vest, giant.weapon!, giant.contact.body];
+    giant.body, ...giant.runFrames, giant.helmet, giant.vest, giant.weapon!, giant.contact.body];
   const disposals = [...new Set(models.map(m => m.geometry))].map(g => vi.spyOn(g, 'dispose'));
   const materials = [...new Set(models.map(m => m.material))].map(m => vi.spyOn(m, 'dispose'));
   const scene = new THREE.Scene(), renderer = new EnemyRenderer(scene, { ...characterFamilies(), heavy, giant });

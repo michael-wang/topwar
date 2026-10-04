@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { loadCharacterAssets } from '../src/rendering/CharacterAssets';
-import { canShareCrowdBatch, createLegacyCharacterVisualFamilies,
-  type CharacterVisualFamilies, type LegacyCharacterResources } from '../src/rendering/CharacterVisualFamilies';
+import { LEGACY_MODEL_FILES, loadCharacterAssets } from '../src/rendering/CharacterAssets';
+import { canShareCrowdBatch,
+  type CharacterVisualFamilies } from '../src/rendering/CharacterVisualFamilies';
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
 import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { BossRenderer } from '../src/rendering/boss/BossRenderer';
@@ -34,29 +34,27 @@ describe('named character visual families', () => {
       const { player, grunt, heavy, giant, boss } = assets.families;
       expect(load).toHaveBeenCalledTimes(13);
       expect(models.size).toBe(13);
-      for (const name of ['body', 'vest', 'run-0', 'run-1', 'run-2', 'run-3'])
-        expect(models.has(`/models/toy-soldier-${name}.glb`)).toBe(false);
+      expect([...models.keys()].sort()).toEqual(Object.values(LEGACY_MODEL_FILES)
+        .map(name => `/models/toy-soldier-${name}.glb`).sort());
       expect([player.role, grunt.role, heavy.role, giant.role, boss.role])
         .toEqual(['player', 'grunt', 'heavy', 'giant', 'boss']);
       expect(player.body.geometry.getAttribute('playerPart')).toBeDefined();
-      expect(player.body).not.toBe(model('body'));
-      expect(player.weapon).not.toBe(model('rifle'));
+      expect([...models.values()]).not.toContain(player.body);
+      expect([...models.values()]).not.toContain(player.weapon);
       expect(player.helmet).not.toBe(model('helmet'));
-      expect(models.has('/models/toy-soldier-player-body.glb')).toBe(false);
-      expect(models.has('/models/toy-soldier-rifle.glb')).toBe(false);
-      expect(grunt.body).not.toBe(model('body'));
+      expect([...models.values()]).not.toContain(grunt.body);
       expect(grunt.presentation.bodyTint).toBe('authored');
       expect(grunt.runFrames).toHaveLength(4);
       expect(grunt.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
       expect(grunt.death.body).not.toBe(model('gray-body'));
       expect(heavy).not.toBe(grunt);
-      expect(heavy.body).not.toBe(model('body'));
+      expect([...models.values()]).not.toContain(heavy.body);
       expect(heavy.body).not.toBe(grunt.body);
       expect(heavy.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
       expect(heavy.runFrames).not.toBe(grunt.runFrames);
       expect(heavy.contact).not.toBe(grunt.contact);
-      expect(giant.body).not.toBe(model('body'));
-      expect(giant.contact.body).not.toBe(model('body'));
+      expect([...models.values()]).not.toContain(giant.body);
+      expect([...models.values()]).not.toContain(giant.contact.body);
       expect(giant.weapon).toBeDefined();
       expect(boss.body).toBe(model('boss-body'));
       expect(boss.vest).toBe(model('boss-vest'));
@@ -75,27 +73,12 @@ describe('named character visual families', () => {
       disposals.push(...gruntModels.map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
       disposals.push(...[...new Set(gruntModels.map(mesh => mesh.material))].map(material => vi.spyOn(material, 'dispose')));
       const threatModels = [heavy.body, ...heavy.runFrames, heavy.helmet, heavy.vest, heavy.death.body,
-        giant.body, ...giant.runFrames, giant.grayBody, giant.helmet, giant.vest, giant.weapon!, giant.contact.body];
+        giant.body, ...giant.runFrames, giant.helmet, giant.vest, giant.weapon!, giant.contact.body];
       disposals.push(...[...new Set(threatModels.map(mesh => mesh.geometry))].map(g => vi.spyOn(g, 'dispose')));
       disposals.push(...[...new Set(threatModels.map(mesh => mesh.material))].map(m => vi.spyOn(m, 'dispose')));
       assets.dispose();
       for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
     } finally { load.mockRestore(); }
-  });
-
-  it.each(['normalIdle', 'grayIdle', 'playerBody', 'helmet', 'vest', 'rifle', 'bossIdle', 'bossVest'] as const)
-  ('rejects missing required %s by name', name => {
-    const f = characterFamilies();
-    const resources: LegacyCharacterResources = { normalIdle: f.grunt.body, normalRuns: f.grunt.runFrames,
-      grayIdle: f.grunt.death.body, playerBody: f.player.body, helmet: f.player.helmet,
-      vest: f.player.vest, rifle: f.player.weapon, bossIdle: f.boss.body,
-      bossRuns: f.boss.runFrames, bossSlams: f.boss.slamFrames, bossVest: f.boss.vest };
-    expect(() => createLegacyCharacterVisualFamilies({ ...resources, [name]: undefined } as unknown as LegacyCharacterResources))
-      .toThrow(`Missing character resource: ${name}`);
-  });
-
-  it.each(['normalRuns', 'bossRuns', 'bossSlams'] as const)('rejects incomplete %s pose families', name => {
-    expect(() => characterFamilies({ [name]: [] })).toThrow(`Character resource ${name} requires four baked poses`);
   });
 
   it('keeps the contract free of combat fields', () => {

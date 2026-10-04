@@ -19,7 +19,6 @@ it('owns exactly one grip hand in the single maul mesh, never in any body/run po
     expect(region(mesh.geometry,ART.faction.skin,(x,y)=>x>0&&y<.7).isEmpty()).toBe(true);
     expect(region(mesh.geometry,ART.faction.skin,(x,y)=>x<-.3&&y<.7).isEmpty()).toBe(false);
   }
-  expect(family.grayBody.geometry.getAttribute('position').array).toEqual(family.body.geometry.getAttribute('position').array);
   const hand=region(weapon,ART.faction.skin),shaft=region(weapon,ART.raider.hardware),head=region(weapon,ART.raider.helmet);
   const center=hand.getCenter(new THREE.Vector3());center.toArray().forEach((v,i)=>expect(v).toBeCloseTo(GIANT_WEAPON_GRIP[i],5));
   expect(shaft.min.y).toBeLessThan(center.y);expect(shaft.max.y).toBeGreaterThan(center.y);

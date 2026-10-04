@@ -14,10 +14,6 @@ export interface CrowdPresentation {
   readonly stepWeight?: { readonly shift: number; readonly roll: number; readonly compression: number };
 }
 
-export const LEGACY_CROWD_PRESENTATION: CrowdPresentation = {
-  materialStyle: 'legacy-atlas', bodyTint: 'legacy-tunic',
-};
-
 export function prepareCrowdMaterial(material: MeshStandardMaterial, presentation: CrowdPresentation,
   surface: 'body' | 'gear' | 'death' = 'gear'): MeshStandardMaterial {
   return presentation.materialStyle === 'legacy-atlas'

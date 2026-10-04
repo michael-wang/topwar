@@ -29,7 +29,7 @@ function merged(parts: Part[], moving = false): THREE.BufferGeometry {
   });
   const result = mergeGeometries(geometries);
   for (const geometry of geometries) geometry.dispose();
-  if (!result) throw new Error('Player prototype parts must merge into one geometry');
+  if (!result) throw new Error('Player parts must merge into one geometry');
   result.computeBoundingBox(); result.computeBoundingSphere();
   return result;
 }
@@ -90,7 +90,7 @@ export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): voi
   const vest = new THREE.Mesh(chestGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
   const muzzleRest = new THREE.Vector3().fromArray(muzzleAnchor).applyMatrix4(weaponRest).multiplyScalar(rootScale);
   return {
-    role: 'player', id: 'topwar-two-head-prototype', body, helmet, vest, weapon,
+    role: 'player', id: 'topwar-player', body, helmet, vest, weapon,
     presentation: {
       rootScale,
       createMotion: (normal, level) => new ChibiPlayerMotion(normal, level, offhandGrip, weaponGrip, offhand, weaponHand),

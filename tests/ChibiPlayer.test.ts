@@ -8,7 +8,6 @@ import { ContactShadowRenderer } from '../src/rendering/ContactShadowRenderer';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
 import type { GameRenderState } from '../src/rendering/RenderState';
 import type { PresentationEvent } from '../src/simulation/PresentationEvent';
-import { createCharacterVisualFamilies, type PlayerVisualFamily } from '../src/rendering/CharacterVisualFamilies';
 import { bulletModel, characterFamilies } from './characterModel';
 
 const frame = (): GameRenderState => ({ defenseMode: true, player: { x: 0, z: 0, selectedLane: 2 },
@@ -42,18 +41,6 @@ describe('original two-head Player prototype', () => {
     expect(shader.uniforms.playerWeaponHandDelta.value.length()).toBeCloseTo(0);
     expect(shader.uniforms.playerOffhandDelta.value.length()).toBeCloseTo(0);
     motion.dispose(); family.dispose();
-  });
-  it('requires explicit Player parts and motion when assembling role families', () => {
-    const legacy = characterFamilies(), player = createChibiPlayerFamily();
-    const resources = { normalIdle: legacy.grunt.body, normalRuns: legacy.grunt.runFrames,
-      grayIdle: legacy.grunt.death.body, helmet: legacy.grunt.helmet, vest: legacy.grunt.vest,
-      bossIdle: legacy.boss.body, bossRuns: legacy.boss.runFrames, bossSlams: legacy.boss.slamFrames, bossVest: legacy.boss.vest };
-    expect(createCharacterVisualFamilies(resources, player).player).toBe(player);
-    expect(() => createCharacterVisualFamilies(resources, { ...player, weapon: undefined } as unknown as PlayerVisualFamily))
-      .toThrow('Missing Player family resource: weapon');
-    expect(() => createCharacterVisualFamilies(resources, { ...player, presentation: undefined } as unknown as PlayerVisualFamily))
-      .toThrow('Player family requires a motion factory');
-    player.dispose();
   });
   it('authors deterministic disconnected parts in one texture-free body mesh at retained total height', () => {
     const a = createChibiPlayerFamily(), b = createChibiPlayerFamily();

@@ -1,4 +1,4 @@
-"""Bake the Kenney Mini Forest archer into static Modern Toy Soldier assets.
+"""Bake only current Boss/shared static resources from the Kenney Mini Forest archer.
 
 Usage: python scripts/prepare_character_models.py SOURCE_DIR public/models
 SOURCE_DIR contains character-archer.glb and colormap.png from the official
@@ -181,7 +181,7 @@ class GlbWriter:
                          + struct.pack("<II", len(self.binary), 0x004E4942) + self.binary)
 
 
-def write_mesh(path, pieces, material, image=None, vertex_colors=None, motion_weights=None):
+def write_mesh(path, pieces, material, image=None, vertex_colors=None):
     writer = GlbWriter()
     primitives = []
     for positions, normals, uv, indices in pieces:
@@ -192,8 +192,6 @@ def write_mesh(path, pieces, material, image=None, vertex_colors=None, motion_we
         if vertex_colors is not None:
             attrs["COLOR_0"] = writer.add_array(np.asarray(vertex_colors, dtype="<f4"),
                                                   "VEC3", 5126, 34962)
-        if motion_weights is not None:
-            attrs["_MOTION"] = writer.add_array(np.asarray(motion_weights, dtype="<f4"), "VEC4", 5126, 34962)
         primitives.append({"attributes": attrs,
                            "indices": writer.add_array(np.asarray(indices, dtype="<u4"), "SCALAR", 5125, 34963),
                            "material": 0})
@@ -201,36 +199,9 @@ def write_mesh(path, pieces, material, image=None, vertex_colors=None, motion_we
     print(f"{path.name}: {path.stat().st_size} bytes")
 
 
-def amplify_run_swing(document, overrides, factor):
-    """Amplify only the four limb rotations around their authored bind orientation."""
-    def multiply(a, b):
-        return np.r_[a[3] * b[:3] + b[3] * a[:3] + np.cross(a[:3], b[:3]),
-                     a[3] * b[3] - np.dot(a[:3], b[:3])]
-
-    for index, node in enumerate(document["nodes"]):
-        if node.get("name") not in ("arm-left", "arm-right", "leg-left", "leg-right"):
-            continue
-        rotation = overrides.get(index, {}).get("rotation")
-        if rotation is None:
-            raise ValueError("Kenney sprint limb rotation missing")
-        rest = np.asarray(node.get("rotation", [0, 0, 0, 1]), dtype=float)
-        delta = multiply(np.r_[-rest[:3], rest[3]], rotation)
-        if delta[3] < 0:
-            delta = -delta
-        length = np.linalg.norm(delta[:3])
-        if length > 1e-12:
-            half_angle = np.arctan2(length, delta[3]) * factor
-            delta = np.r_[delta[:3] / length * np.sin(half_angle), np.cos(half_angle)]
-        overrides[index]["rotation"] = multiply(rest, delta)
-
-
-def rigid_piece(source, clip=None, seconds=0, two_handed=False, swing_scale=1):
+def rigid_piece(source, clip=None, seconds=0, two_handed=False):
     document, binary = read_glb(source)
     overrides = sample_animation(document, binary, clip, seconds) if clip else {}
-    if swing_scale != 1:
-        if clip != "sprint":
-            raise ValueError("Limb amplification is only for normal enemy sprint poses")
-        amplify_run_swing(document, overrides, swing_scale)
     if two_handed:
         if clip != "attack-melee-right":
             raise ValueError("Two-handed Boss pose requires the right melee clip")
@@ -497,29 +468,9 @@ def boss_vest_parts():
             (box((.155, .31, .38), (.11, .08, .075)), .68)]
 
 
-def vest_parts(boss=False):
-    # A compact chest plate leaves the arms, lower tunic and boots exposed.
-    if boss:
-        # Boxy plate carrier: front/back ballistic plates, shoulder straps,
-        # rib protection and compact lower pouches, all in one rigid mesh.
-        return join_parts([part for part, _ in boss_vest_parts()])
-    width = .44 if boss else .36
-    y = .47
-    height = .16
-    depth = .29
-    return join_parts([box((-width*.27, y, depth), (width*.42, height, .075)),
-                       box((width*.27, y, depth), (width*.42, height, .075)),
-                       box((0, y, -depth), (width, height, .055))])
-
-
-def rifle_parts():
-    # The barrel runs exactly along +Z, the simulation projectile direction.
-    return join_parts([
-        box((.25, .46, .32), (.13, .13, .67)),
-        box((.25, .46, .74), (.08, .08, .29)),
-        box((.25, .55, .18), (.18, .055, .16)),
-        box((.25, .32, .25), (.08, .19, .11)),
-        box((.25, .43, -.10), (.18, .13, .21))])
+def vest_parts():
+    # Boss plate carrier remains a single merged mesh.
+    return join_parts([part for part, _ in boss_vest_parts()])
 
 
 def bullet_parts():
@@ -543,24 +494,12 @@ def prepare_toy_soldier(inputs, outputs):
     original = (inputs / "colormap.png").read_bytes()
     textured = {"name": "fixed-body", "pbrMetallicRoughness": {
         "baseColorTexture": {"index": 0}, "metallicFactor": 0, "roughnessFactor": 1}}
-    enemy_body = without_boss_helmet_occluded_head(body, body)
-    write_mesh(outputs / "toy-soldier-body.glb", [enemy_body], textured, original)
     boss_body = without_boss_helmet_occluded_head(body, body)
     write_mesh(outputs / "toy-soldier-boss-body.glb", [boss_body], textured, original)
     for frame in range(4):
         run = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125)
         p, n, texcoords, idx = run
         run = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
-        # Keep Boss motion byte-identical; only normal sprint limbs are amplified.
-        urgent = rigid_piece(inputs / "character-archer.glb", "sprint", (frame + .5) * .125,
-                             swing_scale=1.18)
-        p, n, texcoords, idx = urgent
-        urgent = without_rear_archer_accessory(((p-center)/height, n, texcoords, idx), rear_accessory)
-        urgent = without_boss_helmet_occluded_head(urgent, body)
-        write_mesh(outputs / f"toy-soldier-run-{frame}.glb", [urgent],
-                   {"name": "shared-body-material", "pbrMetallicRoughness": {
-                       "baseColorFactor": [1, 1, 1, 1], "metallicFactor": 0,
-                       "roughnessFactor": 1}})
         boss_run = without_boss_helmet_occluded_head(run, body)
         write_mesh(outputs / f"toy-soldier-boss-run-{frame}.glb", [boss_run],
                    {"name": "shared-body-material", "pbrMetallicRoughness": {
@@ -583,66 +522,18 @@ def prepare_toy_soldier(inputs, outputs):
     gray[:, :, :3] = luminance[:, :, None]
     gray_stream = BytesIO()
     Image.fromarray(gray).save(gray_stream, format="PNG", optimize=True)
-    write_mesh(outputs / "toy-soldier-gray-body.glb", [enemy_body], textured,
+    write_mesh(outputs / "toy-soldier-gray-body.glb", [boss_body], textured,
                gray_stream.getvalue())
-    # The main tunic swatch is used by body-mesh vertices at U=0.96875,
-    # V=0.775..0.975. Paint only texels touched by that UV line. The source
-    # atlas remains byte-for-byte unchanged in the enemy/Boss body GLB.
-    cloth_uv = uv[np.isclose(uv[:, 0], .96875)]
-    if len(cloth_uv) < 150 or not (.77 < cloth_uv[:, 1].min() < .78):
-        raise ValueError("Kenney archer cloth UV swatch changed")
-    atlas = np.asarray(Image.open(BytesIO(original)).convert("RGBA")).copy()
-    height_px, width_px = atlas.shape[:2]
-    x = int(round(.96875 * (width_px - 1)))
-    y0 = int(np.floor(cloth_uv[:, 1].min() * (height_px - 1)))
-    y1 = int(np.ceil(cloth_uv[:, 1].max() * (height_px - 1)))
-    # Four texels either side account for bilinear sampling/mip generation.
-    for row in range(y0 - 4, y1 + 5):
-        for col in range(x - 4, x + 5):
-            if 0 <= row < height_px and 0 <= col < width_px:
-                source = atlas[row, col, :3].astype(np.float64)
-                lightness = np.clip(source.mean() / 150, .65, 1.3)
-                atlas[row, col, :3] = np.clip(np.array([23, 105, 238]) * lightness, 0, 255)
-    stream = BytesIO()
-    Image.fromarray(atlas).save(stream, format="PNG", optimize=True)
-    # Keep the same baked surface/atlas. Four original joint influences allow
-    # cheap GPU-only limb rotation without reintroducing a runtime skeleton.
-    document, binary = read_glb(inputs / "character-archer.glb")
-    worlds = world_matrices(document, sample_animation(document, binary, "idle", .2))
-    channels = ("leg-left", "leg-right", "arm-left", "arm-right")
-    weighted_positions = {}
-    for node_index, node in enumerate(document["nodes"]):
-        if node.get("name") != "body-mesh":
-            continue
-        joint_names = [document["nodes"][joint]["name"] for joint in document["skins"][node["skin"]]["joints"]]
-        for primitive in document["meshes"][node["mesh"]]["primitives"]:
-            baked = bake_primitive(document, binary, primitive, node_index, worlds)[0]
-            joints = accessor(document, binary, primitive["attributes"]["JOINTS_0"]).astype(int)
-            weights = accessor(document, binary, primitive["attributes"]["WEIGHTS_0"]).astype(float)
-            weights /= np.maximum(weights.sum(axis=1, keepdims=True), 1e-12)
-            for point, links, influences in zip((baked-center)/height, joints, weights):
-                weighted_positions[tuple(np.round(point, 6))] = [
-                    sum(weight for joint, weight in zip(links, influences) if joint_names[joint] == name)
-                    for name in channels]
-    motion_weights = np.asarray([weighted_positions.get(tuple(np.round(point, 6)), [0, 0, 0, 0])
-                                 for point in body[0]])
-    if any(np.sum(motion_weights[:, channel]) < 10 for channel in range(4)):
-        raise ValueError("Player limb influences missing")
-    write_mesh(outputs / "toy-soldier-player-body.glb", [body], textured, stream.getvalue(),
-               motion_weights=motion_weights)
-    for name, piece in (("helmet", helmet_parts()), ("vest", vest_parts())):
-        write_mesh(outputs / f"toy-soldier-{name}.glb", [piece], neutral)
+    write_mesh(outputs / "toy-soldier-helmet.glb", [helmet_parts()], neutral)
     boss_parts = boss_vest_parts()
     boss_colors = np.concatenate([np.full((len(part[0]), 3), factor)
                                   for part, factor in boss_parts])
-    write_mesh(outputs / "toy-soldier-boss-vest.glb", [vest_parts(True)], neutral,
+    write_mesh(outputs / "toy-soldier-boss-vest.glb", [vest_parts()], neutral,
                vertex_colors=boss_colors)
-    for name, piece, color in (("rifle", rifle_parts(), [.17, .20, .22, 1]),
-                               ("bullet", bullet_parts(), [1, .95, .70, 1])):
-        write_mesh(outputs / f"toy-soldier-{name}.glb", [piece],
-                   {"name": name, "pbrMetallicRoughness": {
-                       "baseColorFactor": color, "metallicFactor": 0,
-                       "roughnessFactor": .8}})
+    write_mesh(outputs / "toy-soldier-bullet.glb", [bullet_parts()],
+               {"name": "bullet", "pbrMetallicRoughness": {
+                   "baseColorFactor": [1, .95, .70, 1], "metallicFactor": 0,
+                   "roughnessFactor": .8}})
 
 
 if __name__ == "__main__":

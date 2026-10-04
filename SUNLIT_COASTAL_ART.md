@@ -9,7 +9,8 @@ procedural geometry/shading. No reference pixels or downloaded textures ship.
 
 Character proportions and archetype construction are now defined by
 [CHARACTER_VISUAL_SYSTEM.md](CHARACTER_VISUAL_SYSTEM.md), superseding the earlier
-three-head direction and shared-geometry assumptions for future replacements.
+shared legacy body assumptions: Player/Grunt/Heavy use rounded two-head forms,
+while Giant uses a body-dominant approximately three-head form.
 Reusable non-character object design, including future naval and defensive
 forms, is defined by [COASTAL_GREEK_OBJECT_LANGUAGE.md](COASTAL_GREEK_OBJECT_LANGUAGE.md).
 This document remains canonical for coastal palette, lighting, environment

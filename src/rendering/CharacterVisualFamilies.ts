@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { LEGACY_PLAYER_PRESENTATION, type PlayerPresentation } from './squad/PlayerPresentation';
-import { LEGACY_CROWD_PRESENTATION, type CrowdPresentation } from './enemies/CrowdPresentation';
+import type { PlayerPresentation } from './squad/PlayerPresentation';
+import type { CrowdPresentation } from './enemies/CrowdPresentation';
 
 export type CharacterModel = THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
 export type CharacterRole = 'player' | 'grunt' | 'heavy' | 'giant' | 'boss';
@@ -34,7 +34,6 @@ export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heav
 export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
   readonly contactPresentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
-  readonly grayBody: CharacterModel;
   // Explicit reference contact silhouette; the procedural family includes its maul.
   readonly contact: CharacterParts;
   readonly weapon?: CharacterModel;
@@ -61,69 +60,8 @@ export interface CharacterVisualFamilies {
   readonly boss: BossVisualFamily;
 }
 
-export interface LegacyCharacterResources {
-  readonly normalIdle: CharacterModel;
-  readonly normalRuns: readonly CharacterModel[];
-  readonly grayIdle: CharacterModel;
-  readonly playerBody: CharacterModel;
-  readonly helmet: CharacterModel;
-  readonly vest: CharacterModel;
-  readonly rifle: CharacterModel;
-  readonly bossIdle: CharacterModel;
-  readonly bossRuns: readonly CharacterModel[];
-  readonly bossSlams: readonly CharacterModel[];
-  readonly bossVest: CharacterModel;
-}
-
 export const ENEMY_GAIT_CYCLE_MS = 360;
 export const HEAVY_GAIT_CYCLE_MS = 650;
-
-export function createLegacyCharacterVisualFamilies(resources: LegacyCharacterResources): CharacterVisualFamilies {
-  for (const name of ['playerBody', 'rifle'] as const) {
-    if (!(resources[name] instanceof THREE.Mesh)) throw new Error(`Missing character resource: ${name}`);
-  }
-  return createCharacterVisualFamilies(resources, {
-    role: 'player', id: 'legacy-player', body: resources.playerBody, helmet: resources.helmet,
-    vest: resources.vest, weapon: resources.rifle, presentation: LEGACY_PLAYER_PRESENTATION,
-  });
-}
-
-export function createCharacterVisualFamilies(resources: Omit<LegacyCharacterResources, 'playerBody' | 'rifle'>,
-  player: PlayerVisualFamily): CharacterVisualFamilies {
-  for (const name of ['normalIdle', 'grayIdle', 'helmet', 'vest',
-    'bossIdle', 'bossVest'] as const) {
-    if (!(resources[name] instanceof THREE.Mesh)) throw new Error(`Missing character resource: ${name}`);
-  }
-  for (const name of ['normalRuns', 'bossRuns', 'bossSlams'] as const) {
-    if (resources[name]?.length !== 4 || [0, 1, 2, 3].some(index => !(resources[name][index] instanceof THREE.Mesh))) {
-      throw new Error(`Character resource ${name} requires four baked poses`);
-    }
-  }
-  for (const part of ['body', 'helmet', 'vest', 'weapon'] as const) {
-    if (!(player?.[part] instanceof THREE.Mesh)) throw new Error(`Missing Player family resource: ${part}`);
-  }
-  if (typeof player.presentation?.createMotion !== 'function') throw new Error('Player family requires a motion factory');
-  const { normalIdle, normalRuns, grayIdle, helmet, vest } = resources;
-  const normal = { body: normalIdle, helmet, vest };
-  const gray = { body: grayIdle, helmet, vest };
-  return {
-    player,
-    grunt: { role: 'grunt', id: 'legacy-grunt', ...normal, runFrames: normalRuns,
-      presentation: LEGACY_CROWD_PRESENTATION,
-      gaitCycleMs: ENEMY_GAIT_CYCLE_MS, death: { ...gray }, contact: { ...normal } },
-    // Borrow raw legacy resources, never the resolved Grunt role. Replacing Grunt
-    // later must leave these separate family/feedback records intact.
-    heavy: { role: 'heavy', id: 'legacy-heavy', ...normal, runFrames: normalRuns,
-      presentation: LEGACY_CROWD_PRESENTATION,
-      gaitCycleMs: HEAVY_GAIT_CYCLE_MS, death: { ...gray }, contact: { ...normal } },
-    giant: { role: 'giant', id: 'legacy-giant', ...normal, runFrames: normalRuns,
-      contactPresentation: LEGACY_CROWD_PRESENTATION,
-      grayBody: grayIdle, contact: { ...normal } },
-    boss: { role: 'boss', id: 'legacy-boss', body: resources.bossIdle, helmet,
-      vest: resources.bossVest, runFrames: resources.bossRuns, slamFrames: resources.bossSlams,
-      grayBody: grayIdle },
-  };
-}
 
 // Sharing a batch is a resource decision, not a role decision. Gait, tint and
 // feedback remain per role even when these live instancing resources coincide.

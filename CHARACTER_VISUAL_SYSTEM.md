@@ -113,7 +113,11 @@ Named Player, Grunt, Heavy, Giant and Boss visual families remain explicit.
 Changing one role must not implicitly replace another. Dedicated procedural
 families own their geometry/materials; renderers borrow family resources and
 own disposable instance/effect materials. Disposal must occur exactly once.
-Legacy GLBs remain for Boss, shared legacy presentation and rollback protection.
+Only 13 legacy GLBs remain: Boss idle/run/slam/vest, its gray atlas body,
+the shared Boss/reward helmet and bullet. `CharacterAssets.LEGACY_MODEL_FILES`
+is the explicit load manifest. Obsolete Player/normal-enemy GLBs, their bake
+paths, rollback family builders and legacy Player limb-motion class are removed.
+Git history provides rollback; current role-isolation and resource tests remain.
 No Kenney UV/_MOTION assumptions enter the four new procedural families.
 
 Player keeps one merged body with authored moving-part regions for detached

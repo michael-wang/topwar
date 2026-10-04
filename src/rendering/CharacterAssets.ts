@@ -13,7 +13,7 @@ export interface CharacterAssets {
   dispose(): void;
 }
 
-const files = {
+export const LEGACY_MODEL_FILES = {
   grayIdle: 'gray-body', helmet: 'helmet', bossVest: 'boss-vest', bullet: 'bullet',
   bossSlam0: 'boss-slam-0', bossSlam1: 'boss-slam-1', bossSlam2: 'boss-slam-2', bossSlam3: 'boss-slam-3',
   bossIdle: 'boss-body',
@@ -25,7 +25,7 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
-  const entries = await Promise.all(Object.entries(files).map(async ([key, name]) => {
+  const entries = await Promise.all(Object.entries(LEGACY_MODEL_FILES).map(async ([key, name]) => {
     const gltf = await loader.loadAsync(publicAssetUrl(`models/toy-soldier-${name}.glb`));
     const found: THREE.Mesh<THREE.BufferGeometry, THREE.Material>[] = [];
     gltf.scene.traverse((object) => {
@@ -39,7 +39,7 @@ export async function loadCharacterAssets(): Promise<CharacterAssets> {
     if (mesh.material instanceof THREE.MeshStandardMaterial && mesh.material.map) textures.add(mesh.material.map);
     return [key, mesh] as const;
   }));
-  const resources = Object.fromEntries(entries) as Record<keyof typeof files, CharacterModel>;
+  const resources = Object.fromEntries(entries) as Record<keyof typeof LEGACY_MODEL_FILES, CharacterModel>;
   const player = createChibiPlayerFamily();
   const grunt = createChibiGruntFamily();
   const heavy = createChibiHeavyFamily(), giant = createChibiGiantFamily();
