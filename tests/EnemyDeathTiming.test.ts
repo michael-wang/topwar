@@ -14,7 +14,7 @@ it('holds gray then dark red before late fade without any transform policy',()=>
 });
 it('increases duration, blot size and repeated pulse count by threat level',()=>{
  const {grunt,heavy,giant}=ENEMY_DEATH_TIMING;
- expect(grunt.totalMs).toBe(300);expect(heavy.totalMs).toBe(850);expect(giant.totalMs).toBe(2200);
+ expect(grunt.totalMs).toBe(400);expect(heavy.totalMs).toBe(850);expect(giant.totalMs).toBe(2200);
  expect(grunt.bloodScale).toBeLessThan(heavy.bloodScale);expect(heavy.bloodScale).toBeLessThan(giant.bloodScale);
  for(const timing of Object.values(ENEMY_DEATH_TIMING)){
   let peaks=0;

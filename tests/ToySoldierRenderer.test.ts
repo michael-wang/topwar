@@ -216,7 +216,7 @@ describe('Modern Toy Soldier presentation', () => {
     expect(((death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity).toBe(1);
     renderer.update(damaged.slice(1), 280);expect(death.visible).toBe(true);expect(death.matrix.equals(frozen)).toBe(true);
     expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
-    renderer.update(damaged.slice(1), 400);expect(death.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
+    renderer.update(damaged.slice(1), 500);expect(death.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
     renderer.reset();
     renderer.dispose();
   });

@@ -7,7 +7,7 @@ import { characterFamilies } from './characterModel';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, ENEMY_DEATH_GRAY } from '../src/presentation/EnemyDeathTiming';
 
-it('freezes role-owned run geometry, stays full-size and frozen through the dark-red fade', () => {
+it('captures role-owned run geometry, keeps a fixed root through kneeling and dark-red fade', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   for(const [role,family,id,start] of [['grunt',grunt,0,1000],['heavy',heavy,1,2000]] as const){

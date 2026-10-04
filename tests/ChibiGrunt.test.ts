@@ -60,10 +60,8 @@ describe('original amphibious Grunt prototype', () => {
     }
     expect(clothingColors).toEqual(new Set([...Object.values(GRUNT_CLOTHING), ...Object.values(COMBAT_COLORS.grunt)]
       .map(color => new THREE.Color(color).getHexString())));
-    const gray = family.death.body.geometry.getAttribute('color');
-    for (let i = 0; i < gray.count; i++) {
-      expect(gray.getX(i)).toBeCloseTo(gray.getY(i)); expect(gray.getY(i)).toBeCloseTo(gray.getZ(i));
-    }
+    expect(family.death.body.geometry).toBe(family.lethalReaction!.final.geometry);
+    expect(family.death.body.geometry.getAttribute('color').count).toBe(colors.count);
     family.dispose();
   });
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as ball, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
+import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { COMBAT_COLORS } from '../characters/ToyCombatGear';
 import { paddedBarrel, heavyWebHarness, canvasFieldBag } from '../characters/StructuredToyParts';
@@ -8,8 +9,8 @@ import { HEAVY_GAIT_CYCLE_MS, type CrowdVisualFamily, type GiantVisualFamily } f
 
 export const THREAT_COLORS = { shirt: COMBAT_COLORS.heavy.shirt, shorts: COMBAT_COLORS.heavy.trousers,
   stone: ART.raider.stone, helmet: ART.raider.helmet } as const;
-type Part = { geometry: THREE.BufferGeometry; color?: string; lower?: number; lowerColor?: string };
-function merge(parts: Part[]): THREE.BufferGeometry {
+type Part = { geometry: THREE.BufferGeometry; color?: string; lower?: number; lowerColor?: string; fixed?: boolean };
+function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
   const geometries = parts.map(part => {
     const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
     if (geometry !== part.geometry) part.geometry.dispose();
@@ -22,27 +23,21 @@ function merge(parts: Part[]): THREE.BufferGeometry {
       color.set(part.lower !== undefined && y < part.lower ? part.lowerColor ?? THREAT_COLORS.shorts : part.color);
       for (let j = i; j < i + 3; j++) color.toArray(colors, j * 3);
     }
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); return geometry;
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, sink, .09));
+    return geometry;
   });
   const result = mergeGeometries(geometries);
   geometries.forEach(g => g.dispose());
   if (!result) throw new Error('Threat parts must merge into static vertex-colored geometry');
   result.computeBoundingBox(); result.computeBoundingSphere(); return result;
 }
-function gray(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
-  const result = geometry.clone(), colors = result.getAttribute('color');
-  for (let i = 0; i < colors.count; i++) {
-    const value = colors.getX(i) * .2126 + colors.getY(i) * .7152 + colors.getZ(i) * .0722;
-    colors.setXYZ(i, value, value, value);
-  }
-  return result;
-}
 const matte = () => new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1, metalness: 0 });
 function face(y: number, z: number, radius = .018): Part[] {
   return [-1, 1].map(side => ({ geometry: ball(side * .095, y, z, radius, radius * 1.12, .012, 8, 4), color: ART.faction.weapon }));
 }
 
-function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
+function heavyPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): THREE.BufferGeometry {
   return merge([
     { geometry: paddedBarrel(.34, .48, .275, .35, .10,20,.30), color: THREAT_COLORS.shirt, lower: .30 },
     ...[-1,1].map(side => ({ geometry: ball(side*.26,.205,0,.105,.045,.125,8,4), color: THREAT_COLORS.shorts })),
@@ -51,17 +46,17 @@ function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeo
       .translate(side*.245,.245,.235), color: COMBAT_COLORS.heavy.pouch })),
     { geometry: ball(0, .65, 0, .32, .20, .26, 20, 12), color: ART.faction.skin },
     ...face(.655, .264, .027),
-    ...[-1, 1].map(side => ({ geometry: ball(side * .495, .34, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin })),
-    { geometry: toyShoe({ x: -.265 - (liftLeft > .05 ? .045 : 0), y: liftLeft, z: stride * .13,
+    ...[-1, 1].map(side => ({ geometry: ball(side * (.495 + reaction * .025), .34 + reaction * .18, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin, fixed: true })),
+    { fixed: true, geometry: toyShoe({ x: -.265 - reaction * .035 - (liftLeft > .05 ? .045 : 0), y: liftLeft, z: stride * .13,
       width: .34, height: .15, depth: .27, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
-    { geometry: toyShoe({ x: .265 + (liftRight > .05 ? .045 : 0), y: liftRight, z: -stride * .13,
+    { fixed: true, geometry: toyShoe({ x: .265 + reaction * .035 + (liftRight > .05 ? .045 : 0), y: liftRight, z: -stride * .13,
       width: .34, height: .15, depth: .27, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
-  ]);
+  ], reaction);
 }
 
 export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose(): void } {
   const idle = heavyPose(0), runs = [heavyPose(1, 0, .09), heavyPose(-.25, .018, 0),
-    heavyPose(-1, .09, 0), heavyPose(.25, 0, .018)], death = gray(idle);
+    heavyPose(-1, .09, 0), heavyPose(.25, 0, .018)], death = heavyPose(0, 0, 0, 1), transition = heavyPose(0, 0, 0, .5);
   const helmetGeometry = merge([{ geometry: toyHelmetShell({
     // Unique deep shell: open forehead, lowered curved cheek sides and rear.
     rx: .425, ry: .225, rz: .37, y: .765, front: 1.30, side: 2.05, rear: 2.30,
@@ -82,16 +77,17 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored', scaleY: .80, hitCompression: .025,
       stepWeight: { shift: .045, roll: .04, compression: .018 },
       hpAnchor: { top: 1.025, width: .78 }, shadow: { width: .84, depth: .44 } },
+    lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .11, tilt: .09 },
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, death, helmetGeometry, armorGeometry].forEach(g => g.dispose());
+      [idle, ...runs, transition, death, helmetGeometry, armorGeometry].forEach(g => g.dispose());
       [bodyMaterial, gearMaterial, deathMaterial].forEach(m => m.dispose());
     } };
 }
 
 export const GIANT_WEAPON_GRIP = [.60, .40, .08] as const;
 
-function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
+function giantPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): THREE.BufferGeometry {
   return merge([
     // Taller padded barrel; crown/whole-role scale remain fixed, head gets smaller.
     { geometry: paddedBarrel(.42,.76,.29,.515,.145,24,.40), color: ART.raider.bodyDeep,
@@ -103,17 +99,18 @@ function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeo
     { geometry: ball(0,1.075,0,.232716,.1755,.204508,24,12), color: ART.faction.skin },
     ...face(1.045,.202,.020),
     // Only the offhand belongs to the baked body poses; grip hand is weapon-owned.
-    { geometry: ball(-.48, .40, -stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin },
-    { geometry: toyShoe({ x: -.28 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .14,
+    { geometry: ball(-.48 - reaction * .035, .40 + reaction * .24, -stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin, fixed: true },
+    { fixed: true, geometry: toyShoe({ x: -.28 - reaction * .03 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .14,
       width: .40, height: .18, depth: .32, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
-    { geometry: toyShoe({ x: .28 + (liftRight > .05 ? .035 : 0), y: liftRight, z: -stride * .14,
+    { fixed: true, geometry: toyShoe({ x: .28 + reaction * .03 + (liftRight > .05 ? .035 : 0), y: liftRight, z: -stride * .14,
       width: .40, height: .18, depth: .32, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
-  ]);
+  ], reaction, .12);
 }
 
 export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void } {
   const idle = giantPose(0), runs = [giantPose(1, 0, .085), giantPose(-.25, .018, 0),
     giantPose(-1, .085, 0), giantPose(.25, 0, .018)];
+  const transition = giantPose(0, 0, 0, .5), death = giantPose(0, 0, 0, 1);
   const helmetGeometry = merge([
     { geometry: toyHelmetShell({ rx: .285606, ry: .22, rz: .250346, y: 1.095,
       front: 1.45, side: 1.94, rear: 2.05, segments: 24, rings: 10 }), color: THREAT_COLORS.helmet },
@@ -141,13 +138,14 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, gearMaterial);
   vest.visible = false;
-  return { role: 'giant', id: 'topwar-colossus', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
+  return { lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .12, tilt: .09 },
+    role: 'giant', id: 'topwar-colossus', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)),
     contactPresentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored' },
     presentation: { width: 1.60, height: 1.43, depth: .96, healthBar: { width: 1.20, height: .20 }, shadow: { width: 1.02, depth: .48 } },
     contact: { body: new THREE.Mesh(contactGeometry, bodyMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, helmetGeometry, armorGeometry, weaponGeometry, contactGeometry].forEach(g => g.dispose());
+      [idle, ...runs, transition, death, helmetGeometry, armorGeometry, weaponGeometry, contactGeometry].forEach(g => g.dispose());
       [bodyMaterial, gearMaterial].forEach(m => m.dispose());
     } };
 }

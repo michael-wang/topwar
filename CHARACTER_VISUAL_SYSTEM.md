@@ -209,7 +209,7 @@ additional mesh/material or draw is introduced. The whole assembly translates
 ±0.015 X, ±0.009 Y and ±0.075 Z at the 850ms gait phase offset 0.3 radians.
 Existing ±0.14 pitch / ±0.045 roll retain their delayed response; pitch lags
 grip translation by 0.55 radians (about 74ms). Lethal presentation freezes the last
-grip/maul transform together throughout the intact fade. Contact also borrows
+grip/maul transform together during the initial freeze, then reacts as one assembly. Contact also borrows
 the complete composed body + hand/maul reference. Tests verify coupling and
 shaft/head clearance across all four poses and the lethal freeze.
 
@@ -289,20 +289,30 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Unified Enemy Kill Feedback (R6.4)
+## Enemy Kill Feedback (R7)
 
 All current beachhead enemies use **Freeze → Gray Shock → Blood Splat Pulses →
 Dark-Red Body → Fade**. Capture the exact last rendered pose and world matrices,
-including crowd support shift, hit compression and helmet lag. Giant also freezes
-its coupled grip-hand/maul assembly. Hold every transform and scale unchanged
-until the complete intact figure disappears. No fall, rise, shrink, shatter,
+including crowd support shift, hit compression and helmet lag. Giant also captures
+its coupled grip-hand/maul assembly. The root stays pinned; after the initial shock,
+two baked poses show a sink/kneel with raised detached hands, then hold until fade.
+No forward fall, whole-body rise, shrink, shatter,
 fragments, body debris, crash ring or death dust.
+
+Grunt freezes for 35 ms, switches to a half reaction, then reaches its final pose
+at 110 ms: upper mass sinks 0.09 authored units, hands rise 0.25, shoes widen
+0.03 per side, and the torso leans backward 6.3°. Heavy freezes for 70 ms and
+settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe widening and 5.2° tilt.
+Giant freezes for 180 ms and settles at 650 ms: 0.12 sink, offhand lift 0.24,
+and a small coupled maul lift/cant. Captured roots remain fixed. Family-owned
+transition/final geometry is baked and shared by instanced crowd death batches;
+no live role draw or skeleton is added.
 
 Explicit presentation-only clocks preserve the role hierarchy:
 
 | Role | Gray complete | Blood active | Pulses | Gray → dark red | Fade | Total |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Grunt | 35 ms | 25–165 ms | 2 | 110–165 ms | 185–300 ms | 300 ms |
+| Grunt | 35 ms | 25–165 ms | 2 | 110–165 ms | 225–400 ms | 400 ms |
 | Heavy | 70 ms | 45–410 ms | 3 | 300–440 ms | 490–850 ms | 850 ms |
 | Giant | 160 ms | 120–1050 ms | 5 | 850–1150 ms | 1250–2200 ms | 2200 ms |
 

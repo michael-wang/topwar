@@ -22,16 +22,24 @@ export interface PlayerVisualFamily extends CharacterVisualFamily<'player'> {
   readonly presentation: PlayerPresentation;
 }
 
+// Two authored lethal poses, baked once; no skeleton or per-enemy animation hierarchy.
+export interface LethalReaction {
+  readonly transition: CharacterModel; readonly final: CharacterModel;
+  readonly sink: number; readonly tilt: number;
+}
+
 export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heavy'> extends CharacterVisualFamily<R> {
   readonly presentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly gaitCycleMs: number;
   // Reference feedback parts are independent of the active locomotion pose.
   readonly death: CharacterParts;
+  readonly lethalReaction?: LethalReaction;
   readonly contact: CharacterParts;
 }
 
 export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
+  readonly lethalReaction?: LethalReaction;
   readonly contactPresentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   // Explicit reference contact silhouette; the procedural family includes its maul.

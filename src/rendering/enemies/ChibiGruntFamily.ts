@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as sphere, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
+import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { COMBAT_COLORS, toyWaistBand } from '../characters/ToyCombatGear';
 import { ENEMY_GAIT_CYCLE_MS, type CrowdVisualFamily } from '../CharacterVisualFamilies';
 
 export const GRUNT_CLOTHING = { shirt: ART.raider.body, shorts: ART.raider.shorts } as const;
-type Part = { geometry: THREE.BufferGeometry; color?: string; shortsBelowY?: number };
+type Part = { geometry: THREE.BufferGeometry; color?: string; shortsBelowY?: number; fixed?: boolean };
 
-function merge(parts: Part[]): THREE.BufferGeometry {
+function merge(parts: Part[], reaction = 0): THREE.BufferGeometry {
   const geometries = parts.map(part => {
     const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
     if (geometry !== part.geometry) part.geometry.dispose();
@@ -27,6 +28,7 @@ function merge(parts: Part[]): THREE.BufferGeometry {
       for (let vertex = i; vertex < i + 3; vertex++) color.toArray(colors, vertex * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, .09, .11));
     return geometry;
   });
   const result = mergeGeometries(geometries);
@@ -38,10 +40,10 @@ function merge(parts: Part[]): THREE.BufferGeometry {
 
 // Four authored rigid poses retain the existing asynchronous 360 ms crowd clock.
 // +Z faces forward, ground origin is zero. No skeleton or per-entity motion object.
-function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
+function bodyPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): THREE.BufferGeometry {
   const hands = [-1, 1].map(side => ({
-    geometry: sphere(side * (.335 + Math.abs(stride) * .015), .365, side * stride * .18,
-      .057, .057, .057, 12, 6), color: ART.faction.skin,
+    geometry: sphere(side * (.335 + Math.abs(stride) * .015 + reaction * .025), .365 + reaction * .25, side * stride * .18,
+      .057, .057, .057, 12, 6), color: ART.faction.skin, fixed: true,
   }));
   return merge([
     { geometry: sphere(0, .34, 0, .25, .17, .19, 20, 12), color: GRUNT_CLOTHING.shirt,
@@ -51,25 +53,20 @@ function bodyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeom
     { geometry: sphere(-.25,.26,.04,.06,.067,.055,10,5), color: COMBAT_COLORS.grunt.canteen },
     { geometry: sphere(0, .67, 0, .28, .20, .255, 20, 12), color: ART.faction.skin },
     ...hands,
-    { geometry: toyShoe({ x: -.165 - Math.abs(stride) * .02 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .16,
+    { fixed: true, geometry: toyShoe({ x: -.165 - reaction * .03 - Math.abs(stride) * .02 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .16,
       width: .26, height: .12, depth: .22, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
-    { geometry: toyShoe({ x: .165 + Math.abs(stride) * .02 + (liftRight > .05 ? .035 : 0), y: liftRight, z: -stride * .16,
+    { fixed: true, geometry: toyShoe({ x: .165 + reaction * .03 + Math.abs(stride) * .02 + (liftRight > .05 ? .035 : 0), y: liftRight, z: -stride * .16,
       width: .26, height: .12, depth: .22, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
     ...[-1, 1].map(side => ({ geometry: sphere(side * .095, .675, .236, .015, .019, .009, 8, 4), color: ART.faction.weapon })),
 
-  ]);
+  ], reaction);
 }
 
 export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose(): void } {
   const idle = bodyPose(0);
   const runs = [bodyPose(1, 0, .11), bodyPose(-.25, .025, 0),
     bodyPose(-1, .11, 0), bodyPose(.25, 0, .025)];
-  const death = idle.clone();
-  const deathColors = death.getAttribute('color');
-  for (let i = 0; i < deathColors.count; i++) {
-    const gray = deathColors.getX(i) * .2126 + deathColors.getY(i) * .7152 + deathColors.getZ(i) * .0722;
-    deathColors.setXYZ(i, gray, gray, gray);
-  }
+  const transition = bodyPose(0, 0, 0, .5), death = bodyPose(0, 0, 0, 1);
   // Wide, low pot shell and thick lip distinguish landing troops from the
   // defender dome/rear panel. Crown stays at the legacy 1.025 authored height.
   const helmetGeometry = merge([{ geometry: toyHelmetShell({ rx: .35, ry: .245, rz: .32, y: .78,
@@ -92,9 +89,10 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored',
       stepWeight: { shift: .028, roll: .028, compression: .012 } },
     runFrames: runs.map(geometry => new THREE.Mesh(geometry, bodyMaterial)), gaitCycleMs: ENEMY_GAIT_CYCLE_MS,
+    lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .09, tilt: .11 },
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, death, helmetGeometry, waistGeometry].forEach(geometry => geometry.dispose());
+      [idle, ...runs, transition, death, helmetGeometry, waistGeometry].forEach(geometry => geometry.dispose());
       [bodyMaterial, gearMaterial, deathMaterial].forEach(material => material.dispose());
     },
   };

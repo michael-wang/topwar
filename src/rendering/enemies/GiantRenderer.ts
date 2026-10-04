@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import type { GiantVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_REVEAL_MS, giantReveal } from '../../presentation/GiantDrama';
+import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
-import { ENEMY_DEATH_TIMING, enemyDeathPose } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage } from '../../presentation/EnemyDeathTiming';
 import type { EnemyRenderState } from '../RenderState';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
 
@@ -37,7 +38,15 @@ export class GiantRenderer {
   private bornAt = -Infinity;
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
+  private readonly frozenHelmet = new THREE.Matrix4();
+  private readonly frozenWeapon = new THREE.Matrix4();
+  private readonly reactionWeaponMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
+  private readonly reactionMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
   constructor(private readonly scene: THREE.Scene, private readonly family: GiantVisualFamily) {
+    const reaction = family.lethalReaction;
+    this.reactionMatrices = [lethalUpperMatrix(.5, reaction?.sink ?? 0, reaction?.tilt ?? 0),
+      lethalUpperMatrix(1, reaction?.sink ?? 0, reaction?.tilt ?? 0)];
+    this.reactionWeaponMatrices = this.reactionMatrices.map((matrix, index) => new THREE.Matrix4().makeTranslation(0, (index + 1) * .025, 0).multiply(matrix)) as unknown as readonly [THREE.Matrix4, THREE.Matrix4];
     const material = (source: THREE.Material, surface: 'body' | 'gear') => {
       if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Giant requires standard family materials');
       const result = prepareCrowdMaterial(source.clone(), family.contactPresentation, surface);
@@ -84,6 +93,8 @@ export class GiantRenderer {
     this.previous = enemy; this.deathAt = nowMs;
     // Current body geometry, root, helmet lag and grip/maul stay untouched.
     this.group.updateMatrixWorld(true);
+    this.frozenHelmet.copy(this.helmet.matrix); this.frozenWeapon.copy(this.weapon.matrix);
+    this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = false;
     return this.group;
   }
   private restorePalette(): void {
@@ -94,6 +105,7 @@ export class GiantRenderer {
   }
   update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback): void {
     if (enemy) {
+      this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = true;
       if (this.previous?.id !== enemy.id) this.bornAt = nowMs;
       this.previous = enemy; this.deathAt = -Infinity;
       const cycle = enemy.gaitCycleMs ?? 850, weight = giantWeightPose(enemy.id, nowMs, cycle), hit = hits.strength(enemy.id, nowMs);
@@ -130,6 +142,15 @@ export class GiantRenderer {
     const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
     this.group.visible = !!this.previous && pose.bodyVisible;
     if (!this.group.visible) return;
+    const stage = enemyReactionStage(age, 'giant'), reaction = this.family.lethalReaction;
+    if (reaction && stage > 0) {
+      this.body.geometry = (stage === 1 ? reaction.transition : reaction.final).geometry;
+      const upper = this.reactionMatrices[stage - 1];
+      this.helmet.matrix.copy(this.frozenHelmet).premultiply(upper);
+      this.weapon.matrix.copy(this.frozenWeapon).premultiply(this.reactionWeaponMatrices[stage - 1]);
+      // Cant/lift the complete grip-hand + maul, never a separate moving hand.
+      this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
+    }
     for (const { material, color, tint } of this.palette) {
       material.color.copy(color); tint.gray.value = pose.gray; tint.red.value = pose.red;
       material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
@@ -139,6 +160,7 @@ export class GiantRenderer {
   reset(): void {
     this.previous = undefined; this.deathAt = this.bornAt = -Infinity;
     this.group.visible = this.haze.visible = false;
+    this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = true;
     this.weapon.position.copy(this.weaponRest); this.restorePalette();
   }
   dispose(): void {

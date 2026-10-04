@@ -5,6 +5,7 @@ import { prepareGiantBarFill } from './GiantHealthBar';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
+import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
@@ -13,7 +14,7 @@ import { BloodSplat, GroundBloodStains, bloodSplatTexture } from './BloodSplat';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
-import { ENEMY_DEATH_TIMING, enemyDeathPose, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
@@ -27,6 +28,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  gearFreeze: readonly [THREE.Matrix4, THREE.Matrix4];
   parts: CharacterParts;
   scale: THREE.Vector3;
   group: THREE.Group;
@@ -112,6 +114,7 @@ export class EnemyRenderer {
   private readonly stains: GroundBloodStains;
   private sceneMode: boolean | undefined;
   private readonly blood: BloodSplat;
+  private readonly reactionMatrices = new Map<string, readonly [THREE.Matrix4, THREE.Matrix4]>();
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
@@ -122,6 +125,10 @@ export class EnemyRenderer {
   private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.giant, depthTest: false, toneMapped: false });
   constructor(private readonly scene: THREE.Scene,
     private readonly families: Pick<CharacterVisualFamilies, 'grunt' | 'heavy' | 'giant'>) {
+    for (const family of [families.grunt, families.heavy]) if (family.lethalReaction) {
+      const { sink, tilt } = family.lethalReaction;
+      this.reactionMatrices.set(family.role, [lethalUpperMatrix(.5, sink, tilt), lethalUpperMatrix(1, sink, tilt)]);
+    }
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
@@ -510,7 +517,7 @@ export class EnemyRenderer {
       // Pose holders are inspected/reused but rendered through shared batches.
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
-      visual = { parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
+      visual = { gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
@@ -566,6 +573,7 @@ export class EnemyRenderer {
       part.matrixAutoUpdate = false;
       mesh.getMatrixAt(rendered.gearIndex, part.matrix);
       part.matrix.premultiply(this.inverseFrozen);
+      visual.gearFreeze[index - 1].copy(part.matrix);
       part.matrix.decompose(part.position, part.quaternion, part.scale);
     }
     root.updateMatrixWorld(true);
@@ -578,6 +586,16 @@ export class EnemyRenderer {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
       const pose = enemyDeathPose(elapsed, ENEMY_DEATH_TIMING[visual.role]);
+      const reaction = this.families[visual.role].lethalReaction;
+      const stage = enemyReactionStage(elapsed, visual.role);
+      if (reaction && stage > 0) {
+        (visual.group.children[0] as THREE.Mesh).geometry = (stage === 1 ? reaction.transition : reaction.final).geometry;
+        for (let index = 1; index <= 2; index++) {
+          const part = visual.group.children[index];
+          part.matrix.copy(visual.gearFreeze[index - 1]).premultiply(this.reactionMatrices.get(visual.role)![stage - 1]);
+          part.matrixWorldNeedsUpdate = true;
+        }
+      }
       visual.group.visible = pose.bodyVisible;
       visual.bodyTint.gray.value = visual.gearTint.gray.value = pose.gray;
       visual.bodyTint.red.value = visual.gearTint.red.value = pose.red;

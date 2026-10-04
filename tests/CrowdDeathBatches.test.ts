@@ -13,7 +13,7 @@ it('batches dense intact deaths by pose, keeps per-instance gray/fade and dispos
   const batches=scene.children.filter(c=>c.name==='enemy-frozen-body-batch') as THREE.InstancedMesh[];
   expect(batches.filter(c=>c.visible).length).toBeLessThanOrEqual(5);
   expect(batches.filter(c=>c.visible).reduce((n,c)=>n+c.count,0)).toBe(48); // body + helmet, not 48 draws.
-  for(const mesh of batches){
+  for(const mesh of batches.filter(c=>c.visible)){
     expect(mesh.geometry).not.toBe(heavy.helmet.geometry);
     expect(heavy.runFrames.some(frame=>frame.geometry===mesh.geometry)).toBe(false);
     expect(mesh.geometry.getAttribute('deathGray').getX(0)).toBe(1);
