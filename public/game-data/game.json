@@ -1,7 +1,7 @@
 {
   "catharsis": {
     "defenseMode": true,
-    "defenseSpawnAheadDistance": 53,
+    "defenseSpawnAheadDistance": 47,
     "crowdDepthSpan": 9,
     "laneSwitchSeconds": 0.15,
     "lateralSpreadFraction": 0.42,

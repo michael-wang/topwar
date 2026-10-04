@@ -171,9 +171,11 @@ export class BridgeEnvironment {
     const sandMaterial = this.material(ART.coastalDefense.sand, false, 1, true);
     sandMaterial.map = this.sandTexture = sandWashTexture();
     this.sandTexture.wrapS = THREE.RepeatWrapping; this.sandTexture.repeat.set(10, 1);
-    const sand = this.mesh(new THREE.PlaneGeometry(150, 100), sandMaterial, 'defense-sand');
+    // Keep the near beach edge fixed while the far edge follows the visual coast.
+    const sandNearZ = -47;
+    const sand = this.mesh(new THREE.PlaneGeometry(150, ART.coastalDefense.shorelineZ - sandNearZ), sandMaterial, 'defense-sand');
     sand.rotation.x = -Math.PI / 2;
-    sand.position.set(0, .005, 3);
+    sand.position.set(0, .005, (ART.coastalDefense.shorelineZ + sandNearZ) / 2);
     this.defenseBeach.add(sand, this.coastalWater.group, this.coastalArchitecture.group,
       this.coastalVegetation.group, this.coastalCloth.group, this.coastalForeground.group);
     const duneMaterial = this.material(ART.coastalDefense.sandShade);

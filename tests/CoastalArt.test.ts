@@ -43,13 +43,13 @@ it('builds repeatable, bounded static architecture without gameplay randomness',
 it('keeps hero water anchored at the unchanged shoreline and updates only its presentation clock', () => {
   const water = new CoastalWater(), sea = water.group.getObjectByName('defense-sea') as THREE.Mesh;
   sea.geometry.computeBoundingBox();
-  expect(sea.geometry.boundingBox!.min.z + sea.position.z).toBe(53);
+  expect(sea.geometry.boundingBox!.min.z + sea.position.z).toBe(ART.coastalDefense.shorelineZ);
   const shader = sea.material as THREE.ShaderMaterial;
   expect(shader.uniforms.aqua.value.getHexString()).toBe('58c8c1');
   expect(shader.uniforms.blue.value.getHexString()).toBe('247e9c');
   expect(shader.toneMapped).toBe(false);
   water.update(2000); expect(shader.uniforms.time.value).toBe(2);
-  expect(sea.position.z).toBe(143);
+  expect(sea.position.z).toBe(ART.coastalDefense.shorelineZ + 90);
   const dispose = vi.spyOn(shader, 'dispose'); water.dispose(); expect(dispose).toHaveBeenCalledOnce();
 });
 

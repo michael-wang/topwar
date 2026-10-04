@@ -1,4 +1,4 @@
-// Presentation bounds only. Simulation continues to use ART's canonical Z=53.
+// Visual offsets never move simulation rows; ART owns the shared visual anchor.
 export const COASTAL_SHORE = {
   spatialAmplitude: .85,
   secondaryAmplitude: .25,

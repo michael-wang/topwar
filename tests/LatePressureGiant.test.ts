@@ -36,7 +36,7 @@ it('preserves the old LV1–4 stream exactly before any progression unlock', () 
   step(sim, 1200); step(old, 1200);
   expect(sim.getState().enemies).toEqual(old.getState().enemies);
   expect(sim.getState().progression).toEqual(old.getState().progression);
-  expect(before.enemies).toHaveLength(168);
+  expect(before.enemies).toHaveLength(120);
   expect(sim.getState().giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
 });
 
@@ -52,7 +52,7 @@ it('schedules exactly one LV6 introduction, restores its pending clock and never
   expect(sim.getState()).toEqual(restored.getState());
   const introduced = sim.getState(), giant = introduced.enemies.find(e => e.archetype === 'giant')!;
   expect(giant.hp).toBe(172); expect(giant.lane).toBeGreaterThan(0); expect(giant.lane).toBeLessThan(4);
-  expect(giant.z - introduced.player.z).toBeGreaterThan(43.9);
+  expect(giant.z - introduced.player.z).toBeGreaterThan(balance.defenseSpawnAheadDistance - balance.crowdDepthSpan - .1);
   introduced.enemies = introduced.enemies.filter(e => e.id !== giant.id);
   sim.restoreState(introduced); step(sim, 600);
   expect(sim.getState().enemies.some(e => e.archetype === 'giant')).toBe(false);

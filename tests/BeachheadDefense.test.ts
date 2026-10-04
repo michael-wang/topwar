@@ -42,10 +42,10 @@ it('uses five configurable corridors and a 3 Hz baseline without changing archet
 });
 
 it('uses a defense shoreline horizon while leaving the legacy stream horizon unchanged', () => {
-  expect(balance.defenseSpawnAheadDistance).toBe(53);
+  expect(balance.defenseSpawnAheadDistance).toBe(47);
   expect(balance.crowdDepthSpan).toBe(9);
   const defense = make(true);
-  expect(defense.getState().enemies.every(enemy => enemy.z <= 53)).toBe(true);
+  expect(defense.getState().enemies.every(enemy => enemy.z <= balance.defenseSpawnAheadDistance)).toBe(true);
   const custom = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0,
     tiers: config.tiers, catharsis: { balance: { ...balance, defenseSpawnAheadDistance: 42 }, trackHalfWidth: 3.2 } });
   expect(custom.getState().enemies.every(enemy => enemy.z <= 42)).toBe(true);
@@ -62,8 +62,10 @@ it('uses a defense shoreline horizon while leaving the legacy stream horizon unc
   const advanced = defense.getState();
   const newEnemies = advanced.enemies.filter(enemy => enemy.id >= nextId);
   expect(newEnemies).toHaveLength(24);
-  expect(newEnemies.every(enemy => enemy.z - advanced.player.z <= 53)).toBe(true);
-  expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= 44 - .02)).toBe(true);
+  expect(newEnemies.every(enemy => enemy.z - advanced.player.z <= balance.defenseSpawnAheadDistance)).toBe(true);
+  const nextGroupRow = Math.ceil(state.enemyStream!.nextRowIndex / balance.waveRows) * balance.waveRows;
+  const nextGroupZ = level.enemyStream!.startZ + nextGroupRow * level.enemyStream!.spacing;
+  expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= nextGroupZ - advanced.player.z - balance.crowdDepthSpan - .02)).toBe(true);
 });
 
 it('projects Heavy proportions while leaving Grunts and all simulation outcomes unchanged', () => {
@@ -85,7 +87,7 @@ it('projects Heavy proportions while leaving Grunts and all simulation outcomes 
     balance.lateralSpreadFraction, balance.defenseSpawnAheadDistance, config.weapon.rifle.fireRate,
     balance.heavyHp, config.player.forwardSpeed, balance.gruntSpeed, balance.heavySpeed,
     balance.waveRows, balance.heavyChance, balance.laneCount, balance.laneSwitchSeconds])
-    .toEqual([24, 3, 9, .42, 53, 3, 15, .6, .25, .12, 6, .25, 5, .15]);
+    .toEqual([24, 3, 9, .42, 47, 3, 15, .6, .25, .12, 6, .25, 5, .15]);
   for (let tick = 0; tick < 1800; tick++) {
     if (tick === 120 || tick === 700) { current.stepLane(-1); old.stepLane(-1); }
     current.step(1 / 60, { targetX: 0 }, tuning);
@@ -134,7 +136,7 @@ it('chooses three distinct seeded fronts per priority block and distributes 24 m
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
   }
   expect(() => CatharsisConfigSchema.parse({ ...balance, pressureLaneCount: 6 })).toThrow();
-  expect(make(true).getState().enemies).toHaveLength(168);
+  expect(make(true).getState().enemies).toHaveLength(120);
 });
 
 it('preserves legacy one/two-front selection outside defense mode', () => {
@@ -209,7 +211,7 @@ it('tunes density for future groups and restores its balance and stream continua
   }
   const after = original.getState();
   expect(after.enemies.filter(enemy => enemy.id >= newIds).length).toBeGreaterThanOrEqual(100);
-  expect(after.enemyStream!.nextEnemyId - newIds).toBe(300);
+  expect(after.enemyStream!.nextEnemyId - newIds).toBe(500);
   expect(restored.getState()).toEqual(after);
 });
 

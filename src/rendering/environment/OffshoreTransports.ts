@@ -71,7 +71,7 @@ export class OffshoreTransports {
     part(this.craft, 'bow-ramp', 0, .7, -2.5, 3.1, 1, .25, this.timber);
     part(this.craft, 'pilot-house', 0, 1.3, 1.8, 1.2, 1.3, 1.1, this.deck);
     part(this.craft, 'craft-wake', 0, -.13, .8, 4.5, .025, 6.5, this.wake);
-    this.craft.position.set(7, -.15, 61); this.craft.rotation.y = -.2;
+    this.craft.position.set(7, -.15, ART.coastalDefense.shorelineZ + 8); this.craft.rotation.y = -.2;
     this.group.add(this.craft);
   }
   update(playerZ: number, nowMs: number, defense: boolean, assaultAgeSeconds?: number): void {
@@ -82,7 +82,7 @@ export class OffshoreTransports {
     });
     // The first landing force is telegraphed by a slow shoreward approach and opening ramp.
     const arrival = assaultAgeSeconds === undefined ? 0 : Math.min(1, Math.max(0, (assaultAgeSeconds + 4) / 8));
-    this.craft.position.z = 61 - arrival * 8;
+    this.craft.position.z = ART.coastalDefense.shorelineZ + 8 - arrival * 8;
     this.craft.position.y = -.15 + Math.sin(nowMs * .0006) * .045;
     const ramp = this.craft.children.find(child => child.name === 'bow-ramp')!;
     ramp.rotation.x = arrival * -.8;

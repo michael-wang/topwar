@@ -61,7 +61,7 @@ it('retains the old one-Giant encounter policy when loaded from older effective 
   expect(enemies).toHaveLength(1); expect(state.secondGiantSpawned).toBe(false);
   enemies.length = 0;
   state = advanceLandingAssault(state, 41, 0, legacy, 3.2, 17, 6, enemies, cursor);
-  expect(enemies[0].hp).toBe(172); expect(enemies[0].z).toBe(44); expect(state.secondGiantSpawned).toBe(true);
+  expect(enemies[0].hp).toBe(172); expect(enemies[0].z).toBe(legacy.defenseSpawnAheadDistance - legacy.crowdDepthSpan); expect(state.secondGiantSpawned).toBe(true);
   enemies.length = 0; advanceLandingAssault(state, 42, 0, legacy, 3.2, 17, 6, enemies, cursor);
   expect(enemies).toHaveLength(0);
 });

@@ -76,7 +76,8 @@ sphere assemblies or cartoon outlines. One instanced draw shares one 1024×128
 RGBA texture. Slow lateral drift stays below 0.1 world units/second, with tiny
 vertical motion; clouds are defense-only atmosphere behind village/combat.
 
-E1 adds one two-triangle shoreline overlay spanning Z=46–61 above the sand.
+The two-triangle shoreline overlay spans seven units beachward and eight units
+seaward from the canonical visual shore (E1.1: Z=45, overlay Z=38–53).
 Muted beige/taupe wet sand (`#B3AD97`) occupies a 3.8-unit beach-side band;
 alpha feathering preserves the existing dry sand wash. A broad irregular shore
 curve (±0.85 plus ±0.25 units) breathes by ±0.4 units over 12 seconds with local
@@ -84,7 +85,16 @@ phase variation. Coverage includes the entire beach-side envelope, not only
 the old sea plane. Broken incoming foam has variable widths and gaps; thinner,
 quieter retreat foam and sparse detached patches share this pass. The 20 static
 defense foam strips are removed. These are visual offsets only: simulation
-shoreline Z=53, paths, collision, lanes, camera and lighting are unchanged.
+shoreline offsets never move paths, collision or lanes; camera and lighting
+are unchanged. The visual anchor is Z=45 after the Z=49/47/45 portrait review.
+Z=45 gives approximately 6.9 pixels of wet band and 4.4 pixels of wave travel
+at 390×844, while preserving a substantial combat beach. Sand's far edge and
+the landing craft's arrival endpoint derive from this same visual anchor.
+Only defense enemy buffering follows it: `defenseSpawnAheadDistance=47`
+(two units seaward), down from 53. Crowd row offsets are beachward-only, so
+the rear of new rows stays in the surf/shallow entry envelope. Stream
+`startZ=30` is unchanged, preserving earliest-row timing. No spawn cadence,
+population-per-group, speeds, XP, progression or difficulty compensation changes.
 
 ## Composition and gameplay readability
 

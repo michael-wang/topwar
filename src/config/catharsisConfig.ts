@@ -63,7 +63,7 @@ export const CatharsisConfigSchema = z.strictObject({
     speed: .08, visualScale: 1.9, widthMultiplier: .94, gaitCycleMs: 850 }),
   heavyFrontClearance: z.number().finite().nonnegative().default(2.5),
   defenseMode: z.boolean().default(false),
-  defenseSpawnAheadDistance: z.number().finite().positive().default(53),
+  defenseSpawnAheadDistance: z.number().finite().positive().default(47),
   crowdDepthSpan: z.number().finite().positive().default(5),
   laneSwitchSeconds: z.number().finite().positive().default(.15),
   lateralSpreadFraction: z.number().finite().min(0).max(.45).default(.26),
