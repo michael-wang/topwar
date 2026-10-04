@@ -280,26 +280,22 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## R3 canonical lethal language — Pale Shatter
+## Threat-specific lethal language
 
-**Color → warm gray-white → shatter.** A defeated enemy briefly becomes a lit
-plaster/stone toy, then breaks into rounded pale pieces. No blood, faction/tier
-fragment colors, emissive white corpse, long corpse or rising ghost dissolve.
-Surviving hits and Player Level-Up remain separate semantics.
+Death pacing communicates threat: **Grunt < Heavy << Giant**. All lethal pale
+colors remain #D8D9D1 / #E7E4D9 / #BFC5C1, matte and non-emissive. Gameplay
+removal is independent of presentation. Surviving hits and Level-Up remain separate.
 
-Grunt/Heavy freeze the last drawn role-owned run geometry and planted root pose.
-Albedo drains to #D8D9D1 within 80 ms; the intact silhouette hides at 110 ms.
-Six Grunt/eight Heavy rounded fragments have a 900 ms lifetime: ballistic flight,
-individual ground contact, stationary full-size debris, then opacity-only fade
-in the final 180 ms. Total lethal presentation is 1010 ms; intact shatter stays
-at 110 ms. Authored scales remain constant through flight/rest/fade. Landing
-times/positions are computed at spawn from deterministic velocities and each
-piece's scaled vertical radius. Rotation settles to a fixed yaw at contact;
-horizontal travel stops. No physics engine, bounce or upward corpse launch. Forty-eight
-reusable intact slots and one shared 384-instance fragment pool bound dense kills.
-Fragment velocity is deterministic from enemy ID/index; palette alternates
-#D8D9D1 / #E7E4D9 / #BFC5C1 and uses matte, non-emissive standard lighting.
-Materials/uniforms belong to renderer slots; role geometry is borrowed.
+Grunt freezes its last role-owned pose, pales over 80 ms, then vaporizes:
+opacity falls to zero, scale reduces modestly to 72%, and total rise is only
+0.14 world units. It clears at 300 ms. No fragments, grounded debris or motes.
+
+Heavy freezes/pales over 80 ms and shatters at 100 ms into eight full-size pale
+pieces. Its 600 ms fragment clock preserves analytic grounding and stationary
+rest; opacity fades only in the final 160 ms. Total beat is 700 ms. The Heavy-only
+`PaleShatterFragments` pool stays bounded at 384 instances / one draw; forty-eight
+reusable intact slots serve both crowd policies without per-kill hierarchies.
+`CROWD_DEATH_STYLES` owns these rendering-only clocks, never combat values.
 
 Giant drains albedo over 120 ms without lethal emission. Its existing 90–520 ms
 heavy fall, 520 ms crash, sand dust/ring and 2400 ms clear clock remain. The

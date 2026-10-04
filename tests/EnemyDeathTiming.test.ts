@@ -1,17 +1,17 @@
 import { expect, it } from 'vitest';
-import { ENEMY_DEATH_MS, ENEMY_SHATTER_MS, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
-
-it('pales a planted toy then hides it at shatter, without rising or ghost fading', () => {
-  expect(ENEMY_DEATH_MS).toBe(1010); expect(ENEMY_SHATTER_MS).toBe(110);
-  expect(enemyDeathPose(0)).toEqual({ progress: 0, pale: 0, bodyVisible: true, squash: 0 });
-  expect(enemyDeathPose(80).pale).toBe(1);
-  expect(enemyDeathPose(109).bodyVisible).toBe(true);
-  expect(enemyDeathPose(110).bodyVisible).toBe(false);
-  for (let age = 0; age <= 1010; age += 10) {
-    const pose = enemyDeathPose(age);
-    expect(pose).not.toHaveProperty('rise'); expect(pose).not.toHaveProperty('opacity');
-    expect(pose.squash).toBeGreaterThanOrEqual(0); expect(pose.squash).toBeLessThanOrEqual(.035);
-    expect(pose.pale).toBeGreaterThanOrEqual(enemyDeathPose(age - 10).pale);
-  }
-  expect(enemyDeathPose(1100)).toEqual(enemyDeathPose(1010));
+import { CROWD_DEATH_STYLES, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
+import { GIANT_DEATH_MS } from '../src/presentation/GiantDrama';
+it('orders threat death clocks and pales both roles without emissive flash', () => {
+  const { grunt, heavy } = CROWD_DEATH_STYLES;
+  expect(grunt.totalMs).toBe(300); expect(heavy.totalMs).toBe(700);
+  expect(grunt.totalMs).toBeLessThan(heavy.totalMs); expect(heavy.totalMs).toBeLessThan(GIANT_DEATH_MS);
+  expect(grunt.mode).toBe('vaporize'); expect(heavy.mode).toBe('shatter');
+  expect(enemyDeathPose(80,grunt).pale).toBe(1);
+  expect(enemyDeathPose(80,grunt).opacity).toBe(1);
+  expect(enemyDeathPose(180,grunt).opacity).toBeLessThan(1);
+  expect(enemyDeathPose(180,grunt).rise).toBeLessThan(.15);
+  expect(enemyDeathPose(300,grunt).bodyVisible).toBe(false);
+  expect(enemyDeathPose(99,heavy).bodyVisible).toBe(true);
+  expect(enemyDeathPose(100,heavy).bodyVisible).toBe(false);
+  expect(enemyDeathPose(100,heavy).rise).toBe(0);
 });

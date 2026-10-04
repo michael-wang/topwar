@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import { PALE_DEATH_COLORS } from './PaleDeathMaterial';
-import { ENEMY_FRAGMENT_MS } from '../../presentation/EnemyDeathTiming';
+import { CROWD_DEATH_STYLES } from '../../presentation/EnemyDeathTiming';
 import { fragmentLandingSeconds } from './GroundedFragments';
 
 export const DEATH_FRAGMENT_CAPACITY = 384; // 48 simultaneous eight-piece Heavy shatters.
-export const DEATH_FRAGMENT_LIFETIME_MS = ENEMY_FRAGMENT_MS;
-export const DEATH_FRAGMENT_FADE_MS = 180;
+export const DEATH_FRAGMENT_LIFETIME_MS = CROWD_DEATH_STYLES.heavy.fragmentMs;
+export const DEATH_FRAGMENT_FADE_MS = CROWD_DEATH_STYLES.heavy.fadeMs;
 const GRAVITY = 32;
 const COLORS = PALE_DEATH_COLORS.map(color => new THREE.Color(color));
 const PIECES = [
@@ -29,7 +29,7 @@ export function deathFragmentVelocity(enemyId: number, index: number) {
 }
 
 // One shared bounded instanced pool. Scheduled births also survive corpse-slot reuse.
-export class DeathBurst {
+export class PaleShatterFragments {
   private readonly births = new Float64Array(DEATH_FRAGMENT_CAPACITY).fill(-Infinity);
   private readonly origins = new Float32Array(DEATH_FRAGMENT_CAPACITY * 3);
   private readonly velocities = new Float32Array(DEATH_FRAGMENT_CAPACITY * 3);
@@ -58,14 +58,14 @@ export class DeathBurst {
     this.fade.setUsage(THREE.DynamicDrawUsage); scene.add(this.fragments);
   }
   spawn(enemy: EnemyRenderState, atMs: number, scaleY = 1): void {
-    const heavy = enemy.archetype === 'heavy', base = enemy.visualScale ?? .82;
+    const base = enemy.visualScale ?? .82;
     const sx = enemy.visualScaleX ?? base, sy = (enemy.visualScaleY ?? base) * scaleY, sz = enemy.visualScaleZ ?? base;
-    for (let index = 0; index < (heavy ? 8 : 6); index++) {
+    for (let index = 0; index < PIECES.length; index++) {
       const slot = this.cursor, offset = slot * 3, piece = PIECES[index], velocity = deathFragmentVelocity(enemy.id, index);
       this.cursor = (this.cursor + 1) % DEATH_FRAGMENT_CAPACITY; this.births[slot] = atMs;
       this.origins.set([-enemy.x + piece[0] * sx, piece[1] * sy, enemy.z + piece[2] * sz], offset);
       this.velocities.set([velocity.x * sx, velocity.y * sy, velocity.z * sz], offset);
-      this.sizes.set([piece[3] * sx * (heavy ? 1.2 : 1), piece[4] * sy, piece[5] * sz], offset);
+      this.sizes.set([piece[3] * sx * 1.2, piece[4] * sy, piece[5] * sz], offset);
       // At rest pitch/roll are zero, so the sphere's scaled vertical radius is its floor.
       const seconds = fragmentLandingSeconds(this.origins[offset + 1], this.velocities[offset + 1], this.sizes[offset + 1], GRAVITY);
       this.landingSeconds[slot] = seconds;

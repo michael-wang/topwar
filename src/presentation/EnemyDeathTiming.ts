@@ -1,12 +1,17 @@
-// Disposable kill presentation, independent of collision and gameplay time.
-export const ENEMY_SHATTER_MS = 110;
-export const ENEMY_FRAGMENT_MS = 900;
-export const ENEMY_DEATH_MS = ENEMY_SHATTER_MS + ENEMY_FRAGMENT_MS;
-
-export function enemyDeathPose(ageMs: number) {
-  const progress = Math.max(0, Math.min(1, ageMs / ENEMY_DEATH_MS));
-  const pale = Math.max(0, Math.min(1, ageMs / 80));
-  return { progress, pale, bodyVisible: ageMs >= 0 && ageMs < ENEMY_SHATTER_MS,
-    // A restrained planted compression replaces the old rising/fading corpse.
-    squash: .035 * Math.sin(Math.PI * Math.min(1, Math.max(0, ageMs / ENEMY_SHATTER_MS))) };
+// Presentation only: gameplay removes enemies independently of these clocks.
+export const CROWD_DEATH_STYLES = {
+  grunt: { mode: 'vaporize', paleMs: 80, intactMs: 80, totalMs: 300 },
+  heavy: { mode: 'shatter', paleMs: 80, intactMs: 100, fragmentMs: 600, fadeMs: 160, totalMs: 700 },
+} as const;
+export type CrowdDeathStyle = typeof CROWD_DEATH_STYLES[keyof typeof CROWD_DEATH_STYLES];
+const clamp = (value: number) => Math.max(0, Math.min(1, value));
+export function enemyDeathPose(ageMs: number, style: CrowdDeathStyle) {
+  const dissolve = clamp((ageMs - style.intactMs) / (style.totalMs - style.intactMs));
+  const vapor = style.mode === 'vaporize';
+  return { pale: clamp(ageMs / style.paleMs),
+    bodyVisible: ageMs >= 0 && ageMs < (vapor ? style.totalMs : style.intactMs),
+    opacity: vapor ? 1 - dissolve : 1,
+    rise: vapor ? .14 * dissolve : 0,
+    scale: vapor ? 1 - .28 * dissolve : 1,
+    squash: .035 * Math.sin(Math.PI * clamp(ageMs / style.intactMs)) };
 }

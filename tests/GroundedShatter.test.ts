@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { DeathBurst, DEATH_FRAGMENT_CAPACITY, DEATH_FRAGMENT_LIFETIME_MS } from '../src/rendering/enemies/DeathBurst';
+import { PaleShatterFragments, DEATH_FRAGMENT_CAPACITY, DEATH_FRAGMENT_LIFETIME_MS } from '../src/rendering/enemies/PaleShatterFragments';
 import { fragmentLandingSeconds } from '../src/rendering/enemies/GroundedFragments';
 import { createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
@@ -19,12 +19,12 @@ it('solves repeatable contact at the fragment floor and stops all movement after
   expect(contact).toBe(fragmentLandingSeconds(1.426, 3.1, .209, 32));
   expect(1.426 + 3.1 * contact - 16 * contact * contact).toBeCloseTo(.209, 10);
   expect(contact).toBeGreaterThan(.35); expect(contact).toBeLessThan(.45);
-  const scene = new THREE.Scene(), burst = new DeathBurst(scene);
+  const scene = new THREE.Scene(), burst = new PaleShatterFragments(scene);
   burst.spawn({ id: 42, tier: 1, x: 0, z: 8, hp: 0, archetype: 'heavy', visualScaleX: 1.89, visualScaleY: 2.1735, visualScaleZ: 1.89 }, 110, .8);
   burst.update(210); const flight = matrices(burst.fragments);
-  burst.update(710); const rest = matrices(burst.fragments);
-  burst.update(810); const stillRest = matrices(burst.fragments);
-  burst.update(930); const fading = matrices(burst.fragments);
+  burst.update(560); const rest = matrices(burst.fragments);
+  burst.update(600); const stillRest = matrices(burst.fragments);
+  burst.update(660); const fading = matrices(burst.fragments);
   for (let i = 0; i < 8; i++) {
     expect(rest[i].position.y).toBeCloseTo(rest[i].scale.y, 5);
     expect(rest[i].position).toEqual(stillRest[i].position);
@@ -34,20 +34,20 @@ it('solves repeatable contact at the fragment floor and stops all movement after
     expect(fading[i].scale.distanceTo(rest[i].scale)).toBeLessThan(.000001);
   }
   const fade = burst.fragments.geometry.getAttribute('fragmentFade');
-  expect(fade.getX(0)).toBeCloseTo(80 / 180);
-  expect(DEATH_FRAGMENT_LIFETIME_MS).toBe(900);
+  expect(fade.getX(0)).toBeCloseTo(50 / 160);
+  expect(DEATH_FRAGMENT_LIFETIME_MS).toBe(600);
   burst.update(1010); expect(burst.fragments.visible).toBe(false); burst.dispose();
 });
-it('keeps landed debris fully visible through 720 ms and handles 48 Heavy deaths in one unchanged bounded draw', () => {
-  const scene = new THREE.Scene(), burst = new DeathBurst(scene);
+it('keeps landed debris fully visible through 440 ms and handles 48 Heavy deaths in one unchanged bounded draw', () => {
+  const scene = new THREE.Scene(), burst = new PaleShatterFragments(scene);
   for (let id = 0; id < 48; id++) burst.spawn({ id, tier: 1, archetype: 'heavy', x: 0, z: 8, hp: 0 }, 110, .8);
-  burst.update(829);
+  burst.update(549);
   expect(DEATH_FRAGMENT_CAPACITY).toBe(384); expect(burst.fragments.count).toBe(384);
   expect(scene.children).toEqual([burst.fragments]);
   const fade = burst.fragments.geometry.getAttribute('fragmentFade');
   for (let i = 0; i < 384; i++) expect(fade.getX(i)).toBe(1);
-  burst.update(960); expect(burst.fragments.count).toBe(384);
-  expect(fade.getX(0)).toBeCloseTo(50 / 180);
+  burst.update(660); expect(burst.fragments.count).toBe(384);
+  expect(fade.getX(0)).toBeCloseTo(50 / 160);
   burst.update(1010); expect(burst.activeCount).toBe(0); burst.dispose();
 });
 it('grounds Giant chunks individually without changing fall/crash/clear clocks or shrinking them during fade', () => {

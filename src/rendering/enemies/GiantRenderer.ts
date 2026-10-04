@@ -5,7 +5,7 @@ import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { PALE_DEATH_COLORS, preparePaleDeathMaterial } from './PaleDeathMaterial';
-import { deathFragmentVelocity } from './DeathBurst';
+import { deathFragmentVelocity } from './PaleShatterFragments';
 import { fragmentLandingSeconds } from './GroundedFragments';
 import type { EnemyRenderState } from '../RenderState';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';

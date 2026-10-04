@@ -6,7 +6,7 @@ import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFami
 import { characterFamilies } from './characterModel';
 import { preparePaleDeathMaterial, PALE_DEATH_COLORS } from '../src/rendering/enemies/PaleDeathMaterial';
 
-it('freezes each role last drawn run geometry, clears intact bodies at 110 ms and resets all shatter pieces', () => {
+it('freezes each role last drawn run geometry, uses role-specific clocks and resets all shatter pieces', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   for(const [role,family,id,start] of [['grunt',grunt,0,1000],['heavy',heavy,1,2000]] as const){
@@ -17,10 +17,11 @@ it('freezes each role last drawn run geometry, clears intact bodies at 110 ms an
     const position=corpse.position.clone();renderer.update([],start+90);
     expect(corpse.visible).toBe(true);expect(corpse.position).toEqual(position);
     expect((corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.emissiveIntensity).toBe(0);
-    renderer.update([],start+120);expect(corpse.visible).toBe(false);
+    renderer.update([],start+120);expect(corpse.visible).toBe(role==='grunt');
     const pieces=scene.getObjectByName('enemy-pale-shatter') as THREE.InstancedMesh;
-    expect(pieces.count).toBe(role==='heavy'?8:6);
-    renderer.update([],start+700);expect(pieces.visible).toBe(true);
+    expect(pieces.count).toBe(role==='heavy'?8:0);
+    renderer.update([],start+400);expect(corpse.visible).toBe(false);
+    expect(pieces.visible).toBe(role==='heavy');
     renderer.update([],start+1020);expect(pieces.visible).toBe(false);
   }
   renderer.reset();expect(scene.getObjectByName('enemy-pale-shatter')!.visible).toBe(false);

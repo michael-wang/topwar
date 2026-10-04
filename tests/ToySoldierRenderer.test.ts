@@ -187,7 +187,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('grows crowd capacity, flashes gear, and shatters fallen grunts without a rising corpse', () => {
+  it('grows crowd capacity, flashes gear, and vaporizes fallen grunts quickly without debris', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));
@@ -210,13 +210,13 @@ describe('Modern Toy Soldier presentation', () => {
     const plantedY = death.position.y;
     expect(plantedY).toBeLessThan(.06);
     renderer.update(damaged.slice(1), 320);
-    expect(death.position.y).toBe(plantedY); expect(death.visible).toBe(false);
+    expect(death.position.y-plantedY).toBeGreaterThan(0); expect(death.position.y-plantedY).toBeLessThan(.15); expect(death.visible).toBe(true);
     const gray = (death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
     expect(gray.color.getHexString()).toBe('aeb4b7');
-    expect(gray.opacity).toBe(1);
+    expect(gray.opacity).toBeGreaterThan(0); expect(gray.opacity).toBeLessThan(1);
     expect(((death.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color
       .getHexString()).toBe('596b61');
-    expect((scene.getObjectByName('enemy-pale-shatter') as THREE.InstancedMesh).count).toBe(6);
+    expect((scene.getObjectByName('enemy-pale-shatter') as THREE.InstancedMesh).count).toBe(0);
     renderer.update(damaged.slice(1), 800);
     expect(death.visible).toBe(false);
     renderer.reset();
