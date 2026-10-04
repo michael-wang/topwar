@@ -326,8 +326,12 @@ Giant slots use a reusable final-body breakup clone, cap **0.12 world units**,
 plus smaller helmet/maul separation; the grip remains inside the maul assembly.
 Family resources stay borrowed and unchanged; clones/materials dispose with renderer.
 
-Lethal blood keeps the accepted 64-slot camera-facing batch and original 96×96
-irregular mask, repeated damped pulses, palette **#7E2029 / #A92C38 / #D0444C**,
+Lethal blood keeps the accepted 64-slot camera-facing batch, now using four
+fuller 96×96 masks in one 192×192 atlas. Connected secondary lobes distinguish
+these bursts from small hit splashes. Upper-body local origins follow the
+captured actor and its authored reaction; deterministic ID/role variation chooses
+region, mask, rotation, aspect, ±10% size, side bias and a small pulse phase offset.
+Repeated damped pulses keep palette **#7E2029 / #A92C38 / #D0444C**,
 normal alpha and no glow. Relative role diameters remain **1 / 1.45 / 2.2**;
 base card diameter 1.25 units with bounded scale adaptation. Hit blood is a
 separate pool described below. Surviving hits never create ground stains.

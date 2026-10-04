@@ -9,7 +9,7 @@ export const BLOOD_STAIN_OPACITY = .58;
 
 // An asymmetric connected blot, with uneven lobes and a few satellite splashes.
 // The same deterministic mask serves camera-facing bursts and flat sand stains.
-export function bloodSplatTexture(variant = 0): THREE.DataTexture {
+export function bloodSplatTexture(variant = 0, fuller = false): THREE.DataTexture {
   const size = 96, data = new Uint8Array(size * size * 4);
   const spots = [[-.72,.30,.10], [.62,.54,.075], [.70,-.36,.12], [-.32,-.73,.065], [-.76,-.42,.055]];
   if (variant > 0) {
@@ -24,6 +24,7 @@ export function bloodSplatTexture(variant = 0): THREE.DataTexture {
   const lobes = [[0,.02,.53,.48,0], [-.34,.16,.25,.24,.2], [.33,-.10,.27,.21,-.3],
     [-.12,-.37,.21,.19,0], [.24,.30,.16,.23,.2], [-.31,-.26,.16,.24,.45],
     [-.52,.36,.25,.05,-.65], [.48,.32,.26,.065,.55]];
+  if (fuller) lobes.push([-.46,-.10,.24,.19,-.2], [.45,.04,.23,.28,.3], [-.02,.47,.21,.22,-.3]);
   if (variant > 0) for (let i = 0; i < lobes.length; i++) {
     const lobe = lobes[i];
     // Same palette/edge language, distinct broad silhouettes rather than rotations.
@@ -62,10 +63,10 @@ export function bloodSplatTexture(variant = 0): THREE.DataTexture {
 
 // Four 96px cells, one texture and one draw. Ground stains/Player retain the
 // original single mask; their accepted appearance is unaffected.
-export function hitBloodAtlas(): THREE.DataTexture {
+function bloodAtlas(fuller: boolean): THREE.DataTexture {
   const size = 192, data = new Uint8Array(size * size * 4);
   for (let variant = 0; variant < 4; variant++) {
-    const cell = bloodSplatTexture(variant + 1), source = cell.image.data;
+    const cell = bloodSplatTexture(variant + 1, fuller), source = cell.image.data;
     for (let y = 0; y < 96; y++) {
       const target = ((y + Math.floor(variant / 2) * 96) * size + (variant % 2) * 96) * 4;
       data.set(source.subarray(y * 96 * 4, (y + 1) * 96 * 4), target);
@@ -77,13 +78,15 @@ export function hitBloodAtlas(): THREE.DataTexture {
   texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.needsUpdate = true;
   return texture;
 }
+export const hitBloodAtlas = (): THREE.DataTexture => bloodAtlas(false);
+export const lethalBloodAtlas = (): THREE.DataTexture => bloodAtlas(true);
 export interface SplatVariation {
   variant: number; angle: number; aspect: number; size: number;
-  bias?: number; localAnchor?: readonly [number, number, number];
+  bias?: number; pulseOffset?: number; localAnchor?: readonly [number, number, number];
 }
 
 interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3;
-  localAnchor: THREE.Vector3; attached: boolean; bias: number;
+  localAnchor: THREE.Vector3; attached: boolean; bias: number; pulseOffset: number;
   diameter: number; angle: number; variant: number; aspect: number }
 
 export class BloodSplat {
@@ -103,7 +106,7 @@ export class BloodSplat {
     this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.slots = Array.from({ length: capacity }, () => ({ owner: -1, startedAt: -Infinity,
       timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), localAnchor: new THREE.Vector3(),
-      attached: false, bias: 0, diameter: 1, angle: 0, variant: 0, aspect: 1 }));
+      attached: false, bias: 0, pulseOffset: 0, diameter: 1, angle: 0, variant: 0, aspect: 1 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('splatVariant', this.variant);
     geometry.setAttribute('splatBias', this.bias);
@@ -152,6 +155,7 @@ gl_Position = projectionMatrix * mvPosition;`);
     slot.variant = variation?.variant ?? 0; slot.aspect = variation?.aspect ?? 1;
     slot.diameter *= variation?.size ?? 1;
     slot.attached = !!variation?.localAnchor; slot.bias = variation?.bias ?? 0;
+    slot.pulseOffset = variation?.pulseOffset ?? 0;
     if (variation?.localAnchor) slot.localAnchor.fromArray(variation.localAnchor);
   }
   // Follow the already rendered actor, including every-hit recoil. Slot vectors
@@ -163,7 +167,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   update(nowMs: number): void {
     let count = 0;
     for (const slot of this.slots) {
-      const pose = bloodSplatPose(nowMs - slot.startedAt, slot.timing);
+      const pose = bloodSplatPose(nowMs - slot.startedAt, slot.timing, slot.pulseOffset);
       if (!pose.visible) continue;
       this.transform.position.copy(slot.origin); this.transform.scale.set(slot.diameter * pose.scale * slot.aspect, slot.diameter * pose.scale / slot.aspect, 1);
       this.transform.updateMatrix(); this.mesh.setMatrixAt(count, this.transform.matrix);

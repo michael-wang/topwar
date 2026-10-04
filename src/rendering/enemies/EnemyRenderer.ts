@@ -8,11 +8,12 @@ import { prepareCrowdMaterial } from './CrowdPresentation';
 import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
 import { hitBloodVariation } from './HitBloodVariation';
+import { lethalBloodVariation } from './LethalBloodVariation';
 import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY } from './EnemyHitImpulse';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
-import { BloodSplat, GroundBloodStains, bloodSplatTexture, hitBloodAtlas } from './BloodSplat';
+import { BloodSplat, GroundBloodStains, bloodSplatTexture, hitBloodAtlas, lethalBloodAtlas } from './BloodSplat';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -30,6 +31,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  id: number;
   gearFreeze: readonly [THREE.Matrix4, THREE.Matrix4];
   parts: CharacterParts;
   scale: THREE.Vector3;
@@ -116,6 +118,7 @@ export class EnemyRenderer {
   private readonly pendingHitBlood = new Map<number, number>();
   private readonly bloodTexture = bloodSplatTexture();
   private readonly hitTexture = hitBloodAtlas();
+  private readonly lethalTexture = lethalBloodAtlas();
   private readonly stains: GroundBloodStains;
   private sceneMode: boolean | undefined;
   private readonly blood: BloodSplat;
@@ -139,7 +142,7 @@ export class EnemyRenderer {
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
-    this.blood = new BloodSplat(scene, this.bloodTexture);
+    this.blood = new BloodSplat(scene, this.lethalTexture);
     this.hitBlood = new BloodSplat(scene, this.hitTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
     this.stains = new GroundBloodStains(scene, this.bloodTexture);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
@@ -226,7 +229,6 @@ export class EnemyRenderer {
     this.contactIds.clear();
     this.updateDeaths(nowMs);
     this.updateContacts(nowMs);
-    this.blood.update(nowMs);
     this.heavyHits.update(currentIds, nowMs);
     for (const enemy of enemies) if (enemy.archetype === 'giant') {
       const renderer = this.giantRenderers.find(slot => slot.id === enemy.id)
@@ -234,6 +236,9 @@ export class EnemyRenderer {
       renderer?.update(enemy, nowMs, this.heavyHits, this.hitImpulse);
     }
     for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits, this.hitImpulse);
+    for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)
+      && renderer.copyBodyWorld(this.feedbackMatrix, nowMs)) this.blood.follow(renderer.id!, this.feedbackMatrix);
+    this.blood.update(nowMs);
 
     const giantCount = enemies.reduce((count, enemy) => count + (enemy.archetype === 'giant' ? 1 : 0), 0);
     let barIndex = 0;
@@ -417,7 +422,7 @@ export class EnemyRenderer {
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
-    this.stains.dispose(); this.bloodTexture.dispose(); this.hitTexture.dispose();
+    this.stains.dispose(); this.bloodTexture.dispose(); this.hitTexture.dispose(); this.lethalTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose());
@@ -524,13 +529,12 @@ export class EnemyRenderer {
 
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
-    const helmet = frozen.children[1] as THREE.Mesh;
-    helmet.geometry.computeBoundingBox();
+    const variation = lethalBloodVariation(enemy.id, role);
     frozen.updateMatrixWorld(true);
-    this.feedbackOrigin.set(0, helmet.geometry.boundingBox!.max.y * .64, .12).applyMatrix4(frozen.matrixWorld);
+    this.feedbackOrigin.fromArray(variation.localAnchor).applyMatrix4(frozen.matrixWorld);
     this.feedbackScale.setFromMatrixScale(frozen.matrixWorld);
     const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
-    this.blood.spawn(enemy.id, role, nowMs, this.feedbackOrigin, adaptation);
+    this.blood.spawnStyled(enemy.id, ENEMY_DEATH_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id, variation);
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): THREE.Group | undefined {
@@ -556,7 +560,7 @@ export class EnemyRenderer {
       // Pose holders are inspected/reused but rendered through shared batches.
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
-      visual = { gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
+      visual = { id: enemy.id, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
@@ -580,6 +584,7 @@ export class EnemyRenderer {
       visual.parts = parts;
     }
     visual.startedAtMs = nowMs;
+    visual.id = enemy.id;
     visual.role = role;
     visual.heavy = enemy.archetype === 'heavy';
     setEnemyScale(visual.scale, enemy, presentation.scaleY);
@@ -638,7 +643,12 @@ export class EnemyRenderer {
       visual.bodyTint.gray.value = visual.gearTint.gray.value = pose.gray;
       visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
-      if (pose.bodyVisible) this.deathBatches.submit(visual.group, pose.gray, pose.breakup, pose.bodyOpacity);
+      if (pose.bodyVisible) {
+        this.deathBatches.submit(visual.group, pose.gray, pose.breakup, pose.bodyOpacity);
+        this.feedbackMatrix.copy(visual.group.matrixWorld);
+        if (reaction && stage > 0) this.feedbackMatrix.multiply(this.reactionMatrices.get(visual.role)![stage - 1]);
+        this.blood.follow(visual.id, this.feedbackMatrix);
+      }
     }
     this.deathBatches.finish();
   }
