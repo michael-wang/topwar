@@ -20,3 +20,22 @@ Four focused environment tests and typecheck pass at this checkpoint.
 Named `left-house`/`right-house` frames are QA close inspections. `opening`,
 `empty` and `outer-lanes` use the actual camera and demonstrate composition.
 Final character/HUD comparisons and measurements follow in commits 2/3.
+
+## Commit 2 — structured threats
+
+`characters-*` captures Heavy/Giant before the HUD change. Heavy keeps its
+0.68×0.48×0.55 authored body envelope, helmet and fists/shoes; the torso now has
+a 0.28-high vertical middle with 0.10 rounded caps. The diagonal harness follows
+that surface; two canvas bodies with shallow integrated flaps replace ball
+pouches. They sit inside fist width at X=±0.245/Y=0.245/Z=0.235.
+
+Giant keeps crown 1.355 and all simulation/root scales. Skin head and helmet
+width/depth shrink 18%; the head zone is now 0.54, or approximately 2.51 heads.
+The padded torso is 0.84×0.76×0.58, top 0.895. A flat belt and one flapped canvas
+satchel replace the ellipsoid gear. Maul, crest identity, gait/shoes, HP bar,
+surviving-hit styles and Pale Shatter clocks are unchanged.
+
+All equipment is baked into existing role bodies/poses, with no added crowd
+or Giant draw. 588 tests / 86 files and typecheck pass at this checkpoint.
+The initial measurements show +72 primary triangles per Heavy and a small
+Giant triangle reduction; final per-role and fixture counters follow below.

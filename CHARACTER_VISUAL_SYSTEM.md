@@ -18,11 +18,12 @@ change the world, UI, ships, camera, gameplay, balance or snapshots.
 
 ## Target proportions and materials
 
-Keep the approximate two-head family and current battlefield occupancy. Use a
+Keep the approximate two-head base family and current battlefield occupancy;
+R4 intentionally relaxes Giant to a 2.4–2.6-head war-chief. Use a
 large rounded helmet/head zone, one small plump torso, detached simple hands
 and short rounded shoes. Avoid anatomical shoulders, elbows, knees and long
 limbs. Spheres, ellipsoids, capsules, beans and soft barrels dominate; hard
-boxes are reserved for an indispensable small weapon feature.
+functional equipment may use softly structured canvas forms, never hard chest slabs.
 
 Heads are smoothly shaded spheres/beans with enough segments for close review.
 Faces use two tiny dark eyes and optionally a neutral mouth. No eyebrows,
@@ -69,9 +70,9 @@ hand counter-swing, instancing and bounded hit/contact/death presentation.
 
 ## Heavy target
 
-A short, wide, plump brawler toy. One deeper/wider oval barrel, huge separated
+A short, wide, plump brawler toy. One padded cylindrical/vertical drum torso, huge separated
 spherical fists, large rounded shoes and a broad planted stance distinguish it.
-One broad diagonal cloth harness and two hip pouches distinguish the assault
+One broad diagonal cloth harness and two flapped canvas waist pouches distinguish the assault
 brawler. No torso plate or weapon. It is only moderately taller than
 Grunt and must not steal Giant's vertical scale.
 
@@ -84,9 +85,9 @@ shell depth. Preserve 650 ms shift/lift/plant/push and absorbed hit feedback.
 
 ## Giant target
 
-A giant rounded war-chief toy: one huge smooth pear/bell/bean body, a deep olive
+A giant rounded war-chief toy: one tall padded barrel/capsule body, a smaller deep olive
 helmet with one thick limestone crest and one enormous blunt maul. No billboard
-chest plate or collar. One broad curved waist sash and one side satchel opposite
+chest plate or collar. One broad flat waist belt and one structured canvas satchel opposite
 the maul leave the torso uninterrupted. Hands are enormous spheres,
 feet are scaled soft toy shoes. The maul head is a rounded drum/capsule, not a
 sharp cuboid or spiked mace. Preserve the 850 ms stepping and delayed weapon
@@ -137,8 +138,8 @@ contains only geometry, motion strategy, materials and presentation anchors.
 
 - Player = R1 rounded toy base + R2 combat identity.
 - Grunt = R1 rounded toy base + R2 combat identity.
-- Heavy = R1 rounded toy base + R2 assault-brawler identity.
-- Giant = R1 rounded toy base + R2 war-chief waist equipment.
+- Heavy = R4 padded drum, diagonal webbing and flapped canvas pouches.
+- Giant = R4 2.5-head padded colossus with flat belt and canvas satchel.
 - Boss = legacy, deferred. **Boss Rounded Toy migration** remains outstanding.
 
 R1 follows separately revertable documentation, base-role and threat-role commits.
@@ -173,7 +174,8 @@ The helmet is a curved shell without hard cylinder rims. Its secondary adapter
 remains explicitly empty/hidden. Crown 1.025, four 360 ms poses, 0.11 shoe lift,
 0.035 outward swing and 0.18 hand swing are preserved.
 
-Heavy has a 0.68×0.48×0.55 barrel, 0.13-radius spherical fists centered at ±0.495,
+Heavy has a 0.68×0.48×0.55 padded capsule barrel with a straight 0.28-high middle,
+0.10-high rounded caps, 0.13-radius spherical fists centered at ±0.495,
 and wide rounded shoes. Its unique shell has radii 0.425/0.225/0.37 centered at
 Y=0.765; crown remains 0.99. Opening angles front/side/rear are 1.30/2.05/2.30
 radians, making the front opening higher than cheek sides and rear skirt.
@@ -182,7 +184,7 @@ weapon. Eye sightlines are tested, including legitimate rear-shell geometry
 behind the head. The 0.80 visual Y compression, 650 ms clock, 0.09 shoe lift,
 0.045 lateral step and weight transfer/hit/contact/death timings remain.
 
-Giant uses smooth 24×12 primary body/head, an olive deep shell, one soft
+Giant uses a 24-radial padded barrel and smooth 24×12 head, an olive deep shell, one soft
 limestone fin (0.18 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
@@ -235,9 +237,10 @@ olive #59674C, darker slate #4E6067, deep helmet #626F51, broad muted-khaki
 harness #989077 and pouches #7E836A. Giant retains deep olive/slate with sash
 #85856D and satchel #747F66. No enemy costume red or bright progression gold.
 
-`ToyCombatGear` creates low-segment curved cloth bands on each body's ellipsoid;
-the diagonal Heavy strip wraps the curved surface. Pouches/canteen/cuffs use
-8–10 radial segments and 4–5 rings. All are merged into reference/run bodies:
+`ToyCombatGear` retains Player/Grunt's low-segment ellipsoidal cloth and field
+items. R4's `StructuredToyParts` fits Heavy webbing to the padded barrel and
+builds canvas pouch/satchel bodies with shallow integrated flaps. Soft cuffs and
+Grunt canteen retain their low-segment ellipsoids. All are merged into reference/run bodies:
 no new Player/Grunt/Heavy/Giant gear draw or material, and role resources remain
 independent. Contact/death/hit inherit the owning body's equipment. Player
 equipment/cuffs use its fixed torso region; hands/shoes retain their existing
@@ -288,4 +291,33 @@ bounded slot, replacing both colored armor rubble and the 36-point burst.
 Fragments settle rapidly, fade from 1550 ms and clear at 2400 ms. Reveal timing,
 ordinary R2 hits, HP layout and gameplay removal are unchanged. Boss is excluded.
 
-R3 evidence belongs in `artifacts/coastal-r3/`. Stop after R3 for human review.
+R3 evidence belongs in `artifacts/coastal-r3/`.
+
+## R4 — rounded organic mass + structured functional gear
+
+Body/head/fists/shoes remain rounded toy abstractions. Functional equipment
+should read as equipment: cloth webbing, a waist belt, canvas bags with a broad
+body and shallow flap. No sphere-only gear, MOLLE, buckles, tactical vest or
+chest plate. Player/Grunt art is frozen; Boss migration stays deferred.
+
+Heavy retains crown 0.99, width, helmet depth, spherical fists, footwear and
+0.80 Y compression. Its padded barrel has vertical elliptical walls and soft
+caps. The broad diagonal harness conforms to this surface. Exactly two
+0.18×0.155×0.10 canvas pouches sit at X=±0.245/Y=0.245/Z=0.235, inside fist
+width and near the lower front waist. Trouser boundary is a dedicated existing
+ring at Y=0.30, without added body triangles.
+
+Giant's skin-head width/depth shrink 18%, with head radius 0.2706/0.195/0.2378
+at Y=1.01. Shell width/depth also shrink 18%; one limestone crest remains.
+Crown stays 1.355. Crown-to-head-bottom zone is 0.54, giving approximately
+2.51 heads. The torso grows internally to 0.84×0.76×0.58, from Y=0.135 to
+0.895, with a straight padded middle. Total role/root scales stay unchanged.
+A flat 0.055-high belt wraps the waist; one 0.245×0.275×0.12 flapped canvas
+satchel sits opposite the unchanged maul. No center-chest gear.
+
+Canvas forms use eight broad outline corners and one bevel ring, not costly
+spheres. Body and flap are merged before each reference/run pose is merged;
+no new per-Heavy draw/material or Giant draw is introduced. Role ownership,
+hit/contact/death geometry selection, 650/850 ms gait, shoe motion, surviving-hit
+styles, Pale Shatter clocks and Giant HP dimensions remain unchanged.
+Evidence belongs in `artifacts/structured-toy-r4/`; stop for human review.

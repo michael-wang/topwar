@@ -17,7 +17,7 @@ async function prepare(){
   window.__draw=(f,t)=>{a.xpHud.reset();a.xpHud.update({level:7,xp:0},s.catharsis.balance.progression,t,{baseFireRate:a.runtimeTuning.fireRate,squadCount:f.squad.count,initialSquadCount:1,reinforcementArrived:true});a.renderer.render(f,t);};
  });
 }
-const stats={},occupancy={};
+const stats={},occupancy={},forms={};
 for(const key of ['opening','empty','outer-lanes','left-house','right-house','normal-crowd','mixed-threats','mixed-100','mixed-200','giants-two','player-guard','grunt-guard','boss-guard']){
  await prepare();stats[key]=await page.evaluate(key=>{
   const r=window.__testApp.renderer,f=structuredClone(window.__fixture),draw=window.__draw;
@@ -63,13 +63,27 @@ for(const role of ['grunt','heavy','giant']){
   return {width:b.max.x-b.min.x,height:b.max.y-b.min.y,bounds:{min:b.min.toArray(),max:b.max.toArray()}};
  },role);await page.locator('canvas').screenshot({path:`${out}/${phase}-${role}-silhouette.png`});
  for(const view of ['front','three-quarter','side','equipment']){
-  await page.evaluate(view=>{
-   const r=window.__testApp.renderer,{group,role,THREE}=window.__inspection;group.scale.setScalar(1);r.scene.overrideMaterial=null;r.scene.background.set('#d8c49b');
+  const form=await page.evaluate(view=>{
+   const r=window.__testApp.renderer,{group,role,THREE,family}=window.__inspection;group.scale.setScalar(1);r.scene.overrideMaterial=null;r.scene.background.set('#d8c49b');
    const z=group.position.z,dist=role==='giant'?2.8:2.4;
    const y=view==='equipment'?.32:role==='giant'?.67:.50;
    r.camera.position.set(view==='side'?dist:view==='three-quarter'?1.5:0,view==='equipment'?.7:1.2,z+(view==='side'?0:-dist));
    r.camera.lookAt(0,y,z);r.camera.zoom=view==='equipment'?1.7:1;r.camera.updateProjectionMatrix();r.renderer.render(r.scene,r.camera);
-  },view);await page.locator('canvas').screenshot({path:`${out}/${phase}-${role}-${view}.png`});
+   group.updateMatrixWorld(true);r.camera.updateMatrixWorld(true);
+   const p=family.body.geometry.getAttribute('position'),c=family.body.geometry.getAttribute('color'),skin=new THREE.Color('#cda17c');
+   // Use the actual shared art skin swatch, rather than a QA-selected face tint.
+   return import('/src/art/ArtDirection.ts').then(({ART})=>{
+    skin.set(ART.faction.skin);const head=new THREE.Box3();
+    for(let i=0;i<p.count;i++)if(p.getY(i)>(role==='giant'?.8:.43)&&Math.abs(c.getX(i)-skin.r)+Math.abs(c.getY(i)-skin.g)+Math.abs(c.getZ(i)-skin.b)<.00001)
+     head.expandByPoint(new THREE.Vector3().fromBufferAttribute(p,i));
+    const crown=family.helmet.geometry.boundingBox.max.y;
+    const guide=h=>{const v=new THREE.Vector3(0,h,0).applyMatrix4(group.matrixWorld).project(r.camera);return {x:(v.x+1)*195,y:(1-v.y)*422};};
+    return {crown,headBottom:head.min.y,headSize:head.getSize(new THREE.Vector3()).toArray(),ratio:crown/(crown-head.min.y),
+     guides:{crown:guide(crown),headBottom:guide(head.min.y),ground:guide(0)},
+     primaryTriangles:[family.body,family.helmet,family.vest,family.weapon].filter(m=>m?.visible).reduce((sum,m)=>sum+(m.geometry.index?.count??m.geometry.getAttribute('position').count)/3,0)};
+   });
+  },view);if(view==='front')forms[role]=form;
+  await page.locator('canvas').screenshot({path:`${out}/${phase}-${role}-${view}.png`});
  }
 }
 const hud={};
@@ -82,5 +96,5 @@ for(const width of [390,350])for(const kind of ['fireRate','squad']){
   return {track:box('.xp-track'),level:box('.xp-level'),loadout:box('.xp-loadout'),weapon:box('.xp-weapon-slot .game-icon')??box('.xp-loadout > .game-icon'),enhancement:box('.xp-enhancement-slot')??box('.xp-power'),value:document.querySelector('.xp-power strong')?.textContent};
  },kind);await page.screenshot({path:`${out}/${phase}-hud-${width}-${kind}.png`});
 }
-writeFileSync(`${out}/${phase}-stats.json`,JSON.stringify({stats,occupancy,hud,errors},null,2));
+writeFileSync(`${out}/${phase}-stats.json`,JSON.stringify({stats,occupancy,forms,hud,errors},null,2));
 await browser.close();await server?.close();if(errors.length)throw Error(errors.join('\n'));

@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as ball, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { ART } from '../../art/ArtDirection';
-import { COMBAT_COLORS, toyClothBand, toyWaistBand } from '../characters/ToyCombatGear';
+import { COMBAT_COLORS } from '../characters/ToyCombatGear';
+import { paddedBarrel, heavyWebHarness, canvasFieldBag } from '../characters/StructuredToyParts';
 import { HEAVY_GAIT_CYCLE_MS, type CrowdVisualFamily, type GiantVisualFamily } from '../CharacterVisualFamilies';
 
 export const THREAT_COLORS = { shirt: COMBAT_COLORS.heavy.shirt, shorts: COMBAT_COLORS.heavy.trousers,
@@ -43,10 +44,11 @@ function face(y: number, z: number, radius = .018): Part[] {
 
 function heavyPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
-    { geometry: ball(0, .35, 0, .34, .24, .275, 20, 12), color: THREAT_COLORS.shirt, lower: .30 },
+    { geometry: paddedBarrel(.34, .48, .275, .35, .10,20,.30), color: THREAT_COLORS.shirt, lower: .30 },
     ...[-1,1].map(side => ({ geometry: ball(side*.26,.205,0,.105,.045,.125,8,4), color: THREAT_COLORS.shorts })),
-    { geometry: toyClothBand(.34,.24,.275,.35,Math.PI/2,.18,-.85), color: COMBAT_COLORS.heavy.harness },
-    ...[-1,1].map(side => ({ geometry: ball(side*.33,.225,.12,.085,.09,.095,8,5), color: COMBAT_COLORS.heavy.pouch })),
+    { geometry: heavyWebHarness(), color: COMBAT_COLORS.heavy.harness },
+    ...[-1,1].map(side => ({ geometry: canvasFieldBag(.18,.155,.10).rotateY(side*.16)
+      .translate(side*.245,.245,.235), color: COMBAT_COLORS.heavy.pouch })),
     { geometry: ball(0, .65, 0, .32, .20, .26, 20, 12), color: ART.faction.skin },
     ...face(.655, .264, .027),
     ...[-1, 1].map(side => ({ geometry: ball(side * .495, .34, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin })),
@@ -89,14 +91,15 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
 
 function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
-    // Follow a latitude ring for a clean shorts color boundary.
-    { geometry: ball(0, .46, 0, .42, .32, .29, 24, 12), color: ART.raider.bodyDeep,
+    // Taller padded barrel; crown/whole-role scale remain fixed, head gets smaller.
+    { geometry: paddedBarrel(.42,.76,.29,.515,.145,24,.40), color: ART.raider.bodyDeep,
       lower: .40, lowerColor: ART.raider.shorts },
     ...[-1,1].map(side => ({ geometry: ball(side*.285,.235,0,.13,.045,.13,8,4), color: ART.raider.shorts })),
-    { geometry: toyWaistBand(.42,.32,.29,.46,.39,.055), color: COMBAT_COLORS.giant.sash },
-    { geometry: ball(-.425,.31,.13,.125,.16,.12,10,5), color: COMBAT_COLORS.giant.satchel },
-    { geometry: ball(0, .94, 0, .33, .22, .29, 24, 12), color: ART.faction.skin },
-    ...face(.885, .28),
+    { geometry: new THREE.CylinderGeometry(1,1,.055,16,1,true).scale(.44,1,.31).translate(0,.395,0),
+      color: COMBAT_COLORS.giant.sash },
+    { geometry: canvasFieldBag(.245,.275,.12).rotateY(-.35).translate(-.37,.33,.205), color: COMBAT_COLORS.giant.satchel },
+    { geometry: ball(0,1.01,0,.2706,.195,.2378,24,12), color: ART.faction.skin },
+    ...face(.975,.235,.020),
     ...[-1, 1].map(side => ({ geometry: ball(side * .48, .40, side * stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin })),
     { geometry: toyShoe({ x: -.28 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .14,
       width: .40, height: .18, depth: .32, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
@@ -109,10 +112,10 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const idle = giantPose(0), runs = [giantPose(1, 0, .085), giantPose(-.25, .018, 0),
     giantPose(-1, .085, 0), giantPose(.25, 0, .018)], death = gray(idle);
   const helmetGeometry = merge([
-    { geometry: toyHelmetShell({ rx: .405, ry: .285, rz: .355, y: .94,
+    { geometry: toyHelmetShell({ rx: .3321, ry: .25, rz: .2911, y: 1.035,
       front: 1.45, side: 1.94, rear: 2.05, segments: 24, rings: 10 }), color: THREAT_COLORS.helmet },
     // One thick soft fin, not a rectangular crest or spike.
-    { geometry: ball(0, 1.19, 0, .09, .165, .225, 16, 10), color: THREAT_COLORS.stone },
+    { geometry: ball(0,1.22,0,.09,.135,.185,16,10), color: THREAT_COLORS.stone },
   ]);
   // The primary rounded torso needs no collar or chest equipment.
   const armorGeometry = new THREE.BufferGeometry();

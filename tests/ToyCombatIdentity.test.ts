@@ -61,8 +61,10 @@ it('gives Heavy its own broad curved diagonal harness and two hip masses, distin
   expect(harness.min.y).toBeLessThan(.20); expect(harness.max.y).toBeGreaterThan(.50);
   expect(harness.max.y).toBeLessThan(.61);
   const pouches=region(heavy.body.geometry,COMBAT_COLORS.heavy.pouch);
-  expect(pouches.min.x).toBeLessThan(-.40); expect(pouches.max.x).toBeGreaterThan(.40);
-  expect(pouches.max.y).toBeLessThan(.32);
+  expect(pouches.min.x).toBeLessThan(-.30); expect(pouches.max.x).toBeGreaterThan(.30);
+  expect(pouches.min.x).toBeGreaterThan(-.38); expect(pouches.max.x).toBeLessThan(.38);
+  expect(pouches.min.z).toBeGreaterThan(.16); // Attached lower-front equipment, inside fist width.
+  expect(pouches.max.y).toBeLessThan(.34);
   const canteen=region(grunt.body.geometry,COMBAT_COLORS.grunt.canteen);
   expect(canteen.max.x).toBeLessThan(0);
   expect(region(grunt.body.geometry,COMBAT_COLORS.heavy.harness).isEmpty()).toBe(true);
