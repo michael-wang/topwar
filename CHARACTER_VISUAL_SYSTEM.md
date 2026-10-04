@@ -365,10 +365,13 @@ Every observed surviving HP decrease (including future multi-HP Grunts) emits
 one 170 ms blood pulse without a body tint or ground stain. A separate 128-slot
 pool uses one four-cell procedural atlas: broad lopsided, taller diagonal,
 compact multi-lobe and wide satellite blots. Six Giant, four Heavy and three
-light-role upper/lower torso anchors cycle deterministically by enemy ID and
-hit sequence; adjacent anchor and mask never repeat. Rotation is fixed per hit,
-size varies ±15%, aspect 0.82–1.20. Lethal/Player masks and ground stains retain
-their accepted appearance. Hit scales remain 45% / 40% / 30% of lethal roles.
+light-role model-local face/shoulder/jacket anchors cycle deterministically by
+enemy ID and hit sequence; adjacent anchor and mask never repeat. Emission is
+evaluated after rendering the actor transform and follows its recoil/lean, not
+an unrelated world-space crown offset. Four masks vary 2–4 satellites and their
+placement. Rotation is fixed per hit and mostly lateral, with an asymmetric
+side bias; size varies ±15%, aspect 0.82–1.20. Player masks and ground stains
+retain their accepted appearance. Hit scales remain 45% / 40% / 30% of lethal roles.
 
 `EnemyHitImpulse` snaps back over 20 ms, holds through 70 ms, then smoothly
 returns by 250 ms. Single-hit +Z displacement is 0.27 / 0.25 / 0.17 world units

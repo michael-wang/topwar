@@ -112,6 +112,8 @@ export class EnemyRenderer {
   private readonly inverseFrozen = new THREE.Matrix4();
   private readonly feedbackOrigin = new THREE.Vector3();
   private readonly feedbackScale = new THREE.Vector3();
+  private readonly feedbackMatrix = new THREE.Matrix4();
+  private readonly pendingHitBlood = new Map<number, number>();
   private readonly bloodTexture = bloodSplatTexture();
   private readonly hitTexture = hitBloodAtlas();
   private readonly stains: GroundBloodStains;
@@ -119,7 +121,6 @@ export class EnemyRenderer {
   private readonly blood: BloodSplat;
   private readonly hitBlood: BloodSplat;
   private readonly hitImpulse = new EnemyHitImpulse();
-  private readonly hitTop: Record<'grunt' | 'heavy' | 'giant', number>;
   private readonly reactionMatrices = new Map<string, readonly [THREE.Matrix4, THREE.Matrix4]>();
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
@@ -140,10 +141,6 @@ export class EnemyRenderer {
     this.roleBatches = { grunt, heavy };
     this.blood = new BloodSplat(scene, this.bloodTexture);
     this.hitBlood = new BloodSplat(scene, this.hitTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
-    const top = (family: CrowdVisualFamily | CharacterVisualFamilies['giant']) => {
-      family.helmet.geometry.computeBoundingBox(); return family.helmet.geometry.boundingBox!.max.y;
-    };
-    this.hitTop = { grunt: top(families.grunt), heavy: top(families.heavy), giant: top(families.giant) };
     this.stains = new GroundBloodStains(scene, this.bloodTexture);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
     this.heavyHits = new HeavyHitFeedback(scene);
@@ -192,6 +189,7 @@ export class EnemyRenderer {
   }
 
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean): void {
+    this.pendingHitBlood.clear();
     if (sceneMode !== undefined) {
       if (this.sceneMode !== undefined && this.sceneMode !== sceneMode) this.reset();
       this.sceneMode = sceneMode;
@@ -217,7 +215,7 @@ export class EnemyRenderer {
     for (const enemy of enemies) {
       const previous = this.previousEnemies.get(enemy.id);
       if (previous && enemy.hp > 0 && enemy.hp < previous.hp) {
-        this.presentSurvivingHit(enemy, nowMs);
+        this.pendingHitBlood.set(enemy.id, this.hitImpulse.observe(enemy.id, nowMs, enemy.archetype ?? 'grunt'));
         if (enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
         else if (this.heavyHits.observe(enemy, nowMs)) this.flashUntilMs.set(enemy.id, nowMs + HEAVY_HIT_FLASH_MS);
       }
@@ -229,7 +227,6 @@ export class EnemyRenderer {
     this.updateDeaths(nowMs);
     this.updateContacts(nowMs);
     this.blood.update(nowMs);
-    this.hitBlood.update(nowMs);
     this.heavyHits.update(currentIds, nowMs);
     for (const enemy of enemies) if (enemy.archetype === 'giant') {
       const renderer = this.giantRenderers.find(slot => slot.id === enemy.id)
@@ -285,6 +282,14 @@ export class EnemyRenderer {
       this.healthBars[barIndex].fill.visible = false;
     }
     for (const batch of this.batches) this.updateBatch(batch, enemies, nowMs);
+    for (const enemy of enemies) {
+      const sequence = this.pendingHitBlood.get(enemy.id);
+      if (sequence === undefined && this.hitImpulse.strength(enemy.id, nowMs) === 0) continue;
+      if (!this.copyBodyWorld(enemy, this.feedbackMatrix)) continue;
+      if (sequence !== undefined) this.presentSurvivingHit(enemy, sequence, nowMs);
+      this.hitBlood.follow(enemy.id, this.feedbackMatrix);
+    }
+    this.hitBlood.update(nowMs);
   }
 
   private updateBatch(batch: CrowdBatch, enemies: readonly EnemyRenderState[], nowMs: number): void {
@@ -374,6 +379,7 @@ export class EnemyRenderer {
   reset(): void {
     this.previousEnemies.clear();
     this.renderedCrowd.clear();
+    this.pendingHitBlood.clear();
     this.flashUntilMs.clear();
     this.contactIds.clear();
     for (const visual of this.deathVisuals) visual.group.visible = false;
@@ -499,13 +505,19 @@ export class EnemyRenderer {
     }
   }
 
-  private presentSurvivingHit(enemy: EnemyRenderState, nowMs: number): void {
-    const role = enemy.archetype ?? 'grunt', sequence = this.hitImpulse.observe(enemy.id, nowMs, role);
+  private copyBodyWorld(enemy: EnemyRenderState, target: THREE.Matrix4): boolean {
+    if (enemy.archetype === 'giant') return this.giantRenderers.find(slot => slot.id === enemy.id)?.copyBodyWorld(target) ?? false;
+    const rendered = this.renderedCrowd.get(enemy.id); if (!rendered) return false;
+    const mesh = rendered.batch.bodyMeshes[rendered.frame];
+    mesh.updateWorldMatrix(true, false); mesh.getMatrixAt(rendered.bodyIndex, target);
+    target.premultiply(mesh.matrixWorld); return true;
+  }
+
+  private presentSurvivingHit(enemy: EnemyRenderState, sequence: number, nowMs: number): void {
+    const role = enemy.archetype ?? 'grunt';
     const variation = hitBloodVariation(enemy.id, sequence, role);
-    setEnemyScale(this.feedbackScale, enemy, role === 'heavy' ? this.families.heavy.presentation.scaleY : 1);
-    this.feedbackOrigin.set(-enemy.x + variation.x * this.feedbackScale.x,
-      this.hitTop[role] * variation.y * this.feedbackScale.y,
-      enemy.z - .12 * this.feedbackScale.z);
+    this.feedbackOrigin.fromArray(variation.localAnchor).applyMatrix4(this.feedbackMatrix);
+    this.feedbackScale.setFromMatrixScale(this.feedbackMatrix);
     const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
     this.hitBlood.spawnStyled(enemy.id, HIT_BLOOD_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id, variation);
   }

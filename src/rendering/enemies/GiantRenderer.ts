@@ -83,6 +83,10 @@ export class GiantRenderer {
     scene.add(this.group, this.haze);
   }
   get id(): number | undefined { return this.previous?.id; }
+  copyBodyWorld(target: THREE.Matrix4): boolean {
+    if (!this.previous || !this.group.visible) return false;
+    this.group.updateMatrixWorld(true); target.copy(this.group.matrixWorld); return true;
+  }
   available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= ENEMY_DEATH_TIMING.giant.totalMs); }
   barVisible(nowMs: number): boolean { return giantReveal(nowMs - this.bornAt).barVisible; }
   getModelDimensions(): { width: number; height: number; depth: number } { return { ...this.dimensions }; }

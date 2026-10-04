@@ -12,6 +12,14 @@ export const BLOOD_STAIN_OPACITY = .58;
 export function bloodSplatTexture(variant = 0): THREE.DataTexture {
   const size = 96, data = new Uint8Array(size * size * 4);
   const spots = [[-.72,.30,.10], [.62,.54,.075], [.70,-.36,.12], [-.32,-.73,.065], [-.76,-.42,.055]];
+  if (variant > 0) {
+    spots.length = 2 + variant % 3;
+    spots.forEach((spot, i) => {
+      spot[0] += Math.sin(variant * 1.7 + i) * .07;
+      spot[1] += Math.cos(variant + i * 2.4) * .08;
+      spot[2] *= .8 + .2 * Math.sin(variant + i);
+    });
+  }
   // Unequal overlapping lobes and two thin splash tails avoid a radial star/flower.
   const lobes = [[0,.02,.53,.48,0], [-.34,.16,.25,.24,.2], [.33,-.10,.27,.21,-.3],
     [-.12,-.37,.21,.19,0], [.24,.30,.16,.23,.2], [-.31,-.26,.16,.24,.45],
@@ -57,7 +65,7 @@ export function bloodSplatTexture(variant = 0): THREE.DataTexture {
 export function hitBloodAtlas(): THREE.DataTexture {
   const size = 192, data = new Uint8Array(size * size * 4);
   for (let variant = 0; variant < 4; variant++) {
-    const cell = bloodSplatTexture(variant), source = cell.image.data;
+    const cell = bloodSplatTexture(variant + 1), source = cell.image.data;
     for (let y = 0; y < 96; y++) {
       const target = ((y + Math.floor(variant / 2) * 96) * size + (variant % 2) * 96) * 4;
       data.set(source.subarray(y * 96 * 4, (y + 1) * 96 * 4), target);
@@ -69,9 +77,14 @@ export function hitBloodAtlas(): THREE.DataTexture {
   texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.needsUpdate = true;
   return texture;
 }
-export interface SplatVariation { variant: number; angle: number; aspect: number; size: number }
+export interface SplatVariation {
+  variant: number; angle: number; aspect: number; size: number;
+  bias?: number; localAnchor?: readonly [number, number, number];
+}
 
-interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3; diameter: number; angle: number; variant: number; aspect: number }
+interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3;
+  localAnchor: THREE.Vector3; attached: boolean; bias: number;
+  diameter: number; angle: number; variant: number; aspect: number }
 
 export class BloodSplat {
   private readonly mesh: THREE.InstancedMesh;
@@ -79,34 +92,38 @@ export class BloodSplat {
   private readonly angle: THREE.InstancedBufferAttribute;
   private readonly slots: BurstSlot[];
   private readonly variant: THREE.InstancedBufferAttribute;
+  private readonly bias: THREE.InstancedBufferAttribute;
   private readonly transform = new THREE.Object3D();
   private cursor = 0;
   constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture,
     private readonly capacity = BLOOD_SPLAT_CAPACITY, name = 'enemy-blood-splats') {
     this.variant = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+    this.bias = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.slots = Array.from({ length: capacity }, () => ({ owner: -1, startedAt: -Infinity,
-      timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), diameter: 1, angle: 0, variant: 0, aspect: 1 }));
+      timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), localAnchor: new THREE.Vector3(),
+      attached: false, bias: 0, diameter: 1, angle: 0, variant: 0, aspect: 1 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('splatVariant', this.variant);
+    geometry.setAttribute('splatBias', this.bias);
     geometry.setAttribute('splatOpacity', this.alpha); geometry.setAttribute('splatAngle', this.angle);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false,
       depthTest: false, toneMapped: false });
     material.onBeforeCompile = shader => {
-      shader.vertexShader = `attribute float splatVariant; attribute float splatOpacity; attribute float splatAngle; varying float vSplatOpacity;\n${shader.vertexShader}`
+      shader.vertexShader = `attribute float splatVariant; attribute float splatOpacity; attribute float splatAngle; attribute float splatBias; varying float vSplatOpacity;\n${shader.vertexShader}`
         .replace('#include <uv_vertex>', `#include <uv_vertex>
 ${texture.image.width === 192 ? 'vMapUv = (vMapUv + vec2(mod(splatVariant, 2.), floor(splatVariant / 2.))) * .5;' : ''}`)
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplatOpacity = splatOpacity;')
         .replace('#include <project_vertex>', `vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(0.,0.,0.,1.);
 vec2 size = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
 float c = cos(splatAngle), s = sin(splatAngle);
-mvPosition.xy += mat2(c,s,-s,c) * (position.xy * size);
+mvPosition.xy += mat2(c,s,-s,c) * ((position.xy + vec2(splatBias,0.)) * size);
 gl_Position = projectionMatrix * mvPosition;`);
       shader.fragmentShader = `varying float vSplatOpacity;\n${shader.fragmentShader}`
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vSplatOpacity;');
     };
-    material.customProgramCacheKey = () => `pooled-camera-blood-blot-${texture.image.width}`;
+    material.customProgramCacheKey = () => `actor-camera-blood-blot-${texture.image.width}`;
     this.mesh = new THREE.InstancedMesh(geometry, material, capacity);
     this.mesh.name = name; this.mesh.renderOrder = 6;
     this.mesh.frustumCulled = false; this.mesh.count = 0; this.mesh.visible = false;
@@ -134,6 +151,14 @@ gl_Position = projectionMatrix * mvPosition;`);
     slot.angle = variation?.angle ?? id * 2.3999632297;
     slot.variant = variation?.variant ?? 0; slot.aspect = variation?.aspect ?? 1;
     slot.diameter *= variation?.size ?? 1;
+    slot.attached = !!variation?.localAnchor; slot.bias = variation?.bias ?? 0;
+    if (variation?.localAnchor) slot.localAnchor.fromArray(variation.localAnchor);
+  }
+  // Follow the already rendered actor, including every-hit recoil. Slot vectors
+  // are preallocated; short splashes don't trail behind the recovering body.
+  follow(owner: number, bodyWorld: THREE.Matrix4): void {
+    for (const slot of this.slots) if (slot.owner === owner && slot.attached && Number.isFinite(slot.startedAt))
+      slot.origin.copy(slot.localAnchor).applyMatrix4(bodyWorld);
   }
   update(nowMs: number): void {
     let count = 0;
@@ -142,10 +167,11 @@ gl_Position = projectionMatrix * mvPosition;`);
       if (!pose.visible) continue;
       this.transform.position.copy(slot.origin); this.transform.scale.set(slot.diameter * pose.scale * slot.aspect, slot.diameter * pose.scale / slot.aspect, 1);
       this.transform.updateMatrix(); this.mesh.setMatrixAt(count, this.transform.matrix);
-      this.alpha.setX(count, pose.opacity); this.angle.setX(count, slot.angle); this.variant.setX(count, slot.variant); count++;
+      this.alpha.setX(count, pose.opacity); this.angle.setX(count, slot.angle); this.variant.setX(count, slot.variant);
+      this.bias.setX(count, slot.bias * .10 * Math.min(1, Math.max(0, (nowMs - slot.startedAt) / 50))); count++;
     }
     this.mesh.count = count; this.mesh.visible = count > 0;
-    this.mesh.instanceMatrix.needsUpdate = true; this.alpha.needsUpdate = this.angle.needsUpdate = this.variant.needsUpdate = true;
+    this.mesh.instanceMatrix.needsUpdate = true; this.alpha.needsUpdate = this.angle.needsUpdate = this.variant.needsUpdate = this.bias.needsUpdate = true;
   }
   cancel(owner: number): void { for (const slot of this.slots) if (slot.owner === owner) slot.startedAt = -Infinity; }
   reset(): void { this.slots.forEach(slot => slot.startedAt = -Infinity); this.cursor = 0; this.mesh.count = 0; this.mesh.visible = false; }

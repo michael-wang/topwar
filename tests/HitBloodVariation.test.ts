@@ -16,7 +16,11 @@ it('breaks adjacent anchor and variant repetition for six Giant impacts, with bo
    expect(next.anchor).not.toBe(previous.anchor);expect(next.variant).not.toBe(previous.variant);
    expect(next.size).toBeGreaterThanOrEqual(.85);expect(next.size).toBeLessThanOrEqual(1.15);
    expect(next.aspect).toBeGreaterThanOrEqual(.82);expect(next.aspect).toBeLessThanOrEqual(1.2);
-   expect(Math.abs(next.x)).toBeLessThanOrEqual(.20);expect(next.y).toBeGreaterThan(.3);expect(next.y).toBeLessThan(.7);
+   const [x,y,z]=next.localAnchor;
+   expect(Math.abs(x)).toBeLessThanOrEqual(.27);expect(y).toBeGreaterThanOrEqual(.29);expect(y).toBeLessThanOrEqual(1.05);
+   expect(z).toBeGreaterThanOrEqual(.16);expect(z).toBeLessThanOrEqual(.275);
+   expect(next.satelliteCount).toBeGreaterThanOrEqual(2);expect(next.satelliteCount).toBeLessThanOrEqual(4);
+   expect(Math.abs(next.bias)).toBeGreaterThanOrEqual(.45);expect(Math.abs(next.bias)).toBeLessThanOrEqual(.95);
    previous=next;
   }
   expect(HIT_BLOOD_TIMING[role].bloodEndMs).toBe(170);expect(HIT_BLOOD_TIMING[role].bloodPulseCount).toBe(1);

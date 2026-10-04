@@ -23,7 +23,7 @@ it('every surviving HP drop emits blood and a +Z kick, independently of emphasis
   const blood=scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh,stains=scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh;
   renderer.update([e],0);renderer.update([e],2000);renderer.update([{...e,hp:9}],2010);renderer.update([{...e,hp:9}],2030);
   expect(blood.count).toBe(1);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].distance,5);expect(stains.count).toBe(0);
-  const matrix=new THREE.Matrix4();blood.getMatrixAt(0,matrix);expect(matrix.elements[13]).toBeGreaterThan(.4);
+  const matrix=new THREE.Matrix4();blood.getMatrixAt(0,matrix);expect(matrix.elements[13]).toBeGreaterThan(.2);
   renderer.update([{...e,hp:8}],2070);renderer.update([{...e,hp:8}],2090);expect(blood.count).toBe(2);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].cap,5);
   if(role!=='grunt'){expect(emphasis.mock.results.map(result=>result.value)).toEqual([true,false]);}
   renderer.update([{...e,hp:8}],2330);expect(z()).toBeCloseTo(e.z,5);expect(blood.count).toBe(0);expect(JSON.stringify(e)).toBe(initial);
