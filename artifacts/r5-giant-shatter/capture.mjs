@@ -29,7 +29,7 @@ async function prepare(){
   };
  });
 }
-const stats={},measurements={},forms={},deaths={},gait=[];
+const stats={},measurements={},forms={},deaths={},gait=[],landingStats={};
 for(const key of phase==='grip'?['opening']:['opening','same-depth','review-depth','normal-crowd','mixed-threats','giants-two','player-guard','grunt-guard','heavy-guard','world-hud-guard']){
  await prepare();stats[key]=await page.evaluate(key=>{
   const r=window.__testApp.renderer,f=structuredClone(window.__fixture),g=f.enemies[0],h=f.enemies[1],giant=f.enemies[2];
@@ -86,7 +86,9 @@ for(const role of phase==='grip'?['giant']:['grunt','heavy','giant']){
   deaths[role].push(await page.evaluate(age=>{window.__draw(window.__death,2010+age);return {ageMs:age,...window.__metrics()};},age));
   await page.screenshot({path:`${out}/${phase}-${role}-death-${age}.png`});
  }
- await page.evaluate(role=>{const r=window.__testApp.renderer;window.__draw(window.__death,2010+(role==='giant'?1000:650));r.camera.position.set(2.5,4,role==='giant'?11:3);r.camera.lookAt(0,0,role==='giant'?14.5:8);r.camera.updateProjectionMatrix();r.renderer.render(r.scene,r.camera);},role);
+ // Reinitialize: expired pools cannot be evaluated by rewinding the presentation clock.
+ await prepare();
+ await page.evaluate(role=>{const f=structuredClone(window.__fixture);f.enemies=[{...f.enemies.find(e=>e.archetype===role),id:100,x:0,z:role==='giant'?16:8}];window.__draw(f,0);window.__draw(f,2000);f.enemies=[];window.__draw(f,2010);window.__draw(f,2010+(role==='giant'?1000:650));const r=window.__testApp.renderer;r.camera.position.set(2.5,4,role==='giant'?11:3);r.camera.lookAt(0,0,role==='giant'?14.5:8);r.camera.updateProjectionMatrix();r.renderer.render(r.scene,r.camera);},role);
  await page.screenshot({path:`${out}/${phase}-${role}-resting-close.png`});
 }
 for(const count of phase==='grip'?[]:[24,48]){
@@ -96,4 +98,17 @@ for(const count of phase==='grip'?[]:[24,48]){
   await page.screenshot({path:`${out}/${phase}-deaths-${count}-${age}.png`});}
  stats[`deaths-${count}`]={samples,peakDraws:Math.max(...samples.map(s=>s.drawCalls)),peakTriangles:Math.max(...samples.map(s=>s.triangles)),peakShatter:Math.max(...samples.map(s=>s.shatterInstances))};
 }
-writeFileSync(`${out}/${phase}-stats.json`,JSON.stringify({stats,measurements,forms,gait,deaths,errors},null,2));await browser.close();await server?.close();if(errors.length)throw Error(errors.join('\n'));
+if(phase==='final'){
+ for(const role of ['grunt','heavy']){
+  await prepare();landingStats[role]=await page.evaluate(role=>{const r=window.__testApp.renderer,f=structuredClone(window.__fixture),e={...f.enemies.find(e=>e.archetype===role),id:100,x:0,z:8};window.__draw({...f,enemies:[e]},0);window.__draw({...f,enemies:[e]},2000);window.__draw({...f,enemies:[]},2010);const b=r.enemyRenderer.deathBurst;return Array.from(b.landingSeconds).slice(0,role==='heavy'?8:6).map(seconds=>({landingMs:seconds*1000,fullOpacityRestMs:720-seconds*1000}));},role);
+ }
+ for(const role of ['grunt','heavy','giant']){
+  const dir=`${out}/final-${role}-death-frames`;mkdirSync(dir,{recursive:true});await prepare();
+  await page.evaluate(role=>{const f=structuredClone(window.__fixture);f.enemies=[{...f.enemies.find(e=>e.archetype===role),id:100,x:0,z:role==='giant'?16:8}];window.__draw(f,0);window.__draw(f,2000);f.enemies=[];window.__death=f;window.__draw(f,2010);},role);
+  for(let age=0;age<=(role==='giant'?2400:1050);age+=role==='giant'?80:35){await page.evaluate(age=>window.__draw(window.__death,2010+age),age);await page.screenshot({path:`${dir}/${String(age).padStart(4,'0')}.png`});}
+ }
+ const dir=`${out}/final-running-frames`;mkdirSync(dir,{recursive:true});await prepare();
+ await page.evaluate(()=>{const f=structuredClone(window.__fixture);f.enemies=[{...f.enemies[2],id:0,x:0,z:16}];window.__running=f;window.__draw(f,0);window.__draw(f,1700);});
+ for(let age=0;age<=1700;age+=34){await page.evaluate(age=>{const f=window.__running;f.enemies[0].z=16-age/1000*window.__testApp.simulation.getState().catharsis.balance.giant.speed;window.__draw(f,1700+age);},age);await page.screenshot({path:`${dir}/${String(age).padStart(4,'0')}.png`});}
+}
+writeFileSync(`${out}/${phase}-stats.json`,JSON.stringify({stats,measurements,forms,gait,deaths,landingStats,errors},null,2));await browser.close();await server?.close();if(errors.length)throw Error(errors.join('\n'));

@@ -20,7 +20,8 @@ it('freezes each role last drawn run geometry, clears intact bodies at 110 ms an
     renderer.update([],start+120);expect(corpse.visible).toBe(false);
     const pieces=scene.getObjectByName('enemy-pale-shatter') as THREE.InstancedMesh;
     expect(pieces.count).toBe(role==='heavy'?8:6);
-    renderer.update([],start+400);expect(pieces.visible).toBe(false);
+    renderer.update([],start+700);expect(pieces.visible).toBe(true);
+    renderer.update([],start+1020);expect(pieces.visible).toBe(false);
   }
   renderer.reset();expect(scene.getObjectByName('enemy-pale-shatter')!.visible).toBe(false);
   renderer.dispose();grunt.dispose();heavy.dispose();expect(scene.children).toHaveLength(0);

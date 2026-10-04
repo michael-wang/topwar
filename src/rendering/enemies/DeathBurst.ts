@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import { PALE_DEATH_COLORS } from './PaleDeathMaterial';
+import { ENEMY_FRAGMENT_MS } from '../../presentation/EnemyDeathTiming';
+import { fragmentLandingSeconds } from './GroundedFragments';
 
 export const DEATH_FRAGMENT_CAPACITY = 384; // 48 simultaneous eight-piece Heavy shatters.
-export const DEATH_FRAGMENT_LIFETIME_MS = 280;
+export const DEATH_FRAGMENT_LIFETIME_MS = ENEMY_FRAGMENT_MS;
+export const DEATH_FRAGMENT_FADE_MS = 180;
+const GRAVITY = 32;
 const COLORS = PALE_DEATH_COLORS.map(color => new THREE.Color(color));
 const PIECES = [
   [0, .82, 0, .17, .12, .15], [-.12, .47, 0, .13, .14, .12], [.12, .42, 0, .12, .13, .13],
@@ -30,6 +34,9 @@ export class DeathBurst {
   private readonly origins = new Float32Array(DEATH_FRAGMENT_CAPACITY * 3);
   private readonly velocities = new Float32Array(DEATH_FRAGMENT_CAPACITY * 3);
   private readonly sizes = new Float32Array(DEATH_FRAGMENT_CAPACITY * 3);
+  private readonly landingSeconds = new Float64Array(DEATH_FRAGMENT_CAPACITY);
+  private readonly landings = new Float32Array(DEATH_FRAGMENT_CAPACITY * 3);
+  private readonly phases = new Float32Array(DEATH_FRAGMENT_CAPACITY);
   private readonly fade = new THREE.InstancedBufferAttribute(new Float32Array(DEATH_FRAGMENT_CAPACITY), 1);
   private readonly geometry = new THREE.SphereGeometry(1, 8, 5);
   private readonly material = new THREE.MeshStandardMaterial({ color: 'white', roughness: 1, metalness: 0,
@@ -59,6 +66,12 @@ export class DeathBurst {
       this.origins.set([-enemy.x + piece[0] * sx, piece[1] * sy, enemy.z + piece[2] * sz], offset);
       this.velocities.set([velocity.x * sx, velocity.y * sy, velocity.z * sz], offset);
       this.sizes.set([piece[3] * sx * (heavy ? 1.2 : 1), piece[4] * sy, piece[5] * sz], offset);
+      // At rest pitch/roll are zero, so the sphere's scaled vertical radius is its floor.
+      const seconds = fragmentLandingSeconds(this.origins[offset + 1], this.velocities[offset + 1], this.sizes[offset + 1], GRAVITY);
+      this.landingSeconds[slot] = seconds;
+      this.landings.set([this.origins[offset] + this.velocities[offset] * seconds, this.sizes[offset + 1],
+        this.origins[offset + 2] + this.velocities[offset + 2] * seconds], offset);
+      this.phases[slot] = enemy.id * .71 + index * 2.399963;
     }
   }
   update(nowMs: number): void {
@@ -67,13 +80,15 @@ export class DeathBurst {
       const age = nowMs - this.births[slot];
       if (age >= DEATH_FRAGMENT_LIFETIME_MS) { this.births[slot] = -Infinity; continue; }
       if (age < 0) continue;
-      const seconds = age / 1000, offset = slot * 3;
-      const fade = Math.min(1, (DEATH_FRAGMENT_LIFETIME_MS - age) / 80);
-      this.transform.position.set(this.origins[offset] + this.velocities[offset] * seconds,
-        Math.max(.04, this.origins[offset + 1] + this.velocities[offset + 1] * seconds - 4.5 * seconds * seconds),
+      const offset = slot * 3, contact = this.landingSeconds[slot], seconds = Math.min(age / 1000, contact);
+      const fade = Math.min(1, (DEATH_FRAGMENT_LIFETIME_MS - age) / DEATH_FRAGMENT_FADE_MS);
+      if (age / 1000 >= contact) this.transform.position.fromArray(this.landings, offset);
+      else this.transform.position.set(this.origins[offset] + this.velocities[offset] * seconds,
+        this.origins[offset + 1] + this.velocities[offset + 1] * seconds - GRAVITY * .5 * seconds * seconds,
         this.origins[offset + 2] + this.velocities[offset + 2] * seconds);
-      this.transform.rotation.set(slot * .7 + seconds * 4, slot * 1.3, seconds * 3);
-      this.transform.scale.fromArray(this.sizes, offset).multiplyScalar(.35 + .65 * fade);
+      const settle = Math.pow(Math.max(0, 1 - seconds / contact), 2), phase = this.phases[slot];
+      this.transform.rotation.set((Math.sin(phase) + seconds * 4) * settle, phase + seconds * 1.5, Math.cos(phase) * settle);
+      this.transform.scale.fromArray(this.sizes, offset); // Opacity fades; physical pieces never shrink.
       this.transform.updateMatrix(); this.fragments.setMatrixAt(count, this.transform.matrix);
       this.fragments.setColorAt(count, COLORS[slot % COLORS.length]); this.fade.setX(count++, fade);
     }

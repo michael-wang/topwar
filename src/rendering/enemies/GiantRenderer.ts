@@ -6,6 +6,7 @@ import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMo
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { PALE_DEATH_COLORS, preparePaleDeathMaterial } from './PaleDeathMaterial';
 import { deathFragmentVelocity } from './DeathBurst';
+import { fragmentLandingSeconds } from './GroundedFragments';
 import type { EnemyRenderState } from '../RenderState';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
 
@@ -161,21 +162,23 @@ export class GiantRenderer {
     this.ring.scale.setScalar((this.previous.visualScaleX ?? scale) * .8 * (1 + impactAge / 280)); this.ringMaterial.opacity = pose.ringOpacity;
     this.chunks.visible = pose.debrisVisible; this.chunksMaterial.opacity = pose.debrisOpacity;
     if (pose.debrisVisible) {
-      const seconds = Math.min(.65, Math.max(0, impactAge / 1000));
       for (let i = 0; i < 12; i++) {
         const phase = i * 2.399963 + this.previous.id * .71, velocity = deathFragmentVelocity(this.previous.id, i);
         const sx = this.previous.visualScaleX ?? scale, sy = this.previous.visualScaleY ?? scale;
         const sz = this.previous.visualScaleZ ?? scale;
         const originSpread = .18 + (i % 3) * .05;
-        this.transform.position.set(-this.previous.x + Math.cos(phase) * originSpread * sx + velocity.x * sx * .6 * seconds,
-          .12 + Math.max(0, .16 * sy + velocity.y * .7 * seconds - 4.5 * seconds * seconds),
-          this.previous.z - 1.5 + Math.sin(phase) * originSpread * sz + velocity.z * sz * .6 * seconds);
-        this.transform.rotation.set(phase + seconds * 2, phase * .7, .4 + phase);
-        // Rounded helmet/body/shoe masses plus a few taller crest/maul abstractions.
+        // Sphere radius .5: each broad chunk rests on its own scaled half-height.
         const shapes = [[.30, .22, .28], [.32, .28, .30], [.30, .15, .25], [.12, .35, .20]];
-        const shape = shapes[i % 4];
-        this.transform.scale.set(shape[0] * sx, shape[1] * sy, shape[2] * sz)
-          .multiplyScalar(.65 + .35 * pose.debrisOpacity);
+        const shape = shapes[i % 4], floor = shape[1] * sy * .5, originY = .12 + .16 * sy;
+        const contact = fragmentLandingSeconds(originY, velocity.y * .7, floor, 9);
+        const seconds = Math.min(Math.max(0, impactAge / 1000), contact);
+        this.transform.position.set(-this.previous.x + Math.cos(phase) * originSpread * sx + velocity.x * sx * .6 * seconds,
+          impactAge / 1000 >= contact ? floor : originY + velocity.y * .7 * seconds - 4.5 * seconds * seconds,
+          this.previous.z - 1.5 + Math.sin(phase) * originSpread * sz + velocity.z * sz * .6 * seconds);
+        const settle = Math.pow(Math.max(0, 1 - seconds / contact), 2);
+        this.transform.rotation.set(Math.sin(phase + seconds * 2) * settle, phase * .7 + seconds, Math.cos(phase) * settle);
+        // Rounded helmet/body/shoe masses plus a few taller crest/maul abstractions.
+        this.transform.scale.set(shape[0] * sx, shape[1] * sy, shape[2] * sz);
         this.transform.updateMatrix(); this.chunks.setMatrixAt(i, this.transform.matrix);
       }
       this.chunks.instanceMatrix.needsUpdate = true;

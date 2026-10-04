@@ -43,3 +43,68 @@ leads pitch by 0.55 radians (~74ms), providing maul inertia about the hand.
 During the fall, translation freezes at its last live value and the hand/maul
 remain one assembly. Added skin is a vertex-color region, not another draw.
 The primary Giant triangle total remains 4400: the same hand is relocated.
+
+## Commit 3 — grounded shatter
+
+Normal fragments now live 900 ms after the unchanged 110 ms intact pale beat.
+Rendering gravity 32 produces short flight; contact is solved analytically at
+spawn and stored in bounded typed arrays. Each resting floor is its own scaled
+vertical radius. After contact, X/Y/Z and rotation stop; scale never changes.
+Only opacity fades, during the final 180 ms (fragment ages 720–900 ms).
+In the fixed ID-100 fixture, mean landing is 228 ms for Grunt and 274 ms for
+Heavy. Ranges are 130–334 / 160–385 ms, giving 386–590 / 335–560 ms of
+fully opaque rest before fading. Times are relative to fragment birth.
+
+Giant reuses the contact solver with its existing gravity 9 and twelve broad
+pieces. Each floor uses the radius-.5 chunk's own vertical half-height; X/Z and
+rotation stop at contact. Late scale shrink is removed. Fall/crash/clear remain
+90–520 / 520 / 2400 ms; fade still starts at lethal age 1550 ms.
+Pale colors remain #D8D9D1 / #E7E4D9 / #BFC5C1, naturally lit and non-emissive.
+
+The normal pool remains 384 instances / one instanced draw. Stress fixtures
+reach 192 pieces for 24 Heavy kills and 384 for 48, without population reduction.
+Full-size debris persists into the late fade. Larger overlapping bursts beyond
+capacity reuse the existing oldest-first ring slots; capacity was not expanded.
+
+## Review and validation
+
+Start with `opening-before-after.png`, `same-depth-before-after.png`,
+`giant-proportion-guides.png`, `weapon-grip-four-poses.png`, `giant-gait-strip.png`,
+`giant-hp-states.png`, `grunt-death-timeline.png`, `heavy-death-timeline.png` and
+`giant-crash-grounding.png`. `running-temporal.gif` spans two unchanged 850 ms
+gaits at the actual portrait projection and configured Giant approach speed.
+The `*-temporal.gif` death animations show flight, rest and late fade.
+`*-rest-close.png` and `dense-resting-debris.png` provide debris ground review.
+Raw 390×844 / DPR-2 PNGs and sequential frames are retained for inspection.
+
+`performance-review.json` contains renderer measurements, landing times, bundle
+comparison, full-image pixel guards, live input/Retry and production checks.
+Player, Grunt, Heavy and world/HUD guard images are pixel-identical to R4.
+Default dev and explicit review remain Level 7 / two arrived defenders;
+`?review=normal` and production default remain Level 1. Keyboard, touch, firing,
+Pause/resume and Retry all pass with no browser errors. Combat/snapshot tests
+and an identical-input simulation comparison protect the gameplay freeze.
+
+All 598 tests in 89 files pass; typecheck and build pass. Commands use the
+existing ignored npm CLI (`node node_modules/.r4-npm/package/bin/npm-cli.js`)
+because the environment has Node but no npm shell shim. No dependencies changed.
+Existing Zod comment-annotation and >500 kB bundle warnings remain.
+
+| Fixture | Draws R4→R5 | Triangles R4→R5 | Geometries | Textures |
+| --- | --- | --- | --- | --- |
+| 100 Grunts | 143→143 | 271268→271268 | 70→70 | 6→6 |
+| 35 mixed + Giant | 166→166 | 115644→115644 | 74→74 | 9→9 |
+| Two Giants | 148→148 | 25480→25480 | 75→75 | 10→10 |
+| 24 simultaneous Heavy deaths, peak | 185→185 | 96348→96348 | 72 max | 8 |
+| 48 simultaneous Heavy deaths, peak | 233→233 | 176028→176028 | 72 max | 8 |
+
+Fragment-active frames use one shared draw (192 pieces = 12288 triangles;
+384 = 24576). R5 keeps this work alive longer, so unchanged peaks do not imply
+unchanged cumulative raster cost. Measurements are renderer counters on desktop
+Chrome/SwiftShader, not mobile FPS claims. JS 984883→985900 bytes (+1017), gzip
+266233→266591 (+358). GLB downloads stay 13 requests / 356172 bytes.
+
+Known review limits: fragments are generic broad pale chunks, not cut model
+parts; they do not collide with props or one another and have no new individual
+contact-shadow draw. The Giant face is deliberately smaller at gameplay scale.
+World/UI/other-role art and Boss migration remain outside this phase. No deployment.

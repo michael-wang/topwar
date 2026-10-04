@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "jsBytes": 984883,
+    "jsGzipBytes": 266233,
+    "assetRequests": 13,
+    "assetBytes": 356172
+  },
+  "final": {
+    "jsBytes": 985900,
+    "jsGzipBytes": 266591,
+    "assetRequests": 13,
+    "assetBytes": 356172
+  }
+}

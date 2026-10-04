@@ -1,6 +1,7 @@
 // Disposable kill presentation, independent of collision and gameplay time.
 export const ENEMY_SHATTER_MS = 110;
-export const ENEMY_DEATH_MS = 390;
+export const ENEMY_FRAGMENT_MS = 900;
+export const ENEMY_DEATH_MS = ENEMY_SHATTER_MS + ENEMY_FRAGMENT_MS;
 
 export function enemyDeathPose(ageMs: number) {
   const progress = Math.max(0, Math.min(1, ageMs / ENEMY_DEATH_MS));

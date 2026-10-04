@@ -289,8 +289,13 @@ Surviving hits and Player Level-Up remain separate semantics.
 
 Grunt/Heavy freeze the last drawn role-owned run geometry and planted root pose.
 Albedo drains to #D8D9D1 within 80 ms; the intact silhouette hides at 110 ms.
-Six Grunt/eight Heavy rounded fragments then move ballistically for 280 ms,
-with a quick final fade/shrink: total 390 ms. No upward corpse launch. Forty-eight
+Six Grunt/eight Heavy rounded fragments have a 900 ms lifetime: ballistic flight,
+individual ground contact, stationary full-size debris, then opacity-only fade
+in the final 180 ms. Total lethal presentation is 1010 ms; intact shatter stays
+at 110 ms. Authored scales remain constant through flight/rest/fade. Landing
+times/positions are computed at spawn from deterministic velocities and each
+piece's scaled vertical radius. Rotation settles to a fixed yaw at contact;
+horizontal travel stops. No physics engine, bounce or upward corpse launch. Forty-eight
 reusable intact slots and one shared 384-instance fragment pool bound dense kills.
 Fragment velocity is deterministic from enemy ID/index; palette alternates
 #D8D9D1 / #E7E4D9 / #BFC5C1 and uses matte, non-emissive standard lighting.
@@ -300,7 +305,9 @@ Giant drains albedo over 120 ms without lethal emission. Its existing 90–520 m
 heavy fall, 520 ms crash, sand dust/ring and 2400 ms clear clock remain. The
 intact Giant now breaks at crash, into twelve larger pale rounded fragments per
 bounded slot, replacing both colored armor rubble and the 36-point burst.
-Fragments settle rapidly, fade from 1550 ms and clear at 2400 ms. Reveal timing,
+Each Giant fragment also stops at its analytic contact point, rests at its own
+scaled half-height and keeps full size. Fade starts at 1550 ms and clear remains
+2400 ms. Reveal timing,
 ordinary R2 hits, HP layout and gameplay removal are unchanged. Boss is excluded.
 
 R3 evidence belongs in `artifacts/coastal-r3/`.
