@@ -28,3 +28,18 @@ the primary size evidence. Isolated black silhouettes use the actual projection.
 Other captured baseline/scale fixtures support final guards and performance.
 
 Weapon/grip and grounded-shatter checkpoint facts follow in the next commits.
+
+## Commit 2 — hand/weapon ownership
+
+`grip-*` shows the coupling checkpoint, before grounded-debris changes. One
+skin-colored grip sphere is merged into the same weapon geometry as the shaft,
+olive head and stone accent; it is absent from every Giant body/run pose.
+Grip (0.60,0.40,0.08) is explicit family data and the weapon's rotation pivot.
+The offhand remains body-owned. Contact includes the composed whole silhouette.
+
+The grip translates ±0.015/0.009/0.075 authored X/Y/Z; delayed angular swing
+remains ±0.14 pitch / ±0.045 roll on the unchanged 850ms gait. Translation
+leads pitch by 0.55 radians (~74ms), providing maul inertia about the hand.
+During the fall, translation freezes at its last live value and the hand/maul
+remain one assembly. Added skin is a vertex-color region, not another draw.
+The primary Giant triangle total remains 4400: the same hand is relocated.

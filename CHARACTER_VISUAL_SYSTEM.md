@@ -192,6 +192,18 @@ mesh draws per live Giant. R3 replaces colored debris with twelve pale rounded
 fragments at the existing crash. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
+R5 removes the grip hand from body/reference/run/death geometry and merges it
+with the maul shaft/head/stone accent into the existing single weapon mesh.
+The other hand remains pose-baked. A typed character-space grip anchor
+(0.60,0.40,0.08) drives the weapon group pivot; no family-ID branching, skeleton,
+additional mesh/material or draw is introduced. The whole assembly translates
+±0.015 X, ±0.009 Y and ±0.075 Z at the 850ms gait phase offset 0.3 radians.
+Existing ±0.14 pitch / ±0.045 roll retain their delayed response; pitch lags
+grip translation by 0.55 radians (about 74ms). Fall holds the last grip position
+and rotates the same assembly with the existing collapse. Contact also borrows
+the complete composed body + hand/maul reference. Tests verify coupling and
+shaft/head clearance across all four poses and the fall.
+
 The dedicated Giant bar defines authored billboard width 1.20 and height 0.20,
 both scaled by projected X scale: exactly 6:1. Two-Giant layout scales both
 by 0.8. It stays centered on lateral weight transfer and uses the existing

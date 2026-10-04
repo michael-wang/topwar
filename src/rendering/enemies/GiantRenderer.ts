@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { GiantVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_REVEAL_MS, GIANT_DEATH_MS, GIANT_CRASH_MS, giantReveal, giantDeathPose } from '../../presentation/GiantDrama';
 import { ART } from '../../art/ArtDirection';
-import { giantWeightPose } from '../../presentation/CharacterMotion';
+import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { PALE_DEATH_COLORS, preparePaleDeathMaterial } from './PaleDeathMaterial';
 import { deathFragmentVelocity } from './DeathBurst';
@@ -27,6 +27,7 @@ export class GiantRenderer {
   private readonly body: THREE.Mesh;
   private readonly helmet: THREE.Mesh;
   private readonly weapon = new THREE.Group();
+  private readonly weaponRest = new THREE.Vector3();
   private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color; pale: { value: number } }[];
   private readonly dimensions: { width: number; height: number; depth: number };
   private readonly ringMaterial = new THREE.MeshBasicMaterial({ color: ART.fx.dust, transparent: true,
@@ -60,8 +61,10 @@ export class GiantRenderer {
     this.weapon.name = 'giant-maul';
     if (family.weapon) {
       const maul = new THREE.Mesh(family.weapon.geometry, gearMaterial);
-      // Character-space geometry is translated into a hand-height pivot once.
-      this.weapon.position.set(.60, .36, .08); maul.position.copy(this.weapon.position).negate();
+      // The authored grip is inside the same mesh as shaft/head. The pivot is
+      // the hand, so delayed rotation gives the maul inertia without detaching it.
+      this.weaponRest.fromArray(family.weaponGrip ?? [.60, .36, .08]);
+      this.weapon.position.copy(this.weaponRest); maul.position.copy(this.weaponRest).negate();
       this.weapon.add(maul); this.group.add(this.weapon);
     }
     this.palette = [bodyMaterial, gearMaterial].map(material => ({ material, color: material.color.clone(),
@@ -104,6 +107,8 @@ export class GiantRenderer {
       this.previous = enemy; this.deathAt = -Infinity;
       const cycle = enemy.gaitCycleMs ?? 850, weight = giantWeightPose(enemy.id, nowMs, cycle), hit = hits.strength(enemy.id, nowMs);
       this.body.geometry = this.family.runFrames[Math.floor(nowMs / (cycle / 4) + enemy.id * 1.52788745) & 3].geometry;
+      const grip = giantGripMotion(weight.phase);
+      this.weapon.position.set(this.weaponRest.x + grip.x, this.weaponRest.y + grip.y, this.weaponRest.z + grip.z);
       this.weapon.rotation.set(weight.weapon + .03 * hit, 0, Math.sin(weight.phase - .8) * .045);
       this.helmet.rotation.z = Math.cos(weight.phase - .25) * .012;
       this.group.position.set(-enemy.x + weight.shift * (enemy.visualScaleX ?? enemy.visualScale ?? 1), weight.bob, enemy.z + hit * .11);
@@ -178,7 +183,8 @@ export class GiantRenderer {
   }
   reset(): void {
     this.previous = undefined; this.deathAt = this.bornAt = -Infinity;
-    this.group.visible = this.ring.visible = this.haze.visible = this.chunks.visible = false; this.restorePalette();
+    this.group.visible = this.ring.visible = this.haze.visible = this.chunks.visible = false;
+    this.weapon.position.copy(this.weaponRest); this.restorePalette();
   }
   dispose(): void {
     this.scene.remove(this.group, this.ring, this.haze, this.debrisGroup);

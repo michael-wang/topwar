@@ -30,7 +30,7 @@ async function prepare(){
  });
 }
 const stats={},measurements={},forms={},deaths={},gait=[];
-for(const key of ['opening','same-depth','review-depth','normal-crowd','mixed-threats','giants-two','player-guard','grunt-guard','heavy-guard','world-hud-guard']){
+for(const key of phase==='grip'?['opening']:['opening','same-depth','review-depth','normal-crowd','mixed-threats','giants-two','player-guard','grunt-guard','heavy-guard','world-hud-guard']){
  await prepare();stats[key]=await page.evaluate(key=>{
   const r=window.__testApp.renderer,f=structuredClone(window.__fixture),g=f.enemies[0],h=f.enemies[1],giant=f.enemies[2];
   const crowd=n=>Array.from({length:n},(_,i)=>({...((key==='mixed-threats'&&i%5===0)?h:g),id:200+i,x:(i%5-2)*1.4,z:7+Math.floor(i/5)*.7}));
@@ -74,11 +74,11 @@ for(let sample=0;sample<=8;sample++){
   r.camera.position.set(3.5,4,6);r.camera.lookAt(0,1.5,16);r.camera.updateProjectionMatrix();r.renderer.render(r.scene,r.camera);return result;},sample));
  await page.screenshot({path:`${out}/${phase}-gait-${sample}.png`});
 }
-for(const fraction of [1,.5,.1,0]){
+for(const fraction of phase==='grip'?[]:[1,.5,.1,0]){
  await prepare();await page.evaluate(fraction=>{const f=structuredClone(window.__fixture);f.enemies=[{...f.enemies[2],hp:f.enemies[2].maxHp*fraction}];window.__draw(f,0);window.__draw(f,2000);},fraction);
  await page.screenshot({path:`${out}/${phase}-hp-${fraction}.png`});
 }
-for(const role of ['grunt','heavy','giant']){
+for(const role of phase==='grip'?['giant']:['grunt','heavy','giant']){
  await prepare();await page.evaluate(role=>{const f=structuredClone(window.__fixture);f.enemies=[{...f.enemies.find(e=>e.archetype===role),id:100,x:0,z:role==='giant'?16:8}];window.__death=f;window.__draw(f,0);window.__draw(f,2000);},role);
  await page.screenshot({path:`${out}/${phase}-${role}-alive.png`});
  await page.evaluate(()=>{window.__death.enemies=[];window.__draw(window.__death,2010);});deaths[role]=[];
@@ -89,7 +89,7 @@ for(const role of ['grunt','heavy','giant']){
  await page.evaluate(role=>{const r=window.__testApp.renderer;window.__draw(window.__death,2010+(role==='giant'?1000:650));r.camera.position.set(2.5,4,role==='giant'?11:3);r.camera.lookAt(0,0,role==='giant'?14.5:8);r.camera.updateProjectionMatrix();r.renderer.render(r.scene,r.camera);},role);
  await page.screenshot({path:`${out}/${phase}-${role}-resting-close.png`});
 }
-for(const count of [24,48]){
+for(const count of phase==='grip'?[]:[24,48]){
  await prepare();await page.evaluate(count=>{const f=structuredClone(window.__fixture),h=f.enemies[1];f.enemies=Array.from({length:count},(_,i)=>({...h,id:200+i,x:(i%5-2)*1.4,z:8+Math.floor(i/5)*.6}));window.__dense=f;window.__draw(f,0);window.__draw(f,2000);f.enemies=[];window.__draw(f,2010);},count);
  const samples=[];
  for(const age of [0,60,110,260,440,560,710,850,1010]){samples.push(await page.evaluate(age=>{window.__draw(window.__dense,2010+age);return {ageMs:age,...window.__metrics()};},age));

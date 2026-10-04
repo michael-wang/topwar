@@ -24,3 +24,10 @@ export function giantWeightPose(id: number, nowMs: number, cycleMs: number) {
     bob: (1 - landing) * .009, arm: Math.cos(phase - .3) * .15,
     weapon: Math.cos(phase - .85) * .14, shoulder: Math.cos(phase - .2) * .025 };
 }
+
+// Grip leads the existing delayed angular maul response by 0.55 radians (~74ms).
+// This moves one weapon-owned hand/maul assembly, never a baked body hand.
+export function giantGripMotion(phase: number) {
+  return { x: Math.cos(phase - .3) * .015, y: Math.sin(phase - .3) * .009,
+    z: Math.cos(phase - .3) * .075 };
+}

@@ -89,6 +89,8 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
     } };
 }
 
+export const GIANT_WEAPON_GRIP = [.60, .40, .08] as const;
+
 function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeometry {
   return merge([
     // Taller padded barrel; crown/whole-role scale remain fixed, head gets smaller.
@@ -100,7 +102,8 @@ function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeo
     { geometry: canvasFieldBag(.245,.275,.12).rotateY(-.35).translate(-.37,.33,.205), color: COMBAT_COLORS.giant.satchel },
     { geometry: ball(0,1.075,0,.232716,.1755,.204508,24,12), color: ART.faction.skin },
     ...face(1.045,.202,.020),
-    ...[-1, 1].map(side => ({ geometry: ball(side * .48, .40, side * stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin })),
+    // Only the offhand belongs to the baked body poses; grip hand is weapon-owned.
+    { geometry: ball(-.48, .40, -stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin },
     { geometry: toyShoe({ x: -.28 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .14,
       width: .40, height: .18, depth: .32, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
     { geometry: toyShoe({ x: .28 + (liftRight > .05 ? .035 : 0), y: liftRight, z: -stride * .14,
@@ -124,6 +127,7 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   armorGeometry.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
   armorGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 0);
   const weaponGeometry = merge([
+    { geometry: ball(...GIANT_WEAPON_GRIP, .145, .145, .145, 16, 10), color: ART.faction.skin },
     { geometry: new THREE.CylinderGeometry(.048, .055, .64, 12).translate(.60, .42, .08), color: ART.raider.hardware },
     { geometry: ball(.60, .77, .08, .23, .175, .19, 20, 12), color: THREAT_COLORS.helmet },
     // One soft limestone end region follows the maul's curved head.
@@ -137,7 +141,7 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, gearMaterial);
   vest.visible = false;
-  return { role: 'giant', id: 'topwar-colossus-prototype', body, helmet, vest, weapon,
+  return { role: 'giant', id: 'topwar-colossus-prototype', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)), grayBody: new THREE.Mesh(death, deathMaterial),
     contactPresentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored' },
     presentation: { width: 1.60, height: 1.43, depth: .96, healthBar: { width: 1.20, height: .20 }, shadow: { width: 1.02, depth: .48 } },

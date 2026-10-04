@@ -38,6 +38,8 @@ export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
   // Explicit reference contact silhouette; the procedural family includes its maul.
   readonly contact: CharacterParts;
   readonly weapon?: CharacterModel;
+  // Character-space grip authored inside the single hand + maul mesh.
+  readonly weaponGrip?: readonly [number, number, number];
   // Explicit full motion envelope, including delayed crest and maul motion.
   readonly presentation?: { readonly width: number; readonly height: number; readonly depth: number;
     readonly healthBar?: { readonly width: number; readonly height: number };
