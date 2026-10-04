@@ -112,7 +112,7 @@ it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hi
   renderer.update(undefined, 2949, hits);
   expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();
   expect(group.visible).toBe(true);
-  renderer.update(undefined, 2950, hits);expect(group.visible).toBe(false);
+  renderer.update(undefined, 4900, hits);expect(group.visible).toBe(false);
   renderer.dispose(); hits.dispose(); family.dispose(); expect(scene.children).toHaveLength(0);
 });
 it('borrows threat geometry while each family disposes all its resources exactly once', () => {

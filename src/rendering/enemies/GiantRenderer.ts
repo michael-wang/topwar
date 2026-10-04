@@ -28,7 +28,7 @@ export class GiantRenderer {
   private readonly helmet: THREE.Mesh;
   private readonly weapon = new THREE.Group();
   private readonly weaponRest = new THREE.Vector3();
-  private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color; pale: { value: number } }[];
+  private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color; tint: ReturnType<typeof prepareEnemyDeathMaterial> }[];
   private readonly dimensions: { width: number; height: number; depth: number };
   private readonly hazeMap = hazeTexture();
   private readonly hazeMaterial = new THREE.SpriteMaterial({ map: this.hazeMap, color: ART.world.fog,
@@ -59,7 +59,7 @@ export class GiantRenderer {
       this.weapon.add(maul); this.group.add(this.weapon);
     }
     this.palette = [bodyMaterial, gearMaterial].map(material => ({ material, color: material.color.clone(),
-      pale: prepareEnemyDeathMaterial(material) }));
+      tint: prepareEnemyDeathMaterial(material) }));
     this.group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(this.group), size = bounds.getSize(new THREE.Vector3());
     this.dimensions = family.presentation ?? { width: size.x, height: bounds.max.y, depth: size.z };
@@ -87,8 +87,8 @@ export class GiantRenderer {
     return this.group;
   }
   private restorePalette(): void {
-    for (const { material, color, pale } of this.palette) {
-      pale.value = 0;
+    for (const { material, color, tint } of this.palette) {
+      tint.gray.value = tint.red.value = 0;
       material.color.copy(color); material.opacity = 1; material.transparent = false; material.depthWrite = true; material.emissiveIntensity = 0;
     }
   }
@@ -130,9 +130,9 @@ export class GiantRenderer {
     const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
     this.group.visible = !!this.previous && pose.bodyVisible;
     if (!this.group.visible) return;
-    for (const { material, color, pale } of this.palette) {
-      material.color.copy(color); pale.value = pose.gray;
-      material.transparent = false; material.depthWrite = true;
+    for (const { material, color, tint } of this.palette) {
+      material.color.copy(color); tint.gray.value = pose.gray; tint.red.value = pose.red;
+      material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
       material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
     }
   }

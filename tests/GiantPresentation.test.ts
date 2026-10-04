@@ -31,7 +31,7 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the shared froz
   expect(scene.getObjectByName('giant-death-impact')).toBeUndefined();
   expect(group.visible).toBe(true);
   const weapon=group.getObjectByName('giant-maul')!, localGrip=weapon.matrix.clone();
-  renderer.update(undefined, 200+ENEMY_DEATH_TIMING.giant.shatterMs-1, hits);
+  renderer.update(undefined, 200+ENEMY_DEATH_TIMING.giant.totalMs-1, hits);
   expect(group.rotation.x).toBeCloseTo(-.12);
   expect(family.runFrames.map(frame => frame.geometry)).toContain((group.children[0] as THREE.Mesh).geometry);
   expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();

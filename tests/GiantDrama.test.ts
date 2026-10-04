@@ -24,7 +24,8 @@ it('renders two independent Giants, delays both HP bars, and preserves the other
   expect(bars).toHaveLength(2); expect(bars[0].scale.x).toBeLessThan(2.7);
   renderer.update([b],1600); renderer.update([b],1750);
   expect(giants.filter(child=>child.visible)).toHaveLength(2); // one frozen lethal figure, one live
-  renderer.update([b],1850); expect(giants.filter(child=>child.visible)).toHaveLength(1);
+  renderer.update([b],1850); expect(giants.filter(child=>child.visible)).toHaveLength(2);
+  renderer.update([b],3800); expect(giants.filter(child=>child.visible)).toHaveLength(1);
   expect(scene.getObjectsByProperty('name','giant-armor-wreckage')).toHaveLength(0);
   renderer.reset(); renderer.dispose(); expect(scene.children).toHaveLength(0);
 });

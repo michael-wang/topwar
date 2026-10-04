@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { createChibiGiantFamily, createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
-import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
 function matrixClose(a: THREE.Matrix4,b: THREE.Matrix4) { a.elements.forEach((value,i)=>expect(value).toBeCloseTo(b.elements[i],6)); }
 it('captures the exact last drawn body, delayed helmet, root and Giant weapon; no lethal motion', () => {
   for(const role of ['grunt','heavy','giant'] as const){
@@ -27,32 +27,49 @@ it('captures the exact last drawn body, delayed helmet, root and Giant weapon; n
     const corpse=scene.getObjectByName(role==='giant'?'giant-assault-soldier':'enemy-pale-death-body')!;
     const parts=[corpse.children[0],corpse.children[1],...(role==='giant'?[corpse.getObjectByName('giant-maul')!]:[])];
     const root=corpse.matrix.clone();
-    for(const age of [0,20,timing.grayMs,timing.shatterMs-1]) {
+    for(const age of [0,20,timing.grayEndMs,timing.redCompleteMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
       renderer.update([],2031+age);corpse.updateMatrixWorld(true);expect(corpse.visible).toBe(true);
       matrixClose(corpse.matrix,root);parts.forEach((part,index)=>matrixClose(part.matrixWorld,before[index]));
       geometries.forEach((geometry,index)=>expect((parts[index] as THREE.Mesh).geometry).toBe(geometry));
       const body=parts[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
-      expect(body.material.opacity).toBe(1);expect(body.material.emissiveIntensity).toBe(0);
-      expect(body.material.transparent).toBe(false);expect(body.material.depthWrite).toBe(true);
-      if(age>=timing.grayMs){
+      expect(body.material.opacity).toBe(enemyDeathPose(age,timing).bodyOpacity);expect(body.material.emissiveIntensity).toBe(0);
+      expect(body.material.transparent).toBe(age>timing.fadeStartMs);expect(body.material.depthWrite).toBe(true);
+      if(age>=timing.grayEndMs){
         const shader={uniforms:{},vertexShader:'',fragmentShader:'#include <color_fragment>'} as Parameters<typeof body.material.onBeforeCompile>[0];
-        body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);expect(shader.uniforms.deathPale.value).toBe(1);
+        body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);expect(shader.uniforms.deathGray.value).toBe(1);
+        expect(shader.uniforms.deathRed.value).toBe(enemyDeathPose(age,timing).red);
       }
-      const blood=scene.getObjectByName('enemy-lethal-blood') as THREE.InstancedMesh;
-      expect(blood.count).toBe(age>=timing.bloodMs?8:0);
-      if(blood.count){const m=new THREE.Matrix4();blood.getMatrixAt(0,m);expect(m.elements[13]).toBeGreaterThan(corpse.position.y+.5*corpse.scale.y);}
+      const blood=scene.getObjectByName('enemy-blood-splats') as THREE.InstancedMesh;
+      expect(blood.count).toBe(age>=timing.bloodStartMs&&age<timing.bloodEndMs?1:0);
+      if(blood.count){const m=new THREE.Matrix4();blood.getMatrixAt(0,m);expect(m.elements[13]).toBeGreaterThan(corpse.position.y+.3*corpse.scale.y);}
     }
-    renderer.update([],2031+timing.shatterMs);expect(corpse.visible).toBe(false);
-    const chunks=scene.children.filter(c=>c.name.startsWith('enemy-shatter-')) as THREE.InstancedMesh[];
-    expect(chunks.reduce((n,c)=>n+c.count,0)).toBe(8);
-    renderer.update([],2031+timing.totalMs);expect(chunks.every(c=>c.count===0&&!c.visible)).toBe(true);
-    for(const name of ['enemy-pale-shatter','giant-armor-wreckage','giant-death-impact'])expect(scene.getObjectByName(name)).toBeUndefined();
-    renderer.reset();renderer.update([enemy],4000);
+    renderer.update([],2031+timing.totalMs);expect(corpse.visible).toBe(false);
+    expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
+    renderer.update([],100000);expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
+    expect(scene.children.some(c=>/shatter|fragment|debris|death-impact/.test(c.name))).toBe(false);
+    renderer.reset();expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(0);renderer.update([enemy],4000);
     if(role==='giant')expect(corpse.visible).toBe(true);
     else {renderer.update([],4010);expect(corpse.visible).toBe(true);}
     renderer.dispose();for(const family of Object.values(families))family.dispose();
     expect(scene.children).toHaveLength(0);expect(enemy.hp).toBe(2);
   }
+});
+
+it('only lethal removal stains the scene, and mode changes clear persistent blood without phantom kills', () => {
+  const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()};
+  const scene=new THREE.Scene(),renderer=new EnemyRenderer(scene,families);
+  const enemy={id:1,tier:1,hp:2,x:0,z:8,archetype:'grunt' as const};
+  const stains=scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh;
+  renderer.update([enemy],0,true);renderer.update([{...enemy,hp:1}],100,true);expect(stains.count).toBe(0);
+  renderer.update([],200,true);expect(stains.count).toBe(1);
+  renderer.update([],10000,true);expect(stains.count).toBe(1);
+  renderer.update([enemy],11000,true);renderer.update([],12000,false);expect(stains.count).toBe(0);
+  expect((scene.getObjectByName('enemy-blood-splats') as THREE.InstancedMesh).count).toBe(0);
+  renderer.update([enemy],13000,false);
+  const squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
+  renderer.present([{kind:'normalEnemyContact',enemyId:1,enemyTier:1,attackerX:0,attackerZ:8,playerX:0,playerZ:0,before:squad,after:squad}],13010);
+  renderer.update([],13010,false);expect(stains.count).toBe(0);
+  renderer.dispose();Object.values(families).forEach(family=>family.dispose());
 });
 
 it('copies packed instance slots correctly through a dense mixed lethal frame', () => {
@@ -75,4 +92,19 @@ it('copies packed instance slots correctly through a dense mixed lethal frame', 
   expect(drawn).toHaveLength(0);renderer.update([],1332);
   expect(frozen.every(group=>group.visible)).toBe(true);
   renderer.dispose();Object.values(families).forEach(family=>family.dispose());expect(scene.children).toHaveLength(0);
+});
+
+it('reuses slot materials when changing corpse role and disposes the shared mask once', () => {
+  const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()};
+  const scene=new THREE.Scene(),renderer=new EnemyRenderer(scene,families);
+  const enemy={id:1,tier:1,hp:1,x:0,z:8,archetype:'grunt' as const};
+  renderer.update([enemy],0);renderer.update([],10);renderer.update([],310);
+  const group=scene.getObjectByName('enemy-pale-death-body')!;
+  const material=(group.children[0] as THREE.Mesh).material as THREE.Material;
+  const dispose=vi.spyOn(material,'dispose'),clone=vi.spyOn(families.heavy.body.material as THREE.Material,'clone');
+  renderer.update([{...enemy,id:2,archetype:'heavy'}],400);renderer.update([],410);
+  expect((group.children[0] as THREE.Mesh).material).toBe(material);expect(dispose).not.toHaveBeenCalled();expect(clone).not.toHaveBeenCalled();
+  const mask=((scene.getObjectByName('enemy-blood-splats') as THREE.Mesh).material as THREE.MeshBasicMaterial).map!;
+  const maskDispose=vi.spyOn(mask,'dispose');renderer.dispose();expect(maskDispose).toHaveBeenCalledOnce();expect(dispose).toHaveBeenCalledOnce();
+  Object.values(families).forEach(family=>family.dispose());
 });

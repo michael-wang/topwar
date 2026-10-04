@@ -9,8 +9,7 @@ import { GiantRenderer } from './GiantRenderer';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
-import { LethalBloodSpray } from './LethalBloodSpray';
-import { EnemyShatterBurst } from './EnemyShatterBurst';
+import { BloodSplat, GroundBloodStains, bloodSplatTexture } from './BloodSplat';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -36,8 +35,8 @@ interface DeathVisual {
   startedAtMs: number;
   heavy: boolean;
   role: EnemyDeathRole;
-  bodyPale: ReturnType<typeof prepareEnemyDeathMaterial>;
-  gearPale: ReturnType<typeof prepareEnemyDeathMaterial>;
+  bodyTint: ReturnType<typeof prepareEnemyDeathMaterial>;
+  gearTint: ReturnType<typeof prepareEnemyDeathMaterial>;
 }
 
 interface ContactVisual {
@@ -109,8 +108,10 @@ export class EnemyRenderer {
   private readonly inverseFrozen = new THREE.Matrix4();
   private readonly feedbackOrigin = new THREE.Vector3();
   private readonly feedbackScale = new THREE.Vector3();
-  private readonly shatter: EnemyShatterBurst;
-  private readonly blood: LethalBloodSpray;
+  private readonly bloodTexture = bloodSplatTexture();
+  private readonly stains: GroundBloodStains;
+  private sceneMode: boolean | undefined;
+  private readonly blood: BloodSplat;
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
@@ -124,8 +125,8 @@ export class EnemyRenderer {
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
-    this.blood = new LethalBloodSpray(scene);
-    this.shatter = new EnemyShatterBurst(scene);
+    this.blood = new BloodSplat(scene, this.bloodTexture);
+    this.stains = new GroundBloodStains(scene, this.bloodTexture);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
     this.heavyHits = new HeavyHitFeedback(scene);
     this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant));
@@ -172,7 +173,11 @@ export class EnemyRenderer {
     }
   }
 
-  update(enemies: readonly EnemyRenderState[], nowMs = performance.now()): void {
+  update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean): void {
+    if (sceneMode !== undefined) {
+      if (this.sceneMode !== undefined && this.sceneMode !== sceneMode) this.reset();
+      this.sceneMode = sceneMode;
+    }
     const currentIds = new Set(enemies.map((enemy) => enemy.id));
     for (const previous of this.previousEnemies.values()) {
       if (!currentIds.has(previous.id)) {
@@ -181,6 +186,8 @@ export class EnemyRenderer {
             ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs)
             : this.spawnDeath(previous, nowMs);
           if (frozen) this.scheduleKillFeedback(previous, frozen, nowMs);
+          this.stains.spawn(previous.id, previous.archetype === 'giant' ? 'giant' : previous.archetype === 'heavy' ? 'heavy' : 'grunt',
+            frozen?.position.x ?? -previous.x, frozen?.position.z ?? previous.z);
         }
         if (this.contactIds.has(previous.id) && previous.archetype === 'giant')
           this.giantRenderers.find(renderer => renderer.id === previous.id)?.reset();
@@ -201,7 +208,6 @@ export class EnemyRenderer {
     this.updateDeaths(nowMs);
     this.updateContacts(nowMs);
     this.blood.update(nowMs);
-    this.shatter.update(nowMs);
     this.heavyHits.update(currentIds, nowMs);
     for (const enemy of enemies) if (enemy.archetype === 'giant') {
       const renderer = this.giantRenderers.find(slot => slot.id === enemy.id)
@@ -351,7 +357,7 @@ export class EnemyRenderer {
     for (const visual of this.contactVisuals) visual.group.visible = false;
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.blood.reset();
-    this.shatter.reset();
+    this.stains.reset();
     this.deathBatches.reset();
     this.heavyHits.reset();
     this.giantRenderers.forEach(renderer => renderer.reset());
@@ -382,7 +388,7 @@ export class EnemyRenderer {
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.blood.dispose();
-    this.shatter.dispose();
+    this.stains.dispose(); this.bloodTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose());
@@ -472,15 +478,13 @@ export class EnemyRenderer {
 
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
-    const timing = ENEMY_DEATH_TIMING[role];
     const helmet = frozen.children[1] as THREE.Mesh;
     helmet.geometry.computeBoundingBox();
     frozen.updateMatrixWorld(true);
-    this.feedbackOrigin.set(0, helmet.geometry.boundingBox!.max.y * .82, .12).applyMatrix4(frozen.matrixWorld);
+    this.feedbackOrigin.set(0, helmet.geometry.boundingBox!.max.y * .64, .12).applyMatrix4(frozen.matrixWorld);
     this.feedbackScale.setFromMatrixScale(frozen.matrixWorld);
     const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
-    this.blood.spawn(enemy.id, nowMs + timing.bloodMs, this.feedbackOrigin, adaptation);
-    this.shatter.spawn(enemy.id, role, frozen, nowMs);
+    this.blood.spawn(enemy.id, role, nowMs, this.feedbackOrigin, adaptation);
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): THREE.Group | undefined {
@@ -489,14 +493,15 @@ export class EnemyRenderer {
     const family = this.crowdFamily(enemy), { death: parts, presentation } = family;
     const procedural = presentation.materialStyle === 'vertex-colors';
     const role = family.role;
-    let visual = this.deathVisuals.find((candidate) => !candidate.group.visible);
+    let visual = this.deathVisuals.find(candidate => !candidate.group.visible && this.sameParts(candidate.parts, parts))
+      ?? this.deathVisuals.find(candidate => !candidate.group.visible);
     if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
       group.name = 'enemy-pale-death-body';
       const bodyMaterial = prepareCrowdMaterial(((procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
-      const bodyPale = prepareEnemyDeathMaterial(bodyMaterial);
+      const bodyTint = prepareEnemyDeathMaterial(bodyMaterial);
       const gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
-      const gearPale = prepareEnemyDeathMaterial(gearMaterial);
+      const gearTint = prepareEnemyDeathMaterial(gearMaterial);
       const body = new THREE.Mesh(parts.body.geometry, bodyMaterial);
       const helmet = new THREE.Mesh(parts.helmet.geometry, gearMaterial);
       const vest = new THREE.Mesh(parts.vest.geometry, gearMaterial);
@@ -505,17 +510,21 @@ export class EnemyRenderer {
       // Pose holders are inspected/reused but rendered through shared batches.
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
-      visual = { parts, group, bodyMaterial, gearMaterial, bodyPale, gearPale, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
+      visual = { parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
       this.deathVisuals.push(visual);
     }
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     if (!this.sameParts(visual.parts, parts)) {
-      visual.bodyMaterial.dispose(); visual.gearMaterial.dispose();
-      visual.bodyMaterial = prepareCrowdMaterial(((procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
-      visual.gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
-      visual.bodyPale = prepareEnemyDeathMaterial(visual.bodyMaterial);
-      visual.gearPale = prepareEnemyDeathMaterial(visual.gearMaterial);
+      const rebind = (target: THREE.MeshStandardMaterial, source: THREE.MeshStandardMaterial, surface: 'death' | 'gear') => {
+        target.copy(source); target.onBeforeCompile = source.onBeforeCompile;
+        target.customProgramCacheKey = source.customProgramCacheKey;
+        prepareCrowdMaterial(target, presentation, surface); target.needsUpdate = true;
+      };
+      rebind(visual.bodyMaterial, (procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial, 'death');
+      rebind(visual.gearMaterial, parts.helmet.material as THREE.MeshStandardMaterial, 'gear');
+      visual.bodyTint = prepareEnemyDeathMaterial(visual.bodyMaterial);
+      visual.gearTint = prepareEnemyDeathMaterial(visual.gearMaterial);
       [parts.body, parts.helmet, parts.vest].forEach((model, index) => {
         const mesh = visual!.group.children[index] as THREE.Mesh;
         mesh.geometry = model.geometry;
@@ -528,13 +537,14 @@ export class EnemyRenderer {
     visual.role = role;
     visual.heavy = enemy.archetype === 'heavy';
     setEnemyScale(visual.scale, enemy, presentation.scaleY);
-    // The intact phase never fades. Keep depth writes so a hollow helmet shell
+    // Keep depth writes during the intact fade so a hollow helmet shell
     // preserves its exact opaque silhouette instead of showing its inner faces.
     visual.bodyMaterial.transparent = visual.gearMaterial.transparent = false;
     visual.bodyMaterial.depthWrite = visual.gearMaterial.depthWrite = true;
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
-    visual.bodyPale.value = visual.gearPale.value = 0;
+    visual.bodyTint.gray.value = visual.gearTint.gray.value = 0;
+    visual.bodyTint.red.value = visual.gearTint.red.value = 0;
     visual.gearMaterial.color.copy(presentation.gearTint === 'authored' ? this.authoredBodyColor
       : visual.heavy ? this.heavyColor : this.helmetColors[paletteIndex(enemy.tier, PALETTES.length)]);
     visual.group.visible = true;
@@ -569,9 +579,11 @@ export class EnemyRenderer {
       const elapsed = nowMs - visual.startedAtMs;
       const pose = enemyDeathPose(elapsed, ENEMY_DEATH_TIMING[visual.role]);
       visual.group.visible = pose.bodyVisible;
-      visual.bodyPale.value = visual.gearPale.value = pose.gray;
+      visual.bodyTint.gray.value = visual.gearTint.gray.value = pose.gray;
+      visual.bodyTint.red.value = visual.gearTint.red.value = pose.red;
+      visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
-      if (pose.bodyVisible) this.deathBatches.submit(visual.group, pose.gray, pose.bodyOpacity);
+      if (pose.bodyVisible) this.deathBatches.submit(visual.group, pose.gray, pose.red, pose.bodyOpacity);
     }
     this.deathBatches.finish();
   }

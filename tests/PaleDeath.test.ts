@@ -7,7 +7,7 @@ import { characterFamilies } from './characterModel';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, ENEMY_DEATH_GRAY } from '../src/presentation/EnemyDeathTiming';
 
-it('freezes role-owned run geometry, stays full-size and frozen until the gray shatter', () => {
+it('freezes role-owned run geometry, stays full-size and frozen through the dark-red fade', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   for(const [role,family,id,start] of [['grunt',grunt,0,1000],['heavy',heavy,1,2000]] as const){
@@ -19,21 +19,21 @@ it('freezes role-owned run geometry, stays full-size and frozen until the gray s
     expect(corpse.visible).toBe(true);expect(corpse.scale).toEqual(scale);
     expect((corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.emissiveIntensity).toBe(0);
     const timing=ENEMY_DEATH_TIMING[role],matrix=corpse.matrix.clone();
-    renderer.update([],start+10+timing.grayMs);expect(corpse.visible).toBe(true);
+    renderer.update([],start+10+timing.grayEndMs);expect(corpse.visible).toBe(true);
     expect(corpse.matrix.equals(matrix)).toBe(true);expect(corpse.scale).toEqual(scale);
-    renderer.update([],start+10+timing.shatterMs);expect(corpse.visible).toBe(false);
-    expect(scene.getObjectByName('enemy-shatter-rounded')!.visible).toBe(true);
-    renderer.update([],start+10+timing.totalMs);expect(scene.getObjectByName('enemy-shatter-rounded')!.visible).toBe(false);
+    renderer.update([],start+10+timing.fadeStartMs);expect(corpse.visible).toBe(true);
+    expect(corpse.matrix.equals(matrix)).toBe(true);
+    renderer.update([],start+10+timing.totalMs);expect(corpse.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
   }
-  renderer.reset();expect(scene.getObjectByName('enemy-lethal-blood')!.visible).toBe(false);
+  renderer.reset();expect(scene.getObjectByName('enemy-blood-splats')!.visible).toBe(false);
   renderer.dispose();grunt.dispose();heavy.dispose();expect(scene.children).toHaveLength(0);
 });
 it('drains authored color to naturally lit neutral gray without textures or emissive white', () => {
   const material=new THREE.MeshStandardMaterial({vertexColors:true}), pale=prepareEnemyDeathMaterial(material);
   const shader={uniforms:{},fragmentShader:'#include <color_fragment>',vertexShader:''} as Parameters<typeof material.onBeforeCompile>[0];
-  material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);pale.value=1;
-  expect(shader.uniforms.deathPale).toBe(pale);
-  expect((shader.uniforms.deathTint.value as THREE.Color).getHexString()).toBe(ENEMY_DEATH_GRAY.slice(1));
-  expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, deathTint, deathPale)');
+  material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);pale.gray.value=1;
+  expect(shader.uniforms.deathGray).toBe(pale.gray);
+  expect((shader.uniforms.deathGrayTint.value as THREE.Color).getHexString()).toBe(ENEMY_DEATH_GRAY.slice(1));
+  expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, deathGrayTint, deathGray)');
   expect(material.emissiveIntensity).toBe(0);expect(material.map).toBeNull();material.dispose();
 });

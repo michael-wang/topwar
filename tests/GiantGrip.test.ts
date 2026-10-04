@@ -51,8 +51,8 @@ it('keeps shaft and grip coupled throughout all four poses and through the letha
   expect(Math.max(...positions.map(p=>p[2]))-Math.min(...positions.map(p=>p[2]))).toBeGreaterThan(.14);
   expect(Math.max(...positions.map(p=>p[1]))-Math.min(...positions.map(p=>p[1]))).toBeLessThan(.019);
   const last=weapon.position.clone();renderer.die(e,2600);
-  for(const age of [0,50,100,200,249]){renderer.update(undefined,2600+age,hits);assertGrip();expect(weapon.position).toEqual(last);}
-  renderer.update(undefined,3450,hits);expect(group.visible).toBe(false);
+  for(const age of [0,160,850,1150,1800,2199]){renderer.update(undefined,2600+age,hits);assertGrip();expect(weapon.position).toEqual(last);}
+  renderer.update(undefined,4800,hits);expect(group.visible).toBe(false);
   renderer.reset();expect(weapon.position.toArray()).toEqual([...GIANT_WEAPON_GRIP]);
   renderer.dispose();hits.dispose();family.dispose();expect(scene.children).toHaveLength(0);
 });

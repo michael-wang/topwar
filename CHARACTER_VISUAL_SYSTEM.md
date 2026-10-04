@@ -198,7 +198,7 @@ limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
 mesh draws per live Giant. Death retains the intact role geometry through
-the shared freeze/gray/burst/shatter/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+the shared freeze/gray/blood-pulse/dark-red/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 R5 removes the grip hand from body/reference/run/death geometry and merges it
@@ -209,7 +209,7 @@ additional mesh/material or draw is introduced. The whole assembly translates
 ±0.015 X, ±0.009 Y and ±0.075 Z at the 850ms gait phase offset 0.3 radians.
 Existing ±0.14 pitch / ±0.045 roll retain their delayed response; pitch lags
 grip translation by 0.55 radians (about 74ms). Lethal presentation freezes the last
-grip/maul transform together until shatter. Contact also borrows
+grip/maul transform together throughout the intact fade. Contact also borrows
 the complete composed body + hand/maul reference. Tests verify coupling and
 shaft/head clearance across all four poses and the lethal freeze.
 
@@ -289,51 +289,53 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Unified Enemy Kill Feedback (R6.3)
+## Unified Enemy Kill Feedback (R6.4)
 
-All current beachhead enemies use **Freeze → Gray → Upward Blood Burst →
-Shatter → Fade**. The lethal frame captures the exact last drawn geometry and
-world matrices, including crowd support-side weight transfer, hit compression
-and delayed helmet tilt. Giant also freezes its current helmet and merged
-grip-hand/maul transform. Nothing moves during the intact phase. There is no
-fall, whole-body rise, corpse, ground debris, shrink, crash ring or death dust.
+All current beachhead enemies use **Freeze → Gray Shock → Blood Splat Pulses →
+Dark-Red Body → Fade**. Capture the exact last rendered pose and world matrices,
+including crowd support shift, hit compression and helmet lag. Giant also freezes
+its coupled grip-hand/maul assembly. Hold every transform and scale unchanged
+until the complete intact figure disappears. No fall, rise, shrink, shatter,
+fragments, body debris, crash ring or death dust.
 
-One presentation-only phase policy supplies the same semantics at different
-threat pacing:
+Explicit presentation-only clocks preserve the role hierarchy:
 
-| Role | Gray complete | Blood begins | Intact body shatters | Fully gone |
-| --- | ---: | ---: | ---: | ---: |
-| Grunt | 45 ms | 35 ms | 110 ms | 280 ms |
-| Heavy | 65 ms | 45 ms | 160 ms | 450 ms |
-| Giant | 100 ms | 65 ms | 250 ms | 850 ms |
+| Role | Gray complete | Blood active | Pulses | Gray → dark red | Fade | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Grunt | 35 ms | 25–165 ms | 2 | 110–165 ms | 185–300 ms | 300 ms |
+| Heavy | 70 ms | 45–410 ms | 3 | 300–440 ms | 490–850 ms | 850 ms |
+| Giant | 160 ms | 120–1050 ms | 5 | 850–1150 ms | 1250–2200 ms | 2200 ms |
 
-The intact gray target is naturally lit **#9EA5A3**, with no lethal emissive
-wash. The 48 pooled crowd pose holders submit to per-geometry instanced batches
-(four body poses plus a helmet per shipping crowd role), preserving independent
-gray amounts. Three dedicated Giant slots retain their owning geometry.
+The shared lit body-material pipeline smoothly replaces authored albedo with
+neutral **#9EA5A3**, then dark blood-red **#68252A**. No emissive wash. Full dark
+red registers at opacity 1 before fade begins. The 48 pooled crowd pose holders
+submit independent gray/red/opacity attributes through per-geometry instanced
+batches; three dedicated Giant slots use the same phase semantics. Slot materials
+are reused, including on crowd role changes; family resources remain borrowed.
 
-One shared `LethalBloodSpray` emits **eight** elongated matte droplets per kill,
-in **#9F2734 / #C93443 / #E05258**, lasting **210 ms**. Authored velocity is
-2.6–4.0 units/second upward and 0.80–1.01 radial, with modest square-root role
-scale adaptation. The origin derives from the frozen upper-body bounds, and a
-small initial crown separates the splashes. Blood fades before reaching the
-beach. Its 384-instance pool holds 48 simultaneous sprays in one draw. Contacts
-and surviving hits produce no blood.
+`BloodSplat` uses one 64-slot camera-facing instanced-card batch and one generated
+96×96 irregular alpha/color mask. Uneven lobes and satellite spots create a graphic
+blot, without a droplet fountain. Palette: **#7E2029 / #A92C38 / #D0444C**, normal
+alpha blending, no glow. Peak opacity is **0.84**. Expired slots are reused before interrupting active
+threat pulses. Repeated damped expansion and
+contraction never reset the blot to zero between pulses. Relative role diameters
+are **1 / 1.45 / 2.2**, with modest bounded square-root scale adaptation; the
+base card diameter is 1.25 world units before role scaling and pulse expansion.
+Contacts and surviving hits produce neither blood splats nor stains.
 
-One shared `EnemyShatterBurst` captures **eight semantic gray pieces** per role:
-helmet/body/lower-foot/hand or field-gear masses; Giant includes its crest and
-maul head. Five curved chunks and three soft structured chunks use two fixed
-instanced batches whose capacities sum to **384**, with bounded circular reuse.
-Colors are **#929A98 / #A6ACAA / #858E8C**. Pieces appear at the captured silhouette,
-expand only 0.24/0.32/0.45 world units by role, and fade over 170/290/600 ms.
-Their scale stays constant. There is no gravity, ground contact, landing or
-resting state, and nothing remains at the role's total duration.
+Persistent ground blood stains contaminate the otherwise beautiful coastal
+battlefield until scene reset. `GroundBloodStains` reuses the mask in a separate
+**1024-slot** flat instanced batch, **#6D2528** at **0.58 opacity**, Y=0.025.
+Card diameters are **0.33 / 0.525 / 0.825** world units by role, with deterministic
+±10% size variation and rotation. Stains remain after the intact death completes;
+Retry, renderer reset and mode change clear them. Oldest-slot circular reuse is
+a bounded safety fallback. No decals on buildings or gameplay collision.
 
-The superseded fall-transform helper and support-corner calculations are
-removed. Family geometry stays borrowed; effect geometry/materials are owned
-and disposed. Giant reveal, surviving-hit feedback, HP layout, audio, gameplay
-removal and Boss are unchanged. Local generated review media and performance
-measurements belong in `artifacts/r6_3-kill-feedback/` and remain untracked.
+The superseded `LethalBloodSpray` and `EnemyShatterBurst`, fragment geometry and
+shatter-specific tests are removed. Effect resources are owned/disposed; one
+mask is shared by both batches. Surviving-hit feedback, Giant HP layout, reveal,
+audio, simulation removal and Boss remain unchanged. Generated local review
+media/performance JSON belongs in `artifacts/r6_4-blood-kill/`, untracked.
 
 ## R4 — rounded organic mass + structured functional gear
 
