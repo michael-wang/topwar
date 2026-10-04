@@ -78,7 +78,7 @@ it('keeps Heavy locomotion underneath additive hits and gives its death a frozen
   renderer.update([],260);expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(frozen)).toBe(true);
   renderer.update([],900);expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(frozen)).toBe(true);
   expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
-  renderer.update([],1050);expect(corpse.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();
+  renderer.update([],1300);expect(corpse.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();
 });
 it('delays the Giant maul independently and keeps the maul/grip assembly intact throughout its lethal freeze', () => {
   const family = createChibiGiantFamily();
@@ -92,8 +92,8 @@ it('delays the Giant maul independently and keeps the maul/grip assembly intact 
   const position=group.position.clone(),rotation=group.rotation.clone();
   renderer.die(enemy,200);renderer.update(undefined,400,hits);
   expect(group.position).toEqual(position);expect(group.rotation.toArray()).toEqual(rotation.toArray());expect(group.visible).toBe(true);
-  renderer.update(undefined,2400,hits);expect(group.visible).toBe(false);
-  renderer.update(undefined,2500,hits);expect(group.visible).toBe(false);
+  renderer.update(undefined,2800,hits);expect(group.visible).toBe(false);
+  renderer.update(undefined,2900,hits);expect(group.visible).toBe(false);
   renderer.reset();renderer.update(enemy,1000,hits);expect(mace.rotation.x).toBeLessThan(.15);
   renderer.dispose();hits.dispose();family.dispose();
 });

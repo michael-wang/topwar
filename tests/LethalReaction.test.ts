@@ -20,10 +20,10 @@ it('bakes two role-owned sink/hands-up poses with planted, wider shoes', () => {
   expect(headTop(after)).toBeLessThan(headTop(before)-.05);
   reaction.final.geometry.computeBoundingBox();expect(reaction.final.geometry.boundingBox!.min.y).toBeCloseTo(0);
   expect(enemyReactionStage(0,family.role)).toBe(0);expect(enemyReactionStage(300,family.role)).toBe(2);
-  expect(ENEMY_DEATH_TIMING.grunt.totalMs).toBeLessThanOrEqual(450);family.dispose();
+  expect(ENEMY_DEATH_TIMING.grunt.totalMs).toBeLessThanOrEqual(540);family.dispose();
  }
 });
-it('keeps the Giant grip and maul in one assembly through reaction, then holds',()=>{
+it('keeps the Giant grip and maul in one assembly through reaction, then slightly loosens without uncoupling',()=>{
  const family=createChibiGiantFamily(),scene=new THREE.Scene(),renderer=new GiantRenderer(scene,family),hits=new HeavyHitFeedback(scene);
  const enemy={id:1,tier:1,hp:1,x:0,z:12,archetype:'giant' as const,visualScale:2.6};
  renderer.update(enemy,0,hits);renderer.update(enemy,2000,hits);const group=renderer.die(enemy,2010),root=group.position.clone();
@@ -31,6 +31,6 @@ it('keeps the Giant grip and maul in one assembly through reaction, then holds',
  renderer.update(undefined,2700,hits);group.updateMatrixWorld(true);const final=weapon.matrixWorld.clone();
  expect(mesh.geometry).toBe(family.weapon!.geometry);expect(mesh.position).toEqual(offset);expect(group.position).toEqual(root);
  expect((group.children[0] as THREE.Mesh).geometry).toBe(family.lethalReaction!.final.geometry);
- renderer.update(undefined,3500,hits);group.updateMatrixWorld(true);expect(weapon.matrixWorld.equals(final)).toBe(true);
+ renderer.update(undefined,3500,hits);group.updateMatrixWorld(true);const a=new THREE.Vector3().setFromMatrixPosition(final),b=new THREE.Vector3().setFromMatrixPosition(weapon.matrixWorld);expect(a.distanceTo(b)).toBeLessThan(.12);expect(mesh.position).toEqual(offset);expect(mesh.geometry).toBe(family.weapon!.geometry);
  renderer.dispose();hits.dispose();family.dispose();
 });

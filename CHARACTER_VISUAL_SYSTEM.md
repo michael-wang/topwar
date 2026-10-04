@@ -198,7 +198,7 @@ limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
 mesh draws per live Giant. Death retains the intact role geometry through
-the shared freeze/gray/blood-pulse/dark-red/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+the shared blood/reaction/progressive-pale/breakup/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 R5 removes the grip hand from body/reference/run/death geometry and merges it
@@ -289,63 +289,60 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (R7)
+## Enemy Kill Feedback (R8)
 
-All current beachhead enemies use **Freeze → Gray Shock → Blood Splat Pulses →
-Dark-Red Body → Fade**. Capture the exact last rendered pose and world matrices,
-including crowd support shift, hit compression and helmet lag. Giant also captures
-its coupled grip-hand/maul assembly. The root stays pinned; after the initial shock,
-two baked poses show a sink/kneel with raised detached hands, then hold until fade.
-No forward fall, whole-body rise, shrink, shatter,
-fragments, body debris, crash ring or death dust.
+Current beachhead enemies use **Blood + Reaction → Progressive Gray-White →
+Subtle Decomposition → Shared Blood/Body Fade**. The dark-red corpse is removed.
+Capture the exact last rendered pose/root, including crowd support shift, impact
+compression, helmet lag and Giant coupled grip-hand/maul. Roots stay pinned;
+two baked reaction poses show a sink/kneel with raised hands before the hold.
+No forward fall, rise, shrink, flying fragments, grounded debris or crash dust.
 
-Grunt freezes for 35 ms, switches to a half reaction, then reaches its final pose
-at 110 ms: upper mass sinks 0.09 authored units, hands rise 0.25, shoes widen
-0.03 per side, and the torso leans backward 6.3°. Heavy freezes for 70 ms and
-settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe widening and 5.2° tilt.
-Giant freezes for 180 ms and settles at 650 ms: 0.12 sink, offhand lift 0.24,
-and a small coupled maul lift/cant. Captured roots remain fixed. Family-owned
-transition/final geometry is baked and shared by instanced crowd death batches;
-no live role draw or skeleton is added.
+Grunt freezes for 35 ms, reaches its final reaction at 130 ms: upper mass sinks
+0.09 authored units, hands rise 0.25, shoes widen 0.03 per side, torso tilt 6.3°.
+Heavy freezes for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
+widening, tilt 5.2°. Giant freezes for 180 ms and settles at 650 ms: 0.12 sink,
+0.24 offhand lift, small coherent maul lift/cant. Role geometry remains shared;
+no live crowd draw or skeleton is added.
 
-Explicit presentation-only clocks preserve the role hierarchy:
+| Role | Blood begins / pulse peaks | Gray complete | Breakup begins | Shared fade | Total |
+| --- | --- | ---: | ---: | --- | ---: |
+| Grunt | 10 ms / 2 peaks through 170 ms | 260 ms | 260 ms | 300–520 ms | 520 ms |
+| Heavy | 15 ms / 3 peaks through 420 ms | 560 ms | 520 ms | 650–1100 ms | 1100 ms |
+| Giant | 35 ms / 5 peaks through 1100 ms | 1400 ms | 1200 ms | 1550–2600 ms | 2600 ms |
 
-| Role | Gray complete | Blood active | Pulses | Gray → dark red | Fade | Total |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Grunt | 35 ms | 25–165 ms | 2 | 110–165 ms | 225–400 ms | 400 ms |
-| Heavy | 70 ms | 45–410 ms | 3 | 300–440 ms | 490–850 ms | 850 ms |
-| Giant | 160 ms | 120–1050 ms | 5 | 850–1150 ms | 1250–2200 ms | 2200 ms |
+Lit authored colors progressively drain to **#B9BEBA**, without emissive wash
+or a second red tint. Blood settles from peak opacity 0.84 to 0.58 before the
+final phase; its opacity then consumes the same fade curve as the body, ending
+together. Player/hit blood retain their separate short clocks.
 
-The shared lit body-material pipeline smoothly replaces authored albedo with
-neutral **#9EA5A3**, then dark blood-red **#68252A**. No emissive wash. Full dark
-red registers at opacity 1 before fade begins. The 48 pooled crowd pose holders
-submit independent gray/red/opacity attributes through per-geometry instanced
-batches; three dedicated Giant slots use the same phase semantics. Slot materials
-are reused, including on crowd role changes; family resources remain borrowed.
+The 48 pooled crowd holders submit gray/breakup/opacity into per-geometry
+instanced batches. Each owned non-indexed clone has one deterministic direction
+per triangle, identical for all three vertices, driven by centroid/spatial region
+and stable position hash. Separation eases in only after the reaction registers;
+world-space caps are **0.07 Grunt / 0.10 Heavy** units, compensated for role scale.
+Triangles loosen without stretching or spawning fragment objects. Three bounded
+Giant slots use a reusable final-body breakup clone, cap **0.12 world units**,
+plus smaller helmet/maul separation; the grip remains inside the maul assembly.
+Family resources stay borrowed and unchanged; clones/materials dispose with renderer.
 
-`BloodSplat` uses one 64-slot camera-facing instanced-card batch and one generated
-96×96 irregular alpha/color mask. Uneven lobes and satellite spots create a graphic
-blot, without a droplet fountain. Palette: **#7E2029 / #A92C38 / #D0444C**, normal
-alpha blending, no glow. Peak opacity is **0.84**. Expired slots are reused before interrupting active
-threat pulses. Repeated damped expansion and
-contraction never reset the blot to zero between pulses. Relative role diameters
-are **1 / 1.45 / 2.2**, with modest bounded square-root scale adaptation; the
-base card diameter is 1.25 world units before role scaling and pulse expansion.
-Contacts and surviving hits produce neither blood splats nor stains.
+Lethal blood keeps the accepted 64-slot camera-facing batch and original 96×96
+irregular mask, repeated damped pulses, palette **#7E2029 / #A92C38 / #D0444C**,
+normal alpha and no glow. Relative role diameters remain **1 / 1.45 / 2.2**;
+base card diameter 1.25 units with bounded scale adaptation. Hit blood is a
+separate pool described below. Surviving hits never create ground stains.
 
-Persistent ground blood stains contaminate the otherwise beautiful coastal
-battlefield until scene reset. `GroundBloodStains` reuses the mask in a separate
-**1024-slot** flat instanced batch, **#6D2528** at **0.58 opacity**, Y=0.025.
-Card diameters are **0.33 / 0.525 / 0.825** world units by role, with deterministic
-±10% size variation and rotation. Stains remain after the intact death completes;
-Retry, renderer reset and mode change clear them. Oldest-slot circular reuse is
-a bounded safety fallback. No decals on buildings or gameplay collision.
+Persistent ground stains remain unchanged: **1024 slots**, **#6D2528**, opacity
+**0.58**, Y=0.025; diameters **0.33 / 0.525 / 0.825**, deterministic ±10% variation.
+They represent lethal casualties and survive until Retry/renderer reset/mode
+change, with oldest-slot reuse only as a safety bound. No gameplay collision.
 
-The superseded `LethalBloodSpray` and `EnemyShatterBurst`, fragment geometry and
-shatter-specific tests are removed. Effect resources are owned/disposed; one
-mask is shared by both batches. Rate-limited hit emphasis, Giant HP layout, reveal,
-audio, simulation removal and Boss remain unchanged. Generated local review
-media/performance JSON belongs in `artifacts/r6_4-blood-kill/`, untracked.
+The superseded fragment/fall systems stay removed. Rate-limited emphasis,
+Giant HP layout/reveal, audio, simulation removal, Player casualty and Boss
+remain unchanged. Generated evidence is local/untracked under
+`artifacts/r8-impact-pacing/`. Development `/` and `?review=normal` start normal
+Level 1; explicit `?review=threats` retains deterministic Level 7. Production
+root is Level 1. Retry preserves the selected mode.
 
 ### R7 Player casualty
 

@@ -1,38 +1,42 @@
 // Presentation only. Gameplay removal is independent of these clocks.
 export const ENEMY_DEATH_TIMING = {
-  grunt: { grayEndMs: 35, bloodStartMs: 25, bloodEndMs: 165, redStartMs: 110,
-    redCompleteMs: 165, fadeStartMs: 225, totalMs: 400, bloodPulseCount: 2, bloodScale: 1, stainDiameter: .33 },
-  heavy: { grayEndMs: 70, bloodStartMs: 45, bloodEndMs: 410, redStartMs: 300,
-    redCompleteMs: 440, fadeStartMs: 490, totalMs: 850, bloodPulseCount: 3, bloodScale: 1.45, stainDiameter: .525 },
-  giant: { grayEndMs: 160, bloodStartMs: 120, bloodEndMs: 1050, redStartMs: 850,
-    redCompleteMs: 1150, fadeStartMs: 1250, totalMs: 2200, bloodPulseCount: 5, bloodScale: 2.2, stainDiameter: .825 },
+  grunt: { grayEndMs: 260, bloodStartMs: 10, bloodPulseEndMs: 170, bloodEndMs: 520,
+    breakupStartMs: 260, breakupDistance: .07, fadeStartMs: 300, totalMs: 520, bloodPulseCount: 2, bloodScale: 1, stainDiameter: .33 },
+  heavy: { grayEndMs: 560, bloodStartMs: 15, bloodPulseEndMs: 420, bloodEndMs: 1100,
+    breakupStartMs: 520, breakupDistance: .10, fadeStartMs: 650, totalMs: 1100, bloodPulseCount: 3, bloodScale: 1.45, stainDiameter: .525 },
+  giant: { grayEndMs: 1400, bloodStartMs: 35, bloodPulseEndMs: 1100, bloodEndMs: 2600,
+    breakupStartMs: 1200, breakupDistance: .12, fadeStartMs: 1550, totalMs: 2600, bloodPulseCount: 5, bloodScale: 2.2, stainDiameter: .825 },
 } as const;
 export type EnemyDeathRole = keyof typeof ENEMY_DEATH_TIMING;
 export type EnemyDeathTiming = typeof ENEMY_DEATH_TIMING[EnemyDeathRole];
-export const ENEMY_DEATH_GRAY = '#9ea5a3';
-export const ENEMY_DEATH_RED = '#68252a';
+export const ENEMY_DEATH_GRAY = '#b9beba';
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const smooth = (value: number) => { const p = clamp(value); return p * p * (3 - 2 * p); };
 export function enemyDeathPose(ageMs: number, timing: EnemyDeathTiming) {
   const progress = clamp(ageMs / timing.totalMs);
   return { progress, bodyVisible: ageMs >= 0 && ageMs < timing.totalMs,
     gray: smooth(ageMs / timing.grayEndMs),
-    red: smooth((ageMs - timing.redStartMs) / (timing.redCompleteMs - timing.redStartMs)),
+    breakup: timing.breakupDistance * smooth((ageMs - timing.breakupStartMs) / (timing.totalMs - timing.breakupStartMs)),
     bodyOpacity: 1 - smooth((ageMs - timing.fadeStartMs) / (timing.totalMs - timing.fadeStartMs)) };
 }
 
-export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number }
+export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number; readonly bloodPulseEndMs?: number; readonly fadeStartMs?: number }
 export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming) {
-  const progress = clamp((ageMs - timing.bloodStartMs) / (timing.bloodEndMs - timing.bloodStartMs));
+  const pulseEnd = timing.bloodPulseEndMs ?? timing.bloodEndMs;
+  const progress = clamp((ageMs - timing.bloodStartMs) / (pulseEnd - timing.bloodStartMs));
+  const opacity = timing.fadeStartMs === undefined
+    ? .84 * (1 - smooth((progress - .88) / .12))
+    : (.84 - .26 * smooth((ageMs - pulseEnd) / (timing.fadeStartMs - pulseEnd)))
+      * (1 - smooth((ageMs - timing.fadeStartMs) / (timing.bloodEndMs - timing.fadeStartMs)));
   const beat = (1 - Math.cos(progress * timing.bloodPulseCount * Math.PI * 2)) / 2;
   return { visible: ageMs >= timing.bloodStartMs && ageMs < timing.bloodEndMs,
     scale: (.86 + .44 * beat * (1 - .14 * progress)) * (.25 + .75 * smooth(progress / .09)),
-    opacity: .84 * (1 - smooth((progress - .88) / .12)) };
+    opacity };
 }
 
 // Freeze first, then two deliberately simple authored sink/hands-up silhouettes.
 export const ENEMY_REACTION_TIMING = {
-  grunt: { startMs: 35, endMs: 110 },
+  grunt: { startMs: 35, endMs: 130 },
   heavy: { startMs: 70, endMs: 260 },
   giant: { startMs: 180, endMs: 650 },
 } as const;

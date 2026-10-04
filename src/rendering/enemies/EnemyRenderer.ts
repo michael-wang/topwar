@@ -578,7 +578,6 @@ export class EnemyRenderer {
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
     visual.bodyTint.gray.value = visual.gearTint.gray.value = 0;
-    visual.bodyTint.red.value = visual.gearTint.red.value = 0;
     visual.gearMaterial.color.copy(presentation.gearTint === 'authored' ? this.authoredBodyColor
       : visual.heavy ? this.heavyColor : this.helmetColors[paletteIndex(enemy.tier, PALETTES.length)]);
     visual.group.visible = true;
@@ -625,10 +624,9 @@ export class EnemyRenderer {
       }
       visual.group.visible = pose.bodyVisible;
       visual.bodyTint.gray.value = visual.gearTint.gray.value = pose.gray;
-      visual.bodyTint.red.value = visual.gearTint.red.value = pose.red;
       visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
-      if (pose.bodyVisible) this.deathBatches.submit(visual.group, pose.gray, pose.red, pose.bodyOpacity);
+      if (pose.bodyVisible) this.deathBatches.submit(visual.group, pose.gray, pose.breakup, pose.bodyOpacity);
     }
     this.deathBatches.finish();
   }

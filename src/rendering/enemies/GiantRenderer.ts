@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { GiantVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_REVEAL_MS, giantReveal } from '../../presentation/GiantDrama';
+import { deathBreakupGeometry } from './DeathBreakupGeometry';
 import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
@@ -27,6 +28,7 @@ function hazeTexture(): THREE.DataTexture {
 export class GiantRenderer {
   private readonly group = new THREE.Group();
   private readonly body: THREE.Mesh;
+  private readonly breakupBody: THREE.BufferGeometry;
   private readonly helmet: THREE.Mesh;
   private readonly weapon = new THREE.Group();
   private readonly weaponRest = new THREE.Vector3();
@@ -55,6 +57,7 @@ export class GiantRenderer {
     };
     const bodyMaterial = material(family.body.material, 'body'), gearMaterial = material(family.helmet.material, 'gear');
     this.body = new THREE.Mesh(family.body.geometry, bodyMaterial);
+    this.breakupBody = deathBreakupGeometry((family.lethalReaction?.final ?? family.body).geometry);
     this.body.name = 'giant-body';
     this.helmet = new THREE.Mesh(family.helmet.geometry, gearMaterial); this.helmet.name = 'giant-crest-helmet';
     const armor = new THREE.Mesh(family.vest.geometry, gearMaterial); armor.name = 'giant-shoulder-yoke'; armor.visible = family.vest.visible;
@@ -69,7 +72,7 @@ export class GiantRenderer {
       this.weapon.add(maul); this.group.add(this.weapon);
     }
     this.palette = [bodyMaterial, gearMaterial].map(material => ({ material, color: material.color.clone(),
-      tint: prepareEnemyDeathMaterial(material) }));
+      tint: prepareEnemyDeathMaterial(material, material === bodyMaterial) }));
     this.group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(this.group), size = bounds.getSize(new THREE.Vector3());
     this.dimensions = family.presentation ?? { width: size.x, height: bounds.max.y, depth: size.z };
@@ -100,7 +103,7 @@ export class GiantRenderer {
   }
   private restorePalette(): void {
     for (const { material, color, tint } of this.palette) {
-      tint.gray.value = tint.red.value = 0;
+      tint.gray.value = tint.breakup.value = 0;
       material.color.copy(color); material.opacity = 1; material.transparent = false; material.depthWrite = true; material.emissiveIntensity = 0;
     }
   }
@@ -153,8 +156,18 @@ export class GiantRenderer {
       // Cant/lift the complete grip-hand + maul, never a separate moving hand.
       this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     }
+    // A small late loosening, not flying fragments. Both matrix offsets use
+    // world-unit caps and keep the maul/grip as one coupled assembly.
+    const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
+    const separation = pose.breakup / Math.max(.001,scale);
+    if (pose.breakup > 0) this.body.geometry = this.breakupBody;
+    this.helmet.matrix.elements[12] += separation * .30;
+    this.helmet.matrix.elements[13] += separation * .85;
+    this.weapon.matrix.elements[12] += separation * .65;
+    this.weapon.matrix.elements[13] += separation * .20;
+    this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     for (const { material, color, tint } of this.palette) {
-      material.color.copy(color); tint.gray.value = pose.gray; tint.red.value = pose.red;
+      material.color.copy(color); tint.gray.value = pose.gray; tint.breakup.value = separation;
       material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
       material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
     }
@@ -167,7 +180,7 @@ export class GiantRenderer {
   }
   dispose(): void {
     this.scene.remove(this.group, this.haze);
-    this.hazeMap.dispose(); this.hazeMaterial.dispose();
+    this.hazeMap.dispose(); this.hazeMaterial.dispose(); this.breakupBody.dispose();
     for (const { material } of this.palette) material.dispose();
   }
 }
