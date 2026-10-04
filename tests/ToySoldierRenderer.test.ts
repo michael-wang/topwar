@@ -187,7 +187,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('grows crowd capacity, flashes gear, and vaporizes fallen grunts quickly without debris', () => {
+  it('grows crowd capacity, flashes gear, and fades intact grunts quickly without debris', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));

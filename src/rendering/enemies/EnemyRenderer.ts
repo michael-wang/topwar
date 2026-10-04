@@ -35,8 +35,8 @@ interface DeathVisual {
   heavy: boolean;
   style: CrowdDeathStyle;
   originY: number;
-  bodyPale: { value: number };
-  gearPale: { value: number };
+  bodyPale: ReturnType<typeof preparePaleDeathMaterial>;
+  gearPale: ReturnType<typeof preparePaleDeathMaterial>;
 }
 
 interface ContactVisual {
@@ -496,6 +496,8 @@ export class EnemyRenderer {
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
     visual.bodyPale.value = visual.gearPale.value = 0;
+    visual.bodyPale.tint.set(style.tint);
+    visual.gearPale.tint.set(style.tint);
     visual.gearMaterial.color.copy(presentation.gearTint === 'authored' ? this.authoredBodyColor
       : visual.heavy ? this.heavyColor : this.helmetColors[paletteIndex(enemy.tier, PALETTES.length)]);
     visual.group.visible = true;

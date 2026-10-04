@@ -295,9 +295,10 @@ Death pacing communicates threat: **Grunt < Heavy << Giant**. All lethal pale
 colors remain #D8D9D1 / #E7E4D9 / #BFC5C1, matte and non-emissive. Gameplay
 removal is independent of presentation. Surviving hits and Level-Up remain separate.
 
-Grunt freezes its last role-owned pose, pales over 80 ms, then vaporizes:
-opacity falls to zero, scale reduces modestly to 72%, and total rise is only
-0.14 world units. It clears at 300 ms. No fragments, grounded debris or motes.
+Grunt freezes its last role-owned pose and shifts to soft gray #BFC5C1 over
+80 ms. The intact, full-size figure then eases upward by 0.18 world units while
+fading smoothly to zero at 320 ms. No shrink, squash, glow, sparks, fragments
+or ground residue. Canonical language: **gray → intact rise → fade → gone**.
 
 Heavy freezes/pales over 80 ms and shatters at 100 ms into eight full-size pale
 pieces. Its 600 ms fragment clock preserves analytic grounding and stationary
