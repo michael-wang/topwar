@@ -82,12 +82,18 @@ Muted beige/taupe wet sand (`#B3AD97`) occupies a 3.8-unit beach-side band;
 alpha feathering preserves the existing dry sand wash. A broad irregular shore
 curve (±0.85 plus ±0.25 units) breathes by ±0.4 units over 12 seconds with local
 phase variation. Coverage includes the entire beach-side envelope, not only
-the old sea plane. Broken incoming foam has variable widths and gaps; thinner,
-quieter retreat foam and sparse detached patches share this pass. The 20 static
+the old sea plane. E1.1 uses two travelling fronts: +2.25 to −0.25 units relative
+to the irregular shore, with a 6.4-second cycle staggered by half a cycle (one
+new front every 3.2 seconds). Small X phase offsets break lockstep. Broken
+incoming crests broaden from 0.40 to 0.80 units and brighten toward a 0.90
+ivory foam mix, then fade at the wet edge. The stationary lap is quieter;
+post-arrival retreat foam drifts softly seaward/fades, with sparse detached
+patches in the same overlay. Caustic strength and the 3.8-unit wet band stay
+unchanged. There are still just one sea and one shore draw. The 20 static
 defense foam strips are removed. These are visual offsets only: simulation
 shoreline offsets never move paths, collision or lanes; camera and lighting
 are unchanged. The visual anchor is Z=45 after the Z=49/47/45 portrait review.
-Z=45 gives approximately 6.9 pixels of wet band and 4.4 pixels of wave travel
+Z=45 gives approximately 6.9 pixels of wet band and 3.4 pixels of crest travel
 at 390×844, while preserving a substantial combat beach. Sand's far edge and
 the landing craft's arrival endpoint derive from this same visual anchor.
 Only defense enemy buffering follows it: `defenseSpawnAheadDistance=47`

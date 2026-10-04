@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { ART } from '../src/art/ArtDirection';
-import { COASTAL_SHORE as S, visualShoreOffset } from '../src/rendering/environment/CoastalShore';
+import { COASTAL_SHORE as S, COASTAL_SURF, travellingSurfFront, visualShoreOffset } from '../src/rendering/environment/CoastalShore';
 import { CoastalWater } from '../src/rendering/environment/CoastalWater';
 import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
 
@@ -67,4 +67,23 @@ it('removes redundant static defense foam without removing legacy ocean or trans
   expect(scene.getObjectByName('bridge-ocean')!.visible).toBe(true);
   expect(scene.getObjectByName('stationary-defense-beach')!.visible).toBe(false);
   environment.dispose(); expect(scene.children).toHaveLength(0);
+});
+
+it('travels two staggered bounded surf fronts shoreward with deterministic rewind', () => {
+  expect(COASTAL_SURF.frontCount).toBe(2);
+  expect(COASTAL_SURF.cycleSeconds / COASTAL_SURF.frontCount).toBe(3.2);
+  expect(COASTAL_SURF.startOffset - COASTAL_SURF.endOffset).toBe(2.5);
+  for (let x = -120; x <= 120; x += 2) for (let time = 0; time < 12800; time += 100) for (const front of [0, 1] as const) {
+    const wave = travellingSurfFront(x, time, front);
+    expect(wave.center).toBeGreaterThanOrEqual(-.25); expect(wave.center).toBeLessThanOrEqual(2.25);
+    expect(wave.width).toBeGreaterThanOrEqual(.40); expect(wave.width).toBeLessThanOrEqual(.80);
+    expect(wave.envelope).toBeGreaterThanOrEqual(0); expect(wave.envelope).toBeLessThanOrEqual(1);
+    expect(wave.center + visualShoreOffset(x, time)).toBeLessThan(S.seaReach);
+    expect(wave.center + visualShoreOffset(x, time)).toBeGreaterThan(-S.beachReach);
+    expect(travellingSurfFront(x, time + 6400, front).center).toBeCloseTo(wave.center);
+  }
+  const early = travellingSurfFront(0, 800, 0), middle = travellingSurfFront(0, 2400, 0), late = travellingSurfFront(0, 4200, 0);
+  expect(early.center).toBeGreaterThan(middle.center); expect(middle.center).toBeGreaterThan(late.center);
+  expect(late.width).toBeGreaterThan(early.width);
+  expect(early.envelope).toBeGreaterThan(.5); expect(travellingSurfFront(0, 5900, 0).envelope).toBe(0);
 });

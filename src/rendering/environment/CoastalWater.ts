@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 import { CoastalClouds } from './CoastalClouds';
-import { COASTAL_SHORE, COASTAL_SHORE_GLSL } from './CoastalShore';
+import { COASTAL_SHORE, COASTAL_SHORE_GLSL, COASTAL_SURF } from './CoastalShore';
 
 const C = ART.coastalDefense;
 // Opaque sea plus one narrow, alpha-blended shore strip; no physical water pass.
@@ -28,12 +28,19 @@ const WATER_FRAGMENT = `uniform float time; uniform vec3 aqua,blue,shine,foam,we
       color=mix(wetSand,color,smoothstep(-.25,.85,edge));
       float broken=smoothstep(-.28,.35,sin(coastPosition.x*.63+sin(coastPosition.x*.19)*1.6+time*.17));
       float width=.13+.23*(.5+.5*sin(coastPosition.x*.81+time*.11));
-      float lap=(1.-smoothstep(width*.35,width,abs(edge)))*broken*.78;
-      float retreat=(1.-smoothstep(.055,.20,abs(edge-.90-.13*sin(coastPosition.x*.37+time*.13))))
-        *smoothstep(.08,.65,sin(coastPosition.x*1.17-time*.21))*.32;
+      float lap=(1.-smoothstep(width*.35,width,abs(edge)))*broken*.24;
+      float phase=fract(time/${COASTAL_SURF.cycleSeconds.toFixed(1)}+.032*sin(coastPosition.x*.11)+.014*sin(coastPosition.x*.39+1.2));
+      float other=fract(phase+.5);
+      float frontBroken=smoothstep(-.25,.42,sin(coastPosition.x*.63+sin(coastPosition.x*.19)*1.6+phase*2.));
+      float otherBroken=smoothstep(-.25,.42,sin(coastPosition.x*.63+sin(coastPosition.x*.19)*1.6+other*2.+.8));
+      float incoming=max(surfFront(phase,edge,frontBroken),surfFront(other,edge,otherBroken));
+      float drain=max(smoothstep(.62,.72,phase)*(1.-smoothstep(.86,1.,phase)),
+        smoothstep(.62,.72,other)*(1.-smoothstep(.86,1.,other)));
+      float retreat=(1.-smoothstep(.055,.18,abs(edge-.35-.5*drain)))
+        *smoothstep(.08,.65,sin(coastPosition.x*1.17-time*.21))*drain*.25;
       float spots=(1.-smoothstep(.05,.20,abs(edge-1.55)))
         *smoothstep(.86,.99,sin(coastPosition.x*1.43+sin(time*.27)))*.26;
-      color=mix(color,foam,clamp(lap+retreat+spots,0.,.82));
+      color=mix(color,foam,clamp(max(lap,incoming)+retreat+spots,0.,.90));
       // Beach-side coverage exceeds all spatial/tide offsets plus the wet band.
       alpha=smoothstep(-${COASTAL_SHORE.wetWidth.toFixed(1)},-${(COASTAL_SHORE.wetWidth - .8).toFixed(1)},edge)
         *(.72+.28*smoothstep(-2.,-1.,depth))*(1.-smoothstep(6.,${COASTAL_SHORE.seaReach.toFixed(1)},depth));
