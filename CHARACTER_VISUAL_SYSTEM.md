@@ -364,19 +364,21 @@ fragmentation, separate flying weapon or generic enemy-fall system.
 
 ### R7 surviving enemy impact
 
-Every observed surviving HP decrease (all roles, including future multi-HP
-Grunts) emits one small irregular blood pulse lasting 100 ms, with no gray/red
-transition or stain. Scale is 45% of Grunt lethal, 40% of Heavy lethal, 30% of
-Giant lethal. Upper-body placement varies deterministically by enemy ID and
-hit sequence. A separate 128-slot instanced pool shares the lethal mask and
-cannot evict a Giant kill payoff.
+Every observed surviving HP decrease (including future multi-HP Grunts) emits
+one 170 ms blood pulse without a body tint or ground stain. A separate 128-slot
+pool uses one four-cell procedural atlas: broad lopsided, taller diagonal,
+compact multi-lobe and wide satellite blots. Six Giant, four Heavy and three
+light-role upper/lower torso anchors cycle deterministically by enemy ID and
+hit sequence; adjacent anchor and mask never repeat. Rotation is fixed per hit,
+size varies ±15%, aspect 0.82–1.20. Lethal/Player masks and ground stains retain
+their accepted appearance. Hit scales remain 45% / 40% / 30% of lethal roles.
 
-A rendering-only `EnemyHitImpulse` blends each observed hit into a 140 ms kick:
-12 ms attack, then smooth return to the authoritative simulation transform.
-Single-hit strength is 0.85; repeated hits add 0.85 to the current impulse,
-capped at 1, without resetting displacement to zero. Maximum +Z displacement
-is 0.14 / 0.10 / 0.055 world units for Grunt / Heavy / Giant; maximum backward
-lean is 0.06 / 0.04 / 0.025 radians. No simulation position/speed/contact changes.
+`EnemyHitImpulse` snaps back over 20 ms, holds through 70 ms, then smoothly
+returns by 250 ms. Single-hit +Z displacement is 0.27 / 0.25 / 0.17 world units
+for light / Heavy / Giant; rapid hits preserve current displacement, add one
+impulse and refresh the clock, capped at 0.36 / 0.33 / 0.20. Small rearward lean
+and compression support the root cue. Simulation position, speed and contact
+remain authoritative and unchanged.
 
 Existing Heavy/Giant overlay, sparks, tint and compression remain independently
 rate-limited at 250 ms. Their old root translation/lean is replaced by the

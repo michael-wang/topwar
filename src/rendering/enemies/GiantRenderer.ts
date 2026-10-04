@@ -119,7 +119,7 @@ export class GiantRenderer {
       this.group.position.set(-enemy.x + weight.shift * (enemy.visualScaleX ?? enemy.visualScale ?? 1), weight.bob, enemy.z + kick * ENEMY_HIT_STYLE.giant.distance);
       this.group.rotation.set(-.12 + kick * ENEMY_HIT_STYLE.giant.lean, Math.PI, weight.sway);
       const scale = enemy.visualScale ?? 1;
-      this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression), enemy.visualScaleZ ?? scale);
+      this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression - kick * ENEMY_HIT_STYLE.giant.compression), enemy.visualScaleZ ?? scale);
       this.group.visible = true; this.restorePalette();
       const reveal = giantReveal(nowMs - this.bornAt);
       for (const { material, color } of this.palette) {

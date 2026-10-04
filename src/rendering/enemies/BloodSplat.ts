@@ -9,13 +9,22 @@ export const BLOOD_STAIN_OPACITY = .58;
 
 // An asymmetric connected blot, with uneven lobes and a few satellite splashes.
 // The same deterministic mask serves camera-facing bursts and flat sand stains.
-export function bloodSplatTexture(): THREE.DataTexture {
+export function bloodSplatTexture(variant = 0): THREE.DataTexture {
   const size = 96, data = new Uint8Array(size * size * 4);
   const spots = [[-.72,.30,.10], [.62,.54,.075], [.70,-.36,.12], [-.32,-.73,.065], [-.76,-.42,.055]];
   // Unequal overlapping lobes and two thin splash tails avoid a radial star/flower.
   const lobes = [[0,.02,.53,.48,0], [-.34,.16,.25,.24,.2], [.33,-.10,.27,.21,-.3],
     [-.12,-.37,.21,.19,0], [.24,.30,.16,.23,.2], [-.31,-.26,.16,.24,.45],
     [-.52,.36,.25,.05,-.65], [.48,.32,.26,.065,.55]];
+  if (variant > 0) for (let i = 0; i < lobes.length; i++) {
+    const lobe = lobes[i];
+    // Same palette/edge language, distinct broad silhouettes rather than rotations.
+    lobe[0] += Math.sin(i * 2.7 + variant * 1.9) * .13;
+    lobe[1] += Math.cos(i * 1.8 + variant) * .12;
+    lobe[2] *= variant === 1 ? .82 : variant === 2 ? 1.05 : 1.20;
+    lobe[3] *= variant === 1 ? 1.18 : variant === 2 ? .90 : .82;
+    lobe[4] += variant * .23;
+  }
   const colors = BLOOD_COLORS.map(hex => new THREE.Color(hex).convertLinearToSRGB());
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     const dx = (x + .5) / size * 2 - 1, dy = (y + .5) / size * 2 - 1;
@@ -43,27 +52,51 @@ export function bloodSplatTexture(): THREE.DataTexture {
   return texture;
 }
 
-interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3; diameter: number; angle: number }
+// Four 96px cells, one texture and one draw. Ground stains/Player retain the
+// original single mask; their accepted appearance is unaffected.
+export function hitBloodAtlas(): THREE.DataTexture {
+  const size = 192, data = new Uint8Array(size * size * 4);
+  for (let variant = 0; variant < 4; variant++) {
+    const cell = bloodSplatTexture(variant), source = cell.image.data;
+    for (let y = 0; y < 96; y++) {
+      const target = ((y + Math.floor(variant / 2) * 96) * size + (variant % 2) * 96) * 4;
+      data.set(source.subarray(y * 96 * 4, (y + 1) * 96 * 4), target);
+    }
+    cell.dispose();
+  }
+  const texture = new THREE.DataTexture(data, size, size);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.needsUpdate = true;
+  return texture;
+}
+export interface SplatVariation { variant: number; angle: number; aspect: number; size: number }
+
+interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3; diameter: number; angle: number; variant: number; aspect: number }
 
 export class BloodSplat {
   private readonly mesh: THREE.InstancedMesh;
   private readonly alpha: THREE.InstancedBufferAttribute;
   private readonly angle: THREE.InstancedBufferAttribute;
   private readonly slots: BurstSlot[];
+  private readonly variant: THREE.InstancedBufferAttribute;
   private readonly transform = new THREE.Object3D();
   private cursor = 0;
   constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture,
     private readonly capacity = BLOOD_SPLAT_CAPACITY, name = 'enemy-blood-splats') {
+    this.variant = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.slots = Array.from({ length: capacity }, () => ({ owner: -1, startedAt: -Infinity,
-      timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), diameter: 1, angle: 0 }));
+      timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), diameter: 1, angle: 0, variant: 0, aspect: 1 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
+    geometry.setAttribute('splatVariant', this.variant);
     geometry.setAttribute('splatOpacity', this.alpha); geometry.setAttribute('splatAngle', this.angle);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false,
       depthTest: false, toneMapped: false });
     material.onBeforeCompile = shader => {
-      shader.vertexShader = `attribute float splatOpacity; attribute float splatAngle; varying float vSplatOpacity;\n${shader.vertexShader}`
+      shader.vertexShader = `attribute float splatVariant; attribute float splatOpacity; attribute float splatAngle; varying float vSplatOpacity;\n${shader.vertexShader}`
+        .replace('#include <uv_vertex>', `#include <uv_vertex>
+${texture.image.width === 192 ? 'vMapUv = (vMapUv + vec2(mod(splatVariant, 2.), floor(splatVariant / 2.))) * .5;' : ''}`)
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplatOpacity = splatOpacity;')
         .replace('#include <project_vertex>', `vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(0.,0.,0.,1.);
 vec2 size = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
@@ -73,7 +106,7 @@ gl_Position = projectionMatrix * mvPosition;`);
       shader.fragmentShader = `varying float vSplatOpacity;\n${shader.fragmentShader}`
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vSplatOpacity;');
     };
-    material.customProgramCacheKey = () => 'pooled-camera-blood-blot';
+    material.customProgramCacheKey = () => `pooled-camera-blood-blot-${texture.image.width}`;
     this.mesh = new THREE.InstancedMesh(geometry, material, capacity);
     this.mesh.name = name; this.mesh.renderOrder = 6;
     this.mesh.frustumCulled = false; this.mesh.count = 0; this.mesh.visible = false;
@@ -84,7 +117,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   spawn(id: number, role: EnemyDeathRole, nowMs: number, origin: THREE.Vector3, adaptation: number): void {
     this.spawnStyled(id, ENEMY_DEATH_TIMING[role], nowMs, origin, adaptation);
   }
-  spawnStyled(id: number, timing: BloodSplatTiming, nowMs: number, origin: THREE.Vector3, adaptation = 1, owner = id): void {
+  spawnStyled(id: number, timing: BloodSplatTiming, nowMs: number, origin: THREE.Vector3, adaptation = 1, owner = id, variation?: SplatVariation): void {
     // Reuse expired bursts before interrupting a longer threat payoff.
     let index = this.cursor, oldest = index;
     for (let offset = 0; offset < this.capacity; offset++) {
@@ -98,19 +131,21 @@ gl_Position = projectionMatrix * mvPosition;`);
     const slot = this.slots[index];
     slot.owner = owner; slot.startedAt = nowMs; slot.timing = timing; slot.origin.copy(origin);
     slot.diameter = 1.25 * timing.bloodScale * Math.max(.8, Math.min(1.25, adaptation));
-    slot.angle = id * 2.3999632297;
+    slot.angle = variation?.angle ?? id * 2.3999632297;
+    slot.variant = variation?.variant ?? 0; slot.aspect = variation?.aspect ?? 1;
+    slot.diameter *= variation?.size ?? 1;
   }
   update(nowMs: number): void {
     let count = 0;
     for (const slot of this.slots) {
       const pose = bloodSplatPose(nowMs - slot.startedAt, slot.timing);
       if (!pose.visible) continue;
-      this.transform.position.copy(slot.origin); this.transform.scale.setScalar(slot.diameter * pose.scale);
+      this.transform.position.copy(slot.origin); this.transform.scale.set(slot.diameter * pose.scale * slot.aspect, slot.diameter * pose.scale / slot.aspect, 1);
       this.transform.updateMatrix(); this.mesh.setMatrixAt(count, this.transform.matrix);
-      this.alpha.setX(count, pose.opacity); this.angle.setX(count, slot.angle); count++;
+      this.alpha.setX(count, pose.opacity); this.angle.setX(count, slot.angle); this.variant.setX(count, slot.variant); count++;
     }
     this.mesh.count = count; this.mesh.visible = count > 0;
-    this.mesh.instanceMatrix.needsUpdate = true; this.alpha.needsUpdate = this.angle.needsUpdate = true;
+    this.mesh.instanceMatrix.needsUpdate = true; this.alpha.needsUpdate = this.angle.needsUpdate = this.variant.needsUpdate = true;
   }
   cancel(owner: number): void { for (const slot of this.slots) if (slot.owner === owner) slot.startedAt = -Infinity; }
   reset(): void { this.slots.forEach(slot => slot.startedAt = -Infinity); this.cursor = 0; this.mesh.count = 0; this.mesh.visible = false; }

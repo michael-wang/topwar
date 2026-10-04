@@ -7,11 +7,12 @@ import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
+import { hitBloodVariation } from './HitBloodVariation';
 import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY } from './EnemyHitImpulse';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
-import { BloodSplat, GroundBloodStains, bloodSplatTexture } from './BloodSplat';
+import { BloodSplat, GroundBloodStains, bloodSplatTexture, hitBloodAtlas } from './BloodSplat';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -112,6 +113,7 @@ export class EnemyRenderer {
   private readonly feedbackOrigin = new THREE.Vector3();
   private readonly feedbackScale = new THREE.Vector3();
   private readonly bloodTexture = bloodSplatTexture();
+  private readonly hitTexture = hitBloodAtlas();
   private readonly stains: GroundBloodStains;
   private sceneMode: boolean | undefined;
   private readonly blood: BloodSplat;
@@ -137,7 +139,7 @@ export class EnemyRenderer {
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
     this.blood = new BloodSplat(scene, this.bloodTexture);
-    this.hitBlood = new BloodSplat(scene, this.bloodTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
+    this.hitBlood = new BloodSplat(scene, this.hitTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
     const top = (family: CrowdVisualFamily | CharacterVisualFamilies['giant']) => {
       family.helmet.geometry.computeBoundingBox(); return family.helmet.geometry.boundingBox!.max.y;
     };
@@ -327,7 +329,7 @@ export class EnemyRenderer {
       transform.rotation.x += style.lean * impact;
       setEnemyScale(transform.scale, enemy, presentation.scaleY);
       if (step) transform.scale.y *= 1 - step.landing * presentation.stepWeight!.compression;
-      transform.scale.y *= 1 - (presentation.hitCompression ?? 0) * hitStrength;
+      transform.scale.y *= 1 - Math.max((presentation.hitCompression ?? 0) * hitStrength, style.compression * impact);
       transform.updateMatrix();
       const frame = enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const bodySlot = bodyIndices[frame]++;
@@ -409,7 +411,7 @@ export class EnemyRenderer {
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
-    this.stains.dispose(); this.bloodTexture.dispose();
+    this.stains.dispose(); this.bloodTexture.dispose(); this.hitTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose());
@@ -498,15 +500,14 @@ export class EnemyRenderer {
   }
 
   private presentSurvivingHit(enemy: EnemyRenderState, nowMs: number): void {
-    const role = enemy.archetype ?? 'grunt', sequence = this.hitImpulse.observe(enemy.id, nowMs);
+    const role = enemy.archetype ?? 'grunt', sequence = this.hitImpulse.observe(enemy.id, nowMs, role);
+    const variation = hitBloodVariation(enemy.id, sequence, role);
     setEnemyScale(this.feedbackScale, enemy, role === 'heavy' ? this.families.heavy.presentation.scaleY : 1);
-    const hash = (Math.imul(enemy.id + 1, 1597334677) ^ Math.imul(sequence, 3812015801)) >>> 0;
-    const jitter = (hash % 101) / 100 - .5;
-    this.feedbackOrigin.set(-enemy.x + jitter * .07 * this.feedbackScale.x,
-      (this.hitTop[role] * .64 + jitter * .04) * this.feedbackScale.y,
+    this.feedbackOrigin.set(-enemy.x + variation.x * this.feedbackScale.x,
+      this.hitTop[role] * variation.y * this.feedbackScale.y,
       enemy.z - .12 * this.feedbackScale.z);
     const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
-    this.hitBlood.spawnStyled(hash, HIT_BLOOD_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id);
+    this.hitBlood.spawnStyled(enemy.id, HIT_BLOOD_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id, variation);
   }
 
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {

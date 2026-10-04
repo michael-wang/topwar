@@ -8,9 +8,9 @@ import { BloodSplat,bloodSplatTexture } from '../src/rendering/enemies/BloodSpla
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
 it('attacks quickly, refreshes without a zero snap, caps repeated kicks and prunes stale IDs',()=>{
  const tracker=new EnemyHitImpulse();expect(tracker.observe(1,0)).toBe(1);
- expect(tracker.strength(1,0)).toBe(0);expect(tracker.strength(1,12)).toBe(.85);
- const before=tracker.strength(1,60);expect(tracker.observe(1,60)).toBe(2);expect(tracker.strength(1,60)).toBe(before);expect(tracker.strength(1,72)).toBe(1);
- for(let t=80;t<1000;t+=10){tracker.observe(1,t);expect(tracker.strength(1,t+12)).toBeLessThanOrEqual(1);}
+ expect(tracker.strength(1,0)).toBe(0);expect(tracker.strength(1,20)).toBe(1);
+ const before=tracker.strength(1,60);expect(tracker.observe(1,60)).toBe(2);expect(tracker.strength(1,60)).toBe(before);expect(tracker.strength(1,80)).toBeCloseTo(ENEMY_HIT_STYLE.grunt.cap/ENEMY_HIT_STYLE.grunt.distance);
+ for(let t=80;t<1000;t+=10){tracker.observe(1,t);expect(tracker.strength(1,t+20)).toBeLessThanOrEqual(ENEMY_HIT_STYLE.grunt.cap/ENEMY_HIT_STYLE.grunt.distance);}
  expect(tracker.strength(1,1000+ENEMY_HIT_IMPULSE_MS)).toBe(0);tracker.prune(new Set());expect(tracker.strength(1,100)).toBe(0);
  expect(ENEMY_HIT_STYLE.grunt.distance).toBeGreaterThan(ENEMY_HIT_STYLE.heavy.distance);expect(ENEMY_HIT_STYLE.heavy.distance).toBeGreaterThan(ENEMY_HIT_STYLE.giant.distance);
 });
@@ -21,14 +21,14 @@ it('every surviving HP drop emits blood and a +Z kick, independently of emphasis
   const emphasis=vi.spyOn(HeavyHitFeedback.prototype,'observe');
   const z=()=>role==='giant'?scene.getObjectByName('giant-assault-soldier')!.position.z:(()=>{const mesh=scene.children.find(c=>c instanceof THREE.InstancedMesh&&c.name.startsWith('toy-soldier-run-')&&c.count>0) as THREE.InstancedMesh;const m=new THREE.Matrix4();mesh.getMatrixAt(0,m);return m.elements[14];})();
   const blood=scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh,stains=scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh;
-  renderer.update([e],0);renderer.update([e],2000);renderer.update([{...e,hp:9}],2010);renderer.update([{...e,hp:9}],2022);
-  expect(blood.count).toBe(1);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].distance*.85,5);expect(stains.count).toBe(0);
-  const matrix=new THREE.Matrix4();blood.getMatrixAt(0,matrix);expect(matrix.elements[13]).toBeGreaterThan(.5);
-  renderer.update([{...e,hp:8}],2070);renderer.update([{...e,hp:8}],2082);expect(blood.count).toBe(2);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].distance,5);
+  renderer.update([e],0);renderer.update([e],2000);renderer.update([{...e,hp:9}],2010);renderer.update([{...e,hp:9}],2030);
+  expect(blood.count).toBe(1);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].distance,5);expect(stains.count).toBe(0);
+  const matrix=new THREE.Matrix4();blood.getMatrixAt(0,matrix);expect(matrix.elements[13]).toBeGreaterThan(.4);
+  renderer.update([{...e,hp:8}],2070);renderer.update([{...e,hp:8}],2090);expect(blood.count).toBe(2);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].cap,5);
   if(role!=='grunt'){expect(emphasis.mock.results.map(result=>result.value)).toEqual([true,false]);}
-  renderer.update([{...e,hp:8}],2230);expect(z()).toBeCloseTo(e.z,5);expect(blood.count).toBe(0);expect(JSON.stringify(e)).toBe(initial);
-  renderer.update([{...e,hp:7}],2240);renderer.update([],2250);expect(blood.count).toBe(0);expect(stains.count).toBe(1);
-  renderer.update([],2400);expect(blood.count).toBe(0);
+  renderer.update([{...e,hp:8}],2330);expect(z()).toBeCloseTo(e.z,5);expect(blood.count).toBe(0);expect(JSON.stringify(e)).toBe(initial);
+  renderer.update([{...e,hp:7}],2340);renderer.update([],2350);expect(blood.count).toBe(0);expect(stains.count).toBe(1);
+  renderer.update([],2600);expect(blood.count).toBe(0);
   emphasis.mockRestore();renderer.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);
  }
 });
@@ -42,4 +42,16 @@ it('keeps hit blood separately bounded and cannot evict a long lethal Giant puls
  hit.cancel(299);hit.update(551);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(HIT_BLOOD_CAPACITY-1);
  hit.update(600);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(0);
  objects.mockRestore();hit.dispose();lethal.dispose();texture.dispose();
+});
+
+it('holds peak between attack and recovery, with exact capped role distances',()=>{
+ const tracker=new EnemyHitImpulse();
+ for(const role of ['grunt','heavy','giant'] as const){
+  tracker.reset();tracker.observe(1,0,role);
+  expect(tracker.strength(1,10)).toBeCloseTo(.5);
+  for(const t of [20,40,70])expect(tracker.strength(1,t)).toBe(1);
+  expect(tracker.strength(1,160)).toBeCloseTo(.5);expect(tracker.strength(1,250)).toBe(0);
+  tracker.observe(1,40,role);expect(tracker.strength(1,40)).toBe(1);
+  expect(tracker.strength(1,60)*ENEMY_HIT_STYLE[role].distance).toBeCloseTo(ENEMY_HIT_STYLE[role].cap);
+ }
 });
