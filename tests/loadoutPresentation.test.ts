@@ -3,25 +3,15 @@ import data from '../public/game-data/game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { loadoutPresentation } from '../src/ui/loadoutPresentation';
 const balance=GameConfigSchema.parse(data).catharsis!.progression;
-const context={baseFireRate:3,squadCount:1,initialSquadCount:1,reinforcementArrived:false};
-it('projects actual diminishing fire-rate math without defining progression', () => {
-  expect([1,2,3,4,5,6,7].map(level=>loadoutPresentation({level,xp:0},balance,context).enhancement.value))
-    .toEqual(['+0%','+25%','+50%','+50%','+50%','+50%','+50%']);
-  expect(loadoutPresentation({level:3,xp:0},balance,{...context,baseFireRate:2.5})).toEqual({weapon:'rifle',enhancement:{kind:'fireRate',value:'+50%'}});
-});
-it('uses arrived squad truth rather than level labels, retaining truthful power after a loss', () => {
-  expect(loadoutPresentation({level:7,xp:0},balance,context).enhancement.kind).toBe('fireRate');
-  expect(loadoutPresentation({level:7,xp:0},balance,{...context,squadCount:2,reinforcementArrived:true})).toEqual({weapon:'rifle',enhancement:{kind:'squad',value:'×2'}});
-  expect(loadoutPresentation({level:8,xp:0},balance,{...context,squadCount:1,reinforcementArrived:true}).enhancement.kind).toBe('fireRate');
-  expect(loadoutPresentation({level:5,xp:0},{...balance,reinforcementLevel:5},{...context,squadCount:4,initialSquadCount:2,reinforcementArrived:true}).enhancement.value).toBe('×2');
-});
-it('separates weapon identity from current enhancement truth without inventing future upgrade stages',()=>{
-  for(const level of [1,3,6,7,20]){
-    const model=loadoutPresentation({level,xp:0},balance,context);
-    expect(Object.keys(model)).toEqual(['weapon','enhancement']);expect(model.weapon).toBe('rifle');
-    expect(Object.keys(model.enhancement)).toEqual(['kind','value']);
-    expect(model.enhancement.kind).toBe('fireRate');expect(model.enhancement.value).toMatch(/^\+\d+%$/);
-  }
-  const low=loadoutPresentation({level:1,xp:0},balance,{...context,squadCount:3,reinforcementArrived:true});
-  expect(low.enhancement).toEqual({kind:'squad',value:'×3'}); // Actual squad, never a level-selected soldier stage.
+it.each([[1,'cartridge',1],[2,'cartridge',2],[3,'cartridge',3],[4,'soldier',2],[5,'soldier',3]] as const)(
+  'shows Level %i as %s stage %i from the explicit plan', (level,kind,stage)=>{
+    expect(loadoutPresentation({level,xp:0},balance)).toEqual({weapon:'rifle',enhancement:{kind,stage,slots:3}});
+  });
+it('uses configured progression unlocks rather than live counts, percentage or multiplier text',()=>{
+  const context={level:4,xp:10};
+  expect(loadoutPresentation(context,balance).enhancement.stage).toBe(2);
+  expect(loadoutPresentation({level:5,xp:0},balance).enhancement.stage).toBe(3);
+  const plan={...balance,levelPlan:balance.levelPlan.map(stage=>({...stage,squadStage:1}))};
+  expect(loadoutPresentation(context,plan).enhancement).toEqual({kind:'cartridge',stage:3,slots:3});
+  expect(loadoutPresentation({level:100,xp:0},balance).enhancement).toEqual({kind:'soldier',stage:3,slots:3});
 });

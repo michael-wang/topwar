@@ -1,15 +1,13 @@
-import { effectiveRifleFireRate, type ProgressionBalance, type ProgressionState } from '../simulation/progression';
-export interface LoadoutContext {
-  baseFireRate: number;
-  squadCount: number;
-  initialSquadCount: number;
-  reinforcementArrived: boolean;
-}
-export function loadoutPresentation(state: Readonly<ProgressionState>, balance: ProgressionBalance, context: LoadoutContext): {
-  weapon: 'rifle'; enhancement: { kind: 'fireRate' | 'squad'; value: string };
+import { progressionStage, type ProgressionState, type ProgressionBalance } from '../simulation/progression';
+
+// Unlock stages describe progression; living squad count deliberately has no input here.
+export function loadoutPresentation(state: Readonly<ProgressionState>, balance: ProgressionBalance): {
+  weapon: 'rifle'; enhancement: { kind: 'cartridge' | 'soldier'; stage: number; slots: 3 };
 } {
-  const reinforced = context.reinforcementArrived && context.squadCount > context.initialSquadCount;
-  return { weapon: 'rifle', enhancement: { kind: reinforced ? 'squad' : 'fireRate', value: reinforced
-    ? `×${Number((context.squadCount / context.initialSquadCount).toFixed(2))}`
-    : `+${Math.round((effectiveRifleFireRate(context.baseFireRate, state.level, balance) / context.baseFireRate - 1) * 100)}%` } };
+  const plan = progressionStage(state.level, balance);
+  return { weapon: 'rifle', enhancement: {
+    kind: plan.squadStage > 1 ? 'soldier' : 'cartridge',
+    stage: plan.squadStage > 1 ? plan.squadStage : plan.fireRateStage,
+    slots: 3,
+  } };
 }
