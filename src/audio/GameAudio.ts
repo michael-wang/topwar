@@ -1,7 +1,9 @@
-import { GIANT_CRASH_MS } from '../presentation/GiantDrama';
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
+
+// Existing audio cue delay is independent of the removed visual crash system.
+const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 
 export type AudioCue = 'levelUp' | 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
@@ -123,9 +125,9 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
     secondary: { from: 460, to: 180, seconds: .075, wave: 'sine', volume: .027 } },
   giantDeath: { from: 180, to: 60, seconds: .14, wave: 'triangle', volume: .15,
     secondary: { from: 95, to: 26, seconds: .6, wave: 'triangle', volume: .22,
-      delaySeconds: GIANT_CRASH_MS / 1000, attackSeconds: .012 },
+      delaySeconds: GIANT_DEATH_RUMBLE_DELAY_MS / 1000, attackSeconds: .012 },
     tertiary: { from: 480, to: 95, seconds: .35, wave: 'sawtooth', volume: .065,
-      delaySeconds: GIANT_CRASH_MS / 1000 + .04 } },
+      delaySeconds: GIANT_DEATH_RUMBLE_DELAY_MS / 1000 + .04 } },
   bossDeath: { from: 285, to: 90, seconds: 1.08, wave: 'triangle', volume: .23,
     attackSeconds: .04,
     secondary: { from: 440, to: 135, seconds: .88, wave: 'sine', volume: .075,
@@ -250,7 +252,7 @@ export class GameAudio {
         const source = context.createBufferSource();
         const gain = context.createGain();
         source.buffer = rumbleBuffer;
-        const rumbleStart = start + (cue === 'giantDeath' ? GIANT_CRASH_MS / 1000 : .05) * durationScale;
+        const rumbleStart = start + (cue === 'giantDeath' ? GIANT_DEATH_RUMBLE_DELAY_MS / 1000 : .05) * durationScale;
         const rumbleEnd = rumbleStart + (cue === 'giantDeath' ? .6 : 1) * durationScale;
         gain.gain.setValueAtTime(.001, rumbleStart);
         gain.gain.exponentialRampToValueAtTime(.105 * volumeScale,

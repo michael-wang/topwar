@@ -52,7 +52,7 @@ it('keeps shaft and grip coupled throughout all four poses and through the fall,
   expect(Math.max(...positions.map(p=>p[1]))-Math.min(...positions.map(p=>p[1]))).toBeLessThan(.019);
   const last=weapon.position.clone();renderer.die(e,2600);
   for(const age of [0,100,250,450,519]){renderer.update(undefined,2600+age,hits);assertGrip();expect(weapon.position).toEqual(last);}
-  renderer.update(undefined,3120,hits);expect(group.visible).toBe(false);
+  renderer.update(undefined,4050,hits);expect(group.visible).toBe(false);
   renderer.reset();expect(weapon.position.toArray()).toEqual([...GIANT_WEAPON_GRIP]);
   renderer.dispose();hits.dispose();family.dispose();expect(scene.children).toHaveLength(0);
 });

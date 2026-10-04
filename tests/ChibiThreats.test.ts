@@ -89,7 +89,7 @@ it('registers Heavy hit geometry, anchors its HP bar, and reuses dedicated conta
   expect(death).toBeDefined(); expect((death.children[1] as THREE.Mesh).geometry).toBe(heavy.helmet.geometry);
   renderer.dispose(); heavy.dispose(); giant.dispose(); expect(scene.children).toHaveLength(0);
 });
-it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hit and twelve pale crash chunks', () => {
+it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hit and shared intact death', () => {
   const family = createChibiGiantFamily(), scene = new THREE.Scene(), hits = new HeavyHitFeedback(scene);
   const renderer = new GiantRenderer(scene, family), e = enemy(1, 'giant');
   renderer.update(e, 0, hits); expect(renderer.barVisible(0)).toBe(false); expect(renderer.barVisible(1500)).toBe(true);
@@ -108,10 +108,11 @@ it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hi
   expect(hits.observe(e, 2600)).toBe(true); renderer.update(e, 2600, hits);
   expect((scene.getObjectByName('heavy-hit-body') as THREE.Mesh).geometry).toBe((group.children[0] as THREE.Mesh).geometry);
   renderer.die(e, 2700); renderer.update(undefined, 3300, hits);
-  expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(true);
+  expect(scene.getObjectByName('giant-death-impact')).toBeUndefined();
   renderer.update(undefined, 3400, hits);
-  expect((scene.getObjectByName('giant-armor-wreckage') as THREE.InstancedMesh).count).toBe(12);
-  expect(group.visible).toBe(false);
+  expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();
+  expect(group.visible).toBe(true);
+  renderer.update(undefined, 4150, hits);expect(group.visible).toBe(false);
   renderer.dispose(); hits.dispose(); family.dispose(); expect(scene.children).toHaveLength(0);
 });
 it('borrows threat geometry while each family disposes all its resources exactly once', () => {

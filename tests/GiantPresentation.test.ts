@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
-import { PALE_DEATH_COLORS } from '../src/rendering/enemies/PaleDeathMaterial';
+import { ENEMY_DEATH_DURATION_MS } from '../src/presentation/EnemyDeathTiming';
 
-it('uses the dedicated crest/maul silhouette, bounded sparks and the existing crash timing', () => {
+it('uses the dedicated crest/maul silhouette, bounded sparks and the shared intact fall and no crash resources', () => {
   const scene = new THREE.Scene(), family = createChibiGiantFamily();
   const renderer = new GiantRenderer(scene, family);
   const hits = new HeavyHitFeedback(scene);
@@ -28,17 +28,15 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the existing cr
   hits.update(new Set([1]), 120); renderer.update(enemy, 120, hits);
   expect(group.position.z).toBe(14);
   renderer.die(enemy, 200); renderer.update(undefined, 320, hits);
-  expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(false);
+  expect(scene.getObjectByName('giant-death-impact')).toBeUndefined();
   expect(group.visible).toBe(true);
-  renderer.update(undefined, 750, hits);
-  expect(scene.getObjectByName('giant-death-impact')!.visible).toBe(true);
+  const weapon=group.getObjectByName('giant-maul')!, localGrip=weapon.matrix.clone();
+  renderer.update(undefined, 200+ENEMY_DEATH_DURATION_MS.giant*.5, hits);
+  expect(group.rotation.x).toBeCloseTo(-80*Math.PI/180);
   expect(family.runFrames.map(frame => frame.geometry)).toContain((group.children[0] as THREE.Mesh).geometry);
-  const fragments=scene.getObjectByName('giant-armor-wreckage') as THREE.InstancedMesh;
-  expect(fragments.count).toBe(12);expect(fragments.visible).toBe(true);
-  const color=new THREE.Color();for(let i=0;i<12;i++){fragments.getColorAt(i,color);expect(PALE_DEATH_COLORS).toContain('#'+color.getHexString());}
-  renderer.update(undefined, 851, hits); expect(group.visible).toBe(false);
-  expect(scene.getObjectByName('giant-armor-wreckage')!.visible).toBe(true);
-  renderer.update(undefined, 2601, hits); expect(scene.getObjectByName('giant-armor-wreckage')!.visible).toBe(false);
+  expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();
+  expect(group.visible).toBe(true);expect(weapon.matrix.equals(localGrip)).toBe(true);
+  renderer.update(undefined, 200+ENEMY_DEATH_DURATION_MS.giant, hits);expect(group.visible).toBe(false);
   let borrowedDisposed = false; family.body.geometry.addEventListener('dispose', () => { borrowedDisposed = true; });
   renderer.reset(); renderer.dispose(); hits.dispose();
   expect(scene.children).toHaveLength(0); expect(borrowedDisposed).toBe(false);

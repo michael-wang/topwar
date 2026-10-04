@@ -152,7 +152,7 @@ describe('original amphibious Grunt prototype', () => {
     renderer.update([], 3200); renderer.update([h], 3300); renderer.update([], 3310);
     expect((corpse.children[0] as THREE.Mesh).geometry).toBe(legacy.heavy.death.body.geometry);
     expect(corpse.children[2].visible).toBe(true);
-    renderer.update([], 3900); renderer.update([g], 4000); renderer.update([], 4010);
+    renderer.update([], 4090); renderer.update([g], 4200); renderer.update([], 4210);
     expect(grunt.runFrames.map(frame=>frame.geometry)).toContain((corpse.children[0] as THREE.Mesh).geometry);
     expect(corpse.children[2].visible).toBe(false);
     expect(renderer.getDebugStats().contactVisuals).toBe(1); expect(renderer.getDebugStats().deathVisuals).toBe(1);

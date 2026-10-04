@@ -91,7 +91,7 @@ chest plate or collar. One broad flat waist belt and one structured canvas satch
 the maul leave the torso uninterrupted. Hands are enormous spheres,
 feet are scaled soft toy shoes. The maul head is a rounded drum/capsule, not a
 sharp cuboid or spiked mace. Preserve the 850 ms stepping and delayed weapon
-inertia, reveal/haze, weighty hit, fall/crash timing and bounded debris.
+inertia, reveal/haze, weighty surviving hits and the unified lethal timeline.
 
 Giant HP is a dedicated major-threat bar. Explicit width **and height** must
 produce an outer ratio around 5.5–6.5:1; do not flatten a normal bar with extreme
@@ -197,8 +197,8 @@ Giant uses a 24-radial padded barrel and smooth 24×12 head, an olive deep shell
 limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
-mesh draws per live Giant. R3 replaces colored debris with twelve pale rounded
-fragments at the existing crash. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+mesh draws per live Giant. Death retains the intact role geometry through
+the shared fall/gray/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 R5 removes the grip hand from body/reference/run/death geometry and merges it
@@ -280,43 +280,46 @@ Each feedback instance owns one shared overlay material per role, reused
 across impacts; existing pooled spark materials remain. Heavy retains its
 stronger 0.72 core wash and four-spark response.
 
-Ordinary surviving feedback remains independently controlled from lethal/crash
-presentation. R3 supersedes the former core-color/0.6 emissive lethal wash with
-the naturally lit threat-specific lethal language below. Reveal, surviving-hit impulse,
+Ordinary surviving feedback remains independently controlled from lethal
+presentation. Lethal color is naturally lit neutral gray, following the unified
+timeline below. Reveal, surviving-hit impulse,
 compression and the R1 Giant HP bar remain unchanged.
 
 Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Threat-specific lethal language
+## Unified Enemy Death (R6.2)
 
-Death pacing communicates threat: **Grunt < Heavy << Giant**. All lethal pale
-colors remain #D8D9D1 / #E7E4D9 / #BFC5C1, matte and non-emissive. Gameplay
-removal is independent of presentation. Surviving hits and Level-Up remain separate.
+All current beachhead enemies use **blood → fall → gray → fade**. One
+presentation-only `enemyDeathPose(ageMs, totalMs)` supplies identical normalized
+curves: fall at 0–45%, smooth gray transition at 38–65%, and opacity fade at
+65–100%. The intact role-owned figure settles at an 80° backward fall with a
+small deterministic ±0.09-radian lateral roll. Ground support derives from its
+frozen part bounds; the fallen figure stays full-size and stationary during fade.
 
-Grunt freezes its last role-owned pose and shifts to soft gray #BFC5C1 over
-80 ms. The intact, full-size figure then eases upward by 0.18 world units while
-fading smoothly to zero at 320 ms. No shrink, squash, glow, sparks, fragments
-or ground residue. Canonical language: **gray → intact rise → fade → gone**.
+Threat pacing differs only by total duration: **Grunt 425 ms < Heavy 750 ms <
+Giant 1450 ms**. Grunt/Heavy freeze their last rendered locomotion geometry.
+Giant freezes its complete body and weapon-local grip pose; the merged grip hand
+and maul share the parent fall throughout. The naturally lit neutral gray target
+is #AEB5B3, with no lethal emissive wash.
 
-Heavy freezes/pales over 80 ms and shatters at 100 ms into eight full-size pale
-pieces. Its 600 ms fragment clock preserves analytic grounding and stationary
-rest; opacity fades only in the final 160 ms. Total beat is 700 ms. The Heavy-only
-`PaleShatterFragments` pool stays bounded at 384 instances / one draw; forty-eight
-reusable intact slots serve both crowd policies without per-kill hierarchies.
-`CROWD_DEATH_STYLES` owns these rendering-only clocks, never combat values.
+One shared bounded `LethalBloodSpray` pool emits six matte ellipsoid droplets
+per lethal event in #B93E45 / #D95652, lasting 150 ms. Its 384 instances support
+64 simultaneous sprays in one instanced draw, with deterministic velocities and
+bounded circular reuse. Contacts and ordinary surviving hits produce no blood.
+The existing 48 reusable crowd corpse slots and three dedicated Giant slots
+remain bounded. Crowd corpse slots submit to per-geometry instanced batches
+(at most four body poses plus one helmet batch per shipping crowd role), with
+per-instance gray/opacity. Only batch geometry copies and materials are owned;
+role geometry remains borrowed and unchanged. No per-kill effects hierarchy is allocated after slot warmup.
 
-Giant drains albedo over 120 ms without lethal emission. Its existing 90–520 ms
-heavy fall, 520 ms crash, sand dust/ring and 2400 ms clear clock remain. The
-intact Giant now breaks at crash, into twelve larger pale rounded fragments per
-bounded slot, replacing both colored armor rubble and the 36-point burst.
-Each Giant fragment also stops at its analytic contact point, rests at its own
-scaled half-height and keeps full size. Fade starts at 1550 ms and clear remains
-2400 ms. Reveal timing,
-ordinary R2 hits, HP layout and gameplay removal are unchanged. Boss is excluded.
-
-R3 evidence belongs in `artifacts/coastal-r3/`.
+There is no vaporization, rise, shrink, shatter, grounded fragment residue,
+death ring, crash dust or Giant-specific crash camera movement. Superseded
+fragment resources and timing helpers are removed. Giant reveal haze,
+ordinary surviving-hit feedback, HP layout, gameplay removal and Boss remain
+unchanged. Local generated review evidence belongs in
+`artifacts/r6_2-unified-death/` and stays untracked.
 
 ## R4 — rounded organic mass + structured functional gear
 
@@ -346,7 +349,8 @@ Canvas forms use eight broad outline corners and one bevel ring, not costly
 spheres. Body and flap are merged before each reference/run pose is merged;
 no new per-Heavy draw/material or Giant draw is introduced. Role ownership,
 hit/contact/death geometry selection, 650/850 ms gait, shoe motion, surviving-hit
-styles, Pale Shatter clocks and Giant HP dimensions remain unchanged.
+styles and Giant HP dimensions remain unchanged. Current lethal clocks are
+recorded in the unified death section above.
 Evidence belongs in `artifacts/structured-toy-r4/`; stop for human review.
 
 ## R5 — Giant hierarchy and presentation correction

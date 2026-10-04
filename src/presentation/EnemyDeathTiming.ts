@@ -1,18 +1,13 @@
-// Presentation only: gameplay removes enemies independently of these clocks.
-export const CROWD_DEATH_STYLES = {
-  grunt: { mode: 'gray-rise-fade', tint: '#bfc5c1', paleMs: 80, intactMs: 80, totalMs: 320 },
-  heavy: { mode: 'shatter', tint: '#d8d9d1', paleMs: 80, intactMs: 100, fragmentMs: 600, fadeMs: 160, totalMs: 700 },
-} as const;
-export type CrowdDeathStyle = typeof CROWD_DEATH_STYLES[keyof typeof CROWD_DEATH_STYLES];
+// Presentation only. Gameplay removal is independent of these clocks.
+export const ENEMY_DEATH_DURATION_MS = { grunt: 425, heavy: 750, giant: 1450 } as const;
+export const ENEMY_DEATH_GRAY = '#aeb5b3';
+export const ENEMY_DEATH_FALL_RADIANS = 80 * Math.PI / 180;
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
-export function enemyDeathPose(ageMs: number, style: CrowdDeathStyle) {
-  const progress = clamp((ageMs - style.intactMs) / (style.totalMs - style.intactMs));
-  const drift = progress * progress * (3 - 2 * progress);
-  const fade = style.mode === 'gray-rise-fade';
-  return { pale: clamp(ageMs / style.paleMs),
-    bodyVisible: ageMs >= 0 && ageMs < (fade ? style.totalMs : style.intactMs),
-    opacity: fade ? 1 - drift : 1,
-    rise: fade ? .18 * drift : 0,
-    scale: 1,
-    squash: fade ? 0 : .035 * Math.sin(Math.PI * clamp(ageMs / style.intactMs)) };
+const smooth = (value: number) => { const p = clamp(value); return p * p * (3 - 2 * p); };
+export function enemyDeathPose(ageMs: number, totalMs: number) {
+  if (!(totalMs > 0) || !Number.isFinite(totalMs)) throw new Error('Death duration must be finite and positive');
+  const progress = clamp(ageMs / totalMs);
+  return { progress, bodyVisible: ageMs >= 0 && ageMs < totalMs,
+    fall: smooth(progress / .45), gray: smooth((progress - .38) / .27),
+    opacity: 1 - smooth((progress - .65) / .35) };
 }
