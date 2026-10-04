@@ -1,0 +1,541 @@
+{
+  "results": {
+    "390-0-fireRate": {
+      "track": {
+        "x": 85.5625,
+        "y": 799.828125,
+        "width": 158.015625,
+        "height": 19.203125,
+        "right": 243.578125,
+        "bottom": 819.03125
+      },
+      "weapon": {
+        "x": 254.765625,
+        "y": 797.4375,
+        "width": 54.390625,
+        "height": 24,
+        "right": 309.15625,
+        "bottom": 821.4375
+      },
+      "enhancement": {
+        "x": 315.546875,
+        "y": 801.953125,
+        "width": 60.859375,
+        "height": 14.96875,
+        "right": 376.40625,
+        "bottom": 816.921875
+      },
+      "value": {
+        "x": 339.71875,
+        "y": 801.953125,
+        "width": 36.6875,
+        "height": 14.96875,
+        "right": 376.40625,
+        "bottom": 816.921875
+      },
+      "badge": {
+        "x": 13.59375,
+        "y": 788.46875,
+        "width": 60.78125,
+        "height": 41.9375,
+        "right": 74.375,
+        "bottom": 830.40625
+      },
+      "label": {
+        "x": 325.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 387,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "right": 390,
+        "bottom": 844
+      },
+      "text": "+130%",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "390-0-squad": {
+      "track": {
+        "x": 85.5625,
+        "y": 799.828125,
+        "width": 161.890625,
+        "height": 19.203125,
+        "right": 247.453125,
+        "bottom": 819.03125
+      },
+      "weapon": {
+        "x": 258.640625,
+        "y": 797.4375,
+        "width": 54.390625,
+        "height": 24,
+        "right": 313.03125,
+        "bottom": 821.4375
+      },
+      "enhancement": {
+        "x": 319.421875,
+        "y": 801.953125,
+        "width": 56.984375,
+        "height": 14.96875,
+        "right": 376.40625,
+        "bottom": 816.921875
+      },
+      "value": {
+        "x": 343.59375,
+        "y": 801.953125,
+        "width": 14.234375,
+        "height": 14.96875,
+        "right": 357.828125,
+        "bottom": 816.921875
+      },
+      "badge": {
+        "x": 13.59375,
+        "y": 788.46875,
+        "width": 60.78125,
+        "height": 41.9375,
+        "right": 74.375,
+        "bottom": 830.40625
+      },
+      "label": {
+        "x": 325.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 387,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "right": 390,
+        "bottom": 844
+      },
+      "text": "×2",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "390-20-fireRate": {
+      "track": {
+        "x": 105.5625,
+        "y": 779.828125,
+        "width": 118.015625,
+        "height": 19.203125,
+        "right": 223.578125,
+        "bottom": 799.03125
+      },
+      "weapon": {
+        "x": 234.765625,
+        "y": 777.4375,
+        "width": 54.390625,
+        "height": 24,
+        "right": 289.15625,
+        "bottom": 801.4375
+      },
+      "enhancement": {
+        "x": 295.546875,
+        "y": 781.953125,
+        "width": 60.859375,
+        "height": 14.96875,
+        "right": 356.40625,
+        "bottom": 796.921875
+      },
+      "value": {
+        "x": 319.71875,
+        "y": 781.953125,
+        "width": 36.6875,
+        "height": 14.96875,
+        "right": 356.40625,
+        "bottom": 796.921875
+      },
+      "badge": {
+        "x": 33.59375,
+        "y": 768.46875,
+        "width": 60.78125,
+        "height": 41.9375,
+        "right": 94.375,
+        "bottom": 810.40625
+      },
+      "label": {
+        "x": 325.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 387,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "right": 390,
+        "bottom": 844
+      },
+      "text": "+130%",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "390-20-squad": {
+      "track": {
+        "x": 105.5625,
+        "y": 779.828125,
+        "width": 121.890625,
+        "height": 19.203125,
+        "right": 227.453125,
+        "bottom": 799.03125
+      },
+      "weapon": {
+        "x": 238.640625,
+        "y": 777.4375,
+        "width": 54.390625,
+        "height": 24,
+        "right": 293.03125,
+        "bottom": 801.4375
+      },
+      "enhancement": {
+        "x": 299.421875,
+        "y": 781.953125,
+        "width": 56.984375,
+        "height": 14.96875,
+        "right": 356.40625,
+        "bottom": 796.921875
+      },
+      "value": {
+        "x": 323.59375,
+        "y": 781.953125,
+        "width": 14.234375,
+        "height": 14.96875,
+        "right": 337.828125,
+        "bottom": 796.921875
+      },
+      "badge": {
+        "x": 33.59375,
+        "y": 768.46875,
+        "width": 60.78125,
+        "height": 41.9375,
+        "right": 94.375,
+        "bottom": 810.40625
+      },
+      "label": {
+        "x": 325.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 387,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "right": 390,
+        "bottom": 844
+      },
+      "text": "×2",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "350-0-fireRate": {
+      "track": {
+        "x": 69.546875,
+        "y": 800.609375,
+        "width": 150.203125,
+        "height": 17.640625,
+        "right": 219.75,
+        "bottom": 818.25
+      },
+      "weapon": {
+        "x": 226.140625,
+        "y": 798.234375,
+        "width": 49.59375,
+        "height": 22.390625,
+        "right": 275.734375,
+        "bottom": 820.625
+      },
+      "enhancement": {
+        "x": 280.53125,
+        "y": 802.625,
+        "width": 55.875,
+        "height": 13.59375,
+        "right": 336.40625,
+        "bottom": 816.21875
+      },
+      "value": {
+        "x": 303.109375,
+        "y": 802.65625,
+        "width": 33.296875,
+        "height": 13.515625,
+        "right": 336.40625,
+        "bottom": 816.171875
+      },
+      "badge": {
+        "x": 13.59375,
+        "y": 788.46875,
+        "width": 49.5625,
+        "height": 41.9375,
+        "right": 63.15625,
+        "bottom": 830.40625
+      },
+      "label": {
+        "x": 285.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 347,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 350,
+        "height": 844,
+        "right": 350,
+        "bottom": 844
+      },
+      "text": "+130%",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "350-0-squad": {
+      "track": {
+        "x": 69.546875,
+        "y": 800.609375,
+        "width": 153.890625,
+        "height": 17.640625,
+        "right": 223.4375,
+        "bottom": 818.25
+      },
+      "weapon": {
+        "x": 229.828125,
+        "y": 798.234375,
+        "width": 49.59375,
+        "height": 22.390625,
+        "right": 279.421875,
+        "bottom": 820.625
+      },
+      "enhancement": {
+        "x": 284.21875,
+        "y": 802.625,
+        "width": 52.1875,
+        "height": 13.59375,
+        "right": 336.40625,
+        "bottom": 816.21875
+      },
+      "value": {
+        "x": 306.796875,
+        "y": 802.65625,
+        "width": 12.921875,
+        "height": 13.515625,
+        "right": 319.71875,
+        "bottom": 816.171875
+      },
+      "badge": {
+        "x": 13.59375,
+        "y": 788.46875,
+        "width": 49.5625,
+        "height": 41.9375,
+        "right": 63.15625,
+        "bottom": 830.40625
+      },
+      "label": {
+        "x": 285.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 347,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 350,
+        "height": 844,
+        "right": 350,
+        "bottom": 844
+      },
+      "text": "×2",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "350-20-fireRate": {
+      "track": {
+        "x": 89.546875,
+        "y": 780.609375,
+        "width": 110.203125,
+        "height": 17.640625,
+        "right": 199.75,
+        "bottom": 798.25
+      },
+      "weapon": {
+        "x": 206.140625,
+        "y": 778.234375,
+        "width": 49.59375,
+        "height": 22.390625,
+        "right": 255.734375,
+        "bottom": 800.625
+      },
+      "enhancement": {
+        "x": 260.53125,
+        "y": 782.625,
+        "width": 55.875,
+        "height": 13.59375,
+        "right": 316.40625,
+        "bottom": 796.21875
+      },
+      "value": {
+        "x": 283.109375,
+        "y": 782.65625,
+        "width": 33.296875,
+        "height": 13.515625,
+        "right": 316.40625,
+        "bottom": 796.171875
+      },
+      "badge": {
+        "x": 33.59375,
+        "y": 768.46875,
+        "width": 49.5625,
+        "height": 41.9375,
+        "right": 83.15625,
+        "bottom": 810.40625
+      },
+      "label": {
+        "x": 285.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 347,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 350,
+        "height": 844,
+        "right": 350,
+        "bottom": 844
+      },
+      "text": "+130%",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    },
+    "350-20-squad": {
+      "track": {
+        "x": 89.546875,
+        "y": 780.609375,
+        "width": 113.890625,
+        "height": 17.640625,
+        "right": 203.4375,
+        "bottom": 798.25
+      },
+      "weapon": {
+        "x": 209.828125,
+        "y": 778.234375,
+        "width": 49.59375,
+        "height": 22.390625,
+        "right": 259.421875,
+        "bottom": 800.625
+      },
+      "enhancement": {
+        "x": 264.21875,
+        "y": 782.625,
+        "width": 52.1875,
+        "height": 13.59375,
+        "right": 316.40625,
+        "bottom": 796.21875
+      },
+      "value": {
+        "x": 286.796875,
+        "y": 782.65625,
+        "width": 12.921875,
+        "height": 13.515625,
+        "right": 299.71875,
+        "bottom": 796.171875
+      },
+      "badge": {
+        "x": 33.59375,
+        "y": 768.46875,
+        "width": 49.5625,
+        "height": 41.9375,
+        "right": 83.15625,
+        "bottom": 810.40625
+      },
+      "label": {
+        "x": 285.421875,
+        "y": 834,
+        "width": 61.578125,
+        "height": 7,
+        "right": 347,
+        "bottom": 841
+      },
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 350,
+        "height": 844,
+        "right": 350,
+        "bottom": 844
+      },
+      "text": "×2",
+      "checks": {
+        "separate": true,
+        "trackDominant": true,
+        "usableTrack": true,
+        "noWrap": true,
+        "inSafeArea": true,
+        "clearBuild": true
+      }
+    }
+  },
+  "errors": []
+}

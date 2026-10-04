@@ -9,8 +9,8 @@ It expands the existing environment direction beyond architecture so that
 civilian objects, ships, military intrusion and future defensive structures
 belong to one visual world.
 
-The rules now include the implemented painted naval palette and R3 civilian
-foreground framing. Camera, UI and gameplay remain unchanged. This document does
+The rules now include the painted naval palette, R3 opening cleanup and R4
+near-field village. Camera and gameplay remain unchanged. This document does
 not introduce defense structures, persistent damage or new simulation systems.
 
 [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) remains canonical for the coastal
@@ -424,7 +424,7 @@ The connection is semantic:
 
 ## Scope
 
-The implemented naval palette and R3 opening/foreground refinements are narrow
+The implemented naval palette, opening cleanup and near-field village are narrow
 presentation changes. Further object-family changes require a separate task;
 these rules do not authorize a full environment rebuild or UI redesign.
 

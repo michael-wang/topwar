@@ -6,10 +6,10 @@ export interface LoadoutContext {
   reinforcementArrived: boolean;
 }
 export function loadoutPresentation(state: Readonly<ProgressionState>, balance: ProgressionBalance, context: LoadoutContext): {
-  weapon: 'rifle'; trait: 'fireRate' | 'squad'; value: string;
+  weapon: 'rifle'; enhancement: { kind: 'fireRate' | 'squad'; value: string };
 } {
   const reinforced = context.reinforcementArrived && context.squadCount > context.initialSquadCount;
-  return { weapon: 'rifle', trait: reinforced ? 'squad' : 'fireRate', value: reinforced
+  return { weapon: 'rifle', enhancement: { kind: reinforced ? 'squad' : 'fireRate', value: reinforced
     ? `×${Number((context.squadCount / context.initialSquadCount).toFixed(2))}`
-    : `+${Math.round((effectiveRifleFireRate(context.baseFireRate, state.level, balance) / context.baseFireRate - 1) * 100)}%` };
+    : `+${Math.round((effectiveRifleFireRate(context.baseFireRate, state.level, balance) / context.baseFireRate - 1) * 100)}%` } };
 }

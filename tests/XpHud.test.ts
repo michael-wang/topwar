@@ -96,7 +96,9 @@ it('uses icon-only loadout identity and truthful active reinforcement, resetting
   const {hud,root}=make(), context={baseFireRate:3,squadCount:1,initialSquadCount:1,reinforcementArrived:false};
   hud.update({level:3,xp:10},balance,0,context);
   const loadout=root.children[3], trait=loadout.children[1];
-  expect((loadout.children[0] as unknown as HTMLElement).innerHTML).toContain('<svg');
+  expect(loadout.children[0].className).toBe('xp-weapon-slot');
+  expect(trait.className).toBe('xp-enhancement-slot xp-power');
+  expect((loadout.children[0].children[0] as unknown as HTMLElement).innerHTML).toContain('viewBox="0 0 44 20"');
   expect(trait.children[1].textContent).toBe('+67%');
   expect(loadout.children[0].textContent).toBe('');
   hud.update({level:7,xp:0},balance,100,context);

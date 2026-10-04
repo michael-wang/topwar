@@ -38,9 +38,11 @@ export class XpHud {
     title.textContent = 'LEVEL UP';
     this.message.append(title);
     this.loadout.className = 'xp-loadout'; this.loadout.hidden = true;
-    const trait = document.createElement('div'); trait.className = 'xp-power';
+    const weapon = document.createElement('div'); weapon.className = 'xp-weapon-slot';
+    weapon.append(gameIcon('rifle'));
+    const trait = document.createElement('div'); trait.className = 'xp-enhancement-slot xp-power';
     trait.append(this.traitIcon, this.traitValue);
-    this.loadout.append(gameIcon('rifle'), trait);
+    this.loadout.append(weapon, trait);
     track.append(this.fill, this.edge);
     this.element.append(this.label, track, this.message, this.loadout);
     viewport.append(this.element);
@@ -53,10 +55,10 @@ export class XpHud {
     this.loadout.hidden = !context;
     if (context) {
       const model = loadoutPresentation(state, balance, context);
-      if (model.trait !== this.traitKind) {
-        this.traitIcon.innerHTML = iconMarkup(model.trait); this.traitKind = model.trait;
+      if (model.enhancement.kind !== this.traitKind) {
+        this.traitIcon.innerHTML = iconMarkup(model.enhancement.kind); this.traitKind = model.enhancement.kind;
       }
-      this.traitValue.textContent = model.value;
+      this.traitValue.textContent = model.enhancement.value;
     }
     const age = nowMs - this.startedAtMs;
     const active = this.event !== null && age >= 0 && age < LEVEL_UP_MS;

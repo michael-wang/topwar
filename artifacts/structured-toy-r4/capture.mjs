@@ -74,7 +74,7 @@ for(const role of ['grunt','heavy','giant']){
    // Use the actual shared art skin swatch, rather than a QA-selected face tint.
    return import('/src/art/ArtDirection.ts').then(({ART})=>{
     skin.set(ART.faction.skin);const head=new THREE.Box3();
-    for(let i=0;i<p.count;i++)if(p.getY(i)>(role==='giant'?.8:.43)&&Math.abs(c.getX(i)-skin.r)+Math.abs(c.getY(i)-skin.g)+Math.abs(c.getZ(i)-skin.b)<.00001)
+    for(let i=0;i<p.count;i++)if(p.getY(i)>(role==='giant'?.65:.43)&&Math.abs(p.getX(i))<(role==='heavy'?.33:role==='grunt'?.24:1)&&Math.abs(c.getX(i)-skin.r)+Math.abs(c.getY(i)-skin.g)+Math.abs(c.getZ(i)-skin.b)<.00001)
      head.expandByPoint(new THREE.Vector3().fromBufferAttribute(p,i));
     const crown=family.helmet.geometry.boundingBox.max.y;
     const guide=h=>{const v=new THREE.Vector3(0,h,0).applyMatrix4(group.matrixWorld).project(r.camera);return {x:(v.x+1)*195,y:(1-v.y)*422};};
@@ -89,7 +89,7 @@ for(const role of ['grunt','heavy','giant']){
 const hud={};
 for(const width of [390,350])for(const kind of ['fireRate','squad']){
  await page.setViewportSize({width,height:844});await prepare();hud[`${width}-${kind}`]=await page.evaluate(kind=>{
-  const a=window.__testApp,s=a.simulation.getState(),f=structuredClone(window.__fixture);a.renderer.render(f,2000);a.xpHud.reset();
+  const a=window.__testApp,s=a.simulation.getState(),f=structuredClone(window.__fixture);a.renderer.render(f,0);a.renderer.render(f,2000);a.xpHud.reset();
   a.xpHud.update({level:kind==='squad'?7:3,xp:kind==='squad'?0:45},s.catharsis.balance.progression,2000,
    {baseFireRate:a.runtimeTuning.fireRate,squadCount:kind==='squad'?2:1,initialSquadCount:1,reinforcementArrived:kind==='squad'});
   const box=q=>{const r=document.querySelector(q)?.getBoundingClientRect();return r?{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null;};

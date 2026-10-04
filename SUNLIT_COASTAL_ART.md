@@ -164,6 +164,22 @@ rounded geometry; legacy Boss framing is unchanged.
 Bottom hierarchy is **LEVEL / XP / LOADOUT**, never one enclosing capsule. XP remains
 the widest continuous element; the compact loadout balances the level badge.
 
+R4 makes loadout a horizontal **weapon slot | enhancement slot**, with negative
+space and one quiet separator rather than cards or a dark enclosing panel.
+The monochrome navy rifle occupies 3.4×1.5 rem (3.1×1.4 on ≤350px), with a
+tight 44×20 SVG viewBox and broad stock/receiver/barrel. The enhancement slot
+retains fire-rate icon + current percentage before reinforcement, or squad icon
++ actual multiplier after arrival. Both remain non-wrapping at 350/390px and
+the XP track remains the widest continuous HUD element. Pause/TUNE, safe-area
+anchors, level/XP timing and progression rules are unchanged.
+
+**Approved deferred enhancement direction:** three simple bullet/cartridge pips
+show zero/one/two/three filled fire-rate stages; later states show two soldiers,
+then three soldiers. This is not implemented in R4. The exact progression order
+will be designed separately, and the display must consume an explicit upgrade/
+progression state. Never infer those future pips/soldier stages from `state.level`.
+Until that model exists, only current truthful percentage/multiplier is shown.
+
 **Icon first:** when a gameplay concept is visually recognizable, prefer an authored
 silhouette plus number/%/multiplier over English labels. Rifle identity is a chunky
 inline SVG, never visible `RIFLE`. Fire-rate trait uses a rapid-fire icon + cumulative
