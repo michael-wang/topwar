@@ -84,7 +84,7 @@ it('projects Giant maximum, proportions and gait without persisting renderer sta
   const render = projectRenderState(sim.getFrameState(), { catharsis: state.catharsis,
     formationSpacing: .45, trackHalfWidth: 3.2, defenseLineOffset: 1.5, bossVisualScale: 7 });
   expect(render.enemies[0].maxHp).toBe(172); expect(render.enemies[0].gaitCycleMs).toBe(850);
-  expect(render.enemies[0].visualScaleY).toBeCloseTo(1.4 * 3.6);
+  expect(render.enemies[0].visualScaleY).toBeCloseTo(1.4 * 1.9);
   expect(sim.getState().enemies[0]).not.toHaveProperty('maxHp');
   sim.setCatharsisBalance({ ...balance, giant: { ...balance.giant, hp: 280 } });
   expect(sim.getState().enemies[0].hp).toBe(280);

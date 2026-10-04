@@ -98,8 +98,8 @@ function giantPose(stride: number, liftLeft = 0, liftRight = 0): THREE.BufferGeo
     { geometry: new THREE.CylinderGeometry(1,1,.055,16,1,true).scale(.44,1,.31).translate(0,.395,0),
       color: COMBAT_COLORS.giant.sash },
     { geometry: canvasFieldBag(.245,.275,.12).rotateY(-.35).translate(-.37,.33,.205), color: COMBAT_COLORS.giant.satchel },
-    { geometry: ball(0,1.01,0,.2706,.195,.2378,24,12), color: ART.faction.skin },
-    ...face(.975,.235,.020),
+    { geometry: ball(0,1.075,0,.232716,.1755,.204508,24,12), color: ART.faction.skin },
+    ...face(1.045,.202,.020),
     ...[-1, 1].map(side => ({ geometry: ball(side * .48, .40, side * stride * .10, .145, .145, .145, 16, 10), color: ART.faction.skin })),
     { geometry: toyShoe({ x: -.28 - (liftLeft > .05 ? .035 : 0), y: liftLeft, z: stride * .14,
       width: .40, height: .18, depth: .32, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
@@ -112,10 +112,10 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const idle = giantPose(0), runs = [giantPose(1, 0, .085), giantPose(-.25, .018, 0),
     giantPose(-1, .085, 0), giantPose(.25, 0, .018)], death = gray(idle);
   const helmetGeometry = merge([
-    { geometry: toyHelmetShell({ rx: .3321, ry: .25, rz: .2911, y: 1.035,
+    { geometry: toyHelmetShell({ rx: .285606, ry: .22, rz: .250346, y: 1.095,
       front: 1.45, side: 1.94, rear: 2.05, segments: 24, rings: 10 }), color: THREAT_COLORS.helmet },
     // One thick soft fin, not a rectangular crest or spike.
-    { geometry: ball(0,1.22,0,.09,.135,.185,16,10), color: THREAT_COLORS.stone },
+    { geometry: ball(0,1.235,0,.081,.12,.1628,16,10), color: THREAT_COLORS.stone },
   ]);
   // The primary rounded torso needs no collar or chest equipment.
   const armorGeometry = new THREE.BufferGeometry();

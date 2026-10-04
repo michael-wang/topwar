@@ -48,8 +48,8 @@
       "hp": 172,
       "xp": 120,
       "speed": 0.08,
-      "visualScale": 3.6,
-      "widthMultiplier": 0.68,
+      "visualScale": 1.9,
+      "widthMultiplier": 0.94,
       "gaitCycleMs": 850
     },
     "landingAssault": {

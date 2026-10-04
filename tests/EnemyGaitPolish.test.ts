@@ -86,7 +86,7 @@ it('gives Giant one rounded broad crest and an uninterrupted body with no chest 
     if (Math.abs(c.r-stone.r)+Math.abs(c.g-stone.g)+Math.abs(c.b-stone.b)<.00001)
       crest.expandByPoint(new THREE.Vector3().fromBufferAttribute(p,i));
   }
-  expect(crest.getSize(new THREE.Vector3()).x).toBeCloseTo(.18);
+  expect(crest.getSize(new THREE.Vector3()).x).toBeCloseTo(.162);
   expect(crest.getCenter(new THREE.Vector3()).x).toBeCloseTo(0);
   expect(crest.max.y).toBeCloseTo(1.355);
   expect(family.vest.visible).toBe(false);

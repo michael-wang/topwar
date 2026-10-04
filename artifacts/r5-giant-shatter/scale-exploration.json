@@ -1,0 +1,212 @@
+[
+  {
+    "scale": 3.6,
+    "widthMultiplier": 0.68,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 206.01038422245463,
+      "bodyWidth": 86.23352822621945
+    },
+    "heightRatio": 4.338307210942802,
+    "widthRatio": 2.1743978860023527
+  },
+  {
+    "scale": 3.6,
+    "widthMultiplier": 0.68,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 169.37046670492168,
+      "bodyWidth": 70.57336459659322
+    },
+    "heightRatio": 3.098625707449179,
+    "widthRatio": 1.521372067013889
+  },
+  {
+    "scale": 2.8,
+    "widthMultiplier": 0.68,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 156.38897328472711,
+      "bodyWidth": 66.6240601443284
+    },
+    "heightRatio": 3.2933456877613168,
+    "widthRatio": 1.6799407204432828
+  },
+  {
+    "scale": 2.8,
+    "widthMultiplier": 0.68,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 129.17188461001064,
+      "bodyWidth": 54.591005765357
+    },
+    "heightRatio": 2.3631943048817674,
+    "widthRatio": 1.1768353649617198
+  },
+  {
+    "scale": 2.6,
+    "widthMultiplier": 0.68,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 144.35315969789895,
+      "bodyWidth": 61.762417326028256
+    },
+    "heightRatio": 3.0398873144352567,
+    "widthRatio": 1.5573532990069399
+  },
+  {
+    "scale": 2.6,
+    "widthMultiplier": 0.68,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 119.36524728997918,
+      "bodyWidth": 50.622620734773434
+    },
+    "heightRatio": 2.1837822793105053,
+    "widthRatio": 1.0912876491740935
+  },
+  {
+    "scale": 2.4,
+    "widthMultiplier": 0.68,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 132.4599091826824,
+      "bodyWidth": 56.9169019648963
+    },
+    "heightRatio": 2.789431131527515,
+    "widthRatio": 1.4351725350447186
+  },
+  {
+    "scale": 2.4,
+    "widthMultiplier": 0.68,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 109.65300628568971,
+      "bodyWidth": 46.66502872686438
+    },
+    "heightRatio": 2.0060972304450244,
+    "widthRatio": 1.0059726019478925
+  },
+  {
+    "scale": 2.2,
+    "widthMultiplier": 0.68,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 120.70670368303074,
+      "bodyWidth": 52.08743389055513
+    },
+    "heightRatio": 2.5419241120960465,
+    "widthRatio": 1.3133964070424506
+  },
+  {
+    "scale": 2.2,
+    "widthMultiplier": 0.68,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 100.0338051713454,
+      "bodyWidth": 42.718185740398035
+    },
+    "heightRatio": 1.8301143425312782,
+    "widthRatio": 0.9208892747348177
+  },
+  {
+    "scale": 2,
+    "widthMultiplier": 0.68,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 109.09108409686371,
+      "bodyWidth": 47.273933463482436
+    },
+    "heightRatio": 2.297314470691649,
+    "widthRatio": 1.1920229068715977
+  },
+  {
+    "scale": 2,
+    "widthMultiplier": 0.68,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 90.50631338543866,
+      "bodyWidth": 38.782048013159155
+    },
+    "heightRatio": 1.6558092730013279,
+    "widthRatio": 0.836036724139124
+  },
+  {
+    "scale": 1.9,
+    "widthMultiplier": 0.94,
+    "mode": "same-depth",
+    "heavy": {
+      "crownHeight": 47.486352211945906,
+      "bodyWidth": 39.658578028127344
+    },
+    "giant": {
+      "crownHeight": 103.33411624880958,
+      "bodyWidth": 62.029345834453615
+    },
+    "heightRatio": 2.17608031435218,
+    "widthRatio": 1.5640839616201088
+  },
+  {
+    "scale": 1.9,
+    "widthMultiplier": 0.94,
+    "mode": "review-depth",
+    "heavy": {
+      "crownHeight": 54.65986624255732,
+      "bodyWidth": 46.387971835918385
+    },
+    "giant": {
+      "crownHeight": 85.77654961109504,
+      "bodyWidth": 50.894647237929426
+    },
+    "heightRatio": 1.569278439695682,
+    "widthRatio": 1.097151809480955
+  }
+]

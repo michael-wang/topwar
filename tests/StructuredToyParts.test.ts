@@ -47,12 +47,12 @@ it('authors owning Heavy pouch/Giant satchel regions in all static poses and dis
     family.dispose();spies.forEach(spy=>expect(spy).toHaveBeenCalledOnce());
   }
 });
-it('gives Giant a 2.4–2.6 head silhouette at unchanged crown, with 18% narrower/deeper head and taller body',()=>{
+it('gives Giant a 2.9–3.1 head silhouette at unchanged authored crown and padded body',()=>{
   const giant=createChibiGiantFamily(),head=region(giant.body.geometry,ART.faction.skin,.8);
   const crown=giant.helmet.geometry.boundingBox!.max.y,headSize=head.getSize(new THREE.Vector3());
   expect(crown).toBeCloseTo(1.355);
-  expect(crown/(crown-head.min.y)).toBeGreaterThan(2.4);expect(crown/(crown-head.min.y)).toBeLessThan(2.6);
-  expect(headSize.x/.66).toBeCloseTo(.82);expect(headSize.z/.58).toBeCloseTo(.82);
+  expect(crown/(crown-head.min.y)).toBeGreaterThan(2.9);expect(crown/(crown-head.min.y)).toBeLessThan(3.1);
+  expect(headSize.x/.5412).toBeCloseTo(.86);expect(headSize.z/.4756).toBeCloseTo(.86);
   expect(region(giant.body.geometry,ART.raider.bodyDeep).max.y).toBeCloseTo(.895);
   expect(giant.presentation?.healthBar).toEqual({width:1.20,height:.20});
   expect(giant.weapon).toBeDefined();giant.dispose();

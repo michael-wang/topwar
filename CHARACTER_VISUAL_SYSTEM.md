@@ -19,7 +19,7 @@ change the world, UI, ships, camera, gameplay, balance or snapshots.
 ## Target proportions and materials
 
 Keep the approximate two-head base family and current battlefield occupancy;
-R4 intentionally relaxes Giant to a 2.4–2.6-head war-chief. Use a
+R5 moves Giant to a 2.9–3.1-head war-chief with a body-dominant silhouette. Use a
 large rounded helmet/head zone, one small plump torso, detached simple hands
 and short rounded shoes. Avoid anatomical shoulders, elbows, knees and long
 limbs. Spheres, ellipsoids, capsules, beans and soft barrels dominate; hard
@@ -139,7 +139,7 @@ contains only geometry, motion strategy, materials and presentation anchors.
 - Player = R1 rounded toy base + R2 combat identity.
 - Grunt = R1 rounded toy base + R2 combat identity.
 - Heavy = R4 padded drum, diagonal webbing and flapped canvas pouches.
-- Giant = R4 2.5-head padded colossus with flat belt and canvas satchel.
+- Giant = R5 approximately 3-head padded colossus with flat belt and canvas satchel.
 - Boss = legacy, deferred. **Boss Rounded Toy migration** remains outstanding.
 
 R1 follows separately revertable documentation, base-role and threat-role commits.
@@ -185,7 +185,7 @@ behind the head. The 0.80 visual Y compression, 650 ms clock, 0.09 shoe lift,
 0.045 lateral step and weight transfer/hit/contact/death timings remain.
 
 Giant uses a 24-radial padded barrel and smooth 24×12 head, an olive deep shell, one soft
-limestone fin (0.18 wide, crown 1.355), large spheres for hands and a rounded
+limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
 mesh draws per live Giant. R3 replaces colored debris with twelve pale rounded
@@ -307,10 +307,12 @@ caps. The broad diagonal harness conforms to this surface. Exactly two
 width and near the lower front waist. Trouser boundary is a dedicated existing
 ring at Y=0.30, without added body triangles.
 
-Giant's skin-head width/depth shrink 18%, with head radius 0.2706/0.195/0.2378
-at Y=1.01. Shell width/depth also shrink 18%; one limestone crest remains.
-Crown stays 1.355. Crown-to-head-bottom zone is 0.54, giving approximately
-2.51 heads. The torso grows internally to 0.84×0.76×0.58, from Y=0.135 to
+Giant retains the R4 structured body/gear, with R5 head radii
+0.232716/0.1755/0.204508 at Y=1.075: another 14% less width/depth and 10%
+less vertical radius. Shell radii are 0.285606/0.22/0.250346 at Y=1.095;
+one proportional limestone crest remains. Crown stays 1.355. The head zone is
+0.4555 (33.62% of height), giving approximately 2.975 heads. The R4 torso remains
+0.84×0.76×0.58, from Y=0.135 to
 0.895, with a straight padded middle. Total role/root scales stay unchanged.
 A flat 0.055-high belt wraps the waist; one 0.245×0.275×0.12 flapped canvas
 satchel sits opposite the unchanged maul. No center-chest gear.
@@ -321,3 +323,20 @@ no new per-Heavy draw/material or Giant draw is introduced. Role ownership,
 hit/contact/death geometry selection, 650/850 ms gait, shoe motion, surviving-hit
 styles, Pale Shatter clocks and Giant HP dimensions remain unchanged.
 Evidence belongs in `artifacts/structured-toy-r4/`; stop for human review.
+
+## R5 — Giant hierarchy and presentation correction
+
+Giant presentation multiplier is 1.9 (previously 3.6), with width multiplier
+0.94 (previously 0.68). Heavy remains 1.35 with its existing 0.80 Y compression.
+At the actual 390×844 portrait camera, the fixed 2000ms review fixture measures
+Giant crown height 2.18× Heavy at equal Z=16, and 1.57× at the unchanged
+Heavy Z=12 / Giant Z=22 opening. Same-depth body width is 1.56× Heavy.
+The suggested 2.4–2.8 exploration remained too tall: 2.4 measured 2.79× / 2.01×.
+Only the visual-scale schema floor is lowered from 2.0 to 1.8; combat validation
+and HP/speed/collision/targeting/XP/scheduling are unchanged. An identical-input
+simulation comparison confirms this boundary. Total authored crown remains
+1.355, while head/helmet now occupy approximately one third of standing height.
+The separate 1.20×0.20 Giant billboard still scales uniformly at exactly 6:1,
+with the accepted contained fill and full/half/low/zero behavior.
+
+R5 evidence belongs in `artifacts/r5-giant-shatter/`.
