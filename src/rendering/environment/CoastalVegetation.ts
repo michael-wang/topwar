@@ -68,14 +68,15 @@ export class CoastalVegetation {
               transform.rotation.set(Math.sin(angle)*.18, [-.6, .35, 1.05, -1.0][layer], Math.cos(angle)*.12);
               transform.scale.set(tree.size * 1.40, tree.size * .70, 1);
             } else {
-              transform.position.set(side * (side < 0 ? 2.4 : 1.7), 2.3 + (i % 3)*.55,
-                (side < 0 ? 21.3 : 24.4) + (i % 3)*.35);
+              // Keep climbing cards attached to the shorter near-village facades.
+              transform.position.set(side * (side < 0 ? 5.1 : 4.0), 1.15 + (i % 3)*.30,
+                (side < 0 ? 16.3 : 18.1) + (i % 3)*.08);
               transform.rotation.set(.12, Math.sin(angle)*.45, Math.cos(angle)*.3);
               transform.scale.set(.72, .65, 1);
             }
           } else if (family === 1) {
-            transform.position.set(side * (side < 0 ? 2.35 : 1.65),
-              2.45 + (i % 3)*.55, (side < 0 ? 20.95 : 24.05) + (i % 3)*.35);
+            transform.position.set(side * (side < 0 ? 5.05 : 3.95),
+              1.25 + (i % 3)*.30, (side < 0 ? 16.20 : 18.0) + (i % 3)*.08);
             transform.rotation.set(.12, Math.sin(angle)*.2, Math.cos(angle)*.18);
             transform.scale.set(.50, .46, 1);
           } else if (family === 2) {

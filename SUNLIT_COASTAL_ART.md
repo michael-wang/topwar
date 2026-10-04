@@ -90,13 +90,19 @@ shoreline Z=53, paths, collision, lanes, camera and lighting are unchanged.
 
 E1 uses three depth zones: strongest village framing near the defenders,
 lighter side facades and vegetation in the middle, then open beach/sea.
-Z=42–55 is the shoreline showcase: no tall house or tree interrupts the surf.
-The former Z=58 house is removed; the Z=43 house becomes a compact 2.8×2.2×3.2
-right-side mass at Z=20. The Z=24 left and Z=35 right houses remain, as do R4's
-foreground corners. Only two shorter olives remain at Z=19/21, with trunks,
+Full-height village masses end before Z=24 and must not interrupt the primary
+surf sightline at 390×844. E1.1 removes the Z=35 house; the old Z=24 left house
+becomes a smaller cropped 2.7×2.1×3.0 mass at Z=18, farther outside the track.
+The compact Z=20 house and R4 foreground corners remain. The arch moves to
+Z=18 at 60% height; Z=26–29 side stairs/parapet stay below 0.7 units.
+Only two shorter olives remain at Z=19/21, with trunks,
 forks and ground shadows; the Z=30 olive moves to Z=21 beside the compact house
 so its foot/trunk are visible, and the Z=39/53 trees are removed. The village opens onto
 the beach rather than occupying the surf. Camera, lighting and collision stay fixed.
+Climbing foliage is refitted to the shorter near facades, without more cards or
+trees. The complete legacy burning-site actors (wreck, fire core, glow and
+smoke) are hidden in defense; legacy mode retains them. Artillery, aircraft,
+flak, Mediterranean transports and combat blood stains remain.
 
 Dark/detail-rich side frame → open bright sand combat channel → turquoise sea
 and pale horizon. All opaque architecture/gear stays at least 0.4 world units

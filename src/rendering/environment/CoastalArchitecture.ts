@@ -5,11 +5,10 @@ import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
 
 const C = ART.coastalDefense;
-// Village weight recedes before the open Z 42–55 shoreline showcase.
+// Near village corners stay below the primary surf sightline at the portrait camera.
 // X is measured outward from the track edge; foreground corners live separately.
 export const COASTAL_BUILDINGS = [
-  { side: -1, offset: 2.6, z: 24, width: 3.7, height: 3.2, depth: 4.5, angle: .07 },
-  { side: 1, offset: 3.1, z: 35, width: 4.5, height: 3.8, depth: 5.5, angle: -.09 },
+  { side: -1, offset: 5.3, z: 18, width: 2.7, height: 2.1, depth: 3.0, angle: .07 },
   { side: 1, offset: 4.5, z: 20, width: 2.8, height: 2.2, depth: 3.2, angle: .04 },
 ] as const;
 
@@ -58,12 +57,13 @@ export class CoastalArchitecture {
       this.shadow(side, layout.side * layout.offset + 1.2, layout.z + 1.5, w + 2, d + 1, layout.angle - .18);
     }
     // Civilian terrace and arch frame the street; neither crosses the combat field.
-    this.arch(this.sides[1], 1.7, 25);
+    this.arch(this.sides[1], 1.7, 18);
     this.part(this.sides[0], 'plaster-terrace-wall', -2.7, .5, 20, 2.3, 1, .42, 'plaster');
     for (let step = 0; step < 4; step++) {
       this.part(this.sides[0], 'village-stair', -3.8, .16 + step * .2, 19 + step * .65, 1.6, .32 + step * .4, .7, 'plaster');
-      this.part(this.sides[1], 'short-terrace-stair', 4.2, .16 + step * .2, 28 + step * .65, 2.1, .32 + step * .4, .7, 'plaster');
+      this.part(this.sides[1], 'short-terrace-stair', 5.4, .10 + step * .08, 26 + step * .65, 1.8, .20 + step * .16, .7, 'plaster');
     }
+    this.part(this.sides[1], 'low-village-parapet', 5.4, .32, 29, 3.2, .64, .42, 'plaster');
     // Static geometry is merged per material and side once, preserving side-edge adaptation.
     for (const side of this.sides) for (const [name, material] of Object.entries(this.materials)) {
       const pieces: THREE.BufferGeometry[] = [];
@@ -97,11 +97,12 @@ export class CoastalArchitecture {
   }
   private arch(parent: THREE.Group, x: number, z: number): void {
     // Three broad pieces suggest an opening; curved underside is a single low-segment extrusion.
-    for (const offset of [-1.2, 1.2]) this.part(parent, 'arch-pier', x + offset, 1.15, z, .62, 2.3, .7, 'plaster');
+    for (const offset of [-1.2, 1.2]) this.part(parent, 'arch-pier', x + offset, .69, z, .62, 1.38, .7, 'plaster');
     const shape = new THREE.Shape(); shape.moveTo(-1.52, 2); shape.lineTo(-1.52, 3.7);
     shape.lineTo(1.52, 3.7); shape.lineTo(1.52, 2); shape.lineTo(.89, 2);
     shape.absarc(0, 2, .89, 0, Math.PI, false); shape.lineTo(-1.52, 2);
     const geometry = new THREE.ExtrudeGeometry(shape, { depth: .65, bevelEnabled: false, curveSegments: 8 });
+    geometry.scale(1, .6, 1);
     const mesh = new THREE.Mesh(geometry, this.materials.plaster); mesh.position.set(x, 0, z - .32); parent.add(mesh);
     this.baked.push(geometry); this.shadow(parent, x + 1.2, z + 1.2, 3.4, 2.4, -.25);
   }

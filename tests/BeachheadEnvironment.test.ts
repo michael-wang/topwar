@@ -42,14 +42,18 @@ it('hides bridge road/rails/joints and presents sand, shore and fixed corridor o
   expect(scene.children).toHaveLength(0);
 });
 
-it('removes static military wrecks from defense while retaining active fire and legacy wrecks', () => {
+it('hides complete legacy burning actors in defense and restores them in legacy mode', () => {
   const scene=new THREE.Scene(), environment=new BridgeEnvironment(scene);
   environment.update(0,3.2,0,true);
   expect(scene.getObjectByName('coastal-steel-forms')).toBeUndefined();
   expect(scene.getObjectByName('coastal-rust-forms')).toBeUndefined();
-  for(const name of ['burning-wreck-base','burning-wreck-slab']) expect(scene.getObjectByName(name)!.visible).toBe(false);
-  expect(scene.getObjectByName('burning-fire-core')!.visible).toBe(true);
+  for(const site of scene.getObjectsByProperty('name','battlefield-burning-site')) expect(site.visible).toBe(false);
+  for (const time of [500, 3000, 15000, 60000]) {
+    environment.update(0, 3.2, time, true);
+    expect(scene.getObjectsByProperty('name', 'battlefield-burning-site').every(site => !site.visible)).toBe(true);
+  }
   environment.update(0,3.2,0,false);
   for(const name of ['burning-wreck-base','burning-wreck-slab']) expect(scene.getObjectByName(name)!.visible).toBe(true);
+  for(const site of scene.getObjectsByProperty('name','battlefield-burning-site')) expect(site.visible).toBe(true);
   environment.dispose();
 });

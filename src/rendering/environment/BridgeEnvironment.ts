@@ -201,13 +201,10 @@ export class BridgeEnvironment {
     this.coastalVegetation.update(trackHalfWidth, nowMs);
     this.coastalCloth.update(trackHalfWidth, nowMs);
     this.coastalForeground.update(trackHalfWidth);
-    this.burningSites.forEach((site, index) => {
-      // Active flames/smoke survive; static military wrecks do not belong to the civilian beach.
-      for (const child of site.children)
-        if (child.name === 'burning-wreck-base' || child.name === 'burning-wreck-slab') child.visible = !defenseMode;
-      if (defenseMode) site.position.set(index === 0 ? -trackHalfWidth - 2.5 : trackHalfWidth + 2.9,
-        0, (index === 0 ? 34 : 44) - 76);
-      else site.position.copy(site.userData.legacyPosition);
+    this.burningSites.forEach(site => {
+      // Hide the entire legacy actor, including glow/flames/smoke, on the beach.
+      site.visible = !defenseMode;
+      site.position.copy(site.userData.legacyPosition);
     });
     if (this.defenseMode !== defenseMode) {
       this.defenseMode = defenseMode;
@@ -265,7 +262,7 @@ export class BridgeEnvironment {
     }
     for (let index = 0; index < this.burningCores.length; index++) {
       const core = this.burningCores[index];
-      core.mesh.position.y = defenseMode ? 2.1 : .95;
+      core.mesh.position.y = .95;
       core.mesh.scale.y = core.scale * (1 + Math.sin(nowMs * .006 + index * 2) * .1);
     }
     this.updateArtillery(nowMs, defenseMode ? trackHalfWidth : undefined);

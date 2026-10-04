@@ -6,9 +6,8 @@ import { CoastalForeground } from '../src/rendering/environment/CoastalForegroun
 import { coastalCameraFov } from '../src/rendering/renderSize';
 
 it('opens the shoreline showcase while retaining asymmetric near/mid village masses', () => {
-  expect(COASTAL_BUILDINGS).toHaveLength(3);
-  expect(COASTAL_BUILDINGS.filter(b => b.z >= 17 && b.z <= 22)).toHaveLength(1);
-  for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(42);
+  expect(COASTAL_BUILDINGS).toHaveLength(2);
+  for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(24);
   expect(COASTAL_TREES).toHaveLength(2);
   for (const tree of COASTAL_TREES) expect(tree.z + tree.size).toBeLessThan(39);
 });
@@ -64,12 +63,37 @@ it('exposes retained trunks at the portrait camera, including the relocated tree
   for (const side of vegetation.group.children) {
     const trunk = side.getObjectByName('olive-trunks-and-branches') as THREE.InstancedMesh;
     trunk.getMatrixAt(0, matrix); matrix.premultiply(trunk.matrixWorld);
-    for (const height of side.position.x > 0 ? [-.4, 0] : [0]) {
+    // The short near arch crosses the rear tree's middle; its lower trunk/foot
+    // remain exposed through the opening rather than disappearing behind a house.
+    for (const height of side.position.x > 0 ? [-.4, -.2] : [0]) {
       const screen = new THREE.Vector3(0, height, 0).applyMatrix4(matrix).project(camera);
       expect(Math.abs(screen.x)).toBeLessThan(1); expect(Math.abs(screen.y)).toBeLessThan(1);
       ray.setFromCamera(new THREE.Vector2(screen.x, screen.y), camera);
-      expect(ray.intersectObjects(opaque, false)[0]?.object).toBe(trunk);
+      expect(ray.intersectObjects(opaque, false)[0]?.object === trunk).toBe(true);
     }
   }
   architecture.dispose(); foreground.dispose(); vegetation.dispose();
+});
+
+it('leaves at least 90% of the primary surf sightline clear at the unchanged portrait camera', () => {
+  const architecture = new CoastalArchitecture(), foreground = new CoastalForeground();
+  architecture.update(3.2); foreground.update(3.2);
+  const scene = new THREE.Scene(); scene.add(architecture.group, foreground.group); scene.updateMatrixWorld(true);
+  const camera = new THREE.PerspectiveCamera(coastalCameraFov(390 / 844), 390 / 844, .1, 180);
+  camera.position.set(0, 6.5, -10); camera.lookAt(0, 0, 12.5); camera.updateMatrixWorld(true);
+  const opaque: THREE.Object3D[] = [];
+  scene.traverse(o => { if (o instanceof THREE.Mesh && !(o.material as THREE.Material).transparent) opaque.push(o); });
+  const ray = new THREE.Raycaster(), sand = new THREE.Plane(new THREE.Vector3(0, 1, 0), -.02), point = new THREE.Vector3();
+  for (const shore of [53, 49, 47, 45]) {
+    const screenY = new THREE.Vector3(0, .02, shore).project(camera).y;
+    let clear = 0;
+    for (let i = 0; i < 100; i++) {
+      ray.setFromCamera(new THREE.Vector2(-.9 + i * 1.8 / 99, screenY), camera);
+      ray.ray.intersectPlane(sand, point);
+      const hit = ray.intersectObjects(opaque, false)[0];
+      if (!hit || hit.distance > ray.ray.origin.distanceTo(point)) clear++;
+    }
+    expect(clear).toBeGreaterThanOrEqual(90);
+  }
+  architecture.dispose(); foreground.dispose();
 });
