@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiGiantFamily, createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { DEATH_VARIANTS, DEATH_PIECE_COUNTS, deathVariant, assemblyBatchGeometry } from '../src/rendering/enemies/DeathAssembly';
 import { integratedBloodGeometry, BLOOD_PIECE_COUNTS, bloodPieceOrigin, IntegratedDeathBlood } from '../src/rendering/enemies/IntegratedDeathBlood';
@@ -10,7 +9,7 @@ import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMa
 it('bakes semantic pieces into the exact accepted pose with three deterministic rigid patterns', () => {
   expect(DEATH_VARIANTS).toHaveLength(3); const variants=new Set<number>();
   for(let id=0;id<100;id++){expect(deathVariant(id)).toBe(deathVariant(id));variants.add(deathVariant(id));}expect(variants.size).toBe(3);
-  const families=[createChibiGruntFamily(),createChibiHeavyFamily(),createChibiGiantFamily()];
+  const families=[createChibiHeavyFamily(),createChibiGiantFamily()];
   for(const f of families){
     const a=f.deathAssembly!,pieces=new Set<number>();
     expect(a.body.getAttribute('position').array).toEqual(f.lethalReaction!.final.geometry.getAttribute('position').array);

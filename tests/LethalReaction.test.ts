@@ -1,15 +1,14 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { ENEMY_DEATH_TIMING, enemyReactionStage } from '../src/presentation/EnemyDeathTiming';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
-it('bakes two role-owned sink/hands-up poses with planted, wider shoes', () => {
- for(const family of [createChibiGruntFamily(),createChibiHeavyFamily()]) {
+it('bakes Heavy role-owned sink/hands-up poses with planted, wider shoes', () => {
+ for(const family of [createChibiHeavyFamily()]) {
   const reaction=family.lethalReaction!, before=family.body.geometry.getAttribute('position'), after=reaction.final.geometry.getAttribute('position');
   expect(before.count).toBe(after.count);expect(reaction.transition.geometry).not.toBe(reaction.final.geometry);
-  const handX=family.role==='grunt'?.30:.46;
+  const handX=.46;
   const handTop=(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute)=>{
    let top=0;for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i))>handX&&p.getY(i)>.25&&p.getY(i)<.70)top=Math.max(top,p.getY(i));return top;
   };

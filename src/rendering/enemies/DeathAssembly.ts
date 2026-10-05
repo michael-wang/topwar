@@ -2,11 +2,10 @@ import * as THREE from 'three';
 import { ENEMY_DEATH_TIMING, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 
 export const DEATH_VARIANTS = ['lateral', 'upper-lower', 'diagonal'] as const;
-export const DEATH_PIECE_COUNTS = { grunt: 8, heavy: 10, giant: 11 } as const;
-export const BODY_SEPARATION = { grunt: ENEMY_DEATH_TIMING.grunt.breakupDistance, heavy: ENEMY_DEATH_TIMING.heavy.breakupDistance, giant: ENEMY_DEATH_TIMING.giant.breakupDistance } as const;
+export const DEATH_PIECE_COUNTS = { heavy: 10, giant: 11 } as const;
+export const BODY_SEPARATION = { heavy: ENEMY_DEATH_TIMING.heavy.breakupDistance, giant: ENEMY_DEATH_TIMING.giant.breakupDistance } as const;
 export const deathVariant = (id: number): number => (Math.imul(id + 1, 1597334677) >>> 0) % 3;
 const DIRECTIONS = {
-  grunt: [[.35,.8,.2],[-.3,.35,-.1],[.9,.35,.12],[-.8,-.5,-.1],[-.9,.3,.1],[.9,.3,.1],[-.5,-.3,.2],[.5,-.3,.2]],
   heavy: [[.35,.8,.2],[-.3,.35,-.1],[.9,.35,.12],[-.8,-.5,-.1],[-.9,.3,.1],[.9,.3,.1],[-.8,-.2,.3],[.8,-.2,.3],[-.5,-.3,.2],[.5,-.3,.2]],
   giant: [[.35,.65,.2],[-.15,.95,.2],[-.3,.35,-.1],[.9,.4,.12],[-.8,.1,-.12],[.25,-.8,.1],[-.9,.3,.1],[.85,.2,.25],[-.7,-.3,.3],[-.5,-.3,.2],[.5,-.3,.2]],
 } as const;
@@ -25,7 +24,7 @@ vec3 openedPieceDirection(vec3 d, float id, float role, float variant) {
 // Bake only: preserve primitive topology, positions/normals/colors exactly.
 // Logical bands, hands, shoes and equipment each share a rigid direction;
 // nothing is fractured or rebuilt when an enemy dies.
-export function tagDeathPiece(geometry: THREE.BufferGeometry, role: EnemyDeathRole,
+export function tagDeathPiece(geometry: THREE.BufferGeometry, role: Exclude<EnemyDeathRole, 'grunt'>,
   piece: number | ((y: number, color: THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined, vertex: number) => number)): THREE.BufferGeometry {
   const p = geometry.getAttribute('position'), color = geometry.getAttribute('color');
   const direction = new Float32Array(p.count * 3), ids = new Float32Array(p.count);

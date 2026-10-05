@@ -8,6 +8,8 @@ import type { GroundBloodStains } from './BloodSplat';
 export const DEATH_BLOOD_CAPACITY = 64;
 export const DEATH_BLOOD_COLORS = SPLASH_COLORS;
 export const BLOOD_PIECE_COUNTS = DROPLET_COUNTS;
+// Independent of the Grunt body lift. These accepted blood activation clocks are unchanged.
+export const BLOOD_RIBBON_START_MS = { grunt: 130, heavy: 260, giant: 650 } as const;
 export const BLOOD_RELEASE_MS = { grunt: 190, heavy: 380, giant: 890 } as const;
 export const BLOOD_GRAVITY = { grunt: 30, heavy: 12, giant: 6 } as const;
 export const BLOOD_CONTACT_FADE_MS = 65;
@@ -88,7 +90,7 @@ int param=int(bloodVariant)*${count}+int(bloodPieceId);
 vec3 origin=origins[param], direction=vectors[param], shape=shapes[param].xyz;
 origin.x+=.018*(bloodJitter-.5);float size=.9+.2*bloodJitter;
 ${ribbon?`
-float t=(bloodAge-shapes[param].w-${ENEMY_DEATH_TIMING[role].breakupStartMs/1000})/${RIBBON_LIFETIME_MS[role]/1000};
+float t=(bloodAge-shapes[param].w-${BLOOD_RIBBON_START_MS[role]/1000})/${RIBBON_LIFETIME_MS[role]/1000};
 float grow=1.-pow(1.-clamp(t*extensionRates[param]/.34,0.,1.),3.);
 float thin=1.-.82*smoothstep(.42,1.,t);
 vec3 side=normalize(cross(direction,vec3(0.,0.,1.))),depth=cross(direction,side);
@@ -147,13 +149,13 @@ objectNormal=normalSide*normal.x+normalDirection*normal.y+normalDepth*normal.z;`
     for(const batch of this.allBatches)batch.count=0;
     for(const slot of this.slots) {
       if(!Number.isFinite(slot.startedAt))continue;
-      const age=nowMs-slot.startedAt,timing=ENEMY_DEATH_TIMING[slot.role];
+      const age=nowMs-slot.startedAt;
       if(!slot.stained&&nowMs>=slot.startedAt+slot.contactAgeMs){this.stains?.activate(slot.id,slot.role,slot.stainX,slot.stainZ,slot.startedAt+slot.contactAgeMs,slot.visualSeed);slot.stained=true;}
-      if(age<timing.breakupStartMs||age>=slot.endAgeMs)continue;
+      if(age<BLOOD_RIBBON_START_MS[slot.role]||age>=slot.endAgeMs)continue;
       for(let layer=0;layer<2;layer++) {
       if(layer===0&&age<BLOOD_RELEASE_MS[slot.role])continue;
       const batch=(layer===0?this.batches:this.ribbons).get(slot.role)!;
-      if(batch===this.ribbons.get(slot.role)&&age>=timing.breakupStartMs+RIBBON_LIFETIME_MS[slot.role]+RIBBON_DELAY_MS[slot.role])continue;
+      if(batch===this.ribbons.get(slot.role)&&age>=BLOOD_RIBBON_START_MS[slot.role]+RIBBON_LIFETIME_MS[slot.role]+RIBBON_DELAY_MS[slot.role])continue;
       const index=batch.count++;
       if(layer===1)writeLethalRecoil(this.ribbonWorld,slot.captured,age,slot.role,slot.directionX,slot.directionZ);
       batch.mesh.setMatrixAt(index,layer===1?this.ribbonWorld:slot.matrix);batch.variant.setX(index,slot.variant);batch.jitter.setX(index,slot.jitter);

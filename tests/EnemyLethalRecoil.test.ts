@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { LETHAL_RECOIL, lethalRecoilPose, writeLethalDirection, writeLethalRecoil, LETHAL_FOOT_PIVOT_Y } from '../src/rendering/enemies/EnemyLethalRecoil';
+import { gruntDeathBody } from '../src/presentation/GruntDeathBody';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
+import { BLOOD_RIBBON_START_MS } from '../src/rendering/enemies/IntegratedDeathBlood';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 
 function closeMatrix(a: THREE.Matrix4, b: THREE.Matrix4) { a.elements.forEach((v, i) => expect(v).toBeCloseTo(b.elements[i], 5)); }
@@ -31,26 +33,26 @@ it('has zero lethal retreat, role-weighted topple, an away direction, a low pivo
     const held = new THREE.Matrix4(); writeLethalRecoil(held, captured, ENEMY_DEATH_TIMING[role].totalMs, role, direction.x, direction.y); closeMatrix(held, matrix);
   }
 });
-it('shares the tipped root with body, fluid ribbon and detached ballistic release while leaving enemy state untouched', () => {
+it('shares threat root and blood recoil, keeps Grunt blood separate from body lift and leaves simulation untouched', () => {
   for (const role of ['grunt', 'heavy', 'giant'] as const) {
     const families = { grunt: createChibiGruntFamily(), heavy: createChibiHeavyFamily(), giant: createChibiGiantFamily() };
     const scene = new THREE.Scene(), r = new EnemyRenderer(scene, families), enemy = { id: 5, archetype: role, tier: 1, hp: 1, x: .4, z: 8, visualScale: 1.8 };
     r.update([enemy], 0, true, 0, 0); r.update([enemy], 2000, true, 0, 0); r.update([], 2010, true, 0, 0);
     const group = scene.getObjectByName(role === 'giant' ? 'giant-assault-soldier' : 'enemy-pale-death-body')!, captured = group.matrix.clone();
     const direction = new THREE.Vector2(); writeLethalDirection(direction, captured, 0, 0);
-    const age = ENEMY_DEATH_TIMING[role].breakupStartMs + 10;
+    const age = BLOOD_RIBBON_START_MS[role] + 10;
     r.update([], 2010 + age, true, 0, 0);
-    const expected = new THREE.Matrix4(); writeLethalRecoil(expected, captured, age, role, direction.x, direction.y); closeMatrix(group.matrix, expected);
+    const expected = new THREE.Matrix4(); writeLethalRecoil(expected, captured, age, role, direction.x, direction.y); if(role==='grunt'){const body=captured.clone();body.elements[13]+=gruntDeathBody(age).lift;closeMatrix(group.matrix,body);}else closeMatrix(group.matrix, expected);
     const ribbons = scene.getObjectByName(`enemy-blood-ribbons-${role}`) as THREE.InstancedMesh, matrix = new THREE.Matrix4(); ribbons.getMatrixAt(0, matrix); closeMatrix(matrix, expected);
     r.update([], 2010 + LETHAL_RECOIL[role].peakMs + 300, true, 0, 0);
     const slots = (r as unknown as { blood: { slots: { startedAt: number; matrix: THREE.Matrix4 }[] } }).blood.slots;
-    closeMatrix(slots.find(s => Number.isFinite(s.startedAt))!.matrix, group.matrix);
+    if(role==='grunt'){const launch=new THREE.Matrix4();writeLethalRecoil(launch,captured,190,role,direction.x,direction.y);closeMatrix(slots.find(s=>Number.isFinite(s.startedAt))!.matrix,launch);}else closeMatrix(slots.find(s => Number.isFinite(s.startedAt))!.matrix, group.matrix);
     expect(enemy).toEqual({ id: 5, archetype: role, tier: 1, hp: 1, x: .4, z: 8, visualScale: 1.8 });
     r.dispose(); Object.values(families).forEach(f => f.dispose()); expect(scene.children).toHaveLength(0);
   }
 });
 
-it('keeps the front-line foot pivot ahead of the advancing immediate following row', () => {
+it('keeps the ground-anchored blood foot pivot ahead of the advancing immediate following row', () => {
   const capture = new THREE.Matrix4().makeTranslation(0, .01, 8);
   const localFoot = new THREE.Vector3(0, LETHAL_FOOT_PIVOT_Y, 0);
   const output = new THREE.Matrix4();

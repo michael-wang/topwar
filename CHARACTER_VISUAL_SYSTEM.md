@@ -289,30 +289,30 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (V2.5)
+## Enemy Kill Feedback (V2.6)
 
-Current beachhead enemies use **Lethal Bullet Contact → Small Impact Blood → Backward Recoil / Topple →
-Smooth Pale Transition → Integrated Body Breakup + Fluid Blood → Body Fade →
-Persistent Stain**. Pale is the death state signal; backward topple communicates
-bullet force; small contact blood confirms the hit; large fluid blood is the kill payoff.
-The first lethal frame retains authored colors (`deathPale=0`). A smoothstep
-transition reaches warm neutral #B9BEBA in 130 / 185 / 290 ms for Grunt / Heavy /
-Giant, overlapping the reaction and completing before substantial breakup. This changes lit albedo, with no
-emissive flash or other death color state.
-Capture the exact last rendered pose/root, including crowd support shift, impact
-compression, helmet lag and Giant coupled grip-hand/maul. A presentation-only
-low-foot-pivot recoil layers over the two baked sink/kneel/hands-up poses.
-The away direction uses captured enemy minus Player position, with defense +Z
-as fallback. Lethal root retreat is zero for all roles, keeping the foot pivot at the death
-location instead of sliding behind the following crowd. Backward tilt reaches
-32° / 26° / 16° at 160 / 280 / 550 ms, then holds through breakup and fade.
-Surviving hit = translational knockback and recovery; lethal hit = readable
-in-place backward topple around the low foot pivot. No simulation position
-changes, spring return, physics or ground landing.
-No forward fall, rise, shrink, flying body fragments, grounded body debris or crash dust.
+Role asymmetry is intentional: mass enemies prioritize fast readability and screen
+cleanup; priority threats retain physical death spectacle.
 
-Grunt preserves the captured local gait for 35 ms, reaches its final reaction at 130 ms: upper mass sinks
-0.09 authored units, hands rise 0.25, shoes widen 0.03 per side, torso tilt 6.3°.
+**Grunt: Lethal Blood → Pale Intact Body → Vertical Lift → Fade → Persistent Stain.**
+Capture the exact last rendered pose, including gait, support shift, helmet lag and
+gear. That same intact silhouette smoothly reaches warm neutral #B9BEBA in 95 ms.
+It stays at the lethal position through 50 ms, then eases upward by 0.26 world units
+by 350 ms and holds. Opacity stays at one through 140 ms, then smoothly fades to
+zero at 520 ms. No reaction-pose switch, topple, body breakup, scale animation,
+sideways/depth motion or readability echo. Normal depth testing/writing remains.
+The 48 pooled holders submit only pale/opacity attributes to intact per-pose
+instanced batches; lift is in the captured world matrix. No per-death Mesh.
+
+**Heavy: weighted topple + breakup + fluid blood + fade.**
+**Giant: major-threat topple + breakup + long fluid-blood payoff + fade.**
+Their accepted V2.5 presentation is unchanged. Smooth pale completes in 185 / 290
+ms; the target is the same non-emissive #B9BEBA. A zero-retreat, low-foot-pivot
+backward topple reaches 26° / 16° at 280 / 550 ms, then holds. The direction uses
+captured enemy minus Player position, with defense +Z fallback. Surviving hit =
+translational knockback and recovery; priority-threat lethal hit = in-place topple.
+No simulation movement, spring return, physics, landing or body debris.
+
 Heavy preserves local gait for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
 widening, tilt 5.2°. Giant preserves local gait for 180 ms and settles at 650 ms: 0.12 sink,
 0.24 offhand lift, small coherent maul lift/cant. No live crowd draw or skeleton
@@ -320,7 +320,7 @@ is added.
 
 | Role | Logical body / blood pieces | Split begins | Separation complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
-| Grunt | 8 / 4–6 | 130 ms | 390 ms | 300–520 ms | 520 ms |
+| Grunt | intact / 4–6 | none | none | 140–520 ms | 520 ms |
 | Heavy | 10 / 6–8 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
 | Giant | 11 / 8–10 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
 
@@ -333,13 +333,13 @@ Tagged transition poses introduce a narrow seam over 150–230 ms / 400–600 ms
 for Heavy/Giant, reaching only 28% of the original separation cap before the
 existing breakup curve takes over. They reconstruct
 the same accepted pose at zero separation. No runtime fracture or independent
-triangle motion is used. World-space separation caps are **0.10 / 0.15 / 0.24**
+triangle motion is used. Heavy/Giant world-space separation caps are **0.15 / 0.24**
 units, compensated for role scale. Body, helmet and equipment remain pale through breakup and opacity fade;
 there is no return to authored colors, red tint or emissive wash.
 Giant grip-hand and maul remain one piece through the reaction and breakup.
 
-The 48 preallocated crowd pose holders submit separation/opacity/variant
-into per-geometry instanced batches. Three fixed Giant slots use the same piece
+Heavy crowd pose holders submit separation/opacity/variant
+into per-geometry instanced batches; Grunt uses the intact path described above. Three fixed Giant slots use the same piece
 semantics. Family-owned tagged geometry and renderer-owned material/batch
 resources dispose at their respective ownership boundaries.
 
@@ -351,8 +351,9 @@ Heavy and Giant each reserve two hero roots inside the player-facing inner
 torso shell. Their local +Z launch bias (world -Z after defense facing) is
 32% / 38%, with the rest lateral/upward; other ribbons retain varied depth.
 Hero extension is 15% / 20% faster, with unchanged lifetimes and geometry.
-Ribbon activation remains 130 / 260 / 650 ms. Ribbons inherit the current
-recoiled root; droplets detach from that same transform at their existing
+Ribbon activation remains 130 / 260 / 650 ms. Grunt blood retains its V2.5
+captured, ground-anchored splash-space transform, independent of the body lift.
+Heavy/Giant ribbons inherit the current recoiled root. Droplets detach at the existing
 190 / 380 / 890 ms release clocks. Analytic contact uses the tipped launch
 space, keeping the ribbon-to-droplet handoff spatially coherent. Normal depth
 testing is retained; visibility comes from the opening shell and real travel,
@@ -364,14 +365,14 @@ is #751D27 / #9F2734 / #C93443, with no additive or emissive rendering.
 Smaller smooth deformed ovoids (4–6 / 6–8 / 8–10 droplets) detach at
 190 / 380 / 890 ms from the growing tongues. Their XYZ launch directions inherit
 the parent splash before gravity and size-aware analytic contact take over.
-Pale body pieces retain their accepted reaction/breakup clocks.
+Heavy/Giant pale body pieces retain their accepted reaction/breakup clocks.
 Droplets fade over 65 ms at contact. The first major contact activates one stain
 near the death point, growing from 30% to full size over 110 ms.
 Six coherent seeded splash compositions vary the embedded origins, dominant
 left/right/upward/low/diagonal direction, bend, width, length, tongue/droplet counts,
 and a short two-stage release. Stable identity + role + renderer death sequence
 select the visual seed; adjacent same-role compositions do not repeat. The same
-seed selects the existing body breakup pattern and stain variation, retaining
+seed selects the Heavy/Giant body breakup pattern and all role stain variation, retaining
 all role size bounds. No gameplay RNG or serialized state is changed.
 Base diameters remain **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
 (1 : 1.88 : 2.79). Deterministic variation selects mask, rotation, ±12% size,
@@ -382,29 +383,20 @@ Y=0.032 keeps marks above dry/wet beach overlays. Stains survive until
 Retry/renderer reset/mode change, with oldest-slot reuse only as a safety bound.
 Surviving hits never create stains. No gameplay collision.
 
-In a very tight Grunt column, in-place toppling still allows the next helmet to
-hide the pale death signal. Only a Grunt with a surviving neighbor less than
-0.65 units behind and within 0.35 laterally gets a short pale read echo. One
-48-slot instanced draw reproduces the captured run silhouette at 30% opacity,
-holds to 70 ms and smoothly fades by 100 ms, before breakup. It tests/writes no
-depth and is not a blood card or a long ghost corpse. The main corpse and fluid
-blood retain normal depth behavior and authored fade. Reset disposes/clears the
-bounded fallback; visual selection is deterministic in production too.
-
 Grunt lethal contact adds one 100 ms, single-pulse graphic card in the existing
 128-slot hit pool, at 0.25 reference scale (20–30% of the lethal scale before
 small deterministic variation). Its authored body anchor is transformed by the
 exact last rendered capture, stored in world space without following the removed
 actor. A separate negative owner survives old hit cancellation. It expires before
-130 ms fluid-ribbon activation, overlapping recoil and pale drain. It creates no
+130 ms fluid-ribbon activation, overlapping pale drain and early lift. It creates no
 stain; only integrated droplet contact does. Heavy/Giant receive no extra contact
 card, preserving their accepted surviving-hit feedback.
 
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2.5 evidence is
-local/untracked under `artifacts/v2_5-death-readability/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.6 evidence is
+local/untracked under `artifacts/v2_6-grunt-vapor/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

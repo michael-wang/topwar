@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
+import { gruntDeathBody } from '../src/presentation/GruntDeathBody';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { GRUNT_LETHAL_CONTACT, lethalContactOwner } from '../src/rendering/enemies/LethalImpactBlood';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
@@ -43,7 +44,7 @@ it('fades every role body, helmet and gear smoothly to zero on unchanged clocks,
     const group = scene.getObjectByName(role === 'giant' ? 'giant-assault-soldier' : 'enemy-pale-death-body')!;
     let previous = 1;
     for (const age of [0, timing.fadeStartMs, timing.fadeStartMs + 10, (timing.fadeStartMs + timing.totalMs) / 2, timing.totalMs - 10, timing.totalMs - 1]) {
-      r.update([], 2010 + age, true); const opacity = enemyDeathPose(age, timing).bodyOpacity;
+      r.update([], 2010 + age, true); const opacity = role==='grunt'?gruntDeathBody(age).opacity:enemyDeathPose(age, ENEMY_DEATH_TIMING[role]).bodyOpacity;
       expect(group.visible).toBe(true); expect(opacity).toBeLessThanOrEqual(previous); previous = opacity;
       group.traverse(o => { if (o instanceof THREE.Mesh) {
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) expect(m.opacity).toBeCloseTo(opacity, 8);
@@ -52,7 +53,7 @@ it('fades every role body, helmet and gear smoothly to zero on unchanged clocks,
     }
     expect(previous).toBeLessThan(.0001);
     r.update([], 2010 + timing.totalMs, true); expect(group.visible).toBe(false);
-    expect(enemyDeathPose(timing.totalMs, timing).bodyOpacity).toBe(0);
+    expect(role==='grunt'?gruntDeathBody(timing.totalMs).opacity:enemyDeathPose(timing.totalMs, ENEMY_DEATH_TIMING[role]).bodyOpacity).toBe(0);
     group.traverse(o => { if (o instanceof THREE.Mesh) {
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) expect(m.opacity).toBe(0);
     }});

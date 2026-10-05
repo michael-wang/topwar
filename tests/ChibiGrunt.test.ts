@@ -60,7 +60,7 @@ describe('original amphibious Grunt prototype', () => {
     }
     expect(clothingColors).toEqual(new Set([...Object.values(GRUNT_CLOTHING), ...Object.values(COMBAT_COLORS.grunt)]
       .map(color => new THREE.Color(color).getHexString())));
-    expect(family.death.body.geometry).toBe(family.lethalReaction!.final.geometry);
+    expect(family.death.body.geometry).toBe(family.body.geometry);
     expect(family.death.body.geometry.getAttribute('color').count).toBe(colors.count);
     family.dispose();
   });
@@ -157,15 +157,15 @@ describe('original amphibious Grunt prototype', () => {
     renderer.dispose(); grunt.dispose();
   });
 
-  it('owns its eight geometries and three materials; renderer disposal never disposes borrowed sources', () => {
+  it('owns seven shared geometries and three materials; renderer disposal never disposes borrowed sources', () => {
     const grunt = createChibiGruntFamily(), scene = new THREE.Scene();
     const models = [grunt.body, ...grunt.runFrames, grunt.death.body, grunt.helmet, grunt.vest];
-    const geometries = models.map(model => vi.spyOn(model.geometry, 'dispose'));
+    const geometries = [...new Set(models.map(model => model.geometry))].map(geometry => vi.spyOn(geometry, 'dispose'));
     const materials = [...new Set(models.map(model => model.material))].map(material => vi.spyOn(material, 'dispose'));
     const renderer = new EnemyRenderer(scene, { ...characterFamilies(), grunt });
     renderer.update([enemy(0, 'grunt')], 1000); renderer.update([], 1100); renderer.dispose();
     [...geometries, ...materials].forEach(spy => expect(spy).not.toHaveBeenCalled());
-    expect(geometries).toHaveLength(8); expect(materials).toHaveLength(3);
+    expect(geometries).toHaveLength(7); expect(materials).toHaveLength(3);
     grunt.dispose(); [...geometries, ...materials].forEach(spy => expect(spy).toHaveBeenCalledTimes(1));
     expect(scene.children).toHaveLength(0);
   });

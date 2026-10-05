@@ -6,9 +6,10 @@ import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFami
 import { characterFamilies } from './characterModel';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
+import { GRUNT_DEATH_BODY } from '../src/presentation/GruntDeathBody';
 import { LETHAL_RECOIL } from '../src/rendering/enemies/EnemyLethalRecoil';
 
-it('captures role-owned run geometry, then holds the peaked recoil through pale breakup and fade', () => {
+it('captures role-owned run geometry, lifts Grunts and holds Heavy recoil through pale fade', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   for(const [role,family,id,start] of [['grunt',grunt,0,1000],['heavy',heavy,1,2000]] as const){
@@ -19,10 +20,10 @@ it('captures role-owned run geometry, then holds the peaked recoil through pale 
     const scale=corpse.scale.clone();renderer.update([],start+90);
     expect(corpse.visible).toBe(true);expect(corpse.scale).toEqual(scale);
     expect((corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.emissiveIntensity).toBe(0);
-    const timing=ENEMY_DEATH_TIMING[role];renderer.update([],start+10+LETHAL_RECOIL[role].peakMs);const matrix=corpse.matrix.clone();
-    renderer.update([],start+10+timing.breakupEndMs);expect(corpse.visible).toBe(true);
+    const timing=ENEMY_DEATH_TIMING[role];renderer.update([],start+10+(role === 'grunt' ? GRUNT_DEATH_BODY.liftEndMs : LETHAL_RECOIL[role].peakMs));const matrix=corpse.matrix.clone();
+    renderer.update([],start+10+(role==='grunt'?390:ENEMY_DEATH_TIMING.heavy.breakupEndMs));expect(corpse.visible).toBe(true);
     expect(corpse.matrix.equals(matrix)).toBe(true);expect(corpse.scale).toEqual(scale);
-    renderer.update([],start+10+timing.fadeStartMs);expect(corpse.visible).toBe(true);
+    renderer.update([],start+10+(role === 'grunt' ? 400 : timing.fadeStartMs));expect(corpse.visible).toBe(true);
     expect(corpse.matrix.equals(matrix)).toBe(true);
     renderer.update([],start+10+timing.totalMs);expect(corpse.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
   }

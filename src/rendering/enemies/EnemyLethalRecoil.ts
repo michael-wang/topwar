@@ -24,7 +24,8 @@ export function writeLethalDirection(target: THREE.Vector2, captured: THREE.Matr
   target.set(length > .001 ? dx / length : 0, length > .001 ? dz / length : 1);
 }
 // Writes C(age) * captured directly into a reusable matrix. The caller owns the
-// immutable capture; body and blood use this exact same transform policy.
+// immutable capture. Heavy/Giant bodies and blood share this policy; Grunt
+// keeps it only for its accepted ground-space blood, never for its lifted body.
 export function writeLethalRecoil(target: THREE.Matrix4, captured: THREE.Matrix4,
   ageMs: number, role: EnemyDeathRole, directionX = 0, directionZ = 1): void {
   if (ageMs <= 0) { target.copy(captured); return; }

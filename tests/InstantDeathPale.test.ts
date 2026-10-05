@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { DEATH_PALE_COMPLETE_MS, DEATH_PALE_COLOR, enemyDeathPale } from '../src/presentation/EnemyDeathPale';
+import { BLOOD_RIBBON_START_MS } from '../src/rendering/enemies/IntegratedDeathBlood';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
 import { DEATH_BLOOD_COLORS } from '../src/rendering/enemies/IntegratedDeathBlood';
@@ -15,7 +16,7 @@ it('starts in authored colors, drains monotonically with smoothstep and holds pa
     for (let age = 0; age <= ENEMY_DEATH_TIMING[role].totalMs; age += 5) {
       const pale = enemyDeathPale(age, role); expect(pale).toBeGreaterThanOrEqual(previous); previous = pale;
     }
-    for (const age of [ENEMY_DEATH_TIMING[role].breakupStartMs, ENEMY_DEATH_TIMING[role].totalMs]) expect(enemyDeathPale(age, role)).toBe(1);
+    for (const age of [BLOOD_RIBBON_START_MS[role], ENEMY_DEATH_TIMING[role].totalMs]) expect(enemyDeathPale(age, role)).toBe(1);
   }
 });
 it('uses a single non-emissive albedo scalar and leaves the crimson blood palette intact', () => {
