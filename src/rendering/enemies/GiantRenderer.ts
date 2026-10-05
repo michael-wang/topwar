@@ -8,6 +8,7 @@ import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMo
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage } from '../../presentation/EnemyDeathTiming';
+import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
@@ -108,6 +109,7 @@ export class GiantRenderer {
   private restorePalette(): void {
     for (const { material, color, tint } of this.palette) {
       tint.breakup.value = 0;
+      tint.pale.value = 0;
       material.color.copy(color); material.opacity = 1; material.transparent = false; material.depthWrite = true; material.emissiveIntensity = 0;
     }
   }
@@ -174,6 +176,7 @@ export class GiantRenderer {
     this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     for (const { material, color, tint } of this.palette) {
       material.color.copy(color); tint.breakup.value = separation;
+      tint.pale.value = enemyDeathPale(age, 'giant');
       tint.variant.value = this.deathVariant;
       material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
       material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;

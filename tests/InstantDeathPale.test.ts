@@ -1,0 +1,31 @@
+import * as THREE from 'three';
+import { expect, it } from 'vitest';
+import { DEATH_PALE_INITIAL, DEATH_PALE_COMPLETE_MS, DEATH_PALE_COLOR, enemyDeathPale } from '../src/presentation/EnemyDeathPale';
+import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
+import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
+import { DEATH_BLOOD_COLORS } from '../src/rendering/enemies/IntegratedDeathBlood';
+
+it('confirms death on the capture frame, completes quickly and holds pale through every role clock', () => {
+  expect(DEATH_PALE_INITIAL).toBeGreaterThanOrEqual(.60);
+  expect(DEATH_PALE_INITIAL).toBeLessThanOrEqual(.75);
+  for (const role of ['grunt', 'heavy', 'giant'] as const) {
+    expect(enemyDeathPale(0, role)).toBe(DEATH_PALE_INITIAL);
+    expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role] / 2, role)).toBeGreaterThan(DEATH_PALE_INITIAL);
+    expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role], role)).toBe(1);
+    expect(DEATH_PALE_COMPLETE_MS[role]).toBeLessThanOrEqual({ grunt: 50, heavy: 70, giant: 90 }[role]);
+    for (const age of [130, 650, ENEMY_DEATH_TIMING[role].totalMs]) expect(enemyDeathPale(age, role)).toBe(1);
+  }
+});
+it('uses a single non-emissive albedo scalar and leaves the crimson blood palette intact', () => {
+  expect(DEATH_PALE_COLOR).toBe('#b9beba');
+  expect(DEATH_BLOOD_COLORS).toEqual(['#751d27', '#9f2734', '#c93443']);
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true });
+  const tint = prepareEnemyDeathMaterial(material, true);
+  const shader = { uniforms: {}, vertexShader: '#include <begin_vertex>', fragmentShader: '#include <color_fragment>' } as Parameters<typeof material.onBeforeCompile>[0];
+  material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+  expect(shader.uniforms.deathPale).toBe(tint.pale);
+  tint.pale.value = 1; expect(shader.uniforms.deathPale.value).toBe(1);
+  expect(material.emissiveIntensity).toBe(0);
+  expect(shader.fragmentShader).not.toContain('deathRed');
+  material.dispose();
+});

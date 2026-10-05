@@ -198,7 +198,7 @@ limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
 mesh draws per live Giant. Death retains the intact role geometry through
-the shared blood/reaction/authored-color breakup/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+the shared blood/reaction/pale breakup/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 R5 removes the grip hand from body/reference/run/death geometry and merges it
@@ -281,7 +281,7 @@ across impacts; existing pooled spark materials remain. Heavy retains its
 stronger 0.72 core wash and four-spark response.
 
 Ordinary surviving feedback remains independently controlled from lethal
-presentation. Lethal pieces retain authored lit colors, following the unified
+presentation. Lethal pieces immediately become pale, following the unified
 timeline below. Reveal, surviving-hit impulse,
 compression and the R1 Giant HP bar remain unchanged.
 
@@ -291,8 +291,12 @@ Giant peak/50 ms/settled impact captures.
 
 ## Enemy Kill Feedback (R8)
 
-Current beachhead enemies use **Role Reaction → Body Breakup in Authored Colors →
-Internal 3D Blood Splashes Out → Blood Falls → Body Fades → Persistent Stain**.
+Current beachhead enemies use **Lethal Capture → Immediate Pale Dead State →
+Body Opens → Internal Fluid Blood Splashes Out → Blood Falls → Pale Body Fades →
+Persistent Stain**. Pale body is immediate death confirmation; blood is the kill spectacle.
+The first lethal frame mixes 70% toward warm neutral #B9BEBA, reaching full pale
+in 45 / 65 / 80 ms for Grunt / Heavy / Giant. This changes lit albedo, with no
+emissive flash or other death color state.
 Capture the exact last rendered pose/root, including crowd support shift, impact
 compression, helmet lag and Giant coupled grip-hand/maul. Roots stay pinned;
 two baked reaction poses show a sink/kneel with raised hands before the hold.
@@ -317,8 +321,8 @@ pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
 patterns provide lateral, upper/lower and diagonal separation. They reconstruct
 the same accepted pose at zero separation. No runtime fracture or independent
 triangle motion is used. World-space separation caps are **0.10 / 0.15 / 0.24**
-units, compensated for role scale. Body pieces retain their authored olive/skin/trouser/gear colors until opacity
-fades; no grayscale, red tint or emissive wash is applied.
+units, compensated for role scale. Body, helmet and equipment remain pale through breakup and opacity fade;
+there is no return to authored colors, red tint or emissive wash.
 Giant grip-hand and maul remain one piece through the reaction and breakup.
 
 The 48 preallocated crowd pose holders submit separation/opacity/variant
@@ -337,7 +341,7 @@ is #751D27 / #9F2734 / #C93443, with no additive or emissive rendering.
 Smaller smooth deformed ovoids (4–6 / 6–8 / 8–10 droplets) detach at
 190 / 380 / 890 ms from the growing tongues. Their XYZ launch directions inherit
 the parent splash before gravity and size-aware analytic contact take over.
-Body pieces retain authored colors and their accepted reaction/breakup clocks.
+Pale body pieces retain their accepted reaction/breakup clocks.
 Droplets fade over 65 ms at contact. The first major contact activates one stain
 near the death point, growing from 30% to full size over 110 ms.
 Six coherent seeded splash compositions vary the embedded origins, dominant
@@ -358,8 +362,8 @@ Surviving hits never create stains. No gameplay collision.
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2.1 evidence is
-local/untracked under `artifacts/v2_2-fluid-blood/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.3 evidence is
+local/untracked under `artifacts/v2_3-death-read/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

@@ -28,12 +28,13 @@ it('captures role-owned run geometry, keeps a fixed root through kneeling and pa
   renderer.reset();expect(scene.getObjectByName('enemy-3d-blood-grunt')!.visible).toBe(false);
   renderer.dispose();grunt.dispose();heavy.dispose();expect(scene.children).toHaveLength(0);
 });
-it('preserves authored lit color without gray uniforms or emissive white', () => {
+it('mixes the lit authored albedo into one pale state without emissive white', () => {
   const material=new THREE.MeshStandardMaterial({vertexColors:true});prepareEnemyDeathMaterial(material);
   const shader={uniforms:{},fragmentShader:'#include <color_fragment>',vertexShader:''} as Parameters<typeof material.onBeforeCompile>[0];
   material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);
   expect(shader.uniforms).not.toHaveProperty('deathGray');
   expect(shader.uniforms).not.toHaveProperty('deathGrayTint');
-  expect(shader.fragmentShader).toBe('#include <color_fragment>');
+  expect(shader.uniforms).toHaveProperty('deathPale');
+  expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, paleDeadColor, deathPale)');
   expect(material.emissiveIntensity).toBe(0);expect(material.map).toBeNull();material.dispose();
 });
