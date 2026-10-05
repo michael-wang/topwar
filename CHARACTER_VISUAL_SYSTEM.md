@@ -281,7 +281,7 @@ across impacts; existing pooled spark materials remain. Heavy retains its
 stronger 0.72 core wash and four-spark response.
 
 Ordinary surviving feedback remains independently controlled from lethal
-presentation. Lethal pieces immediately become pale, following the unified
+presentation. Lethal pieces smoothly become pale, following the unified
 timeline below. Reveal, surviving-hit impulse,
 compression and the R1 Giant HP bar remain unchanged.
 
@@ -289,13 +289,14 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (V2.3)
+## Enemy Kill Feedback (V2.4)
 
-Current beachhead enemies use **Lethal Capture → Immediate Pale Dead State →
+Current beachhead enemies use **Lethal Capture → Smooth Pale Dead State →
 Body Opens → Internal Fluid Blood Splashes Out → Blood Falls → Pale Body Fades →
-Persistent Stain**. Pale body is immediate death confirmation; blood is the kill spectacle.
-The first lethal frame mixes 70% toward warm neutral #B9BEBA, reaching full pale
-in 45 / 65 / 80 ms for Grunt / Heavy / Giant. This changes lit albedo, with no
+Persistent Stain**. Pale body is the death state signal; blood is the kill spectacle.
+The first lethal frame retains authored colors (`deathPale=0`). A smoothstep
+transition reaches warm neutral #B9BEBA in 130 / 185 / 290 ms for Grunt / Heavy /
+Giant, overlapping the reaction and completing before substantial breakup. This changes lit albedo, with no
 emissive flash or other death color state.
 Capture the exact last rendered pose/root, including crowd support shift, impact
 compression, helmet lag and Giant coupled grip-hand/maul. Roots stay pinned;
@@ -374,8 +375,8 @@ Surviving hits never create stains. No gameplay collision.
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2.3 evidence is
-local/untracked under `artifacts/v2_3-death-read/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.4 evidence is
+local/untracked under `artifacts/v2_4-lethal-impact/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

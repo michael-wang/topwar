@@ -1,19 +1,21 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { DEATH_PALE_INITIAL, DEATH_PALE_COMPLETE_MS, DEATH_PALE_COLOR, enemyDeathPale } from '../src/presentation/EnemyDeathPale';
+import { DEATH_PALE_COMPLETE_MS, DEATH_PALE_COLOR, enemyDeathPale } from '../src/presentation/EnemyDeathPale';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
 import { DEATH_BLOOD_COLORS } from '../src/rendering/enemies/IntegratedDeathBlood';
 
-it('confirms death on the capture frame, completes quickly and holds pale through every role clock', () => {
-  expect(DEATH_PALE_INITIAL).toBeGreaterThanOrEqual(.60);
-  expect(DEATH_PALE_INITIAL).toBeLessThanOrEqual(.75);
+it('starts in authored colors, drains monotonically with smoothstep and holds pale through breakup/fade', () => {
   for (const role of ['grunt', 'heavy', 'giant'] as const) {
-    expect(enemyDeathPale(0, role)).toBe(DEATH_PALE_INITIAL);
-    expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role] / 2, role)).toBeGreaterThan(DEATH_PALE_INITIAL);
+    expect(enemyDeathPale(0, role)).toBe(0);
+    expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role] / 2, role)).toBe(.5);
     expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role], role)).toBe(1);
-    expect(DEATH_PALE_COMPLETE_MS[role]).toBeLessThanOrEqual({ grunt: 50, heavy: 70, giant: 90 }[role]);
-    for (const age of [130, 650, ENEMY_DEATH_TIMING[role].totalMs]) expect(enemyDeathPale(age, role)).toBe(1);
+    expect(DEATH_PALE_COMPLETE_MS[role]).toBeLessThanOrEqual({ grunt: 140, heavy: 200, giant: 320 }[role]);
+    let previous = 0;
+    for (let age = 0; age <= ENEMY_DEATH_TIMING[role].totalMs; age += 5) {
+      const pale = enemyDeathPale(age, role); expect(pale).toBeGreaterThanOrEqual(previous); previous = pale;
+    }
+    for (const age of [ENEMY_DEATH_TIMING[role].breakupStartMs, ENEMY_DEATH_TIMING[role].totalMs]) expect(enemyDeathPale(age, role)).toBe(1);
   }
 });
 it('uses a single non-emissive albedo scalar and leaves the crimson blood palette intact', () => {

@@ -4,6 +4,7 @@ import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { characterFamilies } from './characterModel';
+import { enemyDeathPale } from '../src/presentation/EnemyDeathPale';
 
 it('batches dense intact deaths by pose, keeps per-instance pale state and fade and disposes only owned clones', () => {
   const grunt=createChibiGruntFamily(),heavy=createChibiHeavyFamily(),scene=new THREE.Scene();
@@ -16,7 +17,7 @@ it('batches dense intact deaths by pose, keeps per-instance pale state and fade 
   for(const mesh of batches.filter(c=>c.visible)){
     expect(mesh.geometry).not.toBe(heavy.helmet.geometry);
     expect(heavy.runFrames.some(frame=>frame.geometry===mesh.geometry)).toBe(false);
-    expect(mesh.geometry.getAttribute('deathGray')).toBeUndefined();expect(mesh.geometry.getAttribute('deathPale').getX(0)).toBe(1);
+    expect(mesh.geometry.getAttribute('deathGray')).toBeUndefined();expect(mesh.geometry.getAttribute('deathPale').getX(0)).toBeCloseTo(enemyDeathPale(70, 'heavy'));
     expect(mesh.geometry.getAttribute('deathOpacity').getX(0)).toBe(1);
     expect(mesh.geometry.getAttribute('deathRed')).toBeUndefined();expect(mesh.geometry.getAttribute('deathBreakup').getX(0)).toBe(0);
   }
