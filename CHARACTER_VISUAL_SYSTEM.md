@@ -289,7 +289,7 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (V2.6)
+## Enemy Kill Feedback (V2.7)
 
 Role asymmetry is intentional: mass enemies prioritize fast readability and screen
 cleanup; priority threats retain physical death spectacle.
@@ -304,14 +304,24 @@ sideways/depth motion or readability echo. Normal depth testing/writing remains.
 The 48 pooled holders submit only pale/opacity attributes to intact per-pose
 instanced batches; lift is in the captured world matrix. No per-death Mesh.
 
-**Heavy: weighted topple + breakup + fluid blood + fade.**
-**Giant: major-threat topple + breakup + long fluid-blood payoff + fade.**
-Their accepted V2.5 presentation is unchanged. Smooth pale completes in 185 / 290
-ms; the target is the same non-emissive #B9BEBA. A zero-retreat, low-foot-pivot
-backward topple reaches 26° / 16° at 280 / 550 ms, then holds. The direction uses
-captured enemy minus Player position, with defense +Z fallback. Surviving hit =
-translational knockback and recovery; priority-threat lethal hit = in-place topple.
-No simulation movement, spring return, physics, landing or body debris.
+**Heavy: weighted collapse → settling hold → breakup + fluid blood → fade.**
+**Giant: massive collapse → impact hold → breakup + long fluid-blood payoff → fade.**
+Weight comes from downward settling and timing, not backward translation or
+ragdoll. Heavy smoothly drops its root 0.13 world units and tilts backward 22°
+over 80–300 ms, then holds through 420 ms (120 ms). Giant drops 0.22 units and
+tilts 16° over 150–650 ms, then holds through 850 ms (200 ms). The captured
+low foot pivot and zero depth retreat are retained. Existing shoe-piece shaders
+restore only the world-Y root drop, keeping soles planted while upper mass,
+helmet, gear and integrated blood descend. The authored wider shoes remain;
+no extra scale compression, dust, contact-shadow pass or camera shake is added.
+The complete Giant grip-hand/maul has an additional 0.035-unit delayed settle
+over 230–700 ms, then holds; hand, shaft and head remain one assembly. The maul
+reinforces the sinking mass without an independent fall or ground physics.
+
+Smooth pale still completes in 185 / 290 ms; the target remains non-emissive
+#B9BEBA. Surviving hit = translational knockback and recovery; threat lethal
+hit = downward collapse at the lethal location. No simulation movement, spring
+return, physics, landing or persistent body debris.
 
 Heavy preserves local gait for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
 widening, tilt 5.2°. Giant preserves local gait for 180 ms and settles at 650 ms: 0.12 sink,
@@ -321,16 +331,16 @@ is added.
 | Role | Logical body / blood pieces | Split begins | Separation complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
 | Grunt | intact / 4–6 | none | none | 140–520 ms | 520 ms |
-| Heavy | 10 / 6–8 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
-| Giant | 11 / 8–10 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
+| Heavy | 10 / 6–8 | 420 ms | 900 ms | 650–1100 ms | 1100 ms |
+| Giant | 11 / 8–10 | 850 ms | 2050 ms | 1550–2600 ms | 2600 ms |
 
 The final reaction geometry supplies the exact starting silhouette. Helmet,
 head, torso bands, hands, shoes and structured equipment are authored logical
 pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
 patterns provide lateral, upper/lower and diagonal separation outside the main
 Heavy/Giant torso bands, which open oppositely sideways in every composition.
-Tagged transition poses introduce a narrow seam over 150–230 ms / 400–600 ms
-for Heavy/Giant, reaching only 28% of the original separation cap before the
+Tagged transition poses introduce a narrow seam over 350–420 ms / 700–850 ms
+for Heavy/Giant during the settling hold, reaching only 28% of the original separation cap before the
 existing breakup curve takes over. They reconstruct
 the same accepted pose at zero separation. No runtime fracture or independent
 triangle motion is used. Heavy/Giant world-space separation caps are **0.15 / 0.24**
@@ -353,8 +363,8 @@ torso shell. Their local +Z launch bias (world -Z after defense facing) is
 Hero extension is 15% / 20% faster, with unchanged lifetimes and geometry.
 Ribbon activation remains 130 / 260 / 650 ms. Grunt blood retains its V2.5
 captured, ground-anchored splash-space transform, independent of the body lift.
-Heavy/Giant ribbons inherit the current recoiled root. Droplets detach at the existing
-190 / 380 / 890 ms release clocks. Analytic contact uses the tipped launch
+Heavy/Giant ribbons inherit the current collapsed root. Droplets detach at the existing
+190 / 380 / 890 ms release clocks. Analytic contact uses the collapsed launch
 space, keeping the ribbon-to-droplet handoff spatially coherent. Normal depth
 testing is retained; visibility comes from the opening shell and real travel,
 never a billboard, forced layer or disabled depth test.
@@ -365,7 +375,8 @@ is #751D27 / #9F2734 / #C93443, with no additive or emissive rendering.
 Smaller smooth deformed ovoids (4–6 / 6–8 / 8–10 droplets) detach at
 190 / 380 / 890 ms from the growing tongues. Their XYZ launch directions inherit
 the parent splash before gravity and size-aware analytic contact take over.
-Heavy/Giant pale body pieces retain their accepted reaction/breakup clocks.
+Heavy/Giant pale body pieces retain their accepted reaction/fade clocks; dominant
+breakup waits until the collapse has registered, with unchanged separation caps.
 Droplets fade over 65 ms at contact. The first major contact activates one stain
 near the death point, growing from 30% to full size over 110 ms.
 Six coherent seeded splash compositions vary the embedded origins, dominant
@@ -395,8 +406,8 @@ card, preserving their accepted surviving-hit feedback.
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2.6 evidence is
-local/untracked under `artifacts/v2_6-grunt-vapor/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.7 evidence is
+local/untracked under `artifacts/v2_7-threat-weight/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

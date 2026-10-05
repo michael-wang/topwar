@@ -26,14 +26,14 @@ it('keeps hero roots within the front inner torso shell and launches sideways/up
     }
   }
 });
-it('opens tagged transition torso regions earlier while keeping the original world separation/fade caps', () => {
+it('opens a narrow blood seam during the collapsed hold while keeping the original world separation/fade caps', () => {
   for (const role of ['heavy', 'giant'] as const) {
     const family = role === 'heavy' ? createChibiHeavyFamily() : createChibiGiantFamily();
     expect(family.lethalReaction!.transition.geometry.hasAttribute('deathPieceDirection')).toBe(true);
     const opening = ENEMY_SHELL_OPENING[role], timing = ENEMY_DEATH_TIMING[role];
     expect(enemyBodyOpening(opening.startMs, role, 0)).toBe(0);
     expect(enemyBodyOpening(opening.readyMs, role, 0)).toBeCloseTo(timing.breakupDistance * .28);
-    expect(opening.readyMs).toBeLessThan(timing.breakupStartMs);
+    expect(opening.readyMs).toBeLessThanOrEqual(timing.breakupStartMs);
     for (let age = 0; age <= timing.totalMs; age += 10) {
       expect(enemyBodyOpening(age, role, enemyDeathPose(age, timing).breakup)).toBeLessThanOrEqual(timing.breakupDistance);
     }

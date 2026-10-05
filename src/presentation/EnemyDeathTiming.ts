@@ -3,8 +3,8 @@ import { GRUNT_DEATH_BODY } from './GruntDeathBody';
 // Grunt has no body breakup clocks; its lift uses GruntDeathBody.
 export const ENEMY_DEATH_TIMING = {
   grunt: { fadeStartMs: GRUNT_DEATH_BODY.fadeStartMs, totalMs: GRUNT_DEATH_BODY.totalMs, stainDiameter: .34 },
-  heavy: { breakupEndMs: 825, breakupStartMs: 260, breakupDistance: .15, fadeStartMs: 650, totalMs: 1100, stainDiameter: .64 },
-  giant: { breakupEndMs: 1950, breakupStartMs: 650, breakupDistance: .24, fadeStartMs: 1550, totalMs: 2600, stainDiameter: .95 },
+  heavy: { breakupEndMs: 900, breakupStartMs: 420, breakupDistance: .15, fadeStartMs: 650, totalMs: 1100, stainDiameter: .64 },
+  giant: { breakupEndMs: 2050, breakupStartMs: 850, breakupDistance: .24, fadeStartMs: 1550, totalMs: 2600, stainDiameter: .95 },
 } as const;
 export type EnemyDeathRole = keyof typeof ENEMY_DEATH_TIMING;
 export type EnemyDeathTiming = typeof ENEMY_DEATH_TIMING['heavy' | 'giant'];
@@ -17,9 +17,9 @@ export function enemyDeathPose(ageMs: number, timing: EnemyDeathTiming) {
     bodyOpacity: 1 - smooth((ageMs - timing.fadeStartMs) / (timing.totalMs - timing.fadeStartMs)) };
 }
 
-// Open a narrow seam during the existing transition pose, then let the accepted
-// breakup curve take over. The maximum separation and fade clocks do not change.
-export const ENEMY_SHELL_OPENING = { heavy: { startMs: 150, readyMs: 230 }, giant: { startMs: 400, readyMs: 600 } } as const;
+// A narrow blood seam opens during the settling hold. Dominant breakup waits
+// until the hold ends; maximum separation and fade clocks do not change.
+export const ENEMY_SHELL_OPENING = { heavy: { startMs: 350, readyMs: 420 }, giant: { startMs: 700, readyMs: 850 } } as const;
 export function enemyBodyOpening(ageMs: number, role: 'heavy' | 'giant', breakup: number): number {
   const opening = ENEMY_SHELL_OPENING[role];
   return Math.max(breakup, ENEMY_DEATH_TIMING[role].breakupDistance * .28 * smooth((ageMs - opening.startMs) / (opening.readyMs - opening.startMs)));

@@ -1,20 +1,23 @@
 import * as THREE from 'three';
+import { THREAT_DEATH_COLLAPSE, threatCollapseProgress } from '../../presentation/ThreatDeathCollapse';
 import type { EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 
 // Presentation only. Rotation is about a low world-space foot pivot, with no
 // root retreat, ground collision, arc, scale animation or recovery. Surviving
-// hits keep their separate translational knockback; lethal feet stay at the front.
+// hits keep their separate translational knockback. Threat mass sinks vertically;
+// shaders counter that drop for shoe pieces so their soles stay at the front.
 export const LETHAL_RECOIL = {
   grunt: { distance: 0, angleDegrees: 32, peakMs: 160 },
-  heavy: { distance: 0, angleDegrees: 26, peakMs: 280 },
-  giant: { distance: 0, angleDegrees: 16, peakMs: 550 },
+  heavy: { distance: 0, angleDegrees: THREAT_DEATH_COLLAPSE.heavy.angleDegrees, peakMs: THREAT_DEATH_COLLAPSE.heavy.peakMs },
+  giant: { distance: 0, angleDegrees: THREAT_DEATH_COLLAPSE.giant.angleDegrees, peakMs: THREAT_DEATH_COLLAPSE.giant.peakMs },
 } as const;
 export const LETHAL_FOOT_PIVOT_Y = .04;
 const clamp = (p: number) => Math.max(0, Math.min(1, p));
 export function lethalRecoilPose(ageMs: number, role: EnemyDeathRole) {
   const style = LETHAL_RECOIL[role], p = clamp(ageMs / style.peakMs);
-  return { distance: style.distance,
-    angle: style.angleDegrees * Math.PI / 180 * (1 - (1 - p) ** 2) };
+  const progress = role === 'grunt' ? 1 - (1 - p) ** 2 : threatCollapseProgress(ageMs, role);
+  return { distance: style.distance, sink: role === 'grunt' ? 0 : THREAT_DEATH_COLLAPSE[role].sinkUnits * progress,
+    angle: style.angleDegrees * Math.PI / 180 * progress };
 }
 export function writeLethalDirection(target: THREE.Vector2, captured: THREE.Matrix4,
   attackerX?: number, attackerZ?: number): void {
@@ -39,4 +42,5 @@ export function writeLethalRecoil(target: THREE.Matrix4, captured: THREE.Matrix4
   target.set(r00,r01,r02,px + x*pose.distance - r00*px - r01*py - r02*pz,
     r10,r11,r12,py - r10*px - r11*py - r12*pz,
     r20,r21,r22,pz + z*pose.distance - r20*px - r21*py - r22*pz, 0,0,0,1).multiply(captured);
+  target.elements[13] -= pose.sink;
 }

@@ -21,6 +21,11 @@ vec3 openedPieceDirection(vec3 d, float id, float role, float variant) {
   return shell ? normalize(vec3(sign(d.x), d.y * .35, d.z)) : pieceDirection(d, variant);
 }`;
 
+// Only soles compensate the root sink; upper mass, gear and blood still descend.
+export const DEATH_FOOT_PLANT_GLSL = `bool isDeathFoot(float id, float role) {
+  return (role == 1. && (id == 8. || id == 9.)) || (role == 2. && (id == 9. || id == 10.));
+}`;
+
 // Bake only: preserve primitive topology, positions/normals/colors exactly.
 // Logical bands, hands, shoes and equipment each share a rigid direction;
 // nothing is fractured or rebuilt when an enemy dies.

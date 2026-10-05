@@ -8,8 +8,9 @@ import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMo
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
+import { giantMaulSettle } from '../../presentation/ThreatDeathCollapse';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
-import { writeLethalDirection, writeLethalRecoil } from './EnemyLethalRecoil';
+import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
 import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
@@ -114,7 +115,7 @@ export class GiantRenderer {
   }
   private restorePalette(): void {
     for (const { material, color, tint } of this.palette) {
-      tint.breakup.value = 0;
+      tint.breakup.value = 0; tint.sink.value = 0;
       tint.pale.value = 0;
       material.color.copy(color); material.opacity = 1; material.transparent = false; material.depthWrite = true; material.emissiveIntensity = 0;
     }
@@ -169,6 +170,7 @@ export class GiantRenderer {
     }
     writeLethalRecoil(this.group.matrix, this.frozenRoot, age, 'giant', this.recoilDirection.x, this.recoilDirection.y);
     this.group.matrixWorldNeedsUpdate = true;
+    this.weapon.matrix.copy(this.frozenWeapon);
     const stage = enemyReactionStage(age, 'giant'), reaction = this.family.lethalReaction;
     if (reaction && stage > 0) {
       this.body.geometry = (stage === 1 ? reaction.transition : reaction.final).geometry;
@@ -178,6 +180,8 @@ export class GiantRenderer {
       // Cant/lift the complete grip-hand + maul, never a separate moving hand.
       this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     }
+    // World-sized delayed settle of the complete grip/maul assembly.
+    this.weapon.matrix.elements[13] -= giantMaulSettle(age) / Math.max(.001, this.group.scale.y);
     // All vertices in a logical piece share one bounded displacement; the
     // grip-hand and maul remain a single piece throughout the breakup.
     const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
@@ -191,6 +195,7 @@ export class GiantRenderer {
     for (const { material, color, tint } of this.palette) {
       material.color.copy(color); tint.breakup.value = separation;
       tint.pale.value = enemyDeathPale(age, 'giant');
+      tint.sink.value = lethalRecoilPose(age, 'giant').sink;
       tint.variant.value = this.deathVariant;
       material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
       material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
