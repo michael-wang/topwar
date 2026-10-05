@@ -80,7 +80,7 @@ function bloodAtlas(fuller: boolean): THREE.DataTexture {
   return texture;
 }
 export const hitBloodAtlas = (): THREE.DataTexture => bloodAtlas(false);
-export const lethalBloodAtlas = (): THREE.DataTexture => bloodAtlas(true);
+export const groundBloodAtlas = (): THREE.DataTexture => bloodAtlas(true);
 export interface SplatVariation {
   variant: number; angle: number; aspect: number; size: number;
   bias?: number; pulseOffset?: number; localAnchor?: readonly [number, number, number];
@@ -106,7 +106,7 @@ export class BloodSplat {
     this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.slots = Array.from({ length: capacity }, () => ({ owner: -1, startedAt: -Infinity,
-      timing: ENEMY_DEATH_TIMING.grunt, origin: new THREE.Vector3(), localAnchor: new THREE.Vector3(),
+      timing: { bloodStartMs: 0, bloodEndMs: 0, bloodPulseCount: 1, bloodScale: 1 }, origin: new THREE.Vector3(), localAnchor: new THREE.Vector3(),
       attached: false, bias: 0, pulseOffset: 0, diameter: 1, angle: 0, variant: 0, aspect: 1 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('splatVariant', this.variant);
@@ -134,9 +134,6 @@ gl_Position = projectionMatrix * mvPosition;`);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.alpha.setUsage(THREE.DynamicDrawUsage); this.angle.setUsage(THREE.DynamicDrawUsage);
     scene.add(this.mesh);
-  }
-  spawn(id: number, role: EnemyDeathRole, nowMs: number, origin: THREE.Vector3, adaptation: number): void {
-    this.spawnStyled(id, ENEMY_DEATH_TIMING[role], nowMs, origin, adaptation);
   }
   spawnStyled(id: number, timing: BloodSplatTiming, nowMs: number, origin: THREE.Vector3, adaptation = 1, owner = id, variation?: SplatVariation): void {
     // Reuse expired bursts before interrupting a longer threat payoff.

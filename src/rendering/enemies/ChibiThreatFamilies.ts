@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as ball, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { lethalUpperMatrix } from './LethalReaction';
+import { tagDeathPiece } from './DeathAssembly';
 import { ART } from '../../art/ArtDirection';
 import { COMBAT_COLORS } from '../characters/ToyCombatGear';
 import { paddedBarrel, heavyWebHarness, canvasFieldBag } from '../characters/StructuredToyParts';
@@ -11,12 +12,15 @@ export const THREAT_COLORS = { shirt: COMBAT_COLORS.heavy.shirt, shorts: COMBAT_
   stone: ART.raider.stone, helmet: ART.raider.helmet } as const;
 type Part = { geometry: THREE.BufferGeometry; color?: string; lower?: number; lowerColor?: string; fixed?: boolean };
 function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
-  const geometries = parts.map(part => {
+  const giant = sink === .12;
+  const labels = giant ? [(y: number) => y >= .65 ? 3 : y >= .40 ? 4 : 5, 5, 5, 8, 8, 2, 2, 2, 6, 9, 10]
+    : [(y: number) => y >= .35 ? 2 : 3, 3, 3, 6, 6, 7, 1, 1, 1, 4, 5, 8, 9];
+  const geometries = parts.map((part, index) => {
     const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
     if (geometry !== part.geometry) part.geometry.dispose();
     geometry.deleteAttribute('uv');
     const positions = geometry.getAttribute('position'), colors = new Float32Array(positions.count * 3);
-    if (!part.color) return geometry;
+    if (!part.color) return reaction === 1 ? tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]) : geometry;
     const color = new THREE.Color(part.color);
     for (let i = 0; i < positions.count; i += 3) {
       const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
@@ -24,6 +28,7 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
       for (let j = i; j < i + 3; j++) color.toArray(colors, j * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (reaction === 1) tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]);
     if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, sink, .09));
     return geometry;
   });
@@ -68,11 +73,12 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
     armorGeometry.setAttribute(attribute, new THREE.Float32BufferAttribute([], 3));
   armorGeometry.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
   armorGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 0);
+  const deathHelmet = tagDeathPiece(helmetGeometry.clone(), 'heavy', 0);
   const bodyMaterial = matte(), gearMaterial = matte(), deathMaterial = matte();
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial);
   vest.visible = false;
-  return { role: 'heavy', id: 'topwar-heavy', body, helmet, vest,
+  return { deathAssembly: { body: death, helmet: deathHelmet, pieceCount: 10 }, role: 'heavy', id: 'topwar-heavy', body, helmet, vest,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)), gaitCycleMs: HEAVY_GAIT_CYCLE_MS,
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored', scaleY: .80, hitCompression: .025,
       stepWeight: { shift: .045, roll: .04, compression: .018 },
@@ -80,7 +86,7 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
     lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .11, tilt: .09 },
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, transition, death, helmetGeometry, armorGeometry].forEach(g => g.dispose());
+      [idle, ...runs, transition, death, helmetGeometry, deathHelmet, armorGeometry].forEach(g => g.dispose());
       [bodyMaterial, gearMaterial, deathMaterial].forEach(m => m.dispose());
     } };
 }
@@ -134,18 +140,22 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const contactGeometry = mergeGeometries([idle, weaponGeometry]);
   if (!contactGeometry) throw new Error('Giant contact requires body and maul');
   contactGeometry.computeBoundingBox(); contactGeometry.computeBoundingSphere();
+  const stone = new THREE.Color(THREAT_COLORS.stone);
+  const deathHelmet = tagDeathPiece(helmetGeometry.clone(), 'giant', (_y, color, i) =>
+    color && Math.abs(color.getX(i)-stone.r) < .00001 ? 1 : 0);
+  const deathWeapon = tagDeathPiece(weaponGeometry.clone(), 'giant', 7);
   const bodyMaterial = matte(), gearMaterial = matte();
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, gearMaterial);
   vest.visible = false;
-  return { lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .12, tilt: .09 },
+  return { deathAssembly: { body: death, helmet: deathHelmet, weapon: deathWeapon, pieceCount: 11 }, lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .12, tilt: .09 },
     role: 'giant', id: 'topwar-colossus', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)),
     contactPresentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored' },
     presentation: { width: 1.60, height: 1.43, depth: .96, healthBar: { width: 1.20, height: .20 }, shadow: { width: 1.02, depth: .48 } },
     contact: { body: new THREE.Mesh(contactGeometry, bodyMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, transition, death, helmetGeometry, armorGeometry, weaponGeometry, contactGeometry].forEach(g => g.dispose());
+      [idle, ...runs, transition, death, helmetGeometry, deathHelmet, deathWeapon, armorGeometry, weaponGeometry, contactGeometry].forEach(g => g.dispose());
       [bodyMaterial, gearMaterial].forEach(m => m.dispose());
     } };
 }

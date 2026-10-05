@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { BloodSplat, GroundBloodStains, bloodSplatTexture, BLOOD_SPLAT_CAPACITY, BLOOD_STAIN_CAPACITY, BLOOD_STAIN_COLOR, BLOOD_STAIN_OPACITY } from '../src/rendering/enemies/BloodSplat';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
+import { HIT_BLOOD_TIMING } from '../src/rendering/enemies/EnemyHitImpulse';
 
 it('generates a deterministic irregular blot and satellites with normal alpha',()=>{
   const a=bloodSplatTexture(),b=bloodSplatTexture();expect(a.image.width).toBe(96);expect(a.image.data).toEqual(b.image.data);
@@ -18,10 +19,10 @@ it('generates a deterministic irregular blot and satellites with normal alpha',(
 it('keeps 8/24/48 splats in one bounded draw and clears each role completely',()=>{
   const scene=new THREE.Scene(),texture=bloodSplatTexture(),burst=new BloodSplat(scene,texture);
   const mesh=scene.getObjectByName('enemy-blood-splats') as THREE.InstancedMesh;
-  for(const count of [8,24,48,100]){burst.reset();for(let id=0;id<count;id++)burst.spawn(id,'grunt',0,new THREE.Vector3(id,1,8),1);burst.update(60);expect(mesh.count).toBe(Math.min(count,BLOOD_SPLAT_CAPACITY));}
-  for(const role of ['grunt','heavy','giant'] as const){burst.reset();burst.spawn(0,role,0,new THREE.Vector3(0,1,8),1);burst.update(ENEMY_DEATH_TIMING[role].bloodStartMs+10);expect(mesh.count).toBe(1);burst.update(ENEMY_DEATH_TIMING[role].totalMs);expect(mesh.count).toBe(0);}
-  burst.reset();burst.spawn(999,'giant',0,new THREE.Vector3(99,2,8),1);
-  for(let id=1;id<=90;id++)burst.spawn(id,'grunt',id*10,new THREE.Vector3(0,1,8),1);
+  for(const count of [8,24,48,100]){burst.reset();for(let id=0;id<count;id++)burst.spawnStyled(id,HIT_BLOOD_TIMING.grunt,0,new THREE.Vector3(id,1,8),1);burst.update(60);expect(mesh.count).toBe(Math.min(count,BLOOD_SPLAT_CAPACITY));}
+  for(const role of ['grunt','heavy','giant'] as const){burst.reset();burst.spawnStyled(0,HIT_BLOOD_TIMING[role],0,new THREE.Vector3(0,1,8),1);burst.update(HIT_BLOOD_TIMING[role].bloodStartMs+10);expect(mesh.count).toBe(1);burst.update(ENEMY_DEATH_TIMING[role].totalMs);expect(mesh.count).toBe(0);}
+  burst.reset();burst.spawnStyled(999,{bloodStartMs:0,bloodEndMs:2600,bloodPulseCount:1,bloodScale:1},0,new THREE.Vector3(99,2,8),1);
+  for(let id=1;id<=90;id++)burst.spawnStyled(id,HIT_BLOOD_TIMING.grunt,id*10,new THREE.Vector3(0,1,8),1);
   burst.update(900);let giantPresent=false;
   for(let index=0;index<mesh.count;index++){const matrix=new THREE.Matrix4();mesh.getMatrixAt(index,matrix);if(matrix.elements[12]===99)giantPresent=true;}
   expect(giantPresent).toBe(true);

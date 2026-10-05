@@ -29,8 +29,8 @@ it('keeps the Giant grip and maul in one assembly through reaction, then slightl
  renderer.update(enemy,0,hits);renderer.update(enemy,2000,hits);const group=renderer.die(enemy,2010),root=group.position.clone();
  const weapon=group.getObjectByName('giant-maul')!,mesh=weapon.children[0] as THREE.Mesh,offset=mesh.position.clone();
  renderer.update(undefined,2700,hits);group.updateMatrixWorld(true);const final=weapon.matrixWorld.clone();
- expect(mesh.geometry).toBe(family.weapon!.geometry);expect(mesh.position).toEqual(offset);expect(group.position).toEqual(root);
+ expect(mesh.geometry.getAttribute('position').array).toEqual(family.weapon!.geometry.getAttribute('position').array);expect(mesh.position).toEqual(offset);expect(group.position).toEqual(root);
  expect((group.children[0] as THREE.Mesh).geometry).toBe(family.lethalReaction!.final.geometry);
- renderer.update(undefined,3500,hits);group.updateMatrixWorld(true);const a=new THREE.Vector3().setFromMatrixPosition(final),b=new THREE.Vector3().setFromMatrixPosition(weapon.matrixWorld);expect(a.distanceTo(b)).toBeLessThan(.12);expect(mesh.position).toEqual(offset);expect(mesh.geometry).toBe(family.weapon!.geometry);
+ renderer.update(undefined,3500,hits);group.updateMatrixWorld(true);const a=new THREE.Vector3().setFromMatrixPosition(final),b=new THREE.Vector3().setFromMatrixPosition(weapon.matrixWorld);expect(a.distanceTo(b)).toBeLessThan(.12);expect(mesh.position).toEqual(offset);expect(mesh.geometry.getAttribute('position').array).toEqual(family.weapon!.geometry.getAttribute('position').array);
  renderer.dispose();hits.dispose();family.dispose();
 });

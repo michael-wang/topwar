@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { IntegratedDeathBlood } from '../src/rendering/enemies/IntegratedDeathBlood';
 import { expect, it, vi } from 'vitest';
 import { EnemyHitImpulse, ENEMY_HIT_STYLE, ENEMY_HIT_IMPULSE_MS, HIT_BLOOD_CAPACITY } from '../src/rendering/enemies/EnemyHitImpulse';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
@@ -33,14 +34,14 @@ it('every surviving HP drop emits blood and a +Z kick, independently of emphasis
  }
 });
 it('keeps hit blood separately bounded and cannot evict a long lethal Giant pulse',()=>{
- const scene=new THREE.Scene(),texture=bloodSplatTexture(),lethal=new BloodSplat(scene,texture),hit=new BloodSplat(scene,texture,HIT_BLOOD_CAPACITY,'enemy-hit-blood');
- lethal.spawn(1,'giant',0,new THREE.Vector3(0,2,12),1);
+ const scene=new THREE.Scene(),texture=bloodSplatTexture(),lethal=new IntegratedDeathBlood(scene),hit=new BloodSplat(scene,texture,HIT_BLOOD_CAPACITY,'enemy-hit-blood');
+ lethal.spawn(1,'giant',0,new THREE.Matrix4().makeTranslation(0,0,12));
  const style={bloodStartMs:0,bloodEndMs:100,bloodPulseCount:1,bloodScale:.5};
  const objects=vi.spyOn(THREE.Object3D.prototype,'clone');
- for(let i=0;i<300;i++)hit.spawnStyled(i,style,500,new THREE.Vector3(0,1,12));
- hit.update(550);lethal.update(550);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(HIT_BLOOD_CAPACITY);expect((scene.getObjectByName('enemy-blood-splats') as THREE.InstancedMesh).count).toBe(1);expect(objects).not.toHaveBeenCalled();
- hit.cancel(299);hit.update(551);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(HIT_BLOOD_CAPACITY-1);
- hit.update(600);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(0);
+ for(let i=0;i<300;i++)hit.spawnStyled(i,style,1000,new THREE.Vector3(0,1,12));
+ hit.update(1050);lethal.update(1050);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(HIT_BLOOD_CAPACITY);expect((scene.getObjectByName('enemy-3d-blood-giant') as THREE.InstancedMesh).count).toBe(1);expect(objects).not.toHaveBeenCalled();
+ hit.cancel(299);hit.update(1051);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(HIT_BLOOD_CAPACITY-1);
+ hit.update(1100);expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(0);
  objects.mockRestore();hit.dispose();lethal.dispose();texture.dispose();
 });
 

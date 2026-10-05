@@ -35,7 +35,7 @@ it('captures the exact lethal capture, then holds an authored reaction without r
         geometries.forEach((geometry,index)=>expect((parts[index] as THREE.Mesh).geometry).toBe(geometry));
       } else {
         const geometry=(parts[0] as THREE.Mesh).geometry;
-        if(role==='giant'&&age>timing.breakupStartMs){expect(geometry.getAttribute('deathBreakupDirection')).toBeDefined();expect(geometry.getAttribute('position').array).toEqual(family.lethalReaction!.final.geometry.getAttribute('position').array);}
+        if(role==='giant'&&age>timing.breakupStartMs){expect(geometry.getAttribute('deathPieceDirection')).toBeDefined();expect(geometry.getAttribute('position').array).toEqual(family.lethalReaction!.final.geometry.getAttribute('position').array);}
         else expect(geometry).toBe(family.lethalReaction!.final.geometry);
       }
       const body=parts[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
@@ -46,9 +46,6 @@ it('captures the exact lethal capture, then holds an authored reaction without r
         body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);expect(shader.uniforms.deathGray.value).toBe(1);
         expect(shader.uniforms.deathRed).toBeUndefined();
       }
-      const blood=scene.getObjectByName('enemy-blood-splats') as THREE.InstancedMesh;
-      expect(blood.count).toBe(age>=timing.bloodStartMs&&age<timing.bloodEndMs?1:0);
-      if(blood.count){const m=new THREE.Matrix4();blood.getMatrixAt(0,m);expect(m.elements[13]).toBeGreaterThan(corpse.position.y+.3*corpse.scale.y);}
     }
     renderer.update([],2031+timing.totalMs);expect(corpse.visible).toBe(false);
     expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
@@ -71,7 +68,7 @@ it('only lethal removal stains the scene, and mode changes clear persistent bloo
   renderer.update([],200,true);expect(stains.count).toBe(1);
   renderer.update([],10000,true);expect(stains.count).toBe(1);
   renderer.update([enemy],11000,true);renderer.update([],12000,false);expect(stains.count).toBe(0);
-  expect((scene.getObjectByName('enemy-blood-splats') as THREE.InstancedMesh).count).toBe(0);
+  expect((scene.getObjectByName('enemy-3d-blood-grunt') as THREE.InstancedMesh).count).toBe(0);
   renderer.update([enemy],13000,false);
   const squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
   renderer.present([{kind:'normalEnemyContact',enemyId:1,enemyTier:1,attackerX:0,attackerZ:8,playerX:0,playerZ:0,before:squad,after:squad}],13010);
@@ -111,7 +108,7 @@ it('reuses slot materials when changing corpse role and disposes the shared mask
   const dispose=vi.spyOn(material,'dispose'),clone=vi.spyOn(families.heavy.body.material as THREE.Material,'clone');
   renderer.update([{...enemy,id:2,archetype:'heavy'}],600);renderer.update([],610);
   expect((group.children[0] as THREE.Mesh).material).toBe(material);expect(dispose).not.toHaveBeenCalled();expect(clone).not.toHaveBeenCalled();
-  const mask=((scene.getObjectByName('enemy-blood-splats') as THREE.Mesh).material as THREE.MeshBasicMaterial).map!;
+  const mask=((scene.getObjectByName('enemy-ground-blood-stains') as THREE.Mesh).material as THREE.MeshBasicMaterial).map!;
   const maskDispose=vi.spyOn(mask,'dispose');renderer.dispose();expect(maskDispose).toHaveBeenCalledOnce();expect(dispose).toHaveBeenCalledOnce();
   Object.values(families).forEach(family=>family.dispose());
 });

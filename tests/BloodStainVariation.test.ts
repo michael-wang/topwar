@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { bloodStainVariation, STAIN_COLORS } from '../src/rendering/enemies/BloodStainVariation';
-import { GroundBloodStains, lethalBloodAtlas, BLOOD_STAIN_CAPACITY } from '../src/rendering/enemies/BloodSplat';
+import { GroundBloodStains, groundBloodAtlas, BLOOD_STAIN_CAPACITY } from '../src/rendering/enemies/BloodSplat';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 
 it('varies dried blood deterministically inside small casualty footprints with distinct role areas', () => {
@@ -26,7 +26,7 @@ it('varies dried blood deterministically inside small casualty footprints with d
 });
 
 it('shares one atlas draw, varies footprint/tint/opacity, persists and clears without owning the texture', () => {
-  const scene = new THREE.Scene(), texture = lethalBloodAtlas(), stains = new GroundBloodStains(scene, texture);
+  const scene = new THREE.Scene(), texture = groundBloodAtlas(), stains = new GroundBloodStains(scene, texture);
   const mesh = scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh;
   for (const role of ['grunt', 'heavy', 'giant'] as const) {
     stains.reset(); stains.spawn(17, role, .4, 8);

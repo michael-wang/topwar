@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as sphere, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { lethalUpperMatrix } from './LethalReaction';
+import { tagDeathPiece } from './DeathAssembly';
 import { ART } from '../../art/ArtDirection';
 import { COMBAT_COLORS, toyWaistBand } from '../characters/ToyCombatGear';
 import { ENEMY_GAIT_CYCLE_MS, type CrowdVisualFamily } from '../CharacterVisualFamilies';
@@ -10,13 +11,14 @@ export const GRUNT_CLOTHING = { shirt: ART.raider.body, shorts: ART.raider.short
 type Part = { geometry: THREE.BufferGeometry; color?: string; shortsBelowY?: number; fixed?: boolean };
 
 function merge(parts: Part[], reaction = 0): THREE.BufferGeometry {
-  const geometries = parts.map(part => {
+  const labels = [(y: number) => y >= .34 ? 2 : 3, 3, 3, 3, 3, 1, 4, 5, 6, 7, 1, 1];
+  const geometries = parts.map((part, index) => {
     const geometry = part.geometry.index ? part.geometry.toNonIndexed() : part.geometry;
     if (geometry !== part.geometry) part.geometry.dispose();
     geometry.deleteAttribute('uv');
     const positions = geometry.getAttribute('position');
     const colors = new Float32Array(positions.count * 3);
-    if (!part.color) return geometry;
+    if (!part.color) return reaction === 1 ? tagDeathPiece(geometry, 'grunt', labels[index]) : geometry;
     const color = new THREE.Color(part.color);
     for (let i = 0; i < positions.count; i += 3) {
       if (part.shortsBelowY !== undefined) {
@@ -28,6 +30,7 @@ function merge(parts: Part[], reaction = 0): THREE.BufferGeometry {
       for (let vertex = i; vertex < i + 3; vertex++) color.toArray(colors, vertex * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    if (reaction === 1) tagDeathPiece(geometry, 'grunt', labels[index]);
     if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, .09, .11));
     return geometry;
   });
@@ -75,6 +78,7 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
   // adapter removes visible secondary gear without changing other role renderers
   // or allocating a new material. It contributes no triangles or mesh draw.
   const waistGeometry = new THREE.BufferGeometry();
+  const deathHelmet = tagDeathPiece(helmetGeometry.clone(), 'grunt', 0);
   for (const attribute of ['position', 'normal', 'color'])
     waistGeometry.setAttribute(attribute, new THREE.Float32BufferAttribute([], 3));
   waistGeometry.boundingBox = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
@@ -85,6 +89,7 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
   const vest = new THREE.Mesh(waistGeometry, gearMaterial);
   vest.visible = false;
   return {
+    deathAssembly: { body: death, helmet: deathHelmet, pieceCount: 8 },
     role: 'grunt', id: 'topwar-grunt', body, helmet, vest,
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored',
       stepWeight: { shift: .028, roll: .028, compression: .012 } },
@@ -92,7 +97,7 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
     lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .09, tilt: .11 },
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
-      [idle, ...runs, transition, death, helmetGeometry, waistGeometry].forEach(geometry => geometry.dispose());
+      [idle, ...runs, transition, death, helmetGeometry, deathHelmet, waistGeometry].forEach(geometry => geometry.dispose());
       [bodyMaterial, gearMaterial, deathMaterial].forEach(material => material.dispose());
     },
   };

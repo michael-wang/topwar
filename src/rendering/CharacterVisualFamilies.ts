@@ -29,6 +29,7 @@ export interface LethalReaction {
 }
 
 export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heavy'> extends CharacterVisualFamily<R> {
+  readonly deathAssembly?: { readonly body: THREE.BufferGeometry; readonly helmet: THREE.BufferGeometry; readonly pieceCount: number };
   readonly presentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly gaitCycleMs: number;
@@ -39,6 +40,7 @@ export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heav
 }
 
 export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
+  readonly deathAssembly?: { readonly body: THREE.BufferGeometry; readonly helmet: THREE.BufferGeometry; readonly weapon: THREE.BufferGeometry; readonly pieceCount: number };
   readonly lethalReaction?: LethalReaction;
   readonly contactPresentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];

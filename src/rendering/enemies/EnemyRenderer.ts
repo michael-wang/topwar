@@ -8,12 +8,13 @@ import { prepareCrowdMaterial } from './CrowdPresentation';
 import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
 import { hitBloodVariation } from './HitBloodVariation';
-import { lethalBloodVariation } from './LethalBloodVariation';
+import { IntegratedDeathBlood } from './IntegratedDeathBlood';
+import { deathVariant } from './DeathAssembly';
 import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY } from './EnemyHitImpulse';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
-import { BloodSplat, GroundBloodStains, hitBloodAtlas, lethalBloodAtlas } from './BloodSplat';
+import { BloodSplat, GroundBloodStains, hitBloodAtlas, groundBloodAtlas } from './BloodSplat';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -88,7 +89,7 @@ export class EnemyRenderer {
   getDebugStats(): { current: number; bodyCapacities: number[]; tierCapacities: number[];
     deathVisuals: number; contactVisuals: number } {
     return { current: this.previousEnemies.size, bodyCapacities: this.batches.flatMap(batch => batch.bodyCapacity),
-      tierCapacities: this.batches.flatMap(batch => batch.capacity), deathVisuals: this.deathVisuals.length,
+      tierCapacities: this.batches.flatMap(batch => batch.capacity), deathVisuals: this.deathVisuals.reduce((n,v)=>n+(v.group.visible?1:0),0),
       contactVisuals: this.contactVisuals.length };
   }
   private readonly batches: CrowdBatch[] = [];
@@ -117,10 +118,10 @@ export class EnemyRenderer {
   private readonly feedbackMatrix = new THREE.Matrix4();
   private readonly pendingHitBlood = new Map<number, number>();
   private readonly hitTexture = hitBloodAtlas();
-  private readonly lethalTexture = lethalBloodAtlas();
+  private readonly stainTexture = groundBloodAtlas();
   private readonly stains: GroundBloodStains;
   private sceneMode: boolean | undefined;
-  private readonly blood: BloodSplat;
+  private readonly blood: IntegratedDeathBlood;
   private readonly hitBlood: BloodSplat;
   private readonly hitImpulse = new EnemyHitImpulse();
   private readonly reactionMatrices = new Map<string, readonly [THREE.Matrix4, THREE.Matrix4]>();
@@ -134,17 +135,18 @@ export class EnemyRenderer {
   private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.giant, depthTest: false, toneMapped: false });
   constructor(private readonly scene: THREE.Scene,
     private readonly families: Pick<CharacterVisualFamilies, 'grunt' | 'heavy' | 'giant'>) {
-    for (const family of [families.grunt, families.heavy]) if (family.lethalReaction) {
+    for (const family of [families.grunt, families.heavy, families.giant]) if (family.lethalReaction) {
       const { sink, tilt } = family.lethalReaction;
       this.reactionMatrices.set(family.role, [lethalUpperMatrix(.5, sink, tilt), lethalUpperMatrix(1, sink, tilt)]);
     }
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
-    this.blood = new BloodSplat(scene, this.lethalTexture);
+    this.blood = new IntegratedDeathBlood(scene);
     this.hitBlood = new BloodSplat(scene, this.hitTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
-    this.stains = new GroundBloodStains(scene, this.lethalTexture);
+    this.stains = new GroundBloodStains(scene, this.stainTexture);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
+    for (let i = 0; i < MAX_DEATH_VISUALS; i++) this.createDeathVisual(families.grunt);
     this.heavyHits = new HeavyHitFeedback(scene);
     this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant));
   }
@@ -235,8 +237,6 @@ export class EnemyRenderer {
       renderer?.update(enemy, nowMs, this.heavyHits, this.hitImpulse);
     }
     for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits, this.hitImpulse);
-    for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)
-      && renderer.copyBodyWorld(this.feedbackMatrix, nowMs)) this.blood.follow(renderer.id!, this.feedbackMatrix);
     this.blood.update(nowMs);
 
     const giantCount = enemies.reduce((count, enemy) => count + (enemy.archetype === 'giant' ? 1 : 0), 0);
@@ -421,7 +421,7 @@ export class EnemyRenderer {
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
-    this.stains.dispose(); this.hitTexture.dispose(); this.lethalTexture.dispose();
+    this.stains.dispose(); this.hitTexture.dispose(); this.stainTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose());
@@ -528,23 +528,16 @@ export class EnemyRenderer {
 
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
-    const variation = lethalBloodVariation(enemy.id, role);
-    frozen.updateMatrixWorld(true);
-    this.feedbackOrigin.fromArray(variation.localAnchor).applyMatrix4(frozen.matrixWorld);
-    this.feedbackScale.setFromMatrixScale(frozen.matrixWorld);
-    const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
-    this.blood.spawnStyled(enemy.id, ENEMY_DEATH_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id, variation);
+    frozen.updateMatrixWorld(true); this.feedbackMatrix.copy(frozen.matrixWorld);
+    const reaction = this.families[role].lethalReaction;
+    if (reaction) this.feedbackMatrix.multiply(this.reactionMatrices.get(role)![1]);
+    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix);
   }
 
-  private spawnDeath(enemy: EnemyRenderState, nowMs: number): THREE.Group | undefined {
-    const rendered = this.renderedCrowd.get(enemy.id);
-    if (!rendered) return undefined;
-    const family = this.crowdFamily(enemy), { death: parts, presentation } = family;
+  // Pose holders/materials are preallocated; deaths never allocate Mesh objects.
+  private createDeathVisual(family: CrowdVisualFamily): void {
+    const { death: parts, presentation } = family, role = family.role;
     const procedural = presentation.materialStyle === 'vertex-colors';
-    const role = family.role;
-    let visual = this.deathVisuals.find(candidate => !candidate.group.visible && this.sameParts(candidate.parts, parts))
-      ?? this.deathVisuals.find(candidate => !candidate.group.visible);
-    if (!visual && this.deathVisuals.length < MAX_DEATH_VISUALS) {
       const group = new THREE.Group();
       group.name = 'enemy-pale-death-body';
       const bodyMaterial = prepareCrowdMaterial(((procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
@@ -559,9 +552,17 @@ export class EnemyRenderer {
       // Pose holders are inspected/reused but rendered through shared batches.
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
-      visual = { id: enemy.id, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: nowMs, scale: new THREE.Vector3(), heavy: false, role };
-      this.deathVisuals.push(visual);
-    }
+      group.visible = false;
+      this.deathVisuals.push({ id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
+  }
+
+  private spawnDeath(enemy: EnemyRenderState, nowMs: number): THREE.Group | undefined {
+    const rendered = this.renderedCrowd.get(enemy.id);
+    if (!rendered) return undefined;
+    const family = this.crowdFamily(enemy), { death: parts, presentation } = family;
+    const procedural = presentation.materialStyle === 'vertex-colors';
+    const role = family.role;
+    let visual = this.deathVisuals.find(candidate => !candidate.group.visible);
     if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     if (!this.sameParts(visual.parts, parts)) {
@@ -638,15 +639,14 @@ export class EnemyRenderer {
           part.matrixWorldNeedsUpdate = true;
         }
       }
+      if (stage === 2 && this.families[visual.role].deathAssembly)
+        (visual.group.children[1] as THREE.Mesh).geometry = this.families[visual.role].deathAssembly!.helmet;
       visual.group.visible = pose.bodyVisible;
       visual.bodyTint.gray.value = visual.gearTint.gray.value = pose.gray;
       visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
       if (pose.bodyVisible) {
-        this.deathBatches.submit(visual.group, pose.gray, pose.breakup, pose.bodyOpacity);
-        this.feedbackMatrix.copy(visual.group.matrixWorld);
-        if (reaction && stage > 0) this.feedbackMatrix.multiply(this.reactionMatrices.get(visual.role)![stage - 1]);
-        this.blood.follow(visual.id, this.feedbackMatrix);
+        this.deathBatches.submit(visual.group, pose.gray, pose.breakup, pose.bodyOpacity, deathVariant(visual.id));
       }
     }
     this.deathBatches.finish();

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GiantVisualFamily } from '../CharacterVisualFamilies';
 import { GIANT_REVEAL_MS, giantReveal } from '../../presentation/GiantDrama';
-import { deathBreakupGeometry } from './DeathBreakupGeometry';
+import { deathVariant } from './DeathAssembly';
 import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
@@ -28,7 +28,6 @@ function hazeTexture(): THREE.DataTexture {
 export class GiantRenderer {
   private readonly group = new THREE.Group();
   private readonly body: THREE.Mesh;
-  private readonly breakupBody: THREE.BufferGeometry;
   private readonly helmet: THREE.Mesh;
   private readonly weapon = new THREE.Group();
   private readonly weaponRest = new THREE.Vector3();
@@ -57,7 +56,6 @@ export class GiantRenderer {
     };
     const bodyMaterial = material(family.body.material, 'body'), gearMaterial = material(family.helmet.material, 'gear');
     this.body = new THREE.Mesh(family.body.geometry, bodyMaterial);
-    this.breakupBody = deathBreakupGeometry((family.lethalReaction?.final ?? family.body).geometry);
     this.body.name = 'giant-body';
     this.helmet = new THREE.Mesh(family.helmet.geometry, gearMaterial); this.helmet.name = 'giant-crest-helmet';
     const armor = new THREE.Mesh(family.vest.geometry, gearMaterial); armor.name = 'giant-shoulder-yoke'; armor.visible = family.vest.visible;
@@ -72,7 +70,7 @@ export class GiantRenderer {
       this.weapon.add(maul); this.group.add(this.weapon);
     }
     this.palette = [bodyMaterial, gearMaterial].map(material => ({ material, color: material.color.clone(),
-      tint: prepareEnemyDeathMaterial(material, material === bodyMaterial) }));
+      tint: prepareEnemyDeathMaterial(material, true) }));
     this.group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(this.group), size = bounds.getSize(new THREE.Vector3());
     this.dimensions = family.presentation ?? { width: size.x, height: bounds.max.y, depth: size.z };
@@ -83,13 +81,9 @@ export class GiantRenderer {
     scene.add(this.group, this.haze);
   }
   get id(): number | undefined { return this.previous?.id; }
-  copyBodyWorld(target: THREE.Matrix4, nowMs?: number): boolean {
+  copyBodyWorld(target: THREE.Matrix4): boolean {
     if (!this.previous || !this.group.visible) return false;
     this.group.updateMatrixWorld(true); target.copy(this.group.matrixWorld);
-    if (nowMs !== undefined && Number.isFinite(this.deathAt)) {
-      const stage = enemyReactionStage(nowMs - this.deathAt, 'giant');
-      if (stage > 0) target.multiply(this.reactionMatrices[stage - 1]);
-    }
     return true;
   }
   available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= ENEMY_DEATH_TIMING.giant.totalMs); }
@@ -118,6 +112,8 @@ export class GiantRenderer {
   }
   update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback, impulse?: EnemyHitImpulse): void {
     if (enemy) {
+      this.helmet.geometry = this.family.helmet.geometry;
+      if (this.family.weapon) (this.weapon.children[0] as THREE.Mesh).geometry = this.family.weapon.geometry;
       this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = true;
       if (this.previous?.id !== enemy.id) this.bornAt = nowMs;
       this.previous = enemy; this.deathAt = -Infinity;
@@ -169,14 +165,15 @@ export class GiantRenderer {
     // world-unit caps and keep the maul/grip as one coupled assembly.
     const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
     const separation = pose.breakup / Math.max(.001,scale);
-    if (pose.breakup > 0) this.body.geometry = this.breakupBody;
-    this.helmet.matrix.elements[12] += separation * .30;
-    this.helmet.matrix.elements[13] += separation * .85;
-    this.weapon.matrix.elements[12] += separation * .65;
-    this.weapon.matrix.elements[13] += separation * .20;
+    if (stage === 2 && this.family.deathAssembly) {
+      this.body.geometry = this.family.deathAssembly.body;
+      this.helmet.geometry = this.family.deathAssembly.helmet;
+      (this.weapon.children[0] as THREE.Mesh).geometry = this.family.deathAssembly.weapon;
+    }
     this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     for (const { material, color, tint } of this.palette) {
       material.color.copy(color); tint.gray.value = pose.gray; tint.breakup.value = separation;
+      tint.variant.value = deathVariant(this.previous!.id);
       material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
       material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
     }
@@ -189,7 +186,7 @@ export class GiantRenderer {
   }
   dispose(): void {
     this.scene.remove(this.group, this.haze);
-    this.hazeMap.dispose(); this.hazeMaterial.dispose(); this.breakupBody.dispose();
+    this.hazeMap.dispose(); this.hazeMaterial.dispose();
     for (const { material } of this.palette) material.dispose();
   }
 }

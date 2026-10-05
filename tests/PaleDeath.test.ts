@@ -25,7 +25,7 @@ it('captures role-owned run geometry, keeps a fixed root through kneeling and pa
     expect(corpse.matrix.equals(matrix)).toBe(true);
     renderer.update([],start+10+timing.totalMs);expect(corpse.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
   }
-  renderer.reset();expect(scene.getObjectByName('enemy-blood-splats')!.visible).toBe(false);
+  renderer.reset();expect(scene.getObjectByName('enemy-3d-blood-grunt')!.visible).toBe(false);
   renderer.dispose();grunt.dispose();heavy.dispose();expect(scene.children).toHaveLength(0);
 });
 it('drains authored color to naturally lit neutral gray without textures or emissive white', () => {
