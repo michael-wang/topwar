@@ -161,8 +161,8 @@ export class GiantRenderer {
       // Cant/lift the complete grip-hand + maul, never a separate moving hand.
       this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     }
-    // A small late loosening, not flying fragments. Both matrix offsets use
-    // world-unit caps and keep the maul/grip as one coupled assembly.
+    // All vertices in a logical piece share one bounded displacement; the
+    // grip-hand and maul remain a single piece throughout the breakup.
     const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
     const separation = pose.breakup / Math.max(.001,scale);
     if (stage === 2 && this.family.deathAssembly) {

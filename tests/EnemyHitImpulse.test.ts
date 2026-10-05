@@ -28,7 +28,8 @@ it('every surviving HP drop emits blood and a +Z kick, independently of emphasis
   renderer.update([{...e,hp:8}],2070);renderer.update([{...e,hp:8}],2090);expect(blood.count).toBe(2);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].cap,5);
   if(role!=='grunt'){expect(emphasis.mock.results.map(result=>result.value)).toEqual([true,false]);}
   renderer.update([{...e,hp:8}],2330);expect(z()).toBeCloseTo(e.z,5);expect(blood.count).toBe(0);expect(JSON.stringify(e)).toBe(initial);
-  renderer.update([{...e,hp:7}],2340);renderer.update([],2350);expect(blood.count).toBe(0);expect(stains.count).toBe(1);
+  renderer.update([{...e,hp:7}],2340);renderer.update([],2350);expect(blood.count).toBe(0);expect(stains.count).toBe(0);
+  renderer.update([],5000);expect(stains.count).toBe(1);
   renderer.update([],2600);expect(blood.count).toBe(0);
   emphasis.mockRestore();renderer.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);
  }

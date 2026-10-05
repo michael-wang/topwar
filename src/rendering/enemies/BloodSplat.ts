@@ -4,6 +4,7 @@ import { bloodStainVariation, STAIN_COLORS } from './BloodStainVariation';
 
 export const BLOOD_SPLAT_CAPACITY = 64;
 export const BLOOD_STAIN_CAPACITY = 1024;
+export const BLOOD_STAIN_GROW_MS = 110;
 export const BLOOD_COLORS = ['#7e2029', '#a92c38', '#d0444c'] as const;
 export const BLOOD_STAIN_COLOR = '#6d2528';
 export const BLOOD_STAIN_OPACITY = .58;
@@ -83,11 +84,11 @@ export const hitBloodAtlas = (): THREE.DataTexture => bloodAtlas(false);
 export const groundBloodAtlas = (): THREE.DataTexture => bloodAtlas(true);
 export interface SplatVariation {
   variant: number; angle: number; aspect: number; size: number;
-  bias?: number; pulseOffset?: number; localAnchor?: readonly [number, number, number];
+  bias?: number; localAnchor?: readonly [number, number, number];
 }
 
 interface BurstSlot { owner: number; startedAt: number; timing: BloodSplatTiming; origin: THREE.Vector3;
-  localAnchor: THREE.Vector3; attached: boolean; bias: number; pulseOffset: number;
+  localAnchor: THREE.Vector3; attached: boolean; bias: number;
   diameter: number; angle: number; variant: number; aspect: number }
 
 export class BloodSplat {
@@ -100,14 +101,14 @@ export class BloodSplat {
   private readonly transform = new THREE.Object3D();
   private cursor = 0;
   constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture,
-    private readonly capacity = BLOOD_SPLAT_CAPACITY, name = 'enemy-blood-splats') {
+    private readonly capacity = BLOOD_SPLAT_CAPACITY, name = 'blood-splats') {
     this.variant = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.bias = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.alpha = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.angle = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.slots = Array.from({ length: capacity }, () => ({ owner: -1, startedAt: -Infinity,
       timing: { bloodStartMs: 0, bloodEndMs: 0, bloodPulseCount: 1, bloodScale: 1 }, origin: new THREE.Vector3(), localAnchor: new THREE.Vector3(),
-      attached: false, bias: 0, pulseOffset: 0, diameter: 1, angle: 0, variant: 0, aspect: 1 }));
+      attached: false, bias: 0, diameter: 1, angle: 0, variant: 0, aspect: 1 }));
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('splatVariant', this.variant);
     geometry.setAttribute('splatBias', this.bias);
@@ -153,7 +154,6 @@ gl_Position = projectionMatrix * mvPosition;`);
     slot.variant = variation?.variant ?? 0; slot.aspect = variation?.aspect ?? 1;
     slot.diameter *= variation?.size ?? 1;
     slot.attached = !!variation?.localAnchor; slot.bias = variation?.bias ?? 0;
-    slot.pulseOffset = variation?.pulseOffset ?? 0;
     if (variation?.localAnchor) slot.localAnchor.fromArray(variation.localAnchor);
   }
   // Follow the already rendered actor, including every-hit recoil. Slot vectors
@@ -165,7 +165,7 @@ gl_Position = projectionMatrix * mvPosition;`);
   update(nowMs: number): void {
     let count = 0;
     for (const slot of this.slots) {
-      const pose = bloodSplatPose(nowMs - slot.startedAt, slot.timing, slot.pulseOffset);
+      const pose = bloodSplatPose(nowMs - slot.startedAt, slot.timing);
       if (!pose.visible) continue;
       this.transform.position.copy(slot.origin); this.transform.scale.set(slot.diameter * pose.scale * slot.aspect, slot.diameter * pose.scale / slot.aspect, 1);
       this.transform.updateMatrix(); this.mesh.setMatrixAt(count, this.transform.matrix);
@@ -186,17 +186,21 @@ export class GroundBloodStains {
   private readonly color = new THREE.Color();
   private readonly variant = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_STAIN_CAPACITY), 1);
   private readonly alpha = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_STAIN_CAPACITY).fill(1), 1);
+  private readonly growth = new THREE.InstancedBufferAttribute(new Float32Array(BLOOD_STAIN_CAPACITY).fill(1), 1);
+  private readonly growthStarts = new Float64Array(BLOOD_STAIN_CAPACITY).fill(-Infinity);
   private readonly atlas: boolean;
   private cursor = 0;
   constructor(private readonly scene: THREE.Scene, texture: THREE.DataTexture, name = 'enemy-ground-blood-stains') {
     this.atlas = texture.image.width === 192;
     const geometry = new THREE.PlaneGeometry(1, 1);
     geometry.setAttribute('stainVariant', this.variant); geometry.setAttribute('stainOpacity', this.alpha);
+    geometry.setAttribute('stainGrowth', this.growth);
     const material = new THREE.MeshBasicMaterial({ map: texture, color: this.atlas ? '#ffffff' : BLOOD_STAIN_COLOR,
       transparent: true, opacity: this.atlas ? 1 : BLOOD_STAIN_OPACITY, depthWrite: false, toneMapped: false });
     // Borrow the mask alpha; dried blood has independent quiet tint/opacity.
     material.onBeforeCompile = shader => {
-      shader.vertexShader = `attribute float stainVariant; attribute float stainOpacity; varying float vStainOpacity;\n${shader.vertexShader}`
+      shader.vertexShader = `attribute float stainVariant; attribute float stainOpacity; attribute float stainGrowth; varying float vStainOpacity;\n${shader.vertexShader}`
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed *= stainGrowth;')
         .replace('#include <uv_vertex>', `#include <uv_vertex>\n${this.atlas ? 'vMapUv = (vMapUv + vec2(mod(stainVariant, 2.), floor(stainVariant / 2.))) * .5;' : ''}\nvStainOpacity = stainOpacity;`);
       shader.fragmentShader = `varying float vStainOpacity;\n${shader.fragmentShader}`.replace('#include <map_fragment>',
         '#ifdef USE_MAP\ndiffuseColor.a *= texture2D(map, vMapUv).a * vStainOpacity;\n#endif');
@@ -209,6 +213,7 @@ export class GroundBloodStains {
   spawn(id: number, role: EnemyDeathRole, x: number, z: number): void {
     if (!this.atlas) { this.spawnSized(id, ENEMY_DEATH_TIMING[role].stainDiameter, x, z); return; }
     const index = this.cursor++ % BLOOD_STAIN_CAPACITY, v = bloodStainVariation(id, role);
+    this.growthStarts[index] = -Infinity; this.growth.setX(index, 1); this.growth.needsUpdate = true;
     const diameter = ENEMY_DEATH_TIMING[role].stainDiameter * v.scale;
     this.transform.position.set(x + v.offsetX, .032, z + v.offsetZ);
     this.transform.rotation.set(-Math.PI / 2, 0, v.angle);
@@ -220,6 +225,7 @@ export class GroundBloodStains {
   }
   spawnSized(id: number, diameter: number, x: number, z: number): void {
     const index = this.cursor++ % BLOOD_STAIN_CAPACITY;
+    this.growthStarts[index] = -Infinity; this.growth.setX(index, 1); this.growth.needsUpdate = true;
     const variation = .9 + ((Math.imul(id, 1597334677) >>> 0) % 1000) / 5000;
     diameter *= variation;
     this.transform.position.set(x, .025, z); this.transform.rotation.set(-Math.PI / 2, 0, id * 2.3999632297);
@@ -227,6 +233,24 @@ export class GroundBloodStains {
     this.mesh.setMatrixAt(index, this.transform.matrix); this.mesh.count = Math.min(this.cursor, BLOOD_STAIN_CAPACITY);
     this.mesh.visible = true; this.mesh.instanceMatrix.needsUpdate = true;
   }
-  reset(): void { this.cursor = 0; this.mesh.count = 0; this.mesh.visible = false; }
+  activate(id: number, role: EnemyDeathRole, x: number, z: number, contactMs: number): void {
+    this.spawn(id, role, x, z);
+    const index = (this.cursor - 1) % BLOOD_STAIN_CAPACITY;
+    this.growthStarts[index] = contactMs; this.growth.setX(index, .3); this.growth.needsUpdate = true;
+  }
+  update(nowMs: number): void {
+    let changed = false;
+    for (let index = 0; index < this.mesh.count; index++) {
+      if (!Number.isFinite(this.growthStarts[index])) continue;
+      const t = Math.max(0, Math.min(1, (nowMs - this.growthStarts[index]) / BLOOD_STAIN_GROW_MS));
+      this.growth.setX(index, .3 + .7 * t * t * (3 - 2 * t)); changed = true;
+      if (t === 1) this.growthStarts[index] = -Infinity;
+    }
+    if (changed) this.growth.needsUpdate = true;
+  }
+  reset(): void {
+    this.cursor = 0; this.mesh.count = 0; this.mesh.visible = false;
+    this.growthStarts.fill(-Infinity); this.growth.array.fill(1); this.growth.needsUpdate = true;
+  }
   dispose(): void { this.scene.remove(this.mesh); this.mesh.dispose(); this.mesh.geometry.dispose(); (this.mesh.material as THREE.Material).dispose(); }
 }

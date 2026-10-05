@@ -65,7 +65,7 @@ it('only lethal removal stains the scene, and mode changes clear persistent bloo
   const enemy={id:1,tier:1,hp:2,x:0,z:8,archetype:'grunt' as const};
   const stains=scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh;
   renderer.update([enemy],0,true);renderer.update([{...enemy,hp:1}],100,true);expect(stains.count).toBe(0);
-  renderer.update([],200,true);expect(stains.count).toBe(1);
+  renderer.update([],200,true);expect(stains.count).toBe(0);
   renderer.update([],10000,true);expect(stains.count).toBe(1);
   renderer.update([enemy],11000,true);renderer.update([],12000,false);expect(stains.count).toBe(0);
   expect((scene.getObjectByName('enemy-3d-blood-grunt') as THREE.InstancedMesh).count).toBe(0);

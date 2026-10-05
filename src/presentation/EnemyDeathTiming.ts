@@ -17,15 +17,12 @@ export function enemyDeathPose(ageMs: number, timing: EnemyDeathTiming) {
     bodyOpacity: 1 - smooth((ageMs - timing.fadeStartMs) / (timing.totalMs - timing.fadeStartMs)) };
 }
 
-export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number; readonly bloodPulseEndMs?: number; readonly fadeStartMs?: number }
-export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming, pulseOffset = 0) {
-  const pulseEnd = timing.bloodPulseEndMs ?? timing.bloodEndMs;
-  const progress = clamp((ageMs - timing.bloodStartMs) / (pulseEnd - timing.bloodStartMs));
-  const opacity = timing.fadeStartMs === undefined
-    ? .84 * (1 - smooth((progress - .88) / .12))
-    : (.84 - .26 * smooth((ageMs - pulseEnd) / (timing.fadeStartMs - pulseEnd)))
-      * (1 - smooth((ageMs - timing.fadeStartMs) / (timing.bloodEndMs - timing.fadeStartMs)));
-  const beat = (1 - Math.cos((progress * timing.bloodPulseCount + pulseOffset * smooth(progress / .15)) * Math.PI * 2)) / 2;
+// Cards remain only for surviving hits and Player casualties.
+export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number }
+export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming) {
+  const progress = clamp((ageMs - timing.bloodStartMs) / (timing.bloodEndMs - timing.bloodStartMs));
+  const opacity = .84 * (1 - smooth((progress - .88) / .12));
+  const beat = (1 - Math.cos(progress * timing.bloodPulseCount * Math.PI * 2)) / 2;
   return { visible: ageMs >= timing.bloodStartMs && ageMs < timing.bloodEndMs,
     scale: (.86 + .44 * beat * (1 - .14 * progress)) * (.25 + .75 * smooth(progress / .09)),
     opacity };

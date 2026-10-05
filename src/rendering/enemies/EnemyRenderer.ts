@@ -142,9 +142,9 @@ export class EnemyRenderer {
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
-    this.blood = new IntegratedDeathBlood(scene);
     this.hitBlood = new BloodSplat(scene, this.hitTexture, HIT_BLOOD_CAPACITY, 'enemy-hit-blood');
     this.stains = new GroundBloodStains(scene, this.stainTexture);
+    this.blood = new IntegratedDeathBlood(scene, this.stains);
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
     for (let i = 0; i < MAX_DEATH_VISUALS; i++) this.createDeathVisual(families.grunt);
     this.heavyHits = new HeavyHitFeedback(scene);
@@ -207,8 +207,6 @@ export class EnemyRenderer {
             ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs)
             : this.spawnDeath(previous, nowMs);
           if (frozen) this.scheduleKillFeedback(previous, frozen, nowMs);
-          this.stains.spawn(previous.id, previous.archetype === 'giant' ? 'giant' : previous.archetype === 'heavy' ? 'heavy' : 'grunt',
-            frozen?.position.x ?? -previous.x, frozen?.position.z ?? previous.z);
         }
         if (this.contactIds.has(previous.id) && previous.archetype === 'giant')
           this.giantRenderers.find(renderer => renderer.id === previous.id)?.reset();
@@ -238,6 +236,7 @@ export class EnemyRenderer {
     }
     for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits, this.hitImpulse);
     this.blood.update(nowMs);
+    this.stains.update(nowMs);
 
     const giantCount = enemies.reduce((count, enemy) => count + (enemy.archetype === 'giant' ? 1 : 0), 0);
     let barIndex = 0;
@@ -529,9 +528,10 @@ export class EnemyRenderer {
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
     frozen.updateMatrixWorld(true); this.feedbackMatrix.copy(frozen.matrixWorld);
-    const reaction = this.families[role].lethalReaction;
-    if (reaction) this.feedbackMatrix.multiply(this.reactionMatrices.get(role)![1]);
-    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix);
+    // Blood origins are authored in the final assembly's already-reacted local
+    // coordinates. Applying the upper-mass reaction again would bury the red
+    // masses below the actual torso seams.
+    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix, frozen.position.x, frozen.position.z);
   }
 
   // Pose holders/materials are preallocated; deaths never allocate Mesh objects.

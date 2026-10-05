@@ -291,66 +291,75 @@ Giant peak/50 ms/settled impact captures.
 
 ## Enemy Kill Feedback (R8)
 
-Current beachhead enemies use **Blood + Reaction → Progressive Gray-White →
-Subtle Decomposition → Shared Blood/Body Fade**. The dark-red corpse is removed.
+Current beachhead enemies use **Role Reaction → Integrated 3D Breakup →
+Progressive Gray-White → Body Fade + Blood Fall → Persistent Ground Stain**.
 Capture the exact last rendered pose/root, including crowd support shift, impact
 compression, helmet lag and Giant coupled grip-hand/maul. Roots stay pinned;
 two baked reaction poses show a sink/kneel with raised hands before the hold.
-No forward fall, rise, shrink, flying fragments, grounded debris or crash dust.
+No forward fall, rise, shrink, flying body fragments, grounded body debris or crash dust.
 
 Grunt freezes for 35 ms, reaches its final reaction at 130 ms: upper mass sinks
 0.09 authored units, hands rise 0.25, shoes widen 0.03 per side, torso tilt 6.3°.
 Heavy freezes for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
 widening, tilt 5.2°. Giant freezes for 180 ms and settles at 650 ms: 0.12 sink,
-0.24 offhand lift, small coherent maul lift/cant. Role geometry remains shared;
-no live crowd draw or skeleton is added.
+0.24 offhand lift, small coherent maul lift/cant. No live crowd draw or skeleton
+is added.
 
-| Role | Blood begins / pulse peaks | Gray complete | Breakup begins | Shared fade | Total |
+| Role | Logical body / blood pieces | Split begins | Gray complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
-| Grunt | 10 ms / 2 peaks through 170 ms | 260 ms | 260 ms | 300–520 ms | 520 ms |
-| Heavy | 15 ms / 3 peaks through 420 ms | 560 ms | 520 ms | 650–1100 ms | 1100 ms |
-| Giant | 35 ms / 5 peaks through 1100 ms | 1400 ms | 1200 ms | 1550–2600 ms | 2600 ms |
+| Grunt | 8 / 4 | 130 ms | 390 ms | 300–520 ms | 520 ms |
+| Heavy | 10 / 5 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
+| Giant | 11 / 7 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
 
-Lit authored colors progressively drain to **#B9BEBA**, without emissive wash
-or a second red tint. Blood settles from peak opacity 0.84 to 0.58 before the
-final phase; its opacity then consumes the same fade curve as the body, ending
-together. Player/hit blood retain their separate short clocks.
+The final reaction geometry supplies the exact starting silhouette. Helmet,
+head, torso bands, hands, shoes and structured equipment are authored logical
+pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
+patterns provide lateral, upper/lower and diagonal separation. They reconstruct
+the same accepted pose at zero separation. No runtime fracture or independent
+triangle motion is used. World-space separation caps are **0.10 / 0.15 / 0.24**
+units, compensated for role scale. Body colors progressively drain to
+**#B9BEBA** while pieces separate; there is no red body tint or emissive wash.
+Giant grip-hand and maul remain one piece through the reaction and breakup.
 
-The 48 pooled crowd holders submit gray/breakup/opacity into per-geometry
-instanced batches. Each owned non-indexed clone has one deterministic direction
-per triangle, identical for all three vertices, driven by centroid/spatial region
-and stable position hash. Separation eases in only after the reaction registers;
-world-space caps are **0.07 Grunt / 0.10 Heavy** units, compensated for role scale.
-Triangles loosen without stretching or spawning fragment objects. Three bounded
-Giant slots use a reusable final-body breakup clone, cap **0.12 world units**,
-plus smaller helmet/maul separation; the grip remains inside the maul assembly.
-Family resources stay borrowed and unchanged; clones/materials dispose with renderer.
+The 48 preallocated crowd pose holders submit gray/separation/opacity/variant
+into per-geometry instanced batches. Three fixed Giant slots use the same piece
+semantics. Family-owned tagged geometry and renderer-owned material/batch
+resources dispose at their respective ownership boundaries.
 
-Lethal blood keeps the accepted 64-slot camera-facing batch, now using four
-fuller 96×96 masks in one 192×192 atlas. Connected secondary lobes distinguish
-these bursts from small hit splashes. Upper-body local origins follow the
-captured actor and its authored reaction; deterministic ID/role variation chooses
-region, mask, rotation, aspect, ±10% size, side bias and a small pulse phase offset.
-Repeated damped pulses keep palette **#7E2029 / #A92C38 / #D0444C**,
-normal alpha and no glow. Relative role diameters remain **1 / 1.45 / 2.2**;
-base card diameter 1.25 units with bounded scale adaptation. Hit blood is a
-separate pool described below. Surviving hits never create ground stains.
+Enemy lethal blood uses **3D geometry**, not a camera-facing card. One merged
+batch per active role shares **64 total death slots**. Irregular blobs, flattened
+masses and tapered droplets begin inside/between the torso bands. The same death
+variant controls their internal origin, small static size/orientation variation
+and outward pattern. Blood expansion caps are **0.10 / 0.14 / 0.22** world units.
+The matte palette remains **#751D27 / #9F2734 / #C93443 / #D94A50** throughout;
+blood does not consume the body's gray tint. Normal alpha/depth-tested lighting
+keeps these masses spatially integrated rather than drawn over the actor.
 
-Enemy ground stains share the fuller four-mask lethal atlas in **one draw / 1024
-slots**. Base diameters are **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
+Blood releases at 54% of each role clock (281 / 594 / 1404 ms, rounded), then
+follows deterministic analytic flight. Mixed small upward/downward velocities,
+role gravity and size-aware floor contact keep all blood resolved by the death
+clock. X/Z converge near the death point. Only blood falls: body pieces remain
+near the defeated silhouette and fade in place. Each blood piece fades over
+65 ms at contact. The first major piece activates one stain, which grows from
+30% to full size over **110 ms**; it never appears at the initial lethal event.
+
+Enemy ground stains reuse V1's fuller four-mask atlas in **one draw / 1024 slots**.
+Base diameters remain **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
 (1 : 1.88 : 2.79). Deterministic variation selects mask, rotation, ±12% size,
 area-preserving aspect 0.85–1.20, opacity 0.50–0.66 and dried-blood tones
-**#602327 / #6D2528 / #792A30**. Position offsets stay within ±0.035 / 0.055 /
-0.08 units of the casualty; Y=0.032 keeps marks above dry/wet beach overlays.
-They represent lethal casualties and survive until Retry/renderer reset/mode
-change, with oldest-slot reuse only as a safety bound. No gameplay collision.
+**#602327 / #6D2528 / #792A30**. Existing offsets within ±0.035 / 0.055 / 0.08
+units receive only a small contact bias (at most 0.025 units).
+Y=0.032 keeps marks above dry/wet beach overlays. Stains survive until
+Retry/renderer reset/mode change, with oldest-slot reuse only as a safety bound.
+Surviving hits never create stains. No gameplay collision.
 
-The superseded fragment/fall systems stay removed. Rate-limited emphasis,
-Giant HP layout/reveal, audio, simulation removal, Player casualty and Boss
-remain unchanged. Generated evidence is local/untracked under
-`artifacts/r8-impact-pacing/`. Development `/` and `?review=normal` start normal
-Level 1; explicit `?review=threats` uses P1 Level 5 with forced threats. Production
-root is Level 1. Retry preserves the selected mode.
+The large lethal card path, its variation helper and the old per-triangle
+breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
+rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
+Player casualty and Boss remain unchanged. Generated V2 evidence is
+local/untracked under `artifacts/v2-integrated-death/`. Development `/` and
+`?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
+with forced threats. Production root is Level 1. Retry preserves the selected mode.
 
 ### R7 Player casualty
 
@@ -379,7 +388,8 @@ evaluated after rendering the actor transform and follows its recoil/lean, not
 an unrelated world-space crown offset. Four masks vary 2–4 satellites and their
 placement. Rotation is fixed per hit and mostly lateral, with an asymmetric
 side bias; size varies ±15%, aspect 0.82–1.20. Player blood and stains retain
-their accepted appearance. Hit scales remain 45% / 40% / 30% of lethal roles.
+their accepted appearance. Hit card scales remain 0.45 / 0.58 / 0.66 for
+Grunt/Heavy/Giant; these are independent of the V2 lethal 3D blood geometry.
 
 `EnemyHitImpulse` snaps back over 20 ms, holds through 70 ms, then smoothly
 returns by 250 ms. Single-hit +Z displacement is 0.27 / 0.25 / 0.17 world units

@@ -39,7 +39,7 @@ it('keeps separation in world units and preserves instanced gray/fade/variant wi
 it('uses volumetric blood within role bounds, bounded role draws, and independent blood color',()=>{
   for(const role of ['grunt','heavy','giant']as const){const geometry=integratedBloodGeometry(role);geometry.computeBoundingBox();expect(geometry.boundingBox!.max.z-geometry.boundingBox!.min.z).toBeGreaterThan(.08);
     expect(new Set(Array.from(geometry.getAttribute('bloodPieceId').array)).size).toBe(BLOOD_PIECE_COUNTS[role]);
-    for(let variant=0;variant<3;variant++)for(let i=0;i<BLOOD_PIECE_COUNTS[role];i++){const o=bloodPieceOrigin(role,variant,i);expect(Math.abs(o[0])).toBeLessThan(.3);expect(o[1]).toBeGreaterThan(.2);expect(o[1]).toBeLessThan(role==='giant'?1.1:.7);}
+    for(let variant=0;variant<3;variant++)for(let i=0;i<BLOOD_PIECE_COUNTS[role];i++){const o=bloodPieceOrigin(role,variant,i);expect(Math.abs(o[0])).toBeLessThan(.35);expect(o[1]).toBeGreaterThan(.15);expect(o[1]).toBeLessThan(role==='giant'?1.1:.7);}
     expect(geometry.getAttribute('position').count).toBeLessThan(2000);geometry.dispose();}
   const scene=new THREE.Scene(),blood=new IntegratedDeathBlood(scene);for(let i=0;i<100;i++)blood.spawn(i,'grunt',0,new THREE.Matrix4());blood.update(200);
   const mesh=scene.getObjectByName('enemy-3d-blood-grunt')as THREE.InstancedMesh;expect(mesh.count).toBe(64);expect(scene.children).toHaveLength(3);expect(scene.getObjectByName('enemy-blood-splats')).toBeUndefined();
