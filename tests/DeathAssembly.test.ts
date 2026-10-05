@@ -25,10 +25,10 @@ it('bakes semantic pieces into the exact accepted pose with three deterministic 
     expect(f.body.geometry.getAttribute('deathPieceId')).toBeUndefined();f.dispose();
   }
 });
-it('keeps separation in world units and preserves instanced gray/fade/variant without extra piece draws', () => {
+it('keeps separation in world units and preserves instanced authored color/fade/variant without extra piece draws', () => {
   const scene=new THREE.Scene(),family=createChibiHeavyFamily(),group=new THREE.Group(),mat=new THREE.MeshStandardMaterial();prepareEnemyDeathMaterial(mat);
   group.add(new THREE.Mesh(family.deathAssembly!.body,mat));group.scale.set(2,3,4);
-  const batches=new CrowdDeathBatches(scene,48);batches.begin();for(let i=0;i<48;i++)batches.submit(group,.6,.14,.5,i%3);batches.finish();
+  const batches=new CrowdDeathBatches(scene,48);batches.begin();for(let i=0;i<48;i++)batches.submit(group,.14,.5,i%3);batches.finish();
   const mesh=scene.children[0]as THREE.InstancedMesh;expect(mesh.count).toBe(48);expect(scene.children).toHaveLength(1);
   expect(mesh.geometry.getAttribute('deathBreakup').getX(0)).toBeCloseTo(.035);expect(mesh.geometry.getAttribute('deathVariant').getX(2)).toBe(2);
   const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <color_fragment>'}as Parameters<THREE.Material['onBeforeCompile']>[0];(mesh.material as THREE.Material).onBeforeCompile(shader,{}as THREE.WebGLRenderer);

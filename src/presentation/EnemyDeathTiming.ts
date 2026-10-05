@@ -1,19 +1,17 @@
 // Presentation only. Gameplay removal is independent of these clocks.
 export const ENEMY_DEATH_TIMING = {
-  grunt: { grayEndMs: 390, breakupStartMs: 130, breakupDistance: .10, fadeStartMs: 300, totalMs: 520, stainDiameter: .34 },
-  heavy: { grayEndMs: 825, breakupStartMs: 260, breakupDistance: .15, fadeStartMs: 650, totalMs: 1100, stainDiameter: .64 },
-  giant: { grayEndMs: 1950, breakupStartMs: 650, breakupDistance: .24, fadeStartMs: 1550, totalMs: 2600, stainDiameter: .95 },
+  grunt: { breakupEndMs: 390, breakupStartMs: 130, breakupDistance: .10, fadeStartMs: 300, totalMs: 520, stainDiameter: .34 },
+  heavy: { breakupEndMs: 825, breakupStartMs: 260, breakupDistance: .15, fadeStartMs: 650, totalMs: 1100, stainDiameter: .64 },
+  giant: { breakupEndMs: 1950, breakupStartMs: 650, breakupDistance: .24, fadeStartMs: 1550, totalMs: 2600, stainDiameter: .95 },
 } as const;
 export type EnemyDeathRole = keyof typeof ENEMY_DEATH_TIMING;
 export type EnemyDeathTiming = typeof ENEMY_DEATH_TIMING[EnemyDeathRole];
-export const ENEMY_DEATH_GRAY = '#b9beba';
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const smooth = (value: number) => { const p = clamp(value); return p * p * (3 - 2 * p); };
 export function enemyDeathPose(ageMs: number, timing: EnemyDeathTiming) {
   const progress = clamp(ageMs / timing.totalMs);
   return { progress, bodyVisible: ageMs >= 0 && ageMs < timing.totalMs,
-    gray: smooth((ageMs - timing.breakupStartMs) / (timing.grayEndMs - timing.breakupStartMs)),
-    breakup: timing.breakupDistance * smooth((ageMs - timing.breakupStartMs) / (timing.grayEndMs - timing.breakupStartMs)),
+    breakup: timing.breakupDistance * smooth((ageMs - timing.breakupStartMs) / (timing.breakupEndMs - timing.breakupStartMs)),
     bodyOpacity: 1 - smooth((ageMs - timing.fadeStartMs) / (timing.totalMs - timing.fadeStartMs)) };
 }
 

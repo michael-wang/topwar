@@ -27,7 +27,7 @@ it('captures the exact lethal capture, then holds an authored reaction without r
     const corpse=scene.getObjectByName(role==='giant'?'giant-assault-soldier':'enemy-pale-death-body')!;
     const parts=[corpse.children[0],corpse.children[1],...(role==='giant'?[corpse.getObjectByName('giant-maul')!]:[])];
     const root=corpse.matrix.clone();
-    for(const age of [0,20,ENEMY_REACTION_TIMING[role].startMs-1,ENEMY_REACTION_TIMING[role].endMs,timing.grayEndMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
+    for(const age of [0,20,ENEMY_REACTION_TIMING[role].startMs-1,ENEMY_REACTION_TIMING[role].endMs,timing.breakupEndMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
       renderer.update([],2031+age);corpse.updateMatrixWorld(true);expect(corpse.visible).toBe(true);
       matrixClose(corpse.matrix,root);
       if(age < ENEMY_REACTION_TIMING[role].startMs) {
@@ -41,9 +41,9 @@ it('captures the exact lethal capture, then holds an authored reaction without r
       const body=parts[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
       expect(body.material.opacity).toBe(enemyDeathPose(age,timing).bodyOpacity);expect(body.material.emissiveIntensity).toBe(0);
       expect(body.material.transparent).toBe(age>timing.fadeStartMs);expect(body.material.depthWrite).toBe(true);
-      if(age>=timing.grayEndMs){
+      if(age>=timing.breakupEndMs){
         const shader={uniforms:{},vertexShader:'',fragmentShader:'#include <color_fragment>'} as Parameters<typeof body.material.onBeforeCompile>[0];
-        body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);expect(shader.uniforms.deathGray.value).toBe(1);
+        body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);expect(shader.uniforms.deathGray).toBeUndefined();
         expect(shader.uniforms.deathRed).toBeUndefined();
       }
     }

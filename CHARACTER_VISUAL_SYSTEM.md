@@ -198,7 +198,7 @@ limestone fin (0.162 wide, crown 1.355), large spheres for hands and a rounded
 ellipsoidal maul head with one soft limestone end accent. There is no chest or
 collar geometry: the secondary adapter is empty/hidden. It has three primary
 mesh draws per live Giant. Death retains the intact role geometry through
-the shared blood/reaction/progressive-pale/breakup/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
+the shared blood/reaction/authored-color breakup/fade timeline. Four 850 ms poses, 0.085 foot lift, lateral transfer and
 weapon inertia are unchanged. Full motion-envelope/ownership tests remain.
 
 R5 removes the grip hand from body/reference/run/death geometry and merges it
@@ -281,7 +281,7 @@ across impacts; existing pooled spark materials remain. Heavy retains its
 stronger 0.72 core wash and four-spark response.
 
 Ordinary surviving feedback remains independently controlled from lethal
-presentation. Lethal color is naturally lit neutral gray, following the unified
+presentation. Lethal pieces retain authored lit colors, following the unified
 timeline below. Reveal, surviving-hit impulse,
 compression and the R1 Giant HP bar remain unchanged.
 
@@ -291,8 +291,8 @@ Giant peak/50 ms/settled impact captures.
 
 ## Enemy Kill Feedback (R8)
 
-Current beachhead enemies use **Role Reaction → Integrated 3D Breakup →
-Progressive Gray-White → Body Fade + Blood Fall → Persistent Ground Stain**.
+Current beachhead enemies use **Role Reaction → Body Breakup in Authored Colors →
+Internal 3D Blood Splashes Out → Blood Falls → Body Fades → Persistent Stain**.
 Capture the exact last rendered pose/root, including crowd support shift, impact
 compression, helmet lag and Giant coupled grip-hand/maul. Roots stay pinned;
 two baked reaction poses show a sink/kneel with raised hands before the hold.
@@ -305,7 +305,7 @@ widening, tilt 5.2°. Giant freezes for 180 ms and settles at 650 ms: 0.12 sink,
 0.24 offhand lift, small coherent maul lift/cant. No live crowd draw or skeleton
 is added.
 
-| Role | Logical body / blood pieces | Split begins | Gray complete | Body fade | Total |
+| Role | Logical body / blood pieces | Split begins | Separation complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
 | Grunt | 8 / 4 | 130 ms | 390 ms | 300–520 ms | 520 ms |
 | Heavy | 10 / 5 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
@@ -317,11 +317,11 @@ pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
 patterns provide lateral, upper/lower and diagonal separation. They reconstruct
 the same accepted pose at zero separation. No runtime fracture or independent
 triangle motion is used. World-space separation caps are **0.10 / 0.15 / 0.24**
-units, compensated for role scale. Body colors progressively drain to
-**#B9BEBA** while pieces separate; there is no red body tint or emissive wash.
+units, compensated for role scale. Body pieces retain their authored olive/skin/trouser/gear colors until opacity
+fades; no grayscale, red tint or emissive wash is applied.
 Giant grip-hand and maul remain one piece through the reaction and breakup.
 
-The 48 preallocated crowd pose holders submit gray/separation/opacity/variant
+The 48 preallocated crowd pose holders submit separation/opacity/variant
 into per-geometry instanced batches. Three fixed Giant slots use the same piece
 semantics. Family-owned tagged geometry and renderer-owned material/batch
 resources dispose at their respective ownership boundaries.
@@ -332,16 +332,19 @@ masses and tapered droplets begin inside/between the torso bands. The same death
 variant controls their internal origin, small static size/orientation variation
 and outward pattern. Blood expansion caps are **0.10 / 0.14 / 0.22** world units.
 The matte palette remains **#751D27 / #9F2734 / #C93443 / #D94A50** throughout;
-blood does not consume the body's gray tint. Normal alpha/depth-tested lighting
+body and blood retain separate authored colors. Normal alpha/depth-tested lighting
 keeps these masses spatially integrated rather than drawn over the actor.
 
-Blood releases at 54% of each role clock (281 / 594 / 1404 ms, rounded), then
-follows deterministic analytic flight. Mixed small upward/downward velocities,
-role gravity and size-aware floor contact keep all blood resolved by the death
-clock. X/Z converge near the death point. Only blood falls: body pieces remain
-near the defeated silhouette and fade in place. Each blood piece fades over
-65 ms at contact. The first major piece activates one stain, which grows from
-30% to full size over **110 ms**; it never appears at the initial lethal event.
+Blood releases at **160 / 330 / 760 ms**, using true initial XYZ velocities,
+then gravity and size-aware analytic contact. Geometry base sizes are enlarged
+**1.9 / 2.05 / 2.2×** relative to V2, with two larger hero lobes and smaller
+secondary pieces. Static ID-selected launch patterns splash left/right and in
+depth; most pieces rise before reaching an apex and falling. X/Z travel follows
+velocity rather than converging toward a ground target. Only blood falls; body
+pieces remain near the defeated silhouette and fade in place. Each blood piece
+fades over **65 ms** at contact. The first major contact activates one stain near
+the death point, growing from 30% to full size over **110 ms**. Stain scale,
+variation, ownership and reset behavior remain unchanged.
 
 Enemy ground stains reuse V1's fuller four-mask atlas in **one draw / 1024 slots**.
 Base diameters remain **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
@@ -356,8 +359,8 @@ Surviving hits never create stains. No gameplay collision.
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2 evidence is
-local/untracked under `artifacts/v2-integrated-death/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.1 evidence is
+local/untracked under `artifacts/v2_1-blood-lab/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

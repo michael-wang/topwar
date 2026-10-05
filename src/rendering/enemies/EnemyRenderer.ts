@@ -19,7 +19,6 @@ import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
-import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
 
@@ -42,8 +41,6 @@ interface DeathVisual {
   startedAtMs: number;
   heavy: boolean;
   role: EnemyDeathRole;
-  bodyTint: ReturnType<typeof prepareEnemyDeathMaterial>;
-  gearTint: ReturnType<typeof prepareEnemyDeathMaterial>;
 }
 
 interface ContactVisual {
@@ -541,9 +538,9 @@ export class EnemyRenderer {
       const group = new THREE.Group();
       group.name = 'enemy-pale-death-body';
       const bodyMaterial = prepareCrowdMaterial(((procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial).clone(), presentation, 'death');
-      const bodyTint = prepareEnemyDeathMaterial(bodyMaterial);
+      bodyMaterial.emissiveIntensity = 0;
       const gearMaterial = prepareCrowdMaterial((parts.helmet.material as THREE.MeshStandardMaterial).clone(), presentation);
-      const gearTint = prepareEnemyDeathMaterial(gearMaterial);
+      gearMaterial.emissiveIntensity = 0;
       const body = new THREE.Mesh(parts.body.geometry, bodyMaterial);
       const helmet = new THREE.Mesh(parts.helmet.geometry, gearMaterial);
       const vest = new THREE.Mesh(parts.vest.geometry, gearMaterial);
@@ -553,7 +550,7 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, bodyTint, gearTint, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
+      this.deathVisuals.push({ id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number): THREE.Group | undefined {
@@ -573,8 +570,6 @@ export class EnemyRenderer {
       };
       rebind(visual.bodyMaterial, (procedural ? family.body : parts.body).material as THREE.MeshStandardMaterial, 'death');
       rebind(visual.gearMaterial, parts.helmet.material as THREE.MeshStandardMaterial, 'gear');
-      visual.bodyTint = prepareEnemyDeathMaterial(visual.bodyMaterial);
-      visual.gearTint = prepareEnemyDeathMaterial(visual.gearMaterial);
       [parts.body, parts.helmet, parts.vest].forEach((model, index) => {
         const mesh = visual!.group.children[index] as THREE.Mesh;
         mesh.geometry = model.geometry;
@@ -592,9 +587,9 @@ export class EnemyRenderer {
     // preserves its exact opaque silhouette instead of showing its inner faces.
     visual.bodyMaterial.transparent = visual.gearMaterial.transparent = false;
     visual.bodyMaterial.depthWrite = visual.gearMaterial.depthWrite = true;
+    visual.bodyMaterial.emissiveIntensity = visual.gearMaterial.emissiveIntensity = 0;
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
-    visual.bodyTint.gray.value = visual.gearTint.gray.value = 0;
     visual.gearMaterial.color.copy(presentation.gearTint === 'authored' ? this.authoredBodyColor
       : visual.heavy ? this.heavyColor : this.helmetColors[paletteIndex(enemy.tier, PALETTES.length)]);
     visual.group.visible = true;
@@ -642,11 +637,10 @@ export class EnemyRenderer {
       if (stage === 2 && this.families[visual.role].deathAssembly)
         (visual.group.children[1] as THREE.Mesh).geometry = this.families[visual.role].deathAssembly!.helmet;
       visual.group.visible = pose.bodyVisible;
-      visual.bodyTint.gray.value = visual.gearTint.gray.value = pose.gray;
       visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
       if (pose.bodyVisible) {
-        this.deathBatches.submit(visual.group, pose.gray, pose.breakup, pose.bodyOpacity, deathVariant(visual.id));
+        this.deathBatches.submit(visual.group, pose.breakup, pose.bodyOpacity, deathVariant(visual.id));
       }
     }
     this.deathBatches.finish();

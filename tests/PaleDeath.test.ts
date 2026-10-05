@@ -5,7 +5,7 @@ import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamil
 import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { characterFamilies } from './characterModel';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
-import { ENEMY_DEATH_TIMING, ENEMY_DEATH_GRAY } from '../src/presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 
 it('captures role-owned run geometry, keeps a fixed root through kneeling and pale fade', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
@@ -19,7 +19,7 @@ it('captures role-owned run geometry, keeps a fixed root through kneeling and pa
     expect(corpse.visible).toBe(true);expect(corpse.scale).toEqual(scale);
     expect((corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.emissiveIntensity).toBe(0);
     const timing=ENEMY_DEATH_TIMING[role],matrix=corpse.matrix.clone();
-    renderer.update([],start+10+timing.grayEndMs);expect(corpse.visible).toBe(true);
+    renderer.update([],start+10+timing.breakupEndMs);expect(corpse.visible).toBe(true);
     expect(corpse.matrix.equals(matrix)).toBe(true);expect(corpse.scale).toEqual(scale);
     renderer.update([],start+10+timing.fadeStartMs);expect(corpse.visible).toBe(true);
     expect(corpse.matrix.equals(matrix)).toBe(true);
@@ -28,12 +28,12 @@ it('captures role-owned run geometry, keeps a fixed root through kneeling and pa
   renderer.reset();expect(scene.getObjectByName('enemy-3d-blood-grunt')!.visible).toBe(false);
   renderer.dispose();grunt.dispose();heavy.dispose();expect(scene.children).toHaveLength(0);
 });
-it('drains authored color to naturally lit neutral gray without textures or emissive white', () => {
-  const material=new THREE.MeshStandardMaterial({vertexColors:true}), pale=prepareEnemyDeathMaterial(material);
+it('preserves authored lit color without gray uniforms or emissive white', () => {
+  const material=new THREE.MeshStandardMaterial({vertexColors:true});prepareEnemyDeathMaterial(material);
   const shader={uniforms:{},fragmentShader:'#include <color_fragment>',vertexShader:''} as Parameters<typeof material.onBeforeCompile>[0];
-  material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);pale.gray.value=1;
-  expect(shader.uniforms.deathGray).toBe(pale.gray);
-  expect((shader.uniforms.deathGrayTint.value as THREE.Color).getHexString()).toBe(ENEMY_DEATH_GRAY.slice(1));
-  expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, deathGrayTint, deathGray)');
+  material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);
+  expect(shader.uniforms).not.toHaveProperty('deathGray');
+  expect(shader.uniforms).not.toHaveProperty('deathGrayTint');
+  expect(shader.fragmentShader).toBe('#include <color_fragment>');
   expect(material.emissiveIntensity).toBe(0);expect(material.map).toBeNull();material.dispose();
 });
