@@ -19,7 +19,11 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await page.route('**/favicon.ico',route=>route.fulfill({status:204}));
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
- await page.waitForFunction(level=>document.querySelector('.xp-level-number')?.textContent===String(level),level);
+ await page.waitForSelector('.game-start-overlay');
+ await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}.png`});
+ await page.getByRole('button',{name:'Start game with audio'}).click();
+ await page.waitForFunction(level=>document.querySelector('.xp-level-number')?.textContent===String(level)
+   && !document.querySelector('.xp-hud')?.classList.contains('level-up'),level);
  await page.waitForTimeout(250);
  const actual=await page.locator('.xp-level-number').textContent();
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}.png`});

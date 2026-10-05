@@ -29,6 +29,7 @@ import { LaneStepInput } from '../input/LaneStepInput';
 import { createThreatReview } from './ThreatReview';
 import { createEnemyVfxLab, type EnemyVfxLabRole } from './EnemyVfxLab';
 import { EnemyVfxLabControls } from '../ui/EnemyVfxLabControls';
+import { GameStartOverlay } from '../ui/GameStartOverlay';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -48,6 +49,7 @@ export class GameApp {
   private readonly gameOverOverlay: GameOverOverlay;
   private readonly damageFlash: DamageFlashOverlay;
   private readonly audio: GameAudio;
+  private readonly startOverlay: GameStartOverlay;
   private readonly tierHud: TierHud;
   private readonly pauseOverlay: PauseOverlay;
   private readonly controlHint: ControlHint;
@@ -98,6 +100,7 @@ export class GameApp {
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.renderer = new GameRenderer(viewport, assets);
     this.audio = new GameAudio();
+    this.startOverlay = new GameStartOverlay(viewport);
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
@@ -147,6 +150,7 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
+    if (this.startup !== 'started') this.startOverlay.show();
     if (this.startup === 'started') this.startInputs();
     this.viewport.addEventListener?.('pointerdown', this.onStartPointerDown, true);
     this.viewport.addEventListener?.('click', this.onStartClick, true);
@@ -159,6 +163,7 @@ export class GameApp {
     if (!this.running) return;
 
     this.running = false;
+    this.startOverlay.dispose();
     this.startGeneration++;
     if (this.startup === 'activating') this.startup = 'awaiting-start';
     this.viewport.removeEventListener?.('pointerdown', this.onStartPointerDown, true);
@@ -281,6 +286,7 @@ export class GameApp {
     if (!this.running || this.startup !== 'awaiting-start') return;
     const generation = this.startGeneration;
     this.startup = 'activating';
+    this.startOverlay.setActivating();
     try { await this.audio.activate(); } catch { /* Optional audio cannot block play. */ }
     if (!this.running || this.disposed || generation !== this.startGeneration) return;
     this.fixedStepLoop.reset();
@@ -288,6 +294,7 @@ export class GameApp {
     this.presentationMs = 0;
     this.audio.resetObservation();
     this.startup = 'started';
+    this.startOverlay.finish();
     this.startInputs();
   }
 

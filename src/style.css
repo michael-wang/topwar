@@ -481,3 +481,39 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   .xp-pip { width: .72rem; height: 1.2rem; }
 }
 .xp-loadout[hidden] { display: none; }
+
+/* A quiet full-viewport gesture surface keeps the ready world visible. */
+.game-start-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--hud-inset-top, env(safe-area-inset-top, 0px)) + 1rem)
+    calc(var(--hud-inset-right, env(safe-area-inset-right, 0px)) + 1rem)
+    calc(var(--hud-inset-bottom, env(safe-area-inset-bottom, 0px)) + 1rem)
+    calc(var(--hud-inset-left, env(safe-area-inset-left, 0px)) + 1rem);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f5f0df;
+  font: 800 clamp(18px, 4.7vw, 23px)/1.4 "Trebuchet MS", "Avenir Next", sans-serif;
+  letter-spacing: .12em;
+  text-shadow: 0 2px 3px #294956, 0 0 9px #294956;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.game-start-overlay span {
+  transform: translateY(6vh);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.game-start-overlay:focus-visible { outline: 2px solid #f5f0df; outline-offset: -6px; }
+.game-start-overlay.is-activating span { opacity: .65; transform: translateY(6vh) scale(.97); }
+.game-start-overlay.is-leaving { pointer-events: none; }
+.game-start-overlay.is-leaving span { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .game-start-overlay span { transition: none; }
+}

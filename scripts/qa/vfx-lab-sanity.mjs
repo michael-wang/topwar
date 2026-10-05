@@ -12,12 +12,15 @@ page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 await page.route(/\/src\/main\.ts(\?.*)?$/, async route => {
   const response = await route.fetch();
-  await route.fulfill({ response, body: (await response.text()).replace('app.start();', 'window.__testApp=app;') });
+  await route.fulfill({ response, body: (await response.text()).replace('app.start();', 'window.__testApp=app;app.start();') });
 });
 const assert = (ok, message) => { if (!ok) throw Error(message); };
 try {
   const url = process.env.TOPWAR_QA_URL ?? 'http://127.0.0.1:5173';
-  await page.goto(url); await page.waitForSelector('.enemy-vfx-lab');
+  await page.goto(url); await page.waitForSelector('.game-start-overlay');
+  await page.getByRole('button', { name: 'Start game with audio' }).click();
+  await page.waitForFunction(() => window.__testApp.startup === 'started');
+  await page.evaluate(() => { const a = window.__testApp; cancelAnimationFrame(a.frameId); a.retry(); });
   // Drive the real app clock deterministically and cancel its scheduled RAF.
   // The ordinary fixed-step simulation and all render/reset owners stay active.
   await page.evaluate(() => {
@@ -73,7 +76,10 @@ try {
   await page.setViewportSize({ width: 350, height: 844 });
   await page.evaluate(() => window.__testApp.renderer.startResizeHandling());
   await page.screenshot({ path: `${out}/lab-350.png` });
-  await page.goto(url + '/?review=threats'); await page.waitForSelector('.enemy-vfx-lab');
+  await page.goto(url + '/?review=threats'); await page.waitForSelector('.game-start-overlay');
+  await page.getByRole('button', { name: 'Start game with audio' }).click();
+  await page.waitForFunction(() => window.__testApp.startup === 'started');
+  await page.evaluate(() => { const a = window.__testApp; cancelAnimationFrame(a.frameId); a.retry(); });
   await page.evaluate(() => {
     const a = window.__testApp; a.running = true;
     // Preserve the existing threat-review badge intro; inspect after its first 120ms.

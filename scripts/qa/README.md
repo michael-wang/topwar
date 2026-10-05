@@ -16,6 +16,7 @@ Run from the repository root with the existing Playwright/Chrome QA runtime:
 ```sh
 node scripts/qa/live-sanity.mjs
 node scripts/qa/production-sanity.mjs
+node scripts/qa/audio-start-sanity.mjs
 ```
 
 The first script requires the Vite development server and checks review/normal
@@ -28,6 +29,13 @@ An optional first argument sets the output directory (default `artifacts/sanity`
 point to another installed Playwright module URL, and `TOPWAR_CHROME_PATH` to
 another Chrome executable; defaults use the existing local QA runtime.
 Historical phase-specific capture/baseline scripts remain in Git history.
+
+The audio-start check waits five seconds without input, then uses real touch,
+mouse and keyboard activation. It checks zero pre-start clocks/cues, running
+audio before the first volley, Retry, Pause and post-start Lab access. It saves
+timestamped browser-screen frames and native master-bus audio for local recording
+QA. The original speaker connection is preserved; no autoplay exemption is used.
+Audio capture measures the browser signal, not physical device/speaker latency.
 
 ## Enemy VFX Lab
 
