@@ -16,7 +16,7 @@ it('pins each surviving splash to a real local surface point through recoil, lea
     const bodyMatrix = new THREE.Matrix4(), burstMatrix = new THREE.Matrix4();
     for (let sequence = 1; sequence <= HIT_BLOOD_ANCHORS[role].length; sequence++) {
       const start = 2000 + sequence * 300, struck = { ...enemy, hp: 20 - sequence };
-      for (const age of [0, 20, 70, 150]) {
+      for (const age of [0, 20, 70, 120]) {
         renderer.update([struck], start + age);
         if (role === 'giant') {
           const body = scene.getObjectByName('giant-body')!; body.updateWorldMatrix(true, false); bodyMatrix.copy(body.matrixWorld);

@@ -10,7 +10,8 @@ import { GiantRenderer } from './GiantRenderer';
 import { hitBloodVariation } from './HitBloodVariation';
 import { IntegratedDeathBlood } from './IntegratedDeathBlood';
 import { DeathVisualSequence, deathComposition } from './DeathVisualSeed';
-import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY } from './EnemyHitImpulse';
+import { EnemyHitImpulse, ENEMY_HIT_STYLE } from './EnemyHitImpulse';
+import { HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY, hitBloodRelativeScale } from './HitBloodStrength';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
@@ -116,6 +117,7 @@ export class EnemyRenderer {
   private readonly feedbackScale = new THREE.Vector3();
   private readonly feedbackMatrix = new THREE.Matrix4();
   private readonly pendingHitBlood = new Map<number, number>();
+  private readonly pendingHitDamage = new Map<number, number>();
   private readonly hitTexture = hitBloodAtlas();
   private readonly stainTexture = groundBloodAtlas();
   private readonly stains: GroundBloodStains;
@@ -192,7 +194,7 @@ export class EnemyRenderer {
   }
 
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean): void {
-    this.pendingHitBlood.clear();
+    this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     if (sceneMode !== undefined) {
       if (this.sceneMode !== undefined && this.sceneMode !== sceneMode) this.reset();
       this.sceneMode = sceneMode;
@@ -217,6 +219,7 @@ export class EnemyRenderer {
     for (const enemy of enemies) {
       const previous = this.previousEnemies.get(enemy.id);
       if (previous && enemy.hp > 0 && enemy.hp < previous.hp) {
+        this.pendingHitDamage.set(enemy.id,previous.hp-enemy.hp);
         this.pendingHitBlood.set(enemy.id, this.hitImpulse.observe(enemy.id, nowMs, enemy.archetype ?? 'grunt'));
         if (enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') this.flashUntilMs.set(enemy.id, nowMs + HIT_FLASH_MS);
         else if (this.heavyHits.observe(enemy, nowMs)) this.flashUntilMs.set(enemy.id, nowMs + HEAVY_HIT_FLASH_MS);
@@ -289,7 +292,7 @@ export class EnemyRenderer {
       const sequence = this.pendingHitBlood.get(enemy.id);
       if (sequence === undefined && this.hitImpulse.strength(enemy.id, nowMs) === 0) continue;
       if (!this.copyBodyWorld(enemy, this.feedbackMatrix)) continue;
-      if (sequence !== undefined) this.presentSurvivingHit(enemy, sequence, nowMs);
+      if (sequence !== undefined) this.presentSurvivingHit(enemy, sequence, nowMs,this.pendingHitDamage.get(enemy.id)!);
       this.hitBlood.follow(enemy.id, this.feedbackMatrix);
     }
     this.hitBlood.update(nowMs);
@@ -383,7 +386,7 @@ export class EnemyRenderer {
     this.deathSequence.reset(visualSalt);
     this.previousEnemies.clear();
     this.renderedCrowd.clear();
-    this.pendingHitBlood.clear();
+    this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     this.flashUntilMs.clear();
     this.contactIds.clear();
     for (const visual of this.deathVisuals) visual.group.visible = false;
@@ -517,9 +520,10 @@ export class EnemyRenderer {
     target.premultiply(mesh.matrixWorld); return true;
   }
 
-  private presentSurvivingHit(enemy: EnemyRenderState, sequence: number, nowMs: number): void {
+  private presentSurvivingHit(enemy: EnemyRenderState, sequence: number, nowMs: number, damageTaken:number): void {
     const role = enemy.archetype ?? 'grunt';
     const variation = hitBloodVariation(enemy.id, sequence, role);
+    variation.size *= hitBloodRelativeScale(damageTaken,enemy.maxHp??enemy.hp+damageTaken);
     this.feedbackOrigin.fromArray(variation.localAnchor).applyMatrix4(this.feedbackMatrix);
     this.feedbackScale.setFromMatrixScale(this.feedbackMatrix);
     const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);

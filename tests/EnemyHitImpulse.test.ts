@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { IntegratedDeathBlood } from '../src/rendering/enemies/IntegratedDeathBlood';
 import { expect, it, vi } from 'vitest';
-import { EnemyHitImpulse, ENEMY_HIT_STYLE, ENEMY_HIT_IMPULSE_MS, HIT_BLOOD_CAPACITY } from '../src/rendering/enemies/EnemyHitImpulse';
+import { EnemyHitImpulse, ENEMY_HIT_STYLE, ENEMY_HIT_IMPULSE_MS } from '../src/rendering/enemies/EnemyHitImpulse';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily,createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { BloodSplat,bloodSplatTexture } from '../src/rendering/enemies/BloodSplat';
+import { HIT_BLOOD_CAPACITY } from '../src/rendering/enemies/HitBloodStrength';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
 it('attacks quickly, refreshes without a zero snap, caps repeated kicks and prunes stale IDs',()=>{
  const tracker=new EnemyHitImpulse();expect(tracker.observe(1,0)).toBe(1);

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { hitBloodVariation, HIT_BLOOD_ANCHORS } from '../src/rendering/enemies/HitBloodVariation';
 import { hitBloodAtlas } from '../src/rendering/enemies/BloodSplat';
-import { HIT_BLOOD_TIMING } from '../src/rendering/enemies/EnemyHitImpulse';
+import { HIT_BLOOD_TIMING } from '../src/rendering/enemies/HitBloodStrength';
 it('uses four distinct deterministic masks in one atlas',()=>{
  const atlas=hitBloodAtlas(),again=hitBloodAtlas();expect(atlas.image.width).toBe(192);expect(atlas.image.data).toEqual(again.image.data);
  const cells=Array.from({length:4},(_,v)=>Array.from({length:96*96},(_,i)=>atlas.image.data[((Math.floor(v/2)*96+Math.floor(i/96))*192+v%2*96+i%96)*4+3]).join(','));
@@ -23,6 +23,6 @@ it('breaks adjacent anchor and variant repetition for six Giant impacts, with bo
    expect(Math.abs(next.bias)).toBeGreaterThanOrEqual(.45);expect(Math.abs(next.bias)).toBeLessThanOrEqual(.95);
    previous=next;
   }
-  expect(HIT_BLOOD_TIMING[role].bloodEndMs).toBe(170);expect(HIT_BLOOD_TIMING[role].bloodPulseCount).toBe(1);
+  expect(HIT_BLOOD_TIMING[role].bloodEndMs).toBe(135);expect(HIT_BLOOD_TIMING[role].bloodPulseCount).toBe(1);
  }
 });

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { BloodSplat, GroundBloodStains, bloodSplatTexture, BLOOD_SPLAT_CAPACITY, BLOOD_STAIN_CAPACITY, BLOOD_STAIN_COLOR, BLOOD_STAIN_OPACITY } from '../src/rendering/enemies/BloodSplat';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
-import { HIT_BLOOD_TIMING } from '../src/rendering/enemies/EnemyHitImpulse';
+import { HIT_BLOOD_TIMING } from '../src/rendering/enemies/HitBloodStrength';
 
 it('generates a deterministic irregular blot and satellites with normal alpha',()=>{
   const a=bloodSplatTexture(),b=bloodSplatTexture();expect(a.image.width).toBe(96);expect(a.image.data).toEqual(b.image.data);

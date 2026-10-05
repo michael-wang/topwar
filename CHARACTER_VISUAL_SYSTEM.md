@@ -381,7 +381,7 @@ fragmentation, separate flying weapon or generic enemy-fall system.
 ### R7 surviving enemy impact
 
 Every observed surviving HP decrease (including future multi-HP Grunts) emits
-one 170 ms blood pulse without a body tint or ground stain. A separate 128-slot
+one 135 ms blood pulse without a body tint or ground stain. A separate 128-slot
 pool uses one four-cell procedural atlas: broad lopsided, taller diagonal,
 compact multi-lobe and wide satellite blots. Six Giant, four Heavy and three
 light-role model-local face/shoulder/jacket anchors cycle deterministically by
@@ -390,8 +390,12 @@ evaluated after rendering the actor transform and follows its recoil/lean, not
 an unrelated world-space crown offset. Four masks vary 2–4 satellites and their
 placement. Rotation is fixed per hit and mostly lateral, with an asymmetric
 side bias; size varies ±15%, aspect 0.82–1.20. Player blood and stains retain
-their accepted appearance. Hit card scales remain 0.45 / 0.58 / 0.66 for
-Grunt/Heavy/Giant; these are independent of the V2 lethal 3D blood geometry.
+their accepted appearance. Hit size uses the observed HP decrease divided by the actor's max HP:
+`clamp(0.055 + 0.58 * sqrt(damage/maxHP), 0.07, 0.40)`, multiplied by
+role reference scales 1.0 / 1.45 / 2.2. A current one-damage Rifle hit yields
+Heavy 0.205 relative (0.297 base card scale) versus Giant 0.099 relative
+(0.218 base card scale). Stronger future hits grow naturally; lethal ribbons
+never consume this mapping. Recoil curves/distances/caps are unchanged.
 
 `EnemyHitImpulse` snaps back over 20 ms, holds through 70 ms, then smoothly
 returns by 250 ms. Single-hit +Z displacement is 0.27 / 0.25 / 0.17 world units

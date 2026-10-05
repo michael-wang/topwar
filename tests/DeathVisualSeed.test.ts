@@ -2,6 +2,7 @@ import { expect,it } from 'vitest';
 import { DeathVisualSequence,deathVisualSeed,deathComposition,DEATH_COMPOSITIONS } from '../src/rendering/enemies/DeathVisualSeed';
 import { splashShapes,activeDropletCount,activeRibbonCount } from '../src/rendering/enemies/FluidBloodSplash';
 import bloodSource from '../src/rendering/enemies/IntegratedDeathBlood.ts?raw';
+import fluidSource from '../src/rendering/enemies/FluidBloodSplash.ts?raw';
 import seedSource from '../src/rendering/enemies/DeathVisualSeed.ts?raw';
 import appSource from '../src/app/GameApp.ts?raw';
 import { createEnemyVfxLab } from '../src/app/EnemyVfxLab';
@@ -26,7 +27,7 @@ it('replays six coherent compositions and avoids adjacent same-role repeats',()=
   }expect(directions.size).toBe(6);
   a.reset();b.reset();expect(a.next(9,role)).toBe(b.next(9,role));
  }
- expect(bloodSource+seedSource).not.toContain('Math.random');
+ expect(bloodSource+seedSource+fluidSource).not.toContain('Math.random');
 });
 it('keeps the lab visual cycle outside validated gameplay and production activation',()=>{
  expect(appSource).toContain('import.meta.env.DEV && this.vfxLabRole ? ++this.vfxLabVisualSalt : 0');
