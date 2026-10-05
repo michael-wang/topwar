@@ -166,7 +166,7 @@ sea/aqua reveal contrasts with a dark navy remainder. The 90%+ crest is sunlight
 white; foam is reserved for the actual level flash. TUNE has a separate top-left anchor with
 an accessible icon-only maintenance hatch and below/right scrollable popup; the quiet
 sea-glass Pause remains top-right. Important HUD edges use safe-area inset **plus 0.85rem**;
-the tiny build label alone stays 3px from the literal viewport corner. Enemy HP uses bright
+the tiny build label alone uses raw safe-area inset + 3px, without the HUD margin. Enemy HP uses bright
 coral/red, navy backing and thin ivory keyline; a 100ms rate-limited hit punch helps damage read.
 Bottom HUD is **Level / XP / Loadout**. Authored rifle/rapid-fire/squad SVGs plus numbers
 replace explanatory weapon/power text. Percentages use actual effective/base Rifle math;

@@ -282,8 +282,8 @@ Legacy FOV/layout stays intact. Safe area insets UI, never reserves blank world 
 Desktop retains a centered portrait game with receding deep-sea `#24465A` → navy
 `#182F3B` gutters, without mirrored scenery.
 
-The tiny build label is debug metadata, pinned **3px** from the literal viewport
-bottom-right corner, independent of safe area. Defense CSS defines `--hud-safe-top/left/right/bottom`
+The tiny build label is debug metadata, pinned **raw safe-area inset + 3px** from the viewport
+bottom-right corner, without the normal 0.85rem HUD margin. Defense CSS defines `--hud-safe-top/left/right/bottom`
 as the respective safe-area inset **plus 0.85rem**, never the maximum of those values.
 Shared `--hud-inset-*` inputs default to `env(safe-area-inset-*)`; they can be overridden
 for visual QA. Apply the sum to important controls, XP, hint and optional diagnostics;

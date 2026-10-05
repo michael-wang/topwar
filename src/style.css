@@ -432,7 +432,8 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 @keyframes coastal-hint-out { 0%, 75% { opacity: .95; } 100% { opacity: 0; } }
 .game-paused .control-hint { animation-play-state: paused; }
 .beachhead-defense .build-label {
-  right: 3px; bottom: 3px; font-size: 7px;
+  right: calc(var(--hud-inset-right) + 3px);
+  bottom: calc(var(--hud-inset-bottom) + 3px); font-size: 7px;
   color: var(--coast-ink); opacity: .38; text-shadow: 0 1px 1px var(--coast-paper);
 }
 .beachhead-defense .perf-hud {
