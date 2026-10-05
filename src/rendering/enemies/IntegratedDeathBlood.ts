@@ -8,9 +8,15 @@ export const DEATH_BLOOD_CAPACITY = 64;
 export const DEATH_BLOOD_COLORS = ['#751d27', '#9f2734', '#c93443', '#d94a50'] as const;
 export const BLOOD_PIECE_COUNTS = { grunt: 4, heavy: 5, giant: 7 } as const;
 export const BLOOD_EXPANSION = { grunt: .10, heavy: .14, giant: .22 } as const;
-export const BLOOD_RELEASE_FRACTION = .54;
+export const BLOOD_RELEASE_MS = { grunt: 160, heavy: 330, giant: 760 } as const;
+export const BLOOD_SIZE_MULTIPLIER = { grunt: 1.9, heavy: 2.05, giant: 2.2 } as const;
+export const BLOOD_GRAVITY = { grunt: 30, heavy: 12, giant: 6 } as const;
+const SPEED = { grunt: [3.2, 2.8, 1.2], heavy: [3.8, 3.5, 1.5], giant: [3.0, 4.0, 1.8] } as const;
+// First two pieces are hero lobes; counts stay unchanged.
+export const bloodPieceScale = (role: EnemyDeathRole, piece: number) =>
+  BLOOD_SIZE_MULTIPLIER[role] * (piece < 2 ? 1.2 : .82 + .20 * (1 + Math.sin(piece * 2.3)) / 2);
 export const BLOOD_CONTACT_FADE_MS = 65;
-const GRAVITY = { grunt: 18, heavy: 6, giant: 2.8 } as const;
+
 const HALF_EXTENTS = [[.108,.080,.094],[.072,.094,.072],[.108,.061,.071]] as const;
 const ORIGINS = {
   // Final-reaction local space: use the existing torso latitude/capsule
@@ -37,19 +43,30 @@ const ORIGIN_CACHE = Object.fromEntries((['grunt','heavy','giant'] as const).map
 const KICK_CACHE = Array.from({length:3},(_,variant)=>Array.from({length:7},(_,piece)=>authoredKick(variant,piece)));
 export const bloodPieceOrigin = (role:EnemyDeathRole, variant:number, piece:number) => ORIGIN_CACHE[role][variant][piece];
 export const bloodPieceKick = (variant:number, piece:number) => KICK_CACHE[variant][piece];
+const VELOCITY_CACHE = Object.fromEntries((['grunt','heavy','giant'] as const).map(role => [role,
+  Array.from({length:3},(_,variant)=>Array.from({length:7},(_,piece)=> {
+    const side = piece % 2 ? -1 : 1, speed = SPEED[role];
+    return [side * speed[0] * (.82 + .18 * Math.sin(piece * 1.7 + variant)),
+      speed[1] * (piece % 4 === 3 ? .3 : .8 + .2 * Math.cos(piece + variant)),
+      speed[2] * (piece < 2 ? (piece === 0 ? .55 : .85) + .08 * Math.sin(variant + piece) : Math.sin(piece * 2.1 + variant + .7))];
+  }))])) as Record<EnemyDeathRole, number[][][]>;
+export const bloodPieceVelocity = (role:EnemyDeathRole,variant:number,piece:number) => VELOCITY_CACHE[role][variant][piece];
 
 // CPU mirror of the shader contact equation. Writes into one reusable scratch
-// buffer: origin XYZ, floor, velocityY, flight seconds, landing XZ. No per-piece
+// buffer: origin XYZ, floor, velocityY, flight seconds, landing XZ, velocity XYZ. No per-piece
 // Objects/vectors are allocated at spawn or while evaluating flight.
 export function writeBloodFlight(role:EnemyDeathRole,variant:number,piece:number,matrix:THREE.Matrix4,
-  expansion:number,gravity:number,deathX:number,deathZ:number,out:Float64Array):void {
+  expansion:number,gravity:number,out:Float64Array):void {
   const o=bloodPieceOrigin(role,variant,piece),k=bloodPieceKick(variant,piece),h=HALF_EXTENTS[piece%3],m=matrix.elements;
   const x=o[0]+k[0]*expansion,y=o[1]+k[1]*expansion,z=o[2]+k[2]*expansion;
   out[0]=m[0]*x+m[4]*y+m[8]*z+m[12];out[1]=m[1]*x+m[5]*y+m[9]*z+m[13];out[2]=m[2]*x+m[6]*y+m[10]*z+m[14];
-  out[3]=.025+1.15*(Math.abs(m[1])*h[0]+Math.abs(m[5])*h[1]+Math.abs(m[9])*h[2]);
-  out[4]=.18-.16*(piece%3)+.04*(variant-1);
+  out[3]=.025+bloodPieceScale(role,piece)*1.15*(Math.abs(m[1])*h[0]+Math.abs(m[5])*h[1]+Math.abs(m[9])*h[2]);
+  const v=bloodPieceVelocity(role,variant,piece);
+  const scale=Math.max(.001,Math.hypot(m[0],m[1],m[2]),Math.hypot(m[4],m[5],m[6]),Math.hypot(m[8],m[9],m[10]));
+  const vx=(m[0]*v[0]+m[8]*v[2])/scale,vz=(m[2]*v[0]+m[10]*v[2])/scale;
+  out[1]=Math.max(out[1],out[3]); out[4]=v[1]; out[8]=vx; out[9]=v[1]; out[10]=vz;
   out[5]=(out[4]+Math.sqrt(out[4]*out[4]+2*gravity*Math.max(0,out[1]-out[3])))/gravity;
-  out[6]=deathX+k[0]*.025;out[7]=deathZ+k[2]*.025;
+  out[6]=out[0]+vx*out[5];out[7]=out[2]+vz*out[5];
 }
 
 export function integratedBloodGeometry(role: EnemyDeathRole): THREE.BufferGeometry {
@@ -63,12 +80,12 @@ export function integratedBloodGeometry(role: EnemyDeathRole): THREE.BufferGeome
     for(let i=0;i<p.count;i++) {
       // Coherent low-poly irregular mass, not a perfect bead or a flat plane.
       const wobble=1+.10*Math.sin(p.getX(i)*31+p.getY(i)*27+piece);
-      p.setXYZ(i,p.getX(i)*wobble,p.getY(i)*wobble,p.getZ(i)*wobble); c.toArray(colors,i*3);
+      p.setXYZ(i,p.getX(i)*wobble*bloodPieceScale(role,piece),p.getY(i)*wobble*bloodPieceScale(role,piece),p.getZ(i)*wobble*bloodPieceScale(role,piece)); c.toArray(colors,i*3);
     }
     geometry.computeVertexNormals(); geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
     geometry.setAttribute('bloodPieceId',new THREE.BufferAttribute(ids,1));
     const halves=new Float32Array(p.count*3);
-    for(let i=0;i<p.count;i++)for(let axis=0;axis<3;axis++)halves[i*3+axis]=HALF_EXTENTS[piece%3][axis];
+    for(let i=0;i<p.count;i++)for(let axis=0;axis<3;axis++)halves[i*3+axis]=HALF_EXTENTS[piece%3][axis]*bloodPieceScale(role,piece);
     geometry.setAttribute('bloodHalfExtents',new THREE.BufferAttribute(halves,3));
     const origins=new Float32Array(p.count*3),origin=ORIGINS[role][piece];
     for(let i=0;i<p.count;i++)for(let axis=0;axis<3;axis++)origins[i*3+axis]=origin[axis];
@@ -82,26 +99,27 @@ export function integratedBloodGeometry(role: EnemyDeathRole): THREE.BufferGeome
 
 interface BloodSlot { id:number; role:EnemyDeathRole; startedAt:number; matrix:THREE.Matrix4; variant:number;
   gravity:number; expansion:number; contactAgeMs:number; endAgeMs:number; deathX:number; deathZ:number; stainX:number; stainZ:number; stained:boolean }
-interface BloodBatch { mesh:THREE.InstancedMesh; age:THREE.InstancedBufferAttribute; gravity:THREE.InstancedBufferAttribute; contact:THREE.InstancedBufferAttribute; expansion:THREE.InstancedBufferAttribute; variant:THREE.InstancedBufferAttribute; count:number }
+interface BloodBatch { mesh:THREE.InstancedMesh; age:THREE.InstancedBufferAttribute; gravity:THREE.InstancedBufferAttribute; expansion:THREE.InstancedBufferAttribute; variant:THREE.InstancedBufferAttribute; count:number }
 
 // One merged blood geometry/draw per active role. All slots/matrices are allocated
 // at renderer construction, never a mesh, timer or hierarchy per blood piece.
 export class IntegratedDeathBlood {
   private readonly slots:BloodSlot[]=Array.from({length:DEATH_BLOOD_CAPACITY},()=>({id:-1,role:'grunt',startedAt:-Infinity,matrix:new THREE.Matrix4(),variant:0,
     gravity:18,expansion:0,contactAgeMs:Infinity,endAgeMs:Infinity,deathX:0,deathZ:0,stainX:0,stainZ:0,stained:false}));
-  private readonly flight=new Float64Array(8);
+  private readonly flight=new Float64Array(11);
   private readonly batches=new Map<EnemyDeathRole,BloodBatch>();
   private cursor=0;
   constructor(private readonly scene:THREE.Scene,private readonly stains?:GroundBloodStains) {
     for(const role of ['grunt','heavy','giant'] as const) {
       const geometry=integratedBloodGeometry(role),attribute=()=>new THREE.InstancedBufferAttribute(new Float32Array(DEATH_BLOOD_CAPACITY),1);
-      const age=attribute(),gravity=attribute(),contact=new THREE.InstancedBufferAttribute(new Float32Array(DEATH_BLOOD_CAPACITY*2),2),expansion=attribute(),variant=attribute();
-      geometry.setAttribute('bloodAge',age);geometry.setAttribute('bloodGravity',gravity);geometry.setAttribute('bloodContact',contact);geometry.setAttribute('bloodExpansion',expansion);geometry.setAttribute('bloodVariant',variant);
+      const age=attribute(),gravity=attribute(),expansion=attribute(),variant=attribute();
+      geometry.setAttribute('bloodAge',age);geometry.setAttribute('bloodGravity',gravity);geometry.setAttribute('bloodExpansion',expansion);geometry.setAttribute('bloodVariant',variant);
       const material=new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,metalness:0,transparent:true,depthWrite:false});
       material.onBeforeCompile=shader=>{
         shader.uniforms.bloodSplit={value:ENEMY_DEATH_TIMING[role].breakupStartMs/1000};
-        shader.uniforms.bloodRelease={value:ENEMY_DEATH_TIMING[role].totalMs*BLOOD_RELEASE_FRACTION/1000};
-        shader.vertexShader=`attribute float bloodAge; attribute float bloodGravity; attribute vec2 bloodContact; attribute float bloodExpansion; attribute float bloodVariant;
+        shader.uniforms.bloodRelease={value:BLOOD_RELEASE_MS[role]/1000};
+        shader.uniforms.bloodSpeed={value:new THREE.Vector3(...SPEED[role])};
+        shader.vertexShader=`uniform vec3 bloodSpeed; attribute float bloodAge; attribute float bloodGravity; attribute float bloodExpansion; attribute float bloodVariant;
 attribute vec3 bloodOrigin; attribute float bloodPieceId; attribute vec3 bloodHalfExtents;
 uniform float bloodSplit; uniform float bloodRelease;
 varying float vBloodOpacity;\n${shader.vertexShader}`
@@ -125,13 +143,19 @@ float shapeAngle = .08*sin(bloodPieceId+bloodVariant*2.);
 transformed *= shapeScale;
 transformed.xz = mat2(cos(shapeAngle),sin(shapeAngle),-sin(shapeAngle),cos(shapeAngle))*transformed.xz;
 float floorY = .025 + 1.15*dot(vec3(abs(instanceMatrix[0].y),abs(instanceMatrix[1].y),abs(instanceMatrix[2].y)),bloodHalfExtents);
-float velocityY = .18 - .16 * mod(bloodPieceId,3.) + .04*(bloodVariant-1.);
+float sideSpeed = side * bloodSpeed.x * (.82 + .18*sin(bloodPieceId*1.7+bloodVariant));
+float velocityY = bloodSpeed.y * (mod(bloodPieceId,4.) > 2.5 ? .3 : .8 + .2*cos(bloodPieceId+bloodVariant));
+// Leading lobes clear the front-facing torso; secondary masses keep mixed depth.
+float depthSpeed = bloodSpeed.z * (bloodPieceId < 1.5 ? (bloodPieceId < .5 ? .55 : .85) + .08*sin(bloodVariant+bloodPieceId) : sin(bloodPieceId*2.1+bloodVariant+.7));
+float rootScale = max(length(instanceMatrix[0].xyz),max(length(instanceMatrix[1].xyz),length(instanceMatrix[2].xyz)));
+vec3 velocity = (mat3(instanceMatrix)*vec3(sideSpeed,0.,depthSpeed))/max(.001,rootScale);
+velocity.y = velocityY;
+releaseOrigin.y = max(releaseOrigin.y,floorY);
 float contactSeconds = (velocityY + sqrt(velocityY*velocityY + 2.*bloodGravity*max(0.,releaseOrigin.y-floorY))) / bloodGravity;
 float flightAge = max(0.,bloodAge-bloodRelease);
 float flight = min(flightAge,contactSeconds);
 if (bloodAge >= bloodRelease) {
-  vec2 landing = bloodContact + kick.xz * .025;
-  center.xz = mix(releaseOrigin.xz,landing,flight/max(.001,contactSeconds));
+  center.xz = releaseOrigin.xz + velocity.xz * flight;
   center.y = max(floorY,releaseOrigin.y+velocityY*flight-.5*bloodGravity*flight*flight);
 }
 // Convert world-center motion back into local translation using the inverse
@@ -141,10 +165,10 @@ transformed += inverse(linear) * (center - instanceMatrix[3].xyz);
 vBloodOpacity = smoothstep(bloodSplit,bloodSplit+.035,bloodAge) * (1.-smoothstep(contactSeconds,contactSeconds+.065,flightAge));`);
         shader.fragmentShader=`varying float vBloodOpacity;\n${shader.fragmentShader}`.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.a *= vBloodOpacity;');
       };
-      material.customProgramCacheKey=()=> `integrated-falling-blood-v2-${role}`;
+      material.customProgramCacheKey=()=> `integrated-burst-flight-v2.1-${role}`;
       const mesh=new THREE.InstancedMesh(geometry,material,DEATH_BLOOD_CAPACITY);
       mesh.name=`enemy-3d-blood-${role}`;mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;scene.add(mesh);
-      this.batches.set(role,{mesh,age,gravity,contact,expansion,variant,count:0});
+      this.batches.set(role,{mesh,age,gravity,expansion,variant,count:0});
     }
   }
   spawn(id:number,role:EnemyDeathRole,nowMs:number,bodyWorld:THREE.Matrix4,deathX=bodyWorld.elements[12],deathZ=bodyWorld.elements[14]):void {
@@ -152,18 +176,18 @@ vBloodOpacity = smoothstep(bloodSplit,bloodSplit+.035,bloodAge) * (1.-smoothstep
     for(let n=0;n<DEATH_BLOOD_CAPACITY;n++){const candidate=(this.cursor+n)%DEATH_BLOOD_CAPACITY,slot=this.slots[candidate];if(nowMs>=slot.startedAt+ENEMY_DEATH_TIMING[slot.role].totalMs){index=candidate;break;}}
     const slot=this.slots[index];slot.id=id;slot.role=role;slot.startedAt=nowMs;slot.matrix.copy(bodyWorld);slot.variant=deathVariant(id);this.cursor=(index+1)%DEATH_BLOOD_CAPACITY;
     const m=bodyWorld.elements,scale=Math.max(Math.hypot(m[0],m[1],m[2]),Math.hypot(m[4],m[5],m[6]),Math.hypot(m[8],m[9],m[10]));
-    slot.expansion=BLOOD_EXPANSION[role]/Math.max(.001,scale);slot.gravity=GRAVITY[role];slot.deathX=deathX;slot.deathZ=deathZ;slot.stained=false;
-    const targetFlight=ENEMY_DEATH_TIMING[role].totalMs*.33/1000;
+    slot.expansion=BLOOD_EXPANSION[role]/Math.max(.001,scale);slot.gravity=BLOOD_GRAVITY[role];slot.deathX=deathX;slot.deathZ=deathZ;slot.stained=false;
+    const targetFlight=(ENEMY_DEATH_TIMING[role].totalMs-BLOOD_RELEASE_MS[role]-BLOOD_CONTACT_FADE_MS-15)/1000;
     for(let piece=0;piece<BLOOD_PIECE_COUNTS[role];piece++){
-      writeBloodFlight(role,slot.variant,piece,bodyWorld,slot.expansion,slot.gravity,deathX,deathZ,this.flight);
+      writeBloodFlight(role,slot.variant,piece,bodyWorld,slot.expansion,slot.gravity,this.flight);
       slot.gravity=Math.max(slot.gravity,2*(Math.max(0,this.flight[1]-this.flight[3])+this.flight[4]*targetFlight)/(targetFlight*targetFlight));
     }
     slot.contactAgeMs=Infinity;slot.endAgeMs=0;
-    const release=ENEMY_DEATH_TIMING[role].totalMs*BLOOD_RELEASE_FRACTION;
+    const release=BLOOD_RELEASE_MS[role];
     for(let piece=0;piece<BLOOD_PIECE_COUNTS[role];piece++){
-      writeBloodFlight(role,slot.variant,piece,bodyWorld,slot.expansion,slot.gravity,deathX,deathZ,this.flight);
+      writeBloodFlight(role,slot.variant,piece,bodyWorld,slot.expansion,slot.gravity,this.flight);
       const contact=release+this.flight[5]*1000;
-      if(piece<2&&contact<slot.contactAgeMs){slot.contactAgeMs=contact;slot.stainX=this.flight[6];slot.stainZ=this.flight[7];}
+      if(piece<2&&contact<slot.contactAgeMs){slot.contactAgeMs=contact;const kick=bloodPieceKick(slot.variant,piece);slot.stainX=deathX+kick[0]*.025;slot.stainZ=deathZ+kick[2]*.025;}
       slot.endAgeMs=Math.max(slot.endAgeMs,contact+BLOOD_CONTACT_FADE_MS);
     }
   }
@@ -176,9 +200,9 @@ vBloodOpacity = smoothstep(bloodSplit,bloodSplit+.035,bloodAge) * (1.-smoothstep
       if(age<timing.breakupStartMs||age>=slot.endAgeMs)continue;
       const batch=this.batches.get(slot.role)!,index=batch.count++;
       batch.mesh.setMatrixAt(index,slot.matrix);batch.variant.setX(index,slot.variant);
-      batch.age.setX(index,age/1000);batch.gravity.setX(index,slot.gravity);batch.contact.setXY(index,slot.deathX,slot.deathZ);batch.expansion.setX(index,slot.expansion);
+      batch.age.setX(index,age/1000);batch.gravity.setX(index,slot.gravity);batch.expansion.setX(index,slot.expansion);
     }
-    for(const batch of this.batches.values()){batch.mesh.count=batch.count;batch.mesh.visible=batch.count>0;batch.mesh.instanceMatrix.needsUpdate=true;batch.age.needsUpdate=batch.gravity.needsUpdate=batch.contact.needsUpdate=batch.expansion.needsUpdate=batch.variant.needsUpdate=true;}
+    for(const batch of this.batches.values()){batch.mesh.count=batch.count;batch.mesh.visible=batch.count>0;batch.mesh.instanceMatrix.needsUpdate=true;batch.age.needsUpdate=batch.gravity.needsUpdate=batch.expansion.needsUpdate=batch.variant.needsUpdate=true;}
   }
   reset():void {this.slots.forEach(slot=>slot.startedAt=-Infinity);this.cursor=0;for(const b of this.batches.values()){b.mesh.count=0;b.mesh.visible=false;}}
   dispose():void {for(const {mesh}of this.batches.values()){this.scene.remove(mesh);mesh.dispose();mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();}}

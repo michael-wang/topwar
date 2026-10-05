@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 import { GroundBloodStains, groundBloodAtlas, BLOOD_STAIN_GROW_MS } from '../src/rendering/enemies/BloodSplat';
-import { IntegratedDeathBlood, BLOOD_PIECE_COUNTS, BLOOD_RELEASE_FRACTION, writeBloodFlight } from '../src/rendering/enemies/IntegratedDeathBlood';
+import { IntegratedDeathBlood, BLOOD_PIECE_COUNTS, BLOOD_RELEASE_MS, writeBloodFlight } from '../src/rendering/enemies/IntegratedDeathBlood';
 
 it('uses deterministic analytic contacts, reveals internal blood first, and hands off into a growing persistent stain', () => {
   for (const role of ['grunt', 'heavy', 'giant'] as const) {
@@ -16,15 +16,15 @@ it('uses deterministic analytic contacts, reveals internal blood first, and hand
     const slots = (blood as unknown as { slots: { variant: number; expansion: number; gravity: number; contactAgeMs: number; endAgeMs: number }[] }).slots;
     for (let id = 0; id < 3; id++) {
       blood.reset(); stains.reset(); blood.spawn(id, role, 1000, matrix, .2, 8);
-      const slot = slots[0], a = new Float64Array(8), b = new Float64Array(8);
+      const slot = slots[0], a = new Float64Array(11), b = new Float64Array(11);
       for (let piece = 0; piece < BLOOD_PIECE_COUNTS[role]; piece++) {
-        writeBloodFlight(role, slot.variant, piece, matrix, slot.expansion, slot.gravity, .2, 8, a);
-        writeBloodFlight(role, slot.variant, piece, matrix, slot.expansion, slot.gravity, .2, 8, b);
+        writeBloodFlight(role, slot.variant, piece, matrix, slot.expansion, slot.gravity, a);
+        writeBloodFlight(role, slot.variant, piece, matrix, slot.expansion, slot.gravity, b);
         expect(a).toEqual(b);
         expect(a[1] + a[4] * a[5] - .5 * slot.gravity * a[5] ** 2).toBeCloseTo(a[3]);
-        expect(a[3]).toBeGreaterThan(.025); expect(Math.abs(a[6] - .2)).toBeLessThan(.03);
+        expect(a[3]).toBeGreaterThan(.025); expect(a[6]).toBeCloseTo(a[0] + a[8] * a[5]); expect(a[7]).toBeCloseTo(a[2] + a[10] * a[5]);
       }
-      expect(slot.contactAgeMs).toBeGreaterThan(timing.totalMs * BLOOD_RELEASE_FRACTION);
+      expect(slot.contactAgeMs).toBeGreaterThan(BLOOD_RELEASE_MS[role]);
       expect(slot.endAgeMs).toBeLessThanOrEqual(timing.totalMs);
       blood.update(1000 + slot.contactAgeMs - .01); expect(stainMesh.count).toBe(0);
       blood.update(1000 + slot.contactAgeMs); expect(stainMesh.count).toBe(1); expect(growth.getX(0)).toBeCloseTo(.3);
