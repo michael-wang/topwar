@@ -4,7 +4,7 @@ import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering
 import { ENEMY_DEATH_TIMING, enemyReactionStage } from '../src/presentation/EnemyDeathTiming';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
-it('bakes Heavy role-owned sink/hands-up poses with planted, wider shoes', () => {
+it('bakes Heavy role-owned compressed sink/fists-down poses with planted, wider shoes', () => {
  for(const family of [createChibiHeavyFamily()]) {
   const reaction=family.lethalReaction!, before=family.body.geometry.getAttribute('position'), after=reaction.final.geometry.getAttribute('position');
   expect(before.count).toBe(after.count);expect(reaction.transition.geometry).not.toBe(reaction.final.geometry);
@@ -12,7 +12,7 @@ it('bakes Heavy role-owned sink/hands-up poses with planted, wider shoes', () =>
   const handTop=(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute)=>{
    let top=0;for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i))>handX&&p.getY(i)>.25&&p.getY(i)<.70)top=Math.max(top,p.getY(i));return top;
   };
-  expect(handTop(after)).toBeGreaterThan(handTop(before)+.12);
+  expect(handTop(after)).toBeLessThan(handTop(before)-.08);
   const headTop=(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute)=>{
    let top=0;for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i))<.1)top=Math.max(top,p.getY(i));return top;
   };

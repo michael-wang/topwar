@@ -8,9 +8,10 @@ import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMo
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
-import { giantMaulSettle } from '../../presentation/ThreatDeathCollapse';
+import { giantMaulSettle, giantMaulSwing, THREAT_DEATH_COLLAPSE } from '../../presentation/ThreatDeathCollapse';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
+import type { GiantImpactDust } from './GiantImpactDust';
 import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
@@ -48,12 +49,16 @@ export class GiantRenderer {
   private readonly frozenRoot = new THREE.Matrix4();
   private readonly recoilDirection = new THREE.Vector2();
   private readonly frozenWeapon = new THREE.Matrix4();
+  private readonly maulSwing = new THREE.Matrix4();
+  private readonly maulHead = new THREE.Vector3(.60, .77, .08);
+  private readonly maulContact = new THREE.Vector3();
+  private dustTriggered = false;
   private readonly reactionWeaponMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
   private readonly reactionMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
-  constructor(private readonly scene: THREE.Scene, private readonly family: GiantVisualFamily) {
+  constructor(private readonly scene: THREE.Scene, private readonly family: GiantVisualFamily, private readonly impactDust?: GiantImpactDust) {
     const reaction = family.lethalReaction;
-    this.reactionMatrices = [lethalUpperMatrix(.5, reaction?.sink ?? 0, reaction?.tilt ?? 0),
-      lethalUpperMatrix(1, reaction?.sink ?? 0, reaction?.tilt ?? 0)];
+    this.reactionMatrices = [lethalUpperMatrix(.5, reaction?.sink ?? 0, reaction?.tilt ?? 0, reaction?.compression ?? 0),
+      lethalUpperMatrix(1, reaction?.sink ?? 0, reaction?.tilt ?? 0, reaction?.compression ?? 0)];
     this.reactionWeaponMatrices = this.reactionMatrices.map((matrix, index) => new THREE.Matrix4().makeTranslation(0, (index + 1) * .025, 0).multiply(matrix)) as unknown as readonly [THREE.Matrix4, THREE.Matrix4];
     const material = (source: THREE.Material, surface: 'body' | 'gear') => {
       if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Giant requires standard family materials');
@@ -103,7 +108,7 @@ export class GiantRenderer {
       y: this.dimensions.height * (enemy.visualScaleY ?? base) + .35 };
   }
   die(enemy: EnemyRenderState, nowMs: number, variant=deathVariant(enemy.id), attackerX?: number, attackerZ?: number): THREE.Group {
-    this.previous = enemy; this.deathAt = nowMs;this.deathVariant=variant;
+    this.previous = enemy; this.deathAt = nowMs;this.deathVariant=variant; this.dustTriggered = false;
     // Current body geometry, root, helmet lag and grip/maul stay untouched.
     this.group.updateMatrixWorld(true);
     this.frozenRoot.copy(this.group.matrixWorld);
@@ -177,11 +182,32 @@ export class GiantRenderer {
       const upper = this.reactionMatrices[stage - 1];
       this.helmet.matrix.copy(this.frozenHelmet).premultiply(upper);
       this.weapon.matrix.copy(this.frozenWeapon).premultiply(this.reactionWeaponMatrices[stage - 1]);
-      // Cant/lift the complete grip-hand + maul, never a separate moving hand.
+      // The role reaction moves the complete grip-hand + maul assembly.
       this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     }
-    // World-sized delayed settle of the complete grip/maul assembly.
+    // Swing the entire hand/shaft/head about the original grip, then settle.
+    this.weapon.matrix.multiply(this.maulSwing.makeRotationX(giantMaulSwing(age)));
     this.weapon.matrix.elements[13] -= giantMaulSettle(age) / Math.max(.001, this.group.scale.y);
+    this.weapon.matrixWorldNeedsUpdate = true;
+    this.group.updateMatrixWorld(true);
+    const maulMesh = this.weapon.children[0] as THREE.Mesh | undefined;
+    if (maulMesh) {
+      this.maulContact.copy(this.maulHead).applyMatrix4(maulMesh.matrixWorld);
+      const m = maulMesh.matrixWorld.elements;
+      // Analytic rounded-head floor, no physics or per-frame vertex scan.
+      const headFloor = Math.min(
+        this.maulContact.y - Math.hypot(m[1]*.23, m[5]*.175, m[9]*.19),
+        this.maulContact.y + m[1]*.155 - Math.hypot(m[1]*.085, m[5]*.155, m[9]*.175));
+      const correction = Math.max(0, .025 - headFloor);
+      this.weapon.matrix.elements[13] += correction / Math.max(.001, this.group.matrixWorld.elements[5]);
+      this.weapon.matrixWorldNeedsUpdate = true;
+      if (!this.dustTriggered && age >= THREAT_DEATH_COLLAPSE.giant.peakMs) {
+        this.group.updateMatrixWorld(true);
+        this.maulContact.copy(this.maulHead).applyMatrix4(maulMesh.matrixWorld);
+        this.impactDust?.spawn(this.maulContact.x, this.maulContact.z, this.deathAt + THREAT_DEATH_COLLAPSE.giant.peakMs);
+        this.dustTriggered = true;
+      }
+    }
     // All vertices in a logical piece share one bounded displacement; the
     // grip-hand and maul remain a single piece throughout the breakup.
     const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);

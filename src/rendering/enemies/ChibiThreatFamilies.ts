@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { toyEllipsoid as ball, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { lethalUpperMatrix } from './LethalReaction';
+import { THREAT_DEATH_COLLAPSE } from '../../presentation/ThreatDeathCollapse';
 import { tagDeathPiece } from './DeathAssembly';
 import { ART } from '../../art/ArtDirection';
 import { COMBAT_COLORS } from '../characters/ToyCombatGear';
@@ -29,7 +30,7 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     if (reaction > 0) tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]);
-    if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, sink, .09));
+    if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, sink, .09, THREAT_DEATH_COLLAPSE[giant ? 'giant' : 'heavy'].compression));
     return geometry;
   });
   const result = mergeGeometries(geometries);
@@ -51,10 +52,10 @@ function heavyPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): T
       .translate(side*.245,.245,.235), color: COMBAT_COLORS.heavy.pouch })),
     { geometry: ball(0, .65, 0, .32, .20, .26, 20, 12), color: ART.faction.skin },
     ...face(.655, .264, .027),
-    ...[-1, 1].map(side => ({ geometry: ball(side * (.495 + reaction * .025), .34 + reaction * .18, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin, fixed: true })),
-    { fixed: true, geometry: toyShoe({ x: -.265 - reaction * .035 - (liftLeft > .05 ? .045 : 0), y: liftLeft, z: stride * .13,
+    ...[-1, 1].map(side => ({ geometry: ball(side * (.495 + reaction * .055), .34 - reaction * .10, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin, fixed: true })),
+    { fixed: true, geometry: toyShoe({ x: -.265 - reaction * .045 - (liftLeft > .05 ? .045 : 0), y: liftLeft, z: stride * .13,
       width: .34, height: .15, depth: .27, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
-    { fixed: true, geometry: toyShoe({ x: .265 + reaction * .035 + (liftRight > .05 ? .045 : 0), y: liftRight, z: -stride * .13,
+    { fixed: true, geometry: toyShoe({ x: .265 + reaction * .045 + (liftRight > .05 ? .045 : 0), y: liftRight, z: -stride * .13,
       width: .34, height: .15, depth: .27, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }) },
   ], reaction);
 }
@@ -83,7 +84,7 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
     presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored', scaleY: .80, hitCompression: .025,
       stepWeight: { shift: .045, roll: .04, compression: .018 },
       hpAnchor: { top: 1.025, width: .78 }, shadow: { width: .84, depth: .44 } },
-    lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .11, tilt: .09 },
+    lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .11, tilt: .09, compression: THREAT_DEATH_COLLAPSE.heavy.compression },
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(death, deathMaterial), helmet, vest },
     dispose(): void {
       [idle, ...runs, transition, death, helmetGeometry, deathHelmet, armorGeometry].forEach(g => g.dispose());
@@ -148,7 +149,7 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, gearMaterial);
   vest.visible = false;
-  return { deathAssembly: { body: death, helmet: deathHelmet, weapon: deathWeapon, pieceCount: 11 }, lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .12, tilt: .09 },
+  return { deathAssembly: { body: death, helmet: deathHelmet, weapon: deathWeapon, pieceCount: 11 }, lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .12, tilt: .09, compression: THREAT_DEATH_COLLAPSE.giant.compression },
     role: 'giant', id: 'topwar-colossus', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)),
     contactPresentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored' },

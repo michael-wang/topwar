@@ -5,6 +5,7 @@ import { prepareGiantBarFill } from './GiantHealthBar';
 import { framedBarTexture } from '../art/FramedBarTextures';
 import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
+import { GiantImpactDust } from './GiantImpactDust';
 import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
 import { GRUNT_LETHAL_CONTACT, lethalContactOwner } from './LethalImpactBlood';
@@ -117,6 +118,7 @@ export class EnemyRenderer {
     color: ART.fx.core, toneMapped: false });
   private readonly heavyHits: HeavyHitFeedback;
   private readonly giantRenderers: GiantRenderer[];
+  private readonly giantImpactDust: GiantImpactDust;
   // Indices of the last drawn instance, captured before live batches are rewritten.
   private readonly renderedCrowd = new Map<number, { batch: CrowdBatch; frame: number; bodyIndex: number; palette: number; gearIndex: number }>();
   private readonly inverseFrozen = new THREE.Matrix4();
@@ -145,8 +147,8 @@ export class EnemyRenderer {
   constructor(private readonly scene: THREE.Scene,
     private readonly families: Pick<CharacterVisualFamilies, 'grunt' | 'heavy' | 'giant'>) {
     for (const family of [families.grunt, families.heavy, families.giant]) if (family.lethalReaction) {
-      const { sink, tilt } = family.lethalReaction;
-      this.reactionMatrices.set(family.role, [lethalUpperMatrix(.5, sink, tilt), lethalUpperMatrix(1, sink, tilt)]);
+      const { sink, tilt, compression } = family.lethalReaction;
+      this.reactionMatrices.set(family.role, [lethalUpperMatrix(.5, sink, tilt, compression), lethalUpperMatrix(1, sink, tilt, compression)]);
     }
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
@@ -157,7 +159,8 @@ export class EnemyRenderer {
     this.deathBatches = new CrowdDeathBatches(scene, MAX_DEATH_VISUALS);
     for (let i = 0; i < MAX_DEATH_VISUALS; i++) this.createDeathVisual(families.grunt);
     this.heavyHits = new HeavyHitFeedback(scene);
-    this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant));
+    this.giantImpactDust = new GiantImpactDust(scene);
+    this.giantRenderers = Array.from({ length: 3 }, () => new GiantRenderer(scene, families.giant, this.giantImpactDust));
   }
 
   private createBatch(family: CrowdVisualFamily): CrowdBatch {
@@ -247,6 +250,7 @@ export class EnemyRenderer {
       renderer?.update(enemy, nowMs, this.heavyHits, this.hitImpulse);
     }
     for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits, this.hitImpulse);
+    this.giantImpactDust.update(nowMs);
     this.blood.update(nowMs);
     this.stains.update(nowMs);
 
@@ -402,7 +406,7 @@ export class EnemyRenderer {
     for (const visual of this.deathVisuals) visual.group.visible = false;
     for (const visual of this.contactVisuals) visual.group.visible = false;
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
-    this.blood.reset(); this.hitBlood.reset(); this.hitImpulse.reset();
+    this.giantImpactDust.reset(); this.blood.reset(); this.hitBlood.reset(); this.hitImpulse.reset();
     this.stains.reset();
     this.deathBatches.reset();
     this.heavyHits.reset();
@@ -433,7 +437,7 @@ export class EnemyRenderer {
     this.barBackingMaterial.dispose();
     this.barFillMaterial.dispose(); this.giantBarFillMaterial.dispose();
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
-    this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
+    this.giantImpactDust.dispose(); this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
     this.stains.dispose(); this.hitTexture.dispose(); this.stainTexture.dispose();
     this.deathBatches.dispose();
     this.heavyHits.dispose();

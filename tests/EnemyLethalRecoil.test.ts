@@ -12,7 +12,7 @@ function closeMatrix(a: THREE.Matrix4, b: THREE.Matrix4) { a.elements.forEach((v
 it('has zero lethal retreat, role-weighted topple, an away direction, a low pivot and a held peak without scale/physics', () => {
   const roles = ['grunt', 'heavy', 'giant'] as const;
   expect(roles.map(r => LETHAL_RECOIL[r].distance)).toEqual([0, 0, 0]);
-  expect(roles.map(r => LETHAL_RECOIL[r].angleDegrees)).toEqual([32, 22, 16]);
+  expect(roles.map(r => LETHAL_RECOIL[r].angleDegrees)).toEqual([32, 29, 20]);
   const captured = new THREE.Matrix4().compose(new THREE.Vector3(.5, .01, 8),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(-.12, Math.PI, .04)), new THREE.Vector3(1.4, 1.12, 1.4));
   const direction = new THREE.Vector2(); writeLethalDirection(direction, captured);

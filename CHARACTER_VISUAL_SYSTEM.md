@@ -289,7 +289,7 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (V2.7)
+## Enemy Kill Feedback (V2.7.1)
 
 Role asymmetry is intentional: mass enemies prioritize fast readability and screen
 cleanup; priority threats retain physical death spectacle.
@@ -306,41 +306,53 @@ instanced batches; lift is in the captured world matrix. No per-death Mesh.
 
 **Heavy: weighted collapse → settling hold → breakup + fluid blood → fade.**
 **Giant: massive collapse → impact hold → breakup + long fluid-blood payoff → fade.**
-Weight comes from downward settling and timing, not backward translation or
-ragdoll. Heavy smoothly drops its root 0.13 world units and tilts backward 22°
-over 80–300 ms, then holds through 420 ms (120 ms). Giant drops 0.22 units and
-tilts 16° over 150–650 ms, then holds through 850 ms (200 ms). The captured
-low foot pivot and zero depth retreat are retained. Existing shoe-piece shaders
-restore only the world-Y root drop, keeping soles planted while upper mass,
-helmet, gear and integrated blood descend. The authored wider shoes remain;
-no extra scale compression, dust, contact-shadow pass or camera shake is added.
-The complete Giant grip-hand/maul has an additional 0.035-unit delayed settle
-over 230–700 ms, then holds; hand, shaft and head remain one assembly. The maul
-reinforces the sinking mass without an independent fall or ground physics.
+Weight is judged from the 390×844 Lab view and real-time comparison, not a
+small world-unit delta. Heavy drops 0.26 units and tips 29° over 80–350 ms,
+then holds its low pose through 515 ms (165 ms). Its upper mass compresses 10%,
+fists move 0.10 authored units down / 0.055 outward, and shoes widen 0.045
+units per side. Giant drops 0.40 units and tips 20° over 150–750 ms; upper
+compression is 7%, followed by a 300 ms impact hold through 1050 ms.
+Only upper mass compresses: shoes retain their size and compensate the root-Y
+drop in the existing shader. There is no root depth retreat, ragdoll or camera
+shake. Grunt's accepted intact lift/fade remains unchanged.
+
+The coupled Giant grip/maul follows a delayed swing over 230–750 ms: 1.20 radians
+around the grip plus up to 0.50 world units downward settling. An analytic floor
+for the two rounded head regions limits penetration; the complete hand/shaft/head
+settles as one assembly without bounce. Four low soft taupe puffs mark the head's
+sand impact over 400 ms. A fixed three-impact/twelve-point pool uses one transient
+draw and one geometry, no texture, no ring and no persistent dust. No new shadow
+renderer or death-shadow API is added.
+
+With the exact Lab identities and starting depths (Heavy Z10 / Giant Z14),
+projected crown travel is about 20 / 26 pixels. The maul head travels about 52
+pixels and settles roughly 0.03 world units above sand in that fixture. These
+measurements support the real-speed recordings; human perception remains the
+acceptance criterion.
 
 Smooth pale still completes in 185 / 290 ms; the target remains non-emissive
 #B9BEBA. Surviving hit = translational knockback and recovery; threat lethal
 hit = downward collapse at the lethal location. No simulation movement, spring
 return, physics, landing or persistent body debris.
 
-Heavy preserves local gait for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
-widening, tilt 5.2°. Giant preserves local gait for 180 ms and settles at 650 ms: 0.12 sink,
-0.24 offhand lift, small coherent maul lift/cant. No live crowd draw or skeleton
+Heavy preserves local gait for 70 ms, settles at 260 ms: 0.11 local sink, downward/outward fists, 0.045 shoe
+widening, upper compression and tilt 5.2°. Giant preserves local gait for 180 ms and settles at 650 ms: 0.12 sink,
+0.24 offhand lift, the delayed downward maul swing described above. No live crowd draw or skeleton
 is added.
 
 | Role | Logical body / blood pieces | Split begins | Separation complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
 | Grunt | intact / 4–6 | none | none | 140–520 ms | 520 ms |
-| Heavy | 10 / 6–8 | 420 ms | 900 ms | 650–1100 ms | 1100 ms |
-| Giant | 11 / 8–10 | 850 ms | 2050 ms | 1550–2600 ms | 2600 ms |
+| Heavy | 10 / 6–8 | 515 ms | 900 ms | 650–1100 ms | 1100 ms |
+| Giant | 11 / 8–10 | 1050 ms | 2050 ms | 1550–2600 ms | 2600 ms |
 
 The final reaction geometry supplies the exact starting silhouette. Helmet,
 head, torso bands, hands, shoes and structured equipment are authored logical
 pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
 patterns provide lateral, upper/lower and diagonal separation outside the main
 Heavy/Giant torso bands, which open oppositely sideways in every composition.
-Tagged transition poses introduce a narrow seam over 350–420 ms / 700–850 ms
-for Heavy/Giant during the settling hold, reaching only 28% of the original separation cap before the
+Tagged transition poses introduce a narrow seam over 515–585 ms / 1050–1150 ms
+for Heavy/Giant after the settling hold, reaching only 28% of the original separation cap before the
 existing breakup curve takes over. They reconstruct
 the same accepted pose at zero separation. No runtime fracture or independent
 triangle motion is used. Heavy/Giant world-space separation caps are **0.15 / 0.24**
@@ -406,8 +418,8 @@ card, preserving their accepted surviving-hit feedback.
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2.7 evidence is
-local/untracked under `artifacts/v2_7-threat-weight/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.7.1 evidence is
+local/untracked under `artifacts/v2_7_1-perceptual-weight/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

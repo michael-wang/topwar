@@ -25,7 +25,7 @@ export interface PlayerVisualFamily extends CharacterVisualFamily<'player'> {
 // Two authored lethal poses, baked once; no skeleton or per-enemy animation hierarchy.
 export interface LethalReaction {
   readonly transition: CharacterModel; readonly final: CharacterModel;
-  readonly sink: number; readonly tilt: number;
+  readonly sink: number; readonly tilt: number; readonly compression?: number;
 }
 
 export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heavy'> extends CharacterVisualFamily<R> {

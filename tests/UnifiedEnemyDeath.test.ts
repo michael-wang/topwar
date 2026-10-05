@@ -61,7 +61,7 @@ it('captures exact lethal poses, lifts intact Grunts or topples threats, and fad
     renderer.update([],2031+timing.totalMs);expect(corpse.visible).toBe(false);
     expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
     renderer.update([],100000);expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
-    expect(scene.children.some(c=>/shatter|fragment|debris|death-impact/.test(c.name))).toBe(false);
+    expect(scene.children.some(c=>/shatter|fragment|debris/.test(c.name))).toBe(false);
     renderer.reset();expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(0);renderer.update([enemy],4000);
     if(role==='giant') {
       expect(corpse.visible).toBe(true);

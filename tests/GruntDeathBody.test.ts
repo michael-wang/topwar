@@ -62,8 +62,8 @@ it('bounds intact batches and reuses their resources without assembly attributes
   batches.reset();expect(resources.every(m=>m.count===0&&!m.visible)).toBe(true);batches.dispose();f.dispose();expect(scene.children).toHaveLength(0);
 });
 it('retains total clocks, separation caps and stain sizes through threat-only collapse retiming', () => {
-  expect(ENEMY_DEATH_TIMING.heavy).toEqual({breakupEndMs:900,breakupStartMs:420,breakupDistance:.15,fadeStartMs:650,totalMs:1100,stainDiameter:.64});
-  expect(ENEMY_DEATH_TIMING.giant).toEqual({breakupEndMs:2050,breakupStartMs:850,breakupDistance:.24,fadeStartMs:1550,totalMs:2600,stainDiameter:.95});
-  expect(LETHAL_RECOIL.heavy).toEqual({distance:0,angleDegrees:22,peakMs:300});expect(LETHAL_RECOIL.giant).toEqual({distance:0,angleDegrees:16,peakMs:650});
+  expect(ENEMY_DEATH_TIMING.heavy).toEqual({breakupEndMs:900,breakupStartMs:515,breakupDistance:.15,fadeStartMs:650,totalMs:1100,stainDiameter:.64});
+  expect(ENEMY_DEATH_TIMING.giant).toEqual({breakupEndMs:2050,breakupStartMs:1050,breakupDistance:.24,fadeStartMs:1550,totalMs:2600,stainDiameter:.95});
+  expect(LETHAL_RECOIL.heavy).toEqual({distance:0,angleDegrees:29,peakMs:350});expect(LETHAL_RECOIL.giant).toEqual({distance:0,angleDegrees:20,peakMs:750});
   expect(ENEMY_DEATH_TIMING.grunt.stainDiameter).toBe(.34);expect(ENEMY_DEATH_TIMING.grunt).not.toHaveProperty('breakupStartMs');expect(ENEMY_DEATH_TIMING.grunt).not.toHaveProperty('breakupDistance');
 });
