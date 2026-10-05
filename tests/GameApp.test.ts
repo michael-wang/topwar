@@ -1021,6 +1021,7 @@ it('restarts selected lab fixtures and clears renderer feedback on every switch 
   }
   const retry = mock.overlayConstructedWith.mock.lastCall![0] as () => void;
   retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('grunt');
+    expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4]);
   expect(mock.resetFeedback).toHaveBeenCalledTimes(5);
   app.dispose();
 });

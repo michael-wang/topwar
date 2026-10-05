@@ -77,6 +77,7 @@ export class GameApp {
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
   private readonly vfxLab: EnemyVfxLabControls | null;
+  private vfxLabVisualSalt=-1;
   private vfxLabRole: EnemyVfxLabRole | null = null;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
@@ -232,7 +233,7 @@ export class GameApp {
       this.progressionObserver.observe(initialState.progression.level);
       this.xpHud?.update(initialState.progression, initialState.catharsis.balance.progression, 0);
     }
-    this.renderer.resetFeedback();
+    this.renderer.resetFeedback(import.meta.env.DEV && this.vfxLabRole ? ++this.vfxLabVisualSalt : 0);
     this.tierHud.setTier(1);
   }
 

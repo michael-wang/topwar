@@ -9,7 +9,7 @@ import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
 import { hitBloodVariation } from './HitBloodVariation';
 import { IntegratedDeathBlood } from './IntegratedDeathBlood';
-import { deathVariant } from './DeathAssembly';
+import { DeathVisualSequence, deathComposition } from './DeathVisualSeed';
 import { EnemyHitImpulse, ENEMY_HIT_STYLE, HIT_BLOOD_TIMING, HIT_BLOOD_CAPACITY } from './EnemyHitImpulse';
 import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
@@ -31,6 +31,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  variant:number;
   id: number;
   gearFreeze: readonly [THREE.Matrix4, THREE.Matrix4];
   parts: CharacterParts;
@@ -101,6 +102,7 @@ export class EnemyRenderer {
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
   private readonly deathVisuals: DeathVisual[] = [];
+  private readonly deathSequence=new DeathVisualSequence();
   private readonly contactVisuals: ContactVisual[] = [];
   private readonly contactIds = new Set<number>();
   private readonly contactFlashMaterial = new THREE.MeshBasicMaterial({
@@ -200,10 +202,11 @@ export class EnemyRenderer {
       if (!currentIds.has(previous.id)) {
         this.hitBlood.cancel(previous.id);
         if (!this.contactIds.has(previous.id)) {
+          const role=previous.archetype??'grunt',seed=this.deathSequence.next(previous.id,role),variant=deathComposition(seed)%3;
           const frozen = previous.archetype === 'giant'
-            ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs)
-            : this.spawnDeath(previous, nowMs);
-          if (frozen) this.scheduleKillFeedback(previous, frozen, nowMs);
+            ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs,variant)
+            : this.spawnDeath(previous, nowMs,variant);
+          if (frozen) this.scheduleKillFeedback(previous, frozen, nowMs,seed);
         }
         if (this.contactIds.has(previous.id) && previous.archetype === 'giant')
           this.giantRenderers.find(renderer => renderer.id === previous.id)?.reset();
@@ -376,7 +379,8 @@ export class EnemyRenderer {
     }
   }
 
-  reset(): void {
+  reset(visualSalt=0): void {
+    this.deathSequence.reset(visualSalt);
     this.previousEnemies.clear();
     this.renderedCrowd.clear();
     this.pendingHitBlood.clear();
@@ -522,13 +526,13 @@ export class EnemyRenderer {
     this.hitBlood.spawnStyled(enemy.id, HIT_BLOOD_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id, variation);
   }
 
-  private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number): void {
+  private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number, visualSeed:number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
     frozen.updateMatrixWorld(true); this.feedbackMatrix.copy(frozen.matrixWorld);
     // Blood origins are authored in the final assembly's already-reacted local
     // coordinates. Applying the upper-mass reaction again would bury the red
     // masses below the actual torso seams.
-    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix, frozen.position.x, frozen.position.z);
+    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix, frozen.position.x, frozen.position.z,visualSeed);
   }
 
   // Pose holders/materials are preallocated; deaths never allocate Mesh objects.
@@ -550,10 +554,10 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
+      this.deathVisuals.push({ variant:0,id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
   }
 
-  private spawnDeath(enemy: EnemyRenderState, nowMs: number): THREE.Group | undefined {
+  private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number): THREE.Group | undefined {
     const rendered = this.renderedCrowd.get(enemy.id);
     if (!rendered) return undefined;
     const family = this.crowdFamily(enemy), { death: parts, presentation } = family;
@@ -579,7 +583,7 @@ export class EnemyRenderer {
       visual.parts = parts;
     }
     visual.startedAtMs = nowMs;
-    visual.id = enemy.id;
+    visual.id = enemy.id;visual.variant=variant;
     visual.role = role;
     visual.heavy = enemy.archetype === 'heavy';
     setEnemyScale(visual.scale, enemy, presentation.scaleY);
@@ -640,7 +644,7 @@ export class EnemyRenderer {
       visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
       if (pose.bodyVisible) {
-        this.deathBatches.submit(visual.group, pose.breakup, pose.bodyOpacity, deathVariant(visual.id));
+        this.deathBatches.submit(visual.group, pose.breakup, pose.bodyOpacity, visual.variant);
       }
     }
     this.deathBatches.finish();

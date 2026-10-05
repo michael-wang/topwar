@@ -13,13 +13,13 @@ it('uses deterministic analytic contacts, reveals internal blood first, and hand
       new THREE.Quaternion().setFromEuler(new THREE.Euler(-.11, .05, 0)), new THREE.Vector3(scale, scale * .8, scale));
     const stainMesh = scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh;
     const growth = stainMesh.geometry.getAttribute('stainGrowth');
-    const slots = (blood as unknown as { slots: { variant: number; expansion: number; gravity: number; contactAgeMs: number; endAgeMs: number }[] }).slots;
+    const slots = (blood as unknown as { slots: { variant: number; jitter:number; gravity: number; contactAgeMs: number; endAgeMs: number }[] }).slots;
     for (let id = 0; id < 3; id++) {
       blood.reset(); stains.reset(); blood.spawn(id, role, 1000, matrix, .2, 8);
       const slot = slots[0], a = new Float64Array(11), b = new Float64Array(11);
       for (let piece = 0; piece < BLOOD_PIECE_COUNTS[role]; piece++) {
-        writeBloodFlight(role, slot.variant, piece, matrix, slot.expansion, slot.gravity, a);
-        writeBloodFlight(role, slot.variant, piece, matrix, slot.expansion, slot.gravity, b);
+        writeBloodFlight(role, slot.variant, piece, matrix, slot.gravity, a,slot.jitter);
+        writeBloodFlight(role, slot.variant, piece, matrix, slot.gravity, b,slot.jitter);
         expect(a).toEqual(b);
         expect(a[1] + a[4] * a[5] - .5 * slot.gravity * a[5] ** 2).toBeCloseTo(a[3]);
         expect(a[3]).toBeGreaterThan(.025); expect(a[6]).toBeCloseTo(a[0] + a[8] * a[5]); expect(a[7]).toBeCloseTo(a[2] + a[10] * a[5]);

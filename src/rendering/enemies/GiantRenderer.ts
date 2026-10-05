@@ -40,6 +40,7 @@ export class GiantRenderer {
   private bornAt = -Infinity;
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
+  private deathVariant=0;
   private readonly frozenHelmet = new THREE.Matrix4();
   private readonly frozenWeapon = new THREE.Matrix4();
   private readonly reactionWeaponMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
@@ -96,8 +97,8 @@ export class GiantRenderer {
     return { x: this.group.position.x, width: bar.width * scale, height: bar.height * scale,
       y: this.dimensions.height * (enemy.visualScaleY ?? base) + .35 };
   }
-  die(enemy: EnemyRenderState, nowMs: number): THREE.Group {
-    this.previous = enemy; this.deathAt = nowMs;
+  die(enemy: EnemyRenderState, nowMs: number, variant=deathVariant(enemy.id)): THREE.Group {
+    this.previous = enemy; this.deathAt = nowMs;this.deathVariant=variant;
     // Current body geometry, root, helmet lag and grip/maul stay untouched.
     this.group.updateMatrixWorld(true);
     this.frozenHelmet.copy(this.helmet.matrix); this.frozenWeapon.copy(this.weapon.matrix);
@@ -173,7 +174,7 @@ export class GiantRenderer {
     this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
     for (const { material, color, tint } of this.palette) {
       material.color.copy(color); tint.breakup.value = separation;
-      tint.variant.value = deathVariant(this.previous!.id);
+      tint.variant.value = this.deathVariant;
       material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
       material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
     }

@@ -124,10 +124,10 @@ export class GameRenderer {
     this.projectileRenderer.presentLevelUp(nowMs);
   }
 
-  resetFeedback(): void {
+  resetFeedback(visualSalt=0): void {
     this.air.reset();
     this.squadRenderer.reset();
-    this.enemyRenderer.reset();
+    this.enemyRenderer.reset(visualSalt);
     this.bossRenderer.reset();
     this.bossCameraFraming.reset();
     this.streamRewardRenderer.reset();

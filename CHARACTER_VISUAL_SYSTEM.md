@@ -307,9 +307,9 @@ is added.
 
 | Role | Logical body / blood pieces | Split begins | Separation complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
-| Grunt | 8 / 5 | 130 ms | 390 ms | 300–520 ms | 520 ms |
-| Heavy | 10 / 7 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
-| Giant | 11 / 10 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
+| Grunt | 8 / 4–6 | 130 ms | 390 ms | 300–520 ms | 520 ms |
+| Heavy | 10 / 6–8 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
+| Giant | 11 / 8–10 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
 
 The final reaction geometry supplies the exact starting silhouette. Helmet,
 head, torso bands, hands, shoes and structured equipment are authored logical
@@ -329,18 +329,23 @@ resources dispose at their respective ownership boundaries.
 Enemy lethal blood uses **world-space fluid ribbons + small rounded ballistic droplets**,
 not cones or camera-facing lethal cards. Two fixed role draws share 64 total
 preallocated death slots. Each irregular ribbon has six longitudinal sections,
-a thin smooth extrusion and 92 triangles: 2 / 3 / 4 ribbons for Grunt/Heavy/Giant.
+a thin smooth extrusion and 92 triangles: 2–3 / 3–4 / 4–5 ribbons for Grunt/Heavy/Giant.
 The embedded root stays inside the body while length shoots outward, width opens,
 and the curved, broken edges thin/fade over 150 / 210 / 320 ms. The matte palette
 is #751D27 / #9F2734 / #C93443, with no additive or emissive rendering.
 
-Smaller smooth deformed ovoids (5 / 7 / 10 droplets) detach at
+Smaller smooth deformed ovoids (4–6 / 6–8 / 8–10 droplets) detach at
 190 / 380 / 890 ms from the growing tongues. Their XYZ launch directions inherit
 the parent splash before gravity and size-aware analytic contact take over.
 Body pieces retain authored colors and their accepted reaction/breakup clocks.
 Droplets fade over 65 ms at contact. The first major contact activates one stain
 near the death point, growing from 30% to full size over 110 ms.
-Stain scale, variation, ownership and reset behavior remain unchanged.
+Six coherent seeded splash compositions vary the embedded origins, dominant
+left/right/upward/low/diagonal direction, bend, width, length, tongue/droplet counts,
+and a short two-stage release. Stable identity + role + renderer death sequence
+select the visual seed; adjacent same-role compositions do not repeat. The same
+seed selects the existing body breakup pattern and stain variation, retaining
+all role size bounds. No gameplay RNG or serialized state is changed.
 Base diameters remain **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
 (1 : 1.88 : 2.79). Deterministic variation selects mask, rotation, ±12% size,
 area-preserving aspect 0.85–1.20, opacity 0.50–0.66 and dried-blood tones
@@ -354,7 +359,7 @@ The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
 Player casualty and Boss remain unchanged. Generated V2.1 evidence is
-local/untracked under `artifacts/v2_1-blood-lab/`. Development `/` and
+local/untracked under `artifacts/v2_2-fluid-blood/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

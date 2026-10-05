@@ -210,9 +210,9 @@ export class GroundBloodStains {
     this.mesh.name = name; this.mesh.count = 0; this.mesh.visible = false; this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1; this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(this.mesh);
   }
-  spawn(id: number, role: EnemyDeathRole, x: number, z: number): void {
+  spawn(id: number, role: EnemyDeathRole, x: number, z: number, visualSeed=id): void {
     if (!this.atlas) { this.spawnSized(id, ENEMY_DEATH_TIMING[role].stainDiameter, x, z); return; }
-    const index = this.cursor++ % BLOOD_STAIN_CAPACITY, v = bloodStainVariation(id, role);
+    const index = this.cursor++ % BLOOD_STAIN_CAPACITY, v = bloodStainVariation(visualSeed, role);
     this.growthStarts[index] = -Infinity; this.growth.setX(index, 1); this.growth.needsUpdate = true;
     const diameter = ENEMY_DEATH_TIMING[role].stainDiameter * v.scale;
     this.transform.position.set(x + v.offsetX, .032, z + v.offsetZ);
@@ -233,8 +233,8 @@ export class GroundBloodStains {
     this.mesh.setMatrixAt(index, this.transform.matrix); this.mesh.count = Math.min(this.cursor, BLOOD_STAIN_CAPACITY);
     this.mesh.visible = true; this.mesh.instanceMatrix.needsUpdate = true;
   }
-  activate(id: number, role: EnemyDeathRole, x: number, z: number, contactMs: number): void {
-    this.spawn(id, role, x, z);
+  activate(id: number, role: EnemyDeathRole, x: number, z: number, contactMs: number, visualSeed=id): void {
+    this.spawn(id, role, x, z, visualSeed);
     const index = (this.cursor - 1) % BLOOD_STAIN_CAPACITY;
     this.growthStarts[index] = contactMs; this.growth.setX(index, .3); this.growth.needsUpdate = true;
   }

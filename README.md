@@ -16,7 +16,9 @@ Development `/` starts normal Level 1. The right-side Enemy VFX Lab buttons
 restart deterministic center-lane combat fixtures: Grunt (10 enemies at Z8–26,
 Lv1 / one Rifle), Heavy (3 at Z10/15/20, Lv3 / one Rifle), Giant (one at Z14,
 Lv5 / three Rifles). HP, damage and fire rates use current tuning. Clicking
-again or Retry restarts the selected fixture and clears all previous VFX/stains;
+again or Retry restarts the selected fixture and clears all previous VFX/stains.
+Each lab restart advances a development-only visual salt to cycle lethal splash
+compositions without changing the fixture simulation seed, HP or results;
 natural wave refill is suppressed by the fixture's validated stream cursor.
 Reload `/` to return to normal play. `?review=threats` remains the separate art
 review opening. The lab controls and fixture code are excluded from production.

@@ -1,26 +1,32 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { DEATH_COMPOSITIONS } from './DeathVisualSeed';
 import type { EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 
-export const SPLASH_COMPOSITIONS = 3;
-export const RIBBON_COUNTS = { grunt: 2, heavy: 3, giant: 4 } as const;
+export const SPLASH_COMPOSITIONS = DEATH_COMPOSITIONS;
+export const RIBBON_COUNTS = { grunt: 3, heavy: 4, giant: 5 } as const;
 export const RIBBON_LIFETIME_MS = { grunt: 150, heavy: 210, giant: 320 } as const;
-export const DROPLET_COUNTS = { grunt: 5, heavy: 7, giant: 10 } as const;
+export const RIBBON_DELAY_MS={grunt:15,heavy:22,giant:35} as const;
+export const DROPLET_COUNTS = { grunt: 6, heavy: 8, giant: 10 } as const;
 export const SPLASH_COLORS = ['#751d27', '#9f2734', '#c93443'] as const;
 const ANCHORS = { grunt: [[-.08,.29,.06],[.09,.32,.02]],
   heavy: [[-.12,.28,.14],[.14,.32,.13],[0,.42,.08]],
   giant: [[-.19,.58,.12],[.18,.64,.08],[0,.75,.08],[-.08,.39,.16]] } as const;
-export interface RibbonShape { origin: THREE.Vector3; direction: THREE.Vector3; length: number; width: number; bend: number }
+export const activeRibbonCount=(role:EnemyDeathRole,composition:number)=>RIBBON_COUNTS[role]-(composition%3===0?0:1);
+export const activeDropletCount=(role:EnemyDeathRole,composition:number)=>DROPLET_COUNTS[role]-2+composition%3;
+export interface RibbonShape { origin: THREE.Vector3; direction: THREE.Vector3; length: number; width: number; bend: number; delay: number }
 // Coherent directions, shared by the stretching root and its detached droplets.
 export const splashShapes = Object.fromEntries((['grunt','heavy','giant'] as const).map(role => [role,
   Array.from({length:SPLASH_COMPOSITIONS}, (_,composition) => Array.from({length:RIBBON_COUNTS[role]}, (_,ribbon): RibbonShape => {
-    const side = ribbon % 2 ? -1 : 1;
-    const direction = new THREE.Vector3(side * (composition === 1 ? .55 : 1),
-      composition === 1 ? 1.1 : .35 + ribbon * .12, .82 + .20 * Math.sin(ribbon * 2.1 + composition)).normalize();
-    const origin = new THREE.Vector3(...ANCHORS[role][ribbon]);
-    return { origin, direction, length: ({grunt:.59,heavy:.67,giant:.73})[role] * (1 + .13*Math.sin(ribbon*2+composition)),
-      width: ({grunt:.125,heavy:.15,giant:.18})[role] * (1 + .17*Math.cos(ribbon+composition)),
-      bend: side * (.08 + .04*Math.sin(ribbon+composition)) };
+    const side=ribbon%2?-1:1,family=composition%6;
+    const x=family===0?-1.15+(ribbon%3)*.30:family===1?1.15-(ribbon%3)*.30:side*(family===3?1.3:.8);
+    const y=family===2?1.25:family===3?.10:family===4?(ribbon%2?.12:1.0):.45+ribbon*.11;
+    const direction=new THREE.Vector3(x,y,(ribbon%3===1?-1:1)*(.64+.28*Math.sin(ribbon*2.1+composition))).normalize();
+    const origin=new THREE.Vector3(...ANCHORS[role][ribbon%ANCHORS[role].length]);
+    origin.x+=.025*Math.sin(composition*2.2+ribbon);origin.y+=.020*Math.cos(composition+ribbon*1.8);
+    return {origin,direction,length:({grunt:.59,heavy:.67,giant:.73})[role]*(1+.18*Math.sin(ribbon*2+composition))*(ribbon===RIBBON_COUNTS[role]-1?.62:1),
+      width:({grunt:.125,heavy:.15,giant:.18})[role]*(1+.22*Math.cos(ribbon+composition*1.7)),
+      bend:side*(.08+.07*Math.sin(ribbon+composition)),delay:family===5&&ribbon%2===1?RIBBON_DELAY_MS[role]/1000:0};
   }))])) as Record<EnemyDeathRole,RibbonShape[][]>;
 
 // Six sections of a thin rounded extrusion, 92 triangles including rounded end caps.
