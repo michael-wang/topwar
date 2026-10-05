@@ -5,8 +5,9 @@ import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamil
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { ENEMY_DEATH_TIMING, ENEMY_REACTION_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../src/presentation/EnemyDeathPale';
+import { writeLethalRecoil } from '../src/rendering/enemies/EnemyLethalRecoil';
 function matrixClose(a: THREE.Matrix4,b: THREE.Matrix4) { a.elements.forEach((value,i)=>expect(value).toBeCloseTo(b.elements[i],6)); }
-it('captures the exact lethal capture, then holds an authored reaction without root movement', () => {
+it('captures the exact lethal pose, then tips the complete role away and fades all surfaces together', () => {
   for(const role of ['grunt','heavy','giant'] as const){
     const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()};
     const scene=new THREE.Scene(),renderer=new EnemyRenderer(scene,families),timing=ENEMY_DEATH_TIMING[role];
@@ -30,9 +31,9 @@ it('captures the exact lethal capture, then holds an authored reaction without r
     const root=corpse.matrix.clone();
     for(const age of [0,20,ENEMY_REACTION_TIMING[role].startMs-1,ENEMY_REACTION_TIMING[role].endMs,timing.breakupEndMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
       renderer.update([],2031+age);corpse.updateMatrixWorld(true);expect(corpse.visible).toBe(true);
-      matrixClose(corpse.matrix,root);
+      const expected = new THREE.Matrix4(); writeLethalRecoil(expected, root, age, role); matrixClose(corpse.matrix,expected);
       if(age < ENEMY_REACTION_TIMING[role].startMs) {
-        parts.forEach((part,index)=>matrixClose(part.matrixWorld,before[index]));
+        if(age===0)parts.forEach((part,index)=>matrixClose(part.matrixWorld,before[index]));
         geometries.forEach((geometry,index)=>expect((parts[index] as THREE.Mesh).geometry).toBe(geometry));
       } else {
         const geometry=(parts[0] as THREE.Mesh).geometry;

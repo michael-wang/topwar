@@ -62,8 +62,9 @@ it('bounds ambient/dust buffers and never allocates another emitter during a lon
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
+import { writeLethalRecoil } from '../src/rendering/enemies/EnemyLethalRecoil';
 import { grayBodyModel, runFrames } from './characterModel';
-it('keeps Heavy locomotion underneath additive hits and gives its death a frozen lethal pose', () => {
+it('keeps Heavy locomotion underneath additive hits and captures its lethal pose before a held backward reaction', () => {
   const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,enemyFamilies(bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel()));
   const enemy={id:1,tier:1,archetype:'heavy' as const,x:0,z:14,hp:15,maxHp:15};
   renderer.update([enemy],100);renderer.update([{...enemy,hp:14}],120);
@@ -75,13 +76,16 @@ it('keeps Heavy locomotion underneath additive hits and gives its death a frozen
   renderer.update([],200);
   const corpse=scene.getObjectByName('enemy-pale-death-body')!;
   const frozen=corpse.matrix.clone();
-  renderer.update([],260);expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(frozen)).toBe(true);
-  renderer.update([],900);expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(frozen)).toBe(true);
+  const expected = new THREE.Matrix4();
+  renderer.update([],260);writeLethalRecoil(expected,frozen,60,'heavy');
+  expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(expected)).toBe(true);
+  renderer.update([],900);writeLethalRecoil(expected,frozen,700,'heavy');
+  expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(expected)).toBe(true);
   // The earlier ballistic release now reaches sand before this late fade sample.
   renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
   renderer.update([],1300);expect(corpse.visible).toBe(false);renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();
 });
-it('delays the Giant maul independently and keeps the maul/grip assembly intact throughout its lethal freeze', () => {
+it('delays the Giant maul independently and keeps the maul/grip assembly intact throughout its lethal recoil', () => {
   const family = createChibiGiantFamily();
   const scene=new THREE.Scene(), renderer=new GiantRenderer(scene,family), hits=new HeavyHitFeedback(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,x:0,z:14,hp:210,maxHp:210,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04};
@@ -90,9 +94,10 @@ it('delays the Giant maul independently and keeps the maul/grip assembly intact 
   expect(mace.parent).toBe(group); expect(mace.rotation.x).not.toBe(helmet.rotation.z);
   const angle=mace.rotation.x;hits.observe({...enemy,hp:209},120);renderer.update({...enemy,hp:209},120,hits);
   expect(mace.rotation.x).not.toBe(angle);
-  const position=group.position.clone(),rotation=group.rotation.clone();
+  group.updateMatrixWorld(true);const captured=group.matrixWorld.clone();
   renderer.die(enemy,200);renderer.update(undefined,400,hits);
-  expect(group.position).toEqual(position);expect(group.rotation.toArray()).toEqual(rotation.toArray());expect(group.visible).toBe(true);
+  const expected=new THREE.Matrix4();writeLethalRecoil(expected,captured,200,'giant');
+  expect(group.matrix.equals(expected)).toBe(true);expect(mace.parent).toBe(group);expect(group.visible).toBe(true);
   renderer.update(undefined,2800,hits);expect(group.visible).toBe(false);
   renderer.update(undefined,2900,hits);expect(group.visible).toBe(false);
   renderer.reset();renderer.update(enemy,1000,hits);expect(mace.rotation.x).toBeLessThan(.15);

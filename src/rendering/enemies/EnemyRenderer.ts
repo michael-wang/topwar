@@ -21,6 +21,7 @@ import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
+import { writeLethalDirection, writeLethalRecoil } from './EnemyLethalRecoil';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
 
@@ -33,6 +34,8 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  frozenRoot: THREE.Matrix4;
+  recoilDirection: THREE.Vector2;
   variant:number;
   id: number;
   gearFreeze: readonly [THREE.Matrix4, THREE.Matrix4];
@@ -117,6 +120,7 @@ export class EnemyRenderer {
   private readonly feedbackOrigin = new THREE.Vector3();
   private readonly feedbackScale = new THREE.Vector3();
   private readonly feedbackMatrix = new THREE.Matrix4();
+  private readonly feedbackDirection = new THREE.Vector2();
   private readonly pendingHitBlood = new Map<number, number>();
   private readonly pendingHitDamage = new Map<number, number>();
   private readonly hitTexture = hitBloodAtlas();
@@ -194,7 +198,7 @@ export class EnemyRenderer {
     }
   }
 
-  update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean): void {
+  update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean, attackerX?: number, attackerZ?: number): void {
     this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     if (sceneMode !== undefined) {
       if (this.sceneMode !== undefined && this.sceneMode !== sceneMode) this.reset();
@@ -207,9 +211,9 @@ export class EnemyRenderer {
         if (!this.contactIds.has(previous.id)) {
           const role=previous.archetype??'grunt',seed=this.deathSequence.next(previous.id,role),variant=deathComposition(seed)%3;
           const frozen = previous.archetype === 'giant'
-            ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs,variant)
-            : this.spawnDeath(previous, nowMs,variant);
-          if (frozen) this.scheduleKillFeedback(previous, frozen, nowMs,seed);
+            ? this.giantRenderers.find(renderer => renderer.id === previous.id)?.die(previous, nowMs,variant,attackerX,attackerZ)
+            : this.spawnDeath(previous, nowMs,variant,attackerX,attackerZ);
+          if (frozen) this.scheduleKillFeedback(previous, frozen, nowMs,seed,attackerX,attackerZ);
         }
         if (this.contactIds.has(previous.id) && previous.archetype === 'giant')
           this.giantRenderers.find(renderer => renderer.id === previous.id)?.reset();
@@ -531,13 +535,14 @@ export class EnemyRenderer {
     this.hitBlood.spawnStyled(enemy.id, HIT_BLOOD_TIMING[role], nowMs, this.feedbackOrigin, adaptation, enemy.id, variation);
   }
 
-  private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number, visualSeed:number): void {
+  private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number, visualSeed:number, attackerX?: number, attackerZ?: number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
     frozen.updateMatrixWorld(true); this.feedbackMatrix.copy(frozen.matrixWorld);
     // Blood origins are authored in the final assembly's already-reacted local
     // coordinates. Applying the upper-mass reaction again would bury the red
     // masses below the actual torso seams.
-    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix, frozen.position.x, frozen.position.z,visualSeed);
+    writeLethalDirection(this.feedbackDirection, this.feedbackMatrix, attackerX, attackerZ);
+    this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix, frozen.position.x, frozen.position.z,visualSeed, this.feedbackDirection.x, this.feedbackDirection.y);
   }
 
   // Pose holders/materials are preallocated; deaths never allocate Mesh objects.
@@ -559,10 +564,10 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ variant:0,id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
+      this.deathVisuals.push({ frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0,id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
   }
 
-  private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number): THREE.Group | undefined {
+  private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number, attackerX?: number, attackerZ?: number): THREE.Group | undefined {
     const rendered = this.renderedCrowd.get(enemy.id);
     if (!rendered) return undefined;
     const family = this.crowdFamily(enemy), { death: parts, presentation } = family;
@@ -624,6 +629,8 @@ export class EnemyRenderer {
       part.matrix.decompose(part.position, part.quaternion, part.scale);
     }
     root.updateMatrixWorld(true);
+    visual.frozenRoot.copy(root.matrixWorld);
+    writeLethalDirection(visual.recoilDirection, visual.frozenRoot, attackerX, attackerZ);
     return root;
   }
 
@@ -633,6 +640,8 @@ export class EnemyRenderer {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
       const pose = enemyDeathPose(elapsed, ENEMY_DEATH_TIMING[visual.role]);
+      writeLethalRecoil(visual.group.matrix, visual.frozenRoot, elapsed, visual.role, visual.recoilDirection.x, visual.recoilDirection.y);
+      visual.group.matrixWorldNeedsUpdate = true;
       const reaction = this.families[visual.role].lethalReaction;
       const stage = enemyReactionStage(elapsed, visual.role);
       if (reaction && stage > 0) {

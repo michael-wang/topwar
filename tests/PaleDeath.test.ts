@@ -6,8 +6,9 @@ import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFami
 import { characterFamilies } from './characterModel';
 import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
+import { LETHAL_RECOIL } from '../src/rendering/enemies/EnemyLethalRecoil';
 
-it('captures role-owned run geometry, keeps a fixed root through kneeling and pale fade', () => {
+it('captures role-owned run geometry, then holds the peaked recoil through pale breakup and fade', () => {
   const grunt=createChibiGruntFamily(), heavy=createChibiHeavyFamily(), scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),grunt,heavy});
   for(const [role,family,id,start] of [['grunt',grunt,0,1000],['heavy',heavy,1,2000]] as const){
@@ -18,7 +19,7 @@ it('captures role-owned run geometry, keeps a fixed root through kneeling and pa
     const scale=corpse.scale.clone();renderer.update([],start+90);
     expect(corpse.visible).toBe(true);expect(corpse.scale).toEqual(scale);
     expect((corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.emissiveIntensity).toBe(0);
-    const timing=ENEMY_DEATH_TIMING[role],matrix=corpse.matrix.clone();
+    const timing=ENEMY_DEATH_TIMING[role];renderer.update([],start+10+LETHAL_RECOIL[role].peakMs);const matrix=corpse.matrix.clone();
     renderer.update([],start+10+timing.breakupEndMs);expect(corpse.visible).toBe(true);
     expect(corpse.matrix.equals(matrix)).toBe(true);expect(corpse.scale).toEqual(scale);
     renderer.update([],start+10+timing.fadeStartMs);expect(corpse.visible).toBe(true);

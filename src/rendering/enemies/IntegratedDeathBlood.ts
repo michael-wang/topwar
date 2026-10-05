@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ENEMY_DEATH_TIMING, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 import { deathVisualSeed, deathComposition } from './DeathVisualSeed';
+import { writeLethalRecoil } from './EnemyLethalRecoil';
 import { fluidRibbonGeometry, splashShapes, SPLASH_COMPOSITIONS, RIBBON_COUNTS, RIBBON_LIFETIME_MS, RIBBON_DELAY_MS, DROPLET_COUNTS, SPLASH_COLORS, activeRibbonCount, activeDropletCount } from './FluidBloodSplash';
 import type { GroundBloodStains } from './BloodSplat';
 export const DEATH_BLOOD_CAPACITY = 64;
@@ -47,6 +48,7 @@ export function integratedBloodGeometry(role:EnemyDeathRole):THREE.BufferGeometr
  });const geometry=mergeGeometries(parts)!;parts.forEach(g=>g.dispose());return geometry;
 }
 interface BloodSlot { id:number; role:EnemyDeathRole; startedAt:number; matrix:THREE.Matrix4; variant:number;
+  captured:THREE.Matrix4; directionX:number; directionZ:number;
   gravity:number; contactAgeMs:number; endAgeMs:number; visualSeed:number; jitter:number; deathX:number; deathZ:number; stainX:number; stainZ:number; stained:boolean }
 interface BloodBatch { mesh:THREE.InstancedMesh; age:THREE.InstancedBufferAttribute; gravity:THREE.InstancedBufferAttribute; variant:THREE.InstancedBufferAttribute; jitter:THREE.InstancedBufferAttribute; count:number }
 
@@ -54,8 +56,10 @@ interface BloodBatch { mesh:THREE.InstancedMesh; age:THREE.InstancedBufferAttrib
 // at renderer construction, never a mesh, timer or hierarchy per blood piece.
 export class IntegratedDeathBlood {
   private readonly slots:BloodSlot[]=Array.from({length:DEATH_BLOOD_CAPACITY},()=>({id:-1,role:'grunt',startedAt:-Infinity,matrix:new THREE.Matrix4(),variant:0,
+    captured:new THREE.Matrix4(),directionX:0,directionZ:1,
     gravity:18,contactAgeMs:Infinity,endAgeMs:Infinity,visualSeed:0,jitter:.5,deathX:0,deathZ:0,stainX:0,stainZ:0,stained:false}));
   private readonly flight=new Float64Array(11);
+  private readonly ribbonWorld=new THREE.Matrix4();
   private readonly batches=new Map<EnemyDeathRole,BloodBatch>();
   private readonly allBatches:BloodBatch[]=[];
   private cursor=0;
@@ -116,20 +120,24 @@ objectNormal=normalSide*normal.x+normalDirection*normal.y+normalDepth*normal.z;`
     const mesh=new THREE.InstancedMesh(geometry,material,DEATH_BLOOD_CAPACITY);mesh.name=ribbon?`enemy-blood-ribbons-${role}`:`enemy-3d-blood-${role}`;
     mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;this.scene.add(mesh);return {mesh,age,gravity,variant,jitter,count:0};
   }
-  spawn(id:number,role:EnemyDeathRole,nowMs:number,bodyWorld:THREE.Matrix4,deathX=bodyWorld.elements[12],deathZ=bodyWorld.elements[14],visualSeed=deathVisualSeed(id,role,0)):void {
+  spawn(id:number,role:EnemyDeathRole,nowMs:number,bodyWorld:THREE.Matrix4,deathX=bodyWorld.elements[12],deathZ=bodyWorld.elements[14],visualSeed=deathVisualSeed(id,role,0),directionX=0,directionZ=1):void {
     let index=this.cursor;
     for(let n=0;n<DEATH_BLOOD_CAPACITY;n++){const candidate=(this.cursor+n)%DEATH_BLOOD_CAPACITY,slot=this.slots[candidate];if(nowMs>=slot.startedAt+ENEMY_DEATH_TIMING[slot.role].totalMs){index=candidate;break;}}
-    const slot=this.slots[index];slot.id=id;slot.role=role;slot.startedAt=nowMs;slot.matrix.copy(bodyWorld);slot.visualSeed=visualSeed;slot.jitter=((visualSeed>>>3)%997)/997;slot.variant=deathComposition(visualSeed);this.cursor=(index+1)%DEATH_BLOOD_CAPACITY;
+    const slot=this.slots[index];slot.id=id;slot.role=role;slot.startedAt=nowMs;slot.captured.copy(bodyWorld);slot.directionX=directionX;slot.directionZ=directionZ;
+    // Droplets detach after recoil has peaked. Their launch transform is captured
+    // analytically, so subsequent body updates never drag ballistic blood.
+    writeLethalRecoil(slot.matrix,slot.captured,BLOOD_RELEASE_MS[role],role,directionX,directionZ);
+    slot.visualSeed=visualSeed;slot.jitter=((visualSeed>>>3)%997)/997;slot.variant=deathComposition(visualSeed);this.cursor=(index+1)%DEATH_BLOOD_CAPACITY;
     slot.gravity=BLOOD_GRAVITY[role];slot.deathX=deathX;slot.deathZ=deathZ;slot.stained=false;
     const targetFlight=(ENEMY_DEATH_TIMING[role].totalMs-BLOOD_RELEASE_MS[role]-BLOOD_CONTACT_FADE_MS-15)/1000;
     for(let piece=0;piece<activeDropletCount(role,slot.variant);piece++){
-      writeBloodFlight(role,slot.variant,piece,bodyWorld,slot.gravity,this.flight,slot.jitter);
+      writeBloodFlight(role,slot.variant,piece,slot.matrix,slot.gravity,this.flight,slot.jitter);
       slot.gravity=Math.max(slot.gravity,2*(Math.max(0,this.flight[1]-this.flight[3])+this.flight[4]*targetFlight)/(targetFlight*targetFlight));
     }
     slot.contactAgeMs=Infinity;slot.endAgeMs=0;
     const release=BLOOD_RELEASE_MS[role];
     for(let piece=0;piece<activeDropletCount(role,slot.variant);piece++){
-      writeBloodFlight(role,slot.variant,piece,bodyWorld,slot.gravity,this.flight,slot.jitter);
+      writeBloodFlight(role,slot.variant,piece,slot.matrix,slot.gravity,this.flight,slot.jitter);
       const contact=release+this.flight[5]*1000;
       if(piece<2&&contact<slot.contactAgeMs){slot.contactAgeMs=contact;const kick=bloodPieceKick(slot.variant,piece);slot.stainX=deathX+kick[0]*.025;slot.stainZ=deathZ+kick[2]*.025;}
       slot.endAgeMs=Math.max(slot.endAgeMs,contact+BLOOD_CONTACT_FADE_MS);
@@ -147,7 +155,8 @@ objectNormal=normalSide*normal.x+normalDirection*normal.y+normalDepth*normal.z;`
       const batch=(layer===0?this.batches:this.ribbons).get(slot.role)!;
       if(batch===this.ribbons.get(slot.role)&&age>=timing.breakupStartMs+RIBBON_LIFETIME_MS[slot.role]+RIBBON_DELAY_MS[slot.role])continue;
       const index=batch.count++;
-      batch.mesh.setMatrixAt(index,slot.matrix);batch.variant.setX(index,slot.variant);batch.jitter.setX(index,slot.jitter);
+      if(layer===1)writeLethalRecoil(this.ribbonWorld,slot.captured,age,slot.role,slot.directionX,slot.directionZ);
+      batch.mesh.setMatrixAt(index,layer===1?this.ribbonWorld:slot.matrix);batch.variant.setX(index,slot.variant);batch.jitter.setX(index,slot.jitter);
       batch.age.setX(index,age/1000);batch.gravity.setX(index,slot.gravity);
       }
     }

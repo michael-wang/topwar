@@ -1,3 +1,4 @@
+import { writeLethalRecoil } from '../src/rendering/enemies/EnemyLethalRecoil';
 import { playerFamily, enemyFamilies, bossFamily } from './characterModel';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
@@ -188,7 +189,7 @@ describe('Modern Toy Soldier presentation', () => {
     renderer.dispose();
   });
 
-  it('grows crowd capacity, flashes gear, and freezes grunts through blood, gradual pale and shared fade', () => {
+  it('grows crowd capacity, flashes gear, and captures grunts through recoil, blood, gradual pale and shared fade', () => {
     const scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));
@@ -212,9 +213,11 @@ describe('Modern Toy Soldier presentation', () => {
     expect(plantedY).toBeLessThan(.06);
     const frozen=death.matrix.clone();
     renderer.update(damaged.slice(1), 150);
-    expect(death.visible).toBe(true);expect(death.matrix.equals(frozen)).toBe(true);
+    expect(death.visible).toBe(true);const expected=new THREE.Matrix4();
+    writeLethalRecoil(expected,frozen,50,'grunt');expect(death.matrix.equals(expected)).toBe(true);
     expect(((death.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).opacity).toBe(1);
-    renderer.update(damaged.slice(1), 280);expect(death.visible).toBe(true);expect(death.matrix.equals(frozen)).toBe(true);
+    renderer.update(damaged.slice(1), 280);expect(death.visible).toBe(true);
+    writeLethalRecoil(expected,frozen,180,'grunt');expect(death.matrix.equals(expected)).toBe(true);
     expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(false);
     renderer.update(damaged.slice(1), 620);expect(death.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
     renderer.reset();

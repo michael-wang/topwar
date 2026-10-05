@@ -299,14 +299,18 @@ transition reaches warm neutral #B9BEBA in 130 / 185 / 290 ms for Grunt / Heavy 
 Giant, overlapping the reaction and completing before substantial breakup. This changes lit albedo, with no
 emissive flash or other death color state.
 Capture the exact last rendered pose/root, including crowd support shift, impact
-compression, helmet lag and Giant coupled grip-hand/maul. Roots stay pinned;
-two baked reaction poses show a sink/kneel with raised hands before the hold.
+compression, helmet lag and Giant coupled grip-hand/maul. A presentation-only
+low-foot-pivot recoil layers over the two baked sink/kneel/hands-up poses.
+The away direction uses captured enemy minus Player position, with defense +Z
+as fallback. Root kick reaches 0.19 / 0.15 / 0.10 units; backward tilt reaches
+32° / 26° / 16° at 160 / 280 / 550 ms, then holds through breakup and fade.
+No simulation position changes, spring return, physics or ground landing.
 No forward fall, rise, shrink, flying body fragments, grounded body debris or crash dust.
 
-Grunt freezes for 35 ms, reaches its final reaction at 130 ms: upper mass sinks
+Grunt preserves the captured local gait for 35 ms, reaches its final reaction at 130 ms: upper mass sinks
 0.09 authored units, hands rise 0.25, shoes widen 0.03 per side, torso tilt 6.3°.
-Heavy freezes for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
-widening, tilt 5.2°. Giant freezes for 180 ms and settles at 650 ms: 0.12 sink,
+Heavy preserves local gait for 70 ms, settles at 260 ms: 0.11 sink, 0.18 fist lift, 0.035 shoe
+widening, tilt 5.2°. Giant preserves local gait for 180 ms and settles at 650 ms: 0.12 sink,
 0.24 offhand lift, small coherent maul lift/cant. No live crowd draw or skeleton
 is added.
 
@@ -343,8 +347,10 @@ Heavy and Giant each reserve two hero roots inside the player-facing inner
 torso shell. Their local +Z launch bias (world -Z after defense facing) is
 32% / 38%, with the rest lateral/upward; other ribbons retain varied depth.
 Hero extension is 15% / 20% faster, with unchanged lifetimes and geometry.
-Ribbon activation remains 130 / 260 / 650 ms; droplet release/contact clocks
-remain unchanged, so the ribbon-to-droplet handoff stays coherent. Normal depth
+Ribbon activation remains 130 / 260 / 650 ms. Ribbons inherit the current
+recoiled root; droplets detach from that same transform at their existing
+190 / 380 / 890 ms release clocks. Analytic contact uses the tipped launch
+space, keeping the ribbon-to-droplet handoff spatially coherent. Normal depth
 testing is retained; visibility comes from the opening shell and real travel,
 never a billboard, forced layer or disabled depth test.
 The embedded root stays inside the body while length shoots outward, width opens,
