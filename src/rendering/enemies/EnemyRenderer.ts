@@ -40,16 +40,14 @@ interface DeathVisual {
   frozenRoot: THREE.Matrix4;
   recoilDirection: THREE.Vector2;
   variant:number;
-  id: number;
   gearFreeze: readonly [THREE.Matrix4, THREE.Matrix4];
   parts: CharacterParts;
-  scale: THREE.Vector3;
   group: THREE.Group;
   bodyMaterial: THREE.MeshStandardMaterial;
   gearMaterial: THREE.MeshStandardMaterial;
   startedAtMs: number;
   heavy: boolean;
-  role: EnemyDeathRole;
+  role: 'grunt' | 'heavy';
 }
 
 interface ContactVisual {
@@ -135,7 +133,8 @@ export class EnemyRenderer {
   private readonly blood: IntegratedDeathBlood;
   private readonly hitBlood: BloodSplat;
   private readonly hitImpulse = new EnemyHitImpulse();
-  private readonly reactionMatrices = new Map<string, readonly [THREE.Matrix4, THREE.Matrix4]>();
+  // Grunt retains its captured pose; Giant owns its matrices in GiantRenderer.
+  private readonly heavyReactionMatrices?: readonly [THREE.Matrix4, THREE.Matrix4];
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
@@ -146,9 +145,9 @@ export class EnemyRenderer {
   private readonly giantBarFillMaterial = new THREE.SpriteMaterial({ map: this.barFillTexture, color: ART.enemyHealth.giant, depthTest: false, toneMapped: false });
   constructor(private readonly scene: THREE.Scene,
     private readonly families: Pick<CharacterVisualFamilies, 'grunt' | 'heavy' | 'giant'>) {
-    for (const family of [families.grunt, families.heavy, families.giant]) if (family.lethalReaction) {
-      const { sink, tilt, compression } = family.lethalReaction;
-      this.reactionMatrices.set(family.role, [lethalUpperMatrix(.5, sink, tilt, compression), lethalUpperMatrix(1, sink, tilt, compression)]);
+    if (families.heavy.lethalReaction) {
+      const { sink, tilt, compression } = families.heavy.lethalReaction;
+      this.heavyReactionMatrices = [lethalUpperMatrix(.5, sink, tilt, compression), lethalUpperMatrix(1, sink, tilt, compression)];
     }
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
@@ -173,7 +172,7 @@ export class EnemyRenderer {
       return model.geometry.boundingBox!.max.y;
     }));
     if (bodyModel.material instanceof THREE.MeshStandardMaterial) prepareCrowdMaterial(bodyModel.material, family.presentation, 'body');
-    if (!(family.death.body.material instanceof THREE.MeshStandardMaterial)) throw new Error('Gray death body needs a standard material');
+    if (!(family.death.body.material instanceof THREE.MeshStandardMaterial)) throw new Error('Crowd death source needs a standard material');
     prepareCrowdMaterial(family.death.body.material, family.presentation, 'death');
     const helmetMaterial = prepareCrowdMaterial(source.clone(), family.presentation);
     helmetMaterial.color.set('white');
@@ -557,9 +556,9 @@ export class EnemyRenderer {
       this.hitBlood.spawnStyled(enemy.id, GRUNT_LETHAL_CONTACT, nowMs, this.feedbackOrigin,
         adaptation, lethalContactOwner(enemy.id), { ...variation, localAnchor: undefined });
     }
-    // Blood origins are authored in the final assembly's already-reacted local
-    // coordinates. Applying the upper-mass reaction again would bury the red
-    // masses below the actual torso seams.
+    // Role-local blood anchors already describe the accepted splash space.
+    // Applying the upper-mass reaction again would bury threat blood below
+    // the torso seams; Grunt blood stays independent of its intact body lift.
     writeLethalDirection(this.feedbackDirection, this.feedbackMatrix, attackerX, attackerZ);
     this.blood.spawn(enemy.id, role, nowMs, this.feedbackMatrix, frozen.position.x, frozen.position.z,visualSeed, this.feedbackDirection.x, this.feedbackDirection.y);
   }
@@ -583,7 +582,7 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0,id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
+      this.deathVisuals.push({ frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, heavy: false, role });
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number, attackerX?: number, attackerZ?: number): THREE.Group | undefined {
@@ -612,10 +611,9 @@ export class EnemyRenderer {
       visual.parts = parts;
     }
     visual.startedAtMs = nowMs;
-    visual.id = enemy.id;visual.variant=variant;
+    visual.variant=variant;
     visual.role = role;
     visual.heavy = enemy.archetype === 'heavy';
-    setEnemyScale(visual.scale, enemy, presentation.scaleY);
     // Keep depth writes during the intact fade so a hollow helmet shell
     // preserves its exact opaque silhouette instead of showing its inner faces.
     visual.bodyMaterial.transparent = visual.gearMaterial.transparent = false;
@@ -633,7 +631,6 @@ export class EnemyRenderer {
     rendered.batch.bodyMeshes[rendered.frame].getMatrixAt(rendered.bodyIndex, root.matrix);
     root.matrix.decompose(root.position, root.quaternion, root.scale);
     root.matrixWorldNeedsUpdate = true;
-    visual.scale.copy(root.scale);
     this.inverseFrozen.copy(root.matrix).invert();
     const body = root.children[0] as THREE.Mesh;
     body.geometry = rendered.batch.bodyMeshes[rendered.frame].geometry;
@@ -680,7 +677,7 @@ export class EnemyRenderer {
         (visual.group.children[0] as THREE.Mesh).geometry = (stage === 1 ? reaction.transition : reaction.final).geometry;
         for (let index = 1; index <= 2; index++) {
           const part = visual.group.children[index];
-          part.matrix.copy(visual.gearFreeze[index - 1]).premultiply(this.reactionMatrices.get(visual.role)![stage - 1]);
+          part.matrix.copy(visual.gearFreeze[index - 1]).premultiply(this.heavyReactionMatrices![stage - 1]);
           part.matrixWorldNeedsUpdate = true;
         }
       }

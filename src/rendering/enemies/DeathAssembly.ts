@@ -1,9 +1,7 @@
 import * as THREE from 'three';
-import { ENEMY_DEATH_TIMING, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
+import type { EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 
-export const DEATH_VARIANTS = ['lateral', 'upper-lower', 'diagonal'] as const;
 export const DEATH_PIECE_COUNTS = { heavy: 10, giant: 11 } as const;
-export const BODY_SEPARATION = { heavy: ENEMY_DEATH_TIMING.heavy.breakupDistance, giant: ENEMY_DEATH_TIMING.giant.breakupDistance } as const;
 export const deathVariant = (id: number): number => (Math.imul(id + 1, 1597334677) >>> 0) % 3;
 const DIRECTIONS = {
   heavy: [[.35,.8,.2],[-.3,.35,-.1],[.9,.35,.12],[-.8,-.5,-.1],[-.9,.3,.1],[.9,.3,.1],[-.8,-.2,.3],[.8,-.2,.3],[-.5,-.3,.2],[.5,-.3,.2]],

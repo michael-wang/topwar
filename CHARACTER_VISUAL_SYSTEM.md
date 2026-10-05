@@ -1,5 +1,63 @@
 # TopWar Character Visual System
 
+## CURRENT SHIPPING CHARACTER / COMBAT VISUAL SYSTEM
+
+This section is authoritative. The implementation/reference notes below retain
+useful phase history; their intermediate values do not override this contract.
+
+**Style:** Rounded Toy Soldiers with matte, broad authored colors and structured
+functional gear. Player, Grunt, Heavy and Giant are procedural runtime families;
+Boss remains legacy/deferred. No anatomy simulation or per-crowd skeletons.
+
+**Player:** rounded blue defender with attached Rifle, belt and hip pouch. P1
+uses Rifle stages I/II/III at levels 1/2/3; levels 4/5 grant one soldier each.
+The HUD shows cartridge stages at levels 1–3, permanent squad stages at 4–5.
+Casualties keep the intact soldier/weapon through blood, grounded fall and fade,
+leaving a persistent stain. This document does not own progression tuning.
+
+**Grunt:** rounded light infantry with belt/canteen. Death captures the exact
+last rendered pose: short contact blood + smooth pale → intact vertical lift →
+fade, with fluid blood and stain at the original lethal location. Pale completes
+at 95 ms; lift is 0.26 units over 50–350 ms; fade is 140–520 ms. No body reaction
+pose, rotation, decomposition, shrink or readability echo. Its separate accepted
+blood-space transform must not be mistaken for body topple.
+
+**Heavy:** structured cylindrical blocker with diagonal harness and two pouches.
+Surviving hits use small damage-scaled blood and translational knockback. Death
+is downward collapse → 165 ms low-pose hold → breakup + fluid blood → fade.
+Collapse is 80–350 ms, 0.26 units/29° with 10% upper compression and dropped
+fists; breakup starts at 515 ms. Pale completes at 185 ms; fade is 650–1100 ms.
+
+**Giant:** approximately three-head major threat, coupled grip/maul and one
+satchel. Surviving-hit blood reflects damage/max HP. Death is massive collapse
+→ maul settle + small sand dust → 300 ms impact hold → breakup + long fluid
+blood payoff → fade. Collapse is 150–750 ms, 0.40 units/20° with 7% compression;
+breakup starts at 1050 ms. Pale completes at 290 ms; fade is 1550–2600 ms.
+Maul/grip remain one assembly. Dust is four puffs/400 ms, bounded to 12 points.
+Threat weight comes from downward settling/timing, with no root depth retreat.
+
+**Blood:** surviving hits are 135 ms graphic impacts with four masks and authored
+body anchors; render-only knockback is independent of rate-limited emphasis.
+Lethal blood is integrated, depth-tested world-space fluid ribbons and rounded
+ballistic droplets, with six seeded compositions. Analytic droplet contact
+activates a flat persistent ground mask. Base stain diameters are 0.34/0.64/0.95
+for Grunt/Heavy/Giant, with bounded mask/rotation/aspect/tone variation and 1024
+slots. Surviving hits create no stains. Retry/reset/mode changes clear all effects.
+
+Role asymmetry is intentional: mass enemies prioritize readable, short cleanup;
+priority threats retain physical death spectacle. Renderer resources are bounded
+and disposable; simulation remains authoritative. Enemy VFX Lab is development
+presentation QA, documented in [scripts/qa/README.md](scripts/qa/README.md).
+Coastal art is owned by [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) and
+[COASTAL_GREEK_OBJECT_LANGUAGE.md](COASTAL_GREEK_OBJECT_LANGUAGE.md).
+
+## Historical implementation notes
+
+The following R1/R2/R4/R5 and V2 notes record retained construction details and
+review history. Superseded targets/evidence paths are historical, not new work
+requests. Current shipping behavior is summarized above; the detailed V2.7.1
+section records the accepted death implementation.
+
 ## Canonical direction — Rounded Toy Soldiers
 
 R1 supersedes incremental primitive/faceted character-shape polish. Characters
@@ -91,7 +149,7 @@ chest plate or collar. One broad flat waist belt and one structured canvas satch
 the maul leave the torso uninterrupted. Hands are enormous spheres,
 feet are scaled soft toy shoes. The maul head is a rounded drum/capsule, not a
 sharp cuboid or spiked mace. Preserve the 850 ms stepping and delayed weapon
-inertia, reveal/haze, weighty surviving hits and the unified lethal timeline.
+inertia, reveal/haze, weighty surviving hits and the role-specific lethal timeline.
 
 Giant HP is a dedicated major-threat bar. Explicit width **and height** must
 produce an outer ratio around 5.5–6.5:1; do not flatten a normal bar with extreme
@@ -136,14 +194,14 @@ HP, targeting, movement speed, collision, damage, XP, progression, population,
 reinforcement and serialized state remain simulation truth. Visual metadata
 contains only geometry, motion strategy, materials and presentation anchors.
 
-## Review workflow and current shipping
+## Historical review workflow and retained foundation
 
 Visual/performance evidence is generated locally under ignored `artifacts/`.
 Historical phase paths below describe evidence recoverable from Git history,
 not shipping dependencies. Current correctness tests remain in `tests/` and
 reusable live/production checks in `scripts/qa/`.
 
-**CURRENT SHIPPING:**
+**Retained family foundation** (current combat contracts are above):
 
 - Player = R1 rounded toy base + R2 combat identity.
 - Grunt = R1 rounded toy base + R2 combat identity.
@@ -281,7 +339,7 @@ across impacts; existing pooled spark materials remain. Heavy retains its
 stronger 0.72 core wash and four-spark response.
 
 Ordinary surviving feedback remains independently controlled from lethal
-presentation. Lethal pieces smoothly become pale, following the unified
+presentation. Lethal pieces smoothly become pale, following the role-specific
 timeline below. Reveal, surviving-hit impulse,
 compression and the R1 Giant HP bar remain unchanged.
 
@@ -346,10 +404,10 @@ is added.
 | Heavy | 10 / 6–8 | 515 ms | 900 ms | 650–1100 ms | 1100 ms |
 | Giant | 11 / 8–10 | 1050 ms | 2050 ms | 1550–2600 ms | 2600 ms |
 
-The final reaction geometry supplies the exact starting silhouette. Helmet,
+For Heavy/Giant, the final reaction geometry supplies the breakup silhouette. Helmet,
 head, torso bands, hands, shoes and structured equipment are authored logical
-pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
-patterns provide lateral, upper/lower and diagonal separation outside the main
+pieces; every vertex in a piece shares a rigid displacement. Three rigid
+patterns, selected by the visual composition, provide lateral, upper/lower and diagonal separation outside the main
 Heavy/Giant torso bands, which open oppositely sideways in every composition.
 Tagged transition poses introduce a narrow seam over 515–585 ms / 1050–1150 ms
 for Heavy/Giant after the settling hold, reaching only 28% of the original separation cap before the
@@ -498,7 +556,7 @@ spheres. Body and flap are merged before each reference/run pose is merged;
 no new per-Heavy draw/material or Giant draw is introduced. Role ownership,
 hit/contact/death geometry selection, 650/850 ms gait, shoe motion, surviving-hit
 styles and Giant HP dimensions remain unchanged. Current lethal clocks are
-recorded in the unified death section above.
+recorded in the role-specific death section above.
 Evidence belongs in `artifacts/structured-toy-r4/`; stop for human review.
 
 ## R5 — Giant hierarchy and presentation correction

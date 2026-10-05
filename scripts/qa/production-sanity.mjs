@@ -3,9 +3,13 @@ import { preview } from 'vite';
 // Uses the existing QA browser runtime; no shipping dependency.
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
   'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
+const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
+  .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
+if (['Enemy VFX Lab', 'enemy-vfx-lab'].some(marker => shippingJs.includes(marker)))
+  throw Error('Development VFX Lab controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={};
@@ -19,7 +23,8 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.waitForTimeout(250);
  const actual=await page.locator('.xp-level-number').textContent();
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}.png`});
- results[query||'default']={level:Number(actual),expected:level,errors};if(Number(actual)!==level||errors.length)throw Error(JSON.stringify(results));await page.close();
+ const labControls=await page.locator('.enemy-vfx-lab').count();
+ results[query||'default']={level:Number(actual),expected:level,labControls,errors};if(Number(actual)!==level||labControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
 writeFileSync(`${out}/production-sanity.json`,JSON.stringify(results,null,2));
 } finally {await browser.close();await new Promise(resolve=>server.httpServer.close(resolve));}

@@ -7,6 +7,8 @@ import type { EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 // hits keep their separate translational knockback. Threat mass sinks vertically;
 // shaders counter that drop for shoe pieces so their soles stay at the front.
 export const LETHAL_RECOIL = {
+  // Active Grunt BLOOD-space policy only. Its intact body uses GruntDeathBody;
+  // removing this entry would change the accepted ribbon/droplet trajectories.
   grunt: { distance: 0, angleDegrees: 32, peakMs: 160 },
   heavy: { distance: 0, angleDegrees: THREAT_DEATH_COLLAPSE.heavy.angleDegrees, peakMs: THREAT_DEATH_COLLAPSE.heavy.peakMs },
   giant: { distance: 0, angleDegrees: THREAT_DEATH_COLLAPSE.giant.angleDegrees, peakMs: THREAT_DEATH_COLLAPSE.giant.peakMs },

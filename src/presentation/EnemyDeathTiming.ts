@@ -7,6 +7,7 @@ export const ENEMY_DEATH_TIMING = {
   giant: { breakupEndMs: 2050, breakupStartMs: 1050, breakupDistance: .24, fadeStartMs: 1550, totalMs: 2600, stainDiameter: .95 },
 } as const;
 export type EnemyDeathRole = keyof typeof ENEMY_DEATH_TIMING;
+// Physical breakup is a threat-only contract. Grunt uses GruntDeathBody.
 export type EnemyDeathTiming = typeof ENEMY_DEATH_TIMING['heavy' | 'giant'];
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 const smooth = (value: number) => { const p = clamp(value); return p * p * (3 - 2 * p); };
@@ -36,7 +37,7 @@ export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming) {
     opacity };
 }
 
-// Freeze first, then two deliberately simple authored sink/hands-up silhouettes.
+// Threats retain a short captured pose, then two authored collapse silhouettes.
 export const ENEMY_REACTION_TIMING = {
   heavy: { startMs: 70, endMs: 260 },
   giant: { startMs: 180, endMs: 650 },

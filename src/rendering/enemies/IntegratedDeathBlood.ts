@@ -126,7 +126,8 @@ objectNormal=normalSide*normal.x+normalDirection*normal.y+normalDepth*normal.z;`
     let index=this.cursor;
     for(let n=0;n<DEATH_BLOOD_CAPACITY;n++){const candidate=(this.cursor+n)%DEATH_BLOOD_CAPACITY,slot=this.slots[candidate];if(nowMs>=slot.startedAt+ENEMY_DEATH_TIMING[slot.role].totalMs){index=candidate;break;}}
     const slot=this.slots[index];slot.id=id;slot.role=role;slot.startedAt=nowMs;slot.captured.copy(bodyWorld);slot.directionX=directionX;slot.directionZ=directionZ;
-    // Droplets detach after recoil has peaked. Their launch transform is captured
+    // Droplets detach at the role release clock, including during threat collapse.
+    // Their launch transform is captured
     // analytically, so subsequent body updates never drag ballistic blood.
     writeLethalRecoil(slot.matrix,slot.captured,BLOOD_RELEASE_MS[role],role,directionX,directionZ);
     slot.visualSeed=visualSeed;slot.jitter=((visualSeed>>>3)%997)/997;slot.variant=deathComposition(visualSeed);this.cursor=(index+1)%DEATH_BLOOD_CAPACITY;

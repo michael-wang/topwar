@@ -29,13 +29,15 @@ export interface LethalReaction {
 }
 
 export interface CrowdVisualFamily<R extends 'grunt' | 'heavy' = 'grunt' | 'heavy'> extends CharacterVisualFamily<R> {
-  readonly deathAssembly?: { readonly body: THREE.BufferGeometry; readonly helmet: THREE.BufferGeometry; readonly pieceCount: number };
+  readonly deathAssembly?: R extends 'heavy'
+    ? { readonly body: THREE.BufferGeometry; readonly helmet: THREE.BufferGeometry; readonly pieceCount: number } : never;
   readonly presentation: CrowdPresentation;
   readonly runFrames: readonly CharacterModel[];
   readonly gaitCycleMs: number;
   // Reference feedback parts are independent of the active locomotion pose.
   readonly death: CharacterParts;
-  readonly lethalReaction?: LethalReaction;
+  // Only Heavy has authored reaction poses; Grunt death captures the living pose.
+  readonly lethalReaction?: R extends 'heavy' ? LethalReaction : never;
   readonly contact: CharacterParts;
 }
 
