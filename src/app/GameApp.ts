@@ -73,6 +73,9 @@ export class GameApp {
   private fatalPresentationUntilMs = -Infinity;
   private paused = false;
   private running = false;
+  private startup: 'awaiting-start' | 'activating' | 'started' = 'awaiting-start';
+  private startGeneration = 0;
+  private consumeStartClick = false;
   private disposed = false;
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
@@ -94,7 +97,7 @@ export class GameApp {
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
     this.renderer = new GameRenderer(viewport, assets);
-    this.audio = new GameAudio(viewport);
+    this.audio = new GameAudio();
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
@@ -144,8 +147,10 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
-    if (this.laneInput) this.laneInput.start();
-    else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput.start(); }
+    if (this.startup === 'started') this.startInputs();
+    this.viewport.addEventListener?.('pointerdown', this.onStartPointerDown, true);
+    this.viewport.addEventListener?.('click', this.onStartClick, true);
+    window.addEventListener?.('keydown', this.onStartKeyDown, true);
     window.addEventListener?.('keydown', this.onPauseKeyDown);
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
@@ -154,6 +159,11 @@ export class GameApp {
     if (!this.running) return;
 
     this.running = false;
+    this.startGeneration++;
+    if (this.startup === 'activating') this.startup = 'awaiting-start';
+    this.viewport.removeEventListener?.('pointerdown', this.onStartPointerDown, true);
+    this.viewport.removeEventListener?.('click', this.onStartClick, true);
+    window.removeEventListener?.('keydown', this.onStartKeyDown, true);
     if (this.frameId !== null) cancelAnimationFrame(this.frameId);
     this.frameId = null;
     this.previousFrameTimestampMs = null;
@@ -209,7 +219,7 @@ export class GameApp {
     this.dragStartPlayerX = this.targetX;
     this.paused = false;
     this.viewport.classList?.remove('game-paused');
-    if (this.running) {
+    if (this.running && this.startup === 'started') {
       if (this.laneInput) this.laneInput.start();
       else {
         this.dragInput.start();
@@ -262,7 +272,58 @@ export class GameApp {
     return this.reviewThreats ? createThreatReview(options, this.runtimeTuning.fireRate) : new Simulation(options);
   }
 
+  private startInputs(): void {
+    if (this.laneInput) this.laneInput.start();
+    else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput.start(); }
+  }
+
+  private async beginGameplay(): Promise<void> {
+    if (!this.running || this.startup !== 'awaiting-start') return;
+    const generation = this.startGeneration;
+    this.startup = 'activating';
+    try { await this.audio.activate(); } catch { /* Optional audio cannot block play. */ }
+    if (!this.running || this.disposed || generation !== this.startGeneration) return;
+    this.fixedStepLoop.reset();
+    this.previousFrameTimestampMs = null;
+    this.presentationMs = 0;
+    this.audio.resetObservation();
+    this.startup = 'started';
+    this.startInputs();
+  }
+
+  private readonly onStartPointerDown = (event: PointerEvent): void => {
+    if (this.startup === 'started') {
+      if (this.audio.needsResume) void this.audio.activate();
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.consumeStartClick = true;
+    void this.beginGameplay();
+  };
+
+  private readonly onStartClick = (event: MouseEvent): void => {
+    if (this.startup === 'started' && !this.consumeStartClick) return;
+    this.consumeStartClick = false;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    // Supports assistive-technology button activation without a pointerdown.
+    void this.beginGameplay();
+  };
+
+  private readonly onStartKeyDown = (event: KeyboardEvent): void => {
+    if (this.startup === 'started') {
+      if (!event.repeat && this.audio.needsResume) void this.audio.activate();
+      return;
+    }
+    event.stopImmediatePropagation();
+    if (event.key !== 'Enter' && ![' ', 'Space', 'Spacebar'].includes(event.key)) return;
+    event.preventDefault();
+    if (!event.repeat) void this.beginGameplay();
+  };
+
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
+    if (this.startup !== 'started') return;
     const key = event.key.toLowerCase();
     if (key === 'escape') {
       if (!event.repeat) {
@@ -284,7 +345,7 @@ export class GameApp {
   }
 
   private togglePaused(): void {
-    if (!this.running) return;
+    if (!this.running || this.startup !== 'started') return;
     this.paused = !this.paused;
     this.viewport.classList?.toggle('game-paused', this.paused);
     this.previousFrameTimestampMs = null;
@@ -306,6 +367,20 @@ export class GameApp {
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
     try {
+      if (this.startup !== 'started') {
+        const state = this.simulation.getFrameState();
+        if (state.progression && state.catharsis)
+          this.xpHud?.update(state.progression, state.catharsis.balance.progression, 0);
+        this.renderer.render(projectRenderState(state, {
+          formationSpacing: this.config.player.formationSpacing,
+          trackHalfWidth: this.config.track.halfWidth,
+          defenseLineOffset: this.config.track.defenseLineOffset,
+          bossVisualScale: this.config.bosses.basic.visualScale,
+          catharsis: state.catharsis,
+        }), 0);
+        this.frameId = requestAnimationFrame(this.renderFrame);
+        return;
+      }
       const perf = this.perf;
       perf?.beginFrame();
       const simStartedMs = perf ? performance.now() : 0;

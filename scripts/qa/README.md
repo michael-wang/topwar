@@ -1,5 +1,16 @@
 # Browser sanity
 
+## Intentional web audio start
+
+Web builds require one real user activation before audible gameplay because of
+browser audio policy. TopWar holds simulation and presentation at time zero until
+a viewport tap/click or Enter/Space activates audio. Gameplay then starts even if
+audio is unavailable or denied; a pending browser resume is bounded to one second.
+Retry in the same page session restarts immediately without another start gesture.
+After backgrounding, a suspended context is resumed on the next real gesture;
+this does not reset gameplay/music clocks. Browser permission to resume remains
+outside the app's control. A page reload requires a new start gesture.
+
 Run from the repository root with the existing Playwright/Chrome QA runtime:
 
 ```sh

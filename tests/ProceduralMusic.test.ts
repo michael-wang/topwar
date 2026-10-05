@@ -203,18 +203,17 @@ describe('original procedural battlefield composition', () => {
     expect(oscillators.every((oscillator) => oscillator.stop.mock.calls.length > 0)).toBe(true);
   });
 
-  it('creates music only after unlock and shares GameAudio’s existing master bus', async () => {
+  it('creates music only after explicit activation and shares GameAudio’s existing master bus', async () => {
     const { context, gains, oscillators } = audioHarness();
     const constructor = vi.fn(function () { return context; });
     vi.stubGlobal('AudioContext', constructor);
     try {
       const viewport = new EventTarget();
       const keys = new EventTarget();
-      const audio = new GameAudio(viewport as HTMLElement, keys as Window);
+      const audio = new GameAudio();
       audio.updateMusic(0, normal);
       expect(constructor).not.toHaveBeenCalled();
-      viewport.dispatchEvent(new Event('pointerdown'));
-      await Promise.resolve();
+      expect(await audio.activate()).toBe('running');
       audio.updateMusic(0, normal);
       expect(constructor).toHaveBeenCalledOnce();
       expect(gains[1].connect).toHaveBeenCalledWith(gains[0]);

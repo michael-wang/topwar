@@ -140,6 +140,9 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
   skyFlak: { from: 260, to: 90, seconds: .19, wave: 'triangle', volume: .05 },
 };
 
+export type AudioActivationResult = 'running' | 'unavailable' | 'denied';
+export const AUDIO_ACTIVATION_TIMEOUT_MS = 1000;
+
 export class GameAudio {
   getDebugStats(): { musicVoices: number; sfxSources: number } {
     return { musicVoices: this.music?.activeVoiceCount ?? 0, sfxSources: this.active.size };
@@ -156,9 +159,42 @@ export class GameAudio {
   private unlocked = false;
   private disposed = false;
 
-  constructor(private readonly viewport: HTMLElement, private readonly keyTarget: Window = window) {
-    viewport.addEventListener?.('pointerdown', this.unlock, true);
-    keyTarget.addEventListener?.('keydown', this.unlock);
+  private activation: Promise<AudioActivationResult> | null = null;
+
+  get needsResume(): boolean {
+    return !!this.context && this.context.state === 'suspended';
+  }
+
+  // Called directly within a real app-owned gesture, never from the frame loop.
+  activate(): Promise<AudioActivationResult> {
+    if (this.disposed) return Promise.resolve('unavailable');
+    if (this.unlocked && this.context?.state === 'running') return Promise.resolve('running');
+    if (this.activation) return this.activation;
+    const Constructor = globalThis.AudioContext;
+    if (!Constructor) return Promise.resolve('unavailable');
+    try {
+      this.context ??= new Constructor();
+      const context = this.context;
+      if (!this.master) {
+        this.master = context.createGain();
+        this.master.gain.value = 0.70;
+        this.master.connect(context.destination);
+      }
+      // Some browsers leave resume pending; audio must never trap the ready screen.
+      const resumed = context.resume();
+      this.activation = new Promise<AudioActivationResult>((resolve) => {
+        const timeout = setTimeout(() => resolve('denied'), AUDIO_ACTIVATION_TIMEOUT_MS);
+        void resumed.then(() => {
+          clearTimeout(timeout);
+          if (this.disposed) return resolve('unavailable');
+          this.unlocked = context.state === 'running';
+          resolve(this.unlocked ? 'running' : 'denied');
+        }, () => { clearTimeout(timeout); resolve('denied'); });
+      }).finally(() => { this.activation = null; });
+      return this.activation;
+    } catch {
+      return Promise.resolve('denied');
+    }
   }
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
@@ -278,7 +314,6 @@ export class GameAudio {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.removeUnlockListeners();
     for (const oscillator of this.active) {
       try { oscillator.stop(); } catch { /* already stopped */ }
       oscillator.disconnect();
@@ -307,29 +342,4 @@ export class GameAudio {
     return buffer;
   }
 
-  private readonly unlock = (): void => {
-    if (this.disposed || (this.unlocked && this.context?.state === 'running')) return;
-    const Constructor = globalThis.AudioContext;
-    if (!Constructor) return;
-    try {
-      this.context ??= new Constructor();
-      if (!this.master) {
-        this.master = this.context.createGain();
-        this.master.gain.value = 0.70;
-        this.master.connect(this.context.destination);
-      }
-      void this.context.resume().then(() => {
-        if (this.context?.state === 'running') {
-          this.unlocked = true;
-        }
-      }).catch(() => {});
-    } catch {
-      // Unsupported or denied Web Audio must not interrupt gameplay.
-    }
-  };
-
-  private removeUnlockListeners(): void {
-    this.viewport.removeEventListener?.('pointerdown', this.unlock, true);
-    this.keyTarget.removeEventListener?.('keydown', this.unlock);
-  }
 }

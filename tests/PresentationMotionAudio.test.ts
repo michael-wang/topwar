@@ -200,16 +200,16 @@ describe('audio cue observation and safety', () => {
     const viewport = new EventTarget();
     const keys = new EventTarget();
     const addViewport = vi.spyOn(viewport, 'addEventListener');
-    const audio = new GameAudio(viewport as HTMLElement, keys as Window);
-    expect(addViewport).toHaveBeenCalledWith('pointerdown', expect.any(Function), true);
+    const audio = new GameAudio();
+    expect(addViewport).not.toHaveBeenCalled();
     expect(() => audio.play('reward')).not.toThrow();
     expect(() => viewport.dispatchEvent(new Event('pointerdown'))).not.toThrow();
     expect(() => audio.observe(1, 0, [], [], null)).not.toThrow();
     const removeViewport = vi.spyOn(viewport, 'removeEventListener');
     const removeKeys = vi.spyOn(keys, 'removeEventListener');
     audio.dispose();
-    expect(removeViewport).toHaveBeenCalledWith('pointerdown', expect.any(Function), true);
-    expect(removeKeys).toHaveBeenCalledWith('keydown', expect.any(Function));
+    expect(removeViewport).not.toHaveBeenCalled();
+    expect(removeKeys).not.toHaveBeenCalled();
   });
 
   it('schedules environmental sounds independently of visual impacts and resets safely', () => {
@@ -272,7 +272,7 @@ describe('audio cue observation and safety', () => {
       if (at === flakAt) expect(intervalScheduler.nextFlakAtMs - at)
         .toBeLessThanOrEqual(7000);
     }
-    const audio = new GameAudio(new EventTarget() as HTMLElement, new EventTarget() as Window);
+    const audio = new GameAudio();
     const play = vi.spyOn(audio, 'play');
     const defaultSchedule = new EnvironmentAudioScheduler();
     audio.updateEnvironment(0);
@@ -298,7 +298,7 @@ describe('audio cue observation and safety', () => {
     audio.dispose();
   });
 
-  it('unlocks once, ignores suspension, and keeps its context across observation resets', async () => {
+  it('activates explicitly, tolerates suspension, and keeps its context across observation resets', async () => {
     const viewport = new EventTarget();
     const keys = new EventTarget();
     const starts = vi.fn();
@@ -338,15 +338,13 @@ describe('audio cue observation and safety', () => {
       resume: vi.fn(async () => {}), close: vi.fn(async () => {}) };
     const constructor = vi.fn(function () { return context; });
     vi.stubGlobal('AudioContext', constructor);
-    const audio = new GameAudio(viewport as HTMLElement, keys as Window);
-    viewport.dispatchEvent(new Event('pointerdown'));
-    await Promise.resolve();
+    const audio = new GameAudio();
+    expect(await audio.activate()).toBe('denied');
     expect(gains[0].gain.value).toBe(.70);
     audio.play('reward');
     expect(starts).not.toHaveBeenCalled();
     context.state = 'running';
-    keys.dispatchEvent(new Event('keydown'));
-    await Promise.resolve();
+    expect(await audio.activate()).toBe('running');
     expect(constructor).toHaveBeenCalledTimes(1);
     audio.play('reward');
     expect(starts).toHaveBeenCalledOnce();

@@ -89,7 +89,7 @@ describe('render frame projection', () => {
     Object.freeze(state.squad.rifleCounts);
     const render = projectRenderState(state, projection);
     const viewport = new EventTarget() as HTMLElement;
-    const audio = new GameAudio(viewport, new EventTarget() as Window);
+    const audio = new GameAudio();
     audio.observe(2, 2, state.enemies, state.streamRewards, state.boss, 0, state.projectiles);
     expect(render.enemies).toBe(state.enemies);
     expect(state).toEqual(before);
