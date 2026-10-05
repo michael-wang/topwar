@@ -7,9 +7,9 @@ import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering
 import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 
 function closeMatrix(a: THREE.Matrix4, b: THREE.Matrix4) { a.elements.forEach((v, i) => expect(v).toBeCloseTo(b.elements[i], 5)); }
-it('has role-weighted force, an away direction, a low pivot and a held peak without scale/physics', () => {
+it('has zero lethal retreat, role-weighted topple, an away direction, a low pivot and a held peak without scale/physics', () => {
   const roles = ['grunt', 'heavy', 'giant'] as const;
-  expect(roles.map(r => LETHAL_RECOIL[r].distance)).toEqual([.19, .15, .10]);
+  expect(roles.map(r => LETHAL_RECOIL[r].distance)).toEqual([0, 0, 0]);
   expect(roles.map(r => LETHAL_RECOIL[r].angleDegrees)).toEqual([32, 26, 16]);
   const captured = new THREE.Matrix4().compose(new THREE.Vector3(.5, .01, 8),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(-.12, Math.PI, .04)), new THREE.Vector3(1.4, 1.12, 1.4));
@@ -19,9 +19,9 @@ it('has role-weighted force, an away direction, a low pivot and a held peak with
   for (const role of roles) {
     const matrix = new THREE.Matrix4(); writeLethalRecoil(matrix, captured, 0, role, direction.x, direction.y);
     expect(matrix.equals(captured)).toBe(true);
-    let distance = 0, angle = 0;
+    let angle = 0;
     for (let age = 0; age <= ENEMY_DEATH_TIMING[role].totalMs; age += 10) {
-      const p = lethalRecoilPose(age, role); expect(p.distance).toBeGreaterThanOrEqual(distance); expect(p.angle).toBeGreaterThanOrEqual(angle); distance = p.distance; angle = p.angle;
+      const p = lethalRecoilPose(age, role); expect(p.distance).toBe(0); expect(p.angle).toBeGreaterThanOrEqual(angle); angle = p.angle;
     }
     writeLethalRecoil(matrix, captured, LETHAL_RECOIL[role].peakMs, role, direction.x, direction.y);
     const pivot = new THREE.Vector3(.5, .01 + LETHAL_FOOT_PIVOT_Y, 8), local = pivot.clone().applyMatrix4(captured.clone().invert());
@@ -47,5 +47,20 @@ it('shares the tipped root with body, fluid ribbon and detached ballistic releas
     closeMatrix(slots.find(s => Number.isFinite(s.startedAt))!.matrix, group.matrix);
     expect(enemy).toEqual({ id: 5, archetype: role, tier: 1, hp: 1, x: .4, z: 8, visualScale: 1.8 });
     r.dispose(); Object.values(families).forEach(f => f.dispose()); expect(scene.children).toHaveLength(0);
+  }
+});
+
+it('keeps the front-line foot pivot ahead of the advancing immediate following row', () => {
+  const capture = new THREE.Matrix4().makeTranslation(0, .01, 8);
+  const localFoot = new THREE.Vector3(0, LETHAL_FOOT_PIVOT_Y, 0);
+  const output = new THREE.Matrix4();
+  // QA dense column: nine followers; first only .22 units behind, moving at
+  // the current .25 unit/s Grunt pace. Simulation motion is never rewritten.
+  for (let age = 0; age <= 520; age += 10) {
+    writeLethalRecoil(output, capture, age, 'grunt');
+    const foot = localFoot.clone().applyMatrix4(output);
+    expect(foot.z).toBeCloseTo(8); expect(foot.y).toBeCloseTo(.05);
+    expect(foot.z).toBeLessThan(8.22 - .25 * age / 1000);
+    expect(output.elements[14]).toBeLessThanOrEqual(8);
   }
 });

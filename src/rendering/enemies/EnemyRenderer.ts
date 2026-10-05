@@ -17,6 +17,7 @@ import { HeavyHitFeedback, HEAVY_HIT_FLASH_MS } from './HeavyHitFeedback';
 import * as THREE from 'three';
 import type { EnemyRenderState } from '../RenderState';
 import { BloodSplat, GroundBloodStains, hitBloodAtlas, groundBloodAtlas } from './BloodSplat';
+import { DeathReadEcho } from './DeathReadEcho';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
@@ -35,6 +36,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  echo: boolean; echoFrame: number;
   frozenRoot: THREE.Matrix4;
   recoilDirection: THREE.Vector2;
   variant:number;
@@ -105,6 +107,7 @@ export class EnemyRenderer {
   private readonly heavyBodyColor = new THREE.Color(ART.faction.heavyBody);
   private readonly heavyColor = new THREE.Color(ART.faction.heavy);
   private readonly transform = new THREE.Object3D();
+  private readonly liveIds = new Set<number>();
   private readonly previousEnemies = new Map<number, EnemyRenderState>();
   private readonly flashUntilMs = new Map<number, number>();
   private readonly deathVisuals: DeathVisual[] = [];
@@ -133,6 +136,7 @@ export class EnemyRenderer {
   private readonly hitImpulse = new EnemyHitImpulse();
   private readonly reactionMatrices = new Map<string, readonly [THREE.Matrix4, THREE.Matrix4]>();
   private readonly deathBatches: CrowdDeathBatches;
+  private readonly deathEcho: DeathReadEcho;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
   private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
   private readonly barHitColor = new THREE.Color(ART.enemyHealth.hit);
@@ -146,6 +150,7 @@ export class EnemyRenderer {
       const { sink, tilt } = family.lethalReaction;
       this.reactionMatrices.set(family.role, [lethalUpperMatrix(.5, sink, tilt), lethalUpperMatrix(1, sink, tilt)]);
     }
+    this.deathEcho = new DeathReadEcho(scene, families.grunt);
     const grunt = this.createBatch(families.grunt);
     const heavy = canShareCrowdBatch(families.grunt, families.heavy) ? grunt : this.createBatch(families.heavy);
     this.roleBatches = { grunt, heavy };
@@ -205,7 +210,8 @@ export class EnemyRenderer {
       if (this.sceneMode !== undefined && this.sceneMode !== sceneMode) this.reset();
       this.sceneMode = sceneMode;
     }
-    const currentIds = new Set(enemies.map((enemy) => enemy.id));
+    const currentIds = this.liveIds; currentIds.clear();
+    for (const enemy of enemies) currentIds.add(enemy.id);
     for (const previous of this.previousEnemies.values()) {
       if (!currentIds.has(previous.id)) {
         this.hitBlood.cancel(previous.id);
@@ -391,6 +397,7 @@ export class EnemyRenderer {
   reset(visualSalt=0): void {
     this.deathSequence.reset(visualSalt);
     this.previousEnemies.clear();
+    this.liveIds.clear();
     this.renderedCrowd.clear();
     this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     this.flashUntilMs.clear();
@@ -400,7 +407,7 @@ export class EnemyRenderer {
     for (const bar of this.healthBars) { bar.backing.visible = false; bar.fill.visible = false; }
     this.blood.reset(); this.hitBlood.reset(); this.hitImpulse.reset();
     this.stains.reset();
-    this.deathBatches.reset();
+    this.deathBatches.reset(); this.deathEcho.reset();
     this.heavyHits.reset();
     this.giantRenderers.forEach(renderer => renderer.reset());
   }
@@ -431,7 +438,7 @@ export class EnemyRenderer {
     this.barFrameTexture.dispose(); this.barFillTexture.dispose();
     this.blood.dispose(); this.hitBlood.dispose(); this.hitImpulse.reset();
     this.stains.dispose(); this.hitTexture.dispose(); this.stainTexture.dispose();
-    this.deathBatches.dispose();
+    this.deathBatches.dispose(); this.deathEcho.dispose();
     this.heavyHits.dispose();
     this.giantRenderers.forEach(renderer => renderer.dispose());
     for (const batch of this.batches) batch.helmetMaterial.dispose();
@@ -575,7 +582,7 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0,id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
+      this.deathVisuals.push({ echo: false, echoFrame: 0, frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0,id: -1, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, scale: new THREE.Vector3(), heavy: false, role });
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number, attackerX?: number, attackerZ?: number): THREE.Group | undefined {
@@ -628,6 +635,12 @@ export class EnemyRenderer {
     visual.scale.copy(root.scale);
     this.inverseFrozen.copy(root.matrix).invert();
     const body = root.children[0] as THREE.Mesh;
+    visual.echoFrame = rendered.frame;
+    visual.echo = false;
+    if (visual.role === 'grunt') for (const other of this.previousEnemies.values()) {
+      if (other.id !== enemy.id && this.liveIds.has(other.id) && Math.abs(other.x - enemy.x) < .35 &&
+        other.z > enemy.z && other.z - enemy.z < .65) { visual.echo = true; break; }
+    }
     body.geometry = rendered.batch.bodyMeshes[rendered.frame].geometry;
     body.matrixAutoUpdate = false; body.matrix.identity();
     for (let index = 1; index <= 2; index++) {
@@ -646,13 +659,14 @@ export class EnemyRenderer {
   }
 
   private updateDeaths(nowMs: number): void {
-    this.deathBatches.begin();
+    this.deathBatches.begin(); this.deathEcho.begin();
     for (const visual of this.deathVisuals) {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
       const pose = enemyDeathPose(elapsed, ENEMY_DEATH_TIMING[visual.role]);
       writeLethalRecoil(visual.group.matrix, visual.frozenRoot, elapsed, visual.role, visual.recoilDirection.x, visual.recoilDirection.y);
       visual.group.matrixWorldNeedsUpdate = true;
+      if (visual.echo) this.deathEcho.submit(visual.group.matrix, visual.echoFrame, elapsed);
       const reaction = this.families[visual.role].lethalReaction;
       const stage = enemyReactionStage(elapsed, visual.role);
       if (reaction && stage > 0) {
@@ -672,7 +686,7 @@ export class EnemyRenderer {
         this.deathBatches.submit(visual.group, enemyBodyOpening(elapsed, visual.role, pose.breakup), pose.bodyOpacity, visual.variant, enemyDeathPale(elapsed, visual.role));
       }
     }
-    this.deathBatches.finish();
+    this.deathBatches.finish(); this.deathEcho.finish();
   }
 
   private sameParts(a: CharacterParts, b: CharacterParts): boolean {

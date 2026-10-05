@@ -289,7 +289,7 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (V2.4)
+## Enemy Kill Feedback (V2.5)
 
 Current beachhead enemies use **Lethal Bullet Contact → Small Impact Blood → Backward Recoil / Topple →
 Smooth Pale Transition → Integrated Body Breakup + Fluid Blood → Body Fade →
@@ -303,9 +303,12 @@ Capture the exact last rendered pose/root, including crowd support shift, impact
 compression, helmet lag and Giant coupled grip-hand/maul. A presentation-only
 low-foot-pivot recoil layers over the two baked sink/kneel/hands-up poses.
 The away direction uses captured enemy minus Player position, with defense +Z
-as fallback. Root kick reaches 0.19 / 0.15 / 0.10 units; backward tilt reaches
+as fallback. Lethal root retreat is zero for all roles, keeping the foot pivot at the death
+location instead of sliding behind the following crowd. Backward tilt reaches
 32° / 26° / 16° at 160 / 280 / 550 ms, then holds through breakup and fade.
-No simulation position changes, spring return, physics or ground landing.
+Surviving hit = translational knockback and recovery; lethal hit = readable
+in-place backward topple around the low foot pivot. No simulation position
+changes, spring return, physics or ground landing.
 No forward fall, rise, shrink, flying body fragments, grounded body debris or crash dust.
 
 Grunt preserves the captured local gait for 35 ms, reaches its final reaction at 130 ms: upper mass sinks
@@ -379,6 +382,15 @@ Y=0.032 keeps marks above dry/wet beach overlays. Stains survive until
 Retry/renderer reset/mode change, with oldest-slot reuse only as a safety bound.
 Surviving hits never create stains. No gameplay collision.
 
+In a very tight Grunt column, in-place toppling still allows the next helmet to
+hide the pale death signal. Only a Grunt with a surviving neighbor less than
+0.65 units behind and within 0.35 laterally gets a short pale read echo. One
+48-slot instanced draw reproduces the captured run silhouette at 30% opacity,
+holds to 70 ms and smoothly fades by 100 ms, before breakup. It tests/writes no
+depth and is not a blood card or a long ghost corpse. The main corpse and fluid
+blood retain normal depth behavior and authored fade. Reset disposes/clears the
+bounded fallback; visual selection is deterministic in production too.
+
 Grunt lethal contact adds one 100 ms, single-pulse graphic card in the existing
 128-slot hit pool, at 0.25 reference scale (20–30% of the lethal scale before
 small deterministic variation). Its authored body anchor is transformed by the
@@ -391,8 +403,8 @@ card, preserving their accepted surviving-hit feedback.
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
-Player casualty and Boss remain unchanged. Generated V2.4 evidence is
-local/untracked under `artifacts/v2_4-lethal-impact/`. Development `/` and
+Player casualty and Boss remain unchanged. Generated V2.5 evidence is
+local/untracked under `artifacts/v2_5-death-readability/`. Development `/` and
 `?review=normal` start normal Level 1; explicit `?review=threats` uses P1 Level 5
 with forced threats. Production root is Level 1. Retry preserves the selected mode.
 

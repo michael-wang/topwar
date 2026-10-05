@@ -2,18 +2,18 @@ import * as THREE from 'three';
 import type { EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 
 // Presentation only. Rotation is about a low world-space foot pivot, with no
-// ground collision, arc, scale animation or recovery toward the living pose.
+// root retreat, ground collision, arc, scale animation or recovery. Surviving
+// hits keep their separate translational knockback; lethal feet stay at the front.
 export const LETHAL_RECOIL = {
-  grunt: { distance: .19, angleDegrees: 32, peakMs: 160 },
-  heavy: { distance: .15, angleDegrees: 26, peakMs: 280 },
-  giant: { distance: .10, angleDegrees: 16, peakMs: 550 },
+  grunt: { distance: 0, angleDegrees: 32, peakMs: 160 },
+  heavy: { distance: 0, angleDegrees: 26, peakMs: 280 },
+  giant: { distance: 0, angleDegrees: 16, peakMs: 550 },
 } as const;
 export const LETHAL_FOOT_PIVOT_Y = .04;
 const clamp = (p: number) => Math.max(0, Math.min(1, p));
 export function lethalRecoilPose(ageMs: number, role: EnemyDeathRole) {
   const style = LETHAL_RECOIL[role], p = clamp(ageMs / style.peakMs);
-  const kick = clamp(ageMs / (style.peakMs * .45));
-  return { distance: style.distance * (1 - (1 - kick) ** 3),
+  return { distance: style.distance,
     angle: style.angleDegrees * Math.PI / 180 * (1 - (1 - p) ** 2) };
 }
 export function writeLethalDirection(target: THREE.Vector2, captured: THREE.Matrix4,
