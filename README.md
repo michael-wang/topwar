@@ -12,6 +12,15 @@ npm run typecheck
 npm run build
 ```
 
+Development `/` starts normal Level 1. The right-side Enemy VFX Lab buttons
+restart deterministic center-lane combat fixtures: Grunt (10 enemies at Z8–26,
+Lv1 / one Rifle), Heavy (3 at Z10/15/20, Lv3 / one Rifle), Giant (one at Z14,
+Lv5 / three Rifles). HP, damage and fire rates use current tuning. Clicking
+again or Retry restarts the selected fixture and clears all previous VFX/stains;
+natural wave refill is suppressed by the fixture's validated stream cursor.
+Reload `/` to return to normal play. `?review=threats` remains the separate art
+review opening. The lab controls and fixture code are excluded from production.
+
 ## Publishing
 
 With Pages Source set to GitHub Actions, deployment is **manual only**. Pushing to `main` or pushing a tag does not publish the game. Friends continue to see the last manually published build until another manual deployment succeeds.

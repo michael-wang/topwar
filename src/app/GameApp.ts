@@ -27,6 +27,8 @@ import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
 import { createThreatReview } from './ThreatReview';
+import { createEnemyVfxLab, type EnemyVfxLabRole } from './EnemyVfxLab';
+import { EnemyVfxLabControls } from '../ui/EnemyVfxLabControls';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -74,6 +76,8 @@ export class GameApp {
   private disposed = false;
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
+  private readonly vfxLab: EnemyVfxLabControls | null;
+  private vfxLabRole: EnemyVfxLabRole | null = null;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
@@ -95,6 +99,12 @@ export class GameApp {
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
     this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
+    this.vfxLab = import.meta.env.DEV && this.config.catharsis?.defenseMode
+      ? new EnemyVfxLabControls(viewport, (role) => {
+        this.vfxLabRole = role;
+        this.vfxLab?.setSelected(role);
+        this.retry();
+      }) : null;
     this.tuningPanel = new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
@@ -172,6 +182,7 @@ export class GameApp {
     this.gameOverOverlay.dispose();
     this.tuningPanel.dispose();
     this.hudActions.dispose();
+    this.vfxLab?.dispose();
     this.controlHint.dispose();
     this.pauseOverlay.dispose();
     this.tierHud.dispose();
@@ -216,6 +227,11 @@ export class GameApp {
     this.audio.resetObservation();
     this.xpHud?.reset();
     this.progressionObserver.reset();
+    if (import.meta.env.DEV && this.vfxLabRole && initialState.progression && initialState.catharsis) {
+      // Selecting a QA loadout is initialization, not an earned level-up.
+      this.progressionObserver.observe(initialState.progression.level);
+      this.xpHud?.update(initialState.progression, initialState.catharsis.balance.progression, 0);
+    }
     this.renderer.resetFeedback();
     this.tierHud.setTier(1);
   }
@@ -240,6 +256,8 @@ export class GameApp {
         rifleHigherTierPowerMultiplier: this.runtimeTuning.rifleHigherTierPowerMultiplier },
       rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward,
       bossHpScale: this.runtimeTuning.bossHpScale };
+    if (import.meta.env.DEV && this.vfxLabRole)
+      return createEnemyVfxLab(options, this.runtimeTuning.fireRate, this.vfxLabRole);
     return this.reviewThreats ? createThreatReview(options, this.runtimeTuning.fireRate) : new Simulation(options);
   }
 

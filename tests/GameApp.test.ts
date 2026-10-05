@@ -11,9 +11,18 @@ import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInp
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
 import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
+vi.mock('../src/ui/EnemyVfxLabControls', () => ({ EnemyVfxLabControls: class {
+  constructor(_viewport: unknown, select: unknown) { mock.labConstructed(select); }
+  setSelected() {} dispose() {}
+} }));
+vi.mock('../src/app/EnemyVfxLab', () => ({ createEnemyVfxLab: (...args: unknown[]) => {
+  mock.labFixture(...args); return { getState: mock.getState };
+} }));
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
+  labConstructed: vi.fn(),
+  labFixture: vi.fn(),
   step: vi.fn(),
   setRuntimeBalance: vi.fn(),
   getState: vi.fn((): any => ({
@@ -994,5 +1003,24 @@ it('constructs defense XP presentation without constructing the obsolete lane-nu
   expect(mock.panelAnchor).toHaveBeenCalledWith(viewport);
   expect(mock.laneConstructed).not.toHaveBeenCalled();
   expect(viewport.classList.add).toHaveBeenCalledWith('beachhead-defense');
+  app.dispose();
+});
+
+it('restarts selected lab fixtures and clears renderer feedback on every switch and Retry', () => {
+  createRaf();
+  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+  const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
+  const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+  const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+  const select = mock.labConstructed.mock.lastCall![0] as (role: string) => void;
+  for (const role of ['heavy', 'giant', 'grunt', 'grunt']) {
+    const before = mock.resetFeedback.mock.calls.length;
+    select(role);
+    expect(mock.labFixture.mock.lastCall![2]).toBe(role);
+    expect(mock.resetFeedback.mock.calls.length).toBe(before + 1);
+  }
+  const retry = mock.overlayConstructedWith.mock.lastCall![0] as () => void;
+  retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('grunt');
+  expect(mock.resetFeedback).toHaveBeenCalledTimes(5);
   app.dispose();
 });
