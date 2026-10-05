@@ -307,9 +307,9 @@ is added.
 
 | Role | Logical body / blood pieces | Split begins | Separation complete | Body fade | Total |
 | --- | --- | ---: | ---: | --- | ---: |
-| Grunt | 8 / 4 | 130 ms | 390 ms | 300–520 ms | 520 ms |
-| Heavy | 10 / 5 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
-| Giant | 11 / 7 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
+| Grunt | 8 / 5 | 130 ms | 390 ms | 300–520 ms | 520 ms |
+| Heavy | 10 / 7 | 260 ms | 825 ms | 650–1100 ms | 1100 ms |
+| Giant | 11 / 10 | 650 ms | 1950 ms | 1550–2600 ms | 2600 ms |
 
 The final reaction geometry supplies the exact starting silhouette. Helmet,
 head, torso bands, hands, shoes and structured equipment are authored logical
@@ -326,27 +326,21 @@ into per-geometry instanced batches. Three fixed Giant slots use the same piece
 semantics. Family-owned tagged geometry and renderer-owned material/batch
 resources dispose at their respective ownership boundaries.
 
-Enemy lethal blood uses **3D geometry**, not a camera-facing card. One merged
-batch per active role shares **64 total death slots**. Irregular blobs, flattened
-masses and tapered droplets begin inside/between the torso bands. The same death
-variant controls their internal origin, small static size/orientation variation
-and outward pattern. Blood expansion caps are **0.10 / 0.14 / 0.22** world units.
-The matte palette remains **#751D27 / #9F2734 / #C93443 / #D94A50** throughout;
-body and blood retain separate authored colors. Normal alpha/depth-tested lighting
-keeps these masses spatially integrated rather than drawn over the actor.
+Enemy lethal blood uses **world-space fluid ribbons + small rounded ballistic droplets**,
+not cones or camera-facing lethal cards. Two fixed role draws share 64 total
+preallocated death slots. Each irregular ribbon has six longitudinal sections,
+a thin smooth extrusion and 92 triangles: 2 / 3 / 4 ribbons for Grunt/Heavy/Giant.
+The embedded root stays inside the body while length shoots outward, width opens,
+and the curved, broken edges thin/fade over 150 / 210 / 320 ms. The matte palette
+is #751D27 / #9F2734 / #C93443, with no additive or emissive rendering.
 
-Blood releases at **160 / 330 / 760 ms**, using true initial XYZ velocities,
-then gravity and size-aware analytic contact. Geometry base sizes are enlarged
-**1.9 / 2.05 / 2.2×** relative to V2, with two larger hero lobes and smaller
-secondary pieces. Static ID-selected launch patterns splash left/right and in
-depth; most pieces rise before reaching an apex and falling. X/Z travel follows
-velocity rather than converging toward a ground target. Only blood falls; body
-pieces remain near the defeated silhouette and fade in place. Each blood piece
-fades over **65 ms** at contact. The first major contact activates one stain near
-the death point, growing from 30% to full size over **110 ms**. Stain scale,
-variation, ownership and reset behavior remain unchanged.
-
-Enemy ground stains reuse V1's fuller four-mask atlas in **one draw / 1024 slots**.
+Smaller smooth deformed ovoids (5 / 7 / 10 droplets) detach at
+190 / 380 / 890 ms from the growing tongues. Their XYZ launch directions inherit
+the parent splash before gravity and size-aware analytic contact take over.
+Body pieces retain authored colors and their accepted reaction/breakup clocks.
+Droplets fade over 65 ms at contact. The first major contact activates one stain
+near the death point, growing from 30% to full size over 110 ms.
+Stain scale, variation, ownership and reset behavior remain unchanged.
 Base diameters remain **0.34 / 0.64 / 0.95** for Grunt/Heavy/Giant
 (1 : 1.88 : 2.79). Deterministic variation selects mask, rotation, ±12% size,
 area-preserving aspect 0.85–1.20, opacity 0.50–0.66 and dried-blood tones

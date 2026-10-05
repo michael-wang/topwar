@@ -78,8 +78,8 @@ it('keeps Heavy locomotion underneath additive hits and gives its death a frozen
   renderer.update([],260);expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(frozen)).toBe(true);
   renderer.update([],900);expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(frozen)).toBe(true);
   // The earlier ballistic release now reaches sand before this late fade sample.
-  expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
-  renderer.update([],1300);expect(corpse.visible).toBe(false);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();
+  renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
+  renderer.update([],1300);expect(corpse.visible).toBe(false);renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();
 });
 it('delays the Giant maul independently and keeps the maul/grip assembly intact throughout its lethal freeze', () => {
   const family = createChibiGiantFamily();
