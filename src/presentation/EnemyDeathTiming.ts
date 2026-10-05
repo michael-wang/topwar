@@ -15,6 +15,15 @@ export function enemyDeathPose(ageMs: number, timing: EnemyDeathTiming) {
     bodyOpacity: 1 - smooth((ageMs - timing.fadeStartMs) / (timing.totalMs - timing.fadeStartMs)) };
 }
 
+// Open a narrow seam during the existing transition pose, then let the accepted
+// breakup curve take over. The maximum separation and fade clocks do not change.
+export const ENEMY_SHELL_OPENING = { heavy: { startMs: 150, readyMs: 230 }, giant: { startMs: 400, readyMs: 600 } } as const;
+export function enemyBodyOpening(ageMs: number, role: EnemyDeathRole, breakup: number): number {
+  if (role === 'grunt') return breakup;
+  const opening = ENEMY_SHELL_OPENING[role];
+  return Math.max(breakup, ENEMY_DEATH_TIMING[role].breakupDistance * .28 * smooth((ageMs - opening.startMs) / (opening.readyMs - opening.startMs)));
+}
+
 // Cards remain only for surviving hits and Player casualties.
 export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number }
 export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming) {

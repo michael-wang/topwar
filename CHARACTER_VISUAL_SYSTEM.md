@@ -289,7 +289,7 @@ Evidence and performance comparisons belong in `artifacts/rounded-toy-r2/`,
 including equal-height Grunt/Heavy color/silhouette comparisons and R1/R2
 Giant peak/50 ms/settled impact captures.
 
-## Enemy Kill Feedback (R8)
+## Enemy Kill Feedback (V2.3)
 
 Current beachhead enemies use **Lethal Capture → Immediate Pale Dead State →
 Body Opens → Internal Fluid Blood Splashes Out → Blood Falls → Pale Body Fades →
@@ -318,7 +318,11 @@ is added.
 The final reaction geometry supplies the exact starting silhouette. Helmet,
 head, torso bands, hands, shoes and structured equipment are authored logical
 pieces; every vertex in a piece shares a rigid displacement. Three ID-selected
-patterns provide lateral, upper/lower and diagonal separation. They reconstruct
+patterns provide lateral, upper/lower and diagonal separation outside the main
+Heavy/Giant torso bands, which open oppositely sideways in every composition.
+Tagged transition poses introduce a narrow seam over 150–230 ms / 400–600 ms
+for Heavy/Giant, reaching only 28% of the original separation cap before the
+existing breakup curve takes over. They reconstruct
 the same accepted pose at zero separation. No runtime fracture or independent
 triangle motion is used. World-space separation caps are **0.10 / 0.15 / 0.24**
 units, compensated for role scale. Body, helmet and equipment remain pale through breakup and opacity fade;
@@ -334,6 +338,14 @@ Enemy lethal blood uses **world-space fluid ribbons + small rounded ballistic dr
 not cones or camera-facing lethal cards. Two fixed role draws share 64 total
 preallocated death slots. Each irregular ribbon has six longitudinal sections,
 a thin smooth extrusion and 92 triangles: 2–3 / 3–4 / 4–5 ribbons for Grunt/Heavy/Giant.
+Heavy and Giant each reserve two hero roots inside the player-facing inner
+torso shell. Their local +Z launch bias (world -Z after defense facing) is
+32% / 38%, with the rest lateral/upward; other ribbons retain varied depth.
+Hero extension is 15% / 20% faster, with unchanged lifetimes and geometry.
+Ribbon activation remains 130 / 260 / 650 ms; droplet release/contact clocks
+remain unchanged, so the ribbon-to-droplet handoff stays coherent. Normal depth
+testing is retained; visibility comes from the opening shell and real travel,
+never a billboard, forced layer or disabled depth test.
 The embedded root stays inside the body while length shoots outward, width opens,
 and the curved, broken edges thin/fade over 150 / 210 / 320 ms. The matte palette
 is #751D27 / #9F2734 / #C93443, with no additive or emissive rendering.

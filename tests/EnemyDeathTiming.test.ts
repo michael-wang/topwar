@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { ENEMY_DEATH_TIMING, ENEMY_REACTION_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
-it('preserves authored colors while semantic pieces separate after reaction, fades in place, and retains total role pacing',()=>{
+it('keeps the main separation/fade clocks independent from immediate pale death confirmation',()=>{
  expect(Object.values(ENEMY_DEATH_TIMING).map(t=>t.totalMs)).toEqual([520,1100,2600]);
  for(const [role,timing]of Object.entries(ENEMY_DEATH_TIMING)){
   expect(timing.breakupStartMs).toBeGreaterThanOrEqual(ENEMY_REACTION_TIMING[role as keyof typeof ENEMY_REACTION_TIMING].endMs);

@@ -20,7 +20,7 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
     if (geometry !== part.geometry) part.geometry.dispose();
     geometry.deleteAttribute('uv');
     const positions = geometry.getAttribute('position'), colors = new Float32Array(positions.count * 3);
-    if (!part.color) return reaction === 1 ? tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]) : geometry;
+    if (!part.color) return reaction > 0 ? tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]) : geometry;
     const color = new THREE.Color(part.color);
     for (let i = 0; i < positions.count; i += 3) {
       const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
@@ -28,7 +28,7 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
       for (let j = i; j < i + 3; j++) color.toArray(colors, j * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    if (reaction === 1) tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]);
+    if (reaction > 0) tagDeathPiece(geometry, giant ? 'giant' : 'heavy', labels[index]);
     if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, sink, .09));
     return geometry;
   });

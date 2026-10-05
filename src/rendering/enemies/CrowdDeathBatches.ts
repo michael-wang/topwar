@@ -39,10 +39,11 @@ export class CrowdDeathBatches {
           // Preserve the source's surface pipeline and authored colors.
           prepareSource(shader, renderer);
           shader.uniforms.paleDeadColor = { value: new THREE.Color(DEATH_PALE_COLOR) };
-          shader.vertexShader = `attribute float deathPale; varying float vDeathPale; attribute float deathBreakup; attribute float deathVariant; attribute vec3 deathPieceDirection; attribute float deathOpacity;
+          shader.uniforms.deathShellRole = { value: geometry.userData.deathShellRole ?? 0 };
+          shader.vertexShader = `uniform float deathShellRole; attribute float deathPieceId; attribute float deathPale; varying float vDeathPale; attribute float deathBreakup; attribute float deathVariant; attribute vec3 deathPieceDirection; attribute float deathOpacity;
 ${DEATH_DIRECTION_GLSL}
 varying float vDeathOpacity;\n${shader.vertexShader}`
-            .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += pieceDirection(deathPieceDirection, deathVariant) * deathBreakup; vDeathOpacity = deathOpacity; vDeathPale = deathPale;');
+            .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += openedPieceDirection(deathPieceDirection, deathPieceId, deathShellRole, deathVariant) * deathBreakup; vDeathOpacity = deathOpacity; vDeathPale = deathPale;');
           shader.fragmentShader = `uniform vec3 paleDeadColor; varying float vDeathPale; varying float vDeathOpacity;\n${shader.fragmentShader}`
             .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, paleDeadColor, vDeathPale); diffuseColor.a *= vDeathOpacity;');
         };

@@ -7,7 +7,7 @@ import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
-import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
@@ -167,7 +167,7 @@ export class GiantRenderer {
     // All vertices in a logical piece share one bounded displacement; the
     // grip-hand and maul remain a single piece throughout the breakup.
     const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
-    const separation = pose.breakup / Math.max(.001,scale);
+    const separation = enemyBodyOpening(age, 'giant', pose.breakup) / Math.max(.001,scale);
     if (stage === 2 && this.family.deathAssembly) {
       this.body.geometry = this.family.deathAssembly.body;
       this.helmet.geometry = this.family.deathAssembly.helmet;

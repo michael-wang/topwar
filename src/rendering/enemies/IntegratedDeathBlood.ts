@@ -76,15 +76,16 @@ export class IntegratedDeathBlood {
       shader.uniforms.vectors={value:ribbon?flat.map(p=>p.direction):drops.map(p=>p.velocity)};
       shader.uniforms.shapes={value:ribbon?flat.map(p=>new THREE.Vector4(p.length,p.width,p.bend,p.delay)):drops.map(p=>new THREE.Vector4(p.half.x,p.half.y,p.half.z,0))};
       shader.uniforms.compositionCounts={value:Array.from({length:SPLASH_COMPOSITIONS},(_,c)=>ribbon?activeRibbonCount(role,c):activeDropletCount(role,c))};
+      if (ribbon) shader.uniforms.extensionRates={value:flat.map(p=>p.extensionRate)};
       shader.vertexShader=`attribute float bloodPieceId; attribute float bloodAge; attribute float bloodGravity; attribute float bloodVariant; attribute float bloodJitter;
-        uniform vec3 origins[${tableSize}]; uniform vec3 vectors[${tableSize}]; uniform vec4 shapes[${tableSize}]; uniform float compositionCounts[${SPLASH_COMPOSITIONS}]; varying float vBloodOpacity;\n${shader.vertexShader}`
+        ${ribbon?`uniform float extensionRates[${tableSize}];`:''} uniform vec3 origins[${tableSize}]; uniform vec3 vectors[${tableSize}]; uniform vec4 shapes[${tableSize}]; uniform float compositionCounts[${SPLASH_COMPOSITIONS}]; varying float vBloodOpacity;\n${shader.vertexShader}`
         .replace('#include <begin_vertex>',`#include <begin_vertex>
 int param=int(bloodVariant)*${count}+int(bloodPieceId);
 vec3 origin=origins[param], direction=vectors[param], shape=shapes[param].xyz;
 origin.x+=.018*(bloodJitter-.5);float size=.9+.2*bloodJitter;
 ${ribbon?`
 float t=(bloodAge-shapes[param].w-${ENEMY_DEATH_TIMING[role].breakupStartMs/1000})/${RIBBON_LIFETIME_MS[role]/1000};
-float grow=1.-pow(1.-clamp(t/.34,0.,1.),3.);
+float grow=1.-pow(1.-clamp(t*extensionRates[param]/.34,0.,1.),3.);
 float thin=1.-.82*smoothstep(.42,1.,t);
 vec3 side=normalize(cross(direction,vec3(0.,0.,1.))),depth=cross(direction,side);
 float u=position.y;

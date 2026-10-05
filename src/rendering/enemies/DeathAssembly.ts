@@ -14,6 +14,12 @@ export const DEATH_DIRECTION_GLSL = `vec3 pieceDirection(vec3 d, float variant) 
   if (variant < .5) return d;
   if (variant < 1.5) return vec3(-d.y, d.x, d.z);
   return vec3((d.x-d.y)*.70710678, (d.x+d.y)*.70710678, d.z);
+}
+vec3 openedPieceDirection(vec3 d, float id, float role, float variant) {
+  bool shell = (role == 1. && (id == 2. || id == 3.)) || (role == 2. && (id == 3. || id == 4.));
+  // Main torso bands open oppositely sideways in every composition. Other pieces
+  // retain their varied rigid directions, including the coupled Giant grip/maul.
+  return shell ? normalize(vec3(sign(d.x), d.y * .35, d.z)) : pieceDirection(d, variant);
 }`;
 
 // Bake only: preserve primitive topology, positions/normals/colors exactly.
@@ -30,12 +36,15 @@ export function tagDeathPiece(geometry: THREE.BufferGeometry, role: EnemyDeathRo
   }
   geometry.setAttribute('deathPieceDirection', new THREE.BufferAttribute(direction, 3));
   geometry.setAttribute('deathPieceId', new THREE.BufferAttribute(ids, 1));
+  geometry.userData.deathShellRole = role === 'heavy' ? 1 : role === 'giant' ? 2 : 0;
   return geometry;
 }
 export function assemblyBatchGeometry(source: THREE.BufferGeometry): THREE.BufferGeometry {
   const geometry = source.index ? source.toNonIndexed() : source.clone();
-  // Frozen gait/transition batches stay intact; only the final pose is tagged.
+  // Frozen gait stays intact; Heavy/Giant transition and final poses are tagged.
   if (!geometry.hasAttribute('deathPieceDirection')) geometry.setAttribute('deathPieceDirection',
     new THREE.BufferAttribute(new Float32Array(geometry.getAttribute('position').count*3), 3));
+  if (!geometry.hasAttribute('deathPieceId')) geometry.setAttribute('deathPieceId',
+    new THREE.BufferAttribute(new Float32Array(geometry.getAttribute('position').count), 1));
   return geometry;
 }

@@ -17,8 +17,8 @@ export function prepareEnemyDeathMaterial(material: THREE.MeshStandardMaterial, 
     if (breakup) {
       shader.uniforms.deathBreakup = tint.breakup;
       shader.uniforms.deathVariant = tint.variant;
-      shader.vertexShader = `uniform float deathBreakup; uniform float deathVariant; attribute vec3 deathPieceDirection;\n${DEATH_DIRECTION_GLSL}\n${shader.vertexShader}`
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += pieceDirection(deathPieceDirection, deathVariant) * deathBreakup;');
+      shader.vertexShader = `uniform float deathBreakup; uniform float deathVariant; attribute float deathPieceId; attribute vec3 deathPieceDirection;\n${DEATH_DIRECTION_GLSL}\n${shader.vertexShader}`
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += openedPieceDirection(deathPieceDirection, deathPieceId, 2., deathVariant) * deathBreakup;');
     }
 
   };

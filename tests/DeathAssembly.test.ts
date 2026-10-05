@@ -32,7 +32,7 @@ it('keeps separation in world units and preserves instanced authored color/fade/
   const mesh=scene.children[0]as THREE.InstancedMesh;expect(mesh.count).toBe(48);expect(scene.children).toHaveLength(1);
   expect(mesh.geometry.getAttribute('deathBreakup').getX(0)).toBeCloseTo(.035);expect(mesh.geometry.getAttribute('deathVariant').getX(2)).toBe(2);
   const shader={uniforms:{},vertexShader:'#include <begin_vertex>',fragmentShader:'#include <color_fragment>'}as Parameters<THREE.Material['onBeforeCompile']>[0];(mesh.material as THREE.Material).onBeforeCompile(shader,{}as THREE.WebGLRenderer);
-  expect(shader.vertexShader).toContain('pieceDirection(deathPieceDirection, deathVariant)');expect(shader.fragmentShader).not.toContain('deathRed');
+  expect(shader.vertexShader).toContain('openedPieceDirection(deathPieceDirection, deathPieceId, deathShellRole, deathVariant)');expect(shader.fragmentShader).not.toContain('deathRed');
   batches.dispose();mat.dispose();family.dispose();
   const sphere=new THREE.SphereGeometry(1,8,6),clone=assemblyBatchGeometry(sphere);expect(Array.from(clone.getAttribute('deathPieceDirection').array).every(v=>v===0)).toBe(true);clone.dispose();sphere.dispose();
 });

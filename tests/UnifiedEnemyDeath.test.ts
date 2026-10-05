@@ -4,6 +4,7 @@ import { createChibiGiantFamily, createChibiHeavyFamily } from '../src/rendering
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { ENEMY_DEATH_TIMING, ENEMY_REACTION_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
+import { enemyDeathPale } from '../src/presentation/EnemyDeathPale';
 function matrixClose(a: THREE.Matrix4,b: THREE.Matrix4) { a.elements.forEach((value,i)=>expect(value).toBeCloseTo(b.elements[i],6)); }
 it('captures the exact lethal capture, then holds an authored reaction without root movement', () => {
   for(const role of ['grunt','heavy','giant'] as const){
@@ -41,6 +42,13 @@ it('captures the exact lethal capture, then holds an authored reaction without r
       const body=parts[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
       expect(body.material.opacity).toBe(enemyDeathPose(age,timing).bodyOpacity);expect(body.material.emissiveIntensity).toBe(0);
       expect(body.material.transparent).toBe(age>timing.fadeStartMs);expect(body.material.depthWrite).toBe(true);
+      if (role === 'giant') {
+        for (const mesh of [parts[0], parts[1], corpse.getObjectByName('giant-maul')!.children[0]] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>[]) {
+          const shader = { uniforms: {}, vertexShader: '', fragmentShader: '#include <color_fragment>' } as Parameters<typeof mesh.material.onBeforeCompile>[0];
+          mesh.material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+          expect(shader.uniforms.deathPale.value).toBe(enemyDeathPale(age, role));
+        }
+      }
       if(age>=timing.breakupEndMs){
         const shader={uniforms:{},vertexShader:'',fragmentShader:'#include <color_fragment>'} as Parameters<typeof body.material.onBeforeCompile>[0];
         body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);expect(shader.uniforms.deathGray).toBeUndefined();
@@ -52,7 +60,13 @@ it('captures the exact lethal capture, then holds an authored reaction without r
     renderer.update([],100000);expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
     expect(scene.children.some(c=>/shatter|fragment|debris|death-impact/.test(c.name))).toBe(false);
     renderer.reset();expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(0);renderer.update([enemy],4000);
-    if(role==='giant')expect(corpse.visible).toBe(true);
+    if(role==='giant') {
+      expect(corpse.visible).toBe(true);
+      const material = (corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material;
+      const shader = { uniforms: {}, vertexShader: '', fragmentShader: '' } as Parameters<typeof material.onBeforeCompile>[0];
+      material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
+      expect(shader.uniforms.deathPale.value).toBe(0); // Reused live slot cannot inherit a dead tint.
+    }
     else {renderer.update([],4010);expect(corpse.visible).toBe(true);}
     renderer.dispose();for(const family of Object.values(families))family.dispose();
     expect(scene.children).toHaveLength(0);expect(enemy.hp).toBe(2);

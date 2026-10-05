@@ -19,7 +19,7 @@ import { BloodSplat, GroundBloodStains, hitBloodAtlas, groundBloodAtlas } from '
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
-import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
@@ -649,7 +649,7 @@ export class EnemyRenderer {
       visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.bodyOpacity < 1;
       visual.bodyMaterial.opacity = visual.gearMaterial.opacity = pose.bodyOpacity;
       if (pose.bodyVisible) {
-        this.deathBatches.submit(visual.group, pose.breakup, pose.bodyOpacity, visual.variant, enemyDeathPale(elapsed, visual.role));
+        this.deathBatches.submit(visual.group, enemyBodyOpening(elapsed, visual.role, pose.breakup), pose.bodyOpacity, visual.variant, enemyDeathPale(elapsed, visual.role));
       }
     }
     this.deathBatches.finish();
