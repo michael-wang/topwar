@@ -291,9 +291,10 @@ Giant peak/50 ms/settled impact captures.
 
 ## Enemy Kill Feedback (V2.4)
 
-Current beachhead enemies use **Lethal Capture → Smooth Pale Dead State →
-Body Opens → Internal Fluid Blood Splashes Out → Blood Falls → Pale Body Fades →
-Persistent Stain**. Pale body is the death state signal; blood is the kill spectacle.
+Current beachhead enemies use **Lethal Bullet Contact → Small Impact Blood → Backward Recoil / Topple →
+Smooth Pale Transition → Integrated Body Breakup + Fluid Blood → Body Fade →
+Persistent Stain**. Pale is the death state signal; backward topple communicates
+bullet force; small contact blood confirms the hit; large fluid blood is the kill payoff.
 The first lethal frame retains authored colors (`deathPale=0`). A smoothstep
 transition reaches warm neutral #B9BEBA in 130 / 185 / 290 ms for Grunt / Heavy /
 Giant, overlapping the reaction and completing before substantial breakup. This changes lit albedo, with no
@@ -378,6 +379,15 @@ Y=0.032 keeps marks above dry/wet beach overlays. Stains survive until
 Retry/renderer reset/mode change, with oldest-slot reuse only as a safety bound.
 Surviving hits never create stains. No gameplay collision.
 
+Grunt lethal contact adds one 100 ms, single-pulse graphic card in the existing
+128-slot hit pool, at 0.25 reference scale (20–30% of the lethal scale before
+small deterministic variation). Its authored body anchor is transformed by the
+exact last rendered capture, stored in world space without following the removed
+actor. A separate negative owner survives old hit cancellation. It expires before
+130 ms fluid-ribbon activation, overlapping recoil and pale drain. It creates no
+stain; only integrated droplet contact does. Heavy/Giant receive no extra contact
+card, preserving their accepted surviving-hit feedback.
+
 The large lethal card path, its variation helper and the old per-triangle
 breakup helper are removed. V1 surviving-hit cards, every-hit recoil,
 rate-limited emphasis, Giant HP layout/reveal, audio, simulation removal,
@@ -429,8 +439,8 @@ remain authoritative and unchanged.
 
 Existing Heavy/Giant overlay, sparks, tint and compression remain independently
 rate-limited at 250 ms. Their old root translation/lean is replaced by the
-every-hit impulse, avoiding double knockback. Lethal removal cancels hit blood,
-prunes the impulse, then owns the frame through the captured lethal reaction.
+every-hit impulse, avoiding double knockback. Lethal removal cancels old surviving-hit blood and prunes the impulse; the
+captured lethal reaction owns the frame, including the separate Grunt contact beat.
 
 ## R4 — rounded organic mass + structured functional gear
 

@@ -161,7 +161,12 @@ export class GiantRenderer {
     const age = nowMs - this.deathAt;
     const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
     this.group.visible = !!this.previous && pose.bodyVisible;
-    if (!this.group.visible) return;
+    if (!this.group.visible) {
+      // Finish the opacity clock before releasing the complete body/weapon slot.
+      if (this.previous && age >= ENEMY_DEATH_TIMING.giant.totalMs)
+        for (const { material } of this.palette) material.opacity = 0;
+      return;
+    }
     writeLethalRecoil(this.group.matrix, this.frozenRoot, age, 'giant', this.recoilDirection.x, this.recoilDirection.y);
     this.group.matrixWorldNeedsUpdate = true;
     const stage = enemyReactionStage(age, 'giant'), reaction = this.family.lethalReaction;

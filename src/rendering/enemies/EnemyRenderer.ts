@@ -7,6 +7,7 @@ import { ART } from '../../art/ArtDirection';
 import { prepareCrowdMaterial } from './CrowdPresentation';
 import { lethalUpperMatrix } from './LethalReaction';
 import { GiantRenderer } from './GiantRenderer';
+import { GRUNT_LETHAL_CONTACT, lethalContactOwner } from './LethalImpactBlood';
 import { hitBloodVariation } from './HitBloodVariation';
 import { IntegratedDeathBlood } from './IntegratedDeathBlood';
 import { DeathVisualSequence, deathComposition } from './DeathVisualSeed';
@@ -538,6 +539,16 @@ export class EnemyRenderer {
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number, visualSeed:number, attackerX?: number, attackerZ?: number): void {
     const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
     frozen.updateMatrixWorld(true); this.feedbackMatrix.copy(frozen.matrixWorld);
+    if (role === 'grunt') {
+      const variation = hitBloodVariation(enemy.id, visualSeed % 997, role);
+      this.feedbackOrigin.fromArray(variation.localAnchor).applyMatrix4(this.feedbackMatrix);
+      this.feedbackScale.setFromMatrixScale(this.feedbackMatrix);
+      const adaptation = Math.sqrt((this.feedbackScale.x + this.feedbackScale.y + this.feedbackScale.z) / 3);
+      // Capture before recoil. No follow hook or stain; the tiny card expires
+      // before integrated ribbons start. Removal cancelled only the old owner.
+      this.hitBlood.spawnStyled(enemy.id, GRUNT_LETHAL_CONTACT, nowMs, this.feedbackOrigin,
+        adaptation, lethalContactOwner(enemy.id), { ...variation, localAnchor: undefined });
+    }
     // Blood origins are authored in the final assembly's already-reacted local
     // coordinates. Applying the upper-mass reaction again would bury the red
     // masses below the actual torso seams.

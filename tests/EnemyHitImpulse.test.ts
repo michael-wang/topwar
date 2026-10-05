@@ -16,7 +16,7 @@ it('attacks quickly, refreshes without a zero snap, caps repeated kicks and prun
  expect(tracker.strength(1,1000+ENEMY_HIT_IMPULSE_MS)).toBe(0);tracker.prune(new Set());expect(tracker.strength(1,100)).toBe(0);
  expect(ENEMY_HIT_STYLE.grunt.distance).toBeGreaterThan(ENEMY_HIT_STYLE.heavy.distance);expect(ENEMY_HIT_STYLE.heavy.distance).toBeGreaterThan(ENEMY_HIT_STYLE.giant.distance);
 });
-it('every surviving HP drop emits blood and a +Z kick, independently of emphasis; lethal cancels hit blood',()=>{
+it('every surviving HP drop emits blood and a +Z kick, independently of emphasis; lethal cancels surviving blood before its separate Grunt contact',()=>{
  for(const role of ['grunt','heavy','giant'] as const){
   const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()},scene=new THREE.Scene(),renderer=new EnemyRenderer(scene,families);
   const e={id:1,tier:1,archetype:role,x:.3,z:12,hp:10,maxHp:10,visualScale:1.35},initial=JSON.stringify(e);
@@ -29,7 +29,7 @@ it('every surviving HP drop emits blood and a +Z kick, independently of emphasis
   renderer.update([{...e,hp:8}],2070);renderer.update([{...e,hp:8}],2090);expect(blood.count).toBe(2);expect(z()).toBeCloseTo(e.z+ENEMY_HIT_STYLE[role].cap,5);
   if(role!=='grunt'){expect(emphasis.mock.results.map(result=>result.value)).toEqual([true,false]);}
   renderer.update([{...e,hp:8}],2330);expect(z()).toBeCloseTo(e.z,5);expect(blood.count).toBe(0);expect(JSON.stringify(e)).toBe(initial);
-  renderer.update([{...e,hp:7}],2340);renderer.update([],2350);expect(blood.count).toBe(0);expect(stains.count).toBe(0);
+  renderer.update([{...e,hp:7}],2340);renderer.update([],2350);expect(blood.count).toBe(role==='grunt'?1:0);expect(stains.count).toBe(0);
   renderer.update([],5000);expect(stains.count).toBe(1);
   renderer.update([],2600);expect(blood.count).toBe(0);
   emphasis.mockRestore();renderer.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);

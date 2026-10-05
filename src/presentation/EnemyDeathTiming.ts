@@ -24,7 +24,7 @@ export function enemyBodyOpening(ageMs: number, role: EnemyDeathRole, breakup: n
   return Math.max(breakup, ENEMY_DEATH_TIMING[role].breakupDistance * .28 * smooth((ageMs - opening.startMs) / (opening.readyMs - opening.startMs)));
 }
 
-// Cards remain only for surviving hits and Player casualties.
+// Cards remain only for small bullet contacts (surviving or lethal Grunt) and Player casualties.
 export interface BloodSplatTiming { readonly bloodStartMs: number; readonly bloodEndMs: number; readonly bloodPulseCount: number; readonly bloodScale: number }
 export function bloodSplatPose(ageMs: number, timing: BloodSplatTiming) {
   const progress = clamp((ageMs - timing.bloodStartMs) / (timing.bloodEndMs - timing.bloodStartMs));
