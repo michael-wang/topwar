@@ -29,6 +29,10 @@
     "groupRowStride": 2,
     "secondLaneChance": 0.4,
     "heavyChance": 0.25,
+    "pressureRamp": {
+      "lv4": { "xpFraction": 0.35, "pressureLaneCount": 4, "heavyChance": 0.35 },
+      "lv5": { "xpFraction": 0.25, "pressureLaneCount": 4, "heavyChance": 0.50 }
+    },
     "gruntSpeed": 0.25,
     "heavySpeed": 0.12,
     "heavyHp": 15,

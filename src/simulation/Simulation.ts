@@ -1,8 +1,8 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
   type GrenadeState, type GrenadeEvent } from './grenade';
-import { pressureGroupSize, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
-import { grantXp, requiredXp, effectiveRifleFireRate, effectivePrimaryFireRate, progressionStage, maxProgressionLevel } from './progression';
+import { pressureGroupSize, pressureWaveSettings, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
+import { grantXp, requiredXp, effectiveRifleFireRate, effectivePrimaryFireRate, progressionStage, maxProgressionLevel, type ProgressionState } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
@@ -207,7 +207,7 @@ function validSquadCount(count: unknown): count is number {
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
   boss: BossSimulationState | null, bossHpScale: number,
-  catharsis?: SimulationState['catharsis'], playerLevel = 1): BossSimulationState | null {
+  catharsis?: SimulationState['catharsis'], progression: ProgressionState = { level: 1, xp: 0 }): BossSimulationState | null {
   const horizonZ = playerZ + (catharsis?.balance.defenseMode
     ? catharsis.balance.defenseSpawnAheadDistance : stream.spawnAheadDistance);
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
@@ -236,7 +236,8 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     }
     const offsets = catharsis
       ? laneCompositionForRow(cursor.nextRowIndex, stream.seed, catharsis.balance.defenseMode
-        ? { ...catharsis.balance, groupSize: pressureGroupSize(catharsis.balance, playerLevel) } : catharsis.balance, catharsis.trackHalfWidth)
+        ? { ...catharsis.balance, ...pressureWaveSettings(catharsis.balance, progression),
+          groupSize: pressureGroupSize(catharsis.balance, progression.level) } : catharsis.balance, catharsis.trackHalfWidth)
       : createEnemyStreamRow(cursor.nextRowIndex, stream.columns,
         stream.columnSpacing ?? stream.spacing, stream.jitter, stream.seed);
     if (!Number.isSafeInteger(cursor.nextEnemyId + offsets.length)) throw new Error('Enemy group ID exceeds supported range');
@@ -1013,7 +1014,7 @@ export class Simulation {
       && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
     if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression?.level);
+        nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
     const giantEncounter = this.state.giantEncounter && catharsis && enemyStream

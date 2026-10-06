@@ -5,7 +5,7 @@ import { LevelDefinitionSchema } from '../../src/level/LevelDefinition';
 import { Simulation } from '../../src/simulation/Simulation';
 import type { SimulationFrameState } from '../../src/simulation/SimulationState';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
-import { enemyApproachSpeed } from '../../src/simulation/enemies/latePressure';
+import { enemyApproachSpeed, pressureWaveSettings } from '../../src/simulation/enemies/latePressure';
 
 const config = GameConfigSchema.parse(data), balance = config.catharsis!;
 export const pilotTuning = { ...config.player, trackHalfWidth: config.track.halfWidth,
@@ -23,7 +23,8 @@ export function pressure(state: SimulationFrameState) {
       -config.player.memberRadius-config.tiers.normalEnemyRadius)/(config.player.forwardSpeed+enemyApproachSpeed(e,balance)))) : null,
     heavyOverlap: ahead.filter(e=>e.archetype==='heavy').length };
 }
-export function runPilot(seed: number, hesitation = false, useGrenade = true, adjacentOnly = false, targetLevel = 5, includeFinalState = false) {
+export function runPilot(seed: number, hesitation = false, useGrenade = true, adjacentOnly = false, targetLevel = 5,
+  includeFinalState = false, balance = config.catharsis!) {
   const sim = new Simulation({seed,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,
     tiers:config.tiers,catharsis:{balance,trackHalfWidth:config.track.halfWidth}});
   const milestones: Record<number,number> = {}, phasePeaks: Record<number,{near:number;debt:number;heavy:number}> = {};
@@ -32,6 +33,8 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
   let grenadeVictims:any[] = [], contactCasualties=0, gruntKills=0, heavyKills=0, peakHeavyOverlap=0;
   let hesitationStart:ReturnType<typeof pressure>|null=null, hesitationEnd:ReturnType<typeof pressure>|null=null;
   let evolution:unknown=null;
+  const ramps:unknown[]=[], groupAdmissions:unknown[]=[];
+  const rampLevels=new Set<number>();
   const timeline:unknown[]=[];
   for(let tick=0;tick<60*180 && sim.getFrameState().squad.count;tick++) {
     const before=sim.getState(), lv3=milestones[3], elapsed=before.elapsedSeconds;
@@ -55,6 +58,16 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
     if(throwGrenade && activation===null)activation=elapsed;
     sim.step(1/60,{targetX:0,throwGrenade},pilotTuning);
     const after=sim.getFrameState();
+    const settings=pressureWaveSettings(balance,after.progression!);
+    if(settings.pressureLaneCount!==balance.pressureLaneCount && !rampLevels.has(after.progression!.level)) {
+      rampLevels.add(after.progression!.level);
+      ramps.push({seconds:after.elapsedSeconds,...after.progression,...settings,pressure:pressure(after)});
+    }
+    const admitted=after.enemies.filter(e=>e.id>=before.enemyStream!.nextEnemyId);
+    if(admitted.length)groupAdmissions.push({seconds:after.elapsedSeconds,...before.progression,
+      population:after.enemyStream!.nextEnemyId-before.enemyStream!.nextEnemyId,
+      survivingPopulation:admitted.length,fronts:new Set(admitted.map(e=>e.lane)).size,
+      heavies:admitted.filter(e=>e.archetype==='heavy').length});
     const contacts=sim.consumePresentationEvents();
     contactCasualties+=contacts.reduce((sum,e)=>sum+Math.max(0,e.before.count-e.after.count),0);
     const contactIds=new Set(contacts.filter(e=>e.kind==='normalEnemyContact').map(e=>e.enemyId));
@@ -78,7 +91,7 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
   }
   const end=sim.getFrameState();
   return {seed,pilot:hesitation?'hesitation':'normal',useGrenade,adjacentOnly,milestones,
-    evolution,lv5Duration:milestones[6]===undefined?null:milestones[6]-milestones[5],
+    evolution,ramps,groupAdmissions,lv5Duration:milestones[6]===undefined?null:milestones[6]-milestones[5],
     lv3Duration:milestones[4]===undefined?null:milestones[4]-milestones[3],
     supplySpawn:end.grenade!.supplySpawnedAtSeconds,acquisition:end.grenade!.acquiredAtSeconds,activation,detonation,
     xpAtSpawn,xpAtDetonation,grenadeVictims,grenadeKills:grenadeVictims.filter(v=>v.killed).length,

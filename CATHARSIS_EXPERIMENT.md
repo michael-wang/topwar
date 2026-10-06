@@ -1,13 +1,14 @@
-# Catharsis Experiment — P1 Progression and Deferred Late Game
+# Catharsis Experiment — Current Progression and Deferred Late Game
 
 Current P2A progression is specified in `GAME_SPEC.md`: Lv1–Lv6: Rifle stages then one 18 Hz Machine Gun. Giant natural unlock is deferred to Lv7. The late-game experiment below is retained infrastructure and is unreachable in normal P1 play; its earlier timing measurements are historical, not the current Rifle curve.
-The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
+P2B adds the narrow XP-fraction Lv4/Lv5 pressure ramp and global emergency Grenade targeting described in `GAME_SPEC.md`. Population multipliers, HP, speeds and XP curve remain fixed. `P2B_REPORT.md` records its deterministic measurements. Giant and landing assault remain deferred.
+The accepted LV1–LV3 / early-LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
-become easier. Combat never pauses for a level, and no upgrade choices or support abilities
-are introduced. LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
+become easier. Combat never pauses for a level and no upgrade-choice UI is
+introduced. Grenade is the single active emergency tool. Deferred LV7 adds the first earned reinforcement. Ordinary enemy durability and movement remain fixed. New waves gain authored quantity pressure from LV5; this is a level table, not an adaptive DPS/FPS director.
 
-## Current experiment: dramatic Giants + post-LV7 elite overlap
+## Deferred experiment: dramatic Giants + post-LV7 elite overlap
 
 LV1–LV6, the first Giant's gameplay and the LV7 reinforcement remain unchanged.
 Soldier B arrives in 1.1 s, then both soldiers fire at 6.9 Hz into the same lane.

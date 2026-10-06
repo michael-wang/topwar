@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import data from '../public/game-data/game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { Simulation } from '../src/simulation/Simulation';
-import { emptyGrenade, grenadeTarget, placeGrenadeSupply } from '../src/simulation/grenade';
+import { emptyGrenade, grenadeTarget, placeGrenadeSupply, enemiesInBlast } from '../src/simulation/grenade';
 const config = GameConfigSchema.parse(data), balance = config.catharsis!;
 const make = () => new Simulation({ seed: 17, level: { id: 'grenade', length: 1000, enemyGroups: [], upgradeGates: [] },
   startSquad: 1, startRocketCount: 0, tiers: config.tiers, catharsis: { balance, trackHalfWidth: 3.2 } });
@@ -51,18 +51,20 @@ it('requires one same-lane Rifle hit, consumes it, and grants only one held char
   expect(sim.consumeGrenadeEvents()).toEqual([]); expect(sim.getState().squad.count).toBe(1);
   expect(sim.getState().streamRewards).toEqual([]);
 });
-it('maximizes cross-lane blast count with nearest-depth then ID tie-breaking and a fixed capture', () => {
+it('centers the nearest global cluster with stable ID ties and a fixed capture', () => {
   const sim=armed(),s=sim.getState(); s.enemies.push({id:4,tier:1,archetype:'grunt',lane:2,x:0,z:4,hp:1});
-  expect(grenadeTarget(s,balance.grenade)!.id).toBe(1);
-  s.enemies=s.enemies.filter(e=>e.lane===2); expect(grenadeTarget(s,balance.grenade)!.id).toBe(4);
-  s.enemies=[{...s.enemies[0],id:8},{...s.enemies[0],id:7}];expect(grenadeTarget(s,balance.grenade)!.id).toBe(7);
+  expect(grenadeTarget(s,balance.grenade)).toEqual({anchorId:4,x:0,z:4});
+  s.enemies=[{...s.enemies[0],id:8,x:2.8},{...s.enemies[0],id:7,x:-2.8}];
+  expect(grenadeTarget(s,balance.grenade)).toEqual({anchorId:7,x:-2.8,z:10});
+  s.enemies.reverse();expect(grenadeTarget(s,balance.grenade)!.anchorId).toBe(7);
+  s.player.selectedLane=4;expect(grenadeTarget(s,balance.grenade)!.anchorId).toBe(7);
   sim.step(1/60,{targetX:0,throwGrenade:true},tuning); const f=sim.getState().grenade!.flight!;
   sim.stepLane(1); ticks(sim,20);expect(sim.getState().grenade!.flight!.targetZ).toBe(f.targetZ);
 });
-it('does not consume an empty-lane or out-of-range throw or activate after death', () => {
+it('does not consume a no-enemy or out-of-range throw or activate after death', () => {
   for(const mode of ['empty','range','dead']) {
     const sim=armed(),s=sim.getState();
-    if(mode==='empty')s.player.selectedLane=0;
+    if(mode==='empty')s.enemies=[];
     if(mode==='range')s.enemies.forEach(e=>e.z=balance.grenade.throwRange+1);
     if(mode==='dead')s.squad={count:0,rocketCount:0,rifleCounts:[],rifleRemainder:0};
     sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
@@ -127,7 +129,7 @@ it('does not award the same victim twice when a Rifle and detonation resolve in 
 it('awards every expanded crowd victim once through ordinary XP overflow', () => {
   const sim=armed(),s=sim.getState();s.progression={level:3,xp:100};
   s.enemies=Array.from({length:32},(_,i)=>({id:32-i,tier:1,archetype:'grunt' as const,
-    lane:i%5,x:(i%5-2)*1.4,z:10+Math.floor(i/5)*.15,hp:1}));
+    lane:i%5,x:(i%5-2)*.9,z:10+Math.floor(i/5)*.15,hp:1}));
   sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(sim,38);
   expect(sim.getState().enemies).toHaveLength(0);
   expect(sim.getState().progression).toEqual({level:4,xp:22});
@@ -138,6 +140,47 @@ it('awards every expanded crowd victim once through ordinary XP overflow', () =>
     expect(event.victims.reduce((sum,v)=>sum+v.killXp,0)).toBe(32);
   }
   ticks(sim,60);expect(sim.getState().progression).toEqual({level:4,xp:22});
+});
+
+it('clears the smaller near emergency instead of a dense distant selected-lane crowd', () => {
+  const sim=armed(),s=sim.getState();
+  const near=[{id:1,tier:1,archetype:'grunt' as const,lane:0,x:-2.8,z:2.5,hp:1},
+    {id:2,tier:1,archetype:'grunt' as const,lane:1,x:-1.4,z:3,hp:1},
+    {id:3,tier:1,archetype:'grunt' as const,lane:0,x:-2.8,z:3.5,hp:1}];
+  const far=Array.from({length:30},(_,i)=>({id:4+i,tier:1,archetype:'grunt' as const,lane:2,x:0,z:14+i*.02,hp:1}));
+  s.enemies=[...far,...near];s.player.selectedLane=2;
+  const target=grenadeTarget(s,balance.grenade)!;
+  expect(target.anchorId).toBe(1);expect(target.x).toBeCloseTo(-7/3);expect(target.z).toBe(3);
+  expect(enemiesInBlast(s.enemies,target.x,target.z,4).map(e=>e.id)).toEqual([1,2,3]);
+  sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(sim,38);
+  const blast=sim.consumeGrenadeEvents().find(e=>e.kind==='grenadeDetonated')!;
+  expect(blast.kind==='grenadeDetonated' && blast.victims.map(e=>e.id)).toEqual([1,2,3]);
+  expect(sim.getState().enemies.map(e=>e.id)).toEqual(far.map(e=>e.id));
+  expect(sim.getState().progression!.xp).toBe(3);
+});
+
+it.each([0,-.1,.1,24])('keeps a living emergency at relative depth %s eligible even outside the selected lane', depth => {
+  const s=make().getState();s.player.z=12;s.player.selectedLane=4;
+  s.enemies=[{id:1,tier:1,archetype:'grunt',lane:0,x:-2.8,z:12+depth,hp:1}];
+  expect(grenadeTarget(s,balance.grenade)).toEqual({anchorId:1,x:-2.8,z:12+depth});
+});
+
+it('excludes dead and legacy entities and retains the urgent position inside an unweighted local centroid', () => {
+  const s=make().getState();s.enemies=[{id:1,tier:1,archetype:'grunt',lane:0,x:0,z:0,hp:1},
+    {id:2,tier:1,archetype:'heavy',lane:1,x:3,z:1,hp:15},
+    {id:3,tier:1,archetype:'giant',lane:1,x:4,z:0,hp:172},
+    {id:4,tier:1,x:0,z:0,hp:100},{id:5,tier:1,archetype:'grunt',x:0,z:0,hp:0}];
+  const target=grenadeTarget(s,balance.grenade)!;
+  expect(target).toEqual({anchorId:1,x:7/3,z:1/3});
+  expect(enemiesInBlast(s.enemies,target.x,target.z,4).map(e=>e.id)).toContain(1);
+  const ordinary=target;s.enemies.reverse();expect(grenadeTarget(s,balance.grenade)).toEqual(ordinary);
+});
+
+it('prioritizes a still-living enemy just past player Z over one still approaching it', () => {
+  const s=make().getState();s.enemies=[
+    {id:1,tier:1,archetype:'grunt',lane:4,x:2.8,z:.01,hp:1},
+    {id:2,tier:1,archetype:'grunt',lane:0,x:-2.8,z:-.1,hp:1}];
+  expect(grenadeTarget(s,balance.grenade)).toEqual({anchorId:2,x:-2.8,z:-.1});
 });
 
 it('damages a surviving Heavy only once when a Rifle and blast resolve together', () => {

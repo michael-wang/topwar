@@ -2,6 +2,12 @@ import { z } from 'zod';
 import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
 import { ProgressionConfigSchema, progressionDefaults } from './progressionConfig';
 
+const pressureRampStage = z.strictObject({
+  xpFraction: z.number().finite().gt(0).lt(1),
+  pressureLaneCount: z.number().int().min(1).max(16),
+  heavyChance: z.number().finite().min(0).max(1),
+});
+
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
   grenade: GrenadeConfigSchema.default(grenadeDefaults),
@@ -55,6 +61,8 @@ export const CatharsisConfigSchema = z.strictObject({
   priorityWaves: z.number().int().min(1).max(10),
   // Absent in older snapshots: retain their one/two-front composition path.
   pressureLaneCount: z.number().int().min(1).max(16).optional(),
+  // Optional so older snapshots retain their original future-wave behavior.
+  pressureRamp: z.strictObject({ lv4: pressureRampStage, lv5: pressureRampStage }).optional(),
   groupSize: z.number().int().min(1).max(100),
   groupRowStride: z.number().int().positive(),
   secondLaneChance: z.number().min(0).max(1),
@@ -73,6 +81,9 @@ export const CatharsisConfigSchema = z.strictObject({
   .refine(value => value.landingAssault.groupSize <= value.landingAssault.activeSoftCap,
     { message: 'Landing group must fit inside the active soft cap' })
   .refine(value => value.pressureLaneCount === undefined || value.pressureLaneCount <= value.laneCount,
-    { message: 'Pressure lane count must fit inside the battlefield' });
+    { message: 'Pressure lane count must fit inside the battlefield' })
+  .refine(value => !value.pressureRamp || [value.pressureRamp.lv4, value.pressureRamp.lv5]
+    .every(stage => stage.pressureLaneCount <= value.laneCount),
+    { message: 'Pressure ramp fronts must fit inside the battlefield' });
 
 export type CatharsisConfig = z.infer<typeof CatharsisConfigSchema>;

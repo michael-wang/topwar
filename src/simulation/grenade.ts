@@ -35,13 +35,22 @@ export function enemiesInBlast<T extends Enemy>(enemies: readonly T[], x: number
     && (e.x - x) ** 2 + (e.z - z) ** 2 <= radius ** 2).sort((a, b) => a.id - b.id);
 }
 
-export function grenadeTarget(state: SimulationFrameState, config: GrenadeConfig): Enemy | undefined {
+export interface GrenadeTarget { x: number; z: number; anchorId: number }
+export function grenadeTarget(state: SimulationFrameState, config: GrenadeConfig): GrenadeTarget | undefined {
   if (!state.catharsis?.balance.defenseMode || !state.squad.count) return undefined;
+  // Range and urgency use approach depth across every lane. Still-living
+  // enemies at/just past player Z remain eligible until authoritative removal.
   const anchors = state.enemies.filter(e => e.archetype !== undefined && e.hp > 0
-    && e.lane === state.player.selectedLane && e.z > state.player.z
-    && e.z - state.player.z <= config.throwRange);
-  return anchors.map(enemy => ({ enemy, count: enemiesInBlast(state.enemies, enemy.x, enemy.z, config.blastRadius).length }))
-    .sort((a, b) => b.count - a.count || a.enemy.z - b.enemy.z || a.enemy.id - b.enemy.id)[0]?.enemy;
+    && Math.abs(e.z - state.player.z) <= config.throwRange);
+  // The defense line is behind player Z: a surviving enemy that has crossed
+  // player Z is more urgent than one still approaching it, not less urgent.
+  const anchor = anchors.sort((a, b) => a.z - b.z || a.id - b.id)[0];
+  if (!anchor) return undefined;
+  const local = enemiesInBlast(state.enemies, anchor.x, anchor.z, config.blastRadius);
+  // The unweighted centroid stays in this convex circle, so the captured urgent
+  // position remains inside the blast. ID ordering also fixes sum rounding.
+  return { anchorId: anchor.id, x: local.reduce((sum, e) => sum + e.x, 0) / local.length,
+    z: local.reduce((sum, e) => sum + e.z, 0) / local.length };
 }
 
 export function placeGrenadeSupply(state: SimulationFrameState, config: GrenadeConfig): NonNullable<GrenadeState['supply']> {

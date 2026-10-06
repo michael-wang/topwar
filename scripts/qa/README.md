@@ -6,7 +6,7 @@
 
 `node scripts/qa/p15-metrics.mjs` runs 200 deterministic comparisons: seeds 1–50, normal/1.8-second Lv3 hesitation, each with/without Grenade use. It loads the actual TypeScript simulation through Vite, needs no browser/server and writes `artifacts/p15/metrics.json` plus detailed seed-1/17/42 timelines. The controls acquire the supply but never throw, isolating use from acquisition cost. The pilot is a diagnostic, not a human-survival guarantee. `P15_REPORT.md` records policy, results and mixed evidence.
 
-With Vite running, `node scripts/qa/p15-browser.mjs` verifies 350/390 portrait, safe-area/touch targets, one-hit acquisition, empty-lane preservation, input isolation, Pause/Retry, ten-kill XP, Heavy/Giant damage, repeated resource reuse and a warmed 200-enemy frame-time sample. Outputs use the same browser environment overrides below. Software Chrome timings are not physical-phone GPU measurements. Unit tests cover pending/spawned/held/in-flight snapshot continuation and exact kill ordering.
+With Vite running, `node scripts/qa/p15-browser.mjs` verifies 350/390 portrait, safe-area/touch targets, one-hit acquisition, no-target charge preservation, input isolation, Pause/Retry, ten-kill XP, Heavy/Giant damage, repeated resource reuse and a warmed 200-enemy frame-time sample. Outputs use the same browser environment overrides below. Software Chrome timings are not physical-phone GPU measurements. Unit tests cover pending/spawned/held/in-flight snapshot continuation and exact kill ordering.
 
 ## Intentional web audio start
 
@@ -90,3 +90,23 @@ as the other scripts. The production sanity script also guards lab exclusion.
 ## P2A Machine Gun
 
 `node scripts/qa/p2a-metrics.mjs` extends the P1.5 normal/hesitation pilot through Lv6 for seeds 1–50 (100 runs), with unchanged Grenade policy. It reports Lv2–6 times, Lv5 duration, evolution counts/pressure, casualties and controlled three-Rifle vs one-MG cadence, 30-Grunt pack clear and Heavy TTK. `node scripts/qa/machine-gun-sanity.mjs` checks real MG controls, 390/350 portrait, HUD/firing, lane changes, Pause/Retry, casualty-state evolution, snapshot family restore, repeated resources and warmed real-RAF audio/frame diagnostics against the same Lv5 crowd. Results/captures default to ignored `artifacts/p2a`; durable evidence is in `P2A_REPORT.md`. SwiftShader measurements are not physical-phone certification.
+
+## P2B Pressure Comeback
+
+`node scripts/qa/p2b-metrics.mjs` uses the saved pre-change
+`artifacts/p2b/baseline/metrics.json` (generated with `p2a-metrics.mjs` at the
+starting commit), when present, alongside 300 current runs: seeds 1–50, normal/hesitation,
+historical multi-step lane pilot and adjacent-step pilots with/without the ramp.
+Both adjacent controls use the same global emergency Grenade behavior. Results
+include level times, phase pressure/debt/Heavy peaks, first ramp thresholds,
+future group populations/fronts/Heavies and the battlefield at Lv6.
+
+`node scripts/qa/p2b-pressure-sanity.mjs` checks global Q/button activation in
+390/350 portrait with an empty selected lane, a small near cluster and a much
+denser distant crowd. It checks centroid capture, three ordinary Grunt kills/XP,
+Heavy survival, flight snapshot continuation, Pause/Retry and repeated resources.
+Captures/results default to ignored `artifacts/p2b`; it accepts the browser
+environment overrides above. `grenade-lab-sanity.mjs` now measures emergency
+targeting without asserting the superseded maximum-crowd target. A no-enemy or
+out-of-range state preserves the charge. `P2B_REPORT.md` records mixed pressure
+evidence; software renderer results are not physical-phone certification.
