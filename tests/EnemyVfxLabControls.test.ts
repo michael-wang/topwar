@@ -1,0 +1,88 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { EnemyVfxLabControls } from '../src/ui/EnemyVfxLabControls';
+
+class ElementStub extends EventTarget {
+  children: ElementStub[] = [];
+  style = { cssText: '', background: '' };
+  dataset: Record<string, string> = {};
+  attrs: Record<string, string> = {};
+  isContentEditable = false;
+  interactiveAncestor = false;
+  textContent = '';
+  title = '';
+  blur = vi.fn();
+  remove = vi.fn();
+  constructor(readonly tagName = 'DIV') { super(); }
+  setAttribute(key: string, value: string) { this.attrs[key] = value; }
+  append(child: ElementStub) { this.children.push(child); }
+  closest() { return this.interactiveAncestor ? this : null; }
+}
+
+function setup(enabled = true) {
+  const windowTarget = new EventTarget();
+  vi.stubGlobal('window', windowTarget);
+  vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag.toUpperCase()) });
+  const select = vi.fn(), canUse = vi.fn(() => enabled);
+  const controls = new EnemyVfxLabControls(new ElementStub() as unknown as HTMLElement, select, canUse);
+  const root = controls.element as unknown as ElementStub;
+  const press = (code: string, options: { repeat?: boolean; ctrlKey?: boolean; altKey?: boolean; metaKey?: boolean; target?: ElementStub } = {}) => {
+    const event = new Event('keydown', { cancelable: true });
+    Object.defineProperties(event, Object.fromEntries(Object.entries({ code, key: 'unrelated', ...options })
+      .map(([key, value]) => [key, { value }])));
+    windowTarget.dispatchEvent(event);
+    return event;
+  };
+  return { controls, root, select, canUse, press };
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+it('routes physical 5/6 and EVOLVE/MG clicks through exactly the same callback', () => {
+  const { controls, root, select, press } = setup();
+  expect(root.children.map(b => b.textContent)).toEqual(['GRUNT', 'HEAVY', 'GIANT', 'GRENADE', 'EVOLVE', 'MG']);
+  for (const [index, code, role] of [[4, 'Digit5', 'evolve'], [5, 'Digit6', 'machineGun']] as const) {
+    const button = root.children[index];
+    button.dispatchEvent(new Event('click'));
+    expect(select.mock.lastCall).toEqual([role]);
+    expect(button.blur).toHaveBeenCalledOnce();
+    expect(press(code).defaultPrevented).toBe(true);
+    expect(select.mock.lastCall).toEqual([role]);
+    controls.setSelected(role);
+    expect(button.attrs['aria-pressed']).toBe('true');
+    expect(button.title).toContain(code === 'Digit5' ? '(5)' : '(6)');
+  }
+  expect(select).toHaveBeenCalledTimes(4);
+  controls.dispose();
+});
+
+it('ignores repeats, modifiers, unrelated keys and pre-start/stopped shortcuts', () => {
+  const { controls, select, canUse, press } = setup(false);
+  press('Digit5'); press('Digit6');
+  canUse.mockReturnValue(true);
+  for (const code of ['Digit5', 'Digit6']) {
+    press(code, { repeat: true }); press(code, { ctrlKey: true });
+    press(code, { altKey: true }); press(code, { metaKey: true });
+  }
+  for (const code of ['KeyQ', 'KeyP', 'ArrowLeft', 'ArrowRight', 'Space', 'Escape', 'Numpad5', 'Numpad6']) press(code);
+  expect(select).not.toHaveBeenCalled();
+  controls.dispose();
+});
+
+it.each(['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA', 'SUMMARY', 'OPTION', 'editable', 'nested-interactive', 'TUNE'])
+  ('ignores physical 5/6 from %s focus', kind => {
+    const { controls, select, press } = setup();
+    const target = new ElementStub(kind === 'editable' || kind === 'nested-interactive' || kind === 'TUNE' ? 'DIV' : kind);
+    target.isContentEditable = kind === 'editable';
+    target.interactiveAncestor = kind === 'nested-interactive' || kind === 'TUNE';
+    expect(press('Digit5', { target }).defaultPrevented).toBe(false);
+    expect(press('Digit6', { target }).defaultPrevented).toBe(false);
+    expect(select).not.toHaveBeenCalled();
+    controls.dispose();
+  });
+
+it('removes the keyboard handler on disposal', () => {
+  const { controls, root, select, press } = setup();
+  controls.dispose(); press('Digit5'); press('Digit6');
+  expect(select).not.toHaveBeenCalled();
+  expect(root.remove).toHaveBeenCalledOnce();
+});

@@ -8,7 +8,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
-if (['Enemy VFX Lab', 'enemy-vfx-lab'].some(marker => shippingJs.includes(marker)))
+if (['Enemy VFX Lab', 'enemy-vfx-lab', 'EVOLVE', 'Digit5', 'Digit6'].some(marker => shippingJs.includes(marker)))
   throw Error('Development VFX Lab controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -35,8 +35,9 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}.png`});
  const labControls=await page.locator('.enemy-vfx-lab').count();
  const mgLabControls=await page.locator('[data-role="machineGun"]').count();
+ const evolveLabControls=await page.locator('[data-role="evolve"]').count();
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
- results[query||'default']={level:Number(actual),expected:level,labControls,grenadeLabControls,mgLabControls,errors};if(Number(actual)!==level||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
+ results[query||'default']={level:Number(actual),expected:level,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
 writeFileSync(`${out}/production-sanity.json`,JSON.stringify(results,null,2));
 } finally {await browser.close();await new Promise(resolve=>server.httpServer.close(resolve));}

@@ -15,7 +15,7 @@ vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
 } }));
 vi.mock('../src/ui/EnemyVfxLabControls', () => ({ EnemyVfxLabControls: class {
-  constructor(_viewport: unknown, select: unknown) { mock.labConstructed(select); }
+  constructor(_viewport: unknown, select: unknown, canUseShortcuts: unknown) { mock.labConstructed(select, canUseShortcuts); }
   setSelected() {} dispose() {}
 } }));
 vi.mock('../src/app/EnemyVfxLab', () => ({ createEnemyVfxLab: (...args: unknown[]) => {
@@ -1032,21 +1032,21 @@ it('restarts selected lab fixtures and clears renderer feedback on every switch 
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
   const select = mock.labConstructed.mock.lastCall![0] as (role: string) => void;
-  for (const role of ['heavy', 'giant', 'grunt', 'grunt', 'grenade', 'grenade']) {
+  for (const role of ['heavy', 'giant', 'grunt', 'grunt', 'grenade', 'grenade', 'evolve', 'machineGun', 'evolve']) {
     const before = mock.resetFeedback.mock.calls.length;
     select(role);
     expect(mock.labFixture.mock.lastCall![2]).toBe(role);
     expect(mock.resetFeedback.mock.calls.length).toBe(before + 1);
   }
   const retry = mock.overlayConstructedWith.mock.lastCall![0] as () => void;
-  retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('grenade');
-  expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4,5,6]);
-  expect(mock.resetFeedback).toHaveBeenCalledTimes(7);
+  retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('evolve');
+  expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4,5,6,7,8,9]);
+  expect(mock.resetFeedback).toHaveBeenCalledTimes(10);
   app.dispose();
 });
 
 
-it('omits every Lab control, including GRENADE and MG, outside DEV', () => {
+it('omits every Lab control, including GRENADE, EVOLVE and MG, outside DEV', () => {
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
@@ -1124,6 +1124,20 @@ describe('Q primary active item', () => {
 });
 
 describe('intentional gameplay startup', () => {
+  it('opens DEV fixture shortcuts only after startup and closes them when stopped', async () => {
+    createRaf();
+    const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+    const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
+    const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+    const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+    const canUse = mock.labConstructed.mock.lastCall![1] as () => boolean;
+    expect(canUse()).toBe(false);
+    await startGame(app);
+    expect(canUse()).toBe(true);
+    app.stop();
+    expect(canUse()).toBe(false);
+    app.dispose();
+  });
   it('renders a frozen initial world for a long wait, without observers, cues or steps', async () => {
     const raf = createRaf();
     const observe = vi.spyOn(GameAudio.prototype, 'observe');

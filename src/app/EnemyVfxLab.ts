@@ -1,14 +1,15 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 import { addRifleSoldiers } from '../simulation/squad/composition';
-import { effectivePrimaryFireRate } from '../simulation/progression';
+import { effectivePrimaryFireRate, requiredXp } from '../simulation/progression';
 
-export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade' | 'machineGun';
+export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade' | 'evolve' | 'machineGun';
 export const ENEMY_VFX_LAB = {
   grunt: { level: 1, soldiers: 1, depths: [8, 10, 12, 14, 16, 18, 20, 22, 24, 26] },
   heavy: { level: 3, soldiers: 1, depths: [10, 15, 20] },
   giant: { level: 5, soldiers: 3, depths: [14] },
   grenade: { level: 3, soldiers: 1 },
+  evolve: { level: 5, soldiers: 3 },
   machineGun: { level: 6, soldiers: 1 },
 } as const;
 
@@ -27,10 +28,23 @@ export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: numb
   const lanes = attackLanePositions(balance.laneCount, catharsis.trackHalfWidth, balance.edgeInset);
   const x = lanes[lane];
   state.player = { x, z: 0, selectedLane: lane };
-  state.progression = { level: fixture.level, xp: 0 };
+  state.progression = { level: fixture.level, xp: role === 'evolve'
+    ? Math.max(0, requiredXp(fixture.level, balance.progression) - 10) : 0 };
   if (fixture.soldiers > 1)
     state.squad = addRifleSoldiers(state.squad, fixture.soldiers - 1, 1, options.tiers.mergeCount);
-  if (role === 'grenade' || role === 'machineGun') {
+  if (role === 'evolve') {
+    // Ten ordinary Grunt kills cross the authored boundary. No scripted level
+    // change: three staggered Rifles earn the upgrade through normal combat.
+    state.enemies = Array.from({ length: 18 }, (_, index) => {
+      const enemyLane = index < 12 ? lane : [0, 1, 3, 4, 1, 3][index - 12];
+      return { id: index + 1, tier: 1, archetype: 'grunt' as const, lane: enemyLane,
+        x: lanes[enemyLane], z: index < 12 ? 16 + ((index * 7) % 12) * .55
+          : 14 + ((index * 13) % 61) / 10, hp: 1 };
+    });
+    for (const [index, enemyLane] of [1, 3].entries())
+      state.enemies.push({ id: 19 + index, tier: 1, archetype: 'heavy', lane: enemyLane,
+        x: lanes[enemyLane], z: 20.5 + index * 1.7, hp: balance.heavyHp });
+  } else if (role === 'grenade' || role === 'machineGun') {
     // Fixed uneven depths, distributed across all attack lanes. QA coordinates
     // only: combat uses the same authored HP, movement, damage and XP as a run.
     const gruntCount = role === 'machineGun' ? 60 : 45;

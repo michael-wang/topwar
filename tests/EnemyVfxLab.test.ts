@@ -86,3 +86,52 @@ it('restarts the deterministic Lv6 MG fixture with one specialist, 60 Grunts and
  expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBeNull();
  for(let i=0;i<3;i++)expect(make().getState()).toEqual(s);
 });
+
+it('restarts EVOLVE at 210/220 XP with three Rifles and a deterministic ordinary crowd', () => {
+  const make = () => createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'evolve');
+  const initial = make().getState();
+  expect(initial.progression).toEqual({ level: 5, xp: 210 });
+  expect(initial.squad).toMatchObject({ count: 3, rifleCounts: [3], rocketCount: 0 });
+  expect(initial.player.selectedLane).toBe(2);
+  expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(18);
+  expect(initial.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(2);
+  expect(initial.enemies.filter(e => e.archetype === 'grunt' && e.lane === 2)).toHaveLength(12);
+  expect(new Set(initial.enemies.map(e => e.lane)).size).toBe(5);
+  expect(initial.enemies.every(e => e.hp === (e.archetype === 'heavy' ? c.catharsis!.heavyHp : 1))).toBe(true);
+  expect(initial.boss).toBeNull();
+  expect(initial.grenade).toMatchObject({ inventory: 0, supply: null, flight: null });
+  expect(initial.giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
+  expect(createEnemyVfxLab({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'evolve').getState()).toEqual(initial);
+  for (let i = 0; i < 3; i++) expect(make().getState()).toEqual(initial);
+});
+
+it('earns the EVOLVE upgrade from ten real Grunt kills within 1–3 seconds, with deterministic continuation', () => {
+  const sim = createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'evolve');
+  const initial = sim.getState();
+  const restored = createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'evolve');
+  let ticks = 0;
+  while (sim.getState().progression!.level === 5 && ticks < 180) {
+    expect(sim.getState().squad.count).toBe(3);
+    sim.step(1 / 60, { targetX: 0 }, tuning);
+    restored.step(1 / 60, { targetX: 0 }, tuning);
+    ticks++;
+    if (ticks === 30) restored.restoreState(JSON.parse(JSON.stringify(sim.getState())));
+  }
+  const evolved = sim.getState();
+  expect(ticks / 60).toBeGreaterThanOrEqual(1);
+  expect(ticks / 60).toBeLessThanOrEqual(3);
+  expect(evolved.progression).toEqual({ level: 6, xp: 0 });
+  expect(evolved.squad.count).toBe(1);
+  expect(evolved.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(8);
+  expect(sim.consumePresentationEvents()).toEqual([]);
+  expect(restored.getState()).toEqual(evolved);
+  restored.restoreState(JSON.parse(JSON.stringify(evolved)));
+  for (let i = 0; i < 60; i++) {
+    sim.step(1 / 60, { targetX: 0 }, tuning);
+    restored.step(1 / 60, { targetX: 0 }, tuning);
+  }
+  expect(restored.getState()).toEqual(sim.getState());
+  expect(sim.getState().projectiles.some(p => p.kind === 'machineGun')).toBe(true);
+  expect(sim.getState().enemyStream!.nextEnemyId).toBe(initial.enemyStream!.nextEnemyId);
+  expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBeNull();
+});

@@ -120,7 +120,7 @@ export class GameApp {
         this.vfxLabRole = role;
         this.vfxLab?.setSelected(role);
         this.retry();
-      }) : null;
+      }, () => this.running && this.startup === 'started') : null;
     this.tuningPanel = new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,

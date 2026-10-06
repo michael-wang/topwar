@@ -47,11 +47,12 @@ Audio capture measures the browser signal, not physical device/speaker latency.
 
 ## Enemy VFX Lab
 
-Development defense builds show five compact buttons below Pause:
+Development defense builds show six compact buttons below Pause:
 
 - **GRUNT:** ten Grunts, Lv1 / one Rifle; review contact blood, pale intact lift/fade.
 - **HEAVY:** three Heavies, Lv3 / one Rifle; review surviving hits and weighted collapse.
 - **GIANT:** one Giant, Lv5 / three Rifles; review chip hits, maul/dust impact and long death.
+- **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds; no timer promotion or Grenade dependency. No Giant/Boss or stream refill.
 - **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
 - **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / one held Grenade. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
 
@@ -62,6 +63,24 @@ visual salt. The lab is presentation QA, not gameplay configuration or a saved
 simulation mode. Normal `/` remains Lv1 until a button is used;
 `?review=threats` remains a separate art fixture. Production excludes lab controls
 and fixture code behind `import.meta.env.DEV`.
+
+Physical **5** restarts EVOLVE and **6** restarts MG through the button reset path.
+These DEV shortcuts ignore repeats, Ctrl/Alt/Meta modifiers, interactive/editable/TUNE focus
+and input before Tap-to-Start or after the app stops. Fixture buttons release
+focus for immediate lane keys and the `5 → 6 → 6 → 5` loop. They also work as
+restarts while paused. Production excludes both controls and key handlers.
+
+`node scripts/qa/evolution-fixture-sanity.mjs` checks the real button/key paths
+at 390×844 and 350×844, ten ordinary kills into Lv6, specialist/HUD/first-shot
+transition, exact reset, Pause/Retry, focus/repeat guards and bounded resources
+over six alternating EVOLVE/MG cycles. Captures/results default to ignored
+`artifacts/evolve-review`. It accepts the same browser environment overrides.
+The current authored fixture evolves at **1.00 second** in both widths, after
+exactly ten ordinary Grunt kills. Six alternating review cycles held steady at
+85 geometries, 11 textures and a 32-slot projectile pool. All 743 automated tests,
+typecheck/build and existing startup/audio/production sanity checks pass. These
+software-rendered captures verify the review loop, not physical-phone performance
+or the human judgment that evolution feels like a power upgrade.
 
 `node scripts/qa/vfx-lab-sanity.mjs` verifies fixture loadouts, clearing, Retry,
 repeated switching/resource reuse, 350/390 portrait and the separate normal/review
