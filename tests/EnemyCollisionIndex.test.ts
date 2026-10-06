@@ -32,7 +32,7 @@ function hit(shot: ProjectileSimulationState, endZ: number, source: EnemyCandida
   if (!result) return null;
   return { kind: result.kind, id: result.kind === 'enemy' ? result.enemy.id
     : result.kind === 'boss' ? result.boss.id
-      : result.kind === 'streamReward' ? result.reward.id : result.gate.id,
+      : result.kind === 'streamReward' ? result.reward.id : result.kind === 'gate' ? result.gate.id : 0,
   fraction: result.fraction, z: result.z };
 }
 

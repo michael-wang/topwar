@@ -17,6 +17,8 @@ export function projectRenderState(state: SimulationFrameState,
   const defenseMode = !!config.catharsis?.balance.defenseMode;
   const originZ = defenseMode ? state.player.z : 0;
   return {
+    ...(state.grenade ? { grenade: { supply: state.grenade.supply, flight: state.grenade.flight,
+      elapsedSeconds: state.elapsedSeconds, originZ } } : {}),
     ...(defenseMode ? { defenseMode } : {}),
     ...(defenseMode && state.landingAssault?.reinforcementActiveAtSeconds !== null
       && state.landingAssault?.reinforcementActiveAtSeconds !== undefined ? {

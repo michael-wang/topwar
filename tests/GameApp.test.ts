@@ -90,6 +90,7 @@ vi.mock('../src/simulation/Simulation', () => ({
     getState = mock.getState;
     getFrameState = mock.getState;
     consumePresentationEvents = mock.consumePresentationEvents;
+    consumeGrenadeEvents = vi.fn(() => []);
   },
 }));
 
@@ -97,6 +98,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
     present = mock.present;
+    presentGrenade = vi.fn();
     presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;
     startResizeHandling = mock.startResizeHandling;
@@ -141,6 +143,9 @@ vi.mock('../src/ui/LaneHud', () => ({ LaneHud: class {
 vi.mock('../src/ui/XpHud', () => ({ XpHud: class {
   constructor(viewport: HTMLElement) { mock.xpConstructed(viewport); }
   update = vi.fn(); reset = vi.fn(); presentLevelUp = vi.fn(); dispose = vi.fn();
+} }));
+vi.mock('../src/ui/GrenadeButton', () => ({ GrenadeButton: class {
+  update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
 } }));
 vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
   element = {} as HTMLElement;

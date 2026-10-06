@@ -2,28 +2,24 @@
 
 ## Current playable
 
-- Catharsis prototype experiment: five configurable attack corridors, larger 1-HP Grunts, sparse slower 15-HP amber Heavies, and deterministic three-lane pressure held across several groups.
-- Discrete left/right taps or key presses select a defended lane; lane-tagged Rifle shots reliably hit dense seeded crowds in that corridor. Keyboard holding uses a controlled 180/120 ms repeat cadence. Rifle starts at 3 Hz. Twenty-four-member waves split 8/8/8 across fronts, enter near the shoreline within bounded nine-unit crowd depth; TUNE tests 10–60. Defenders stand on a beach with natural obstacle openings.
-- Pause, TUNE, Game Over and Retry remain operational. Plain-data snapshots retain lane selection, projectile/enemy lane identity, experiment balance and stream cursors.
-- Bosses, rewards, normal tier escalation and ENEMY LV are temporarily disabled. Existing Merge, tier power and the disabled systems remain in code for later experiments. Phase 3.0 adds kill-earned XP and automatic Rifle fire-rate progression, with no choices. LV7 adds one soldier after a short entrance, doubling focused same-lane fire at unchanged per-soldier rate.
-- Future defense waves grow from LV5 via an authored quantity table; one large crimson/gold armored Giant enters after LV6. Instanced crowds, contact/death feedback, audio, environment and procedural music remain.
+- Five-lane beachhead defense; 24-member groups across three fronts through Lv4. Grunts have 1 HP; Heavies retain 15 HP and existing frequency/speeds. Lv5 future groups retain the authored 1.25 multiplier.
+- Explicit Lv1–Lv5 Rifle progression: 3 / 3.75 / 4.5 Hz; Lv4 and Lv5 each grant one Rifle soldier. XP costs remain 28 / 60 / 110 / 180; natural progression caps at Lv5.
+- P1.5: one shootable Grenade Supply at Lv3 +8 seconds, one held charge, assisted current-lane throw, 9 HP / radius 2 / 0.65-second flight. Normal kill XP and deterministic snapshots.
+- Accepted Rounded Toy combat/death presentation, E1.1 coastal scene, Enemy VFX Lab, Tap-to-Start audio, Pause/TUNE/Retry remain operational.
+- Natural Lv6 Giant, Lv7 reinforcement/landing assault, legacy Boss and soldier recruitment streams remain deferred.
 
 ## NOW
 
-**Progression phase 2: Giant reward and LV7 reinforcement.** Preserve the Giant
-commitment and pressure; test its 120-XP reward and an earned second soldier.
-LV7 grants exact 2× focused firepower at 6.9 Hz per soldier, with a readable
-entrance and one shared lane. Keep thresholds, Heavy stats and spectacle intact.
-This remains a prototype progression experiment, not final pacing.
+**P1.5 phone validation: recover from a brief Lv3 hesitation using the first Grenade.** Judge supply readability, active-button discovery and near-line relief. Preserve existing global balance. Deterministic evidence and open questions are in `P15_REPORT.md`.
 
 ## NEXT
 
-1. Fix input/readability blockers and tune composition from phone playtest evidence.
-2. Use earned-power playtest evidence to scope upgrade choices and later squad-growth/Merge work.
+1. Compare human Lv3 hesitation/recovery against the normal and hesitation pilot measurements.
+2. Fix demonstrated supply/activation readability problems without changing accepted character effects.
+3. Only if evidence warrants, evaluate the proposed single two-lane, 24-enemy Grenade-adjacent wave; it is not implemented.
 
 ## LATER
 
-- Progression and battlefield opportunities
-- Additional enemy/Boss variety
-- Dev Panel and snapshot tooling/UI
-- Mobile polish and measured performance work
+- Further progression and battlefield opportunities
+- Enemy/Boss variety and deferred late-game experiments
+- Snapshot/dev-tool UI and measured mobile performance work

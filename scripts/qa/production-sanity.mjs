@@ -22,9 +22,15 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.waitForSelector('.game-start-overlay');
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}.png`});
  await page.getByRole('button',{name:'Start game with audio'}).click();
- await page.waitForFunction(level=>document.querySelector('.xp-level-number')?.textContent===String(level)
-   && !document.querySelector('.xp-hud')?.classList.contains('level-up'),level);
- await page.waitForTimeout(250);
+ // Review's frozen pre-start badge is already Lv5. Wait for a stable post-start
+ // HUD, not that transient match before the first level-up presentation frame.
+ await page.waitForFunction(level=>{
+   const valid=!document.querySelector('.game-start-overlay')
+     && document.querySelector('.xp-level-number')?.textContent===String(level)
+     && !document.querySelector('.xp-hud')?.classList.contains('level-up');
+   if(!valid){window.__qaHudStableAt=null;return false;}
+   window.__qaHudStableAt??=performance.now();return performance.now()-window.__qaHudStableAt>=500;
+ },level);
  const actual=await page.locator('.xp-level-number').textContent();
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}.png`});
  const labControls=await page.locator('.enemy-vfx-lab').count();

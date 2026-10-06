@@ -108,6 +108,7 @@ export interface LandingAssaultState {
 }
 
 export interface SimulationState {
+  grenade?: import('./grenade').GrenadeState;
   landingAssault?: LandingAssaultState;
   reinforcement?: { startedAtSeconds: number | null; arrived: boolean };
   giantEncounter?: { scheduledAtSeconds: number | null; spawned: boolean };

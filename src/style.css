@@ -517,3 +517,22 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 @media (prefers-reduced-motion: reduce) {
   .game-start-overlay span { transition: none; }
 }
+/* Safe-area anchored active item; native button semantics exclude lane taps. */
+.grenade-button {
+  position: absolute; left: var(--hud-safe-left, .85rem);
+  bottom: calc(var(--hud-safe-bottom, .85rem) + 7.5rem);
+  width: 4.2rem; min-height: 4.5rem; padding: .45rem;
+  border: 2px solid var(--coast-crest); border-radius: .8rem;
+  background: var(--coast-plaster); color: var(--coast-ink); z-index: 15;
+  box-shadow: 0 3px 0 var(--coast-sea); touch-action: manipulation;
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+}
+.grenade-button[hidden] { display: none; }
+.grenade-button svg { width: 2rem; height: 2rem; }
+.grenade-button span { grid-column: 1 / -1; font: 700 .55rem sans-serif; }
+.grenade-button strong { font-size: 1.1rem; }
+.grenade-button:disabled { opacity: .5; }
+.grenade-button:focus-visible { outline: 3px solid var(--coast-aqua); outline-offset: 3px; }
+.grenade-ready { animation: grenade-ready .7s ease-out 2; }
+.game-paused .grenade-ready { animation-play-state: paused; }
+@keyframes grenade-ready { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.13); background: var(--coast-crest); } }

@@ -30,6 +30,8 @@ import { createThreatReview } from './ThreatReview';
 import { createEnemyVfxLab, type EnemyVfxLabRole } from './EnemyVfxLab';
 import { EnemyVfxLabControls } from '../ui/EnemyVfxLabControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
+import { GrenadeButton } from '../ui/GrenadeButton';
+import { grenadeTarget } from '../simulation/grenade';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -61,6 +63,8 @@ export class GameApp {
   private readonly laneInput: LaneStepInput | null;
   private readonly progressionObserver = new ProgressionLevelObserver();
   private readonly xpHud: XpHud | null;
+  private readonly grenadeButton: GrenadeButton | null;
+  private grenadeRequested = false;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
@@ -105,6 +109,10 @@ export class GameApp {
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
     this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
+    this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, () => {
+      if (this.running && this.startup === 'started' && !this.paused && this.simulation.getFrameState().squad.count > 0)
+        this.grenadeRequested = true;
+    }) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.vfxLab = import.meta.env.DEV && this.config.catharsis?.defenseMode
       ? new EnemyVfxLabControls(viewport, (role) => {
@@ -163,6 +171,7 @@ export class GameApp {
     if (!this.running) return;
 
     this.running = false;
+    this.grenadeRequested = false;
     this.startOverlay.dispose();
     this.startGeneration++;
     if (this.startup === 'activating') this.startup = 'awaiting-start';
@@ -195,6 +204,7 @@ export class GameApp {
     this.touchInput.dispose();
     this.laneInput?.dispose();
     this.xpHud?.dispose();
+    this.grenadeButton?.dispose();
     this.gameOverOverlay.dispose();
     this.tuningPanel.dispose();
     this.hudActions.dispose();
@@ -242,6 +252,8 @@ export class GameApp {
     this.damageFlash.reset();
     this.audio.resetObservation();
     this.xpHud?.reset();
+    this.grenadeButton?.reset();
+    this.grenadeRequested = false;
     this.progressionObserver.reset();
     if (import.meta.env.DEV && this.vfxLabRole && initialState.progression && initialState.catharsis) {
       // Selecting a QA loadout is initialization, not an earned level-up.
@@ -280,6 +292,12 @@ export class GameApp {
   private startInputs(): void {
     if (this.laneInput) this.laneInput.start();
     else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput.start(); }
+  }
+
+  private takeGrenadeRequest(): boolean {
+    const requested = this.grenadeRequested;
+    this.grenadeRequested = false;
+    return requested;
   }
 
   private async beginGameplay(): Promise<void> {
@@ -358,6 +376,7 @@ export class GameApp {
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
     if (this.paused) {
+      this.grenadeRequested = false;
       this.keyboardInput.stop();
       this.dragInput.stop();
       this.touchInput.stop();
@@ -401,7 +420,7 @@ export class GameApp {
         const stepStartedMs = perf ? performance.now() : 0;
         const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
         dtSeconds,
-        { targetX: this.targetX },
+        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}) },
         {
           moveSpeed: this.runtimeTuning.moveSpeed,
           forwardSpeed: this.runtimeTuning.forwardSpeed,
@@ -423,6 +442,16 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
+      const grenade = state.grenade;
+      this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
+        !this.paused && state.squad.count > 0 && !this.grenadeRequested && grenade?.inventory === 1
+          && !!grenadeTarget(state, state.catharsis!.balance.grenade));
+      const grenadeEvents = this.simulation.consumeGrenadeEvents();
+      for (const event of grenadeEvents) {
+        if (event.kind === 'grenadeAcquired') this.audio.play('reward');
+        else this.audio.play('groundArtillery', { kind: 'groundArtillery', volumeScale: .65, durationScale: .55, pitchScale: 1.5 });
+      }
+      this.renderer.presentGrenade(grenadeEvents, this.presentationMs);
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);
         if (levelUp) {

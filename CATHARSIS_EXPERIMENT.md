@@ -253,7 +253,7 @@ Heavy kills 10; hits, contact casualties and leaks grant nothing. Every crossed
 level applies its squad-stage delta. Lv4 and Lv5 each add exactly one Tier-1
 Rifle soldier, without healing casualties back to the unlocked stage target.
 At Lv5 XP is discarded and the XP bar stays full without imminent pulsing.
-Grenades are deferred to P2 and enemy difficulty is frozen during P1 validation.
+P1.5 adds the one-time Lv3 Grenade Supply described in `GAME_SPEC.md`; enemy difficulty remains frozen. `P15_REPORT.md` records the paired deterministic pressure measurements.
 
 The HUD uses three cartridge pips at Lv1–3, then three soldier pips at Lv4–5.
 Filled counts are **1 / 2 / 3 / 2 / 3**. Soldier pips represent permanent unlocks,

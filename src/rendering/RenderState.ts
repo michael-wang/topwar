@@ -1,4 +1,9 @@
 export interface GameRenderState {
+  readonly grenade?: {
+    readonly supply: Readonly<NonNullable<import('../simulation/grenade').GrenadeState['supply']>> | null;
+    readonly flight: Readonly<NonNullable<import('../simulation/grenade').GrenadeState['flight']>> | null;
+    readonly elapsedSeconds: number; readonly originZ: number;
+  };
   readonly defenseMode?: boolean;
   readonly landingAssaultAgeSeconds?: number;
   readonly player: {

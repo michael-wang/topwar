@@ -1,4 +1,6 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
+import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
+  type GrenadeState, type GrenadeEvent } from './grenade';
 import { pressureGroupSize, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
 import { grantXp, requiredXp, effectiveRifleFireRate, progressionStage, maxProgressionLevel } from './progression';
 import { SeededRng } from '../core/Rng';
@@ -48,6 +50,7 @@ export interface RuntimeBalance {
 
 export interface SimulationInput {
   targetX: number;
+  throwGrenade?: boolean;
 }
 
 export interface SimulationTuning {
@@ -86,6 +89,7 @@ function validateCatharsis(value: unknown): NonNullable<SimulationState['cathars
 }
 
 type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: number; z: number }
+  | { kind: 'grenadeSupply'; fraction: number; z: number }
   | { kind: 'boss'; boss: BossSimulationState; fraction: number; z: number }
   | { kind: 'streamReward'; reward: StreamRewardSimulationState; fraction: number; z: number }
   | { kind: 'gate'; gate: UpgradeGateSimulationState; fraction: number; z: number };
@@ -96,7 +100,8 @@ export function findFirstHit(projectile: ProjectileSimulationState, endZ: number
   normalEnemyRadius: number,
   bossRadius: number | undefined,
   currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
-  piercedEnemyIds?: ReadonlySet<number>, diagnostics?: CollisionDiagnostics): ProjectileHit | undefined {
+  piercedEnemyIds?: ReadonlySet<number>, diagnostics?: CollisionDiagnostics,
+  grenadeSupply?: GrenadeState['supply']): ProjectileHit | undefined {
   if (diagnostics) diagnostics.findFirstHitCalls++;
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
@@ -162,6 +167,13 @@ export function findFirstHit(projectile: ProjectileSimulationState, endZ: number
       || (fraction === first.fraction && (first.kind !== 'gate' || gate.id < first.gate.id))) {
       first = { kind: 'gate', gate, fraction, z: hitZ };
     }
+  }
+  if (grenadeSupply && projectile.kind === 'rifle' && projectile.lane === grenadeSupply.lane) {
+    const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
+    const supplyZ = currentPlayerZ + grenadeSupply.depth;
+    const fraction = (supplyZ - projectile.z) / relativeTravel;
+    if (relativeTravel > 0 && fraction >= minimumFraction && fraction <= 1
+      && (!first || fraction <= first.fraction)) first = { kind: 'grenadeSupply', fraction, z: supplyZ };
   }
   return first;
 }
@@ -295,10 +307,19 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'reinforcement')) fields.push('reinforcement');
   if (Object.hasOwn(state, 'giantEncounter')) fields.push('giantEncounter');
   if (Object.hasOwn(state, 'landingAssault')) fields.push('landingAssault');
+  if (Object.hasOwn(state, 'grenade')) fields.push('grenade');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
   const catharsis = Object.hasOwn(state, 'catharsis') ? validateCatharsis(state.catharsis) : undefined;
+  const grenade = state.grenade === undefined ? undefined : GrenadeStateSchema.parse(state.grenade);
+  if (grenade && (!catharsis?.balance.defenseMode
+    || [grenade.lv3EnteredAtSeconds, grenade.supplySpawnedAtSeconds, grenade.acquiredAtSeconds,
+      grenade.flight?.startedAtSeconds].some(t => t != null && t > (state.elapsedSeconds as number))
+    || (grenade.supply && (grenade.supply.lane >= catharsis.balance.laneCount
+      || Math.abs(grenade.supply.x - attackLanePositions(catharsis.balance.laneCount,
+        catharsis.trackHalfWidth, catharsis.balance.edgeInset)[grenade.supply.lane]) > 1e-9))))
+    throw new Error('Invalid Grenade snapshot');
   const progression = state.progression;
   if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
     || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
@@ -644,6 +665,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   return {
     state: {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: landingAssault ? { ...landingAssault } as unknown as NonNullable<SimulationState['landingAssault']> : emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { reinforcement: reinforcement
         ? { startedAtSeconds: reinforcement.startedAtSeconds as number | null, arrived: reinforcement.arrived as boolean }
@@ -688,6 +710,7 @@ export class Simulation {
   private tiers: TierPower;
   private bossHpScale: number;
   private presentationEvents: PresentationEvent[] = [];
+  private grenadeEvents: GrenadeEvent[] = [];
   private static readonly MAX_PRESENTATION_EVENTS = 256;
 
   constructor(options: SimulationOptions) {
@@ -752,6 +775,7 @@ export class Simulation {
     }
     this.state = {
       ...(catharsis ? { catharsis } : {}),
+      ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
@@ -936,15 +960,28 @@ export class Simulation {
       throw new Error('Simulation armory position exceeds the supported range');
     }
     const catharsis = this.state.catharsis;
+    const grenade = this.state.grenade ? structuredClone(this.state.grenade) : undefined;
+    const grenadeConfig = catharsis?.balance.grenade;
+    if (input.throwGrenade && grenade?.inventory === 1 && !grenade.flight && grenadeConfig) {
+      const target = grenadeTarget(this.state, grenadeConfig);
+      if (target) {
+        grenade.inventory = 0;
+        grenade.flight = { startX: this.state.player.x, startZ: this.state.player.z,
+          targetX: target.x, targetZ: target.z, startedAtSeconds: this.state.elapsedSeconds,
+          flightSeconds: grenadeConfig.flightSeconds, damageEnemyHp: grenadeConfig.damageEnemyHp,
+          blastRadius: grenadeConfig.blastRadius };
+      }
+    }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy,
       z: enemy.z - (catharsis && !currentBoss?.engaged && !bossContact && enemy.archetype
         ? enemyApproachSpeed(enemy, catharsis.balance) * dtSeconds : 0) }));
     let progression = this.state.progression;
-    const awardKill = (enemy: EnemySimulationState): void => {
-      if (progression && catharsis?.balance.defenseMode) progression = grantXp(progression,
-        enemy.archetype === 'giant' ? catharsis.balance.giant.xp
-          : enemy.archetype === 'heavy' ? catharsis.balance.progression.heavyKillXp : catharsis.balance.progression.gruntKillXp,
-        catharsis.balance.progression);
+    const awardKill = (enemy: EnemySimulationState): number => {
+      if (!progression || !catharsis?.balance.defenseMode) return 0;
+      const amount = enemy.archetype === 'giant' ? catharsis.balance.giant.xp
+        : enemy.archetype === 'heavy' ? catharsis.balance.progression.heavyKillXp : catharsis.balance.progression.gruntKillXp;
+      progression = grantXp(progression, amount, catharsis.balance.progression);
+      return amount; // Nominal kill reward; grantXp alone owns overflow and cap semantics.
     };
     const stepEvents: PresentationEvent[] = [];
     let boss = this.state.boss ? { ...this.state.boss } : null;
@@ -982,6 +1019,23 @@ export class Simulation {
         nextZ, catharsis.balance, catharsis.trackHalfWidth, this.enemyStreamDefinition.seed, interval, enemies, enemyStream);
     }
     const enemyCollisionIndex = new EnemyCollisionIndex(enemies);
+    // Every player damage source shares exactly one lethal-removal / XP boundary.
+    const damageEnemy = (enemy: EnemySimulationState, damageEnemyHp: number): number => {
+      if (enemy.hp <= 0) return 0;
+      enemy.hp -= damageEnemyHp;
+      if (enemy.hp <= 0) {
+        enemies.splice(enemies.indexOf(enemy), 1);
+        enemyCollisionIndex.remove(enemy);
+        return awardKill(enemy);
+      }
+      return 0;
+    };
+    if (grenade && grenadeConfig && grenade.lv3EnteredAtSeconds !== null
+      && grenade.supplySpawnedAtSeconds === null
+      && nextElapsedSeconds + 1e-9 >= grenade.lv3EnteredAtSeconds + grenadeConfig.supplyDelaySeconds) {
+      grenade.supplySpawnedAtSeconds = nextElapsedSeconds;
+      grenade.supply = placeGrenadeSupply({ ...this.state, enemies, player: { ...this.state.player, z: nextZ } }, grenadeConfig);
+    }
     const gates = this.state.gates.map((gate) => ({ ...gate, reward: { ...gate.reward } }));
     let squad = { ...this.state.squad };
     const projectiles = this.state.projectiles.map((projectile) => ({ ...projectile }));
@@ -1072,9 +1126,14 @@ export class Simulation {
         const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, boss, aimedRewards, gates,
           tuning.normalEnemyRadius,
           tuning.bossRadius,
-          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics);
+          this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics, grenade?.supply);
         if (!hit) break;
-        if (hit.kind === 'gate') {
+        if (hit.kind === 'grenadeSupply') {
+          grenade!.supply = null;
+          grenade!.inventory = 1;
+          grenade!.acquiredAtSeconds = nextElapsedSeconds;
+          this.grenadeEvents.push({ kind: 'grenadeAcquired' });
+        } else if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
           if (hit.gate.hitProgress === hit.gate.reward.hitsRequired) {
             hit.gate.hitProgress = 0;
@@ -1098,12 +1157,7 @@ export class Simulation {
         } else if (projectile.kind !== 'rocket') {
           // Keep the retained tier/Boss power economy intact while expressing
           // experiment health in Tier-1 rifle-hit units (Grunt = one hit).
-          hit.enemy.hp -= hit.enemy.archetype ? projectile.damage / this.tiers.tier1Power : projectile.damage;
-          if (hit.enemy.hp <= 0) {
-            enemies.splice(enemies.indexOf(hit.enemy), 1);
-            enemyCollisionIndex.remove(hit.enemy);
-            awardKill(hit.enemy);
-          }
+          damageEnemy(hit.enemy, hit.enemy.archetype ? projectile.damage / this.tiers.tier1Power : projectile.damage);
           const penetrationCost = projectile.tier > hit.enemy.tier
             ? exchangeValueForTier(hit.enemy.tier, this.tiers.mergeCount) : 0n;
           if (penetrationCost > 0n) {
@@ -1118,7 +1172,7 @@ export class Simulation {
             }
           }
         }
-        if (projectile.kind === 'rocket' && hit.kind !== 'streamReward') {
+        if (projectile.kind === 'rocket' && hit.kind !== 'streamReward' && hit.kind !== 'grenadeSupply') {
           const radiusSquared = projectile.blastRadius * projectile.blastRadius;
           const blastX = hit.kind === 'gate' ? projectile.x : hit.kind === 'boss' ? hit.boss.x : hit.enemy.x;
           const blastZ = hit.kind === 'gate' ? hit.z : hit.kind === 'boss' ? hit.boss.z : hit.enemy.z;
@@ -1127,12 +1181,7 @@ export class Simulation {
             const dx = enemy.x - blastX;
             const dz = enemy.z - blastZ;
             if (dx * dx + dz * dz <= radiusSquared) {
-              enemy.hp -= projectile.damage;
-              if (enemy.hp <= 0) {
-                enemies.splice(enemies.indexOf(enemy), 1);
-                enemyCollisionIndex.remove(enemy);
-                awardKill(enemy);
-              }
+              damageEnemy(enemy, projectile.damage);
             }
           }
         }
@@ -1144,6 +1193,16 @@ export class Simulation {
         survivingProjectiles.push({ ...projectile, x: projectile.x + travel * (projectile.slopeX ?? 0), z: endZ, remainingRange,
           penetrationRemaining: storeExactValue(penetrationRemaining > 0n ? penetrationRemaining : 0n) });
       }
+    }
+    if (grenade?.flight && nextElapsedSeconds + 1e-9 >= grenade.flight.startedAtSeconds + grenade.flight.flightSeconds) {
+      const flight = grenade.flight;
+      const victims = enemiesInBlast(enemies, flight.targetX, flight.targetZ, flight.blastRadius).map(enemy => {
+        const damage = Math.min(enemy.hp, flight.damageEnemyHp);
+        const killXp = damageEnemy(enemy, flight.damageEnemyHp);
+        return { id: enemy.id, archetype: enemy.archetype!, damage, killed: enemy.hp <= 0, killXp };
+      });
+      this.grenadeEvents.push({ kind: 'grenadeDetonated', x: flight.targetX, z: flight.targetZ, radius: flight.blastRadius, victims });
+      grenade.flight = null;
     }
     const survivingPickups: UpgradePickupSimulationState[] = [];
     for (const { pickup, travelSeconds } of travelingPickups.sort((a, b) => a.pickup.id - b.pickup.id)) {
@@ -1279,6 +1338,8 @@ export class Simulation {
         }
       }
     }
+    if (grenade && grenade.lv3EnteredAtSeconds === null && this.state.progression!.level < 3 && progression!.level >= 3)
+      grenade.lv3EnteredAtSeconds = nextElapsedSeconds;
     // Deferred late-game behavior, independent of the P1 Lv4/Lv5 rewards.
     let reinforcement = this.state.reinforcement;
     if (reinforcement && progression && catharsis && squad.count > 0) {
@@ -1296,7 +1357,7 @@ export class Simulation {
     }
     if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
-      streamRewards: survivingStreamRewards,
+      ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { ...(memberCooldowns ? { rifleMemberCooldowns: memberCooldowns } : {}), rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
@@ -1308,6 +1369,12 @@ export class Simulation {
           this.presentationEvents.length - Simulation.MAX_PRESENTATION_EVENTS);
       }
     }
+  }
+
+  consumeGrenadeEvents(): GrenadeEvent[] {
+    const events = this.grenadeEvents;
+    this.grenadeEvents = [];
+    return events;
   }
 
   consumePresentationEvents(): PresentationEvent[] {
@@ -1324,6 +1391,7 @@ export class Simulation {
     return {
       ...this.state,
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
+      ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
@@ -1364,6 +1432,7 @@ export class Simulation {
       throw new Error('Simulation Boss progression does not match the loaded level');
     }
     this.state = candidate.state;
+    this.grenadeEvents = [];
     this.rng = candidate.rng;
     this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed,
       candidate.state.catharsis?.rewardRowsPerReward ?? this.enemyStreamDefinition?.rewards?.rowsPerReward);

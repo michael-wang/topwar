@@ -1,4 +1,6 @@
 import { ART } from '../art/ArtDirection';
+import { GrenadeRenderer } from './GrenadeRenderer';
+import type { GrenadeEvent } from '../simulation/grenade';
 import { BattlefieldAir } from './environment/BattlefieldAir';
 import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
@@ -35,11 +37,13 @@ export class GameRenderer {
       visibleSquad: this.squadRenderer.getVisibleCount(),
       enemies: this.enemyRenderer.getDebugStats(),
       projectiles: this.projectileRenderer.getDebugStats(),
+      grenade: this.grenadeRenderer.getDebugStats(),
       shadows: this.contactShadows.getDebugStats(),
       environment: this.environment.getDebugStats(),
     };
   }
   private readonly scene = new THREE.Scene();
+  private readonly grenadeRenderer = new GrenadeRenderer(this.scene);
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -110,6 +114,7 @@ export class GameRenderer {
     this.projectileRenderer.update(state.projectiles, nowMs);
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
+    this.grenadeRenderer.update(state.grenade, nowMs);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -119,6 +124,10 @@ export class GameRenderer {
     this.enemyRenderer.present(events, nowMs);
   }
 
+  presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
+    this.grenadeRenderer.present(events, nowMs);
+  }
+
   presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {
     this.squadRenderer.presentLevelUp(event, nowMs);
     this.projectileRenderer.presentLevelUp(nowMs);
@@ -126,6 +135,7 @@ export class GameRenderer {
 
   resetFeedback(visualSalt=0): void {
     this.air.reset();
+    this.grenadeRenderer.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset(visualSalt);
     this.bossRenderer.reset();
@@ -139,6 +149,7 @@ export class GameRenderer {
     if (this.disposed) return;
     this.stopResizeHandling();
     this.air.dispose();
+    this.grenadeRenderer.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
     this.contactShadows.dispose();

@@ -1,7 +1,9 @@
 import { z } from 'zod';
+import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
+  grenade: GrenadeConfigSchema.default(grenadeDefaults),
   progression: z.strictObject({
     xpRequirements: z.array(z.number().int().positive()).length(4).default([28, 60, 110, 180]),
     levelPlan: z.array(z.strictObject({

@@ -1,5 +1,18 @@
 {
   "catharsis": {
+    "grenade": {
+      "capacity": 1,
+      "damageEnemyHp": 9,
+      "blastRadius": 2,
+      "flightSeconds": 0.65,
+      "throwRange": 24,
+      "supplyDelaySeconds": 8,
+      "supplyHitsRequired": 1,
+      "supplyDepth": 14,
+      "supplyMinDepth": 6,
+      "supplyFrontClearance": 1.25,
+      "supplyLaneDistancePenalty": 3
+    },
     "defenseMode": true,
     "defenseSpawnAheadDistance": 47,
     "crowdDepthSpan": 9,
