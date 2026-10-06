@@ -453,3 +453,13 @@ describe('audio cue observation and safety', () => {
     expect(context.close).toHaveBeenCalledOnce();
   });
 });
+
+it('bounds MG shot cues to nine short voices per second without Rifle cues',()=>{
+ const observer=new AudioCueObserver();let cues=0;
+ for(let i=0;i<180;i++){
+  const result=observer.observe(1,1,[],[],null,i*1000/18,[{id:i+1,kind:'machineGun',tier:1}]);
+  expect(result).not.toContain('rifle');if(result.includes('machineGun'))cues++;
+ }
+ expect(cues).toBeLessThanOrEqual(90);expect(cues).toBeGreaterThanOrEqual(60);
+ observer.reset();expect(observer.observe(1,1,[],[],null,0,[{id:1,kind:'machineGun',tier:1}])).toContain('machineGun');
+});

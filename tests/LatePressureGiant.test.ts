@@ -40,9 +40,9 @@ it('preserves the old LV1–4 stream exactly before any progression unlock', () 
   expect(sim.getState().giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
 });
 
-it('schedules exactly one LV6 introduction, restores its pending clock and never respawns after death', () => {
+it('schedules exactly one deferred LV7 introduction, restores its pending clock and never respawns after death', () => {
   const sim = make(), state = sim.getState();
-  state.progression = { level: 6, xp: 0 }; state.weapons.rifleCooldownRemainingSeconds = 1000;
+  state.progression = { level: 7, xp: 0 }; state.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(state); step(sim, 1);
   const pending = sim.getState(); expect(pending.giantEncounter!.scheduledAtSeconds).toBeCloseTo(4 + 1 / 60);
   const restored = make(); restored.restoreState(JSON.parse(JSON.stringify(pending)));
@@ -94,9 +94,9 @@ it('projects Giant maximum, proportions and gait without persisting renderer sta
 });
 
 
-it.each([[1, 44], [17, 38], [42, 30]])('takes 37–39 seconds of LV6 focused fire to kill the fixed Giant (seed %i)', (seed, distance) => {
+it.each([[1, 44], [17, 38], [42, 30]])('takes 37–39 seconds of retained Rifle Stage III focused fire to kill the fixed Giant (seed %i)', (seed, distance) => {
   const sim = new Simulation({ seed, level: { id: 'focus', length: 1000, enemyGroups: [], upgradeGates: [] },
-    startSquad: 1, startRocketCount: 0, tiers: config.tiers, catharsis: { balance, trackHalfWidth: 3.2 } });
+    startSquad: 1, startRocketCount: 0, tiers: config.tiers, catharsis: { balance: { ...balance, progression: { ...balance.progression, levelPlan: balance.progression.levelPlan.slice(0,5), xpRequirements: balance.progression.xpRequirements.slice(0,4) } }, trackHalfWidth: 3.2 } });
   const initial = sim.getState(); initial.progression = { level: 6, xp: 0 };
   initial.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   initial.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: distance, hp: balance.giant.hp }];

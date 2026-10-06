@@ -19,6 +19,7 @@ export interface CharacterVisualFamily<R extends CharacterRole> extends Characte
 
 export interface PlayerVisualFamily extends CharacterVisualFamily<'player'> {
   readonly weapon: CharacterModel;
+  readonly machineGunWeapon?: CharacterModel;
   readonly presentation: PlayerPresentation;
 }
 

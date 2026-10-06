@@ -1,14 +1,15 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 import { addRifleSoldiers } from '../simulation/squad/composition';
-import { effectiveRifleFireRate } from '../simulation/progression';
+import { effectivePrimaryFireRate } from '../simulation/progression';
 
-export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade';
+export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade' | 'machineGun';
 export const ENEMY_VFX_LAB = {
   grunt: { level: 1, soldiers: 1, depths: [8, 10, 12, 14, 16, 18, 20, 22, 24, 26] },
   heavy: { level: 3, soldiers: 1, depths: [10, 15, 20] },
   giant: { level: 5, soldiers: 3, depths: [14] },
   grenade: { level: 3, soldiers: 1 },
+  machineGun: { level: 6, soldiers: 1 },
 } as const;
 
 // App-owned QA adapter, never a simulation mode or serialized debug flag.
@@ -29,18 +30,22 @@ export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: numb
   state.progression = { level: fixture.level, xp: 0 };
   if (fixture.soldiers > 1)
     state.squad = addRifleSoldiers(state.squad, fixture.soldiers - 1, 1, options.tiers.mergeCount);
-  if (role === 'grenade') {
+  if (role === 'grenade' || role === 'machineGun') {
     // Fixed uneven depths, distributed across all attack lanes. QA coordinates
     // only: combat uses the same authored HP, movement, damage and XP as a run.
-    state.enemies = Array.from({ length: 45 }, (_, index) => {
+    const gruntCount = role === 'machineGun' ? 60 : 45;
+    state.enemies = Array.from({ length: gruntCount }, (_, index) => {
       const enemyLane = index % lanes.length;
       return { id: index + 1, tier: 1, archetype: 'grunt' as const,
-        lane: enemyLane, x: lanes[enemyLane], z: 10 + ((index * 37 + enemyLane * 11) % 81) / 10, hp: 1 };
+        lane: enemyLane, x: lanes[enemyLane], z: role === 'machineGun'
+          ? 8 + ((index * 37 + enemyLane * 11) % 161) / 10
+          : 10 + ((index * 37 + enemyLane * 11) % 81) / 10, hp: 1 };
     });
-    for (const [index, enemyLane] of [1, lane, lanes.length - 1].entries())
-      state.enemies.push({ id: 46 + index, tier: 1, archetype: 'heavy', lane: enemyLane,
-        x: lanes[enemyLane], z: 13.3 + index * 1.7, hp: balance.heavyHp });
-    state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
+    const heavyLanes = role === 'machineGun' ? [lane, 0, 1, 3, 4] : [1, lane, lanes.length - 1];
+    for (const [index, enemyLane] of heavyLanes.entries())
+      state.enemies.push({ id: gruntCount + 1 + index, tier: 1, archetype: 'heavy', lane: enemyLane,
+        x: lanes[enemyLane], z: role === 'machineGun' ? 10.8 + index * 2.8 : 13.3 + index * 1.7, hp: balance.heavyHp });
+    if (role === 'grenade') state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
       inventory: 1, supply: null, flight: null };
   } else {
     const combatFixture = ENEMY_VFX_LAB[role];
@@ -55,7 +60,7 @@ export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: numb
   state.enemyStream.nextRowIndex = Math.max(state.enemyStream.nextRowIndex,
     Math.ceil((balance.defenseSpawnAheadDistance + 600 - stream.startZ) / stream.spacing) + 1);
   state.enemyStream.nextEnemyId = state.enemies.length + 1;
-  const interval = 1 / effectiveRifleFireRate(baseFireRate, fixture.level, balance.progression);
+  const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
   state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers },
     (_, index) => index * interval / fixture.soldiers);
   simulation.restoreState(state);

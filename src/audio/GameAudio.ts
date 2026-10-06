@@ -5,14 +5,15 @@ import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 // Existing audio cue delay is independent of the removed visual crash system.
 const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 
-export type AudioCue = 'levelUp' | 'rifle' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
+export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
   | 'giantDeath' | 'groundArtillery' | 'skyFlak';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
 interface ObservedReward { id: number; hitProgress: number }
 interface ObservedBoss { id: number; hp: number }
-interface ObservedProjectile { id: number; kind: 'rifle' | 'rocket'; tier: number }
+interface ObservedProjectile { id: number; kind: 'rifle' | 'machineGun' | 'rocket'; tier: number }
+export const MACHINE_GUN_CUE_GAP_MS = 1000 / 9;
 
 // Vary audible samples of deterministic auto-fire without touching weapon timing or gameplay RNG.
 export function shotCueGapMs(index: number): number {
@@ -30,6 +31,7 @@ export class AudioCueObserver {
   private previousBoss: ObservedBoss | null = null;
   private lastSeenProjectileId = 0;
   private nextShotCueMs = -Infinity;
+  private nextMachineGunCueMs = -Infinity;
   private shotCueIndex = 0;
   private nextEnemyCueMs = -Infinity;
   private nextBossHitCueMs = -Infinity;
@@ -40,10 +42,12 @@ export class AudioCueObserver {
     projectiles: readonly ObservedProjectile[] = []): AudioCue[] {
     const cues = new Set<AudioCue>();
     let highestNewRifleTier = 0;
+    let newMachineGun = false;
     const previousProjectileId = this.lastSeenProjectileId;
     for (const projectile of projectiles) {
       if (projectile.id > previousProjectileId) {
         if (projectile.kind === 'rocket') cues.add('rocket');
+        else if (projectile.kind === 'machineGun') newMachineGun = true;
         else highestNewRifleTier = Math.max(highestNewRifleTier, projectile.tier);
       }
       this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
@@ -51,6 +55,9 @@ export class AudioCueObserver {
     if (highestNewRifleTier > 0 && nowMs >= this.nextShotCueMs) {
       cues.add(highestNewRifleTier > 1 ? 'heavyRifle' : 'rifle');
       this.nextShotCueMs = nowMs + shotCueGapMs(this.shotCueIndex++);
+    }
+    if (newMachineGun && nowMs >= this.nextMachineGunCueMs) {
+      cues.add('machineGun');this.nextMachineGunCueMs = nowMs + MACHINE_GUN_CUE_GAP_MS;
     }
     if (currentDefense > previousDefense) cues.add('reward');
     if (currentDefense < previousDefense) cues.add(currentDefense === 0n || currentDefense === 0 ? 'fatal' : 'damage');
@@ -93,6 +100,7 @@ export class AudioCueObserver {
     this.previousBoss = null;
     this.lastSeenProjectileId = 0;
     this.nextShotCueMs = -Infinity;
+    this.nextMachineGunCueMs = -Infinity;
     this.shotCueIndex = 0;
     this.nextEnemyCueMs = -Infinity;
     this.nextBossHitCueMs = -Infinity;
@@ -105,6 +113,7 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
   levelUp: { from: 660, to: 880, seconds: .16, wave: 'sine', volume: .17,
     secondary: { from: 880, to: 1320, seconds: .24, wave: 'sine', volume: .14, delaySeconds: .13 } },
   rifle: { from: 1050, to: 280, seconds: .038, wave: 'sawtooth', volume: .09 },
+  machineGun: { from: 780, to: 180, seconds: .105, wave: 'sawtooth', volume: .09 },
   heavyRifle: { from: 850, to: 210, seconds: .055, wave: 'sawtooth', volume: .12,
     secondary: { from: 170, to: 75, seconds: .075, wave: 'triangle', volume: .04 } },
   rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.08 },
@@ -270,6 +279,12 @@ export class GameAudio {
           gain.gain.exponentialRampToValueAtTime(tone.volume * volumeScale,
             toneStart + tone.attackSeconds * durationScale);
         } else gain.gain.setValueAtTime(tone.volume * volumeScale, toneStart);
+        if (cue === 'machineGun') {
+          // Two round-like pulses share one short voice; at most nine cue voices
+          // per presentation second. Rifle envelopes remain exactly as authored.
+          gain.gain.exponentialRampToValueAtTime(.001, toneStart + .04);
+          gain.gain.setValueAtTime(tone.volume, toneStart + 1/18);
+        }
         gain.gain.exponentialRampToValueAtTime(.001, toneEnd);
         oscillator.connect(gain);
         gain.connect(filter ?? this.master!);

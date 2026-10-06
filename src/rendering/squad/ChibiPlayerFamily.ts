@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { toyEllipsoid as ellipsoid, toyShoe, toyHelmetShell } from '../characters/ToyGeometry';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { ART } from '../../art/ArtDirection';
 import type { PlayerVisualFamily } from '../CharacterVisualFamilies';
 import { ChibiPlayerMotion } from './ChibiPlayerMotion';
@@ -85,12 +86,24 @@ export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): voi
     { geometry: new THREE.CylinderGeometry(.04, .04, .30, 12).rotateX(Math.PI / 2).translate(0, .012, .34), color: ART.faction.weapon },
   ]);
   const matte = () => new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1, metalness: 0 });
+  // Larger rounded receiver, belt box and ribbed barrel. Accepted body/grip
+  // anchors are unchanged; this is one reusable geometry with the Rifle material.
+  const machineGunGeometry = merged([
+    { geometry: new RoundedBoxGeometry(.24, .18, .34, 2, .035).translate(0, .015, .06), color: ART.faction.weapon },
+    { geometry: ellipsoid(0, -.01, -.20, .075, .065, .115, 12, 6), color: ART.faction.equipment },
+    { geometry: ellipsoid(0, -.065, -.055, .04, .09, .045, 10, 6), color: ART.faction.weapon },
+    { geometry: new RoundedBoxGeometry(.20, .19, .21, 2, .03).translate(-.10, -.11, .08), color: '#6E8272' },
+    { geometry: new THREE.CylinderGeometry(.065, .065, .28, 12).rotateX(Math.PI / 2).translate(0, .012, .35), color: ART.faction.weapon },
+    ...[.27, .35, .43].map(z => ({ geometry: new THREE.CylinderGeometry(.082, .082, .035, 12)
+      .rotateX(Math.PI / 2).translate(0, .012, z), color: ART.faction.equipment })),
+  ]);
   const bodyMaterial = matte(), gearMaterial = matte(), weaponMaterial = matte();
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial);
   const vest = new THREE.Mesh(chestGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, weaponMaterial);
+  const machineGunWeapon = new THREE.Mesh(machineGunGeometry, weaponMaterial);
   const muzzleRest = new THREE.Vector3().fromArray(muzzleAnchor).applyMatrix4(weaponRest).multiplyScalar(rootScale);
   return {
-    role: 'player', id: 'topwar-player', body, helmet, vest, weapon,
+    role: 'player', id: 'topwar-player', body, helmet, vest, weapon, machineGunWeapon,
     presentation: {
       rootScale,
       createMotion: (normal, level) => new ChibiPlayerMotion(normal, level, offhandGrip, weaponGrip, offhand, weaponHand),
@@ -101,7 +114,7 @@ export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): voi
       tracer: { height: muzzleRest.y, offsetX: muzzleRest.x },
     },
     dispose(): void {
-      for (const geometry of [bodyGeometry, helmetGeometry, chestGeometry, weaponGeometry]) geometry.dispose();
+      for (const geometry of [bodyGeometry, helmetGeometry, chestGeometry, weaponGeometry, machineGunGeometry]) geometry.dispose();
       for (const material of [bodyMaterial, gearMaterial, weaponMaterial]) material.dispose();
     },
   };

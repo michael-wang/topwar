@@ -512,3 +512,5 @@ We will measure before optimizing.
 - production analytics
 
 If the little game is not fun, none of those matter.
+
+P2A extends the authored level plan with explicit `rifle` / `machineGun` families. XP count equals plan length minus one; stages are non-regressive within a family, while the Rifle→MG boundary resets stage/count to one. Family is derived from authoritative progression plus snapshot configuration, not duplicated in a weapon inventory. The retained primary-member clocks/composition slots serve both families; MG emits a distinct presentation kind through the existing lane/collision/lethal-XP path. Evolution replaces living members and clears old-family projectiles/clocks without contact events. App defense-loss/audio feedback excludes this transformation, preserving actual same-frame contact events. The renderer swaps one shared held-weapon geometry, reuses muzzle/tracer batches and samples automatic-fire audio at at most nine short two-pulse voices/second. Rifle cues and startup activation are unchanged.

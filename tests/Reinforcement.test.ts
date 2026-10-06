@@ -6,7 +6,10 @@ import { effectiveRifleFireRate, requiredXp } from '../src/simulation/progressio
 import { createDefenseSquadFormation } from '../src/simulation/squad/formation';
 import { projectRenderState } from '../src/app/projectRenderState';
 import { reinforcementArrivalPose } from '../src/presentation/ReinforcementArrival';
-const config = GameConfigSchema.parse(data), balance = config.catharsis!;
+const config = GameConfigSchema.parse(data);
+// Retained future two-Rifle experiment is explicitly isolated from P2A.
+const balance = { ...config.catharsis!, progression: { ...config.catharsis!.progression,
+levelPlan: config.catharsis!.progression.levelPlan.slice(0,5), xpRequirements: config.catharsis!.progression.xpRequirements.slice(0,4) } };
 const make = (seed = 17) => new Simulation({ seed, level: { id: 'reinforcement', length: 1000, enemyGroups: [], upgradeGates: [] },
   startSquad: 1, startRocketCount: 0, tiers: config.tiers, catharsis: { balance, trackHalfWidth: 3.2 } });
 const tuning = { moveSpeed: 5, forwardSpeed: .6, trackHalfWidth: 3.2, defenseLineOffset: 1.5,

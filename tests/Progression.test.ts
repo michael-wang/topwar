@@ -125,14 +125,15 @@ it('uses the tuned base rate in actual level-three scheduling', () => {
   expect(live.rifle.fireRate).toBe(2.5);
 });
 
-it('caps natural XP at five, including large grants, while debug levels clamp to Stage III', () => {
-  expect(maxProgressionLevel(curve)).toBe(5);
+it('caps natural XP at six, including large grants, while debug levels clamp to Stage III', () => {
+  expect(maxProgressionLevel(curve)).toBe(6);
   expect(curve.levelPlan).toEqual([
-    {fireRateStage:1,squadStage:1}, {fireRateStage:2,squadStage:1},
-    {fireRateStage:3,squadStage:1}, {fireRateStage:3,squadStage:2}, {fireRateStage:3,squadStage:3},
+    {weaponFamily:'rifle',fireRateStage:1,squadStage:1}, {weaponFamily:'rifle',fireRateStage:2,squadStage:1},
+    {weaponFamily:'rifle',fireRateStage:3,squadStage:1}, {weaponFamily:'rifle',fireRateStage:3,squadStage:2}, {weaponFamily:'rifle',fireRateStage:3,squadStage:3},
+    {weaponFamily:'machineGun',fireRateStage:1,squadStage:1},
   ]);
-  expect(grantXp({level:1,xp:0},100000,curve)).toEqual({level:5,xp:0});
-  expect(grantXp({level:5,xp:0},100000,curve)).toEqual({level:5,xp:0});
+  expect(grantXp({level:1,xp:0},100000,curve)).toEqual({level:6,xp:0});
+  expect(grantXp({level:5,xp:0},100000,curve)).toEqual({level:6,xp:0});
   expect([1,2,3,4,5,7,100].map(level=>effectiveRifleFireRate(3,level,curve)))
     .toEqual([3,3.75,4.5,4.5,4.5,4.5,4.5]);
 });
@@ -145,7 +146,7 @@ it('restores explicit stages and rejects obsolete formula snapshots or invalid s
   expect(()=>sim.restoreState(bad)).toThrow();
   const old=sim.getState() as any; old.catharsis.balance.progression.fireRatePerLevel=1;
   expect(()=>sim.restoreState(old)).toThrow();
-  const max=sim.getState();max.progression={level:5,xp:1};expect(()=>sim.restoreState(max)).toThrow(/progression/);
+  const max=sim.getState();max.progression={level:6,xp:1};expect(()=>sim.restoreState(max)).toThrow(/progression/);
 });
 function killForXp(level:number,xp:number,count:number, reward:number) {
   const sim=make(), state=sim.getState(); state.progression={level,xp};

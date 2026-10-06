@@ -235,9 +235,8 @@ states remain separate at 350/390 px. The enlarged monochrome Rifle stays unchan
 
 P1 enhancement presentation consumes the explicit configured level plan. The first
 cartridge is baseline Stage I, not an earned upgrade. Soldier pips show permanent
-progression squad stage, not living count: casualties do not unfill them. Lv5 caps
-normal progression with a full quiet XP bar and no imminent-level pulse. Levels above
-five remain deferred. P1.5 adds one separate left-side active Grenade button after supply acquisition; it does not replace the Rifle loadout or enhancement pips. No percentage or multiplier text remains.
+progression squad stage, not living count: casualties do not unfill them. Lv6 caps
+normal progression with a full quiet XP bar and no imminent-level pulse. At Lv6 the navy Rifle silhouette swaps to a heavier MG/belt-box silhouette, and enhancement returns to Stage I (one filled cartridge). Levels above six remain deferred. P1.5 adds one separate left-side active Grenade button after supply acquisition; it does not replace the Rifle loadout or enhancement pips. No percentage or multiplier text remains.
 
 Future weapons can replace the silhouette map, without implementing those weapons now.
 Normal HUD has no RATE/SQUAD labels or numeric XP. Temporary `LEVEL UP` remains compact.

@@ -1,39 +1,17 @@
 import { z } from 'zod';
 import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
+import { ProgressionConfigSchema, progressionDefaults } from './progressionConfig';
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
   grenade: GrenadeConfigSchema.default(grenadeDefaults),
-  progression: z.strictObject({
-    xpRequirements: z.array(z.number().int().positive()).length(4).default([28, 60, 110, 180]),
-    levelPlan: z.array(z.strictObject({
-      fireRateStage: z.number().int().min(1).max(3),
-      squadStage: z.number().int().min(1).max(3),
-    })).length(5).default([
-      { fireRateStage: 1, squadStage: 1 }, { fireRateStage: 2, squadStage: 1 },
-      { fireRateStage: 3, squadStage: 1 }, { fireRateStage: 3, squadStage: 2 },
-      { fireRateStage: 3, squadStage: 3 },
-    ]),
-    fireRateMultipliers: z.array(z.number().finite().positive()).length(3).default([1, 1.25, 1.5]),
-    gruntKillXp: z.number().int().nonnegative().default(1),
-    heavyKillXp: z.number().int().nonnegative().default(10),
-    // Deferred late-game entrance/assault only; natural P1 progression cannot reach it.
-    reinforcementLevel: z.number().int().min(6).default(7),
-    reinforcementArrivalSeconds: z.number().finite().positive().default(1.1),
-    reinforcementSpacing: z.number().finite().positive().default(.72),
-    reinforcementStagger: z.number().finite().nonnegative().default(.18),
-  }).refine(value => value.levelPlan[0].fireRateStage === 1 && value.levelPlan[0].squadStage === 1
-    && value.levelPlan.every((stage, index) => index === 0
-      || (stage.fireRateStage >= value.levelPlan[index - 1].fireRateStage
-        && stage.squadStage >= value.levelPlan[index - 1].squadStage)),
-    { message: 'Progression starts at stage one and stages must not decrease' })
-    .refine(value => value.fireRateMultipliers.every((rate, index) => index === 0
-      || rate >= value.fireRateMultipliers[index - 1]), { message: 'Rifle rate stages must not decrease' })
-    .default({ xpRequirements: [28, 60, 110, 180],
-      levelPlan: [{ fireRateStage: 1, squadStage: 1 }, { fireRateStage: 2, squadStage: 1 },
-        { fireRateStage: 3, squadStage: 1 }, { fireRateStage: 3, squadStage: 2 }, { fireRateStage: 3, squadStage: 3 }],
-      fireRateMultipliers: [1, 1.25, 1.5], gruntKillXp: 1, heavyKillXp: 10,
-      reinforcementLevel: 7, reinforcementArrivalSeconds: 1.1, reinforcementSpacing: .72, reinforcementStagger: .18 }),
+  machineGun: z.strictObject({
+    fireRate: z.number().finite().positive().default(18),
+    projectileSpeed: z.number().finite().positive().default(60),
+    range: z.number().finite().positive().default(80),
+    damageEnemyHp: z.number().finite().positive().default(1),
+  }).default({ fireRate: 18, projectileSpeed: 60, range: 80, damageEnemyHp: 1 }),
+  progression: ProgressionConfigSchema.default(progressionDefaults),
   landingAssault: z.strictObject({
     enabled: z.boolean().default(false),
     powerWindowSeconds: z.number().finite().nonnegative().default(10),
@@ -52,7 +30,7 @@ export const CatharsisConfigSchema = z.strictObject({
   pressureMultipliers: z.array(z.number().finite().min(1).max(4)).min(1).default([1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65]),
   giant: z.strictObject({
     enabled: z.boolean().default(false),
-    unlockLevel: z.number().int().min(6).default(6),
+    unlockLevel: z.number().int().min(6).default(7),
     introDelaySeconds: z.number().finite().nonnegative().default(4),
     hp: z.number().finite().positive().default(210),
     xp: z.number().int().nonnegative().default(120),
@@ -61,7 +39,7 @@ export const CatharsisConfigSchema = z.strictObject({
     visualScale: z.number().finite().min(1.8).max(5).default(1.9),
     widthMultiplier: z.number().finite().positive().default(.94),
     gaitCycleMs: z.number().finite().positive().default(850),
-  }).default({ enabled: false, unlockLevel: 6, introDelaySeconds: 4, hp: 210, xp: 120,
+  }).default({ enabled: false, unlockLevel: 7, introDelaySeconds: 4, hp: 210, xp: 120,
     speed: .08, visualScale: 1.9, widthMultiplier: .94, gaitCycleMs: 850 }),
   heavyFrontClearance: z.number().finite().nonnegative().default(2.5),
   defenseMode: z.boolean().default(false),

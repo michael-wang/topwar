@@ -79,7 +79,7 @@ export interface ProjectileSimulationState {
   lane?: number;
   slopeX?: number;
   id: number;
-  kind: 'rifle' | 'rocket';
+  kind: 'rifle' | 'machineGun' | 'rocket';
   tier: number;
   x: number;
   z: number;

@@ -14,6 +14,7 @@ export class XpHud {
   private readonly message = document.createElement('div');
   private readonly loadout = document.createElement('div');
   private readonly enhancement = document.createElement('div');
+  private readonly weaponIcon = gameIcon('rifle');
   private readonly pips = Array.from({ length: 3 }, () => document.createElement('span'));
   private traitKey = '';
   private event: ProgressionLevelUpEvent | null = null;
@@ -39,7 +40,7 @@ export class XpHud {
     this.message.append(title);
     this.loadout.className = 'xp-loadout'; this.loadout.hidden = true;
     const weapon = document.createElement('div'); weapon.className = 'xp-weapon-slot';
-    weapon.append(gameIcon('rifle'));
+    weapon.append(this.weaponIcon);
     this.enhancement.className = 'xp-enhancement-slot';
     this.enhancement.append(...this.pips);
     this.loadout.append(weapon, this.enhancement);
@@ -53,10 +54,12 @@ export class XpHud {
   }
   update(state: Readonly<ProgressionState>, balance: ProgressionBalance, nowMs: number): void {
     this.loadout.hidden = false;
-    const model = loadoutPresentation(state, balance).enhancement;
-    const key = `${model.kind}:${model.stage}`;
+    const loadout = loadoutPresentation(state, balance), model = loadout.enhancement;
+    const key = `${loadout.weapon}:${model.kind}:${model.stage}`;
     if (key !== this.traitKey) {
-      this.enhancement.ariaLabel = `${model.kind === 'cartridge' ? 'Rifle fire-rate' : 'Unlocked squad'} stage ${model.stage} of 3`;
+      this.weaponIcon.innerHTML = iconMarkup(loadout.weapon);
+      this.loadout.dataset.weaponFamily = loadout.weapon;
+      this.enhancement.ariaLabel = `${model.kind === 'cartridge' ? loadout.weapon === 'machineGun' ? 'Machine Gun' : 'Rifle fire-rate' : 'Unlocked squad'} stage ${model.stage} of 3`;
       this.pips.forEach((pip, index) => {
         const filled = index < model.stage;
         pip.className = `xp-pip xp-pip-${model.kind} ${filled ? 'is-filled' : 'is-empty'}`;

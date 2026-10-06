@@ -3,7 +3,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { afterEach, expect, it, vi } from 'vitest';
 import { XpHud } from '../src/ui/XpHud';
 class Element {
-  children: Element[] = []; className = ''; textContent = ''; style: Record<string, string> = {};
+  dataset: Record<string, string> = {}; children: Element[] = []; className = ''; textContent = ''; style: Record<string, string> = {};
   classes = new Set<string>(); classList = { toggle: (key: string, on: boolean) => on ? this.classes.add(key) : this.classes.delete(key), remove: (key: string) => this.classes.delete(key) };
   append(...children: Element[]): void { this.children.push(...children); }
   remove(): void {}
@@ -94,7 +94,7 @@ it('gives level a dedicated large number and keeps the HUD container structural'
   expect(root.children[1].className).toBe('xp-track');
 });
 
-it.each([[1,'cartridge',1],[2,'cartridge',2],[3,'cartridge',3],[4,'soldier',2],[5,'soldier',3]] as const)(
+it.each([[1,'cartridge',1],[2,'cartridge',2],[3,'cartridge',3],[4,'soldier',2],[5,'soldier',3],[6,'cartridge',1]] as const)(
   'renders Level %i with three %s silhouettes and %i filled', (level,kind,stage)=>{
     const {hud,root}=make();hud.update({level,xp:0},balance,0);
     const loadout=root.children[3],trait=loadout.children[1];
@@ -109,7 +109,7 @@ it.each([[1,'cartridge',1],[2,'cartridge',2],[3,'cartridge',3],[4,'soldier',2],[
     hud.reset();expect(trait.children.every(pip=>(pip as unknown as HTMLElement).innerHTML==='')).toBe(true);
   });
 it('keeps the max-level bar full without charged or imminent animation and resets on Retry',()=>{
-  const {hud,root}=make();hud.update({level:5,xp:0},balance,0);
+  const {hud,root}=make();hud.update({level:6,xp:0},balance,0);
   expect(root.children[1].children[0].style.clipPath).toBe('inset(0 0% 0 0 round .45rem)');
   expect(root.classes.has('xp-complete')).toBe(true);
   expect(root.classes.has('xp-charged')).toBe(false);expect(root.classes.has('xp-imminent')).toBe(false);

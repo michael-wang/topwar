@@ -12,6 +12,7 @@ export interface GameRenderState {
     readonly z: number;
   };
   readonly squad: {
+    readonly weaponFamily?: 'rifle' | 'machineGun';
     readonly defenseFormation?: { reinforcementSpacing: number; reinforcementStagger: number };
     readonly reinforcement?: { progress: number; reinforcementSpacing: number; reinforcementStagger: number };
     readonly count: number;
@@ -77,7 +78,7 @@ export interface ProjectileRenderState {
   readonly memberIndex?: number;
   readonly slopeX?: number;
   readonly id: number;
-  readonly kind: 'rifle' | 'rocket';
+  readonly kind: 'rifle' | 'machineGun' | 'rocket';
   readonly tier: number;
   readonly x: number;
   readonly z: number;

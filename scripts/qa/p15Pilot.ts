@@ -23,7 +23,7 @@ export function pressure(state: SimulationFrameState) {
       -config.player.memberRadius-config.tiers.normalEnemyRadius)/(config.player.forwardSpeed+enemyApproachSpeed(e,balance)))) : null,
     heavyOverlap: ahead.filter(e=>e.archetype==='heavy').length };
 }
-export function runPilot(seed: number, hesitation = false, useGrenade = true, adjacentOnly = false) {
+export function runPilot(seed: number, hesitation = false, useGrenade = true, adjacentOnly = false, targetLevel = 5, includeFinalState = false) {
   const sim = new Simulation({seed,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,
     tiers:config.tiers,catharsis:{balance,trackHalfWidth:config.track.halfWidth}});
   const milestones: Record<number,number> = {}, phasePeaks: Record<number,{near:number;debt:number;heavy:number}> = {};
@@ -31,6 +31,7 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
   let beforeBlast:ReturnType<typeof pressure>|null=null, afterBlast:ReturnType<typeof pressure>|null=null, twoSecondsAfter:ReturnType<typeof pressure>|null=null;
   let grenadeVictims:any[] = [], contactCasualties=0, gruntKills=0, heavyKills=0, peakHeavyOverlap=0;
   let hesitationStart:ReturnType<typeof pressure>|null=null, hesitationEnd:ReturnType<typeof pressure>|null=null;
+  let evolution:unknown=null;
   const timeline:unknown[]=[];
   for(let tick=0;tick<60*180 && sim.getFrameState().squad.count;tick++) {
     const before=sim.getState(), lv3=milestones[3], elapsed=before.elapsedSeconds;
@@ -72,14 +73,17 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
     }
     if(detonation!==null && !twoSecondsAfter && after.elapsedSeconds>=detonation+2)twoSecondsAfter=p;
     if(tick%60===0)timeline.push({seconds:after.elapsedSeconds,level:after.progression!.level,xp:after.progression!.xp,...p});
-    if(after.progression!.level===5 && (detonation===null || twoSecondsAfter))break;
+    if(before.progression!.level<6 && after.progression!.level>=6)evolution={seconds:after.elapsedSeconds,beforeSquad:before.squad.count,afterSquad:after.squad.count,xpBefore:before.progression!.xp,xpAfter:after.progression!.xp,pressure:p};
+    if(after.progression!.level>=targetLevel && (detonation===null || twoSecondsAfter))break;
   }
   const end=sim.getFrameState();
   return {seed,pilot:hesitation?'hesitation':'normal',useGrenade,adjacentOnly,milestones,
+    evolution,lv5Duration:milestones[6]===undefined?null:milestones[6]-milestones[5],
     lv3Duration:milestones[4]===undefined?null:milestones[4]-milestones[3],
     supplySpawn:end.grenade!.supplySpawnedAtSeconds,acquisition:end.grenade!.acquiredAtSeconds,activation,detonation,
     xpAtSpawn,xpAtDetonation,grenadeVictims,grenadeKills:grenadeVictims.filter(v=>v.killed).length,
     grenadeKillXp:grenadeVictims.reduce((sum,v)=>sum+v.killXp,0),gruntKills,heavyKills,peakHeavyOverlap,
     contactCasualties,failed:end.squad.count===0,finalLevel:end.progression!.level,endSeconds:end.elapsedSeconds,
-    hesitationStart,hesitationEnd,beforeBlast,afterBlast,twoSecondsAfter,phasePeaks,timeline};
+    hesitationStart,hesitationEnd,beforeBlast,afterBlast,twoSecondsAfter,phasePeaks,timeline,
+    ...(includeFinalState ? { finalState:sim.getState() } : {})};
 }

@@ -1,6 +1,7 @@
 import type { GameRenderState } from '../rendering/RenderState';
 import type { SimulationFrameState } from '../simulation/SimulationState';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
+import { progressionStage } from '../simulation/progression';
 
 export interface RenderProjectionConfig {
   readonly catharsis?: SimulationFrameState['catharsis'];
@@ -26,6 +27,8 @@ export function projectRenderState(state: SimulationFrameState,
         - config.catharsis!.balance.landingAssault.powerWindowSeconds } : {}),
     player: defenseMode ? { ...state.player, z: 0 } : state.player,
     squad: { count: state.squad.count, rocketCount: state.squad.rocketCount,
+      ...(state.progression && config.catharsis ? { weaponFamily: progressionStage(state.progression.level,
+        config.catharsis.balance.progression).weaponFamily } : {}),
       rifleCounts: state.squad.rifleCounts, formationSpacing: config.formationSpacing,
       ...(defenseMode ? { defenseFormation: {
         reinforcementSpacing: config.catharsis!.balance.progression.reinforcementSpacing,

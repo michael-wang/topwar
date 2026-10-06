@@ -1,6 +1,6 @@
 # Catharsis Experiment — P1 Progression and Deferred Late Game
 
-Current P1 progression is specified in `GAME_SPEC.md`: Lv1–Lv5 only. The late-game experiment below is retained infrastructure and is unreachable in normal P1 play; its earlier timing measurements are historical, not the current Rifle curve.
+Current P2A progression is specified in `GAME_SPEC.md`: Lv1–Lv6: Rifle stages then one 18 Hz Machine Gun. Giant natural unlock is deferred to Lv7. The late-game experiment below is retained infrastructure and is unreachable in normal P1 play; its earlier timing measurements are historical, not the current Rifle curve.
 The accepted LV1–LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
@@ -242,22 +242,22 @@ recorded separately; physical-phone feel remains the final check.
 
 ## Earned progression
 
-Defense runs start at **Lv1 / XP0** and naturally stop at **Lv5**. The explicit
+Defense runs start at **Lv1 / XP0** and naturally stop at **Lv6**. The explicit
 `levelPlan` maps Lv1–5 to Rifle stages **I / II / III / III / III** and squad
 stages **1 / 1 / 1 / 2 / 3**. `fireRateMultipliers = [1, 1.25, 1.5]` multiplies
 the independently tunable base: at base 3 Hz this is **3 / 3.75 / 4.5 / 4.5 / 4.5 Hz**.
-No taper or rate gain exists beyond Stage III, including debug levels.
+The Rifle helper clamps at Stage III; primary fire switches to the separately authored MG at Lv6.
 
-Current-level XP costs remain **28 / 60 / 110 / 180**. Grunt kills grant 1 XP,
+Current-level XP costs remain **28 / 60 / 110 / 180 / 220**. Grunt kills grant 1 XP,
 Heavy kills 10; hits, contact casualties and leaks grant nothing. Every crossed
-level applies its squad-stage delta. Lv4 and Lv5 each add exactly one Tier-1
+Rifle level applies its squad-stage delta. Lv4 and Lv5 each add exactly one Tier-1
 Rifle soldier, without healing casualties back to the unlocked stage target.
-At Lv5 XP is discarded and the XP bar stays full without imminent pulsing.
+At Lv6 XP is discarded and the XP bar stays full without imminent pulsing.
 P1.5 adds the one-time Lv3 Grenade Supply described in `GAME_SPEC.md`; enemy difficulty remains frozen. `P15_GRENADE_REVIEW.md` records current radius-four measurements; `P15_REPORT.md` retains the original radius-two experiment.
 
 The HUD uses three cartridge pips at Lv1–3, then three soldier pips at Lv4–5.
 Filled counts are **1 / 2 / 3 / 2 / 3**. Soldier pips represent permanent unlocks,
-not current living members. The enlarged Rifle weapon slot is unchanged.
+not current living members. Lv6 transforms any living Rifle count into one MG specialist without casualty feedback, clears old volleys/clocks, replaces the icon and resets cartridge pips to Stage I. MG uses 18 Hz / speed 60 / range 80 / one defense-HP damage.
 
 The bottom HUD shows **LV N only**, with no routine numeric XP. A small plaster badge has a
 prominent level number and aqua underline; the enclosing capsule is gone. A taller
@@ -283,12 +283,12 @@ aqua/foam energy motes. A reusable pool covers up to 24 members, sharing geometr
 the current single soldier and multiple-member fixtures are verified. Rifle tiers
 and gameplay hitboxes are untouched. The next **1400 ms** uses a 1.9× brighter
 cyan-white muzzle flash (90 ms rather than 50 ms) and stronger tracer glow (.55 opacity
-versus .28, 1.2× Rifle width). Damage, range and the weapon model stay unchanged.
+versus .28, 1.2× Rifle width). Presentation effects do not change damage or range; the configured weapon family owns the held model.
 The existing modest ascending two-tone audio cue remains at its prior volume.
 
 Progression remains plain `{ level, xp }` snapshot data; derived stages are not
-serialized. Validation requires a five-entry non-decreasing stage plan, three
-non-decreasing positive rate multipliers, four positive XP costs, and zero XP at
+serialized. Validation requires XP count = plan length minus one and non-decreasing stages within each explicit weapon family, three
+non-decreasing positive rate multipliers, five positive XP costs in the current six-level plan, and zero XP at
 or above the cap. Superseded formula config fields are rejected explicitly.
 Missing plan/multiplier fields receive current defaults; pre-XP defense states
 initialize Lv1/XP0. Retry resets progression and effects while preserving tuning.
@@ -297,8 +297,8 @@ initialize Lv1/XP0. Retry resets progression and effects while preserving tuning
 
 The existing one-time serialized entrance/landing-assault mechanism remains
 available only to explicit late-game/debug fixtures. P1 Lv4/Lv5 grants do not
-start it. Its level remains seven, beyond the normal cap; its Rifle rate now
-clamps to the final designed Stage III rather than the removed taper formula.
+start it. Its level remains seven, beyond the normal cap; its Rifle rate
+is retained in explicit Rifle-only experimental plans at Stage III. Current P2A debug plans clamp to MG Stage I; neither this entrance nor Giant unlock is naturally reachable below Lv7.
 The 1.1-second entrance and snapshot restore behavior remain available.
 
 P1 member clocks are independent; new members enter the largest unused firing

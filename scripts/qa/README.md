@@ -47,11 +47,12 @@ Audio capture measures the browser signal, not physical device/speaker latency.
 
 ## Enemy VFX Lab
 
-Development defense builds show four compact buttons below Pause:
+Development defense builds show five compact buttons below Pause:
 
 - **GRUNT:** ten Grunts, Lv1 / one Rifle; review contact blood, pale intact lift/fade.
 - **HEAVY:** three Heavies, Lv3 / one Rifle; review surviving hits and weighted collapse.
 - **GIANT:** one Giant, Lv5 / three Rifles; review chip hits, maul/dust impact and long death.
+- **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
 - **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / one held Grenade. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
 
 Buttons restart deterministic validated fixtures using real HP, damage and P1
@@ -66,3 +67,7 @@ and fixture code behind `import.meta.env.DEV`.
 repeated switching/resource reuse, 350/390 portrait and the separate normal/review
 starts. It accepts the same output-directory and browser environment overrides
 as the other scripts. The production sanity script also guards lab exclusion.
+
+## P2A Machine Gun
+
+`node scripts/qa/p2a-metrics.mjs` extends the P1.5 normal/hesitation pilot through Lv6 for seeds 1–50 (100 runs), with unchanged Grenade policy. It reports Lv2–6 times, Lv5 duration, evolution counts/pressure, casualties and controlled three-Rifle vs one-MG cadence, 30-Grunt pack clear and Heavy TTK. `node scripts/qa/machine-gun-sanity.mjs` checks real MG controls, 390/350 portrait, HUD/firing, lane changes, Pause/Retry, casualty-state evolution, snapshot family restore, repeated resources and warmed real-RAF audio/frame diagnostics against the same Lv5 crowd. Results/captures default to ignored `artifacts/p2a`; durable evidence is in `P2A_REPORT.md`. SwiftShader measurements are not physical-phone certification.

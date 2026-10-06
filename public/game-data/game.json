@@ -39,13 +39,38 @@
     "heavyDepthMultiplier": 1.15,
     "rewardAimRadius": 0.5,
     "progression": {
-      "xpRequirements": [28, 60, 110, 180],
+      "xpRequirements": [28, 60, 110, 180, 220],
       "levelPlan": [
-        { "fireRateStage": 1, "squadStage": 1 },
-        { "fireRateStage": 2, "squadStage": 1 },
-        { "fireRateStage": 3, "squadStage": 1 },
-        { "fireRateStage": 3, "squadStage": 2 },
-        { "fireRateStage": 3, "squadStage": 3 }
+        {
+          "fireRateStage": 1,
+          "squadStage": 1,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 2,
+          "squadStage": 1,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 3,
+          "squadStage": 1,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 3,
+          "squadStage": 2,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 3,
+          "squadStage": 3,
+          "weaponFamily": "rifle"
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 1,
+          "squadStage": 1
+        }
       ],
       "fireRateMultipliers": [1, 1.25, 1.5],
       "gruntKillXp": 1,
@@ -59,7 +84,7 @@
     "pressureMultipliers": [1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65],
     "giant": {
       "enabled": true,
-      "unlockLevel": 6,
+      "unlockLevel": 7,
       "introDelaySeconds": 4,
       "hp": 172,
       "xp": 120,
@@ -80,6 +105,12 @@
       "secondGiantDelaySeconds": 18,
       "giantFollowupDelaySeconds": 10,
       "maxSimultaneousGiants": 2
+    },
+    "machineGun": {
+      "fireRate": 18,
+      "projectileSpeed": 60,
+      "range": 80,
+      "damageEnemyHp": 1
     }
   },
   "player": {

@@ -224,3 +224,20 @@ describe('original two-head Player prototype', () => {
     expectTypeOf<PlayerPresentation>().not.toHaveProperty('reinforcementRules');
   });
 });
+
+it('swaps only the held weapon for a wider reusable MG with the same body, grips and material',()=>{
+ const family=createChibiPlayerFamily(),scene=new THREE.Scene(),renderer=new SquadRenderer(scene,family);
+ const state=frame();renderer.update(state,500);const member=scene.children.find(c=>c.getObjectByName('toy-soldier-body'))!;
+ const body=member.getObjectByName('toy-soldier-body') as THREE.Mesh;
+ const rifle=member.getObjectByName('toy-rifle') as THREE.Mesh,rest=rifle.position.clone();
+ const geometry=body.geometry,material=body.material;
+ renderer.update({...state,squad:{...state.squad,weaponFamily:'machineGun'},projectiles:[{id:1,kind:'machineGun',tier:1,x:0,z:.7,hitRadiusBonus:0}]},600);
+ const mg=member.getObjectByName('toy-machine-gun') as THREE.Mesh;
+ expect(mg.geometry).toBe(family.machineGunWeapon!.geometry);expect(body.geometry).toBe(geometry);
+ expect(mg.material).toBe(family.weapon.material);expect(member.children).toHaveLength(4);
+ expect(mg.getObjectByName('muzzle-flash')!.visible).toBe(true);
+ expect(mg.geometry.boundingBox!.getSize(new THREE.Vector3()).x).toBeGreaterThan(family.weapon.geometry.boundingBox!.getSize(new THREE.Vector3()).x*1.8);
+ renderer.update({...state,squad:{...state.squad,weaponFamily:'machineGun'}},900);expect(body.material).toBe(material);expect(mg.position.distanceTo(rest)).toBeLessThan(.01);
+ renderer.update(state,1000);expect(member.getObjectByName('toy-rifle')).toBe(mg);expect(mg.geometry).toBe(family.weapon.geometry);
+ renderer.dispose();family.dispose();
+});

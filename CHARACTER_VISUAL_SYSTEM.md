@@ -15,6 +15,8 @@ The HUD shows cartridge stages at levels 1–3, permanent squad stages at 4–5.
 Casualties keep the intact soldier/weapon through blood, grounded fall and fade,
 leaving a persistent stain. This document does not own progression tuning.
 
+**Player Machine Gun (P2A):** Lv6 keeps the accepted body, face, uniform, helmet, motion and grips. Only the held weapon swaps to one merged rounded heavy receiver, belt box, thick ribbed barrel and stock, sharing the Rifle material and muzzle anchor. A 70 ms / 1.45× muzzle flash blends the 18 Hz stream; Rifle remains 50 ms / 1×. No new body/class or enemy death presentation.
+
 **Grunt:** rounded light infantry with belt/canteen. Death captures the exact
 last rendered pose: short contact blood + smooth pale → intact vertical lift →
 fade, with fluid blood and stain at the original lethal location. Pale completes

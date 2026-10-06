@@ -61,7 +61,7 @@ export class ProjectileRenderer {
       const pulse = this.pulse.scaleFor(projectile.id, nowMs);
       const transform = this.transform;
       transform.rotation.y = -Math.atan(projectile.slopeX ?? 0);
-      transform.position.set(-projectile.x + (projectile.kind === 'rifle' ? this.rifleOrigin.offsetX : 0),
+      transform.position.set(-projectile.x + (projectile.kind !== 'rocket' ? this.rifleOrigin.offsetX : 0),
         projectile.kind === 'rocket' ? .66 : this.rifleOrigin.height, projectile.z);
       if (projectile.kind === 'rocket') {
         transform.scale.setScalar(1.8 * pulse);
@@ -69,7 +69,7 @@ export class ProjectileRenderer {
         transform.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
           1 + 0.45 * projectile.hitRadiusBonus, length * pulse);
       }
-      if (afterglow && projectile.kind === 'rifle') { transform.scale.x *= 1.2; transform.scale.y *= 1.2; }
+      if (afterglow && projectile.kind !== 'rocket') { transform.scale.x *= 1.2; transform.scale.y *= 1.2; }
       transform.updateMatrix();
       this.body.setMatrixAt(index, transform.matrix);
       const glowWidth = projectile.kind === 'rocket' ? 2.4 : 2.4 + 1.7 * projectile.hitRadiusBonus;

@@ -32,6 +32,7 @@ import { EnemyVfxLabControls } from '../ui/EnemyVfxLabControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
+import { progressionStage } from '../simulation/progression';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -75,6 +76,7 @@ export class GameApp {
   private previousFrameTimestampMs: number | null = null;
   private presentationMs = 0;
   private previousDefenseValue: bigint;
+  private previousWeaponFamily: 'rifle' | 'machineGun' = 'rifle';
   private lastRunSeed: number | null = null;
   private fatalPresentationUntilMs = -Infinity;
   private paused = false;
@@ -102,6 +104,8 @@ export class GameApp {
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
+    this.previousWeaponFamily = initialState.progression && initialState.catharsis
+      ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
     this.audio = new GameAudio();
     this.startOverlay = new GameStartOverlay(viewport);
@@ -230,6 +234,8 @@ export class GameApp {
     const initialState = this.simulation.getState();
     this.targetX = initialState.player.x;
     this.previousDefenseValue = squadDefenseValue(initialState.squad, this.config.tiers.mergeCount);
+    this.previousWeaponFamily = initialState.progression && initialState.catharsis
+      ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.dragStartPlayerX = this.targetX;
     this.paused = false;
     this.viewport.classList?.remove('game-paused');
@@ -485,10 +491,19 @@ export class GameApp {
         this.tierHud.setTier(highestIntroducedTierForRow(row, stream.tierProgression));
       }
       const currentDefenseValue = squadDefenseValue(state.squad, this.config.tiers.mergeCount);
-      const feedback = damageFeedback(this.previousDefenseValue, currentDefenseValue);
+      const weaponFamily = state.progression && state.catharsis
+        ? progressionStage(state.progression.level, state.catharsis.balance.progression).weaponFamily : 'rifle';
+      // The family change is a power upgrade, not damage/recruitment. Real contact
+      // events in the same frame still produce their ordinary casualty feedback.
+      const feedbackBefore = weaponFamily !== this.previousWeaponFamily
+        ? presentationEvents.reduce((value, event) => value
+          + squadDefenseValue(event.before, this.config.tiers.mergeCount)
+          - squadDefenseValue(event.after, this.config.tiers.mergeCount), currentDefenseValue)
+        : this.previousDefenseValue;
+      const feedback = damageFeedback(feedbackBefore, currentDefenseValue);
       if (feedback) this.damageFlash.flash(feedback === 'fatal');
       const audioStartedMs = perf ? performance.now() : 0;
-      this.audio.observe(this.previousDefenseValue, currentDefenseValue,
+      this.audio.observe(feedbackBefore, currentDefenseValue,
         state.enemies,
         state.streamRewards, state.boss, this.presentationMs, state.projectiles);
       this.audio.updateMusic(this.presentationMs, {
@@ -500,6 +515,7 @@ export class GameApp {
       });
       const audioFinishedMs = perf ? performance.now() : 0;
       this.previousDefenseValue = currentDefenseValue;
+      this.previousWeaponFamily = weaponFamily;
       const renderStartedMs = perf ? performance.now() : 0;
       const renderState: GameRenderState = projectRenderState(state, {
         formationSpacing: this.config.player.formationSpacing,

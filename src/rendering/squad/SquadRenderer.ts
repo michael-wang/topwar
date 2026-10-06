@@ -117,12 +117,16 @@ export class SquadRenderer {
   private readonly helmetModel: CharacterModel;
   private readonly vestModel: CharacterModel;
   private readonly rifleModel: CharacterModel;
+  private readonly machineGunModel: CharacterModel;
+  private activeWeaponModel: CharacterModel;
   constructor(private readonly scene: THREE.Scene, family: PlayerVisualFamily) {
     this.blood = new BloodSplat(scene, this.bloodTexture, 64, 'player-blood-splats');
     this.stains = new GroundBloodStains(scene, this.bloodTexture, 'player-ground-blood-stains');
     const { body: bodyModel, helmet: helmetModel, vest: vestModel, weapon: rifleModel } = family;
     this.presentation = family.presentation;
     this.bodyModel = bodyModel; this.helmetModel = helmetModel; this.vestModel = vestModel; this.rifleModel = rifleModel;
+    this.machineGunModel = family.machineGunWeapon ?? rifleModel;
+    this.activeWeaponModel = rifleModel;
     const source = helmetModel.material;
     if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Toy soldier helmet needs a standard material');
     if (!(bodyModel.material instanceof THREE.MeshStandardMaterial)) throw new Error('Player body needs a standard material');
@@ -184,6 +188,8 @@ export class SquadRenderer {
   }
 
   update(state: GameRenderState, nowMs = performance.now()): void {
+    const machineGun = state.squad.weaponFamily === 'machineGun';
+    this.activeWeaponModel = machineGun ? this.machineGunModel : this.rifleModel;
     const mode = !!state.defenseMode;
     if (this.sceneMode !== undefined && this.sceneMode !== mode) this.reset();
     this.sceneMode = mode;
@@ -243,6 +249,8 @@ export class SquadRenderer {
     const rocketStart = state.squad.count - state.squad.rocketCount;
     for (let index = 0; index < this.members.length; index++) {
       const member = this.members[index];
+      member.rifle.geometry = this.activeWeaponModel.geometry;
+      member.rifle.name = machineGun ? 'toy-machine-gun' : 'toy-rifle';
       const offset = offsets[index];
       const wasVisible = member.group.visible;
       member.group.visible = offset !== undefined;
@@ -299,13 +307,14 @@ export class SquadRenderer {
       member.rifle.rotation.x = (this.presentation.weaponRotation?.[0] ?? 0) + (entrance?.weaponLower ?? 0) - 0.18 * recoil;
       member.rifle.position.z = this.presentation.weaponPosition[2] - 0.08 * recoil;
       member.rifle.scale.setScalar(isRocket ? 1.15 : 1);
-      member.rifle.material = afterglow ? this.levelWeaponMaterial : this.rifleModel.material;
+      member.rifle.material = afterglow ? this.levelWeaponMaterial : this.activeWeaponModel.material;
       member.rifle.updateMatrix(); member.body.updateMatrix();
       this.handWeaponTransform.copy(member.body.matrix).invert().multiply(member.rifle.matrix);
       member.motion.update(moving.stride + entranceStride, recoil, 1.8 * levelStrength, entrance?.weaponLower ?? 0, this.handWeaponTransform);
-      member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < (afterglow ? 90 : FLASH_MS);
+      member.muzzle.visible = !isRocket && nowMs - firedAt >= 0 && nowMs - firedAt < (afterglow ? 90 : machineGun ? 70 : FLASH_MS);
       member.muzzle.material = afterglow ? this.poweredMuzzleMaterial : this.muzzleMaterial;
-      member.muzzle.scale.setScalar((afterglow ? 1.9 : 1) * (1 + 0.2 * Math.min(2, Math.max(0, tier - 1))));
+      member.muzzle.scale.setScalar((afterglow ? 1.9 : 1) * (machineGun ? 1.45 : 1)
+        * (1 + 0.2 * Math.min(2, Math.max(0, tier - 1))));
       // The camera looks along +Z, which mirrors X on screen.
       member.group.position.set(-(state.player.x + offset.x * visualSpread + (entrance?.sideOffset ?? 0)), (entrance?.bob ?? 0) + moving.bob,
         state.player.z + offset.z * visualSpread + (entrance?.backOffset ?? 0));
@@ -367,7 +376,7 @@ export class SquadRenderer {
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
     for (const projectile of projectiles) {
       if (projectile.id > this.lastSeenProjectileId) {
-        if (projectile.kind === 'rifle') {
+        if (projectile.kind !== 'rocket') {
           this.rifleFiredAtMs.set(projectile.tier, nowMs);
           this.memberFiredAtMs.set(projectile.memberIndex ?? 0, nowMs);
         }
@@ -381,7 +390,7 @@ export class SquadRenderer {
     attackerDeltaX: number, nowMs: number): void {
     let visual = this.casualtyVisuals.find((candidate) => !candidate.group.visible);
     if (!visual && this.casualtyVisuals.length < MAX_PLAYER_CASUALTY_VISUALS) {
-      const sources = [this.bodyModel, this.helmetModel, this.vestModel, this.rifleModel];
+      const sources = [this.bodyModel, this.helmetModel, this.vestModel, this.activeWeaponModel];
       const group = new THREE.Group();
       group.name = 'player-casualty';
       const materials = sources.map((source) => {
@@ -406,6 +415,7 @@ export class SquadRenderer {
     if (!visual) visual = this.casualtyVisuals.reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     visual.tier = tier;
+    (visual.group.children[3] as THREE.Mesh).geometry = this.activeWeaponModel.geometry;
     visual.startedAtMs = nowMs;
     visual.originX = x;
     visual.originZ = z;

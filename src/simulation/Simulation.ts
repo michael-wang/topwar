@@ -2,7 +2,7 @@ import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAss
 import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
   type GrenadeState, type GrenadeEvent } from './grenade';
 import { pressureGroupSize, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
-import { grantXp, requiredXp, effectiveRifleFireRate, progressionStage, maxProgressionLevel } from './progression';
+import { grantXp, requiredXp, effectiveRifleFireRate, effectivePrimaryFireRate, progressionStage, maxProgressionLevel } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, UpgradeRewardSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { createEnemyFormation } from './enemies/formation';
@@ -107,7 +107,7 @@ export function findFirstHit(projectile: ProjectileSimulationState, endZ: number
   const travel = endZ - projectile.z;
   const minimumZ = projectile.z + travel * minimumFraction;
   const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
-  const laneShot = projectile.kind === 'rifle' && projectile.lane !== undefined;
+  const laneShot = projectile.kind !== 'rocket' && projectile.lane !== undefined;
   enemyCandidates.forEachCandidate(laneShot ? -Infinity : projectile.x - radius, laneShot ? Infinity : projectile.x + radius,
     minimumZ - radius, endZ + radius, (enemy) => {
       if (piercedEnemyIds?.has(enemy.id)) return;
@@ -168,7 +168,7 @@ export function findFirstHit(projectile: ProjectileSimulationState, endZ: number
       first = { kind: 'gate', gate, fraction, z: hitZ };
     }
   }
-  if (grenadeSupply && projectile.kind === 'rifle' && projectile.lane === grenadeSupply.lane) {
+  if (grenadeSupply && projectile.kind !== 'rocket' && projectile.lane === grenadeSupply.lane) {
     const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
     const supplyZ = currentPlayerZ + grenadeSupply.depth;
     const fraction = (supplyZ - projectile.z) / relativeTravel;
@@ -412,6 +412,10 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     throw new Error('Simulation squad has missing or unknown fields');
   }
   validateSquad(squad as unknown as SimulationState['squad'], mergeCount);
+  if (progression && catharsis && (progression as {level:number}).level <= maxProgressionLevel(catharsis.balance.progression)
+    && progressionStage((progression as {level:number}).level, catharsis.balance.progression).weaponFamily === 'machineGun'
+    && ((squad.count as number) > 1 || squad.rocketCount !== 0 || (squad.rifleCounts as number[]).slice(1).some(Boolean)
+      || squad.rifleRemainder !== 0)) throw new Error('Machine Gun progression requires one Tier-1 specialist or a dead squad');
 
   if (!Array.isArray(state.enemies)) throw new Error('Simulation enemies must be an array');
   const enemyIds = new Set<number>();
@@ -587,9 +591,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
     if (Object.keys(value).length !== 11 + (value.lane === undefined ? 0 : 2) + (value.memberIndex === undefined ? 0 : 1)
-      || (value.memberIndex !== undefined && (value.kind !== 'rifle' || value.lane === undefined
+      || (value.memberIndex !== undefined && (value.kind === 'rocket' || value.lane === undefined
         || !Number.isSafeInteger(value.memberIndex) || (value.memberIndex as number) < 0))
-      || (value.lane !== undefined && (!laneIsValid(value.lane) || value.kind !== 'rifle'
+      || (value.lane !== undefined && (!laneIsValid(value.lane) || value.kind === 'rocket'
         || typeof value.slopeX !== 'number' || !Number.isFinite(value.slopeX)))
       || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'hitRadiusBonus', 'penetrationRemaining']
       .some((field) => !Object.hasOwn(value, field))) {
@@ -599,10 +603,10 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation projectile ${index} id must be unique and positive`);
     }
     projectileIds.add(value.id as number);
-    if (value.kind !== 'rifle' && value.kind !== 'rocket') {
+    if (value.kind !== 'rifle' && value.kind !== 'machineGun' && value.kind !== 'rocket') {
       throw new Error(`Simulation projectile ${index} kind is unsupported`);
     }
-    if (value.kind === 'rifle' ? !validTier(value.tier as number) : value.tier !== 0) {
+    if (value.kind === 'rifle' ? !validTier(value.tier as number) : value.kind === 'machineGun' ? value.tier !== 1 : value.tier !== 0) {
       throw new Error(`Simulation projectile ${index} tier is invalid`);
     }
     if (typeof value.x !== 'number' || !Number.isFinite(value.x) || typeof value.z !== 'number' || !Number.isFinite(value.z)) {
@@ -617,13 +621,13 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       throw new Error(`Simulation projectile ${index} blastRadius is invalid for its kind`);
     }
     if (typeof value.hitRadiusBonus !== 'number' || !Number.isFinite(value.hitRadiusBonus)
-      || value.hitRadiusBonus < 0 || (value.kind === 'rocket' && value.hitRadiusBonus !== 0)) {
+      || value.hitRadiusBonus < 0 || (value.kind !== 'rifle' && value.hitRadiusBonus !== 0)) {
       throw new Error(`Simulation projectile ${index} hitRadiusBonus is invalid for its kind`);
     }
     let penetrationRemaining: bigint;
     try { penetrationRemaining = readExactValue(value.penetrationRemaining, 'Projectile penetration'); }
     catch { throw new Error(`Simulation projectile ${index} penetrationRemaining is invalid for its kind`); }
-    if ((value.kind === 'rocket' && penetrationRemaining !== 0n)
+    if ((value.kind !== 'rifle' && penetrationRemaining !== 0n)
       || (value.kind === 'rifle' && ((value.tier === 1 && penetrationRemaining !== 0n)
         || (value.tier !== 1 && (penetrationRemaining < 1n
           || penetrationRemaining > exchangeValueForTier(value.tier as number, mergeCount)))))) {
@@ -868,7 +872,16 @@ export class Simulation {
     const next = validateCatharsis({ ...previous, balance });
     const progression = this.state.progression
       ? grantXp(this.state.progression, 0, next.balance.progression) : undefined;
-    this.state = { ...this.state, catharsis: next, ...(progression ? { progression } : {}), enemies: this.state.enemies.map((enemy) =>
+    const evolves = progression && this.state.progression && this.state.squad.count > 0
+      && progressionStage(this.state.progression.level, previous.balance.progression).weaponFamily !== 'machineGun'
+      && progressionStage(progression.level, next.balance.progression).weaponFamily === 'machineGun';
+    // Live XP/plan edits must retain the same family/squad invariant as a kill.
+    const evolved = evolves ? {
+      squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 }, projectiles: [],
+      weapons: { ...this.state.weapons, rifleCooldownRemainingSeconds: 1 / next.balance.machineGun.fireRate,
+        rocketCooldownRemainingSeconds: 0, rifleMemberCooldowns: [1 / next.balance.machineGun.fireRate] },
+    } : {};
+    this.state = { ...this.state, ...evolved, catharsis: next, ...(progression ? { progression } : {}), enemies: this.state.enemies.map((enemy) =>
       enemy.archetype === 'heavy' ? { ...enemy,
         hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp }
         : enemy.archetype === 'giant' ? { ...enemy, hp: enemy.hp / previous.balance.giant.hp * next.balance.giant.hp } : enemy) };
@@ -1048,9 +1061,11 @@ export class Simulation {
     for (const kind of ['rifle', 'rocket'] as const) {
       const startIndex = kind === 'rifle' ? 0 : rifleEnd;
       const endIndex = kind === 'rifle' ? rifleEnd : offsets.length;
-      const weapon = tuning[kind];
+      const machineGun = kind === 'rifle' && progression && catharsis?.balance.defenseMode
+        && progressionStage(progression.level, catharsis.balance.progression).weaponFamily === 'machineGun';
+      const weapon = machineGun ? catharsis!.balance.machineGun : tuning[kind];
       const fireRate = kind === 'rifle' && progression && catharsis
-        ? effectiveRifleFireRate(weapon.fireRate, progression.level, catharsis.balance.progression) : weapon.fireRate;
+        ? effectivePrimaryFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance) : weapon.fireRate;
       const interval = 1 / fireRate;
       if (!positiveFinite(interval)) throw new Error('Simulation fire interval exceeds the supported range');
       if (startIndex === endIndex) {
@@ -1078,7 +1093,9 @@ export class Simulation {
                 if (roleIndex < 0) { tier = tierIndex + 1; break; }
               }
             }
-            const damage = kind === 'rifle' ? riflePowerForTier(tier, this.tiers) : tuning.rocket.damage;
+            if (machineGun) tier = 1;
+            const damage = machineGun ? catharsis!.balance.machineGun.damageEnemyHp * this.tiers.tier1Power
+              : kind === 'rifle' ? riflePowerForTier(tier, this.tiers) : tuning.rocket.damage;
             if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
             if (!Number.isSafeInteger(nextProjectileId) || nextProjectileId <= 0) throw new Error('Simulation projectile ID exceeds the supported range');
             const x = nextX + offset.x;
@@ -1088,11 +1105,11 @@ export class Simulation {
               && enemy.z - z <= weapon.range).sort((a, b) => a.z - b.z || a.id - b.id)[0];
             const slopeX = target ? (target.x - x) / Math.max(tuning.normalEnemyRadius, target.z - z) : 0;
             if (!Number.isFinite(x) || !Number.isFinite(z)) throw new Error('Simulation projectile origin is non-finite');
-            projectiles.push({ id: nextProjectileId++, kind, tier, x, z, speed: weapon.projectileSpeed,
+            projectiles.push({ id: nextProjectileId++, kind: machineGun ? 'machineGun' : kind, tier, x, z, speed: weapon.projectileSpeed,
               ...(lane !== undefined ? { lane, slopeX, memberIndex: index } : {}),
               damage, remainingRange: weapon.range,
               blastRadius: kind === 'rocket' ? tuning.rocket.blastRadius : 0,
-              hitRadiusBonus: kind === 'rifle' ? rifleHitRadiusBonusForTier(tier,
+              hitRadiusBonus: kind === 'rifle' && !machineGun ? rifleHitRadiusBonusForTier(tier,
                 tuning.rifle.tierHitRadiusStep, tuning.rifle.maxHitRadiusBonus) : 0,
               penetrationRemaining: tier > 1
                 ? storeExactValue(exchangeValueForTier(tier, this.tiers.mergeCount)) : 0 });
@@ -1306,18 +1323,29 @@ export class Simulation {
     // A gained level shortens the next scheduled shot without restarting the weapon clock.
     if (progression && this.state.progression && progression.level > this.state.progression.level && catharsis) {
       nextCooldowns.rifle = Math.min(nextCooldowns.rifle,
-        1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression));
+        1 / effectivePrimaryFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance));
     }
     if (memberCooldowns && progression && catharsis && this.state.progression
       && progression.level > this.state.progression.level) {
-      const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance.progression);
+      const interval = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance);
       memberCooldowns.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
     }
     // Apply every crossed stage as a reward delta, never a living-squad target.
     if (progression && this.state.progression && catharsis) {
       for (let level = this.state.progression.level + 1; level <= progression.level; level++) {
-        const delta = progressionStage(level, catharsis.balance.progression).squadStage
-          - progressionStage(level - 1, catharsis.balance.progression).squadStage;
+        const stage = progressionStage(level, catharsis.balance.progression);
+        const previous = progressionStage(level - 1, catharsis.balance.progression);
+        if (stage.weaponFamily !== previous.weaponFamily) {
+          // Evolution replaces living members; it is never a contact/casualty.
+          if (squad.count > 0) squad = { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 };
+          nextCooldowns.rifle = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, level, catharsis.balance);
+          nextCooldowns.rocket = 0;
+          if (memberCooldowns) { memberCooldowns.length = 0; if (squad.count) memberCooldowns.push(nextCooldowns.rifle); }
+          // Discard pending old-family shots, including any stale volley.
+          survivingProjectiles.length = 0;
+          continue;
+        }
+        const delta = stage.squadStage - previous.squadStage;
         if (delta > 0) {
           const before = squad.count - squad.rocketCount;
           squad = addRifleSoldiers(squad, delta, 1, this.tiers.mergeCount);

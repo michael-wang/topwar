@@ -72,3 +72,17 @@ it('restarts a deterministic Lv3 Grenade crowd with a fresh charge and no natura
   expect(sim.getState().grenade!.supply).toBeNull();
   for (let i=0;i<3;i++) expect(make().getState()).toEqual(initial);
 });
+
+it('restarts the deterministic Lv6 MG fixture with one specialist, 60 Grunts and 5 Heavies',()=>{
+ const make=()=>createEnemyVfxLab(options,c.weapon.rifle.fireRate,'machineGun');
+ const sim=make(),s=sim.getState();expect(s.progression).toEqual({level:6,xp:0});
+ expect(s.squad).toMatchObject({count:1,rocketCount:0,rifleCounts:[1]});expect(s.player.selectedLane).toBe(2);
+ expect(s.enemies.filter(e=>e.archetype==='grunt')).toHaveLength(60);expect(s.enemies.filter(e=>e.archetype==='heavy')).toHaveLength(5);
+ expect(new Set(s.enemies.map(e=>e.lane)).size).toBe(5);expect(s.enemies.every(e=>e.z>=8&&e.z<=24)).toBe(true);
+ expect(s.enemies.every(e=>e.hp===(e.archetype==='heavy'?15:1))).toBe(true);expect(s.boss).toBeNull();expect(s.grenade!.inventory).toBe(0);
+ for(let i=0;i<300;i++)sim.step(1/60,{targetX:0},tuning);
+ expect(sim.getState().enemyStream!.nextEnemyId).toBe(s.enemyStream!.nextEnemyId);
+ expect(sim.getState().enemies.filter(e=>e.lane===2)).toHaveLength(0);
+ expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBeNull();
+ for(let i=0;i<3;i++)expect(make().getState()).toEqual(s);
+});

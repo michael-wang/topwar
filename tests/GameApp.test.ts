@@ -1046,7 +1046,7 @@ it('restarts selected lab fixtures and clears renderer feedback on every switch 
 });
 
 
-it('omits every Lab control, including GRENADE, outside DEV', () => {
+it('omits every Lab control, including GRENADE and MG, outside DEV', () => {
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
@@ -1208,4 +1208,20 @@ describe('intentional gameplay startup', () => {
     app.dispose(); resolve('running'); await pending;
     expect(mock.inputStart).not.toHaveBeenCalled();
   });
+});
+
+it('does not flash player damage or play damage audio when three Rifles evolve into one MG',async()=>{
+ const raf=createRaf(),base=mock.getState();
+ const config={...gameData,catharsis:CatharsisConfigSchema.parse(gameData.catharsis)} as unknown as GameConfig;
+ const state={...base,progression:{level:5,xp:219},catharsis:{trackHalfWidth:config.track.halfWidth,balance:config.catharsis!}};
+ mock.getState.mockReturnValue(state);
+ const observe=vi.spyOn(GameAudio.prototype,'observe');
+ const viewport=Object.assign(new EventTarget(),{classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
+ const store={getConfig:()=>config,subscribe:()=>()=>{}} as unknown as ConfigStore;
+ const app=new GameApp(viewport as unknown as HTMLElement,store,level,{} as CharacterAssets);
+ try{
+  await startGame(app);raf.frame(0);raf.frame(100);
+  mock.damageFlash.mockClear();state.progression={level:6,xp:0};state.squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
+  raf.frame(200);expect(mock.damageFlash).not.toHaveBeenCalled();expect(observe.mock.lastCall!.slice(0,2)).toEqual([1n,1n]);
+ } finally{app.dispose();mock.getState.mockReturnValue(base);}
 });
