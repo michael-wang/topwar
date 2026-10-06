@@ -1,4 +1,6 @@
-# P1.5 — Lv3 pressure release and first Grenade
+# P1.5 — Initial radius-two pressure measurements
+
+Historical evidence for commit `3e2b640a78a65b064cf6643ec6dffe0602ef1048`. Human playtesting subsequently superseded the radius and 8–12-kill target. Current authored radius is four; see `P15_GRENADE_REVIEW.md` and `GAME_SPEC.md` for current behavior. The results below describe the original radius-two implementation.
 
 Baseline: `157faccc5857aa480fd97445414b8909617be319`. Local HEAD, origin/main and live GitHub main matched; tracked worktree was clean before implementation. No deployment.
 

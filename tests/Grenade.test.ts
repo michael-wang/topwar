@@ -9,6 +9,10 @@ const make = () => new Simulation({ seed: 17, level: { id: 'grenade', length: 10
 const tuning = { ...config.player, trackHalfWidth: 3.2, defenseLineOffset: 1.5, normalEnemyRadius: .3,
   bossRadius: 2, forwardSpeed: 0, rifle: config.weapon.rifle, rocket: config.weapon.rocket };
 const held = () => ({ ...emptyGrenade(), lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0, inventory: 1 as const });
+it('authors the four-unit blast without changing single-target damage or supply/flight values', () => {
+  expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, capacity: 1,
+    flightSeconds: .65, throwRange: 24, supplyDelaySeconds: 8, supplyHitsRequired: 1 });
+});
 function armed() {
   const sim = make(), s = sim.getState(); s.grenade = held();
   s.weapons.rifleCooldownRemainingSeconds = 100;
@@ -105,16 +109,44 @@ it('uses inclusive circular distance without falloff and excludes entities outsi
   const sim=armed(),s=sim.getState();
   s.catharsis!.balance.heavySpeed=0;
   s.grenade!.inventory=0;s.grenade!.flight={startX:0,startZ:0,targetX:0,targetZ:10,startedAtSeconds:0,
-    flightSeconds:1/60,damageEnemyHp:9,blastRadius:2};
-  s.enemies=[0,2,2.001].map((x,i)=>({id:i+1,tier:1,archetype:'heavy',lane:2,x,z:10,hp:15}));
-  sim.restoreState(s);ticks(sim,1);expect(sim.getState().enemies.map(e=>e.hp)).toEqual([6,6,15]);
+    flightSeconds:1/60,damageEnemyHp:9,blastRadius:4};
+  s.enemies=[0,4,4.001].map((x,i)=>({id:i+1,tier:1,archetype:'heavy',lane:2,x,z:10,hp:15}));
+  s.enemies.push({id:4,tier:1,archetype:'heavy',lane:2,x:3,z:13,hp:15});
+  sim.restoreState(s);ticks(sim,1);expect(sim.getState().enemies.map(e=>e.hp)).toEqual([6,6,15,15]);
 });
 it('does not award the same victim twice when a Rifle and detonation resolve in one tick',()=>{
   const sim=armed(),s=sim.getState();s.enemies=s.enemies.slice(0,1);
   s.grenade!.inventory=0;s.grenade!.flight={startX:0,startZ:0,targetX:0,targetZ:10,startedAtSeconds:0,
-    flightSeconds:1/60,damageEnemyHp:9,blastRadius:2};
+    flightSeconds:1/60,damageEnemyHp:9,blastRadius:4};
   s.projectiles=[{id:1,kind:'rifle',tier:1,lane:2,slopeX:0,x:0,z:9.5,speed:60,damage:3,remainingRange:20,
     blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];s.weapons.nextProjectileId=2;
   sim.restoreState(s);ticks(sim,1);expect(sim.getState().progression!.xp).toBe(1);
   const event=sim.consumeGrenadeEvents()[0];if(event.kind==='grenadeDetonated')expect(event.victims).toEqual([]);
+});
+
+it('awards every expanded crowd victim once through ordinary XP overflow', () => {
+  const sim=armed(),s=sim.getState();s.progression={level:3,xp:100};
+  s.enemies=Array.from({length:32},(_,i)=>({id:32-i,tier:1,archetype:'grunt' as const,
+    lane:i%5,x:(i%5-2)*1.4,z:10+Math.floor(i/5)*.15,hp:1}));
+  sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(sim,38);
+  expect(sim.getState().enemies).toHaveLength(0);
+  expect(sim.getState().progression).toEqual({level:4,xp:22});
+  const event=sim.consumeGrenadeEvents()[0];
+  expect(event.kind).toBe('grenadeDetonated');
+  if(event.kind==='grenadeDetonated') {
+    expect(event.victims.map(v=>v.id)).toEqual(Array.from({length:32},(_,i)=>i+1));
+    expect(event.victims.reduce((sum,v)=>sum+v.killXp,0)).toBe(32);
+  }
+  ticks(sim,60);expect(sim.getState().progression).toEqual({level:4,xp:22});
+});
+
+it('damages a surviving Heavy only once when a Rifle and blast resolve together', () => {
+  const sim=armed(),s=sim.getState();s.enemies=[s.enemies[1]];
+  s.grenade!.inventory=0;s.grenade!.flight={startX:0,startZ:0,targetX:1.4,targetZ:10,
+    startedAtSeconds:0,flightSeconds:1/60,damageEnemyHp:9,blastRadius:4};
+  s.projectiles=[{id:1,kind:'rifle',tier:1,lane:3,slopeX:0,x:1.4,z:9.5,speed:60,
+    damage:config.tiers.tier1Power,remainingRange:20,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
+  s.weapons.nextProjectileId=2;sim.restoreState(s);ticks(sim,1);
+  expect(sim.getState().enemies[0].hp).toBe(5);expect(sim.getState().progression!.xp).toBe(0);
+  ticks(sim,10);expect(sim.getState().enemies[0].hp).toBe(5);
 });

@@ -5,6 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createEnemyVfxLab, ENEMY_VFX_LAB } from '../src/app/EnemyVfxLab';
 import { effectiveRifleFireRate } from '../src/simulation/progression';
+import { grenadeTarget } from '../src/simulation/grenade';
 
 const c = GameConfigSchema.parse(gameData), level = LevelDefinitionSchema.parse(levelData);
 const options = { seed: 19, level, startSquad: c.player.startSquad,
@@ -47,4 +48,27 @@ it.each(['grunt', 'heavy', 'giant'] as const)('creates deterministic validated %
 it('keeps the Grunt fixture below its next level threshold', () => {
   expect(ENEMY_VFX_LAB.grunt.depths.length * c.catharsis!.progression.gruntKillXp)
     .toBeLessThan(c.catharsis!.progression.xpRequirements[0]);
+});
+
+it('restarts a deterministic Lv3 Grenade crowd with a fresh charge and no natural refill', () => {
+  const make = () => createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'grenade');
+  const sim = make(), initial = sim.getState();
+  expect(initial).toEqual(createEnemyVfxLab({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'grenade').getState());
+  expect(initial.progression).toEqual({ level: 3, xp: 0 });
+  expect(initial.squad).toMatchObject({ count: 1, rocketCount: 0, rifleCounts: [1] });
+  expect(initial.player.selectedLane).toBe(2);
+  expect(initial.grenade).toMatchObject({ inventory: 1, acquiredAtSeconds: 0, supply: null, flight: null });
+  expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(45);
+  expect(initial.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(3);
+  expect(new Set(initial.enemies.map(e => e.lane)).size).toBe(5);
+  expect(initial.enemies.every(e => e.z >= 10 && e.z <= 18)).toBe(true);
+  expect(initial.enemies.every(e => e.hp === (e.archetype === 'heavy' ? c.catharsis!.heavyHp : 1))).toBe(true);
+  expect(initial.boss).toBeNull();expect(initial.giantEncounter!.spawned).toBe(false);
+  expect(grenadeTarget(initial, c.catharsis!.grenade)).toBeDefined();
+  sim.step(1/60, { targetX: 0, throwGrenade: true }, tuning);
+  for (let i=0;i<120;i++) sim.step(1/60, { targetX: 0 }, tuning);
+  expect(sim.getState().grenade!.inventory).toBe(0);
+  expect(sim.getState().enemyStream!.nextEnemyId).toBe(initial.enemyStream!.nextEnemyId);
+  expect(sim.getState().grenade!.supply).toBeNull();
+  for (let i=0;i<3;i++) expect(make().getState()).toEqual(initial);
 });

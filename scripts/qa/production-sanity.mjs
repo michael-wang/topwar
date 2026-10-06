@@ -34,7 +34,8 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const actual=await page.locator('.xp-level-number').textContent();
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}.png`});
  const labControls=await page.locator('.enemy-vfx-lab').count();
- results[query||'default']={level:Number(actual),expected:level,labControls,errors};if(Number(actual)!==level||labControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
+ const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
+ results[query||'default']={level:Number(actual),expected:level,labControls,grenadeLabControls,errors};if(Number(actual)!==level||labControls!==0||grenadeLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
 writeFileSync(`${out}/production-sanity.json`,JSON.stringify(results,null,2));
 } finally {await browser.close();await new Promise(resolve=>server.httpServer.close(resolve));}

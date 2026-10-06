@@ -7,6 +7,7 @@ export class GrenadeButton {
   private readonly click = (): void => { if (!this.element.disabled) this.activate(); };
   constructor(viewport: HTMLElement, private readonly activate: () => void) {
     this.element.type = 'button'; this.element.className = 'grenade-button';
+    this.element.title = 'Throw Grenade (Q)';
     this.element.innerHTML = `${grenadeIcon}<strong>1</strong><span>GRENADE</span>`;
     this.element.addEventListener('pointerdown', this.stopPointer);
     this.element.addEventListener('click', this.click);
@@ -15,7 +16,7 @@ export class GrenadeButton {
   update(inventory: number, acquired: boolean, enabled: boolean): void {
     this.element.hidden = !acquired;
     this.element.disabled = !enabled || inventory === 0;
-    this.element.setAttribute('aria-label', `Throw Grenade (${inventory} available)`);
+    this.element.setAttribute('aria-label', `Throw Grenade (${inventory} available, Q)`);
     this.element.querySelector('strong')!.textContent = String(inventory);
     if (inventory > this.previousInventory) this.element.classList.add('grenade-ready');
     if (inventory === 0) this.element.classList.remove('grenade-ready');

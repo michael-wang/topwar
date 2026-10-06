@@ -109,10 +109,7 @@ export class GameApp {
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
     this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
-    this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, () => {
-      if (this.running && this.startup === 'started' && !this.paused && this.simulation.getFrameState().squad.count > 0)
-        this.grenadeRequested = true;
-    }) : null;
+    this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, this.requestGrenade) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.vfxLab = import.meta.env.DEV && this.config.catharsis?.defenseMode
       ? new EnemyVfxLabControls(viewport, (role) => {
@@ -164,6 +161,7 @@ export class GameApp {
     this.viewport.addEventListener?.('click', this.onStartClick, true);
     window.addEventListener?.('keydown', this.onStartKeyDown, true);
     window.addEventListener?.('keydown', this.onPauseKeyDown);
+    window.addEventListener?.('keydown', this.onActiveItemKeyDown);
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
 
@@ -183,6 +181,7 @@ export class GameApp {
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
     window.removeEventListener?.('keydown', this.onPauseKeyDown);
+    window.removeEventListener?.('keydown', this.onActiveItemKeyDown);
     this.keyboardInput.stop();
     this.dragInput.stop();
     this.touchInput.stop();
@@ -299,6 +298,20 @@ export class GameApp {
     this.grenadeRequested = false;
     return requested;
   }
+
+  private readonly requestGrenade = (): void => {
+    if (!this.running || this.startup !== 'started' || this.paused || this.grenadeRequested) return;
+    const state = this.simulation.getFrameState();
+    if (state.squad.count > 0 && state.grenade?.inventory === 1 && !state.grenade.flight
+      && state.catharsis && grenadeTarget(state, state.catharsis.balance.grenade))
+      this.grenadeRequested = true;
+  };
+
+  private readonly onActiveItemKeyDown = (event: KeyboardEvent): void => {
+    if (event.code !== 'KeyQ' || event.repeat || isInteractivePauseTarget(event.target)
+      || (event.target as Element | null)?.closest?.('.tuning-panel')) return;
+    this.requestGrenade();
+  };
 
   private async beginGameplay(): Promise<void> {
     if (!this.running || this.startup !== 'awaiting-start') return;

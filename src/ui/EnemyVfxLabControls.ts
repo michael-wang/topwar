@@ -10,13 +10,17 @@ export class EnemyVfxLabControls {
     this.element.className = 'enemy-vfx-lab';
     this.element.setAttribute('aria-label', 'Enemy VFX Lab');
     this.element.style.cssText = 'position:absolute;z-index:4;right:var(--hud-safe-right);top:calc(var(--hud-safe-top) + 52px);display:flex;flex-direction:column;gap:5px';
-    for (const role of ['grunt', 'heavy', 'giant'] as const) {
+    for (const role of ['grunt', 'heavy', 'giant', 'grenade'] as const) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = role.toUpperCase();
       button.dataset.role = role; button.setAttribute('aria-pressed', 'false');
       button.title = `Restart ${role} combat fixture`;
       button.style.cssText = 'min-height:36px;width:60px;border:1px solid #d9e6de;border-radius:6px;background:#e7eee5e6;color:#294956;font:600 10px sans-serif;cursor:pointer;touch-action:manipulation';
-      button.addEventListener('click', () => select(role));
+      button.addEventListener('click', () => {
+        select(role);
+        // Return focus to the battlefield for the GRENADE → Q review loop.
+        if (role === 'grenade') button.blur();
+      });
       this.buttons.push(button); this.element.append(button);
     }
     this.element.addEventListener('pointerdown', this.stopPointer);

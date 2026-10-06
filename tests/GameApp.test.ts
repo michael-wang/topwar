@@ -26,7 +26,9 @@ const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
   labConstructed: vi.fn(),
   labFixture: vi.fn(),
+  grenadeConstructed: vi.fn(),
   step: vi.fn(),
+  stepLane: vi.fn(),
   setRuntimeBalance: vi.fn(),
   getState: vi.fn((): any => ({
     player: { x: 2, z: 3 },
@@ -86,6 +88,7 @@ vi.mock('../src/simulation/Simulation', () => ({
   Simulation: class {
     constructor(options: unknown) { mock.constructedWith(options); }
     step = mock.step;
+    stepLane = mock.stepLane;
     setRuntimeBalance = mock.setRuntimeBalance;
     getState = mock.getState;
     getFrameState = mock.getState;
@@ -145,6 +148,7 @@ vi.mock('../src/ui/XpHud', () => ({ XpHud: class {
   update = vi.fn(); reset = vi.fn(); presentLevelUp = vi.fn(); dispose = vi.fn();
 } }));
 vi.mock('../src/ui/GrenadeButton', () => ({ GrenadeButton: class {
+  constructor(_viewport: unknown, activate: unknown) { mock.grenadeConstructed(activate); }
   update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
 } }));
 vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
@@ -271,9 +275,9 @@ function createRaf() {
   return {
     pending,
     cancel,
-    key: (key: string, repeat = false, target?: object) => {
+    key: (key: string, repeat = false, target?: object, code = key.toLowerCase() === 'q' ? 'KeyQ' : '') => {
       const event = new Event('keydown', { cancelable: true });
-      Object.defineProperties(event, { key: { value: key }, repeat: { value: repeat } });
+      Object.defineProperties(event, { key: { value: key }, code: { value: code }, repeat: { value: repeat } });
       if (target) Object.defineProperty(event, 'target', { value: target });
       windowTarget.dispatchEvent(event);
       return event.defaultPrevented;
@@ -1028,19 +1032,96 @@ it('restarts selected lab fixtures and clears renderer feedback on every switch 
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
   const select = mock.labConstructed.mock.lastCall![0] as (role: string) => void;
-  for (const role of ['heavy', 'giant', 'grunt', 'grunt']) {
+  for (const role of ['heavy', 'giant', 'grunt', 'grunt', 'grenade', 'grenade']) {
     const before = mock.resetFeedback.mock.calls.length;
     select(role);
     expect(mock.labFixture.mock.lastCall![2]).toBe(role);
     expect(mock.resetFeedback.mock.calls.length).toBe(before + 1);
   }
   const retry = mock.overlayConstructedWith.mock.lastCall![0] as () => void;
-  retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('grunt');
-    expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4]);
-  expect(mock.resetFeedback).toHaveBeenCalledTimes(5);
+  retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('grenade');
+  expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4,5,6]);
+  expect(mock.resetFeedback).toHaveBeenCalledTimes(7);
   app.dispose();
 });
 
+
+it('omits every Lab control, including GRENADE, outside DEV', () => {
+  createRaf();vi.stubEnv('DEV', false);
+  const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
+  const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+  try {
+    const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+    expect(mock.labConstructed).not.toHaveBeenCalled();expect(mock.labFixture).not.toHaveBeenCalled();app.dispose();
+  } finally { vi.unstubAllEnvs(); }
+});
+
+describe('Q primary active item', () => {
+  function setup() {
+    const raf = createRaf(), base = mock.getState();
+    const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
+    const state = { ...base, player: { x: 0, z: 0, selectedLane: 2 },
+      catharsis: { trackHalfWidth: config.track.halfWidth, balance: config.catharsis! },
+      grenade: { inventory: 1, acquiredAtSeconds: 0, flight: null },
+      enemies: [{ id: 1, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: 12, hp: 1 }] };
+    mock.getState.mockReturnValue(state);
+    const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
+    const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+    const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+    const control = app as unknown as { grenadeRequested: boolean; takeGrenadeRequest(): boolean };
+    return { raf, state, app, control, button: mock.grenadeConstructed.mock.lastCall![0] as () => void,
+      dispose: () => { app.dispose(); mock.getState.mockReturnValue(base); } };
+  }
+
+  it('uses the identical button callback and physical Q request, coalescing repeats until a fixed tick', async () => {
+    const s = setup();
+    try {
+      await startGame(s.app);
+      s.button();expect(s.control.takeGrenadeRequest()).toBe(true);
+      s.raf.key('ø', false, undefined, 'KeyQ');expect(s.control.grenadeRequested).toBe(true);
+      s.raf.key('q', true);s.button();
+      expect(s.control.takeGrenadeRequest()).toBe(true);expect(s.control.takeGrenadeRequest()).toBe(false);
+      s.raf.key('q', true);expect(s.control.takeGrenadeRequest()).toBe(false);
+      s.raf.key('q', false, undefined, 'KeyA');expect(s.control.takeGrenadeRequest()).toBe(false);
+      s.raf.key('a');s.raf.key('ArrowRight');expect(mock.stepLane.mock.calls).toEqual([[-1],[1]]);
+      s.raf.key('q');s.raf.frame(0);s.raf.frame(100);
+      expect(mock.stepLane).toHaveBeenCalledTimes(2);
+      expect(mock.step.mock.calls.filter(call => call[1].throwGrenade)).toHaveLength(1);
+      expect(s.state.grenade.inventory).toBe(1); // App requests; simulation owns consumption.
+    } finally { s.dispose(); }
+  });
+
+  it('ignores Q from interactive, editable, nested-button and TUNE focus', async () => {
+    const s = setup();
+    try {
+      await startGame(s.app);
+      for (const target of [
+        ...['INPUT','SELECT','BUTTON','TEXTAREA','SUMMARY'].map(tagName => ({tagName})),
+        {isContentEditable:true}, {tagName:'SPAN',closest:()=>({tagName:'BUTTON'})},
+        {tagName:'OUTPUT',closest:(selector:string)=>selector === '.tuning-panel' ? {} : null},
+      ]) { s.raf.key('q',false,target);expect(s.control.takeGrenadeRequest()).toBe(false); }
+    } finally { s.dispose(); }
+  });
+
+  it('blocks Q before start, while paused, dead, empty or without an eligible lane target', async () => {
+    const s = setup();
+    try {
+      s.app.start();s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
+      await startGame(s.app);
+      s.raf.key('p');s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);s.raf.key('p');
+      s.state.squad={count:0,rocketCount:0,rifleCounts:[],rifleRemainder:0};
+      s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
+      s.state.squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
+      s.state.grenade.inventory=0;s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
+      s.state.grenade.inventory=1;s.state.player.selectedLane=0;
+      s.raf.key('q');s.button();expect(s.control.takeGrenadeRequest()).toBe(false);
+      expect(s.state.grenade.inventory).toBe(1);
+      s.state.player.selectedLane=2;s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(true);
+      s.app.stop();s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
+    } finally { s.dispose(); }
+  });
+});
 
 describe('intentional gameplay startup', () => {
   it('renders a frozen initial world for a long wait, without observers, cues or steps', async () => {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const grenadeDefaults = {
-  capacity: 1 as const, damageEnemyHp: 9, blastRadius: 2, flightSeconds: .65,
+  capacity: 1 as const, damageEnemyHp: 9, blastRadius: 4, flightSeconds: .65,
   throwRange: 24, supplyDelaySeconds: 8, supplyHitsRequired: 1 as const,
   supplyDepth: 14, supplyMinDepth: 6, supplyFrontClearance: 1.25,
   supplyLaneDistancePenalty: 3,

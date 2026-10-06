@@ -2,6 +2,8 @@
 
 ## P1.5 Grenade and pressure
 
+`node scripts/qa/grenade-lab-sanity.mjs` uses the real DEV **GRENADE** button, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five repeated explosions, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records current measurements. No fixture damage or balance overrides.
+
 `node scripts/qa/p15-metrics.mjs` runs 200 deterministic comparisons: seeds 1–50, normal/1.8-second Lv3 hesitation, each with/without Grenade use. It loads the actual TypeScript simulation through Vite, needs no browser/server and writes `artifacts/p15/metrics.json` plus detailed seed-1/17/42 timelines. The controls acquire the supply but never throw, isolating use from acquisition cost. The pilot is a diagnostic, not a human-survival guarantee. `P15_REPORT.md` records policy, results and mixed evidence.
 
 With Vite running, `node scripts/qa/p15-browser.mjs` verifies 350/390 portrait, safe-area/touch targets, one-hit acquisition, empty-lane preservation, input isolation, Pause/Retry, ten-kill XP, Heavy/Giant damage, repeated resource reuse and a warmed 200-enemy frame-time sample. Outputs use the same browser environment overrides below. Software Chrome timings are not physical-phone GPU measurements. Unit tests cover pending/spawned/held/in-flight snapshot continuation and exact kill ordering.
@@ -45,11 +47,12 @@ Audio capture measures the browser signal, not physical device/speaker latency.
 
 ## Enemy VFX Lab
 
-Development defense builds show three compact buttons below Pause:
+Development defense builds show four compact buttons below Pause:
 
 - **GRUNT:** ten Grunts, Lv1 / one Rifle; review contact blood, pale intact lift/fade.
 - **HEAVY:** three Heavies, Lv3 / one Rifle; review surviving hits and weighted collapse.
 - **GIANT:** one Giant, Lv5 / three Rifles; review chip hits, maul/dust impact and long death.
+- **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / one held Grenade. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
 
 Buttons restart deterministic validated fixtures using real HP, damage and P1
 progression. Switching roles clears projectiles and all presentation feedback;
