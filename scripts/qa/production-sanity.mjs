@@ -18,7 +18,6 @@ for(const width of [390,350]){
 for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
- await page.route('**/favicon.ico',route=>route.fulfill({status:204}));
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
  await page.waitForSelector('.game-start-overlay');
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
