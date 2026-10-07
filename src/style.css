@@ -316,6 +316,7 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   --hud-safe-left: calc(var(--hud-inset-left) + var(--hud-margin));
   --hud-safe-right: calc(var(--hud-inset-right) + var(--hud-margin));
   --hud-safe-bottom: calc(var(--hud-inset-bottom) + var(--hud-margin));
+  --combat-slot-bottom: calc(var(--hud-safe-bottom) + 74px + 16px);
 }
 .beachhead-defense {
   --combat-surface: #172331; --combat-edge: #526176; --combat-paper: #fff3dc;
@@ -429,7 +430,8 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 @keyframes xp-announcement { 0% { opacity: 0; transform: translateY(.3rem) scale(.85); }
   18%, 70% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-.25rem); } }
 .beachhead-defense .control-hint {
-  display: block; left: var(--hud-safe-left);
+  display: block; left: calc(var(--hud-safe-left) + 74px); right: calc(var(--hud-safe-right) + 112px);
+  text-align: center;
   bottom: calc(var(--hud-safe-bottom) + 5.4rem);
   font-size: clamp(10px, 2.7vw, 12px); color: var(--coast-ink);
   text-shadow: 0 1px 0 var(--coast-paper), 0 0 3px var(--coast-foam);
@@ -460,25 +462,25 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .game-icon { display: inline-flex; flex: 0 0 auto; width: 1rem; height: 1rem; }
 .game-icon svg { width: 100%; height: 100%; }
 .battle-info {
-  position: absolute; z-index: 2; right: var(--hud-safe-right); top: 57.5%; transform: translateY(-50%);
-  box-sizing: border-box; width: 88px; padding: 10px 9px; pointer-events: none;
-  color: #f1f3ef; background: #14212be3; border: 1px solid #ffffff29; border-left: 2px solid #718399;
-  border-radius: 3px; font-family: 'Trebuchet MS', sans-serif;
+  position: absolute; z-index: 2; right: calc(var(--hud-safe-right) + 7px); bottom: var(--combat-slot-bottom);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 5px; pointer-events: none;
+  color: #fff3dc; background: none; border: 0;
 }
-.xp-weapon-slot { display: flex; align-items: center; }
-.xp-weapon-slot .game-icon { width: 61px; height: 28px; color: #f1f3ef; }
-.battle-identity { display: grid; gap: 4px; margin: 4px 0 6px; }
-.battle-identity strong { font-size: 11px; letter-spacing: .03em; }
-.battle-identity > span { font: 700 9px/1 sans-serif; color: #b6c3ce; white-space: nowrap; }
-.xp-enhancement-slot { display: flex; gap: 4px; padding-bottom: 7px; margin-bottom: 7px; border-bottom: 1px solid #ffffff26; }
-.xp-pip { display: inline-flex; width: 12px; height: 17px; color: #ffcb83; }
+.battle-weapon-row { display: flex; align-items: center; gap: 8px; }
+.battle-weapon-icon { width: 56px; height: 28px; }
+.battle-weapon-pips, .battle-squad-pips { display: flex; gap: 2px; }
+.battle-squad-pips[hidden] { display: none; }
+.battle-weapon-icon, .xp-pip { filter: drop-shadow(1px 0 0 #172331) drop-shadow(-1px 0 0 #172331) drop-shadow(0 -1px 0 #172331) drop-shadow(0 2px 1px #172331); }
+.xp-pip { display: inline-flex; width: 12px; height: 20px; color: #ffca78; }
 .xp-pip svg { width: 100%; height: 100%; }
-.xp-pip.is-empty { color: #98a6b5; opacity: .6; }
-.battle-metrics { display: grid; gap: 6px; }
-.battle-metrics > div { display: flex; align-items: baseline; gap: 4px; }
-.battle-metrics .game-icon { align-self: center; width: 13px; height: 14px; color: #a9bbc9; }
-.battle-metrics strong { font: 800 18px/1 'Trebuchet MS', sans-serif; font-variant-numeric: tabular-nums; }
-.battle-metrics div > span:last-child { color: #acbbc7; font: 700 8px/1 sans-serif; }
+.xp-pip.is-empty { color: #a9b7c6; }
+.battle-squad-pips .xp-pip { width: 13px; height: 16px; color: #fff3dc; }
+.battle-squad-pips .is-empty { color: #a9b7c6; }
+.xp-pip.is-upgraded { animation: combat-pip-upgrade 480ms ease-out both; }
+.battle-weapon-icon.weapon-evolution { animation: combat-weapon-evolution 480ms ease-out both; }
+.game-paused .xp-pip, .game-paused .battle-weapon-icon { animation-play-state: paused; }
+@keyframes combat-pip-upgrade { 25% { transform: scale(1.5); color: #fff; } 60% { color: #ffecad; } }
+@keyframes combat-weapon-evolution { 20% { transform: scale(1.22); color: #fff; filter: drop-shadow(0 0 7px #ff9c35); } 65% { color: #ffd066; } }
 .xp-loadout[hidden] { display: none; }
 
 /* A quiet full-viewport gesture surface keeps the ready world visible. */
@@ -518,35 +520,32 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 }
 /* Safe-area anchored active item; native button semantics exclude lane taps. */
 .grenade-button {
-  position: absolute; z-index: 15; left: var(--hud-safe-left); top: 57.5%; transform: translateY(-50%);
-  width: 86px; min-height: 100px; box-sizing: border-box; padding: 10px 9px 8px;
-  display: grid; grid-template-columns: 1fr auto; justify-items: center; align-items: center;
-  border: 2px solid #ffae4e; border-radius: 16px; color: #ffce7e;
+  position: absolute; z-index: 15; left: calc(var(--hud-safe-left) + 7px); bottom: var(--combat-slot-bottom);
+  width: 64px; height: 64px; box-sizing: border-box; padding: 10px;
+  display: grid; place-items: center;
+  border: 2px solid #ffae4e; border-radius: 15px; color: #ffce7e;
   background: linear-gradient(145deg, #713522, #29212b 65%);
   box-shadow: inset 0 0 0 3px #181b27, inset 0 5px 10px #ff914522, 0 5px 0 #28151d, 0 8px 16px #1a15254d;
   cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .grenade-button[hidden] { display: none; }
 .grenade-button svg { width: 36px; height: 36px; filter: drop-shadow(0 2px 0 #111923); }
-.grenade-button strong { align-self: start; min-width: 19px; border-radius: 5px; padding: 2px; background: #ff922f; color: #241e24; font: 900 17px/1 sans-serif; }
-.grenade-button > span { grid-column: 1 / -1; margin-top: 7px; color: #fff1d5; font: 900 10px/1.3 sans-serif; letter-spacing: .04em; }
-.grenade-status { grid-column: 1 / -1; margin-top: 3px; font: 800 8px/1.3 sans-serif; letter-spacing: .13em; }
+.grenade-button strong { position: absolute; top: -5px; right: -5px; min-width: 18px; border: 2px solid #33222b; border-radius: 7px; padding: 2px; background: #ff922f; color: #241e24; font: 900 16px/1 sans-serif; }
 .grenade-button:disabled { cursor: default; border-color: #718094; color: #a6b2bf; background: #202c38ed; box-shadow: inset 0 0 0 3px #15202b, 0 3px 0 #16202a; }
 .grenade-button:disabled strong { background: #677786; color: #f2eee6; }
-.grenade-button:disabled > span { color: #cbd3dc; }
-.grenade-button:active:not(:disabled) { transform: translateY(calc(-50% + 3px)); box-shadow: inset 0 0 0 3px #181b27, 0 2px 0 #28151d; }
+.grenade-button.grenade-empty { color: #707f90; border-color: #4e5c6e; background: #202c38c9; box-shadow: inset 0 0 0 3px #15202b, 0 3px 0 #16202a; }
+.grenade-button.grenade-empty strong { color: #afbac5; background: #3a495b; }
+.grenade-button:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 0 0 3px #181b27, 0 2px 0 #28151d; }
 .grenade-button:focus-visible { outline: 3px solid #ffe4a4; outline-offset: 4px; }
-.grenade-ready:not(:disabled) { animation: grenade-ready .7s ease-out 2, grenade-glow 2.6s 1.4s ease-in-out infinite; }
+.grenade-ready:not(:disabled) { animation: grenade-ready .55s ease-out, grenade-glow 2.6s .55s ease-in-out infinite; }
 .game-paused .grenade-ready { animation-play-state: paused; }
-@keyframes grenade-ready { 0%, 100% { transform: translateY(-50%) scale(1); } 40% { transform: translateY(-50%) scale(1.08); } }
+@keyframes grenade-ready { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.1); } }
 @keyframes grenade-glow { 50% { box-shadow: inset 0 0 0 3px #181b27, 0 5px 0 #28151d, 0 0 18px #ff8c354a; } }
 @media (max-width: 370px) {
   .combat-control-strip { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; }
   .movement-button { width: 56px; }
   .xp-level-number { font-size: 32px; }
-  .grenade-button { width: 78px; min-height: 94px; padding: 9px 7px 7px; }
-  .battle-info { width: 82px; padding: 9px 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .grenade-ready:not(:disabled), .xp-fill::before, .xp-imminent .xp-edge, .xp-track::after, .level-label-pop .xp-level { animation: none; }
+  .grenade-ready:not(:disabled), .xp-fill::before, .xp-imminent .xp-edge, .xp-track::after, .level-label-pop .xp-level, .xp-pip.is-upgraded, .battle-weapon-icon.weapon-evolution { animation: none; }
 }

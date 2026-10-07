@@ -2,20 +2,14 @@ import { expect, it } from 'vitest';
 import data from '../public/game-data/game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { loadoutPresentation } from '../src/ui/loadoutPresentation';
-const balance=GameConfigSchema.parse(data).catharsis!.progression;
-it.each([[1,'cartridge',1],[2,'cartridge',2],[3,'cartridge',3],[4,'soldier',2],[5,'soldier',3]] as const)(
-  'shows Level %i as %s stage %i from the explicit plan', (level,kind,stage)=>{
-    expect(loadoutPresentation({level,xp:0},balance)).toEqual({weapon:'rifle',enhancement:{kind,stage,slots:3}});
+const balance = GameConfigSchema.parse(data).catharsis!.progression;
+it.each([[1,1,null],[2,2,null],[3,3,null],[4,3,2],[5,3,3],[6,1,null]] as const)(
+  'separates Level %i weapon stage %i from optional squad stage %s', (level,weaponStage,squadStage) => {
+    expect(loadoutPresentation({level,xp:0},balance)).toEqual({weapon:level===6?'machineGun':'rifle',weaponStage,squadStage});
   });
-it('uses configured progression unlocks rather than live counts, percentage or multiplier text',()=>{
-  const context={level:4,xp:10};
-  expect(loadoutPresentation(context,balance).enhancement.stage).toBe(2);
-  expect(loadoutPresentation({level:5,xp:0},balance).enhancement.stage).toBe(3);
+it('derives permanent stages from the authored plan, independent of XP and live casualties',()=>{
+  expect(loadoutPresentation({level:4,xp:10},balance)).toEqual(loadoutPresentation({level:4,xp:179},balance));
   const plan={...balance,levelPlan:balance.levelPlan.map(stage=>({...stage,squadStage:1}))};
-  expect(loadoutPresentation(context,plan).enhancement).toEqual({kind:'cartridge',stage:3,slots:3});
-  expect(loadoutPresentation({level:100,xp:0},balance).enhancement).toEqual({kind:'cartridge',stage:1,slots:3});
-});
-
-it('shows the evolved weapon with Stage I rather than Rifle soldier pips',()=>{
-expect(loadoutPresentation({level:6,xp:0},balance)).toEqual({weapon:'machineGun',enhancement:{kind:'cartridge',stage:1,slots:3}});
+  expect(loadoutPresentation({level:4,xp:0},plan)).toEqual({weapon:'rifle',weaponStage:3,squadStage:null});
+  expect(loadoutPresentation({level:100,xp:0},balance)).toEqual({weapon:'machineGun',weaponStage:1,squadStage:null});
 });

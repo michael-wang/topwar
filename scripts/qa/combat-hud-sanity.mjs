@@ -7,7 +7,7 @@ const browser = await chromium.launch({ headless: true,
   executablePath: process.env.TOPWAR_CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe',
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-const report = { portraits: {}, fixtures: [], errors: [] };
+const report = { portraits: {}, fixtures: [], upgrades: [], errors: [] };
 const assert = (ok, message) => { if (!ok) throw Error(message); };
 page.on('pageerror', e => report.errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error') report.errors.push(m.text()); });
@@ -55,13 +55,50 @@ try {
   }
   for (const width of [390, 350]) {
     await page.setViewportSize({ width, height: 844 });
+    // Presentation review snapshots use ordinary authored stages; combat upgrades below use real kills.
+    for (const [level, weaponStage, squadStage] of [[1,1,null],[2,2,null],[3,3,null],[4,3,2],[5,3,3]]) {
+      await selectDevFixture(page, 'grenade');
+      await page.evaluate(level => {
+        const a = window.__testApp, s = a.simulation.getState(), count = Math.max(1, level - 2);
+        s.progression = { level, xp: 0 }; s.squad = { count, rocketCount: 0, rifleCounts: [count], rifleRemainder: 0 };
+        s.weapons.rifleMemberCooldowns = Array(count).fill(100); s.projectiles = [];
+        a.simulation.restoreState(s); a.progressionObserver.observe(level); a.battleInfo.reset();
+      }, level); await advance(40);
+      assert(await page.locator('.battle-weapon-pips .is-filled').count() === weaponStage, `Lv${level}: authored cartridge pips`);
+      assert(await page.locator('.battle-squad-pips').isHidden() === (squadStage === null), `Lv${level}: optional squad emphasis`);
+      if (squadStage) assert(await page.locator('.battle-squad-pips .is-filled').count() === squadStage, `Lv${level}: unlocked squad pips`);
+      await capture(`rifle-lv${level}-${width}`);
+      if (level === 5) {
+        await page.evaluate(() => {
+          const a = window.__testApp, s = a.simulation.getState(); s.squad.count = 1; s.squad.rifleCounts = [1];
+          s.weapons.rifleMemberCooldowns = [100]; a.simulation.restoreState(s);
+        }); await advance(40);
+        assert(await page.locator('.battle-squad-pips .is-filled').count() === 3, 'Casualty does not erase permanent squad unlocks');
+      }
+    }
     await selectDevFixture(page, 'grenade'); await advance(40);
     const before = await state(), b = await boxes();
-    assert(b['.grenade-button'].y > 350 && b['.grenade-button'].y + b['.grenade-button'].height < 600, 'Left-middle skill, clear of lower movement space');
-    assert(b['.battle-info'].x > width / 2 && b['.battle-info'].pointerEvents === 'none', 'Right-middle info passes lane taps');
-    assert(await page.locator('.battle-identity > span').evaluate(e => parseFloat(getComputedStyle(e).fontSize) >= 9), 'Stage label remains readable at narrow width');
+    for (const selector of ['.grenade-button', '.battle-info']) {
+      assert(b[selector].y > 844 * .75 && b[selector].y + b[selector].height <= b['.combat-control-strip'].y - 14,
+        `${selector}: lower battlefield, separated from movement/XP strip`);
+    }
+    assert(Math.abs(b['.grenade-button'].x - b['.movement-left'].x) < 1, 'Grenade aligned above left movement');
+    assert(Math.abs(b['.battle-info'].x + b['.battle-info'].width - b['.movement-right'].x - b['.movement-right'].width) < 1, 'Telemetry aligned above right movement');
+    assert(b['.battle-info'].x > width / 2 && b['.battle-info'].pointerEvents === 'none' && b['.battle-info'].background === 'rgba(0, 0, 0, 0)', 'Transparent passive telemetry');
+    assert((await page.locator('.battle-info').textContent()).trim() === '', 'No visible weapon/stage/rate/living labels');
+    assert((await page.locator('.grenade-button').textContent()).trim() === '1', 'Grenade contains only icon and charge');
     assert(b['.pause-button'].background !== 'rgba(0, 0, 0, 0)' && b['.pause-button'].width >= 44, 'Visible Pause surface and touch target');
     await capture(`grenade-ready-${width}`);
+    await page.evaluate(() => {
+      const a = window.__testApp, s = a.simulation.getState(); window.__savedEnemies = s.enemies;
+      s.enemies = []; a.simulation.restoreState(s);
+    }); await advance(40); await page.keyboard.press('q'); await advance(40);
+    assert(await page.locator('.grenade-button').isDisabled() && (await state()).grenade.inventory === 1, 'Unavailable with no target preserves charge');
+    assert(await page.locator('.grenade-button').evaluate(e => getComputedStyle(e).animationName === 'none'), 'Unavailable charge has no ready glow');
+    await capture(`grenade-unavailable-${width}`);
+    await page.evaluate(() => {
+      const a = window.__testApp, s = a.simulation.getState(); s.enemies = window.__savedEnemies; a.simulation.restoreState(s);
+    }); await advance(40);
     await page.getByRole('button', { name: 'Pause game' }).click(); await advance(100);
     assert(await page.locator('.grenade-button').isDisabled(), 'Paused skill disabled');
     await page.keyboard.press('q'); await advance(100);
@@ -81,7 +118,8 @@ try {
     const after = await state();
     assert(after.grenade.inventory === 0 && after.player.selectedLane === before.player.selectedLane, 'Q/button share activation and isolate lane input');
     assert(after.enemies.length < before.enemies.length, 'Normal grenade kill path');
-    assert(await page.locator('.grenade-status').textContent() === 'EMPTY', 'Readable empty state');
+    assert(await page.locator('.grenade-button strong').textContent() === '0' && await page.locator('.grenade-button').isDisabled(), 'Readable empty charge and disabled state');
+    assert(await page.locator('.grenade-button').evaluate(e => e.classList.contains('grenade-empty') && getComputedStyle(e).animationName === 'none'), 'Empty is subdued without ready glow');
     await capture(`grenade-empty-${width}`);
     await page.keyboard.press('5');
     // Review both side panels together, including a legally held charge carried into MG.
@@ -93,19 +131,45 @@ try {
     });
     await advance(40);
     assert((await state()).progression.level === 5, 'Physical 5 / Lv5 Rifle');
-    assert(await page.locator('.battle-identity strong').textContent() === 'RIFLE', 'Rifle info');
-    assert(await page.locator('.battle-metrics strong').allTextContents().then(values => values.join(',') === '13.5,3'), 'Three living Rifles / total rate');
+    assert(await page.locator('.battle-info').getAttribute('data-weapon-family') === 'rifle', 'Rifle silhouette identity');
+    assert(await page.locator('.battle-weapon-pips .is-filled').count() === 3 && await page.locator('.battle-squad-pips .is-filled').count() === 3, 'Rifle stage 3 and unlocked squad stage 3');
     await capture(`rifle-lv5-${width}`);
-    await advance(2500);
+    while ((await state()).progression.level === 5) await advance(20);
     assert((await state()).progression.level === 6, 'Real XP evolution');
     assert((await state()).grenade.inventory === 1, 'Held charge remains visible across evolution');
-    assert(await page.locator('.battle-identity strong').textContent() === 'MG', 'MG info replacement');
-    assert(await page.locator('.battle-metrics strong').allTextContents().then(values => values.join(',') === '18,1'), 'One MG / total rate');
+    assert(await page.locator('.battle-info').getAttribute('data-weapon-family') === 'machineGun', 'MG silhouette replacement');
+    assert(await page.locator('.battle-weapon-pips .is-filled').count() === 1 && await page.locator('.battle-squad-pips').isHidden(), 'MG stage 1, no redundant squad row');
+    assert(await page.locator('.battle-weapon-icon').evaluate(e => e.classList.contains('weapon-evolution')), 'Real evolution pulses the changed silhouette');
+    await page.getByRole('button', { name: 'Pause game' }).click(); await advance(40);
+    assert(await page.locator('.battle-weapon-icon').evaluate(e => getComputedStyle(e).animationPlayState === 'paused'), 'Pause freezes evolution animation');
+    await page.getByRole('button', { name: 'Resume game' }).click(); await advance(140);
+    await page.evaluate(() => document.activeElement.blur()); // DEV keys intentionally ignore focused system buttons.
+    await capture(`mg-evolution-${width}`);
+    await advance(1500);
     await capture(`evolved-lv6-${width}`);
     await page.keyboard.press('6'); await advance(300); await capture(`mg-lv6-${width}`);
     await page.keyboard.press('4'); await advance(40);
     assert((await state()).progression.level === 4, 'Physical 4 / CURVE');
     await selectDevFixture(page, 'giant'); await advance(2000); await capture(`giant-${width}`);
+    for (const fromLevel of [1,2,3,4]) {
+      await selectDevFixture(page, 'grenade');
+      await page.evaluate(level => {
+        const a = window.__testApp, s = a.simulation.getState(), count = Math.max(1, level - 2);
+        s.progression = { level, xp: s.catharsis.balance.progression.xpRequirements[level - 1] - 1 };
+        s.squad = { count, rocketCount: 0, rifleCounts: [count], rifleRemainder: 0 };
+        s.weapons.rifleMemberCooldowns = Array(count).fill(0); s.projectiles = [];
+        s.enemies = [{ id: 1, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: s.player.z + 8, hp: 1 }];
+        s.enemyStream.nextEnemyId = 2; a.simulation.restoreState(s);
+        a.battleInfo.reset(); a.progressionObserver.observe(level);
+      }, fromLevel); await advance(40);
+      while ((await state()).progression.level === fromLevel) await advance(20);
+      const expected = fromLevel <= 2 ? `.battle-weapon-pips .xp-pip:nth-child(${fromLevel + 1})` : `.battle-squad-pips .xp-pip:nth-child(${fromLevel - 1})`;
+      assert(await page.locator('.battle-info .is-upgraded').count() === 1 && await page.locator(expected).evaluate(e => e.classList.contains('is-upgraded')), `Lv${fromLevel + 1}: only newly filled pip animates`);
+      assert(await page.locator('.battle-weapon-icon').evaluate(e => !e.classList.contains('weapon-evolution')), 'Stage upgrade does not animate weapon family');
+      await capture(`upgrade-lv${fromLevel + 1}-${width}`); await advance(600);
+      assert(await page.locator('.battle-info .is-upgraded').count() === 0, 'Pip pulse expires without timers');
+      report.upgrades.push({ width, fromLevel, toLevel: fromLevel + 1, newPip: expected });
+    }
     report.portraits[width] = { boxes: b, grenadeKills: before.enemies.length - after.enemies.length, realEvolution: true };
   }
   // Synthetic notch/home-indicator insets, independent of desktop env() values.

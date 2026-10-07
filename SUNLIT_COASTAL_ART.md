@@ -229,19 +229,22 @@ Escape toggles it and releases hidden focus. No permanent right-side fixture sta
 The entire disclosure and fixture shortcuts are excluded from production.
 
 Top-right Pause has a visible dark blue surface, pale icon, clear border and 44-pixel
-minimum target. Left-middle Grenade sits at 57.5% viewport height, clear of lower movement
-space: an 86×100-pixel minimum warm beveled button (78×94 at ≤370px), with grenade icon,
-charge badge and READY / HELD / EMPTY status. It appears on acquisition, has a short
-pop followed by restrained ready glow, and becomes subdued when unavailable. Reduced
-motion disables the idle animations. Its input/Q request and gameplay guards are unchanged.
+minimum target. Lower-left Grenade is a compact 64×64-pixel warm beveled button directly
+above the left movement control, with only a grenade icon and charge badge. Ready uses
+warmth/glow; owned but unusable retains its charge in muted colors; empty is further subdued
+with count zero. It appears on acquisition with one short pop and no visible status/name
+labels. Reduced motion disables the animations. Its input/Q request and gameplay guards are unchanged.
 
-Right-middle battle information balances Grenade at the same vertical center, using a
-calmer dark translucent panel with no button bevel or action glow. Existing weapon
-silhouettes, family/stage, three enhancement pips, total shots/sec and living squad count
-remain compact. The panel is pointer-transparent. Pips show permanent progression:
-one/two/three cartridges at Lv1/2/3, two/three soldiers at Lv4/5; casualties do not unfill
-them. Living count and total firing rate reflect casualties separately. Lv6 replaces Rifle
-with MG, resets enhancement to one cartridge / Stage I, and shows 18/s / one living soldier.
+Lower-right telemetry is transparent and pointer-transparent above the right movement
+control: a 56×28-pixel weapon silhouette and three cartridge pips, with dark icon outlines/
+shadows for contrast. No card, weapon names, stage text, numeric rates or living counts.
+One/two/three cartridges at Lv1/2/3 remain 3/3 at Lv4/5; a separate small soldier row then
+shows two/three unlocked members. Casualties do not unfill progression pips. Lv6 swaps to
+MG, resets cartridges to 1/3 and omits the squad row. Only newly filled pips pop/flash;
+evolution pulses the changed silhouette for 480ms. Pause freezes presentation time/CSS;
+reduced motion removes these animations. First presentation/reset does not fake an upgrade.
+Both lower slots sit 16px above the 74px bottom strip, respecting SafeArea. Keep upper/
+middle approach space free of persistent combat HUD; cover lower player space first.
 
 Bottom hierarchy is **LEFT MOVEMENT / LEVEL + XP / RIGHT MOVEMENT** inside a dark
 safe-area-aware control strip. Steel-blue 64×60-pixel arrow buttons (56×60 at ≤370px)
@@ -261,7 +264,7 @@ flash, eight aqua/foam motes per member and 1400 ms cyan-white tracer/muzzle aft
 Its scale pulse, timing and sound are unchanged by HUD styling. Defense still omits
 the old `DEFEND N / 5` HUD and keeps the top-center sky empty. Legacy interface styling remains intact.
 
-The lower-left hint has only `A / D or ← / →   STEP LANE` on desktop or
+The lower hint between the compact slots has only `A / D or ← / →   STEP LANE` on desktop or
 `HOLD ARROWS TO MOVE` on coarse-pointer devices. Navy text with a pale shadow stays
 legible on sand. It holds briefly then fades over a nine-second CSS presentation
 animation; Pause suspends that animation. No gameplay/tutorial state is stored.

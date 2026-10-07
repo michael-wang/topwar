@@ -273,7 +273,7 @@ export class GameApp {
       this.progressionObserver.observe(initialState.progression.level);
       this.xpHud?.update(initialState.progression, initialState.catharsis.balance.progression, 0);
     }
-    if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance, initialState.squad.count, this.runtimeTuning.fireRate);
+    if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance.progression, this.presentationMs);
     this.renderer.resetFeedback(import.meta.env.DEV && this.vfxLabRole ? ++this.vfxLabVisualSalt : 0);
     this.tierHud.setTier(1);
   }
@@ -426,7 +426,7 @@ export class GameApp {
         const state = this.simulation.getFrameState();
         if (state.progression && state.catharsis) {
           this.xpHud?.update(state.progression, state.catharsis.balance.progression, 0);
-          this.battleInfo?.update(state.progression, state.catharsis.balance, state.squad.count, this.runtimeTuning.fireRate);
+          this.battleInfo?.update(state.progression, state.catharsis.balance.progression, this.presentationMs);
         }
         this.renderer.render(projectRenderState(state, {
           formationSpacing: this.config.player.formationSpacing,
@@ -492,7 +492,7 @@ export class GameApp {
           this.audio.play('levelUp');
         }
         this.xpHud?.update(state.progression, state.catharsis.balance.progression, this.presentationMs);
-        this.battleInfo?.update(state.progression, state.catharsis.balance, state.squad.count, this.runtimeTuning.fireRate);
+        this.battleInfo?.update(state.progression, state.catharsis.balance.progression, this.presentationMs);
       }
       const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();

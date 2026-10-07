@@ -11,7 +11,7 @@ Boss remains legacy/deferred. No anatomy simulation or per-crowd skeletons.
 
 **Player:** rounded blue defender with attached Rifle, belt and hip pouch. P1
 uses Rifle stages I/II/III at levels 1/2/3; levels 4/5 grant one soldier each.
-The HUD shows cartridge stages at levels 1–3, permanent squad stages at 4–5.
+The HUD shows cartridge stages at levels 1–3, retaining 3/3 alongside a separate permanent squad row at 4–5. MG resets cartridges to 1/3 and omits the squad row.
 Casualties keep the intact soldier/weapon through blood, grounded fall and fade,
 leaving a persistent stain. This document does not own progression tuning.
 

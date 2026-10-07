@@ -1,61 +1,76 @@
-import type { CatharsisConfig } from '../config/catharsisConfig';
-import { effectiveRifleFireRate, progressionStage, type ProgressionBalance, type ProgressionState } from '../simulation/progression';
+import type { ProgressionBalance, ProgressionState } from '../simulation/progression';
 import { gameIcon, iconMarkup } from './GameIcons';
 import { loadoutPresentation } from './loadoutPresentation';
 
-// Read-only combat information. Unlock pips are permanent stage; squad value is living members.
+const UPGRADE_PULSE_MS = 480;
+type Loadout = ReturnType<typeof loadoutPresentation>;
+
+// Permanent unlock telemetry only. No living count, damage/status or firing-rate metrics.
 export class BattleInfoHud {
   readonly element = document.createElement('div');
   private readonly weaponIcon = gameIcon('rifle');
-  private readonly weaponName = document.createElement('strong');
-  private readonly stage = document.createElement('span');
-  private readonly enhancement = document.createElement('div');
-  private readonly pips = Array.from({ length: 3 }, () => document.createElement('span'));
-  private readonly rate = document.createElement('strong');
-  private readonly squad = document.createElement('strong');
-  private traitKey = '';
+  private readonly weaponPips = Array.from({ length: 3 }, () => document.createElement('span'));
+  private readonly squadPips = Array.from({ length: 3 }, () => document.createElement('span'));
+  private readonly weaponRow = document.createElement('div');
+  private readonly squadRow = document.createElement('div');
+  private previous: Loadout | null = null;
+  private readonly weaponPulseUntil = [-Infinity, -Infinity, -Infinity];
+  private readonly squadPulseUntil = [-Infinity, -Infinity, -Infinity];
+  private familyPulseUntil = -Infinity;
+
   constructor(viewport: HTMLElement) {
     this.element.className = 'battle-info xp-loadout'; this.element.style.pointerEvents = 'none';
-    this.element.setAttribute('role', 'group'); this.element.setAttribute('aria-label', 'Battle information');
-    const weapon = document.createElement('div'); weapon.className = 'xp-weapon-slot'; weapon.append(this.weaponIcon);
-    const identity = document.createElement('div'); identity.className = 'battle-identity';
-    identity.append(this.weaponName, this.stage);
-    this.enhancement.className = 'xp-enhancement-slot'; this.enhancement.append(...this.pips);
-    const metrics = document.createElement('div'); metrics.className = 'battle-metrics';
-    for (const [icon, value, unit] of [['cartridge', this.rate, '/s'], ['soldier', this.squad, 'LIVE']] as const) {
-      const row = document.createElement('div'), label = document.createElement('span');
-      label.textContent = unit; row.append(gameIcon(icon), value, label); metrics.append(row);
-    }
-    this.element.append(weapon, identity, this.enhancement, metrics); this.reset(); viewport.append(this.element);
+    this.element.setAttribute('role', 'group');
+    const main = document.createElement('div'); main.className = 'battle-weapon-row';
+    this.weaponIcon.className += ' battle-weapon-icon';
+    this.weaponRow.className = 'battle-weapon-pips'; this.weaponRow.append(...this.weaponPips);
+    this.squadRow.className = 'battle-squad-pips'; this.squadRow.append(...this.squadPips);
+    main.append(this.weaponIcon, this.weaponRow); this.element.append(main, this.squadRow);
+    this.reset(); viewport.append(this.element);
   }
-  update(state: Readonly<ProgressionState>, balance: { readonly progression: ProgressionBalance; readonly machineGun: Readonly<CatharsisConfig['machineGun']> }, livingCount: number, baseFireRate: number): void {
-    const loadout = loadoutPresentation(state, balance.progression), model = loadout.enhancement;
-    const plan = progressionStage(state.level, balance.progression);
-    const key = `${loadout.weapon}:${model.kind}:${model.stage}:${plan.fireRateStage}`;
-    if (key !== this.traitKey) {
-      this.weaponIcon.innerHTML = iconMarkup(loadout.weapon); this.element.dataset.weaponFamily = loadout.weapon;
-      this.weaponName.textContent = loadout.weapon === 'machineGun' ? 'MG' : 'RIFLE';
-      this.stage.textContent = `STAGE ${['I', 'II', 'III'][plan.fireRateStage - 1]}`;
-      this.enhancement.ariaLabel = `${model.kind === 'soldier' ? 'Unlocked squad' : 'Fire-rate'} stage ${model.stage} of 3`;
-      this.pips.forEach((pip, index) => {
-        const filled = index < model.stage;
-        pip.className = `xp-pip xp-pip-${model.kind} ${filled ? 'is-filled' : 'is-empty'}`;
-        pip.innerHTML = iconMarkup(model.kind, filled); pip.ariaHidden = 'true';
+
+  update(state: Readonly<ProgressionState>, balance: ProgressionBalance, nowMs: number): void {
+    const model = loadoutPresentation(state, balance), previous = this.previous;
+    const familyChanged = previous !== null && model.weapon !== previous.weapon;
+    if (!previous || familyChanged || model.weaponStage !== previous.weaponStage || model.squadStage !== previous.squadStage) {
+      if (!previous || familyChanged) {
+        this.weaponIcon.innerHTML = iconMarkup(model.weapon);
+        this.element.dataset.weaponFamily = model.weapon;
+      }
+      this.familyPulseUntil = familyChanged ? nowMs + UPGRADE_PULSE_MS : -Infinity;
+      this.weaponRow.ariaLabel = `Weapon stage ${model.weaponStage} of 3`;
+      this.squadRow.ariaLabel = `Unlocked squad stage ${model.squadStage ?? 1} of 3`;
+      this.element.setAttribute('aria-label', `${model.weapon === 'rifle' ? 'Rifle' : 'Machine Gun'}, weapon stage ${model.weaponStage} of 3${model.squadStage ? `, unlocked squad stage ${model.squadStage} of 3` : ''}`);
+      this.weaponPips.forEach((pip, index) => {
+        const filled = index < model.weaponStage;
+        pip.innerHTML = iconMarkup('cartridge', filled); pip.ariaHidden = 'true';
+        this.weaponPulseUntil[index] = previous && !familyChanged && filled && index >= previous.weaponStage ? nowMs + UPGRADE_PULSE_MS : -Infinity;
       });
-      this.traitKey = key;
+      this.squadPips.forEach((pip, index) => {
+        const filled = index < (model.squadStage ?? 1);
+        pip.innerHTML = iconMarkup('soldier', filled); pip.ariaHidden = 'true';
+        this.squadPulseUntil[index] = previous && !familyChanged && model.squadStage && filled && index >= (previous.squadStage ?? 1) ? nowMs + UPGRADE_PULSE_MS : -Infinity;
+      });
+      this.previous = model;
     }
-    const memberRate = loadout.weapon === 'machineGun' ? balance.machineGun.fireRate
-      : effectiveRifleFireRate(baseFireRate, state.level, balance.progression);
-    const rate = memberRate * livingCount;
-    const displayedRate = Number(rate.toFixed(2)).toString();
-    if (this.rate.textContent !== displayedRate) {
-      this.rate.textContent = displayedRate; this.rate.ariaLabel = `${rate} total shots per second`;
-    }
-    if (this.squad.textContent !== String(livingCount)) {
-      this.squad.textContent = String(livingCount); this.squad.ariaLabel = `${livingCount} living soldiers`;
-    }
+    // Presentation clock freezes on Pause; no timers or simulation state are added.
+    this.weaponIcon.classList.toggle('weapon-evolution', nowMs < this.familyPulseUntil);
+    this.weaponPips.forEach((pip, index) => {
+      const className = `xp-pip xp-pip-cartridge ${index < model.weaponStage ? 'is-filled' : 'is-empty'}${nowMs < this.weaponPulseUntil[index] ? ' is-upgraded' : ''}`;
+      if (pip.className !== className) pip.className = className;
+    });
+    this.squadPips.forEach((pip, index) => {
+      const className = `xp-pip xp-pip-soldier ${index < (model.squadStage ?? 1) ? 'is-filled' : 'is-empty'}${nowMs < this.squadPulseUntil[index] ? ' is-upgraded' : ''}`;
+      if (pip.className !== className) pip.className = className;
+    });
+    this.squadRow.hidden = model.squadStage === null;
     this.element.hidden = false;
   }
-  reset(): void { this.element.hidden = true; this.traitKey = ''; }
+
+  reset(): void {
+    this.element.hidden = true; this.previous = null; this.familyPulseUntil = -Infinity;
+    this.weaponPulseUntil.fill(-Infinity); this.squadPulseUntil.fill(-Infinity);
+    this.weaponIcon.classList.remove('weapon-evolution');
+  }
   dispose(): void { this.element.remove(); }
 }

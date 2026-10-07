@@ -14,9 +14,10 @@ Chrome emulation does not certify physical iOS/Safari long-press or thumb comfor
 
 `node scripts/qa/combat-hud-sanity.mjs` checks the top-left DEV disclosure and all
 seven deterministic fixture resets, menu close/Escape/focus ownership, Pause,
-left-middle Grenade via Q/tap, right-middle read-only battle information, real
-Lv5→Lv6 HUD replacement, physical 4/5/6, and synthetic safe-area insets. It captures
-390×844 and 350×844 ready/empty/paused/menu/Rifle/MG/Giant states in
+lower-left icon/charge Grenade via Q/tap, lower-right transparent weapon telemetry,
+all six authored pip stages, casualty-independent unlocks, real kill-driven Lv1→5
+new-pip feedback, real Lv5→Lv6 silhouette pulse, physical 4/5/6, and synthetic safe-area
+insets. It captures 390×844 and 350×844 ready/unavailable/empty/paused/menu/Rifle/MG/Giant states in
 `artifacts/combat-hud`. Pair with `p15-browser.mjs` for actual supply acquisition
 and burst XP, `audio-start-sanity.mjs` for real startup gestures, and
 `production-sanity.mjs` for shipping DOM/bundle exclusion of the whole DEV menu.
