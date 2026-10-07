@@ -5,14 +5,14 @@ import { ART } from '../src/art/ArtDirection';
 import { defenseSideDebris } from '../src/rendering/environment/DefenseDebrisLayout';
 import { AttackLaneRenderer } from '../src/rendering/AttackLaneRenderer';
 
-it('reveals a fixed sea/aqua fill and uses sunlight only on the near-full crest', () => {
-  expect(xpEdgeColor(0)).toBe(ART.coastalUi.sea);
-  expect(xpEdgeColor(.7)).toBe(ART.coastalUi.aqua);
-  expect(XP_FILL_GRADIENT).toContain(`${ART.coastalUi.aqua} 70%`);
+it('reveals a fixed hot combat gradient independent of the coastal palette', () => {
+  expect(xpEdgeColor(0)).toBe('#d83b27');
+  expect(xpEdgeColor(.7)).toBe('#ff972f');
+  expect(XP_FILL_GRADIENT).toContain('#ff972f 70%');
   expect(XP_FILL_GRADIENT).not.toContain(ART.coastalUi.foam);
   expect(XP_FILL_GRADIENT).not.toContain(ART.coastalUi.sun);
-  for (const progress of [.9, .95, .99, 1]) expect(xpEdgeColor(progress)).toBe(ART.coastalUi.sun);
-  expect(xpEdgeColor(.89)).not.toBe(ART.coastalUi.sun);
+  for (const progress of [.9, .95, .99, 1]) expect(xpEdgeColor(progress)).toBe('#ffd066');
+  expect(xpEdgeColor(.89)).not.toBe('#ffd066');
   expect(xpEdgeColor(-1)).toBe(xpEdgeColor(0));
   expect(xpEdgeColor(2)).toBe(xpEdgeColor(1));
 });

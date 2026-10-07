@@ -1,3 +1,4 @@
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 // Actual DEV fixture/button/Q paths. No altered HP, firing, damage or XP.
 import { mkdirSync, writeFileSync } from 'node:fs';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
@@ -38,7 +39,7 @@ try {
     stats: window.__testApp.renderer.getDebugStats(), events: window.__blasts,
     focus: document.activeElement?.tagName }));
   const reset = async () => {
-    await page.locator('.enemy-vfx-lab [data-role="grenade"]').click();
+    await selectDevFixture(page, 'grenade');
     await page.evaluate(() => { window.__blasts = []; window.__observe(); });
     const s = await sample();
     assert(s.state.progression.level === 3 && s.state.squad.count === 1 && s.state.player.selectedLane === 2, 'Grenade loadout');

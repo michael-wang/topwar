@@ -42,9 +42,10 @@ class ElementStub extends EventTarget {
   hidden=false; disabled=false; type='';className='';innerHTML='';textContent='';removed=false;
   children:ElementStub[]=[];attributes=new Map<string,string>();
   classList={add:vi.fn(),remove:vi.fn()};
+  private nodes=new Map<string,{textContent:string}>();
   append(e:ElementStub){this.children.push(e);}
   setAttribute(k:string,v:string){this.attributes.set(k,v);}
-  querySelector(){return this;}
+  querySelector(selector:string){if(!this.nodes.has(selector))this.nodes.set(selector,{textContent:''});return this.nodes.get(selector)!;}
   remove(){this.removed=true;}
 }
 afterEach(()=>vi.unstubAllGlobals());
@@ -53,8 +54,11 @@ it('only enables a held valid active charge, isolates pointer input, and resets 
   const viewport=new ElementStub(),activate=vi.fn(),hud=new GrenadeButton(viewport as unknown as HTMLElement,activate),button=viewport.children[0];
   expect(button.hidden).toBe(true);button.dispatchEvent(new Event('click'));expect(activate).not.toHaveBeenCalled();
   hud.update(1,true,false);expect(button.hidden).toBe(false);expect(button.disabled).toBe(true);
+  expect(button.querySelector('strong').textContent).toBe('1');expect(button.querySelector('.grenade-status').textContent).toBe('HELD');
   hud.update(1,true,true);button.dispatchEvent(new Event('click'));expect(activate).toHaveBeenCalledOnce();
+  expect(button.querySelector('.grenade-status').textContent).toBe('READY');
   const pointer=new Event('pointerdown'),stop=vi.spyOn(pointer,'stopPropagation');button.dispatchEvent(pointer);expect(stop).toHaveBeenCalledOnce();
   hud.update(0,true,true);button.dispatchEvent(new Event('click'));expect(activate).toHaveBeenCalledOnce();
+  expect(button.querySelector('strong').textContent).toBe('0');expect(button.querySelector('.grenade-status').textContent).toBe('EMPTY');
   hud.reset();expect(button.hidden).toBe(true);expect(button.disabled).toBe(true);hud.dispose();expect(button.removed).toBe(true);
 });

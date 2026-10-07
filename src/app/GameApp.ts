@@ -1,4 +1,5 @@
 import { ProgressionLevelObserver } from '../presentation/ProgressionLevelUp';
+import { BattleInfoHud } from '../ui/BattleInfoHud';
 import { XpHud } from '../ui/XpHud';
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
@@ -57,13 +58,14 @@ export class GameApp {
   private readonly pauseOverlay: PauseOverlay;
   private readonly controlHint: ControlHint;
   private readonly hudActions: HudActions;
-  private readonly tuningPanel: TuningPanel;
+  private readonly tuningPanel: TuningPanel | null;
   private readonly dragInput: PointerDragInput;
   private readonly keyboardInput: KeyboardSteeringInput;
   private readonly touchInput: TouchSteeringInput;
   private readonly laneInput: LaneStepInput | null;
   private readonly progressionObserver = new ProgressionLevelObserver();
   private readonly xpHud: XpHud | null;
+  private readonly battleInfo: BattleInfoHud | null;
   private readonly grenadeButton: GrenadeButton | null;
   private grenadeRequested = false;
   private readonly unsubscribeConfig: () => void;
@@ -113,15 +115,10 @@ export class GameApp {
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
     this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
+    this.battleInfo = this.config.catharsis?.defenseMode ? new BattleInfoHud(viewport) : null;
     this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, this.requestGrenade) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
-    this.vfxLab = import.meta.env.DEV && this.config.catharsis?.defenseMode
-      ? new EnemyVfxLabControls(viewport, (role) => {
-        this.vfxLabRole = role;
-        this.vfxLab?.setSelected(role);
-        this.retry();
-      }, () => this.running && this.startup === 'started') : null;
-    this.tuningPanel = new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
+    this.tuningPanel = import.meta.env.DEV ? new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
         rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,
@@ -131,7 +128,15 @@ export class GameApp {
         groupSize: values.groupSize ?? this.config.catharsis.groupSize,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
-    }, !!this.config.catharsis?.defenseMode);
+    }, !!this.config.catharsis?.defenseMode) : null;
+    this.vfxLab = import.meta.env.DEV && this.config.catharsis?.defenseMode
+      ? new EnemyVfxLabControls(this.tuningPanel!.reviewControlsHost, (role) => {
+        this.vfxLabRole = role;
+        this.vfxLab?.setSelected(role);
+        this.tuningPanel?.close();
+        this.retry();
+      }, () => this.running && this.startup === 'started') : null;
+
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.dragInput = new PointerDragInput(viewport, {
@@ -207,9 +212,10 @@ export class GameApp {
     this.touchInput.dispose();
     this.laneInput?.dispose();
     this.xpHud?.dispose();
+    this.battleInfo?.dispose();
     this.grenadeButton?.dispose();
     this.gameOverOverlay.dispose();
-    this.tuningPanel.dispose();
+    this.tuningPanel?.dispose();
     this.hudActions.dispose();
     this.vfxLab?.dispose();
     this.controlHint.dispose();
@@ -257,6 +263,7 @@ export class GameApp {
     this.damageFlash.reset();
     this.audio.resetObservation();
     this.xpHud?.reset();
+    this.battleInfo?.reset();
     this.grenadeButton?.reset();
     this.grenadeRequested = false;
     this.progressionObserver.reset();
@@ -265,6 +272,7 @@ export class GameApp {
       this.progressionObserver.observe(initialState.progression.level);
       this.xpHud?.update(initialState.progression, initialState.catharsis.balance.progression, 0);
     }
+    if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance, initialState.squad.count, this.runtimeTuning.fireRate);
     this.renderer.resetFeedback(import.meta.env.DEV && this.vfxLabRole ? ++this.vfxLabVisualSalt : 0);
     this.tierHud.setTier(1);
   }
@@ -372,7 +380,7 @@ export class GameApp {
     if (key === 'escape') {
       if (!event.repeat) {
         event.preventDefault();
-        this.tuningPanel.toggle();
+        this.tuningPanel?.toggle();
       }
       return;
     }
@@ -414,8 +422,10 @@ export class GameApp {
     try {
       if (this.startup !== 'started') {
         const state = this.simulation.getFrameState();
-        if (state.progression && state.catharsis)
+        if (state.progression && state.catharsis) {
           this.xpHud?.update(state.progression, state.catharsis.balance.progression, 0);
+          this.battleInfo?.update(state.progression, state.catharsis.balance, state.squad.count, this.runtimeTuning.fireRate);
+        }
         this.renderer.render(projectRenderState(state, {
           formationSpacing: this.config.player.formationSpacing,
           trackHalfWidth: this.config.track.halfWidth,
@@ -479,6 +489,7 @@ export class GameApp {
           this.audio.play('levelUp');
         }
         this.xpHud?.update(state.progression, state.catharsis.balance.progression, this.presentationMs);
+        this.battleInfo?.update(state.progression, state.catharsis.balance, state.squad.count, this.runtimeTuning.fireRate);
       }
       const stateFinishedMs = perf ? performance.now() : 0;
       const presentationEvents = this.simulation.consumePresentationEvents();

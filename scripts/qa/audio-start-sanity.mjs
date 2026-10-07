@@ -1,3 +1,4 @@
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 // Real gestures and native Web Audio only. Captures are ignored/local.
 import { mkdirSync, writeFileSync } from 'node:fs';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
@@ -142,7 +143,7 @@ try {
     results.inputs[name] = state;
     if (name === 'mouse') {
       // Controls are usable after the start surface leaves.
-      await p.locator('.enemy-vfx-lab [data-role="heavy"]').click();
+      await selectDevFixture(p, 'heavy');
       results.lab = await sample(p);
       assert(results.lab.state.progression.level === 3 && results.lab.state.squad.count === 1, 'Lab after startup');
     }

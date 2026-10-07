@@ -23,7 +23,9 @@ const controls: readonly Control[] = [
 ];
 
 export class TuningPanel {
+  readonly reviewControlsHost = document.createElement('div');
   private readonly element: HTMLDetailsElement;
+  private readonly resetButton = document.createElement('button');
   private readonly inputs = new Map<Key, HTMLInputElement | HTMLSelectElement>();
   private readonly outputs = new Map<Key, HTMLOutputElement>();
   private readonly onPointerDown = (event: PointerEvent): void => { event.stopPropagation(); };
@@ -56,14 +58,20 @@ export class TuningPanel {
       icon.className = 'tune-tool'; icon.ariaHidden = 'true';
       // Authored monochrome screwdriver, independent of platform emoji fonts.
       icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 19 9-9M3 21l2-5 3 3-5 2Z"/><path d="m12 8 4 4 4-4a2.8 2.8 0 0 0-4-4l-4 4Z"/></svg>';
-      summary.ariaLabel = 'TUNE'; summary.title = 'TUNE';
+      summary.ariaLabel = 'DEV tools'; summary.title = 'DEV tools (Escape)';
       summary.append(icon);
+      const badge = document.createElement('span'); badge.className = 'dev-tool-label'; badge.textContent = 'DEV';
+      summary.append(badge);
     } else summary.textContent = 'TUNE';
     const content = document.createElement('div');
     content.className = 'tuning-panel-content';
     if (defenseMode) {
       const heading = document.createElement('strong'); heading.className = 'tuning-heading';
-      heading.textContent = 'TUNE'; content.append(heading);
+      heading.textContent = 'DEV TOOLS'; content.append(heading);
+      this.reviewControlsHost.className = 'dev-review-host';
+      content.append(this.reviewControlsHost);
+      const tuning = document.createElement('strong'); tuning.className = 'tuning-heading';
+      tuning.textContent = 'BALANCE & AUDIO'; content.append(tuning);
     }
     this.element.append(summary, content);
     for (const control of controls) {
@@ -96,7 +104,7 @@ export class TuningPanel {
       this.outputs.set(control.key, output);
       input.addEventListener('input', this.onInput);
     }
-    const reset = document.createElement('button');
+    const reset = this.resetButton;
     reset.type = 'button';
     reset.textContent = 'Reset Defaults';
     reset.addEventListener('click', this.onReset);
@@ -119,11 +127,13 @@ export class TuningPanel {
     this.releaseClosedFocus();
   }
 
+  close(): void { this.element.open = false; this.releaseClosedFocus(); }
+
   dispose(): void {
     for (const input of this.inputs.values()) input.removeEventListener('input', this.onInput);
     this.element.removeEventListener('pointerdown', this.onPointerDown);
     this.element.removeEventListener('toggle', this.releaseClosedFocus);
-    this.element.querySelector('button')?.removeEventListener('click', this.onReset);
+    this.resetButton.removeEventListener('click', this.onReset);
     this.element.remove();
   }
 

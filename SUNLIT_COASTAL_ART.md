@@ -142,8 +142,7 @@ damage system is introduced here. Sand scuffs remain driven by lane centers. Do 
 lane markings or add decorative clutter to sell the art. Keep olive/slate Grunts,
 blue defenders and deeper-olive Heavy/Giant threats with restrained stone/khaki accents as clear
 foreground masses; character roles follow the Character Visual System.
-Enemy health bars use bright coral/red fills with cool navy backing and a thin ivory keyline. Defense HUD and progression
-follow the coastal UI rules below, preserving the open center sky.
+Enemy health bars use bright coral/red fills with cool navy backing and a thin ivory keyline. Defense HUD uses the independent combat treatment below, preserving the open center sky.
 
 ## Water and environmental life
 
@@ -222,53 +221,40 @@ the existing 250 ms rate-limited elite hit impulse; HP/fraction/collision never 
 Each pooled bar owns its tint so damage does not flash other enemies. World bars retain shared
 rounded geometry; legacy Boss framing is unchanged.
 
-Bottom hierarchy is **LEVEL / XP / LOADOUT**, never one enclosing capsule. XP remains
-the widest continuous element; the compact loadout balances the level badge.
+Combat HUD is independent of the coastal palette: dark slate surfaces, bright warm
+orange/gold action accents and pale information. The world and character art stay coastal.
+Top-left **DEV** opens the existing tool disclosure, with GRUNT / HEAVY / GIANT / GRENADE /
+CURVE / EVOLVE / MG in a compact grid above balance/audio controls. Selection closes it;
+Escape toggles it and releases hidden focus. No permanent right-side fixture stack remains.
+The entire disclosure and fixture shortcuts are excluded from production.
 
-R4 makes loadout a horizontal **weapon slot | enhancement slot**, with negative
-space and one quiet separator rather than cards or a dark enclosing panel.
-The monochrome navy rifle occupies 3.4×1.5 rem (3.1×1.4 on ≤350px), with a
-tight 44×20 SVG viewBox and broad stock/receiver/barrel. The enhancement slot
-shows three cartridge silhouettes at Lv1–Lv3 (one/two/three filled), then three
-soldier silhouettes at Lv4–Lv5 (two/three filled). Filled navy and quiet outline
-states remain separate at 350/390 px. The enlarged monochrome Rifle stays unchanged.
+Top-right Pause has a visible dark blue surface, pale icon, clear border and 44-pixel
+minimum target. Left-middle Grenade sits at 57.5% viewport height, clear of lower movement
+space: an 86×100-pixel minimum warm beveled button (78×94 at ≤370px), with grenade icon,
+charge badge and READY / HELD / EMPTY status. It appears on acquisition, has a short
+pop followed by restrained ready glow, and becomes subdued when unavailable. Reduced
+motion disables the idle animations. Its input/Q request and gameplay guards are unchanged.
 
-P1 enhancement presentation consumes the explicit configured level plan. The first
-cartridge is baseline Stage I, not an earned upgrade. Soldier pips show permanent
-progression squad stage, not living count: casualties do not unfill them. Lv6 caps
-normal progression with a full quiet XP bar and no imminent-level pulse. At Lv6 the navy Rifle silhouette swaps to a heavier MG/belt-box silhouette, and enhancement returns to Stage I (one filled cartridge). Levels above six remain deferred. P1.5 adds one separate left-side active Grenade button after supply acquisition; it does not replace the Rifle loadout or enhancement pips. No percentage or multiplier text remains.
+Right-middle battle information balances Grenade at the same vertical center, using a
+calmer dark translucent panel with no button bevel or action glow. Existing weapon
+silhouettes, family/stage, three enhancement pips, total shots/sec and living squad count
+remain compact. The panel is pointer-transparent. Pips show permanent progression:
+one/two/three cartridges at Lv1/2/3, two/three soldiers at Lv4/5; casualties do not unfill
+them. Living count and total firing rate reflect casualties separately. Lv6 replaces Rifle
+with MG, resets enhancement to one cartridge / Stage I, and shows 18/s / one living soldier.
 
-Future weapons can replace the silhouette map, without implementing those weapons now.
-Normal HUD has no RATE/SQUAD labels or numeric XP. Temporary `LEVEL UP` remains compact.
+Bottom hierarchy is **LEVEL / XP**. A dark badge keeps the large 1.9-rem level number and
+orange underline. The XP track expands into the space freed by loadout, with a dark
+remainder and fixed red `#D83B27` → orange `#F56724` / `#FF972F` → gold `#FFD066` gradient.
+The gradient is anchored to the **full track width**, revealed by the accurate fill mask,
+never resized. At 70% glow strengthens; at 90% the edge becomes gold. No numeric XP.
+Existing 120/260 ms reveal, 240 ms full flash, badge pop and 800 ms announcement are retained
+with warm HUD flash/sweep. Lv6's full cap bar stays quiet, without imminent pulsing.
 
-Level is primary information: a compact plaster badge combines a small `LV` with a large
-1.9-rem number and aqua underline. The XP container has no outer capsule, border, panel
-background or shadow. The track itself is primary, with a responsive 0.85–1-rem interior,
-2-pixel navy outline, dark cool-shadow unfilled remainder and modest grounding shadow. No
-numeric XP. Its sea-to-aqua gradient is anchored to the **full track width**, progressively
-revealed by the fill mask. At 70% aqua glow strengthens; at 90% the leading crest uses
-sunlight `#F7CD76`, with a restrained pulse and faster sheen. Normal near-full fill stays
-aqua, never foam-white, so the last 2–10% remains dark and visible. Foam/ivory is reserved
-for actual Level Up. The 120/260 ms gain reveal, 240 ms full flash, level-label pop and 800
-ms beat are preserved; the flash/sweep now belongs to the track and badge, not an enclosing
-panel.
-
-Level Up uses an aqua ground ring, ivory-white body/gear flash, eight aqua/foam
-motes per member, white/aqua HUD sweep, foam-white text with cool shadows, and
-1400 ms cyan-white tracer/muzzle afterglow. Scale pulse, timings and positive
-sound stay unchanged. Keep the beat short and energetic rather than a sustained
-healing aura. Gold may be a tiny sunlight accent, never a dominant meter/effect.
-
-Defense does not construct the old `DEFEND N / 5` HUD. Keep the top-center sky
-empty. Pause uses an icon-only, low-opacity aqua sea-glass surface with no heavy border/shadow.
-TUNE is a subordinate icon-only developer hatch with low opacity and no idle backing.
-Both retain accessible labels/titles and minimum 44-pixel hit targets; hover/focus/open
-clarifies the hatch. The open panel may show TUNE. Pause stays top-right;
-development-only TUNE has its own top-left anchor with an authored monochrome screwdriver
-SVG. Its scrollable popup opens below/right, constrained to the portrait viewport. TUNE uses
-the same
-plaster/navy palette, sea-colored range accents and subtle separators; input
-and focus ownership are unchanged. Legacy interface styling remains intact.
+World Level-Up presentation remains accepted: aqua ground ring, ivory-white body/gear
+flash, eight aqua/foam motes per member and 1400 ms cyan-white tracer/muzzle afterglow.
+Its scale pulse, timing and sound are unchanged by HUD styling. Defense still omits
+the old `DEFEND N / 5` HUD and keeps the top-center sky empty. Legacy interface styling remains intact.
 
 The lower-left hint has only `A / D or ← / →   STEP LANE` on desktop or
 `TAP LEFT / RIGHT` on coarse-pointer devices. Navy text with a pale shadow stays

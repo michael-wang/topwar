@@ -69,6 +69,7 @@ const mock = vi.hoisted(() => ({
   panelAnchor: vi.fn(),
   panelSetValues: vi.fn(),
   panelToggle: vi.fn(),
+  panelClose: vi.fn(),
   panelDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
@@ -147,6 +148,9 @@ vi.mock('../src/ui/XpHud', () => ({ XpHud: class {
   constructor(viewport: HTMLElement) { mock.xpConstructed(viewport); }
   update = vi.fn(); reset = vi.fn(); presentLevelUp = vi.fn(); dispose = vi.fn();
 } }));
+vi.mock('../src/ui/BattleInfoHud', () => ({ BattleInfoHud: class {
+  update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
+} }));
 vi.mock('../src/ui/GrenadeButton', () => ({ GrenadeButton: class {
   constructor(_viewport: unknown, activate: unknown) { mock.grenadeConstructed(activate); }
   update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
@@ -160,6 +164,8 @@ vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
   dispose = mock.hudDispose;
 } }));
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
+  reviewControlsHost = {} as HTMLElement;
+  close = mock.panelClose;
   constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown) {
     mock.panelAnchor(_viewport); mock.panelConstructedWith(defaults, onChange);
   }
@@ -1035,6 +1041,7 @@ it('restarts selected lab fixtures and clears renderer feedback on every switch 
   for (const role of ['heavy', 'giant', 'grunt', 'grunt', 'grenade', 'grenade', 'evolve', 'machineGun', 'evolve']) {
     const before = mock.resetFeedback.mock.calls.length;
     select(role);
+    expect(mock.panelClose).toHaveBeenCalledTimes(before + 1);
     expect(mock.labFixture.mock.lastCall![2]).toBe(role);
     expect(mock.resetFeedback.mock.calls.length).toBe(before + 1);
   }
@@ -1053,7 +1060,8 @@ it('omits every Lab control, including GRENADE, EVOLVE and MG, outside DEV', () 
   const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
   try {
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-    expect(mock.labConstructed).not.toHaveBeenCalled();expect(mock.labFixture).not.toHaveBeenCalled();app.dispose();
+    expect(mock.labConstructed).not.toHaveBeenCalled();expect(mock.labFixture).not.toHaveBeenCalled();
+    expect(mock.panelConstructedWith).not.toHaveBeenCalled();app.dispose();
   } finally { vi.unstubAllEnvs(); }
 });
 

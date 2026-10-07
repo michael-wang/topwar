@@ -1,3 +1,4 @@
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 // Reusable app-level fixture/reset QA. No shipping debug endpoint or dependency.
 import { mkdirSync, writeFileSync } from 'node:fs';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
@@ -47,7 +48,7 @@ try {
   result.normalLevel = (await sample()).state.progression.level;
   assert(result.normalLevel === 1, 'Normal root must remain Lv1');
   for (const [role, level, soldiers, count] of [['grunt', 1, 1, 10], ['heavy', 3, 1, 3], ['giant', 5, 3, 1]]) {
-    await page.locator(`.enemy-vfx-lab [data-role="${role}"]`).click();
+    await selectDevFixture(page, role);
     const initial = await sample();
     assert(initial.state.progression.level === level && initial.hud === level
       && initial.state.squad.count === soldiers && initial.state.enemies.length === count, role + ' loadout');
@@ -64,7 +65,7 @@ try {
   }
   // Warm every role batch, then repeated switches must not grow GPU ownership.
   for (let cycle = 0; cycle < 3; cycle++) for (const role of ['grunt', 'heavy', 'giant']) {
-    await page.locator(`.enemy-vfx-lab [data-role="${role}"]`).click();
+    await selectDevFixture(page, role);
     const switched = await sample(); assert(clear(switched), 'Repeated switch residue');
     await page.evaluate(() => window.__advance(35000));
     const end = await sample(); result.switches.push({ cycle, role, salt: switched.salt, geometries: end.stats.geometries, textures: end.stats.textures });

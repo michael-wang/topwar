@@ -1,3 +1,4 @@
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const out=process.argv[2]??'artifacts/p2a';mkdirSync(out,{recursive:true});
@@ -26,7 +27,7 @@ try {
     audio:window.__testApp.audio.getDebugStats(),weapon:document.querySelector('.xp-loadout')?.dataset.weaponFamily,
     damageFlash:document.querySelector('.damage-flash')?.className}));
   const reset=async()=>{
-    await page.locator('.enemy-vfx-lab [data-role="machineGun"]').click();const s=await sample();
+    await selectDevFixture(page, 'machineGun');const s=await sample();
     assert(s.state.progression.level===6&&s.state.squad.count===1&&s.state.player.selectedLane===2,'Lv6 specialist');
     assert(s.state.enemies.filter(e=>e.archetype==='grunt').length===60&&s.state.enemies.filter(e=>e.archetype==='heavy').length===5,'60/5 crowd');
     assert(!s.state.boss&&!s.state.enemies.some(e=>e.archetype==='giant'),'No Giant or Boss');return s;

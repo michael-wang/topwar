@@ -70,16 +70,18 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   hud.update({ level: 7, xp: 0 }, balance, 600);
   expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP']);
   hud.reset(); hud.update({ level: 1, xp: 1 }, balance, 1000);
+  expect(fill.style.transition).toBe('none');
+  hud.update({ level: 1, xp: 2 }, balance, 1020);
   expect(fill.style.transition).toBe('clip-path 120ms ease-out');
 });
 
-it('uses a deep-sea XP edge early and a sunlight crest near full without changing the frame/mask semantics', () => {
+it('uses a red-orange XP edge early and a gold crest near full without changing the frame/mask semantics', () => {
   const { hud, root } = make(), edge = root.children[1].children[1];
   const testBalance = { ...balance, xpRequirements: [100] };
   hud.update({ level: 1, xp: 20 }, testBalance, 0);
-  expect(edge.style.color).toBe('#2b8ea4');
+  expect(edge.style.color).toBe('#e54f26');
   hud.update({ level: 1, xp: 90 }, testBalance, 100);
-  expect(edge.style.color).toBe('#f7cd76');
+  expect(edge.style.color).toBe('#ffd066');
   expect(root.classes.has('xp-imminent')).toBe(true);
 });
 
@@ -94,20 +96,6 @@ it('gives level a dedicated large number and keeps the HUD container structural'
   expect(root.children[1].className).toBe('xp-track');
 });
 
-it.each([[1,'cartridge',1],[2,'cartridge',2],[3,'cartridge',3],[4,'soldier',2],[5,'soldier',3],[6,'cartridge',1]] as const)(
-  'renders Level %i with three %s silhouettes and %i filled', (level,kind,stage)=>{
-    const {hud,root}=make();hud.update({level,xp:0},balance,0);
-    const loadout=root.children[3],trait=loadout.children[1];
-    expect(loadout.children[0].className).toBe('xp-weapon-slot');
-    expect((loadout.children[0].children[0] as unknown as HTMLElement).innerHTML).toContain('viewBox="0 0 44 20"');
-    expect(trait.children).toHaveLength(3);
-    expect(trait.children.filter(pip=>pip.className.includes('is-filled'))).toHaveLength(stage);
-    expect(trait.children.every(pip=>pip.className.includes(`xp-pip-${kind}`))).toBe(true);
-    expect(trait.children.map(pip=>pip.textContent).join('')).toBe('');
-    for(const pip of trait.children.filter(pip=>pip.className.includes('is-empty')))
-      expect((pip as unknown as HTMLElement).innerHTML).toContain('fill="none"');
-    hud.reset();expect(trait.children.every(pip=>(pip as unknown as HTMLElement).innerHTML==='')).toBe(true);
-  });
 it('keeps the max-level bar full without charged or imminent animation and resets on Retry',()=>{
   const {hud,root}=make();hud.update({level:6,xp:0},balance,0);
   expect(root.children[1].children[0].style.clipPath).toBe('inset(0 0% 0 0 round .45rem)');

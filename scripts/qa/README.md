@@ -1,5 +1,17 @@
 # Browser sanity
 
+## Combat HUD layout
+
+`node scripts/qa/combat-hud-sanity.mjs` checks the top-left DEV disclosure and all
+seven deterministic fixture resets, menu close/Escape/focus ownership, Pause,
+left-middle Grenade via Q/tap, right-middle read-only battle information, real
+Lv5→Lv6 HUD replacement, physical 4/5/6, and synthetic safe-area insets. It captures
+390×844 and 350×844 ready/empty/paused/menu/Rifle/MG/Giant states in
+`artifacts/combat-hud`. Pair with `p15-browser.mjs` for actual supply acquisition
+and burst XP, `audio-start-sanity.mjs` for real startup gestures, and
+`production-sanity.mjs` for shipping DOM/bundle exclusion of the whole DEV menu.
+`HUD_UI_REPORT.md` records the UI-only scope and current validation.
+
 ## P1.5 Grenade and pressure
 
 `node scripts/qa/grenade-lab-sanity.mjs` uses the real DEV **GRENADE** button, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five repeated explosions, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records current measurements. No fixture damage or balance overrides.
@@ -47,7 +59,11 @@ Audio capture measures the browser signal, not physical device/speaker latency.
 
 ## Enemy VFX Lab
 
-Development defense builds show seven compact buttons below Pause:
+Development defense builds put seven fixture actions inside the top-left **DEV**
+tool disclosure, above the existing balance/audio controls. Click DEV (or Escape),
+then choose a fixture; selection closes the menu and returns focus to gameplay.
+No permanent right-side fixture stack remains. Browser scripts use
+`selectDevFixture` from `dev-fixture-controls.mjs` to follow this same path:
 
 - **GRUNT:** ten Grunts, Lv1 / one Rifle; review contact blood, pale intact lift/fade.
 - **HEAVY:** three Heavies, Lv3 / one Rifle; review surviving hits and weighted collapse.

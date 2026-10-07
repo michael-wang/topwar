@@ -1,3 +1,4 @@
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 // Real DEV controls and keyboard paths. Uses the ordinary simulation; no XP grants.
 import { mkdirSync, writeFileSync } from 'node:fs';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
@@ -37,7 +38,7 @@ try {
       stats: a.renderer.getDebugStats(), weapon: document.querySelector('.xp-loadout')?.dataset.weaponFamily,
       levelUp: document.querySelector('.xp-hud')?.classList.contains('level-up'), cues: window.__cues };
   });
-  const click = role => page.locator(`.enemy-vfx-lab [data-role="${role}"]`).click();
+  const click = role => selectDevFixture(page, role);
   const advance = ms => page.evaluate(ms => window.__advance(ms), ms);
   let evolveInitial, mgInitial;
   for (const width of [390, 350]) {

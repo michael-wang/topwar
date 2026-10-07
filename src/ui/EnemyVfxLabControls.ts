@@ -20,17 +20,17 @@ export class EnemyVfxLabControls {
     private readonly canUseShortcuts: () => boolean = () => true) {
     this.element.className = 'enemy-vfx-lab';
     this.element.setAttribute('aria-label', 'Enemy VFX Lab');
-    this.element.style.cssText = 'position:absolute;z-index:4;right:var(--hud-safe-right);top:calc(var(--hud-safe-top) + 52px);display:flex;flex-direction:column;gap:5px';
+    this.element.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 16px';
     for (const role of ['grunt', 'heavy', 'giant', 'grenade', 'curve', 'evolve', 'machineGun'] as const) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = role === 'machineGun' ? 'MG' : role.toUpperCase();
       button.dataset.role = role; button.setAttribute('aria-pressed', 'false');
       button.title = `Restart ${role} combat fixture${role === 'curve' ? ' (4)' : role === 'evolve' ? ' (5)' : role === 'machineGun' ? ' (6)' : ''}`;
-      button.style.cssText = 'min-height:36px;width:60px;border:1px solid #d9e6de;border-radius:6px;background:#e7eee5e6;color:#294956;font:600 10px sans-serif;cursor:pointer;touch-action:manipulation';
+      button.style.cssText = 'min-height:44px;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 11px sans-serif;cursor:pointer;touch-action:manipulation';
       button.addEventListener('click', () => {
         select(role);
         // Return focus to the battlefield for Q, lane keys and fixture shortcuts.
-        if (role === 'grenade' || role === 'curve' || role === 'evolve' || role === 'machineGun') button.blur();
+        button.blur();
       });
       this.buttons.push(button); this.element.append(button);
     }
@@ -42,7 +42,7 @@ export class EnemyVfxLabControls {
     for (const button of this.buttons) {
       const selected = button.dataset.role === role;
       button.setAttribute('aria-pressed', String(selected));
-      button.style.background = selected ? '#b8d8d6' : '#e7eee5e6';
+      button.style.background = selected ? '#7a3b1d' : '#263444';
     }
   }
   dispose(): void {

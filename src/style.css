@@ -304,7 +304,7 @@ body {
 }
 
 
-/* Defense UI: plaster structure, sea energy, navy legibility. Legacy stays above. */
+/* Full-bleed coastal scene; combat HUD uses independent warm/action tokens. */
 body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, var(--coast-ink), var(--coast-gutterOuter)); }
 .beachhead-defense {
   --hud-margin: .85rem;
@@ -317,45 +317,37 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   --hud-safe-right: calc(var(--hud-inset-right) + var(--hud-margin));
   --hud-safe-bottom: calc(var(--hud-inset-bottom) + var(--hud-margin));
 }
-.beachhead-defense .hud-actions { top: var(--hud-safe-top); right: var(--hud-safe-right); }
-.tuning-panel--coastal-anchor {
-  position: absolute; z-index: 3; top: var(--hud-safe-top); left: var(--hud-safe-left);
-  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
+.beachhead-defense {
+  --combat-surface: #172331; --combat-edge: #526176; --combat-paper: #fff3dc;
+  --combat-hot: #ff7a27; --combat-gold: #ffd066;
 }
-.beachhead-defense .tuning-panel--coastal-anchor summary { display: flex; gap: .3rem; align-items: center; }
+.beachhead-defense .hud-actions { top: var(--hud-safe-top); right: var(--hud-safe-right); }
+.tuning-panel--coastal-anchor { position: absolute; z-index: 18; top: var(--hud-safe-top); left: var(--hud-safe-left); }
 .tune-tool { display: flex; width: 1rem; height: 1rem; }
 .tune-tool svg { width: 100%; height: 100%; }
 .beachhead-defense .pause-button, .beachhead-defense .tuning-panel summary {
-  min-width: 44px; min-height: 44px; padding: 0 .65rem;
-  background: color-mix(in srgb, var(--coast-plaster) 94%, transparent);
-  color: var(--coast-ink); border: 1px solid color-mix(in srgb, var(--coast-foam) 85%, transparent);
-  border-radius: .55rem; box-shadow: 0 3px 9px color-mix(in srgb, var(--coast-shadow) 22%, transparent);
-  font-size: .75rem;
+  min-width: 44px; min-height: 44px; border-radius: 9px; padding: 0 12px;
+  border: 1px solid #718399; background: #172b41e8; color: #f6f3e8;
+  box-shadow: inset 0 1px 0 #ffffff1c, 0 3px 0 #101b2bc4; opacity: 1;
+  font: 800 14px/1 sans-serif; cursor: pointer; touch-action: manipulation;
 }
-.beachhead-defense .pause-button:hover, .beachhead-defense .tuning-panel summary:hover {
-  background: var(--coast-paper);
-}
+.beachhead-defense .pause-button:hover, .beachhead-defense .tuning-panel summary:hover { background: #2c4058; }
+.beachhead-defense .pause-button { font-size: 20px; }
 .beachhead-defense .pause-button:focus-visible, .beachhead-defense .tuning-panel summary:focus-visible {
-  outline: 2px solid var(--coast-sea); outline-offset: 2px;
+  outline: 2px solid var(--combat-gold); outline-offset: 3px;
 }
+.beachhead-defense .tuning-panel summary { display: flex; align-items: center; gap: 7px; }
+.dev-tool-label { font: 800 9px/1 sans-serif; letter-spacing: .08em; }
 .beachhead-defense .tuning-panel-content {
-  left: 0; right: auto; width: min(15rem, calc(100vw - var(--hud-safe-left) - var(--hud-safe-right)));
-  max-height: min(65dvh, calc(100dvh - var(--hud-safe-top) - var(--hud-safe-bottom) - 8rem),
-    calc(177.7778vw - var(--hud-safe-top) - var(--hud-safe-bottom) - 8rem));
-  padding: .6rem .7rem;
-  background: color-mix(in srgb, var(--coast-plaster) 97%, transparent);
-  color: var(--coast-ink); border: 1px solid var(--coast-foam);
-  border-radius: .65rem; box-shadow: 0 5px 18px color-mix(in srgb, var(--coast-shadow) 26%, transparent);
-  font-size: .75rem;
+  left: 0; right: auto; width: min(272px, calc(100vw - var(--hud-safe-left) - var(--hud-safe-right)));
+  box-sizing: border-box; max-height: min(65dvh, calc(100dvh - var(--hud-safe-top) - var(--hud-safe-bottom) - 6rem));
+  padding: 14px; border: 1px solid #5e6b7c; border-radius: 10px;
+  color: #edf1f4; background: #14212bf7; box-shadow: 0 10px 28px #07101b66; font: 12px/1.4 sans-serif;
 }
-.beachhead-defense .tuning-panel label {
-  padding-bottom: .35rem; border-bottom: 1px solid color-mix(in srgb, var(--coast-sea) 15%, transparent);
-}
-.beachhead-defense .tuning-panel input { accent-color: var(--coast-sea); }
-.beachhead-defense .tuning-panel output { color: var(--coast-sea); }
-.beachhead-defense .tuning-panel select, .beachhead-defense .tuning-panel button {
-  color: var(--coast-ink); background: var(--coast-paper); border-color: var(--coast-aqua);
-}
+.beachhead-defense .tuning-panel label { padding-bottom: 8px; border-bottom: 1px solid #ffffff15; }
+.beachhead-defense .tuning-panel input { accent-color: var(--combat-hot); }
+.beachhead-defense .tuning-panel output { color: var(--combat-gold); }
+.beachhead-defense .tuning-panel select, .beachhead-defense .tuning-panel button { color: #fff3dc; background: #263444; border-color: #566578; }
 .beachhead-defense .pause-overlay:not([hidden]), .beachhead-defense .game-over-overlay:not([hidden]) {
   background: color-mix(in srgb, var(--coast-shadow) 46%, transparent); color: var(--coast-paper);
 }
@@ -363,28 +355,28 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .xp-hud {
   position: absolute; z-index: 2; pointer-events: none;
   left: var(--hud-safe-left); right: var(--hud-safe-right); bottom: var(--hud-safe-bottom);
-  display: flex; align-items: center; gap: .7rem;
-  color: var(--coast-ink); font: 900 .75rem/1.3 "Trebuchet MS", sans-serif; letter-spacing: .03em;
+  display: flex; align-items: center; gap: .6rem;
+  color: var(--combat-paper); font: 900 .75rem/1.3 "Trebuchet MS", sans-serif; letter-spacing: .03em;
 }
 .xp-level {
   display: flex; align-items: baseline; justify-content: center; gap: .2rem;
-  min-width: 3.1rem; padding: .05rem .35rem .2rem; border-radius: .35rem;
-  background: color-mix(in srgb, var(--coast-plaster) 88%, transparent);
-  border-bottom: 3px solid var(--coast-aqua);
-  box-shadow: 0 2px 5px color-mix(in srgb, var(--coast-shadow) 18%, transparent);
+  min-width: 3.35rem; padding: .05rem .35rem .2rem; border-radius: .35rem;
+  background: #172331f2;
+  border: 1px solid #a65b37; border-bottom: 3px solid var(--combat-hot);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--combat-surface) 18%, transparent);
 }
 .xp-level-prefix { font-size: .58rem; letter-spacing: .06em; }
 .xp-level-number { font-size: 1.9rem; line-height: 1.15; letter-spacing: -.03em; }
 .xp-track {
   position: relative; flex: 1; height: clamp(.85rem, 3.9vw, 1rem); border-radius: .45rem;
-  background: var(--coast-shadow); border: 2px solid var(--coast-ink);
-  box-shadow: inset 0 2px 3px color-mix(in srgb, var(--coast-ink) 65%, transparent),
-    0 2px 5px color-mix(in srgb, var(--coast-shadow) 25%, transparent);
+  background: #111b28; border: 1px solid var(--combat-edge);
+  box-shadow: inset 0 2px 3px color-mix(in srgb, var(--combat-paper) 65%, transparent),
+    0 2px 5px color-mix(in srgb, var(--combat-surface) 25%, transparent);
 }
 .xp-fill {
   position: absolute; inset: 0; height: 100%; width: 100%; border-radius: inherit;
   clip-path: inset(0 100% 0 0 round .45rem); background: var(--art-xp-gradient);
-  box-shadow: 0 0 5px color-mix(in srgb, var(--coast-aqua) 50%, transparent), inset 0 1px 0 var(--coast-crest);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--combat-hot) 50%, transparent), inset 0 1px 0 var(--combat-gold);
   overflow: hidden;
 }
 .xp-edge { position: absolute; top: 0; bottom: 0; width: 3px; border-radius: .2rem;
@@ -392,31 +384,31 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   pointer-events: none; }
 .xp-charged .xp-edge { box-shadow: 0 0 5px 1px currentColor; }
 .xp-imminent .xp-edge { animation: xp-crest 1.2s ease-in-out infinite; }
-.level-flash .xp-edge { color: var(--coast-foam) !important; }
+.level-flash .xp-edge { color: var(--combat-gold) !important; }
 .xp-fill::before { content: ''; position: absolute; inset: -40% -20%;
-  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--coast-crest) 25%, transparent) 50%, transparent 65%);
+  background: linear-gradient(110deg, transparent 35%, color-mix(in srgb, var(--combat-gold) 25%, transparent) 50%, transparent 65%);
   animation: xp-sheen 3.2s ease-in-out infinite; }
-.xp-charged .xp-fill { box-shadow: 0 0 6px var(--coast-aqua), inset 0 1px 0 var(--coast-aqua); }
+.xp-charged .xp-fill { box-shadow: 0 0 6px var(--combat-hot), inset 0 1px 0 var(--combat-hot); }
 .xp-imminent .xp-fill::before { animation-duration: 1.8s; }
 .level-up-message { position: absolute; bottom: calc(100% + .6rem); left: 0; right: 0;
-  text-align: center; color: var(--coast-paper); opacity: 0;
-  text-shadow: 0 2px 2px var(--coast-shadow), 0 0 8px var(--coast-sea);
+  text-align: center; color: var(--combat-paper); opacity: 0;
+  text-shadow: 0 2px 2px var(--combat-surface), 0 0 8px var(--combat-hot);
   transform: translateY(.3rem); }
 .level-up-message strong { display: block; font: 900 1.4rem/1.1 "Trebuchet MS", sans-serif; letter-spacing: .07em; }
-.level-up-message span { display: block; font: 800 .68rem/1.5 "Trebuchet MS", sans-serif; letter-spacing: .12em; color: var(--coast-foam); }
-.xp-hud.level-up .xp-track { animation: xp-coastal-burst 800ms ease-out both; }
+.level-up-message span { display: block; font: 800 .68rem/1.5 "Trebuchet MS", sans-serif; letter-spacing: .12em; color: var(--combat-gold); }
+.xp-hud.level-up .xp-track { animation: xp-combat-burst 800ms ease-out both; }
 .level-up .level-up-message { animation: xp-announcement 800ms ease-out both; }
 .level-label-pop .xp-level { animation: xp-label-pop 320ms ease-out both; }
-.level-flash .xp-level { background: var(--coast-foam); box-shadow: 0 0 15px var(--coast-foam); }
-.level-flash .xp-fill { background: linear-gradient(90deg, var(--coast-aqua), var(--coast-foam)); box-shadow: 0 0 18px var(--coast-foam); }
+.level-flash .xp-level { background: var(--combat-gold); color: var(--combat-surface); box-shadow: 0 0 15px var(--combat-gold); }
+.level-flash .xp-fill { background: linear-gradient(90deg, var(--combat-hot), var(--combat-gold)); box-shadow: 0 0 18px var(--combat-gold); }
 .xp-track::after { content: ''; position: absolute; inset: -.3rem; border-radius: inherit; opacity: 0;
-  background: linear-gradient(110deg, transparent 35%, var(--coast-foam) 50%, transparent 65%); pointer-events: none; }
+  background: linear-gradient(110deg, transparent 35%, var(--combat-gold) 50%, transparent 65%); pointer-events: none; }
 .level-up .xp-track::after { animation: xp-level-sweep 650ms ease-out both; }
 @keyframes xp-sheen { 0%, 25% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
-@keyframes xp-crest { 50% { filter: brightness(1.12); box-shadow: 0 0 7px var(--coast-sun); } }
-@keyframes xp-coastal-burst { 0% { border-color: var(--coast-foam); box-shadow: 0 0 24px 4px var(--coast-foam); }
-  35% { border-color: var(--coast-foam); box-shadow: 0 0 16px var(--coast-aqua); }
-  100% { border-color: var(--coast-foam); } }
+@keyframes xp-crest { 50% { filter: brightness(1.12); box-shadow: 0 0 7px var(--combat-gold); } }
+@keyframes xp-combat-burst { 0% { border-color: var(--combat-gold); box-shadow: 0 0 24px 4px var(--combat-gold); }
+  35% { border-color: var(--combat-gold); box-shadow: 0 0 16px var(--combat-hot); }
+  100% { border-color: var(--combat-gold); } }
 @keyframes xp-level-sweep { 0% { opacity: 0; transform: translateX(-70%); }
   20% { opacity: .95; } 100% { opacity: 0; transform: translateX(70%); } }
 @keyframes xp-label-pop { 0% { transform: scale(.8); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
@@ -450,36 +442,29 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
     max-height: min(65dvh, calc(100dvh - var(--hud-safe-top) - var(--hud-safe-bottom) - 5rem));
   }
 }
-.beachhead-defense .pause-button {
-  padding: 0; width: 44px; border: 0; box-shadow: none;
-  background: color-mix(in srgb, var(--coast-aqua) 24%, transparent); opacity: .75;
-}
-.beachhead-defense .tuning-panel summary {
-  justify-content: center; width: 44px; padding: 0; border: 0; box-shadow: none;
-  background: transparent; opacity: .38;
-}
-.beachhead-defense .tuning-panel[open] summary,
-.beachhead-defense .tuning-panel summary:hover,
-.beachhead-defense .tuning-panel summary:focus-visible { opacity: 1; background: color-mix(in srgb, var(--coast-plaster) 75%, transparent); }
 .tuning-heading { display: block; margin: .1rem 0 .6rem; letter-spacing: .1em; }
 .game-icon { display: inline-flex; flex: 0 0 auto; width: 1rem; height: 1rem; }
 .game-icon svg { width: 100%; height: 100%; }
-.xp-loadout { flex: 0 0 auto; display: flex; align-items: center; gap: .4rem;
-  color: var(--coast-ink); filter: drop-shadow(0 1px 0 var(--coast-plaster)); }
-.xp-weapon-slot { display: flex; align-items: center; flex: 0 0 auto; }
-.xp-weapon-slot .game-icon { width: 3.4rem; height: 1.5rem; }
-.xp-enhancement-slot { flex: 0 0 auto; min-width: 2.9rem; padding-left: .4rem;
-  border-left: 1px solid color-mix(in srgb, var(--coast-ink) 25%, transparent);
-  display: flex; align-items: center; justify-content: center; gap: .16rem; white-space: nowrap; }
-.xp-pip { display: inline-flex; width: .75rem; height: 1.25rem; flex: 0 0 auto; }
-.xp-pip svg { width: 100%; height: 100%; }
-.xp-pip.is-empty { opacity: .55; }
-@media (max-width: 370px) {
-  .xp-loadout { gap: .3rem; }
-  .xp-weapon-slot .game-icon { width: 3.1rem; height: 1.4rem; }
-  .xp-enhancement-slot { min-width: 2.7rem; padding-left: .3rem; gap: .12rem; }
-  .xp-pip { width: .72rem; height: 1.2rem; }
+.battle-info {
+  position: absolute; z-index: 2; right: var(--hud-safe-right); top: 57.5%; transform: translateY(-50%);
+  box-sizing: border-box; width: 88px; padding: 10px 9px; pointer-events: none;
+  color: #f1f3ef; background: #14212be3; border: 1px solid #ffffff29; border-left: 2px solid #718399;
+  border-radius: 3px; font-family: 'Trebuchet MS', sans-serif;
 }
+.xp-weapon-slot { display: flex; align-items: center; }
+.xp-weapon-slot .game-icon { width: 61px; height: 28px; color: #f1f3ef; }
+.battle-identity { display: grid; gap: 4px; margin: 4px 0 6px; }
+.battle-identity strong { font-size: 11px; letter-spacing: .03em; }
+.battle-identity > span { font: 700 9px/1 sans-serif; color: #b6c3ce; white-space: nowrap; }
+.xp-enhancement-slot { display: flex; gap: 4px; padding-bottom: 7px; margin-bottom: 7px; border-bottom: 1px solid #ffffff26; }
+.xp-pip { display: inline-flex; width: 12px; height: 17px; color: #ffcb83; }
+.xp-pip svg { width: 100%; height: 100%; }
+.xp-pip.is-empty { color: #98a6b5; opacity: .6; }
+.battle-metrics { display: grid; gap: 6px; }
+.battle-metrics > div { display: flex; align-items: baseline; gap: 4px; }
+.battle-metrics .game-icon { align-self: center; width: 13px; height: 14px; color: #a9bbc9; }
+.battle-metrics strong { font: 800 18px/1 'Trebuchet MS', sans-serif; font-variant-numeric: tabular-nums; }
+.battle-metrics div > span:last-child { color: #acbbc7; font: 700 8px/1 sans-serif; }
 .xp-loadout[hidden] { display: none; }
 
 /* A quiet full-viewport gesture surface keeps the ready world visible. */
@@ -519,20 +504,32 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 }
 /* Safe-area anchored active item; native button semantics exclude lane taps. */
 .grenade-button {
-  position: absolute; left: var(--hud-safe-left, .85rem);
-  bottom: calc(var(--hud-safe-bottom, .85rem) + 7.5rem);
-  width: 4.2rem; min-height: 4.5rem; padding: .45rem;
-  border: 2px solid var(--coast-crest); border-radius: .8rem;
-  background: var(--coast-plaster); color: var(--coast-ink); z-index: 15;
-  box-shadow: 0 3px 0 var(--coast-sea); touch-action: manipulation;
-  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  position: absolute; z-index: 15; left: var(--hud-safe-left); top: 57.5%; transform: translateY(-50%);
+  width: 86px; min-height: 100px; box-sizing: border-box; padding: 10px 9px 8px;
+  display: grid; grid-template-columns: 1fr auto; justify-items: center; align-items: center;
+  border: 2px solid #ffae4e; border-radius: 16px; color: #ffce7e;
+  background: linear-gradient(145deg, #713522, #29212b 65%);
+  box-shadow: inset 0 0 0 3px #181b27, inset 0 5px 10px #ff914522, 0 5px 0 #28151d, 0 8px 16px #1a15254d;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .grenade-button[hidden] { display: none; }
-.grenade-button svg { width: 2rem; height: 2rem; }
-.grenade-button span { grid-column: 1 / -1; font: 700 .55rem sans-serif; }
-.grenade-button strong { font-size: 1.1rem; }
-.grenade-button:disabled { opacity: .5; }
-.grenade-button:focus-visible { outline: 3px solid var(--coast-aqua); outline-offset: 3px; }
-.grenade-ready { animation: grenade-ready .7s ease-out 2; }
+.grenade-button svg { width: 36px; height: 36px; filter: drop-shadow(0 2px 0 #111923); }
+.grenade-button strong { align-self: start; min-width: 19px; border-radius: 5px; padding: 2px; background: #ff922f; color: #241e24; font: 900 17px/1 sans-serif; }
+.grenade-button > span { grid-column: 1 / -1; margin-top: 7px; color: #fff1d5; font: 900 10px/1.3 sans-serif; letter-spacing: .04em; }
+.grenade-status { grid-column: 1 / -1; margin-top: 3px; font: 800 8px/1.3 sans-serif; letter-spacing: .13em; }
+.grenade-button:disabled { cursor: default; border-color: #718094; color: #a6b2bf; background: #202c38ed; box-shadow: inset 0 0 0 3px #15202b, 0 3px 0 #16202a; }
+.grenade-button:disabled strong { background: #677786; color: #f2eee6; }
+.grenade-button:disabled > span { color: #cbd3dc; }
+.grenade-button:active:not(:disabled) { transform: translateY(calc(-50% + 3px)); box-shadow: inset 0 0 0 3px #181b27, 0 2px 0 #28151d; }
+.grenade-button:focus-visible { outline: 3px solid #ffe4a4; outline-offset: 4px; }
+.grenade-ready:not(:disabled) { animation: grenade-ready .7s ease-out 2, grenade-glow 2.6s 1.4s ease-in-out infinite; }
 .game-paused .grenade-ready { animation-play-state: paused; }
-@keyframes grenade-ready { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.13); background: var(--coast-crest); } }
+@keyframes grenade-ready { 0%, 100% { transform: translateY(-50%) scale(1); } 40% { transform: translateY(-50%) scale(1.08); } }
+@keyframes grenade-glow { 50% { box-shadow: inset 0 0 0 3px #181b27, 0 5px 0 #28151d, 0 0 18px #ff8c354a; } }
+@media (max-width: 370px) {
+  .grenade-button { width: 78px; min-height: 94px; padding: 9px 7px 7px; }
+  .battle-info { width: 82px; padding: 9px 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .grenade-ready:not(:disabled), .xp-fill::before, .xp-imminent .xp-edge { animation: none; }
+}

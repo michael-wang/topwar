@@ -1,3 +1,4 @@
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 // Real DEV CURVE input, fixed-step gameplay and disposable renderer. No scripted XP/levels.
 import {mkdirSync,writeFileSync} from 'node:fs';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
@@ -23,7 +24,7 @@ try{
  const advance=(ms,pilot=false)=>page.evaluate(({ms,pilot})=>window.__advance(ms,pilot),{ms,pilot});
  let initial;
  for(const width of [390,350]){
-  await page.setViewportSize({width,height:844});await page.locator('[data-role="curve"]').click();const start=await sample();initial??=start.state;
+  await page.setViewportSize({width,height:844});await selectDevFixture(page, 'curve');const start=await sample();initial??=start.state;
   assert(JSON.stringify(start.state)===JSON.stringify(initial),'Exact CURVE reset');
   assert(start.state.progression.level===4&&start.state.progression.xp===150&&start.state.squad.count===2,'Lv4 / 150 XP / two Rifles');
   assert(start.state.enemies.length===48&&start.state.enemies.filter(e=>e.archetype==='heavy').length===2,'Representative 46/2 crowd');

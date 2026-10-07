@@ -31,11 +31,11 @@ export const ART = {
   // Enemy health is danger, never the gold of rewards or progression.
   enemyHealth: { heavy: '#f2555f', giant: '#ef4d59', depleted: '#c92f4e', hit: '#ffe6df',
     deep: '#1c2d39', ink: '#24465a', frame: '#f1efe6', highlight: '#f7f4ea', shadow: '#172d3a' },
-  // Plaster structures, sea progression, navy legibility; sun is a rare accent.
+  // Retained coastal hints, overlays and gutters; combat HUD colors are independent.
   coastalUi: { plaster: '#f1efe6', paper: '#f7f4ea', ink: '#24465a', sea: '#247e9c',
     aqua: '#58c8c1', foam: '#e5f6ee', shadow: '#2c4158', sun: '#f7cd76',
     crest: '#bae9e0', energy: '#c6f4f2', gutterOuter: '#182f3b' },
-  // Fixed full-track sea-to-aqua palette, progressively revealed by the XP mask.
-  xp: [{ at: 0, color: '#247e9c' }, { at: .4, color: '#329dac' },
-    { at: .7, color: '#58c8c1' }, { at: 1, color: '#70d7cf' }],
+  // Independent combat progression palette, revealed by the full-track XP mask.
+  xp: [{ at: 0, color: '#d83b27' }, { at: .45, color: '#f56724' },
+    { at: .7, color: '#ff972f' }, { at: 1, color: '#ffd066' }],
 } as const;
