@@ -3,8 +3,7 @@ import gameData from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createEnemyVfxLab, ENEMY_VFX_LAB } from '../src/app/EnemyVfxLab';
-import { effectiveRifleFireRate } from '../src/simulation/progression';
+import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { grenadeTarget } from '../src/simulation/grenade';
 
 const c = GameConfigSchema.parse(gameData), level = LevelDefinitionSchema.parse(levelData);
@@ -17,47 +16,14 @@ const tuning = { moveSpeed: c.player.moveSpeed, forwardSpeed: c.player.forwardSp
   normalEnemyRadius: c.tiers.normalEnemyRadius, bossRadius: c.bosses.basic.radius,
   rifle: c.weapon.rifle, rocket: c.weapon.rocket };
 
-it.each(['grunt', 'heavy', 'giant'] as const)('creates deterministic validated %s fixtures using real HP and weapon tuning', role => {
-  const sim = createEnemyVfxLab(options, c.weapon.rifle.fireRate, role), state = sim.getState();
-  expect(state).toEqual(createEnemyVfxLab({ ...options, seed: 99 }, c.weapon.rifle.fireRate, role).getState());
-  const fixture = ENEMY_VFX_LAB[role];
-  expect(state.progression).toEqual({ level: fixture.level, xp: 0 });
-  expect(state.squad.count).toBe(fixture.soldiers);
-  expect(state.squad.rifleCounts).toEqual([fixture.soldiers]);
-  expect(state.squad.rocketCount).toBe(0);
-  expect(state.catharsis!.balance).toEqual(c.catharsis);
-  expect(state.enemies.map(e => e.z)).toEqual(fixture.depths);
-  expect(state.enemies.every(e => e.archetype === role && e.lane === state.player.selectedLane && e.x === state.player.x)).toBe(true);
-  const hp = role === 'giant' ? c.catharsis!.giant.hp : role === 'heavy' ? c.catharsis!.heavyHp : 1;
-  expect(state.enemies.every(e => e.hp === hp)).toBe(true);
-  expect(state.giantEncounter!.spawned).toBe(role === 'giant');
-  expect(state.enemyStream!.nextRowIndex * level.enemyStream!.spacing + level.enemyStream!.startZ)
-    .toBeGreaterThan(c.catharsis!.defenseSpawnAheadDistance);
-  const interval = 1 / effectiveRifleFireRate(c.weapon.rifle.fireRate, fixture.level, c.catharsis!.progression);
-  expect(state.weapons.rifleMemberCooldowns).toEqual(Array.from({ length: fixture.soldiers }, (_, i) => i * interval / fixture.soldiers));
-  expect(Object.keys(state).some(key => /lab|debug/i.test(key))).toBe(false);
-  // Real combat kills every fixture without natural refill or debug damage.
-  const cursor = state.enemyStream!.nextEnemyId;
-  for (let i = 0; i < 60 * 35; i++) sim.step(1 / 60, { targetX: state.player.x }, tuning);
-  expect(sim.getState().enemies).toHaveLength(0);
-  expect(sim.getState().squad.count).toBe(fixture.soldiers);
-  expect(sim.getState().enemyStream!.nextEnemyId).toBe(cursor);
-  expect(createEnemyVfxLab(options, c.weapon.rifle.fireRate, role).getState()).toEqual(state);
-});
-
-it('keeps the Grunt fixture below its next level threshold', () => {
-  expect(ENEMY_VFX_LAB.grunt.depths.length * c.catharsis!.progression.gruntKillXp)
-    .toBeLessThan(c.catharsis!.progression.xpRequirements[0]);
-});
-
-it('restarts a deterministic Lv3 Grenade crowd with a fresh charge and no natural refill', () => {
-  const make = () => createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'grenade');
+it('restarts a deterministic Lv3 Grenade crowd with three fresh charges and no natural refill', () => {
+  const make = () => createDevReviewFixture(options, c.weapon.rifle.fireRate, 'grenade');
   const sim = make(), initial = sim.getState();
-  expect(initial).toEqual(createEnemyVfxLab({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'grenade').getState());
+  expect(initial).toEqual(createDevReviewFixture({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'grenade').getState());
   expect(initial.progression).toEqual({ level: 3, xp: 0 });
   expect(initial.squad).toMatchObject({ count: 1, rocketCount: 0, rifleCounts: [1] });
   expect(initial.player.selectedLane).toBe(2);
-  expect(initial.grenade).toMatchObject({ inventory: 1, acquiredAtSeconds: 0, supply: null, flight: null });
+  expect(initial.grenade).toMatchObject({ inventory: 3, acquiredAtSeconds: 0, supply: null, flight: null });
   expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(45);
   expect(initial.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(3);
   expect(new Set(initial.enemies.map(e => e.lane)).size).toBe(5);
@@ -67,14 +33,14 @@ it('restarts a deterministic Lv3 Grenade crowd with a fresh charge and no natura
   expect(grenadeTarget(initial, c.catharsis!.grenade)).toBeDefined();
   sim.step(1/60, { targetX: 0, throwGrenade: true }, tuning);
   for (let i=0;i<120;i++) sim.step(1/60, { targetX: 0 }, tuning);
-  expect(sim.getState().grenade!.inventory).toBe(0);
+  expect(sim.getState().grenade!.inventory).toBe(2);
   expect(sim.getState().enemyStream!.nextEnemyId).toBe(initial.enemyStream!.nextEnemyId);
   expect(sim.getState().grenade!.supply).toBeNull();
   for (let i=0;i<3;i++) expect(make().getState()).toEqual(initial);
 });
 
 it('restarts the deterministic Lv6 MG fixture with one specialist, 60 Grunts and 5 Heavies',()=>{
- const make=()=>createEnemyVfxLab(options,c.weapon.rifle.fireRate,'machineGun');
+ const make=()=>createDevReviewFixture(options,c.weapon.rifle.fireRate,'machineGun');
  const sim=make(),s=sim.getState();expect(s.progression).toEqual({level:6,xp:0});
  expect(s.squad).toMatchObject({count:1,rocketCount:0,rifleCounts:[1]});expect(s.player.selectedLane).toBe(2);
  expect(s.enemies.filter(e=>e.archetype==='grunt')).toHaveLength(60);expect(s.enemies.filter(e=>e.archetype==='heavy')).toHaveLength(5);
@@ -88,7 +54,7 @@ it('restarts the deterministic Lv6 MG fixture with one specialist, 60 Grunts and
 });
 
 it('restarts EVOLVE at 210/220 XP with three Rifles and a deterministic ordinary crowd', () => {
-  const make = () => createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'evolve');
+  const make = () => createDevReviewFixture(options, c.weapon.rifle.fireRate, 'evolve');
   const initial = make().getState();
   expect(initial.progression).toEqual({ level: 5, xp: 210 });
   expect(initial.squad).toMatchObject({ count: 3, rifleCounts: [3], rocketCount: 0 });
@@ -101,14 +67,14 @@ it('restarts EVOLVE at 210/220 XP with three Rifles and a deterministic ordinary
   expect(initial.boss).toBeNull();
   expect(initial.grenade).toMatchObject({ inventory: 0, supply: null, flight: null });
   expect(initial.giantEncounter).toEqual({ scheduledAtSeconds: 0, spawned: true });
-  expect(createEnemyVfxLab({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'evolve').getState()).toEqual(initial);
+  expect(createDevReviewFixture({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'evolve').getState()).toEqual(initial);
   for (let i = 0; i < 3; i++) expect(make().getState()).toEqual(initial);
 });
 
 it('earns the EVOLVE upgrade from ten real Grunt kills within 1–3 seconds, with deterministic continuation', () => {
-  const sim = createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'evolve');
+  const sim = createDevReviewFixture(options, c.weapon.rifle.fireRate, 'evolve');
   const initial = sim.getState();
-  const restored = createEnemyVfxLab(options, c.weapon.rifle.fireRate, 'evolve');
+  const restored = createDevReviewFixture(options, c.weapon.rifle.fireRate, 'evolve');
   let ticks = 0;
   while (sim.getState().progression!.level === 5 && ticks < 180) {
     expect(sim.getState().squad.count).toBe(3);

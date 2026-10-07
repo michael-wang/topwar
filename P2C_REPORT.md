@@ -1,5 +1,7 @@
 # P2C — Threat Ladder
 
+Historical phase evidence: measurements below used capacity 1. Current capacity is 3; the defense hint and standalone base-archetype review fixtures have been removed. See `PRE_RELEASE_REPORT.md` for current behavior and validation.
+
 Starting baseline: `53bed551ae867f356f5709c8a7d82b50de2a09c1`. HEAD, origin/main, live GitHub main and clean worktree were verified before edits. No deployment.
 
 ## Authored behavior
@@ -25,7 +27,7 @@ XP costs remain [28,60,110,180,220], rewards Grunt 1 / Heavy 10 / Giant 120. The
 - `src/simulation/enemies/laneComposition.ts`: each Heavy replaces a Grunt; wave-index rotation spreads leaders across fronts before repeating a lane. Existing seeded low-level chance behavior and 2.5-unit front clearance are preserved.
 - `src/simulation/enemies/defenseGroup.ts::admitDefenseGroup`: shared seeded placement, authoritative IDs and HP for ordinary/release/fixture groups.
 - `src/simulation/Simulation.ts`: schedule Giant after real XP progression; admit release after evolution/combat on the same tick. Serialized `machineGunReleaseAtSeconds`, encounter clock and consumed row preserve continuation and Retry resets. Older established Lv6 snapshots default release to consumed, avoiding retroactive crowds; older lower-level snapshots can evolve normally.
-- `src/app/EnemyVfxLab.ts` and `src/ui/EnemyVfxLabControls.ts`: DEV CURVE / physical Digit4 starts Lv4, 150/180 XP, two Rifles, center, two comeback groups (46 Grunts + 2 Heavies). Normal stream and unscheduled Giant remain active. EVOLVE uses real evolution/release; isolated EVOLVE/MG consume the natural Giant encounter to suppress contamination. MG remains 60 Grunts + 5 Heavies. Physical 4/5/6 share button reset paths, ignore repeats/modifiers/editable/TUNE focus and pre-start input. Production excludes factory/controls/handlers.
+- `src/app/DevReviewFixtures.ts` and `src/ui/DevReviewControls.ts`: DEV CURVE / physical Digit4 starts Lv4, 150/180 XP, two Rifles, center, two comeback groups (46 Grunts + 2 Heavies). Normal stream and unscheduled Giant remain active. EVOLVE uses real evolution/release; isolated EVOLVE/MG consume the natural Giant encounter to suppress contamination. MG remains 60 Grunts + 5 Heavies. Physical 4/5/6 share button reset paths, ignore repeats/modifiers/editable/TUNE focus and pre-start input. Production excludes factory/controls/handlers.
 
 ## Deterministic method
 

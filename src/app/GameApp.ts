@@ -29,8 +29,8 @@ import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
 import { createThreatReview } from './ThreatReview';
-import { createEnemyVfxLab, type EnemyVfxLabRole } from './EnemyVfxLab';
-import { EnemyVfxLabControls } from '../ui/EnemyVfxLabControls';
+import { createDevReviewFixture, type DevReviewFixture } from './DevReviewFixtures';
+import { DevReviewControls } from '../ui/DevReviewControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
@@ -57,7 +57,7 @@ export class GameApp {
   private readonly startOverlay: GameStartOverlay;
   private readonly tierHud: TierHud;
   private readonly pauseOverlay: PauseOverlay;
-  private readonly controlHint: ControlHint;
+  private readonly controlHint: ControlHint | null;
   private readonly hudActions: HudActions;
   private readonly tuningPanel: TuningPanel | null;
   private readonly dragInput: PointerDragInput;
@@ -91,9 +91,9 @@ export class GameApp {
   private disposed = false;
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
-  private readonly vfxLab: EnemyVfxLabControls | null;
-  private vfxLabVisualSalt=-1;
-  private vfxLabRole: EnemyVfxLabRole | null = null;
+  private readonly devReview: DevReviewControls | null;
+  private devReviewVisualSalt=-1;
+  private devReviewFixture: DevReviewFixture | null = null;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
@@ -115,7 +115,7 @@ export class GameApp {
     this.startOverlay = new GameStartOverlay(viewport);
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
-    this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
+    this.controlHint = this.config.catharsis?.defenseMode ? null : new ControlHint(viewport);
     this.controlStrip = this.config.catharsis?.defenseMode ? new CombatControlStrip(viewport) : null;
     this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;
     this.battleInfo = this.config.catharsis?.defenseMode ? new BattleInfoHud(viewport) : null;
@@ -132,10 +132,10 @@ export class GameApp {
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
     }, !!this.config.catharsis?.defenseMode) : null;
-    this.vfxLab = import.meta.env.DEV && this.config.catharsis?.defenseMode
-      ? new EnemyVfxLabControls(this.tuningPanel!.reviewControlsHost, (role) => {
-        this.vfxLabRole = role;
-        this.vfxLab?.setSelected(role);
+    this.devReview = import.meta.env.DEV && this.config.catharsis?.defenseMode
+      ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
+        this.devReviewFixture = role;
+        this.devReview?.setSelected(role);
         this.tuningPanel?.close();
         this.retry();
       }, () => this.running && this.startup === 'started') : null;
@@ -225,8 +225,8 @@ export class GameApp {
     this.gameOverOverlay.dispose();
     this.tuningPanel?.dispose();
     this.hudActions.dispose();
-    this.vfxLab?.dispose();
-    this.controlHint.dispose();
+    this.devReview?.dispose();
+    this.controlHint?.dispose();
     this.pauseOverlay.dispose();
     this.tierHud.dispose();
     this.damageFlash.dispose();
@@ -268,13 +268,13 @@ export class GameApp {
     this.grenadeButton?.reset();
     this.grenadeRequested = false;
     this.progressionObserver.reset();
-    if (import.meta.env.DEV && this.vfxLabRole && initialState.progression && initialState.catharsis) {
+    if (import.meta.env.DEV && this.devReviewFixture && initialState.progression && initialState.catharsis) {
       // Selecting a QA loadout is initialization, not an earned level-up.
       this.progressionObserver.observe(initialState.progression.level);
       this.xpHud?.update(initialState.progression, initialState.catharsis.balance.progression, 0);
     }
     if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance.progression, this.presentationMs);
-    this.renderer.resetFeedback(import.meta.env.DEV && this.vfxLabRole ? ++this.vfxLabVisualSalt : 0);
+    this.renderer.resetFeedback(import.meta.env.DEV && this.devReviewFixture ? ++this.devReviewVisualSalt : 0);
     this.tierHud.setTier(1);
   }
 
@@ -298,8 +298,8 @@ export class GameApp {
         rifleHigherTierPowerMultiplier: this.runtimeTuning.rifleHigherTierPowerMultiplier },
       rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward,
       bossHpScale: this.runtimeTuning.bossHpScale };
-    if (import.meta.env.DEV && this.vfxLabRole)
-      return createEnemyVfxLab(options, this.runtimeTuning.fireRate, this.vfxLabRole);
+    if (import.meta.env.DEV && this.devReviewFixture)
+      return createDevReviewFixture(options, this.runtimeTuning.fireRate, this.devReviewFixture);
     return this.reviewThreats ? createThreatReview(options, this.runtimeTuning.fireRate) : new Simulation(options);
   }
 
@@ -319,7 +319,7 @@ export class GameApp {
   private readonly requestGrenade = (): void => {
     if (!this.running || this.startup !== 'started' || this.paused || this.grenadeRequested) return;
     const state = this.simulation.getFrameState();
-    if (state.squad.count > 0 && state.grenade?.inventory === 1 && !state.grenade.flight
+    if (state.squad.count > 0 && (state.grenade?.inventory ?? 0) > 0 && !state.grenade?.flight
       && state.catharsis && grenadeTarget(state, state.catharsis.balance.grenade))
       this.grenadeRequested = true;
   };
@@ -476,7 +476,7 @@ export class GameApp {
       if (state.squad.count === 0) this.laneInput?.stop();
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
-        !this.paused && state.squad.count > 0 && !this.grenadeRequested && grenade?.inventory === 1
+        !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
           && !!grenadeTarget(state, state.catharsis!.balance.grenade));
       const grenadeEvents = this.simulation.consumeGrenadeEvents();
       for (const event of grenadeEvents) {

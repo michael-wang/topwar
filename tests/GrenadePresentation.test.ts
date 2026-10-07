@@ -49,13 +49,26 @@ class ElementStub extends EventTarget {
   remove(){this.removed=true;}
 }
 afterEach(()=>vi.unstubAllGlobals());
+it('shows 3/2/1/0 with one acquisition accent, retaining reserves while unavailable',()=>{
+  vi.stubGlobal('document',{createElement:()=>new ElementStub()});
+  const viewport=new ElementStub(),hud=new GrenadeButton(viewport as unknown as HTMLElement,vi.fn()),button=viewport.children[0];
+  button.classList.add.mockClear();
+  for(const count of [3,2,1,0]) {
+    hud.update(count,true,count!==2);
+    expect(button.querySelector('strong').textContent).toBe(String(count));
+    expect(button.disabled).toBe(count===2||count===0);
+  }
+  expect(button.classList.add).toHaveBeenCalledExactlyOnceWith('grenade-acquired');
+  expect(button.innerHTML).toContain('class="combat-keycue" aria-hidden="true">Q</span>');
+  hud.dispose();
+});
 it('only enables a held valid active charge, isolates pointer input, and resets the acquisition pulse',()=>{
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   const viewport=new ElementStub(),activate=vi.fn(),hud=new GrenadeButton(viewport as unknown as HTMLElement,activate),button=viewport.children[0];
   expect(button.hidden).toBe(true);button.dispatchEvent(new Event('click'));expect(activate).not.toHaveBeenCalled();
   hud.update(1,true,false);expect(button.hidden).toBe(false);expect(button.disabled).toBe(true);
   expect(button.querySelector('strong').textContent).toBe('1');
-  expect(button.innerHTML).not.toMatch(/GRENADE|READY|HELD|EMPTY|<span|<small/);
+  expect(button.innerHTML).not.toMatch(/GRENADE|READY|HELD|EMPTY|<small/);
   expect(button.attributes.get('aria-label')).toContain('temporarily unavailable');
   hud.update(1,true,true);button.dispatchEvent(new Event('click'));expect(activate).toHaveBeenCalledOnce();
   expect(button.attributes.get('aria-label')).toBe('Throw Grenade (1 available, Q)');

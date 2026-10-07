@@ -14,18 +14,18 @@ import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
 } }));
-vi.mock('../src/ui/EnemyVfxLabControls', () => ({ EnemyVfxLabControls: class {
-  constructor(_viewport: unknown, select: unknown, canUseShortcuts: unknown) { mock.labConstructed(select, canUseShortcuts); }
+vi.mock('../src/ui/DevReviewControls', () => ({ DevReviewControls: class {
+  constructor(_viewport: unknown, select: unknown, canUseShortcuts: unknown) { mock.reviewConstructed(select, canUseShortcuts); }
   setSelected() {} dispose() {}
 } }));
-vi.mock('../src/app/EnemyVfxLab', () => ({ createEnemyVfxLab: (...args: unknown[]) => {
-  mock.labFixture(...args); return { getState: mock.getState };
+vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...args: unknown[]) => {
+  mock.reviewFixture(...args); return { getState: mock.getState };
 } }));
 
 const mock = vi.hoisted(() => ({
   constructedWith: vi.fn(),
-  labConstructed: vi.fn(),
-  labFixture: vi.fn(),
+  reviewConstructed: vi.fn(),
+  reviewFixture: vi.fn(),
   grenadeConstructed: vi.fn(),
   step: vi.fn(),
   stepLane: vi.fn(),
@@ -1071,36 +1071,36 @@ it('enables only visible defense controls after start and clears them on Pause, 
   } finally {app.dispose();mock.getState.mockReturnValue(base);}
 });
 
-it('restarts selected lab fixtures and clears renderer feedback on every switch and Retry', async () => {
+it('restarts selected development fixtures and clears renderer feedback on every switch and Retry', async () => {
   createRaf();
   const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-  const select = mock.labConstructed.mock.lastCall![0] as (role: string) => void;
-  for (const role of ['heavy', 'giant', 'grunt', 'grunt', 'grenade', 'grenade', 'evolve', 'machineGun', 'evolve']) {
+  const select = mock.reviewConstructed.mock.lastCall![0] as (role: string) => void;
+  for (const role of ['grenade', 'grenade', 'curve', 'evolve', 'machineGun', 'evolve']) {
     const before = mock.resetFeedback.mock.calls.length;
     select(role);
     expect(mock.panelClose).toHaveBeenCalledTimes(before + 1);
-    expect(mock.labFixture.mock.lastCall![2]).toBe(role);
+    expect(mock.reviewFixture.mock.lastCall![2]).toBe(role);
     expect(mock.resetFeedback.mock.calls.length).toBe(before + 1);
   }
   const retry = mock.overlayConstructedWith.mock.lastCall![0] as () => void;
-  retry(); expect(mock.labFixture.mock.lastCall![2]).toBe('evolve');
-  expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4,5,6,7,8,9]);
-  expect(mock.resetFeedback).toHaveBeenCalledTimes(10);
+  retry(); expect(mock.reviewFixture.mock.lastCall![2]).toBe('evolve');
+  expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4,5,6]);
+  expect(mock.resetFeedback).toHaveBeenCalledTimes(7);
   app.dispose();
 });
 
 
-it('omits every Lab control, including GRENADE, EVOLVE and MG, outside DEV', () => {
+it('omits every DEV review control, including GRENADE, EVOLVE and MG, outside DEV', () => {
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
   try {
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-    expect(mock.labConstructed).not.toHaveBeenCalled();expect(mock.labFixture).not.toHaveBeenCalled();
+    expect(mock.reviewConstructed).not.toHaveBeenCalled();expect(mock.reviewFixture).not.toHaveBeenCalled();
     expect(mock.panelConstructedWith).not.toHaveBeenCalled();app.dispose();
   } finally { vi.unstubAllEnvs(); }
 });
@@ -1152,6 +1152,18 @@ describe('Q primary active item', () => {
     } finally { s.dispose(); }
   });
 
+  it('blocks both request paths during a flight without consuming two reserve charges', async () => {
+    const s=setup();
+    try {
+      await startGame(s.app);s.state.grenade.inventory=2;
+      Object.assign(s.state.grenade,{flight:{startX:0,startZ:0,targetX:0,targetZ:12,
+        startedAtSeconds:0,flightSeconds:.65,damageEnemyHp:9,blastRadius:4}});
+      s.raf.key('q');s.button();expect(s.control.takeGrenadeRequest()).toBe(false);
+      expect(s.state.grenade.inventory).toBe(2);
+      s.state.grenade.flight=null;s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(true);
+    } finally {s.dispose();}
+  });
+
   it('blocks Q before start, paused, dead, empty or without a target; allows enemies in another lane', async () => {
     const s = setup();
     try {
@@ -1180,7 +1192,7 @@ describe('intentional gameplay startup', () => {
     const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
     const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-    const canUse = mock.labConstructed.mock.lastCall![1] as () => boolean;
+    const canUse = mock.reviewConstructed.mock.lastCall![1] as () => boolean;
     expect(canUse()).toBe(false);
     await startGame(app);
     expect(canUse()).toBe(true);

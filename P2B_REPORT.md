@@ -1,5 +1,7 @@
 # P2B — Pressure Comeback
 
+Historical phase evidence: measurements below used capacity 1. Current capacity is 3; the defense hint and standalone base-archetype review fixtures have been removed. See `PRE_RELEASE_REPORT.md` for current behavior and validation.
+
 Starting HEAD, origin/main and live GitHub main were verified at
 `4b337232bd2b4b58e913f1214841cf270e93f9a7`, with a clean worktree.
 No deployment. This implements the requested initial targeting/ramp values;
@@ -124,7 +126,7 @@ the run reached Lv6. Adjacent pilots span 0–35 (mean 19.18), mean XP 20.35.
   remains 1.00s, one specialist/HUD/first shots remain correct. Six alternating
   cycles retain 85 geometries / 11 textures / 32 projectile slots.
 - Existing Tap-to-Start/native audio and production checks pass. Production
-  contains no Enemy VFX Lab, EVOLVE/MG controls or physical 5/6 handlers.
+  contains no DEV Review, EVOLVE/MG controls or physical 5/6 handlers.
 - One initial emergency browser run timed out because its manually frozen RAF
   had not refreshed the disabled HUD after unpausing. Advancing the harness's
   render frames resolved it; reruns pass. No runtime workaround was needed.

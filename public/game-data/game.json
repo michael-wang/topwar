@@ -1,7 +1,7 @@
 {
   "catharsis": {
     "grenade": {
-      "capacity": 1,
+      "capacity": 3,
       "damageEnemyHp": 9,
       "blastRadius": 4,
       "flightSeconds": 0.65,

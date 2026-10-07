@@ -25,7 +25,7 @@ try {
       window.__clock += Math.min(20, ms - t); a.renderFrame(window.__clock); cancelAnimationFrame(a.frameId);
     } };
     window.__fixture = () => {
-      a.vfxLabRole = null; a.retry(); const s = a.simulation.getState();
+      a.devReviewFixture = null; a.retry(); const s = a.simulation.getState();
       s.progression = { level: 3, xp: 0 }; s.player.selectedLane = 4; s.player.x = 2.8;
       s.squad = { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 };
       s.weapons.rifleCooldownRemainingSeconds = 100; s.weapons.rifleMemberCooldowns = [100];

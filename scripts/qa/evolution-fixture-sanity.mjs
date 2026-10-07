@@ -22,8 +22,8 @@ try {
   await page.goto(process.env.TOPWAR_QA_URL ?? 'http://127.0.0.1:5173');
   await page.waitForSelector('.game-start-overlay');
   await page.keyboard.press('5'); await page.keyboard.press('6');
-  assert(await page.evaluate(() => window.__testApp.vfxLabRole === null && window.__testApp.simulation.getState().progression.level === 1), 'Pre-start shortcuts ignored');
-  assert(await page.locator('.enemy-vfx-lab button').count() === 7, 'Seven DEV controls');
+  assert(await page.evaluate(() => window.__testApp.devReviewFixture === null && window.__testApp.simulation.getState().progression.level === 1), 'Pre-start shortcuts ignored');
+  assert(await page.locator('.dev-review-controls button').count() === 4, 'Four DEV review controls');
   await page.getByRole('button', { name: 'Start game with audio' }).click();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => {
@@ -34,7 +34,7 @@ try {
   });
   const sample = () => page.evaluate(() => {
     const a = window.__testApp;
-    return { state: a.simulation.getState(), role: a.vfxLabRole,
+    return { state: a.simulation.getState(), role: a.devReviewFixture,
       stats: a.renderer.getDebugStats(), weapon: document.querySelector('.xp-loadout')?.dataset.weaponFamily,
       levelUp: document.querySelector('.xp-hud')?.classList.contains('level-up'), cues: window.__cues };
   });

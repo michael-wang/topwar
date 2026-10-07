@@ -10,7 +10,7 @@ const tuning = { ...config.player, trackHalfWidth: 3.2, defenseLineOffset: 1.5, 
   bossRadius: 2, forwardSpeed: 0, rifle: config.weapon.rifle, rocket: config.weapon.rocket };
 const held = () => ({ ...emptyGrenade(), lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0, inventory: 1 as const });
 it('authors the four-unit blast without changing single-target damage or supply/flight values', () => {
-  expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, capacity: 1,
+  expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, capacity: 3,
     flightSeconds: .65, throwRange: 24, supplyDelaySeconds: 8, supplyHitsRequired: 1 });
 });
 function armed() {
@@ -24,6 +24,32 @@ function armed() {
   s.giantEncounter = { scheduledAtSeconds: 0, spawned: true }; sim.restoreState(s); return sim;
 }
 function ticks(sim: Simulation, count: number) { for (let i = 0; i < count; i++) sim.step(1/60, { targetX: 0 }, tuning); }
+it('spends three charges sequentially, blocks overlapping flights, and restores reserves in flight', () => {
+  const sim=armed(),s=sim.getState();s.grenade!.inventory=3;sim.restoreState(s);
+  for(const reserve of [2,1,0]) {
+    sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
+    expect(sim.getState().grenade!.inventory).toBe(reserve);
+    const clone=make();clone.restoreState(JSON.parse(JSON.stringify(sim.getState())));
+    expect(clone.getState()).toEqual(sim.getState());
+    for(let tick=0;tick<37;tick++) {
+      sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
+      clone.step(1/60,{targetX:0,throwGrenade:true},tuning);
+      expect(sim.getState().grenade!.inventory).toBe(reserve);
+    }
+    ticks(sim,1);ticks(clone,1);expect(clone.getState()).toEqual(sim.getState());
+    expect(sim.getState().grenade!.flight).toBeNull();
+    expect(sim.consumeGrenadeEvents().filter(e=>e.kind==='grenadeDetonated')).toHaveLength(1);
+  }
+  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
+  expect(sim.getState().grenade!.inventory).toBe(0);expect(sim.getState().grenade!.flight).toBeNull();
+});
+it.each([0,1,2,3])('restores inventory %s and preserves it for an invalid throw', inventory => {
+  const sim=armed(),s=sim.getState();s.grenade!.inventory=inventory;s.enemies=[];sim.restoreState(s);
+  const clone=make();clone.restoreState(JSON.parse(JSON.stringify(sim.getState())));
+  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(clone,1);
+  expect(sim.getState()).toEqual(clone.getState());expect(sim.getState().grenade!.inventory).toBe(inventory);
+  expect(make().getState().grenade).toEqual(emptyGrenade());
+});
 it('schedules from the actual Lv3 crossing, then spawns at eight seconds even without further XP', () => {
   const sim = make(), s = sim.getState(); s.progression = { level: 2, xp: 59 };
   s.enemies = [{id:1,archetype:'grunt',tier:1,lane:2,x:0,z:1,hp:1}]; sim.restoreState(s);
@@ -42,11 +68,11 @@ it('chooses a nearby clear lane and places supply ahead of the nearest same-lane
   const supply = placeGrenadeSupply(s,balance.grenade);
   expect(supply.lane).toBe(3); expect(supply.depth).toBe(10.75);
 });
-it('requires one same-lane Rifle hit, consumes it, and grants only one held charge across Lv4', () => {
+it('requires one same-lane Rifle hit, consumes it, and fills three charges once across Lv4', () => {
   const sim = make(), s = sim.getState(); s.progression = {level:4,xp:0};
   s.grenade = {...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,supply:{lane:2,x:0,depth:8}};
   sim.restoreState(s); ticks(sim,20);
-  expect(sim.getState().grenade!.inventory).toBe(1); expect(sim.getState().grenade!.supply).toBeNull();
+  expect(sim.getState().grenade!.inventory).toBe(3); expect(sim.getState().grenade!.supply).toBeNull();
   expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired'}]); ticks(sim,600);
   expect(sim.consumeGrenadeEvents()).toEqual([]); expect(sim.getState().squad.count).toBe(1);
   expect(sim.getState().streamRewards).toEqual([]);
@@ -100,10 +126,10 @@ it.each(['pending','spawned','held','flight'] as const)('restores %s identically
 });
 it('rejects corrupt lifecycle/config and future snapshot clocks',()=>{
   const sim=armed();
-  for(const patch of [{inventory:2},{inventory:1,acquiredAtSeconds:null},{acquiredAtSeconds:10},{supplySpawnedAtSeconds:null}]) {
+  for(const patch of [{inventory:4},{inventory:1,acquiredAtSeconds:null},{acquiredAtSeconds:10},{supplySpawnedAtSeconds:null}]) {
     const s=sim.getState();Object.assign(s.grenade!,patch);expect(()=>sim.restoreState(s)).toThrow();
   }
-  for(const patch of [{capacity:2},{damageEnemyHp:0},{flightSeconds:0},{blastRadius:-1},{supplyHitsRequired:2}])
+  for(const patch of [{capacity:4},{damageEnemyHp:0},{flightSeconds:0},{blastRadius:-1},{supplyHitsRequired:2}])
     expect(()=>GameConfigSchema.parse({...data,catharsis:{...data.catharsis,grenade:{...data.catharsis.grenade,...patch}}})).toThrow();
 });
 

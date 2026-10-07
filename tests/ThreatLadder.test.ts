@@ -3,7 +3,7 @@ import data from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createEnemyVfxLab } from '../src/app/EnemyVfxLab';
+import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { Simulation } from '../src/simulation/Simulation';
 import { laneCompositionForRow, laneWave } from '../src/simulation/enemies/laneComposition';
 import { pressureGroupSize, pressureWaveSettings } from '../src/simulation/enemies/latePressure';
@@ -58,7 +58,7 @@ it('preserves old chance-authored phases and rejects ambiguous/oversized counts'
 });
 
 it('admits one shoreline release on real evolution; snapshots, survivors and consumed row continue identically', () => {
-  const sim = createEnemyVfxLab(options, config.weapon.rifle.fireRate, 'evolve');
+  const sim = createDevReviewFixture(options, config.weapon.rifle.fireRate, 'evolve');
   const initial = sim.getState(), restored = new Simulation(options);
   restored.restoreState(JSON.parse(JSON.stringify(initial)));
   while (sim.getState().progression!.level === 5) { step(sim); step(restored); }
@@ -79,7 +79,7 @@ it('admits one shoreline release on real evolution; snapshots, survivors and con
 });
 
 it('migrates older Lv6 snapshots without injecting a release and validates the new clock', () => {
-  const sim = createEnemyVfxLab(options, 3, 'machineGun'), old = sim.getState();
+  const sim = createDevReviewFixture(options, 3, 'machineGun'), old = sim.getState();
   delete old.machineGunReleaseAtSeconds; sim.restoreState(old);
   expect(sim.getState().machineGunReleaseAtSeconds).toBe(0);
   for (const clock of [-1, NaN, Infinity, 1]) {
@@ -89,7 +89,7 @@ it('migrates older Lv6 snapshots without injecting a release and validates the n
 });
 
 it('consumes the immediate group row and resumes ordinary sixty-person groups at six-second cadence', () => {
-  const sim = createEnemyVfxLab(options, 3, 'evolve'), start = sim.getState();
+  const sim = createDevReviewFixture(options, 3, 'evolve'), start = sim.getState();
   start.enemyStream!.nextRowIndex = 30; sim.restoreState(start);
   while (sim.getState().progression!.level === 5) step(sim);
   const released = sim.getState(), releasedId = released.enemyStream!.nextEnemyId;
@@ -111,7 +111,7 @@ it('consumes the immediate group row and resumes ordinary sixty-person groups at
 });
 
 it('handles Grenade XP overflow with one release while a pending Lv5 Giant survives evolution', () => {
-  const sim = createEnemyVfxLab(options, 3, 'evolve'), state = sim.getState();
+  const sim = createDevReviewFixture(options, 3, 'evolve'), state = sim.getState();
   state.giantEncounter = { scheduledAtSeconds: 3, spawned: false };
   state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
     inventory: 1, supply: null, flight: null };
@@ -135,7 +135,7 @@ it('handles Grenade XP overflow with one release while a pending Lv5 Giant survi
 });
 
 it('CURVE resets deterministically, crosses Lv5 through XP and schedules Giant on that exact tick', () => {
-  const make = () => createEnemyVfxLab(options, 3, 'curve');
+  const make = () => createDevReviewFixture(options, 3, 'curve');
   const sim = make(), initial = sim.getState();
   expect(initial.progression).toEqual({ level: 4, xp: 150 });
   expect(initial.squad.count).toBe(2); expect(initial.player.selectedLane).toBe(2);

@@ -17,6 +17,7 @@ it('places accessible visible movement buttons around a dedicated progression ho
     expect(button.attributes['aria-label']).toBe(`Move ${direction}`);expect(button.attributes['aria-pressed']).toBe('false');
     expect(button.type).toBe('button');expect(button.disabled).toBe(true);expect(button.draggable).toBe(false);
     expect(button.innerHTML).toContain('<svg');
+    expect(button.innerHTML).toContain(`class="combat-keycue" aria-hidden="true">${index===0?'A':'D'}</span>`);
   }
   strip.dispose();expect(root.removed).toBe(true);
 });

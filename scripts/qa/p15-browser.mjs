@@ -43,11 +43,11 @@ try {
   assert(report.supply.state.grenade.supply!==null,'Pending supply spawns');
   await page.screenshot({path:`${out}/supply-390.png`});
   await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.weapons.rifleCooldownRemainingSeconds=0;s.weapons.rifleMemberCooldowns=[0];a.simulation.restoreState(s);window.__advance(400);});
-  report.acquired=await sample();assert(report.acquired.state.grenade.inventory===1,'One-hit supply acquisition');
+  report.acquired=await sample();assert(report.acquired.state.grenade.inventory===3,'One-hit supply acquisition');
   assert(await page.locator('.grenade-button').isVisible(),'Acquired button visible');
   assert(await page.locator('.grenade-button').isDisabled(),'No in-range enemies disables activation');
   await page.evaluate(()=>document.querySelector('.grenade-button').click());
-  assert((await sample()).state.grenade.inventory===1,'No in-range enemies preserves charge');
+  assert((await sample()).state.grenade.inventory===3,'No in-range enemies preserves charge');
   for(const width of [350,390]) {
     await page.setViewportSize({width,height:844});
     await page.evaluate(()=>{window.__fixture('held');const v=document.querySelector('#game-viewport');v.style.setProperty('--hud-inset-left','18px');v.style.setProperty('--hud-inset-bottom','24px');window.__testApp.renderer.resize();window.__advance(40);});

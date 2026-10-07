@@ -1,5 +1,7 @@
 # P1.5 — Radius-four Grenade feel and review
 
+Historical phase evidence: measurements below used capacity 1. Current capacity is 3; the defense hint and standalone base-archetype review fixtures have been removed. See `PRE_RELEASE_REPORT.md` for current behavior and validation.
+
 Starting baseline: `3e2b640a78a65b064cf6643ec6dffe0602ef1048`. HEAD, origin/main and live GitHub main matched, with a clean worktree before editing. No deployment.
 
 ## Authored behavior and scope
@@ -10,15 +12,15 @@ Only the authored Grenade **blastRadius changes from 2 to 4 world units**, in `p
 
 ## Fast review loop
 
-`src/app/EnemyVfxLab.ts → createEnemyVfxLab(..., 'grenade')` creates **Lv3, one Rifle, center lane, one already-acquired charge**, **45 Grunts / three Heavies**, no Giant or Boss. Grunts occupy all five lanes, nine per lane, at fixed uneven depths10–18; Heavies occupy lanes1/2/4 at depths13.3/15/16.7. Lane centers and Heavy HP come from normal configuration. Enemy IDs, depth placement, simulation seed and state repeat exactly. Ordinary stream cursor advances beyond short review range, following the existing Lab pattern. Combat thereafter uses normal firing/movement/HP/damage/XP.
+`src/app/DevReviewFixtures.ts → createDevReviewFixture(..., 'grenade')` creates **Lv3, one Rifle, center lane, one already-acquired charge**, **45 Grunts / three Heavies**, no Giant or Boss. Grunts occupy all five lanes, nine per lane, at fixed uneven depths10–18; Heavies occupy lanes1/2/4 at depths13.3/15/16.7. Lane centers and Heavy HP come from normal configuration. Enemy IDs, depth placement, simulation seed and state repeat exactly. Ordinary stream cursor advances beyond short review range, following the existing Lab pattern. Combat thereafter uses normal firing/movement/HP/damage/XP.
 
-`src/ui/EnemyVfxLabControls.ts` adds DEV-only **GRENADE**, restarting through the existing app fixture/reset path. It releases its button focus so **GRENADE → Q → GRENADE** works immediately. Retry preserves the selected fixture. Production tree-shakes the Lab factory/controls, and browser checks confirm no `.enemy-vfx-lab` or `[data-role="grenade"]` control.
+`src/ui/DevReviewControls.ts` adds DEV-only **GRENADE**, restarting through the existing app fixture/reset path. It releases its button focus so **GRENADE → Q → GRENADE** works immediately. Retry preserves the selected fixture. Production tree-shakes the Lab factory/controls, and browser checks confirm no `.dev-review-controls` or `[data-role="grenade"]` control.
 
 `src/app/GameApp.ts → requestGrenade` is now the common button and keyboard callback. `onActiveItemKeyDown` uses physical `KeyQ`, ignores repeat, and excludes interactive/editable targets and TUNE descendants. The callback rejects pre-start/stopped/paused/dead/empty/in-flight/already-queued/no-target states. Simulation remains the final authority for atomic charge consumption on a valid fixed-tick throw. A/D and arrows, P/Space Pause and Escape TUNE retain their existing handlers. The active button exposes Q in title/aria text without a mobile visual cue.
 
 ## Representative portrait throw
 
-Run `node scripts/qa/grenade-lab-sanity.mjs artifacts/p15-radius4` with Vite running. The script uses the real DEV control, Q at390×844, and the left button at350×844 / DPR2. It lets the ordinary simulation/presentation run340ms before the throw so the crowd is visible; it does not change damage, HP, cooldowns or balance. The 390 check also exercises Pause and TUNE focus before throwing. A first capture attempt stopped before detonation because resume resets the RAF baseline; the harness now allows that zero-delta frame. Runtime flight timing stayed0.65s.
+Run `node scripts/qa/grenade-review-sanity.mjs artifacts/p15-radius4` with Vite running. The script uses the real DEV control, Q at390×844, and the left button at350×844 / DPR2. It lets the ordinary simulation/presentation run340ms before the throw so the crowd is visible; it does not change damage, HP, cooldowns or balance. The 390 check also exercises Pause and TUNE focus before throwing. A first capture attempt stopped before detonation because resume resets the RAF baseline; the harness now allows that zero-delta frame. Runtime flight timing stayed0.65s.
 
 Both portraits give the same central captured anchor near **X0 / Z13.62**:
 
@@ -87,8 +89,8 @@ The software Chrome/SwiftShader diagnostic is not physical-phone certification. 
 ## Changed ownership
 
 - Configuration/defaults: `public/game-data/game.json`, `src/config/grenadeConfig.ts`.
-- Fixture/control: `src/app/EnemyVfxLab.ts`, `src/ui/EnemyVfxLabControls.ts`.
+- Fixture/control: `src/app/DevReviewFixtures.ts`, `src/ui/DevReviewControls.ts`.
 - Shared activation/shortcut: `src/app/GameApp.ts`, `src/ui/GrenadeButton.ts`.
-- Focused coverage: `tests/EnemyVfxLab.test.ts`, `GameApp.test.ts`, `Grenade.test.ts`, `GrenadePresentation.test.ts`.
-- QA: `scripts/qa/grenade-lab-sanity.mjs`, explicit production-control absence check, QA README.
+- Focused coverage: `tests/DevReviewFixtures.test.ts`, `GameApp.test.ts`, `Grenade.test.ts`, `GrenadePresentation.test.ts`.
+- QA: `scripts/qa/grenade-review-sanity.mjs`, explicit production-control absence check, QA README.
 - Current gameplay/roadmap/experiment documentation and original-report historical labeling.

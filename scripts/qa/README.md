@@ -1,5 +1,11 @@
 # Browser sanity
 
+## Final pre-release checks
+
+`node scripts/qa/release-hud-sanity.mjs` checks 390×844 / 350×844 coarse-pointer and 1100×844 fine-pointer layouts: A/D/Q capability keycaps, no defense hint, settled acquisition pulse, charges 3→2→1→0 via the shared Q/button path, concurrent-flight blocking, snapshot with two reserves plus flight, flight Pause, invalid target preservation, normal Retry, only four review menu actions and physical 4/5/6. Captures/JSON default to `artifacts/pre-release/browser`.
+
+`node scripts/qa/grenade-capacity-metrics.mjs` compares capacity 1 versus 3 with all other current values identical: seeds 1–50, normal and 1.8-second hesitation pilots, one adjacent lane step per 200ms and the existing crowd/emergency throw policy. It records every valid launch/detonation, per-throw kills/ordinary XP and pressure, Lv3/acquisition/Lv4 clocks, overflow, failures and unfinished flights through two seconds after Lv6. Duration averages exclude runs that fail before Lv4; those failures remain in the report. Outputs default to `artifacts/pre-release/capacity-metrics.json`. These are diagnostic policies, not human-play certification. See `PRE_RELEASE_REPORT.md` for results and mixed evidence.
+
 ## Combat HUD layout
 
 `node scripts/qa/bottom-strip-sanity.mjs` checks visible movement / central XP / movement
@@ -13,21 +19,21 @@ reduced-motion behavior. Captures/results default to `artifacts/bottom-strip`.
 Chrome emulation does not certify physical iOS/Safari long-press or thumb comfort.
 
 `node scripts/qa/combat-hud-sanity.mjs` checks the top-left DEV disclosure and all
-seven deterministic fixture resets, menu close/Escape/focus ownership, Pause,
+four deterministic fixture resets, menu close/Escape/focus ownership, Pause,
 lower-left icon/charge Grenade via Q/tap, lower-right transparent weapon telemetry,
 all six authored pip stages, casualty-independent unlocks, real kill-driven Lv1→5
 new-pip feedback, real Lv5→Lv6 silhouette pulse, physical 4/5/6, and synthetic safe-area
-insets. It captures 390×844 and 350×844 ready/unavailable/empty/paused/menu/Rifle/MG/Giant states in
+insets. It captures 390×844 and 350×844 ready/unavailable/empty/paused/menu/Rifle/MG states in
 `artifacts/combat-hud`. Pair with `p15-browser.mjs` for actual supply acquisition
 and burst XP, `audio-start-sanity.mjs` for real startup gestures, and
 `production-sanity.mjs` for shipping DOM/bundle exclusion of the whole DEV menu.
-`HUD_UI_REPORT.md` records the UI-only scope and current validation.
+`HUD_UI_REPORT.md` records the compact layout; `PRE_RELEASE_REPORT.md` records the final input/typography/three-charge pass.
 
 ## P1.5 Grenade and pressure
 
-`node scripts/qa/grenade-lab-sanity.mjs` uses the real DEV **GRENADE** button, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five repeated explosions, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records current measurements. No fixture damage or balance overrides.
+`node scripts/qa/grenade-review-sanity.mjs` uses the real DEV **GRENADE** button, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five three-throw cycles, recording first-use warm-up separately, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records historical one-charge measurements. No fixture damage or balance overrides.
 
-`node scripts/qa/p15-metrics.mjs` runs 200 deterministic comparisons: seeds 1–50, normal/1.8-second Lv3 hesitation, each with/without Grenade use. It loads the actual TypeScript simulation through Vite, needs no browser/server and writes `artifacts/p15/metrics.json` plus detailed seed-1/17/42 timelines. The controls acquire the supply but never throw, isolating use from acquisition cost. The pilot is a diagnostic, not a human-survival guarantee. `P15_REPORT.md` records policy, results and mixed evidence.
+`node scripts/qa/p15-metrics.mjs` runs 200 deterministic comparisons: seeds 1–50, normal/1.8-second Lv3 hesitation, each with/without Grenade use. It loads the actual TypeScript simulation through Vite, needs no browser/server and writes `artifacts/p15/metrics.json` plus detailed seed-1/17/42 timelines. These runs use the current authored capacity. The controls acquire the supply but never throw, isolating use from acquisition cost. The pilot is a diagnostic, not a human-survival guarantee. `P15_REPORT.md` records policy, results and mixed evidence.
 
 With Vite running, `node scripts/qa/p15-browser.mjs` verifies 350/390 portrait, safe-area/touch targets, one-hit acquisition, no-target charge preservation, input isolation, Pause/Retry, ten-kill XP, Heavy/Giant damage, repeated resource reuse and a warmed 200-enemy frame-time sample. Outputs use the same browser environment overrides below. Software Chrome timings are not physical-phone GPU measurements. Unit tests cover pending/spawned/held/in-flight snapshot continuation and exact kill ordering.
 
@@ -63,33 +69,30 @@ Historical phase-specific capture/baseline scripts remain in Git history.
 
 The audio-start check waits five seconds without input, then uses real touch,
 mouse and keyboard activation. It checks zero pre-start clocks/cues, running
-audio before the first volley, Retry, Pause and post-start Lab access. It saves
+audio before the first volley, Retry, Pause and post-start review access. It saves
 timestamped browser-screen frames and native master-bus audio for local recording
 QA. The original speaker connection is preserved; no autoplay exemption is used.
 Audio capture measures the browser signal, not physical device/speaker latency.
 
-## Enemy VFX Lab
+## DEV Review
 
-Development defense builds put seven fixture actions inside the top-left **DEV**
+Development defense builds put four fixture actions inside the top-left **DEV**
 tool disclosure, above the existing balance/audio controls. Click DEV (or Escape),
 then choose a fixture; selection closes the menu and returns focus to gameplay.
 No permanent right-side fixture stack remains. Browser scripts use
 `selectDevFixture` from `dev-fixture-controls.mjs` to follow this same path:
 
-- **GRUNT:** ten Grunts, Lv1 / one Rifle; review contact blood, pale intact lift/fade.
-- **HEAVY:** three Heavies, Lv3 / one Rifle; review surviving hits and weighted collapse.
-- **GIANT:** one Giant, Lv5 / three Rifles; review chip hits, maul/dust impact and long death.
 - **CURVE:** Lv4 / 150 of 180 XP / two Rifles / center, two seeded late-Lv4 groups (46 Grunts, two Heavies). Normal streams remain active. Review real XP into Lv5, its six-second natural Giant, real XP into Lv6, immediate release crowd and subsequent 60-person groups.
 - **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds, including its immediate 59-Grunt/one-Heavy release; no timer promotion or Grenade dependency. No Giant/Boss or ordinary stream refill.
 - **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
-- **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / one held Grenade. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
+- **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / three held Grenades. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
 
 Buttons restart deterministic validated fixtures using real HP, damage and P1
 progression. Switching roles clears projectiles and all presentation feedback;
 Retry restarts the selected fixture. Repeated restarts vary only the development
-visual salt. The lab is presentation QA, not gameplay configuration or a saved
+visual salt. The review set is presentation QA, not gameplay configuration or a saved
 simulation mode. Normal `/` remains Lv1 until a button is used;
-`?review=threats` remains a separate art fixture. Production excludes lab controls
+`?review=threats` remains a separate art fixture. Production excludes review controls
 and fixture code behind `import.meta.env.DEV`.
 
 Physical **4** restarts CURVE, **5** restarts EVOLVE and **6** restarts MG through the button reset path.
@@ -108,11 +111,6 @@ exactly ten ordinary Grunt kills. Six alternating review cycles held steady at
 85 geometries, 11 textures and a 32-slot projectile pool. These
 software-rendered captures verify the review loop, not physical-phone performance
 or the human judgment that evolution feels like a power upgrade.
-
-`node scripts/qa/vfx-lab-sanity.mjs` verifies fixture loadouts, clearing, Retry,
-repeated switching/resource reuse, 350/390 portrait and the separate normal/review
-starts. It accepts the same output-directory and browser environment overrides
-as the other scripts. The production sanity script also guards lab exclusion.
 
 ## P2A Machine Gun
 

@@ -1,6 +1,6 @@
 # Catharsis Experiment — Current Progression and Deferred Late Game
 
-Current P2C progression is specified in `GAME_SPEC.md`: Lv1–Lv6 Rifle stages then one 18 Hz Machine Gun. The one-shot natural Giant arrives at Lv5 +6 seconds; explicit late pressure uses one Heavy per group and Lv6 alone overrides population to 60, including its immediate release crowd. `P2C_REPORT.md` records current measurements. Grenade, HP, speeds and XP are unchanged. The LV7 landing-assault experiment below remains unreachable under the natural Lv6 cap; its earlier timings and progression assumptions are historical.
+Current P2C progression is specified in `GAME_SPEC.md`: Lv1–Lv6 Rifle stages then one 18 Hz Machine Gun. The one-shot natural Giant arrives at Lv5 +6 seconds; explicit late pressure uses one Heavy per group and Lv6 alone overrides population to 60, including its immediate release crowd. `P2C_REPORT.md` records historical one-charge measurements. The final pre-release pass fills three Grenades from the one teaching supply, with one flight at a time; `PRE_RELEASE_REPORT.md` records its pacing impact. Grenade damage/radius, HP, speeds and XP values remain unchanged. The LV7 landing-assault experiment below remains unreachable under the natural Lv6 cap; its earlier timings and progression assumptions are historical.
 The accepted LV1–LV3 / early-LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can

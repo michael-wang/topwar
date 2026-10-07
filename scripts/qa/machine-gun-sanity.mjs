@@ -15,7 +15,7 @@ try {
   });
   await page.goto((process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173')+'/?perf=1');
   await page.waitForSelector('.game-start-overlay');
-  assert(await page.locator('.enemy-vfx-lab [data-role="machineGun"]').count()===1,'DEV MG control');
+  assert(await page.locator('.dev-review-controls [data-role="machineGun"]').count()===1,'DEV MG control');
   await page.getByRole('button',{name:'Start game with audio'}).click();
   await page.waitForFunction(()=>window.__testApp.startup==='started');
   await page.addStyleTag({content:'.perf-hud{display:none}'});
@@ -55,7 +55,7 @@ try {
     const base=runPilot(17,false,true,false,5,true).finalState;
     const records=[];
     for(const count of [3,2,1]){
-      a.vfxLabRole=null;a.retry();const s=structuredClone(base);s.progression.xp=219;
+      a.devReviewFixture=null;a.retry();const s=structuredClone(base);s.progression.xp=219;
       s.squad={count,rocketCount:0,rifleCounts:[count],rifleRemainder:0};s.weapons.rifleMemberCooldowns=Array(count).fill(.1);
       s.enemies=[{id:1,tier:1,archetype:'grunt',lane:2,x:0,z:s.player.z+3,hp:1}];s.player.x=0;s.player.selectedLane=2;
       s.projectiles=[{id:s.weapons.nextProjectileId++,kind:'rifle',tier:1,lane:2,memberIndex:0,slopeX:0,x:0,z:s.player.z+2.5,
@@ -69,7 +69,7 @@ try {
       records.push({before:count,after:after.squad.count,level:after.progression.level,weapon:document.querySelector('.xp-loadout')?.dataset.weaponFamily,
         restoredFamily:continued.projectiles.every(p=>p.kind==='machineGun'),damageCues:window.__cues.filter(e=>e.cue==='damage'||e.cue==='fatal').length});
     }
-    a.vfxLabRole=null;a.retry();window.__advance(80);
+    a.devReviewFixture=null;a.retry();window.__advance(80);
     if(a.simulation.getState().progression.level!==1||a.simulation.getState().squad.count!==1)throw Error('Normal Retry');
     return records;
   });

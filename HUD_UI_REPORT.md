@@ -1,5 +1,7 @@
 # Combat HUD correction — compact lower slots
 
+Historical phase evidence: measurements below used capacity 1. Current capacity is 3; the defense hint and standalone base-archetype review fixtures have been removed. See `PRE_RELEASE_REPORT.md` for current behavior and validation.
+
 Baseline: `a591f4d9cadabbe1a569450e6edf26fa181c08e8`.
 HEAD, origin/main and GitHub main matched and the worktree was clean before edits.
 This is UI/presentation only. No gameplay, configuration, progression values,
@@ -21,7 +23,7 @@ Tap-to-Start architecture changed. Nothing was deployed.
   count. Dark icon outlines/shadows provide contrast; the whole HUD is pointer-transparent.
 - Slots share a safe-area-aware bottom anchor **16px above the unchanged 74px
   movement/XP strip**. Grenade's left edge aligns with the left arrow; telemetry's
-  right edge aligns with the right arrow. The fading movement hint fits between them.
+  right edge aligns with the right arrow. This historical pass retained a defense movement hint; it is now removed.
 - Bottom arrows, immediate / 180ms / 120ms holds, native long-press protections,
   central warm-gradient XP/LV, level-up flash/pop/sheen and build label are retained.
 
@@ -58,7 +60,7 @@ framework were added; stable pip classes avoid redundant DOM writes.
   annotation warnings remain.
 - `combat-hud-sanity.mjs`: 390×844 / 350×844; all six stage mappings, no visible
   primary text/card, icon/charge-only Grenade, ready/unavailable/empty/paused states,
-  Q and tap, charge preservation, casualty-independent pips, all seven deterministic
+  Q and tap, charge preservation, casualty-independent pips, all four retained deterministic
   DEV menu reset actions, physical 4/5/6, and real XP evolution. Eight single-kill
   upgrades (Lv1→5 at both widths) animate only the expected new cartridge/soldier;
   actual Lv5→6 pulses the changed MG icon. Pause freezes evolution animation.

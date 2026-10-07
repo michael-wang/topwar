@@ -319,6 +319,9 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   --combat-slot-bottom: calc(var(--hud-safe-bottom) + 74px + 16px);
 }
 .beachhead-defense {
+  --font-combat-display: Impact, Haettenschweiler, "Arial Narrow", "Franklin Gothic Heavy", sans-serif;
+  --font-combat-hud: "Bahnschrift SemiCondensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-utility: "Segoe UI", Arial, sans-serif;
   --combat-surface: #172331; --combat-edge: #526176; --combat-paper: #fff3dc;
   --combat-hot: #ff7a27; --combat-gold: #ffd066;
 }
@@ -330,7 +333,7 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   min-width: 44px; min-height: 44px; border-radius: 9px; padding: 0 12px;
   border: 1px solid #718399; background: #172b41e8; color: #f6f3e8;
   box-shadow: inset 0 1px 0 #ffffff1c, 0 3px 0 #101b2bc4; opacity: 1;
-  font: 800 14px/1 sans-serif; cursor: pointer; touch-action: manipulation;
+  font: 800 14px/1 var(--font-combat-hud); cursor: pointer; touch-action: manipulation;
 }
 .beachhead-defense .pause-button:hover, .beachhead-defense .tuning-panel summary:hover { background: #2c4058; }
 .beachhead-defense .pause-button { font-size: 20px; }
@@ -338,12 +341,12 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   outline: 2px solid var(--combat-gold); outline-offset: 3px;
 }
 .beachhead-defense .tuning-panel summary { display: flex; align-items: center; gap: 7px; }
-.dev-tool-label { font: 800 9px/1 sans-serif; letter-spacing: .08em; }
+.dev-tool-label { font: 800 9px/1 var(--font-utility); letter-spacing: .08em; }
 .beachhead-defense .tuning-panel-content {
   left: 0; right: auto; width: min(272px, calc(100vw - var(--hud-safe-left) - var(--hud-safe-right)));
   box-sizing: border-box; max-height: min(65dvh, calc(100dvh - var(--hud-safe-top) - var(--hud-safe-bottom) - 6rem));
   padding: 14px; border: 1px solid #5e6b7c; border-radius: 10px;
-  color: #edf1f4; background: #14212bf7; box-shadow: 0 10px 28px #07101b66; font: 12px/1.4 sans-serif;
+  color: #edf1f4; background: #14212bf7; box-shadow: 0 10px 28px #07101b66; font: 12px/1.4 var(--font-utility);
 }
 .beachhead-defense .tuning-panel label { padding-bottom: 8px; border-bottom: 1px solid #ffffff15; }
 .beachhead-defense .tuning-panel input { accent-color: var(--combat-hot); }
@@ -375,14 +378,14 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .movement-button:focus-visible { outline: 2px solid var(--combat-gold); outline-offset: 2px; }
 .xp-hud {
   position: relative; height: 60px; display: flex; align-items: center; pointer-events: none;
-  color: var(--combat-paper); font: 900 .75rem/1.3 "Trebuchet MS", sans-serif; letter-spacing: .03em;
+  color: var(--combat-paper); font: 900 .75rem/1.3 var(--font-combat-hud); letter-spacing: .03em;
 }
 .xp-level {
   position: absolute; z-index: 2; inset: 0; display: flex; align-items: center; justify-content: center; gap: 5px;
   color: #fff7e5; text-shadow: -2px -2px 0 #172331, 2px -2px 0 #172331, -2px 2px 0 #172331, 2px 2px 0 #172331, 0 3px 4px #081326, 0 0 8px #ff8e3033;
 }
-.xp-level-prefix { font-size: 16px; letter-spacing: .02em; }
-.xp-level-number { font-size: 34px; line-height: 1; letter-spacing: -.03em; }
+.xp-level-prefix { font-family: var(--font-combat-display); font-style: oblique 8deg; font-size: 18px; letter-spacing: .02em; }
+.xp-level-number { font-family: var(--font-combat-display); font-style: oblique 8deg; font-size: 36px; line-height: 1; letter-spacing: -.03em; }
 .xp-track {
   position: relative; flex: 1; height: 24px; min-width: 0; border-radius: .45rem;
   background: #091421; border: 1px solid #8092a6;
@@ -409,8 +412,8 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   text-align: center; color: var(--combat-paper); opacity: 0;
   text-shadow: 0 2px 2px var(--combat-surface), 0 0 8px var(--combat-hot);
   transform: translateY(.3rem); }
-.level-up-message strong { display: block; font: 900 1.4rem/1.1 "Trebuchet MS", sans-serif; letter-spacing: .07em; }
-.level-up-message span { display: block; font: 800 .68rem/1.5 "Trebuchet MS", sans-serif; letter-spacing: .12em; color: var(--combat-gold); }
+.level-up-message strong { display: block; font: 900 1.4rem/1.1 var(--font-combat-display); letter-spacing: .07em; }
+.level-up-message span { display: block; font: 800 .68rem/1.5 var(--font-combat-hud); letter-spacing: .12em; color: var(--combat-gold); }
 .xp-hud.level-up .xp-track { animation: xp-combat-burst 800ms ease-out both; }
 .level-up .level-up-message { animation: xp-announcement 800ms ease-out both; }
 .level-label-pop .xp-level { animation: xp-label-pop 320ms ease-out both; }
@@ -429,16 +432,7 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 @keyframes xp-label-pop { 0% { transform: scale(.8); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
 @keyframes xp-announcement { 0% { opacity: 0; transform: translateY(.3rem) scale(.85); }
   18%, 70% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-.25rem); } }
-.beachhead-defense .control-hint {
-  display: block; left: calc(var(--hud-safe-left) + 74px); right: calc(var(--hud-safe-right) + 112px);
-  text-align: center;
-  bottom: calc(var(--hud-safe-bottom) + 5.4rem);
-  font-size: clamp(10px, 2.7vw, 12px); color: var(--coast-ink);
-  text-shadow: 0 1px 0 var(--coast-paper), 0 0 3px var(--coast-foam);
-  animation: coastal-hint-out 9s linear forwards;
-}
-@keyframes coastal-hint-out { 0%, 75% { opacity: .95; } 100% { opacity: 0; } }
-.game-paused .control-hint, .game-paused .xp-fill::before, .game-paused .xp-edge, .game-paused .xp-track, .game-paused .xp-track::after, .game-paused .xp-level, .game-paused .level-up-message { animation-play-state: paused; }
+.game-paused .xp-fill::before, .game-paused .xp-edge, .game-paused .xp-track, .game-paused .xp-track::after, .game-paused .xp-level, .game-paused .level-up-message { animation-play-state: paused; }
 .beachhead-defense .build-label {
   right: calc(var(--hud-inset-right) + 3px);
   bottom: calc(var(--hud-inset-bottom) + 3px); font-size: 7px;
@@ -447,7 +441,6 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .beachhead-defense .perf-hud {
   left: var(--hud-safe-left); top: calc(var(--hud-safe-top) + 3.3rem);
 }
-.beachhead-defense:has(.xp-hud.level-up) .control-hint { visibility: hidden; }
 .hint-key { display: inline-block; min-width: 7.4em; color: var(--art-highlight); font-weight: 900; }
 .hint-touch { color: var(--art-paper); letter-spacing: .025em; }
 
@@ -530,22 +523,37 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 }
 .grenade-button[hidden] { display: none; }
 .grenade-button svg { width: 36px; height: 36px; filter: drop-shadow(0 2px 0 #111923); }
-.grenade-button strong { position: absolute; top: -5px; right: -5px; min-width: 18px; border: 2px solid #33222b; border-radius: 7px; padding: 2px; background: #ff922f; color: #241e24; font: 900 16px/1 sans-serif; }
+.grenade-button strong { position: absolute; top: -5px; right: -5px; min-width: 18px; border: 2px solid #33222b; border-radius: 7px; padding: 2px; background: #ff922f; color: #241e24; font: 900 16px/1 var(--font-combat-hud); }
 .grenade-button:disabled { cursor: default; border-color: #718094; color: #a6b2bf; background: #202c38ed; box-shadow: inset 0 0 0 3px #15202b, 0 3px 0 #16202a; }
 .grenade-button:disabled strong { background: #677786; color: #f2eee6; }
 .grenade-button.grenade-empty { color: #707f90; border-color: #4e5c6e; background: #202c38c9; box-shadow: inset 0 0 0 3px #15202b, 0 3px 0 #16202a; }
 .grenade-button.grenade-empty strong { color: #afbac5; background: #3a495b; }
 .grenade-button:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 0 0 3px #181b27, 0 2px 0 #28151d; }
 .grenade-button:focus-visible { outline: 3px solid #ffe4a4; outline-offset: 4px; }
-.grenade-ready:not(:disabled) { animation: grenade-ready .55s ease-out, grenade-glow 2.6s .55s ease-in-out infinite; }
-.game-paused .grenade-ready { animation-play-state: paused; }
-@keyframes grenade-ready { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.1); } }
-@keyframes grenade-glow { 50% { box-shadow: inset 0 0 0 3px #181b27, 0 5px 0 #28151d, 0 0 18px #ff8c354a; } }
+.grenade-acquired { animation: grenade-acquired .55s ease-out; }
+.game-paused .grenade-acquired { animation-play-state: paused; }
+@keyframes grenade-acquired { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.1); } }
 @media (max-width: 370px) {
   .combat-control-strip { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; }
   .movement-button { width: 56px; }
   .xp-level-number { font-size: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .grenade-ready:not(:disabled), .xp-fill::before, .xp-imminent .xp-edge, .xp-track::after, .level-label-pop .xp-level, .xp-pip.is-upgraded, .battle-weapon-icon.weapon-evolution { animation: none; }
+  .grenade-acquired, .xp-fill::before, .xp-imminent .xp-edge, .xp-track::after, .level-label-pop .xp-level, .xp-pip.is-upgraded, .battle-weapon-icon.weapon-evolution { animation: none; }
 }
+
+/* Touch-safe default. Primary fine pointer + real hover reveals compact keyboard cues. */
+.combat-keycue { display: none; position: absolute; bottom: 4px; right: 5px; min-width: 13px; height: 15px;
+  box-sizing: border-box; padding: 1px 3px; border: 1px solid #a8b7c8; border-bottom-width: 2px; border-radius: 3px;
+  background: #172331; color: #fff3dc; font: 800 10px/11px var(--font-combat-hud); pointer-events: none; }
+.grenade-button .combat-keycue { right: auto; left: 4px; border-color: #e8ab64; }
+@media (hover: hover) and (pointer: fine) { .combat-keycue { display: block; } }
+.beachhead-defense .game-over-overlay { font-family: var(--font-combat-hud); }
+.beachhead-defense .game-over-overlay h1 { font-family: var(--font-combat-display); font-style: oblique 8deg;
+  letter-spacing: .04em; text-shadow: 0 3px 0 #172331, 0 0 12px #ff7a2755; }
+.beachhead-defense .game-over-overlay button { font-family: var(--font-combat-hud); }
+.beachhead-defense .pause-overlay { font-family: var(--font-combat-hud); }
+.beachhead-defense .game-start-overlay { font-family: var(--font-combat-hud); }
+
+.beachhead-defense .movement-button { position: relative; font-family: var(--font-combat-hud); }
+.beachhead-defense .tuning-panel summary { font-family: var(--font-utility); }

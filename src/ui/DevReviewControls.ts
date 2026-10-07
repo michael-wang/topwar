@@ -1,8 +1,8 @@
-import type { EnemyVfxLabRole } from '../app/EnemyVfxLab';
+import type { DevReviewFixture } from '../app/DevReviewFixtures';
 
 // Constructed only behind import.meta.env.DEV. Inline styling stays out of the
 // shipping CSS, along with the controls and fixture factory in production JS.
-export class EnemyVfxLabControls {
+export class DevReviewControls {
   readonly element = document.createElement('div');
   private readonly buttons: HTMLButtonElement[] = [];
   private readonly stopPointer = (event: Event) => event.stopPropagation();
@@ -16,17 +16,17 @@ export class EnemyVfxLabControls {
     event.preventDefault();
     this.select(role);
   };
-  constructor(viewport: HTMLElement, private readonly select: (role: EnemyVfxLabRole) => void,
+  constructor(viewport: HTMLElement, private readonly select: (role: DevReviewFixture) => void,
     private readonly canUseShortcuts: () => boolean = () => true) {
-    this.element.className = 'enemy-vfx-lab';
-    this.element.setAttribute('aria-label', 'Enemy VFX Lab');
-    this.element.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 16px';
-    for (const role of ['grunt', 'heavy', 'giant', 'grenade', 'curve', 'evolve', 'machineGun'] as const) {
+    this.element.className = 'dev-review-controls';
+    this.element.setAttribute('aria-label', 'DEV Review');
+    this.element.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 0 16px';
+    for (const role of ['grenade', 'curve', 'evolve', 'machineGun'] as const) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = role === 'machineGun' ? 'MG' : role.toUpperCase();
       button.dataset.role = role; button.setAttribute('aria-pressed', 'false');
       button.title = `Restart ${role} combat fixture${role === 'curve' ? ' (4)' : role === 'evolve' ? ' (5)' : role === 'machineGun' ? ' (6)' : ''}`;
-      button.style.cssText = 'min-height:44px;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 11px sans-serif;cursor:pointer;touch-action:manipulation';
+      button.style.cssText = 'min-height:44px;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 11px var(--font-utility, sans-serif);cursor:pointer;touch-action:manipulation';
       button.addEventListener('click', () => {
         select(role);
         // Return focus to the battlefield for Q, lane keys and fixture shortcuts.
@@ -38,7 +38,7 @@ export class EnemyVfxLabControls {
     window.addEventListener('keydown', this.keyDown);
     viewport.append(this.element);
   }
-  setSelected(role: EnemyVfxLabRole): void {
+  setSelected(role: DevReviewFixture): void {
     for (const button of this.buttons) {
       const selected = button.dataset.role === role;
       button.setAttribute('aria-pressed', String(selected));

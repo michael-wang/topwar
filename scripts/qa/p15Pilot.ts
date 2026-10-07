@@ -34,6 +34,7 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
   let grenadeVictims:any[] = [], contactCasualties=0, gruntKills=0, heavyKills=0, peakHeavyOverlap=0;
   let hesitationStart:ReturnType<typeof pressure>|null=null, hesitationEnd:ReturnType<typeof pressure>|null=null;
   let evolution:unknown=null;
+  const throws: any[] = [];
   const ramps:unknown[]=[], groupAdmissions:unknown[]=[];
   const rampLevels=new Set<number>();
   const timeline:unknown[]=[];
@@ -54,16 +55,21 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
       let difference=lane-before.player.selectedLane!;
       while(difference) {sim.stepLane(difference>0?1:-1);difference-=Math.sign(difference);if(adjacentOnly)break;}
     }
-    const current=sim.getFrameState(), target=current.grenade?.inventory===1 ? grenadeTarget(current,balance.grenade) : undefined;
+    const current=sim.getFrameState(), target=(current.grenade?.inventory??0)>0 && !current.grenade?.flight ? grenadeTarget(current,balance.grenade) : undefined;
     const members=target ? enemiesInBlast(current.enemies,target.x,target.z,balance.grenade.blastRadius) : [];
     const nearest=Math.min(Infinity,...current.enemies.map(e=>e.z-current.player.z).filter(d=>d>0));
     const heldSeconds=elapsed-(current.grenade?.acquiredAtSeconds??elapsed);
     const targetDepth=target?target.z-current.player.z:Infinity;
     const throwGrenade=useGrenade && !hesitating && !!target && ((members.length>=6 && targetDepth<=10)
       || (nearest<4 && members.length>=3 && targetDepth<=6) || (heldSeconds>=8 && members.length>=6 && targetDepth<=14));
-    if(throwGrenade && activation===null)activation=elapsed;
+
     sim.step(1/60,{targetX:0,throwGrenade},pilotTuning);
     const after=sim.getFrameState();
+    if(!before.grenade?.flight && after.grenade?.flight) {
+      if(activation===null)activation=after.grenade.flight.startedAtSeconds;
+      throws.push({activation:after.grenade.flight.startedAtSeconds,detonation:null,levelAtActivation:before.progression!.level,
+        reserve:after.grenade.inventory, kills:0,xp:0,victims:[],before:null,after:null,twoSecondsAfter:null});
+    }
     const settings=pressureWaveSettings(balance,after.progression!);
     if((settings.heavyCount!==undefined || settings.pressureLaneCount!==balance.pressureLaneCount) && !rampLevels.has(after.progression!.level)) {
       rampLevels.add(after.progression!.level);
@@ -103,9 +109,15 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
     if(after.progression!.level>before.progression!.level) for(let lv=before.progression!.level+1;lv<=after.progression!.level;lv++)milestones[lv]=after.elapsedSeconds;
     if(before.grenade!.supplySpawnedAtSeconds===null && after.grenade!.supplySpawnedAtSeconds!==null)xpAtSpawn={...before.progression};
     for(const event of sim.consumeGrenadeEvents())if(event.kind==='grenadeDetonated') {
-      detonation=after.elapsedSeconds;grenadeVictims=event.victims;
+      if(detonation===null)detonation=after.elapsedSeconds;
+      grenadeVictims.push(...event.victims);
+      const entry=throws.at(-1)!;
+      Object.assign(entry,{detonation:after.elapsedSeconds,kills:event.victims.filter(v=>v.killed).length,
+        xp:event.victims.reduce((sum,v)=>sum+v.killXp,0),victims:event.victims,before:pressure(before),after:p,
+        xpBefore:{...before.progression},xpAfter:{...after.progression}});
       beforeBlast=pressure(before);afterBlast=p;xpAtDetonation={before:{...before.progression},after:{...after.progression}};
     }
+    for(const entry of throws)if(entry.detonation!==null && entry.twoSecondsAfter===null && after.elapsedSeconds>=entry.detonation+2)entry.twoSecondsAfter=p;
     if(detonation!==null && !twoSecondsAfter && after.elapsedSeconds>=detonation+2)twoSecondsAfter=p;
     if(tick%60===0)timeline.push({seconds:after.elapsedSeconds,level:after.progression!.level,xp:after.progression!.xp,...p});
     if(before.progression!.level<6 && after.progression!.level>=6) {
@@ -127,7 +139,7 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
     lv5Duration:milestones[6]===undefined?null:milestones[6]-milestones[5],
     lv3Duration:milestones[4]===undefined?null:milestones[4]-milestones[3],
     supplySpawn:end.grenade!.supplySpawnedAtSeconds,acquisition:end.grenade!.acquiredAtSeconds,activation,detonation,
-    xpAtSpawn,xpAtDetonation,grenadeVictims,grenadeKills:grenadeVictims.filter(v=>v.killed).length,
+    throws, xpAtSpawn,xpAtDetonation,grenadeVictims,grenadeKills:grenadeVictims.filter(v=>v.killed).length,
     grenadeKillXp:grenadeVictims.reduce((sum,v)=>sum+v.killXp,0),gruntKills,heavyKills,peakHeavyOverlap,
     contactCasualties,failed:end.squad.count===0,finalLevel:end.progression!.level,endSeconds:end.elapsedSeconds,
     hesitationStart,hesitationEnd,beforeBlast,afterBlast,twoSecondsAfter,phasePeaks,timeline,

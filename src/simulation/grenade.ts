@@ -7,7 +7,7 @@ const finite = z.number().finite();
 const clock = finite.nonnegative();
 export const GrenadeStateSchema = z.strictObject({
   lv3EnteredAtSeconds: clock.nullable(), supplySpawnedAtSeconds: clock.nullable(),
-  acquiredAtSeconds: clock.nullable(), inventory: z.union([z.literal(0), z.literal(1)]),
+  acquiredAtSeconds: clock.nullable(), inventory: z.number().int().min(0).max(3),
   supply: z.strictObject({ lane: z.number().int().nonnegative(), x: finite, depth: finite.positive() }).nullable(),
   flight: z.strictObject({ startX: finite, startZ: finite, targetX: finite, targetZ: finite,
     startedAtSeconds: clock, flightSeconds: finite.positive(), damageEnemyHp: finite.positive(),
@@ -18,7 +18,7 @@ export const GrenadeStateSchema = z.strictObject({
     || (s.acquiredAtSeconds !== null && (s.supplySpawnedAtSeconds === null || s.acquiredAtSeconds < s.supplySpawnedAtSeconds))
     || (!!s.supply !== (s.supplySpawnedAtSeconds !== null && s.acquiredAtSeconds === null))
     || ((s.inventory > 0 || s.flight !== null) && s.acquiredAtSeconds === null)
-    || (s.flight !== null && (s.inventory !== 0 || s.flight.startedAtSeconds < s.acquiredAtSeconds!));
+    || (s.flight !== null && (s.inventory >= 3 || s.flight.startedAtSeconds < s.acquiredAtSeconds!));
   if (invalid) ctx.addIssue({ code: 'custom', message: 'Inconsistent Grenade lifecycle' });
 });
 export type GrenadeState = z.infer<typeof GrenadeStateSchema>;

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { EnemyVfxLabControls } from '../src/ui/EnemyVfxLabControls';
+import { DevReviewControls } from '../src/ui/DevReviewControls';
 
 class ElementStub extends EventTarget {
   children: ElementStub[] = [];
@@ -23,7 +23,7 @@ function setup(enabled = true) {
   vi.stubGlobal('window', windowTarget);
   vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag.toUpperCase()) });
   const select = vi.fn(), canUse = vi.fn(() => enabled);
-  const controls = new EnemyVfxLabControls(new ElementStub() as unknown as HTMLElement, select, canUse);
+  const controls = new DevReviewControls(new ElementStub() as unknown as HTMLElement, select, canUse);
   const root = controls.element as unknown as ElementStub;
   const press = (code: string, options: { repeat?: boolean; ctrlKey?: boolean; altKey?: boolean; metaKey?: boolean; target?: ElementStub } = {}) => {
     const event = new Event('keydown', { cancelable: true });
@@ -39,8 +39,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('routes physical 4/5/6 and CURVE/EVOLVE/MG clicks through exactly the same callback', () => {
   const { controls, root, select, press } = setup();
-  expect(root.children.map(b => b.textContent)).toEqual(['GRUNT', 'HEAVY', 'GIANT', 'GRENADE', 'CURVE', 'EVOLVE', 'MG']);
-  for (const [index, code, role] of [[4, 'Digit4', 'curve'], [5, 'Digit5', 'evolve'], [6, 'Digit6', 'machineGun']] as const) {
+  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG']);
+  for (const [index, code, role] of [[1, 'Digit4', 'curve'], [2, 'Digit5', 'evolve'], [3, 'Digit6', 'machineGun']] as const) {
     const button = root.children[index];
     button.dispatchEvent(new Event('click'));
     expect(select.mock.lastCall).toEqual([role]);

@@ -43,7 +43,7 @@ try {
     await page.evaluate(() => { window.__blasts = []; window.__observe(); });
     const s = await sample();
     assert(s.state.progression.level === 3 && s.state.squad.count === 1 && s.state.player.selectedLane === 2, 'Grenade loadout');
-    assert(s.state.grenade.inventory === 1 && !s.state.grenade.supply, 'Fresh held charge');
+    assert(s.state.grenade.inventory === 3 && !s.state.grenade.supply, 'Fresh held charge');
     assert(s.state.enemies.filter(e => e.archetype === 'grunt').length === 45
       && s.state.enemies.filter(e => e.archetype === 'heavy').length === 3, '45/3 fixture');
     assert(s.focus !== 'BUTTON', 'Fixture returns focus for Q');
@@ -60,7 +60,7 @@ try {
     if (width === 390) {
       await page.keyboard.press('p');await page.keyboard.press('q');
       await page.evaluate(() => window.__advance(800));
-      const paused = await sample(); assert(paused.state.grenade.inventory === 1 && !paused.state.grenade.flight, 'Pause blocks Q');
+      const paused = await sample(); assert(paused.state.grenade.inventory === 3 && !paused.state.grenade.flight, 'Pause blocks Q');
       await page.keyboard.press('p');
       await page.locator('.tuning-panel summary').click();
       await page.locator('.tuning-panel input').first().focus();
@@ -76,7 +76,7 @@ try {
     const immediate = await sample();
     const blast = immediate.events.find(e => e.kind === 'grenadeDetonated');
     assert(blast && blast.radius === 4, 'Authoritative radius-four blast');
-    assert(immediate.state.grenade.inventory === 0 && immediate.state.player.selectedLane === 2, 'Shared request, one charge, no lane tap');
+    assert(immediate.state.grenade.inventory === 2 && immediate.state.player.selectedLane === 2, 'Shared request, one charge, no lane tap');
     const gruntKills = blast.victims.filter(v => v.archetype === 'grunt' && v.killed).length;
     const xp = blast.victims.reduce((sum, v) => sum + v.killXp, 0);
     // P2B prioritizes the nearest emergency; it need not maximize this lab's kills.
@@ -90,8 +90,10 @@ try {
     await page.evaluate(() => window.__advance(1000));
     const after = await sample();
     await page.screenshot({ path: `${out}/grenade-after-${width}.png` });
+    for (let n=0;n<2;n++) { await page.evaluate(() => document.activeElement.blur()); await page.keyboard.press('q');await page.evaluate(() => window.__advance(800)); }
+    assert((await sample()).state.grenade.inventory === 0, 'Three sequential charges consumed');
     await page.keyboard.press('q');await page.evaluate(() => window.__advance(100));
-    assert((await sample()).events.filter(e => e.kind === 'grenadeDetonated').length === 1, 'Empty charge cannot throw again');
+    assert((await sample()).events.filter(e => e.kind === 'grenadeDetonated').length === 3, 'Empty charge cannot throw again');
     result.portraits[width] = { before, immediate, after, gruntKills, xp,
       otherKillXpDuringFlight: immediate.state.progression.xp - before.state.progression.xp - xp,
       fractionOfInitialGrunts: gruntKills / 45, heavyHp: immediate.state.enemies.filter(e => e.archetype === 'heavy').map(e => ({id:e.id,hp:e.hp})) };
@@ -100,16 +102,21 @@ try {
     const s = await reset(); assert(JSON.stringify(s.state) === JSON.stringify(initial), 'Repeated crowd reset');
     await page.evaluate(() => window.__advance(340));
     const before = await sample();await page.keyboard.press('q');
-    await page.evaluate(() => window.__advance(1800));const after = await sample();
+    await page.evaluate(() => window.__advance(800));
+    for (let n=0;n<2;n++) { await page.evaluate(() => document.activeElement.blur()); await page.keyboard.press('q');await page.evaluate(() => window.__advance(800)); }
+    await page.evaluate(() => window.__advance(1000));const after = await sample();
     result.cycles.push({ cycle, before: { geometries: before.stats.geometries, textures: before.stats.textures },
       after: { geometries: after.stats.geometries, textures: after.stats.textures }, dustCapacity: after.stats.grenade.dustCapacity });
   }
-  assert(result.cycles.every(c => c.before.geometries === c.after.geometries
+  writeFileSync(`${out}/resource-cycles.json`,JSON.stringify(result.cycles,null,2));
+  // Three full throws expose additional existing gait/death batches on first use.
+  // Record that warm-up separately, then require a flat plateau across resets.
+  assert(result.cycles.every(c => (c.cycle === 0 || c.before.geometries === c.after.geometries)
     && c.after.geometries === result.cycles[0].after.geometries
     && c.before.textures === c.after.textures && c.after.textures === result.cycles[0].after.textures
     && c.dustCapacity === 16), 'Bounded repeated explosions');
   result.errors = errors;assert(!errors.length, errors.join('\n'));
-  writeFileSync(`${out}/grenade-lab.json`, JSON.stringify(result, null, 2));
+  writeFileSync(`${out}/grenade-review.json`, JSON.stringify(result, null, 2));
   console.log(JSON.stringify(Object.fromEntries(Object.entries(result.portraits).map(([width,r]) =>
     [width, {gruntKills:r.gruntKills,xp:r.xp,heavyHp:r.heavyHp,fraction:r.fractionOfInitialGrunts}]))));
 } finally { await browser.close(); }

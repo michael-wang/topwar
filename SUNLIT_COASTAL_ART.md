@@ -223,16 +223,15 @@ rounded geometry; legacy Boss framing is unchanged.
 
 Combat HUD is independent of the coastal palette: dark slate surfaces, bright warm
 orange/gold action accents and pale information. The world and character art stay coastal.
-Top-left **DEV** opens the existing tool disclosure, with GRUNT / HEAVY / GIANT / GRENADE /
-CURVE / EVOLVE / MG in a compact grid above balance/audio controls. Selection closes it;
+Top-left **DEV** opens the existing tool disclosure, with GRENADE / CURVE / EVOLVE / MG in a compact grid above balance/audio controls. Selection closes it;
 Escape toggles it and releases hidden focus. No permanent right-side fixture stack remains.
 The entire disclosure and fixture shortcuts are excluded from production.
 
 Top-right Pause has a visible dark blue surface, pale icon, clear border and 44-pixel
 minimum target. Lower-left Grenade is a compact 64×64-pixel warm beveled button directly
-above the left movement control, with only a grenade icon and charge badge. Ready uses
+above the left movement control, with a grenade icon, 0–3 charge badge and fine-pointer/hover-only Q keycap. Ready uses
 warmth/glow; owned but unusable retains its charge in muted colors; empty is further subdued
-with count zero. It appears on acquisition with one short pop and no visible status/name
+with count zero. Ready contrast remains static after acquisition. It appears on acquisition with one short pop and no visible status/name
 labels. Reduced motion disables the animations. Its input/Q request and gameplay guards are unchanged.
 
 Lower-right telemetry is transparent and pointer-transparent above the right movement
@@ -249,7 +248,7 @@ middle approach space free of persistent combat HUD; cover lower player space fi
 Bottom hierarchy is **LEFT MOVEMENT / LEVEL + XP / RIGHT MOVEMENT** inside a dark
 safe-area-aware control strip. Steel-blue 64×60-pixel arrow buttons (56×60 at ≤370px)
 have depressed held feedback and their own movement input. They are distinct from the
-warm active skill and passive battle panel. A centered outlined LV label has a 34-pixel
+warm active skill and passive battle panel. A centered condensed/slanted outlined LV label has a 36-pixel
 level number (32 at ≤370px), exceeding the 24-pixel XP track. The track has a dark
 remainder and fixed red `#D83B27` → orange `#F56724` / `#FF972F` → gold `#FFD066` gradient.
 The gradient is anchored to the **full track width**, revealed by the accurate fill mask,
@@ -264,10 +263,10 @@ flash, eight aqua/foam motes per member and 1400 ms cyan-white tracer/muzzle aft
 Its scale pulse, timing and sound are unchanged by HUD styling. Defense still omits
 the old `DEFEND N / 5` HUD and keeps the top-center sky empty. Legacy interface styling remains intact.
 
-The lower hint between the compact slots has only `A / D or ← / →   STEP LANE` on desktop or
-`HOLD ARROWS TO MOVE` on coarse-pointer devices. Navy text with a pale shadow stays
-legible on sand. It holds briefly then fades over a nine-second CSS presentation
-animation; Pause suspends that animation. No gameplay/tutorial state is stored.
+The defense movement hint is removed. Only fine-pointer devices with hover show A/D
+keycaps on the arrow buttons and Q on Grenade; coarse-pointer defaults omit them.
+Display, compact HUD and utility font stacks are centralized local/system CSS tokens,
+without network fonts. LV gets the strongest display treatment; DEV stays restrained.
 The **world is full bleed** on portrait/coarse-pointer devices: 100vw × 100dvh.
 Camera aspect uses actual dimensions; defense-only vertical FOV expands on taller phones
 to preserve authored horizontal lane coverage (48° at 9:16, about 56.9° at 390×844).

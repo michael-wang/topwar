@@ -20,7 +20,7 @@ try {
   await page.waitForSelector('.game-start-overlay');
   await page.keyboard.press('q'); await page.keyboard.press('4');
   assert(await page.locator('.game-start-overlay').isVisible(), 'Q/DEV shortcuts preserve Tap-to-Start');
-  assert(await page.locator('.enemy-vfx-lab').isHidden(), 'No permanent DEV fixture stack');
+  assert(await page.locator('.dev-review-controls').isHidden(), 'No permanent DEV fixture stack');
   await page.screenshot({ path: `${out}/start-390.png` });
   await page.getByRole('button', { name: 'Start game with audio' }).click();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
@@ -46,9 +46,9 @@ try {
     }));
   });
   // All fixture actions still reset exactly; the disclosure returns focus and closes.
-  for (const role of ['grunt', 'heavy', 'giant', 'grenade', 'curve', 'evolve', 'machineGun']) {
+  for (const role of ['grenade', 'curve', 'evolve', 'machineGun']) {
     await selectDevFixture(page, role); const first = await state();
-    assert(await page.locator('.enemy-vfx-lab').isHidden(), `${role}: menu auto-closes`);
+    assert(await page.locator('.dev-review-controls').isHidden(), `${role}: menu auto-closes`);
     await selectDevFixture(page, role);
     assert(JSON.stringify(await state()) === JSON.stringify(first), `${role}: exact deterministic reset`);
     report.fixtures.push({ role, level: first.progression.level, enemies: first.enemies.length });
@@ -86,15 +86,16 @@ try {
     assert(Math.abs(b['.battle-info'].x + b['.battle-info'].width - b['.movement-right'].x - b['.movement-right'].width) < 1, 'Telemetry aligned above right movement');
     assert(b['.battle-info'].x > width / 2 && b['.battle-info'].pointerEvents === 'none' && b['.battle-info'].background === 'rgba(0, 0, 0, 0)', 'Transparent passive telemetry');
     assert((await page.locator('.battle-info').textContent()).trim() === '', 'No visible weapon/stage/rate/living labels');
-    assert((await page.locator('.grenade-button').textContent()).trim() === '1', 'Grenade contains only icon and charge');
+    assert((await page.locator('.grenade-button strong').textContent()).trim() === '3', 'Grenade contains only icon and charge');
     assert(b['.pause-button'].background !== 'rgba(0, 0, 0, 0)' && b['.pause-button'].width >= 44, 'Visible Pause surface and touch target');
     await capture(`grenade-ready-${width}`);
     await page.evaluate(() => {
       const a = window.__testApp, s = a.simulation.getState(); window.__savedEnemies = s.enemies;
       s.enemies = []; a.simulation.restoreState(s);
     }); await advance(40); await page.keyboard.press('q'); await advance(40);
-    assert(await page.locator('.grenade-button').isDisabled() && (await state()).grenade.inventory === 1, 'Unavailable with no target preserves charge');
-    assert(await page.locator('.grenade-button').evaluate(e => getComputedStyle(e).animationName === 'none'), 'Unavailable charge has no ready glow');
+    assert(await page.locator('.grenade-button').isDisabled() && (await state()).grenade.inventory === 3, 'Unavailable with no target preserves charge');
+    await page.waitForTimeout(600);
+    assert(await page.locator('.grenade-button').evaluate(e => e.getAnimations().every(a => a.playState === 'finished')), 'Acquisition pulse settles');
     await capture(`grenade-unavailable-${width}`);
     await page.evaluate(() => {
       const a = window.__testApp, s = a.simulation.getState(); s.enemies = window.__savedEnemies; a.simulation.restoreState(s);
@@ -102,7 +103,7 @@ try {
     await page.getByRole('button', { name: 'Pause game' }).click(); await advance(100);
     assert(await page.locator('.grenade-button').isDisabled(), 'Paused skill disabled');
     await page.keyboard.press('q'); await advance(100);
-    assert((await state()).grenade.inventory === 1, 'Pause blocks Q');
+    assert((await state()).grenade.inventory === 3, 'Pause blocks Q');
     await capture(`paused-${width}`);
     await page.getByRole('button', { name: 'Resume game' }).click(); await advance(40);
     await page.locator('.tuning-panel > summary').click();
@@ -111,10 +112,13 @@ try {
     await page.locator('.tuning-panel input').first().focus(); await page.keyboard.press('q');
     assert(!await page.evaluate(() => window.__testApp.grenadeRequested), 'DEV focus blocks Q');
     await page.keyboard.press('Escape');
-    assert(await page.locator('.enemy-vfx-lab').isHidden(), 'Escape closes DEV menu');
+    assert(await page.locator('.dev-review-controls').isHidden(), 'Escape closes DEV menu');
     assert((await state()).player.selectedLane === lane, 'Menu does not steer');
     if (width === 390) await page.keyboard.press('q'); else await page.locator('.grenade-button').tap();
     await advance(760);
+    const firstThrow = await state();
+    assert(firstThrow.grenade.inventory === 2, 'First throw leaves two reserves');
+    for (let n=0;n<2;n++) { await page.evaluate(() => document.activeElement.blur()); await page.keyboard.press('q'); await advance(760); }
     const after = await state();
     assert(after.grenade.inventory === 0 && after.player.selectedLane === before.player.selectedLane, 'Q/button share activation and isolate lane input');
     assert(after.enemies.length < before.enemies.length, 'Normal grenade kill path');
@@ -126,7 +130,7 @@ try {
     await page.evaluate(() => {
       const a = window.__testApp, s = a.simulation.getState();
       s.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-        inventory: 1, supply: null, flight: null };
+        inventory: 3, supply: null, flight: null };
       a.simulation.restoreState(s);
     });
     await advance(40);
@@ -136,7 +140,7 @@ try {
     await capture(`rifle-lv5-${width}`);
     while ((await state()).progression.level === 5) await advance(20);
     assert((await state()).progression.level === 6, 'Real XP evolution');
-    assert((await state()).grenade.inventory === 1, 'Held charge remains visible across evolution');
+    assert((await state()).grenade.inventory === 3, 'Held charge remains visible across evolution');
     assert(await page.locator('.battle-info').getAttribute('data-weapon-family') === 'machineGun', 'MG silhouette replacement');
     assert(await page.locator('.battle-weapon-pips .is-filled').count() === 1 && await page.locator('.battle-squad-pips').isHidden(), 'MG stage 1, no redundant squad row');
     assert(await page.locator('.battle-weapon-icon').evaluate(e => e.classList.contains('weapon-evolution')), 'Real evolution pulses the changed silhouette');
@@ -150,7 +154,6 @@ try {
     await page.keyboard.press('6'); await advance(300); await capture(`mg-lv6-${width}`);
     await page.keyboard.press('4'); await advance(40);
     assert((await state()).progression.level === 4, 'Physical 4 / CURVE');
-    await selectDevFixture(page, 'giant'); await advance(2000); await capture(`giant-${width}`);
     for (const fromLevel of [1,2,3,4]) {
       await selectDevFixture(page, 'grenade');
       await page.evaluate(level => {

@@ -1,5 +1,7 @@
 # P2A — First Weapon Evolution: Machine Gun
 
+Historical phase evidence: measurements below used capacity 1. Current capacity is 3; the defense hint and standalone base-archetype review fixtures have been removed. See `PRE_RELEASE_REPORT.md` for current behavior and validation.
+
 Starting baseline verified: HEAD, origin/main and live GitHub main were
 `ff017d042e5d41e6d5aa703d75d197dfa1e3e8c2`; tracked and untracked worktree clean.
 No deployment. This report describes the P2A commit containing this file.
@@ -23,7 +25,7 @@ No deployment. This report describes the P2A commit containing this file.
 
 `GameAudio::AudioCueObserver` samples MG at at most nine cues/second; each 105 ms single voice has two short envelope pulses. Rifle sound behavior and activation architecture are unchanged. `GameApp` excludes intentional evolution from defense-loss feedback. `GameIcons`, `loadoutPresentation` and `XpHud` switch to the MG/belt-box silhouette and one filled cartridge pip (Stage I), without permanent weapon-name text.
 
-`EnemyVfxLab::createEnemyVfxLab` / `EnemyVfxLabControls` add DEV **MG**: Lv6, one center specialist, 60 Grunts + five full-health Heavies, all five lanes, fixed uneven depths 8–24. Center has 12 Grunts and one Heavy. No Giant/Boss or charge requirement. Stream cursor is advanced beyond short review. MG/reset restores identical combat state; ordinary HP, collision, XP and deaths apply. Control focus releases for immediate lane keys. Production excludes all Lab controls and fixture factory.
+`DevReviewFixtures::createDevReviewFixture` / `DevReviewControls` add DEV **MG**: Lv6, one center specialist, 60 Grunts + five full-health Heavies, all five lanes, fixed uneven depths 8–24. Center has 12 Grunts and one Heavy. No Giant/Boss or charge requirement. Stream cursor is advanced beyond short review. MG/reset restores identical combat state; ordinary HP, collision, XP and deaths apply. Control focus releases for immediate lane keys. Production excludes all Lab controls and fixture factory.
 
 ## Controlled Lv5 vs Lv6
 

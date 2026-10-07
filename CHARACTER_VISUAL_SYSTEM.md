@@ -48,7 +48,7 @@ slots. Surviving hits create no stains. Retry/reset/mode changes clear all effec
 
 Role asymmetry is intentional: mass enemies prioritize readable, short cleanup;
 priority threats retain physical death spectacle. Renderer resources are bounded
-and disposable; simulation remains authoritative. Enemy VFX Lab is development
+and disposable; simulation remains authoritative. DEV Review is development
 presentation QA, documented in [scripts/qa/README.md](scripts/qa/README.md).
 Coastal art is owned by [SUNLIT_COASTAL_ART.md](SUNLIT_COASTAL_ART.md) and
 [COASTAL_GREEK_OBJECT_LANGUAGE.md](COASTAL_GREEK_OBJECT_LANGUAGE.md).
@@ -366,7 +366,7 @@ instanced batches; lift is in the captured world matrix. No per-death Mesh.
 
 **Heavy: weighted collapse → settling hold → breakup + fluid blood → fade.**
 **Giant: massive collapse → impact hold → breakup + long fluid-blood payoff → fade.**
-Weight is judged from the 390×844 Lab view and real-time comparison, not a
+Weight is judged from the 390×844 defense-camera view and real-time comparison, not a
 small world-unit delta. Heavy drops 0.26 units and tips 29° over 80–350 ms,
 then holds its low pose through 515 ms (165 ms). Its upper mass compresses 10%,
 fists move 0.10 authored units down / 0.055 outward, and shoes widen 0.045
@@ -384,9 +384,9 @@ sand impact over 400 ms. A fixed three-impact/twelve-point pool uses one transie
 draw and one geometry, no texture, no ring and no persistent dust. No new shadow
 renderer or death-shadow API is added.
 
-With the exact Lab identities and starting depths (Heavy Z10 / Giant Z14),
+At the measured defense-camera depths (Heavy Z10 / Giant Z14),
 projected crown travel is about 20 / 26 pixels. The maul head travels about 52
-pixels and settles roughly 0.03 world units above sand in that fixture. These
+pixels and settles roughly 0.03 world units above sand in that measurement. These
 measurements support the real-speed recordings; human perception remains the
 acceptance criterion.
 

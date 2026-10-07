@@ -8,7 +8,7 @@ export class GrenadeButton {
   constructor(viewport: HTMLElement, private readonly activate: () => void) {
     this.element.type = 'button'; this.element.className = 'grenade-button';
     this.element.title = 'Throw Grenade (Q)';
-    this.element.innerHTML = `${grenadeIcon}<strong>0</strong>`;
+    this.element.innerHTML = `${grenadeIcon}<strong>0</strong><span class="combat-keycue" aria-hidden="true">Q</span>`;
     this.element.addEventListener('pointerdown', this.stopPointer);
     this.element.addEventListener('click', this.click);
     this.reset(); viewport.append(this.element);
@@ -19,13 +19,13 @@ export class GrenadeButton {
     this.element.setAttribute('aria-label', `Throw Grenade (${inventory} available, Q${inventory > 0 && !enabled ? ', temporarily unavailable' : ''})`);
     this.element.querySelector('strong')!.textContent = String(inventory);
     this.element.classList.toggle('grenade-empty', inventory === 0);
-    if (inventory > this.previousInventory) this.element.classList.add('grenade-ready');
-    if (inventory === 0) this.element.classList.remove('grenade-ready');
+    if (inventory > this.previousInventory) this.element.classList.add('grenade-acquired');
+    if (inventory === 0) this.element.classList.remove('grenade-acquired');
     this.previousInventory = inventory;
   }
   reset(): void {
     this.element.hidden = true; this.element.disabled = true; this.previousInventory = 0;
-    this.element.classList.remove('grenade-ready');
+    this.element.classList.remove('grenade-acquired');
   }
   dispose(): void {
     this.element.removeEventListener('pointerdown', this.stopPointer);

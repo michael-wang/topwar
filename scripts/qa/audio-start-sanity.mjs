@@ -143,9 +143,9 @@ try {
     results.inputs[name] = state;
     if (name === 'mouse') {
       // Controls are usable after the start surface leaves.
-      await selectDevFixture(p, 'heavy');
-      results.lab = await sample(p);
-      assert(results.lab.state.progression.level === 3 && results.lab.state.squad.count === 1, 'Lab after startup');
+      await selectDevFixture(p, 'grenade');
+      results.review = await sample(p);
+      assert(results.review.state.progression.level === 3 && results.review.state.squad.count === 1, 'Review after startup');
     }
     await p.close();
   }

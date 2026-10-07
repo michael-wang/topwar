@@ -1,5 +1,7 @@
 # P1.5 — Initial radius-two pressure measurements
 
+Historical phase evidence: measurements below used capacity 1. Current capacity is 3; the defense hint and standalone base-archetype review fixtures have been removed. See `PRE_RELEASE_REPORT.md` for current behavior and validation.
+
 Historical evidence for commit `3e2b640a78a65b064cf6643ec6dffe0602ef1048`. Human playtesting subsequently superseded the radius and 8–12-kill target. Current authored radius is four; see `P15_GRENADE_REVIEW.md` and `GAME_SPEC.md` for current behavior. The results below describe the original radius-two implementation.
 
 Baseline: `157faccc5857aa480fd97445414b8909617be319`. Local HEAD, origin/main and live GitHub main matched; tracked worktree was clean before implementation. No deployment.
@@ -118,7 +120,7 @@ Decision: retain requested **8 seconds / 9 HP / radius2 / .65 seconds** for huma
 
 - Full Vitest: **701 tests across 121 files pass**. Typecheck and production build pass. Tests cover 8-second scheduling without XP, placement/one-hit acquisition, target/tie rules, invalid actions, exact 39-tick flight, circular boundary/no falloff, Heavy/Giant damage, overflow/squad rewards, concurrent Rifle/blast duplicate prevention, and pending/spawned/held/in-flight snapshot continuation.
 - 350×844 and 390×844 Chrome mobile emulation / DPR2: ready button, analytic flight and burst screenshots inspected; safe-area offsets and >=44px target checked; button does not change lane; Pause freezes clocks; empty lane keeps inventory; ten-victim burst grants ten XP; Retry clears charge/supply/effects. Render-only objects are reused.
-- Existing `audio-start-sanity`, `live-sanity`, `vfx-lab-sanity`, and `production-sanity` pass. Production excludes Lab controls. A first concurrent production run exposed a pre-existing review-HUD wait race (frozen Lv5 before its initial presentation); the QA script now waits for stable post-start HUD. No startup runtime change was made.
+- Existing `audio-start-sanity`, `live-sanity`, and `production-sanity` pass. Production excludes Lab controls. A first concurrent production run exposed a pre-existing review-HUD wait race (frozen Lv5 before its initial presentation); the QA script now waits for stable post-start HUD. No startup runtime change was made.
 - Five repeated burst cycles retain **85 geometries / 12 textures**, with 16 fixed dust slots. The isolated 200-enemy software-renderer comparison warms the scene, then samples four seconds per case. No-blast: **124.25ms mean / 133.40ms p95** frame, **2.01ms mean / 2.60ms p95** app CPU. Blast: **118.63ms mean / 150ms p95** frame, **1.92ms mean / 2.50ms p95** app CPU. Blast ends with 190 enemies. No resource growth or CPU spike was detected; p95 frame time is worse and SwiftShader is slow in both cases. These short samples cannot certify phone GPU performance. Earlier un-warmed samples had allocation/backlog stalls and were not used as comparative timing evidence.
 - Existing Zod annotation and >500kB bundle warnings remain. No dependency, character/death, coastal-water or audio-startup changes. Physical-phone feel/performance remains an open check, not a completed claim.
 

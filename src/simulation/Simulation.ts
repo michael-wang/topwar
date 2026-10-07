@@ -324,6 +324,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const catharsis = Object.hasOwn(state, 'catharsis') ? validateCatharsis(state.catharsis) : undefined;
   const grenade = state.grenade === undefined ? undefined : GrenadeStateSchema.parse(state.grenade);
   if (grenade && (!catharsis?.balance.defenseMode
+    || grenade.inventory > catharsis.balance.grenade.capacity
+    || (grenade.flight !== null && grenade.inventory >= catharsis.balance.grenade.capacity)
     || [grenade.lv3EnteredAtSeconds, grenade.supplySpawnedAtSeconds, grenade.acquiredAtSeconds,
       grenade.flight?.startedAtSeconds].some(t => t != null && t > (state.elapsedSeconds as number))
     || (grenade.supply && (grenade.supply.lane >= catharsis.balance.laneCount
@@ -995,10 +997,10 @@ export class Simulation {
     const catharsis = this.state.catharsis;
     const grenade = this.state.grenade ? structuredClone(this.state.grenade) : undefined;
     const grenadeConfig = catharsis?.balance.grenade;
-    if (input.throwGrenade && grenade?.inventory === 1 && !grenade.flight && grenadeConfig) {
+    if (input.throwGrenade && grenade && grenade.inventory > 0 && !grenade.flight && grenadeConfig) {
       const target = grenadeTarget(this.state, grenadeConfig);
       if (target) {
-        grenade.inventory = 0;
+        grenade.inventory -= 1;
         grenade.flight = { startX: this.state.player.x, startZ: this.state.player.z,
           targetX: target.x, targetZ: target.z, startedAtSeconds: this.state.elapsedSeconds,
           flightSeconds: grenadeConfig.flightSeconds, damageEnemyHp: grenadeConfig.damageEnemyHp,
@@ -1165,7 +1167,7 @@ export class Simulation {
         if (!hit) break;
         if (hit.kind === 'grenadeSupply') {
           grenade!.supply = null;
-          grenade!.inventory = 1;
+          grenade!.inventory = grenadeConfig!.capacity;
           grenade!.acquiredAtSeconds = nextElapsedSeconds;
           this.grenadeEvents.push({ kind: 'grenadeAcquired' });
         } else if (hit.kind === 'gate') {

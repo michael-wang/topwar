@@ -4,7 +4,7 @@ import gameData from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createEnemyVfxLab } from '../src/app/EnemyVfxLab';
+import { Simulation } from '../src/simulation/Simulation';
 import { projectRenderState } from '../src/app/projectRenderState';
 import { coastalCameraFov } from '../src/rendering/renderSize';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
@@ -22,8 +22,9 @@ function crown(mesh:THREE.Mesh,camera:THREE.Camera):number {
   for(let i=0;i<p.count;i++)y=Math.min(y,(1-v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).project(camera).y)*422);
   return y;
 }
-it.each(['heavy','giant'] as const)('makes %s collapse clear in the real 390×844 Lab camera/loadout fixture',role=>{
-  const state=createEnemyVfxLab(options,c.weapon.rifle.fireRate,role).getState();
+it.each(['heavy','giant'] as const)('makes %s collapse clear in the 390×844 defense camera with ordinary enemy state',role=>{
+  const state=new Simulation(options).getState();
+  state.enemies=[{id:1,tier:1,archetype:role,lane:2,x:0,z:role==='giant'?14:10,hp:role==='giant'?c.catharsis!.giant.hp:c.catharsis!.heavyHp}];
   const f=projectRenderState(state,{catharsis:state.catharsis,trackHalfWidth:c.track.halfWidth,
     defenseLineOffset:c.track.defenseLineOffset,formationSpacing:c.player.formationSpacing,bossVisualScale:c.bosses.basic.visualScale});
   const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()},scene=new THREE.Scene(),r=new EnemyRenderer(scene,families);

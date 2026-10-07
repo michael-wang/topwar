@@ -6,11 +6,8 @@ import { pressureWaveSettings } from '../simulation/enemies/latePressure';
 import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectivePrimaryFireRate, requiredXp } from '../simulation/progression';
 
-export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade' | 'curve' | 'evolve' | 'machineGun';
-export const ENEMY_VFX_LAB = {
-  grunt: { level: 1, soldiers: 1, depths: [8, 10, 12, 14, 16, 18, 20, 22, 24, 26] },
-  heavy: { level: 3, soldiers: 1, depths: [10, 15, 20] },
-  giant: { level: 5, soldiers: 3, depths: [14] },
+export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun';
+export const DEV_REVIEW_FIXTURES = {
   grenade: { level: 3, soldiers: 1 },
   curve: { level: 4, soldiers: 2 },
   evolve: { level: 5, soldiers: 3 },
@@ -19,14 +16,14 @@ export const ENEMY_VFX_LAB = {
 
 // App-owned QA adapter, never a simulation mode or serialized debug flag.
 // Ordinary HP, damage, movement, lane targeting and progression apply thereafter.
-export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: number,
-  role: EnemyVfxLabRole): Simulation {
-  const fixture = ENEMY_VFX_LAB[role];
+export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
+  role: DevReviewFixture): Simulation {
+  const fixture = DEV_REVIEW_FIXTURES[role];
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
     startSquad: 1, startRocketCount: 0 });
   const state = simulation.getState(), catharsis = state.catharsis;
   if (!catharsis?.balance.defenseMode || !state.enemyStream || !options.level.enemyStream)
-    throw new Error('Enemy VFX Lab requires the defense enemy stream');
+    throw new Error('DEV Review requires the defense enemy stream');
   const balance = catharsis.balance;
   const lane = Math.floor(balance.laneCount / 2);
   const lanes = attackLanePositions(balance.laneCount, catharsis.trackHalfWidth, balance.edgeInset);
@@ -70,14 +67,10 @@ export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: numb
       state.enemies.push({ id: gruntCount + 1 + index, tier: 1, archetype: 'heavy', lane: enemyLane,
         x: lanes[enemyLane], z: role === 'machineGun' ? 10.8 + index * 2.8 : 13.3 + index * 1.7, hp: balance.heavyHp });
     if (role === 'grenade') state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-      inventory: 1, supply: null, flight: null };
-  } else {
-    const combatFixture = ENEMY_VFX_LAB[role];
-    state.enemies = combatFixture.depths.map((z, index) => ({ id: index + 1, tier: 1,
-      archetype: role, lane, x, z, hp: role === 'giant' ? balance.giant.hp : role === 'heavy' ? balance.heavyHp : 1 }));
+      inventory: balance.grenade.capacity, supply: null, flight: null };
   }
   state.projectiles = []; state.streamRewards = []; state.gates = []; state.pickups = [];
-  const isolatedGiant = role === 'giant' || role === 'evolve' || role === 'machineGun';
+  const isolatedGiant = role === 'evolve' || role === 'machineGun';
   state.giantEncounter = { scheduledAtSeconds: isolatedGiant ? 0 : null, spawned: isolatedGiant };
   state.machineGunReleaseAtSeconds = role === 'machineGun' ? 0 : null;
   // The defense camera is fixed but authoritative player Z advances. Place the

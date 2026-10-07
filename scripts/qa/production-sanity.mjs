@@ -8,8 +8,8 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
-if (['Enemy VFX Lab', 'enemy-vfx-lab', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6'].some(marker => shippingJs.includes(marker)))
-  throw Error('Development VFX Lab controls/factory survived production tree-shaking');
+if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6'].some(marker => shippingJs.includes(marker)))
+  throw Error('Development review controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={};
@@ -34,7 +34,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  },level);
  const actual=await page.locator('.xp-level-number').textContent();
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
- const labControls=await page.locator('.enemy-vfx-lab').count();
+ const labControls=await page.locator('.dev-review-controls').count();
  const devMenu=await page.locator('.tuning-panel').count();
  const hiddenMovement=await page.locator('.touch-steering-band,.touch-steering-zone').count();
  if(hiddenMovement!==0||await page.locator('.movement-button:visible').count()!==2)throw Error('Production movement controls are not exclusively visible buttons');
@@ -42,7 +42,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const evolveLabControls=await page.locator('[data-role="evolve"]').count();
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
  await page.keyboard.press('Escape'); await page.keyboard.press('4'); await page.keyboard.press('5'); await page.keyboard.press('6');
- if(await page.locator('.tuning-panel,.enemy-vfx-lab').count())throw Error('Production shortcuts exposed DEV controls');
+ if(await page.locator('.tuning-panel,.dev-review-controls').count())throw Error('Production shortcuts exposed DEV controls');
  results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==0||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
 }

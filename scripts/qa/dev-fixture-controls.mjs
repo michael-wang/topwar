@@ -2,5 +2,5 @@
 export async function selectDevFixture(page, role) {
   if (!await page.locator('.tuning-panel').evaluate(panel => panel.open))
     await page.locator('.tuning-panel > summary').click();
-  await page.locator(`.enemy-vfx-lab [data-role="${role}"]`).click();
+  await page.locator(`.dev-review-controls [data-role="${role}"]`).click();
 }

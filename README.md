@@ -12,16 +12,7 @@ npm run typecheck
 npm run build
 ```
 
-Development `/` starts normal Level 1. The right-side Enemy VFX Lab buttons
-restart deterministic center-lane combat fixtures: Grunt (10 enemies at Z8–26,
-Lv1 / one Rifle), Heavy (3 at Z10/15/20, Lv3 / one Rifle), Giant (one at Z14,
-Lv5 / three Rifles). HP, damage and fire rates use current tuning. Clicking
-again or Retry restarts the selected fixture and clears all previous VFX/stains.
-Each lab restart advances a development-only visual salt to cycle lethal splash
-compositions without changing the fixture simulation seed, HP or results;
-natural wave refill is suppressed by the fixture's validated stream cursor.
-Reload `/` to return to normal play. `?review=threats` remains the separate art
-review opening. The lab controls and fixture code are excluded from production.
+Development `/` starts normal Level 1. The top-left DEV menu provides four deterministic review fixtures: GRENADE (45 Grunts / three Heavies, Lv3, three held charges), CURVE (late Lv4 into the natural Giant/MG curve), EVOLVE (Lv5 / 210 XP / three Rifles into real Lv6), and MG (60 Grunts / five Heavies, Lv6). Physical 4/5/6 restart CURVE/EVOLVE/MG. Ordinary HP, XP and combat apply; isolated fixtures suppress natural wave refill. Repeated actions or Retry reset the selected fixture, clearing presentation feedback. A development-only visual salt varies splash compositions without affecting simulation. Reload to return to normal play. Production excludes all DEV controls, fixtures and shortcuts. See `scripts/qa/README.md` for review commands and `PRE_RELEASE_REPORT.md` for current evidence.
 
 ## Publishing
 

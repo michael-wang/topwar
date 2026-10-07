@@ -10,7 +10,7 @@ page.on('pageerror',e=>result.errors.push(e.message));page.on('console',m=>{if(m
 try{
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('app.start();','window.__testApp=app;app.start();')});});
  await page.goto((process.env.TOPWAR_QA_URL??'http://127.0.0.1:5175')+'/?perf=1');await page.waitForSelector('.game-start-overlay');
- await page.keyboard.press('4');assert(await page.evaluate(()=>window.__testApp.vfxLabRole===null),'Pre-start 4 ignored');
+ await page.keyboard.press('4');assert(await page.evaluate(()=>window.__testApp.devReviewFixture===null),'Pre-start 4 ignored');
  await page.getByRole('button',{name:'Start game with audio'}).click();await page.waitForFunction(()=>window.__testApp.startup==='started');
  await page.addStyleTag({content:'.perf-hud{display:none}'});
  await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);window.__clock=0;
@@ -20,7 +20,7 @@ try{
       if(threat&&s.tick%12===0)while(a.simulation.getFrameState().player.selectedLane!==threat.lane)
         a.simulation.stepLane(threat.lane>a.simulation.getFrameState().player.selectedLane?1:-1);}
     window.__clock+=Math.min(100,ms-t);a.renderFrame(window.__clock);cancelAnimationFrame(a.frameId);}};});
- const sample=()=>page.evaluate(()=>{const a=window.__testApp;return{state:a.simulation.getState(),role:a.vfxLabRole,stats:a.renderer.getDebugStats(),audio:a.audio.getDebugStats(),weapon:document.querySelector('.xp-loadout')?.dataset.weaponFamily};});
+ const sample=()=>page.evaluate(()=>{const a=window.__testApp;return{state:a.simulation.getState(),role:a.devReviewFixture,stats:a.renderer.getDebugStats(),audio:a.audio.getDebugStats(),weapon:document.querySelector('.xp-loadout')?.dataset.weaponFamily};});
  const advance=(ms,pilot=false)=>page.evaluate(({ms,pilot})=>window.__advance(ms,pilot),{ms,pilot});
  let initial;
  for(const width of [390,350]){
@@ -53,7 +53,7 @@ try{
  }
  // Snapshot both pending and admitted release states, then compare continuation byte-for-byte.
  result.snapshots=await page.evaluate(async()=>{const a=window.__testApp,{pilotTuning}=await import('/scripts/qa/p15Pilot.ts');const records=[];
-  for(const role of ['curve','evolve']){a.vfxLabRole=role;a.retry();const before=a.simulation.getState();
+  for(const role of ['curve','evolve']){a.devReviewFixture=role;a.retry();const before=a.simulation.getState();
    const run=()=>{for(let i=0;i<480;i++)a.simulation.step(1/60,{targetX:0},pilotTuning);return a.simulation.getState();};
    const first=run();a.simulation.restoreState(JSON.parse(JSON.stringify(before)));const second=run();
    if(JSON.stringify(first)!==JSON.stringify(second))throw Error('Snapshot continuation '+role);
