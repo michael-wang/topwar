@@ -1,8 +1,12 @@
 # Browser sanity
 
+## Start presentation / control glyphs
+
+`node scripts/qa/start-presentation-sanity.mjs` covers ten real/synthetic Start cases: mouse desktop and coarse, Enter/Space on coarse, touch at 390/350, pen, unknown/empty pointer and assistive click on fine-pointer. It asserts conservative default and mode before audio resolves, unboxed overlays, enlarged arrows, later A/D/Q/touch functionality, Pause and both normal/fixture Retry persistence. Captures/JSON default to `artifacts/start-glyph`. `START_GLYPH_REPORT.md` records current results.
+
 ## Final pre-release checks
 
-`node scripts/qa/release-hud-sanity.mjs` checks 390×844 / 350×844 coarse-pointer and 1100×844 fine-pointer layouts: A/D/Q capability keycaps, no defense hint, settled acquisition pulse, charges 3→2→1→0 via the shared Q/button path, concurrent-flight blocking, snapshot with two reserves plus flight, flight Pause, invalid target preservation, normal Retry, only four review menu actions and physical 4/5/6. Captures/JSON default to `artifacts/pre-release/browser`.
+`node scripts/qa/release-hud-sanity.mjs` checks 390×844 / 350×844 coarse-pointer and 1100×844 fine-pointer layouts: Start-derived A/D/Q overlays (actual mouse versus touch Start), no defense hint, settled acquisition pulse, charges 3→2→1→0 via the shared Q/button path, concurrent-flight blocking, snapshot with two reserves plus flight, flight Pause, invalid target preservation, normal Retry, only four review menu actions and physical 4/5/6. Captures/JSON default to `artifacts/pre-release/browser`.
 
 `node scripts/qa/grenade-capacity-metrics.mjs` compares capacity 1 versus 3 with all other current values identical: seeds 1–50, normal and 1.8-second hesitation pilots, one adjacent lane step per 200ms and the existing crowd/emergency throw policy. It records every valid launch/detonation, per-throw kills/ordinary XP and pressure, Lv3/acquisition/Lv4 clocks, overflow, failures and unfinished flights through two seconds after Lv6. Duration averages exclude runs that fail before Lv4; those failures remain in the report. Outputs default to `artifacts/pre-release/capacity-metrics.json`. These are diagnostic policies, not human-play certification. See `PRE_RELEASE_REPORT.md` for results and mixed evidence.
 

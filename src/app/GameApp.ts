@@ -98,6 +98,7 @@ export class GameApp {
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
     private readonly reviewThreats = false) {
+    this.viewport.setAttribute?.('data-input-presentation', 'touch');
     this.perf = perfEnabled ? new PerfDiagnostics() : null;
     this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
     this.config = configStore.getConfig();
@@ -330,10 +331,12 @@ export class GameApp {
     this.requestGrenade();
   };
 
-  private async beginGameplay(): Promise<void> {
+  private async beginGameplay(presentation: 'desktop' | 'touch' = 'touch'): Promise<void> {
     if (!this.running || this.startup !== 'awaiting-start') return;
     const generation = this.startGeneration;
     this.startup = 'activating';
+    // Initial Start owns session hints only; later input and Retry never change them.
+    this.viewport.setAttribute?.('data-input-presentation', presentation);
     this.startOverlay.setActivating();
     try { await this.audio.activate(); } catch { /* Optional audio cannot block play. */ }
     if (!this.running || this.disposed || generation !== this.startGeneration) return;
@@ -354,7 +357,7 @@ export class GameApp {
     event.preventDefault();
     event.stopImmediatePropagation();
     this.consumeStartClick = true;
-    void this.beginGameplay();
+    void this.beginGameplay(event.pointerType === 'mouse' ? 'desktop' : 'touch');
   };
 
   private readonly onStartClick = (event: MouseEvent): void => {
@@ -374,7 +377,7 @@ export class GameApp {
     event.stopImmediatePropagation();
     if (event.key !== 'Enter' && ![' ', 'Space', 'Spacebar'].includes(event.key)) return;
     event.preventDefault();
-    if (!event.repeat) void this.beginGameplay();
+    if (!event.repeat) void this.beginGameplay('desktop');
   };
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {

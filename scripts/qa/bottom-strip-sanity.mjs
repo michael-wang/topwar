@@ -26,7 +26,7 @@ try {
   await page.waitForSelector('.game-start-overlay');
   assert(await page.locator('.movement-button:disabled').count() === 2, 'Pre-start movement disabled');
   assert(await page.locator('.touch-steering-band,.touch-steering-zone').count() === 0, 'No hidden legacy movement DOM');
-  await page.getByRole('button', { name: 'Start game with audio' }).click();
+  await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => {
     const a = window.__testApp; cancelAnimationFrame(a.frameId); window.__clock = 0;

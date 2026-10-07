@@ -1186,6 +1186,34 @@ describe('Q primary active item', () => {
 });
 
 describe('intentional gameplay startup', () => {
+  it.each([
+    ['mouse','desktop'],['Enter','desktop'],[' ','desktop'],
+    ['touch','touch'],['pen','touch'],['','touch'],['unknown','touch'],['click','touch'],
+  ] as const)('selects %s Start hints before audio resolves and preserves %s through Retry/mixed input',async (gesture,expected)=>{
+    const raf=createRaf(),attributes=new Map<string,string>();
+    let resolve!: (value:'running')=>void;
+    vi.mocked(GameAudio.prototype.activate).mockImplementation(()=>new Promise(r=>{resolve=r;}));
+    const viewport=Object.assign(new EventTarget(),{
+      setAttribute:(key:string,value:string)=>attributes.set(key,value),classList:{remove:vi.fn(),toggle:vi.fn()},
+    });
+    const app=new GameApp(viewport as unknown as HTMLElement,createConfigStore().store,level,{} as CharacterAssets);
+    expect(attributes.get('data-input-presentation')).toBe('touch');app.start();
+    const pointer=(pointerType:string)=>{
+      const e=new Event('pointerdown',{cancelable:true});Object.defineProperty(e,'pointerType',{value:pointerType});viewport.dispatchEvent(e);
+    };
+    if(gesture==='Enter'||gesture===' ')raf.key(gesture);
+    else if(gesture==='click')viewport.dispatchEvent(new Event('click',{cancelable:true}));
+    else pointer(gesture);
+    expect(attributes.get('data-input-presentation')).toBe(expected);
+    // A competing gesture during optional audio activation cannot replace the first.
+    pointer(expected==='desktop'?'touch':'mouse');raf.key('Enter');
+    expect(attributes.get('data-input-presentation')).toBe(expected);
+    expect(GameAudio.prototype.activate).toHaveBeenCalledOnce();
+    resolve('running');await Promise.resolve();
+    raf.key('p');raf.key('p');mock.overlayConstructedWith.mock.lastCall![0]();
+    pointer(expected==='desktop'?'touch':'mouse');raf.key('a');
+    expect(attributes.get('data-input-presentation')).toBe(expected);app.dispose();
+  });
   it('opens DEV fixture shortcuts only after startup and closes them when stopped', async () => {
     createRaf();
     const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });

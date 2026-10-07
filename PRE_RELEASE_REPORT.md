@@ -1,5 +1,7 @@
 # Final pre-release HUD / input / cleanup
 
+Historical HUD hint evidence: the following pass used capability-driven keycaps. `START_GLYPH_REPORT.md` supersedes only that hint selection/artwork with Start-derived presentation and unboxed overlays; three-Grenade measurements remain applicable.
+
 Starting HEAD, fetched origin/main and GitHub main matched `bc3b8f309ff7dc0998ef2967adf9cf42488be3f0`; the tracked and untracked worktree was clean. No deployment was performed.
 
 ## Implemented behavior

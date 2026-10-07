@@ -22,7 +22,7 @@ try {
   assert(await page.locator('.game-start-overlay').isVisible(), 'Q/DEV shortcuts preserve Tap-to-Start');
   assert(await page.locator('.dev-review-controls').isHidden(), 'No permanent DEV fixture stack');
   await page.screenshot({ path: `${out}/start-390.png` });
-  await page.getByRole('button', { name: 'Start game with audio' }).click();
+  await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => {
     const a = window.__testApp; cancelAnimationFrame(a.frameId); window.__clock = 0;

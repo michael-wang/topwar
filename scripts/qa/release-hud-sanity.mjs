@@ -13,7 +13,8 @@ try {
       const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('app.start();','window.__testApp=app;app.start();')});
     });
     await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173');
-    await page.getByRole('button',{name:'Start game with audio'}).click();
+    if(touch)await page.getByRole('button',{name:'Start game with audio'}).tap();
+    else await page.getByRole('button',{name:'Start game with audio'}).click();
     await page.waitForFunction(()=>window.__testApp.startup==='started');
     await page.evaluate(()=>{
       const a=window.__testApp;cancelAnimationFrame(a.frameId);window.__clock=0;window.__blasts=[];
@@ -29,8 +30,8 @@ try {
     });
     assert(await page.locator('.control-hint').count()===0,'No defense movement hint');
     const cues=await page.locator('.combat-keycue').evaluateAll(es=>es.map(e=>({text:e.textContent,display:getComputedStyle(e).display})));
-    assert(cues.length===3&&cues.every(c=>touch?c.display==='none':c.display!=='none'),'Capability-based A/D/Q cues');
-    assert(new Set(cues.map(c=>c.text)).size===3,'All three keycaps');
+    assert(cues.length===3&&cues.every(c=>touch?c.display==='none':c.display!=='none'),'Start-derived A/D/Q overlays');
+    assert(new Set(cues.map(c=>c.text)).size===3,'All three keyboard overlays');
     await page.waitForTimeout(600);
     assert(await page.locator('.grenade-button').evaluate(e=>e.getAnimations().every(a=>a.playState==='finished')),'Ready settles after one pulse');
     await capture('charge-3');

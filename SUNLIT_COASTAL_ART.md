@@ -229,7 +229,7 @@ The entire disclosure and fixture shortcuts are excluded from production.
 
 Top-right Pause has a visible dark blue surface, pale icon, clear border and 44-pixel
 minimum target. Lower-left Grenade is a compact 64×64-pixel warm beveled button directly
-above the left movement control, with a grenade icon, 0–3 charge badge and fine-pointer/hover-only Q keycap. Ready uses
+above the left movement control, with a grenade icon, 0–3 charge badge and initial-desktop-Start-only subdued Q overlay. Ready uses
 warmth/glow; owned but unusable retains its charge in muted colors; empty is further subdued
 with count zero. Ready contrast remains static after acquisition. It appears on acquisition with one short pop and no visible status/name
 labels. Reduced motion disables the animations. Its input/Q request and gameplay guards are unchanged.
@@ -263,8 +263,12 @@ flash, eight aqua/foam motes per member and 1400 ms cyan-white tracer/muzzle aft
 Its scale pulse, timing and sound are unchanged by HUD styling. Defense still omits
 the old `DEFEND N / 5` HUD and keeps the top-center sky empty. Legacy interface styling remains intact.
 
-The defense movement hint is removed. Only fine-pointer devices with hover show A/D
-keycaps on the arrow buttons and Q on Grenade; coarse-pointer defaults omit them.
+The defense movement hint is removed. Initial Start alone selects hints: mouse pointer or
+Enter/Space means desktop; touch, pen, unknown/empty pointer and ambiguous click mean touch.
+The default is touch. Retry, Pause and later mixed input keep that session choice.
+Large filled arrows dominate the movement buttons; subdued unboxed A/D glyphs overlay
+their shafts only in desktop mode. Q uses the same passive overlay language within
+the Grenade silhouette; the charge badge remains distinct. Touch hides all three glyphs.
 Display, compact HUD and utility font stacks are centralized local/system CSS tokens,
 without network fonts. LV gets the strongest display treatment; DEV stays restrained.
 The **world is full bleed** on portrait/coarse-pointer devices: 100vw × 100dvh.

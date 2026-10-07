@@ -22,7 +22,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
  await page.waitForSelector('.game-start-overlay');
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
- await page.getByRole('button',{name:'Start game with audio'}).click();
+ await page.getByRole('button',{name:'Start game with audio'}).tap();
  // Review's frozen pre-start badge is already Lv5. Wait for a stable post-start
  // HUD, not that transient match before the first level-up presentation frame.
  await page.waitForFunction(level=>{
@@ -33,6 +33,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
    window.__qaHudStableAt??=performance.now();return performance.now()-window.__qaHudStableAt>=500;
  },level);
  const actual=await page.locator('.xp-level-number').textContent();
+ if(await page.locator('#game-viewport').getAttribute('data-input-presentation')!=='touch'||await page.locator('.combat-keycue:visible').count())throw Error('Production touch Start exposed keyboard hints');
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  const labControls=await page.locator('.dev-review-controls').count();
  const devMenu=await page.locator('.tuning-panel').count();

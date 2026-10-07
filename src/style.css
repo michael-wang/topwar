@@ -365,13 +365,13 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 }
 .combat-progression { min-width: 0; }
 .movement-button {
-  width: 64px; height: 60px; display: grid; place-items: center; box-sizing: border-box;
+  width: 64px; height: 60px; padding: 0; display: grid; place-items: center; box-sizing: border-box;
   border: 1px solid #8b9db0; border-bottom: 4px solid #101b2b; border-radius: 8px;
   background: linear-gradient(#435c75, #273d55); color: #f8f5e9; box-shadow: inset 0 1px 0 #ffffff38, 0 2px 2px #09142499;
   cursor: pointer; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent;
 }
 .movement-button, .movement-button * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
-.movement-button svg { width: 34px; height: 34px; pointer-events: none; filter: drop-shadow(0 2px 0 #122039); }
+.movement-button svg { width: 50px; height: 50px; max-width: calc(100% - 8px); pointer-events: none; filter: drop-shadow(0 2px 0 #122039); }
 .movement-button.is-held { transform: translateY(2px); border-bottom-width: 2px; border-color: #ffb45b;
   background: linear-gradient(#56799a, #345471); color: #ffdb9c; box-shadow: inset 0 2px 5px #0c192e88, 0 0 8px #ffae4938; }
 .movement-button:disabled { cursor: default; color: #91a0b0; border-color: #435469; background: #263649; box-shadow: none; }
@@ -542,12 +542,13 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   .grenade-acquired, .xp-fill::before, .xp-imminent .xp-edge, .xp-track::after, .level-label-pop .xp-level, .xp-pip.is-upgraded, .battle-weapon-icon.weapon-evolution { animation: none; }
 }
 
-/* Touch-safe default. Primary fine pointer + real hover reveals compact keyboard cues. */
-.combat-keycue { display: none; position: absolute; bottom: 4px; right: 5px; min-width: 13px; height: 15px;
-  box-sizing: border-box; padding: 1px 3px; border: 1px solid #a8b7c8; border-bottom-width: 2px; border-radius: 3px;
-  background: #172331; color: #fff3dc; font: 800 10px/11px var(--font-combat-hud); pointer-events: none; }
-.grenade-button .combat-keycue { right: auto; left: 4px; border-color: #e8ab64; }
-@media (hover: hover) and (pointer: fine) { .combat-keycue { display: block; } }
+/* Initial Start gesture freezes hint presentation; unknown activation stays touch-safe. */
+.combat-keycue { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: #24394b; opacity: .55; font: 900 13px/1 var(--font-combat-hud); pointer-events: none; }
+[data-input-presentation="desktop"] .combat-keycue { display: block; }
+.movement-left .combat-keycue { left: 60%; }
+.movement-right .combat-keycue { left: 40%; }
+.grenade-button .combat-keycue { top: 62%; color: #382b2b; font-size: 12px; }
 .beachhead-defense .game-over-overlay { font-family: var(--font-combat-hud); }
 .beachhead-defense .game-over-overlay h1 { font-family: var(--font-combat-display); font-style: oblique 8deg;
   letter-spacing: .04em; text-shadow: 0 3px 0 #172331, 0 0 12px #ff7a2755; }
