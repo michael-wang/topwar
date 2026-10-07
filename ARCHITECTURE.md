@@ -190,6 +190,12 @@ Base game data lives under `public/game-data/` and is loaded at runtime with `fe
 
 This deliberately avoids importing balance JSON into the JS bundle.
 
+Production runtime public URLs go through `publicAssetUrl()`, which preserves the
+Pages base path and adds one `v` query parameter from the injected build SHA.
+This keeps config, level data and GLB cache entries aligned with the JS build.
+Production config/level JSON fetches additionally use `cache: 'no-store'`;
+development retains unversioned URLs and its normal fetch behavior.
+
 Examples:
 
 ```json

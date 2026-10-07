@@ -13,13 +13,35 @@ if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={};
+const authoredConfig=JSON.parse(readFileSync('public/game-data/game.json','utf8'));
+const authoredLevel=JSON.parse(readFileSync('public/game-data/levels/level-001.json','utf8'));
 try {
 for(const width of [390,350]){
 for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const errors=[];
+ const runtimeRequests=[];let configResponse,levelResponse;
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ page.on('requestfailed',r=>errors.push(`Request failed: ${r.url()}`));
+ page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/topwar/game-data/')||u.pathname.startsWith('/topwar/models/'))runtimeRequests.push(r.url());});
+ page.on('response',r=>{const path=new URL(r.url()).pathname;if(r.status()>=400)errors.push(`HTTP ${r.status()}: ${r.url()}`);if(path==='/topwar/game-data/game.json')configResponse=r;if(path==='/topwar/game-data/levels/level-001.json')levelResponse=r;});
+ await page.addInitScript(()=>{
+   window.__qaJsonFetches=[];window.__qaUnhandled=[];
+   window.addEventListener('unhandledrejection',e=>window.__qaUnhandled.push(String(e.reason)));
+   const nativeFetch=window.fetch.bind(window);
+   window.fetch=(input,options)=>{const url=input instanceof Request?input.url:String(input);if(url.includes('/game-data/'))window.__qaJsonFetches.push({url,cache:options?.cache});return nativeFetch(input,options);};
+ });
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
  await page.waitForSelector('.game-start-overlay');
+ const sha=(await page.locator('.build-label').textContent()).split(' · ').at(-1);
+ if(!/^[0-9a-f]{7,40}$/.test(sha))throw Error('Missing build SHA');
+ const config=await configResponse?.json(),levelData=await levelResponse?.json();
+ if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
+ if(!config.catharsis.defenseMode||config.catharsis.grenade.capacity!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220]')throw Error('Stale defense/progression/Grenade config');
+ if(!await page.locator('#game-viewport.beachhead-defense').count()||await page.getByText(/ENEMY LV/).isVisible())throw Error('Production loaded legacy bridge/HUD');
+ for(const url of runtimeRequests){const u=new URL(url);if(u.searchParams.getAll('v').length!==1||u.searchParams.get('v')!==sha)throw Error(`Unversioned or mismatched runtime asset: ${url}`);}
+ if(runtimeRequests.filter(url=>new URL(url).pathname.endsWith('.glb')).length!==13)throw Error('Missing versioned model requests');
+ const jsonFetches=await page.evaluate(()=>window.__qaJsonFetches);
+ for(const path of ['game-data/game.json','game-data/levels/level-001.json'])if(!jsonFetches.some(r=>r.url===`/topwar/${path}?v=${sha}`&&r.cache==='no-store'))throw Error(`Missing versioned no-store fetch: ${path}`);
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  await page.getByRole('button',{name:'Start game with audio'}).tap();
  // Review's frozen pre-start badge is already Lv5. Wait for a stable post-start
@@ -43,7 +65,8 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
  await page.keyboard.press('Escape'); await page.keyboard.press('4'); await page.keyboard.press('5'); await page.keyboard.press('6');
  if(await page.locator('.tuning-panel,.dev-review-controls').count())throw Error('Production shortcuts exposed DEV controls');
- results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==0||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
+ errors.push(...await page.evaluate(()=>window.__qaUnhandled));
+ results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,sha,defenseMode:config.catharsis.defenseMode,grenadeCapacity:config.catharsis.grenade.capacity,xpRequirements:config.catharsis.progression.xpRequirements,runtimeRequests,jsonFetches,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==0||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
 }
 writeFileSync(`${out}/production-sanity.json`,JSON.stringify(results,null,2));

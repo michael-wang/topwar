@@ -1,12 +1,29 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import { loadLevelDefinition } from '../src/level/LevelLoader';
+import { publicAssetUrl } from '../src/core/publicAssetUrl';
 
 const url = '/game-data/levels/level-001.json';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('loadLevelDefinition', () => {
+  it('loads production level JSON through the versioned public URL without cache reuse', async () => {
+    vi.stubEnv('PROD', true); vi.stubEnv('BASE_URL', '/topwar/');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(authoredLevel)));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json'))).toEqual(authoredLevel);
+    expect(fetchMock).toHaveBeenCalledWith(`/topwar/game-data/levels/level-001.json?v=${__TOPWAR_SHA__}`, { cache: 'no-store' });
+  });
+
+  it('keeps development level loading valid without production cache options', async () => {
+    vi.stubEnv('PROD', false); vi.stubEnv('BASE_URL', '/');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(authoredLevel)));
+    vi.stubGlobal('fetch', fetchMock);
+    await loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json'));
+    expect(fetchMock).toHaveBeenCalledWith(url);
+  });
+
   it('loads runtime data through an injected fetcher and validates the result', async () => {
     const fetchJson = vi.fn(async () => structuredClone(authoredLevel));
     const loaded = await loadLevelDefinition(url, { fetchJson });

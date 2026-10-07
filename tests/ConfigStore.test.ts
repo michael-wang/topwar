@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import data from '../public/game-data/game.json';
 import { ConfigStore, type ConfigStorage } from '../src/config/ConfigStore';
 import { GameConfigSchema } from '../src/config/configSchema';
@@ -13,7 +13,29 @@ function memoryStorage(): ConfigStorage & { data: Map<string, string> } {
 const store = (storage?: ConfigStorage, source: unknown = data) => new ConfigStore({ storage,
   fetchJson: async () => structuredClone(source) });
 
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
 describe('runtime config with generic tiers', () => {
+  it('loads and reloads production config from the versioned Pages path without cache reuse', async () => {
+    vi.stubEnv('PROD', true); vi.stubEnv('BASE_URL', '/topwar/');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(data)));
+    vi.stubGlobal('fetch', fetchMock);
+    const config = new ConfigStore();
+    await config.load(); await config.reloadBase();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `/topwar/game-data/game.json?v=${__TOPWAR_SHA__}`, { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `/topwar/game-data/game.json?v=${__TOPWAR_SHA__}`, { cache: 'no-store' });
+    expect(config.getConfig()).toEqual(base);
+  });
+
+  it('keeps the default development config request unversioned', async () => {
+    vi.stubEnv('PROD', false); vi.stubEnv('BASE_URL', '/');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(data)));
+    vi.stubGlobal('fetch', fetchMock);
+    await new ConfigStore().load();
+    expect(fetchMock).toHaveBeenCalledWith('/game-data/game.json');
+  });
+
   it('loads authored power and rifle cadence from runtime JSON', async () => {
     const config = store();
     expect(() => config.getConfig()).toThrow(/load/);
