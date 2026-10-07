@@ -1,5 +1,6 @@
 import { ProgressionLevelObserver } from '../presentation/ProgressionLevelUp';
 import { BattleInfoHud } from '../ui/BattleInfoHud';
+import { CombatControlStrip } from '../ui/CombatControlStrip';
 import { XpHud } from '../ui/XpHud';
 import { FixedStepLoop } from '../core/FixedStepLoop';
 import type { ConfigStore } from '../config/ConfigStore';
@@ -61,9 +62,10 @@ export class GameApp {
   private readonly tuningPanel: TuningPanel | null;
   private readonly dragInput: PointerDragInput;
   private readonly keyboardInput: KeyboardSteeringInput;
-  private readonly touchInput: TouchSteeringInput;
+  private readonly touchInput: TouchSteeringInput | null;
   private readonly laneInput: LaneStepInput | null;
   private readonly progressionObserver = new ProgressionLevelObserver();
+  private readonly controlStrip: CombatControlStrip | null;
   private readonly xpHud: XpHud | null;
   private readonly battleInfo: BattleInfoHud | null;
   private readonly grenadeButton: GrenadeButton | null;
@@ -114,7 +116,8 @@ export class GameApp {
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
     this.controlHint = new ControlHint(viewport, !!this.config.catharsis?.defenseMode);
-    this.xpHud = this.config.catharsis?.defenseMode ? new XpHud(viewport) : null;
+    this.controlStrip = this.config.catharsis?.defenseMode ? new CombatControlStrip(viewport) : null;
+    this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;
     this.battleInfo = this.config.catharsis?.defenseMode ? new BattleInfoHud(viewport) : null;
     this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, this.requestGrenade) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
@@ -151,9 +154,13 @@ export class GameApp {
     this.keyboardInput = new KeyboardSteeringInput(window, {
       onAxisChange: (axis) => this.setSteeringAxis(axis),
     });
-    this.touchInput = new TouchSteeringInput(viewport, (axis) => this.setSteeringAxis(axis));
+    this.touchInput = this.config.catharsis?.defenseMode ? null
+      : new TouchSteeringInput(viewport, (axis) => this.setSteeringAxis(axis));
     this.laneInput = this.config.catharsis?.defenseMode ? new LaneStepInput(viewport, window,
-      (direction) => this.simulation.stepLane(direction)) : null;
+      (direction) => {
+        if (!this.running || this.startup !== 'started' || this.paused || this.simulation.getFrameState().squad.count === 0) return false;
+        return this.simulation.stepLane(direction);
+      }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
   }
 
@@ -193,7 +200,7 @@ export class GameApp {
     window.removeEventListener?.('keydown', this.onActiveItemKeyDown);
     this.keyboardInput.stop();
     this.dragInput.stop();
-    this.touchInput.stop();
+    this.touchInput?.stop();
     this.laneInput?.stop();
     this.paused = false;
     this.pauseOverlay.setVisible(false);
@@ -209,9 +216,10 @@ export class GameApp {
     this.unsubscribeConfig();
     this.dragInput.dispose();
     this.keyboardInput.dispose();
-    this.touchInput.dispose();
+    this.touchInput?.dispose();
     this.laneInput?.dispose();
     this.xpHud?.dispose();
+    this.controlStrip?.dispose();
     this.battleInfo?.dispose();
     this.grenadeButton?.dispose();
     this.gameOverOverlay.dispose();
@@ -232,7 +240,7 @@ export class GameApp {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
     this.keyboardInput.stop();
     this.dragInput.stop();
-    this.touchInput.stop();
+    this.touchInput?.stop();
     this.laneInput?.stop();
     this.simulation = this.createSimulation();
     this.perf?.reset();
@@ -245,14 +253,7 @@ export class GameApp {
     this.dragStartPlayerX = this.targetX;
     this.paused = false;
     this.viewport.classList?.remove('game-paused');
-    if (this.running && this.startup === 'started') {
-      if (this.laneInput) this.laneInput.start();
-      else {
-        this.dragInput.start();
-        this.keyboardInput.start();
-        this.touchInput.start();
-      }
-    }
+    this.startInputs();
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.presentationMs = 0;
@@ -303,8 +304,10 @@ export class GameApp {
   }
 
   private startInputs(): void {
-    if (this.laneInput) this.laneInput.start();
-    else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput.start(); }
+    if (!this.running || this.startup !== 'started' || this.paused) return;
+    if (this.laneInput) {
+      if (this.simulation.getFrameState().squad.count > 0) this.laneInput.start();
+    } else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput?.start(); }
   }
 
   private takeGrenadeRequest(): boolean {
@@ -406,12 +409,11 @@ export class GameApp {
       this.grenadeRequested = false;
       this.keyboardInput.stop();
       this.dragInput.stop();
-      this.touchInput.stop();
+      this.touchInput?.stop();
       this.laneInput?.stop();
       this.targetX = this.simulation.getState().player.x;
     } else {
-      if (this.laneInput) this.laneInput.start();
-      else { this.keyboardInput.start(); this.dragInput.start(); this.touchInput.start(); }
+      this.startInputs();
     }
     this.pauseOverlay.setVisible(this.paused);
     this.hudActions.setPaused(this.paused);
@@ -471,6 +473,7 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
+      if (state.squad.count === 0) this.laneInput?.stop();
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !this.paused && state.squad.count > 0 && !this.grenadeRequested && grenade?.inventory === 1

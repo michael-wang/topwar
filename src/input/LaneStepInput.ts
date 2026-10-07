@@ -1,17 +1,28 @@
 const HOLD_INITIAL_DELAY_MS = 180;
 const HOLD_REPEAT_INTERVAL_MS = 120;
+type Direction = -1 | 1;
+type Hold = { kind: 'key'; key: string; direction: Direction }
+  | { kind: 'pointer'; id: number; button: HTMLButtonElement; direction: Direction };
 
-// Keyboard hold uses our clock, never OS repeat frequency. Mobile stays one step per tap.
+// One hold clock for keyboard and visible defense buttons; no invisible viewport tap surface.
 export class LaneStepInput {
   private readonly heldKeys = new Set<string>();
-  private readonly pointers = new Map<number, { x: number; y: number }>();
   private listening = false;
-  private activeKey: string | null = null;
+  private hold: Hold | null = null;
   private repeatTimer: ReturnType<typeof setTimeout> | null = null;
+
   // onStep applies the move and reports whether another step in that direction is possible.
   constructor(private readonly viewport: HTMLElement, private readonly keys: Window,
-    private readonly onStep: (direction: -1 | 1) => boolean) {}
-
+    private readonly onStep: (direction: Direction) => boolean,
+    private readonly buttons: readonly [HTMLButtonElement, HTMLButtonElement]) {
+    for (const button of buttons) {
+      button.disabled = true;
+      for (const type of ['contextmenu', 'selectstart', 'dragstart']) button.addEventListener(type, this.nativeGesture);
+      for (const type of ['touchstart', 'touchmove']) button.addEventListener(type, this.touchDefault, { passive: false });
+      button.addEventListener('touchcancel', this.touchCancel, { passive: false });
+      button.addEventListener('click', this.click);
+    }
+  }
   start(): void {
     if (this.listening) return;
     this.listening = true;
@@ -19,45 +30,83 @@ export class LaneStepInput {
     this.keys.addEventListener('keyup', this.keyUp);
     this.keys.addEventListener('blur', this.clear);
     this.keys.addEventListener('focusin', this.focusChanged);
-    this.viewport.addEventListener('pointerdown', this.down);
-    this.viewport.addEventListener('pointerup', this.up);
-    this.viewport.addEventListener('pointercancel', this.cancel);
+    this.viewport.ownerDocument?.addEventListener('visibilitychange', this.visibilityChanged);
+    for (const button of this.buttons) {
+      button.disabled = false;
+      button.addEventListener('pointerdown', this.down);
+      button.addEventListener('pointerup', this.endPointer);
+      button.addEventListener('pointercancel', this.endPointer);
+      button.addEventListener('lostpointercapture', this.endPointer);
+    }
   }
   stop(): void {
+    if (!this.listening) return;
     this.listening = false;
     this.keys.removeEventListener('keydown', this.keyDown);
     this.keys.removeEventListener('keyup', this.keyUp);
     this.keys.removeEventListener('blur', this.clear);
     this.keys.removeEventListener('focusin', this.focusChanged);
-    this.viewport.removeEventListener('pointerdown', this.down);
-    this.viewport.removeEventListener('pointerup', this.up);
-    this.viewport.removeEventListener('pointercancel', this.cancel);
+    this.viewport.ownerDocument?.removeEventListener('visibilitychange', this.visibilityChanged);
     this.clear();
+    for (const button of this.buttons) {
+      button.disabled = true;
+      button.removeEventListener('pointerdown', this.down);
+      button.removeEventListener('pointerup', this.endPointer);
+      button.removeEventListener('pointercancel', this.endPointer);
+      button.removeEventListener('lostpointercapture', this.endPointer);
+    }
   }
-  dispose(): void { this.stop(); }
+  dispose(): void {
+    this.stop();
+    for (const button of this.buttons) {
+      for (const type of ['contextmenu', 'selectstart', 'dragstart']) button.removeEventListener(type, this.nativeGesture);
+      for (const type of ['touchstart', 'touchmove']) button.removeEventListener(type, this.touchDefault);
+      button.removeEventListener('touchcancel', this.touchCancel);
+      button.removeEventListener('click', this.click);
+    }
+  }
   private interactive(target: EventTarget | null): boolean {
     const element = target as HTMLElement | null;
-    return Boolean(element?.closest?.('button,input,select,textarea,summary,a,details,.hud-actions,.game-over-overlay,[contenteditable="true"]'));
+    return Boolean(element?.isContentEditable || element?.closest?.('button,input,select,textarea,summary,a,details,.hud-actions,.game-over-overlay,[contenteditable]:not([contenteditable="false"])'));
   }
-  private stopRepeat(): void {
+  private buttonFor(direction: Direction): HTMLButtonElement { return this.buttons[direction === -1 ? 0 : 1]; }
+  private stopTimer(): void {
     if (this.repeatTimer !== null) clearTimeout(this.repeatTimer);
     this.repeatTimer = null;
-    this.activeKey = null;
   }
-  private scheduleRepeat(direction: -1 | 1, delayMs: number): void {
+  private clearHold(): void {
+    this.stopTimer();
+    const previous = this.hold;
+    this.hold = null; // Clear ownership before release can synchronously report lost capture.
+    if (!previous) return;
+    const button = this.buttonFor(previous.direction);
+    button.classList.remove('is-held'); button.setAttribute('aria-pressed', 'false');
+    if (previous.kind === 'pointer') {
+      try {
+        if (button.hasPointerCapture(previous.id)) button.releasePointerCapture(previous.id);
+      } catch { /* The browser may already have canceled this pointer. */ }
+    }
+  }
+  private scheduleRepeat(direction: Direction, delayMs: number): void {
     this.repeatTimer = setTimeout(() => {
       this.repeatTimer = null;
-      if (!this.activeKey || !this.listening) return;
-      if (this.interactive(this.viewport.ownerDocument?.activeElement ?? null)) { this.stopRepeat(); return; }
-      // An edge/dead-squad response stops the timer instead of queuing useless steps.
+      if (!this.hold || !this.listening) return;
+      if (this.hold.kind === 'key' && this.interactive(this.viewport.ownerDocument?.activeElement ?? null)) { this.clearHold(); return; }
+      // At the lane edge, retain press feedback until release but schedule no useless steps.
       if (this.onStep(direction)) this.scheduleRepeat(direction, HOLD_REPEAT_INTERVAL_MS);
-      else this.stopRepeat();
     }, delayMs);
   }
+  private beginHold(hold: Hold): void {
+    this.hold = hold;
+    const button = this.buttonFor(hold.direction);
+    button.classList.add('is-held'); button.setAttribute('aria-pressed', 'true');
+    if (this.onStep(hold.direction)) this.scheduleRepeat(hold.direction, HOLD_INITIAL_DELAY_MS);
+  }
   private readonly focusChanged = (event: FocusEvent): void => {
-    if (this.interactive(event.target)) this.stopRepeat();
+    if (this.interactive(event.target)) this.clearHold();
   };
-  private readonly clear = (): void => { this.stopRepeat(); this.heldKeys.clear(); this.pointers.clear(); };
+  private readonly visibilityChanged = (): void => { if (this.viewport.ownerDocument.hidden) this.clear(); };
+  private readonly clear = (): void => { this.clearHold(); this.heldKeys.clear(); };
   private readonly keyDown = (event: KeyboardEvent): void => {
     const key = event.key.toLowerCase();
     const direction = ['a', 'arrowleft'].includes(key) ? -1 : ['d', 'arrowright'].includes(key) ? 1 : 0;
@@ -65,33 +114,39 @@ export class LaneStepInput {
     event.preventDefault();
     if (event.repeat || this.heldKeys.has(key)) return;
     this.heldKeys.add(key);
-    // Most recently pressed key owns the hold; releasing it does not revive an older hold.
-    this.stopRepeat();
-    this.activeKey = key;
-    if (this.onStep(direction)) this.scheduleRepeat(direction, HOLD_INITIAL_DELAY_MS);
-    else this.stopRepeat();
+    // Most recent key wins; releasing it never revives an older hold.
+    this.clearHold(); this.beginHold({ kind: 'key', key, direction });
   };
   private readonly keyUp = (event: KeyboardEvent): void => {
-    const key = event.key.toLowerCase();
-    this.heldKeys.delete(key);
-    if (key === this.activeKey) this.stopRepeat();
+    const key = event.key.toLowerCase(); this.heldKeys.delete(key);
+    if (this.hold?.kind === 'key' && key === this.hold.key) this.clearHold();
   };
   private readonly down = (event: PointerEvent): void => {
-    if (this.interactive(event.target) || (event.pointerType === 'mouse' && event.button !== 0)) return;
-    if (this.pointers.size) return; // A second finger cannot multiply lane steps.
-    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    this.viewport.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
+    event.preventDefault(); event.stopPropagation();
+    if ((event.pointerType === 'mouse' && event.button !== 0) || this.hold?.kind === 'pointer') return;
+    const button = event.currentTarget as HTMLButtonElement;
+    if (button.disabled) return;
+    this.clearHold();
+    try { button.setPointerCapture(event.pointerId); } catch { return; }
+    this.beginHold({ kind: 'pointer', id: event.pointerId, button, direction: button === this.buttons[0] ? -1 : 1 });
   };
-  private readonly up = (event: PointerEvent): void => {
-    const start = this.pointers.get(event.pointerId);
-    this.pointers.delete(event.pointerId);
-    if (!start || this.interactive(event.target)) return;
-    // Gesture slop is an input threshold, not gameplay balance. Swipes are ignored.
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 24) return;
-    const bounds = this.viewport.getBoundingClientRect();
-    this.onStep(start.x < bounds.left + bounds.width / 2 ? -1 : 1);
-    event.preventDefault();
+  private readonly endPointer = (event: PointerEvent): void => {
+    if (this.hold?.kind !== 'pointer' || event.pointerId !== this.hold.id) return;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation(); this.clearHold();
   };
-  private readonly cancel = (event: PointerEvent): void => { this.pointers.delete(event.pointerId); };
+  private readonly nativeGesture = (event: Event): void => { if (event.cancelable) event.preventDefault(); event.stopPropagation(); };
+  private readonly touchDefault = (event: Event): void => { if (event.cancelable) event.preventDefault(); };
+  private readonly touchCancel = (event: Event): void => {
+    this.nativeGesture(event);
+    if (this.hold?.kind === 'pointer' && event.currentTarget === this.hold.button) this.clearHold();
+  };
+  private readonly click = (event: MouseEvent): void => {
+    event.preventDefault(); event.stopPropagation();
+    // Pointerdown owns physical presses; compatibility clicks must not add a second step.
+    // Zero-detail activation retains keyboard/assistive-technology button semantics.
+    const button = event.currentTarget as HTMLButtonElement;
+    if (!this.listening || button.disabled || event.detail !== 0 || this.hold?.kind === 'pointer') return;
+    this.onStep(button === this.buttons[0] ? -1 : 1);
+  };
 }

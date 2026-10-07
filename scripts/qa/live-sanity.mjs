@@ -30,7 +30,7 @@ for (const mode of ['default', 'normal', 'review']) {
   await page.waitForTimeout(1400);
   await page.screenshot({ path: `${out}/live-${mode}.png` });
   await page.keyboard.press('ArrowRight'); await page.waitForTimeout(250); const right = await sample();
-  await page.touchscreen.tap(80, 600); await page.waitForTimeout(250); const left = await sample();
+  await page.getByRole('button', { name: 'Move left', exact: true }).tap(); await page.waitForTimeout(250); const left = await sample();
   await page.keyboard.press('p'); const paused = await page.evaluate(() => window.__testApp.paused);
   await page.keyboard.press('p'); const resumed = await page.evaluate(() => !window.__testApp.paused);
   // Present the actual Retry button; no production state/logic changes.

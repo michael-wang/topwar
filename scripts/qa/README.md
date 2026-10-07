@@ -2,6 +2,16 @@
 
 ## Combat HUD layout
 
+`node scripts/qa/bottom-strip-sanity.mjs` checks visible movement / central XP / movement
+layout at 390×844 and 350×844. Real Chrome CDP touch streams hold each arrow for 1.3 seconds,
+reach the lane edge with the existing 180/120 ms repeat timing, retain held feedback,
+release outside capture, and verify no duplicate tap, selection or scroll. It checks
+touch cancellation, lost capture, blur, Pause, death and Retry cleanup, pre-start guards,
+keyboard button activation, removal of invisible steering DOM/viewport taps, native
+context/selection/drag default prevention, exact XP fill, real Lv5→Lv6 emphasis and
+reduced-motion behavior. Captures/results default to `artifacts/bottom-strip`.
+Chrome emulation does not certify physical iOS/Safari long-press or thumb comfort.
+
 `node scripts/qa/combat-hud-sanity.mjs` checks the top-left DEV disclosure and all
 seven deterministic fixture resets, menu close/Escape/focus ownership, Pause,
 left-middle Grenade via Q/tap, right-middle read-only battle information, real

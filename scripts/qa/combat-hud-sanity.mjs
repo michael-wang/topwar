@@ -38,7 +38,7 @@ try {
     await page.screenshot({ path: `${out}/${name}.png` });
   };
   const boxes = () => page.evaluate(() => {
-    const selectors = ['.grenade-button', '.battle-info', '.xp-hud', '.build-label', '.pause-button', '.tuning-panel > summary'];
+    const selectors = ['.grenade-button', '.battle-info', '.combat-control-strip', '.xp-hud', '.movement-left', '.movement-right', '.build-label', '.pause-button', '.tuning-panel > summary'];
     return Object.fromEntries(selectors.map(selector => {
       const e = document.querySelector(selector), r = e.getBoundingClientRect(), s = getComputedStyle(e);
       return [selector, { x: r.x, y: r.y, width: r.width, height: r.height,

@@ -61,6 +61,7 @@ const mock = vi.hoisted(() => ({
   pauseDispose: vi.fn(),
   hintDispose: vi.fn(),
   xpConstructed: vi.fn(),
+  stripConstructed: vi.fn(),
   laneConstructed: vi.fn(),
   hudConstructedWith: vi.fn(),
   hudSetPaused: vi.fn(),
@@ -84,6 +85,7 @@ const mock = vi.hoisted(() => ({
   touchStop: vi.fn(),
   touchDispose: vi.fn(),
 }));
+const stripDom = vi.hoisted(() => ({ progressionHost: {} as HTMLElement }));
 
 vi.mock('../src/simulation/Simulation', () => ({
   Simulation: class {
@@ -147,6 +149,15 @@ vi.mock('../src/ui/LaneHud', () => ({ LaneHud: class {
 vi.mock('../src/ui/XpHud', () => ({ XpHud: class {
   constructor(viewport: HTMLElement) { mock.xpConstructed(viewport); }
   update = vi.fn(); reset = vi.fn(); presentLevelUp = vi.fn(); dispose = vi.fn();
+} }));
+vi.mock('../src/ui/CombatControlStrip', () => ({ CombatControlStrip: class {
+  progressionHost = stripDom.progressionHost;
+  buttons = [0,1].map(() => Object.assign(new EventTarget(), {
+    disabled:true, classList:{add:vi.fn(),remove:vi.fn()},setAttribute:vi.fn(),
+    setPointerCapture:vi.fn(),hasPointerCapture:()=>false,releasePointerCapture:vi.fn(),
+  }));
+  constructor(viewport:HTMLElement){mock.stripConstructed(viewport);}
+  dispose=vi.fn();
 } }));
 vi.mock('../src/ui/BattleInfoHud', () => ({ BattleInfoHud: class {
   update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
@@ -1024,11 +1035,40 @@ it('constructs defense XP presentation without constructing the obsolete lane-nu
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-  expect(mock.xpConstructed).toHaveBeenCalledWith(viewport);
+  expect(mock.stripConstructed).toHaveBeenCalledWith(viewport);
+  expect(mock.xpConstructed).toHaveBeenCalledWith(stripDom.progressionHost);
+  expect(mock.touchConstructedWith).not.toHaveBeenCalled();
   expect(mock.panelAnchor).toHaveBeenCalledWith(viewport);
   expect(mock.laneConstructed).not.toHaveBeenCalled();
   expect(viewport.classList.add).toHaveBeenCalledWith('beachhead-defense');
   app.dispose();
+});
+
+it('enables only visible defense controls after start and clears them on Pause, death, Retry and stop', async () => {
+  const raf=createRaf(),base=mock.getState();
+  const config={...gameData,catharsis:CatharsisConfigSchema.parse(gameData.catharsis)} as unknown as GameConfig;
+  const state={...base,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}};
+  mock.getState.mockReturnValue(state);
+  const viewport=Object.assign(new EventTarget(),{classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
+  const app=new GameApp(viewport as unknown as HTMLElement,{getConfig:()=>config,subscribe:()=>()=>{}} as unknown as ConfigStore,level,{} as CharacterAssets);
+  const buttons=(app as unknown as {controlStrip:{buttons:HTMLButtonElement[]}}).controlStrip.buttons;
+  try {
+    expect(buttons.every(b=>b.disabled)).toBe(true);
+    await startGame(app);expect(buttons.every(b=>!b.disabled)).toBe(true);
+    const press=new Event('pointerdown',{cancelable:true});
+    Object.defineProperties(press,{pointerType:{value:'touch'},pointerId:{value:1}});
+    mock.stepLane.mockReturnValue(true);buttons[0].dispatchEvent(press);
+    expect(mock.stepLane).toHaveBeenLastCalledWith(-1);
+    const pause=mock.hudConstructedWith.mock.lastCall![0] as ()=>void;
+    pause();expect(buttons.every(b=>b.disabled)).toBe(true);
+    pause();expect(buttons.every(b=>!b.disabled)).toBe(true);
+    state.squad={count:0,rocketCount:0,rifleCounts:[],rifleRemainder:0};raf.frame(0);
+    expect(buttons.every(b=>b.disabled)).toBe(true);
+    pause();pause();expect(buttons.every(b=>b.disabled)).toBe(true);
+    state.squad={...base.squad};
+    (mock.overlayConstructedWith.mock.lastCall![0] as ()=>void)();expect(buttons.every(b=>!b.disabled)).toBe(true);
+    app.stop();expect(buttons.every(b=>b.disabled)).toBe(true);
+  } finally {app.dispose();mock.getState.mockReturnValue(base);}
 });
 
 it('restarts selected lab fixtures and clears renderer feedback on every switch and Retry', async () => {

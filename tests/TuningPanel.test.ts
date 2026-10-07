@@ -15,6 +15,8 @@ class ElementStub extends EventTarget {
   value = '';
   open = false;
   removed = false;
+  classList={add:vi.fn(),remove:vi.fn()};
+  setAttribute() {}
   constructor(readonly tagName: string) { super(); }
   get ownerDocument(): Document { return document; }
   contains(element: ElementStub): boolean {
@@ -64,11 +66,12 @@ describe('temporary tuning panel', () => {
 
   afterEach(() => vi.unstubAllGlobals());
   it('keeps slider keys native while open and releases hidden focus immediately on Escape-style close', () => {
-    vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag), activeElement: null });
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { createElement: (tag: string) => new ElementStub(tag), activeElement: null }));
     const viewport = new ElementStub('div');
     const keys = new EventTarget();
     const step = vi.fn(() => false);
-    const input = new LaneStepInput(viewport as unknown as HTMLElement, keys as unknown as Window, step);
+    const input = new LaneStepInput(viewport as unknown as HTMLElement, keys as unknown as Window, step,
+      [new ElementStub('button'),new ElementStub('button')] as unknown as [HTMLButtonElement,HTMLButtonElement]);
     input.start();
     const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
     const slider = viewport.children[0].findAll('input').find((input) => input.dataset.key === 'fireRate')!;

@@ -437,14 +437,22 @@ Build this incrementally. Never add non-functional controls.
 
 ## 15. Input
 
-Mobile:
+Defense mobile:
 
-- touch/pen horizontal drag
+- visible bottom left/right buttons call the authoritative `Simulation.stepLane`
+- `LaneStepInput` owns a single hold clock: immediate step, 180 ms delay, then 120 ms repeats
+- pointer capture keeps the pressed direction; release/cancel/lost capture, blur, hidden document, Pause, death, Retry and disposal clear ownership
+- no viewport tap steering or legacy invisible bottom band is constructed in defense mode
+- non-passive touch guards and CSS suppress native long-press selection, callouts, menus and dragging on movement buttons
+
+Legacy mobile modes retain touch/pen horizontal drag and their existing steering band behind the mode boundary.
 
 Desktop development:
 
 - A/D or arrow keys
 - P or Space to pause/resume
+
+Defense keyboard lane holds share the button hold clock; physical pointer clicks do not add a second move after pointerdown. Keyboard/assistive button activation still performs one step. `CombatControlStrip` owns only DOM layout/buttons; `XpHud` renders inside its center and has no movement logic.
 
 Mouse movement does not steer. Range inputs retain keyboard focus so arrows adjust sliders without steering.
 

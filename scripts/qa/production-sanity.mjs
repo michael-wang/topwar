@@ -36,6 +36,8 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  const labControls=await page.locator('.enemy-vfx-lab').count();
  const devMenu=await page.locator('.tuning-panel').count();
+ const hiddenMovement=await page.locator('.touch-steering-band,.touch-steering-zone').count();
+ if(hiddenMovement!==0||await page.locator('.movement-button:visible').count()!==2)throw Error('Production movement controls are not exclusively visible buttons');
  const mgLabControls=await page.locator('[data-role="machineGun"]').count();
  const evolveLabControls=await page.locator('[data-role="evolve"]').count();
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();

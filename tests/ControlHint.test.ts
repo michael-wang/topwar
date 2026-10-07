@@ -8,7 +8,7 @@ it.each([false, true])('shows only device-appropriate defense movement (coarse=%
   vi.stubGlobal('window', { matchMedia: () => ({ matches: coarse }) });
   const viewport = { append: vi.fn() };
   const hint = new ControlHint(viewport as unknown as HTMLElement, true);
-  expect(element.textContent).toBe(coarse ? 'TAP LEFT / RIGHT' : 'A / D or ← / →   STEP LANE');
+  expect(element.textContent).toBe(coarse ? 'HOLD ARROWS TO MOVE' : 'A / D or ← / →   STEP LANE');
   expect(element.textContent).not.toMatch(/PAUSE|TUNE|ESC|SPACE/);
   expect(element.innerHTML).toBe('');
   hint.dispose(); expect(element.remove).toHaveBeenCalledOnce();

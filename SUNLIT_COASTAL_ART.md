@@ -198,22 +198,22 @@ selectors. Boss remains legacy and its migration is deferred. Muted bean shoes
 keep motion readable without white/black dominance. Side flower magenta #C51E67,
 impact orange/red and coral HP remain separate semantic accents.
 
-## Coastal UI — PLASTER + SEA + SUNLIGHT
+## Combat HUD and coastal presentation
 
-`ART.coastalUi` owns interface and progression-effect tokens; CSS consumes them
-through `--coast-*`. Plaster is structure, sea is progression/action, navy gives
-legibility, and sunlight/gold is a rare celebration accent. Avoid dominant dark
-slabs, ornamental gold borders, metallic bevels or fantasy typography.
+Combat HUD uses independent slate surfaces and red/orange/gold action/progression
+accents. It must remain readable across future environments. `ART.coastalUi` and
+`--coast-*` retain coastal gutters, hints, legacy surfaces and accepted world
+Level-Up effects; they no longer dictate defense XP or active-button identity.
 
 | Role | Color |
 | --- | --- |
-| Structure / paper | plaster `#F1EFE6`, light paper `#F7F4EA` |
-| Readability / shadow | navy `#24465A`, cool shadow `#2C4158` |
-| Progression | sea `#247E9C`, intermediate cyan `#329DAC`, aqua `#58C8C1` |
-| Crest / celebration | crest `#BAE9E0`, foam `#E5F6EE`, cyan-white energy `#C6F4F2` |
-| Rare sun accent | `#F7CD76`; never the primary UI identity |
+| Combat surfaces / readability | dark slate `#172331`, pale text `#FFF3DC` |
+| Active skill | warm orange `#FF7A27`, gold `#FFD066` |
+| XP | red `#D83B27`, orange `#F56724` / `#FF972F`, gold `#FFD066` |
+| Coastal gutters / hints | navy `#24465A`, cool shadow `#2C4158` |
+| World Level-Up | aqua/foam, cyan-white energy `#C6F4F2` |
 
-XP/player progression = **SEA / AQUA / SUNLIGHT**; enemy health = **CRIMSON / RED / DEEP
+HUD XP/player progression = **RED / ORANGE / GOLD**; enemy health = **CRIMSON / RED / DEEP
 RED**. Never use normal gold enemy health fills. `ART.enemyHealth` owns Heavy coral
 `#F2555F`, Giant coral `#EF4D59`, near-white coral hit `#FFE6DF`, and cool navy backing colors.
 The fill is brighter than enemy clothing. A 100 ms brightness/12% thickness punch reuses
@@ -243,13 +243,18 @@ one/two/three cartridges at Lv1/2/3, two/three soldiers at Lv4/5; casualties do 
 them. Living count and total firing rate reflect casualties separately. Lv6 replaces Rifle
 with MG, resets enhancement to one cartridge / Stage I, and shows 18/s / one living soldier.
 
-Bottom hierarchy is **LEVEL / XP**. A dark badge keeps the large 1.9-rem level number and
-orange underline. The XP track expands into the space freed by loadout, with a dark
+Bottom hierarchy is **LEFT MOVEMENT / LEVEL + XP / RIGHT MOVEMENT** inside a dark
+safe-area-aware control strip. Steel-blue 64×60-pixel arrow buttons (56×60 at ≤370px)
+have depressed held feedback and their own movement input. They are distinct from the
+warm active skill and passive battle panel. A centered outlined LV label has a 34-pixel
+level number (32 at ≤370px), exceeding the 24-pixel XP track. The track has a dark
 remainder and fixed red `#D83B27` → orange `#F56724` / `#FF972F` → gold `#FFD066` gradient.
 The gradient is anchored to the **full track width**, revealed by the accurate fill mask,
 never resized. At 70% glow strengthens; at 90% the edge becomes gold. No numeric XP.
-Existing 120/260 ms reveal, 240 ms full flash, badge pop and 800 ms announcement are retained
-with warm HUD flash/sweep. Lv6's full cap bar stays quiet, without imminent pulsing.
+Existing 120/260 ms reveal, 240 ms full flash, 320 ms level-text pop and 800 ms announcement
+combine with a strong warm track pulse/sweep. Subtle rightward sheen uses a CSS transform,
+with no new per-frame objects. Pause suspends decorative animation; reduced motion removes
+flow/pop/sweep. Lv6's full cap bar has no imminent pulsing.
 
 World Level-Up presentation remains accepted: aqua ground ring, ivory-white body/gear
 flash, eight aqua/foam motes per member and 1400 ms cyan-white tracer/muzzle afterglow.
@@ -257,7 +262,7 @@ Its scale pulse, timing and sound are unchanged by HUD styling. Defense still om
 the old `DEFEND N / 5` HUD and keeps the top-center sky empty. Legacy interface styling remains intact.
 
 The lower-left hint has only `A / D or ← / →   STEP LANE` on desktop or
-`TAP LEFT / RIGHT` on coarse-pointer devices. Navy text with a pale shadow stays
+`HOLD ARROWS TO MOVE` on coarse-pointer devices. Navy text with a pale shadow stays
 legible on sand. It holds briefly then fades over a nine-second CSS presentation
 animation; Pause suspends that animation. No gameplay/tutorial state is stored.
 The **world is full bleed** on portrait/coarse-pointer devices: 100vw × 100dvh.
@@ -272,7 +277,8 @@ bottom-right corner, without the normal 0.85rem HUD margin. Defense CSS defines 
 as the respective safe-area inset **plus 0.85rem**, never the maximum of those values.
 Shared `--hud-inset-*` inputs default to `env(safe-area-inset-*)`; they can be overridden
 for visual QA. Apply the sum to important controls, XP, hint and optional diagnostics;
-keep hints above the taller level badge. XP and hints stay pointer-transparent.
+keep hints above the movement/progression strip. XP and hints stay pointer-transparent;
+only visible movement buttons own bottom movement input. The build label sits below the strip.
 
 ## Defense-mode legacy premise audit
 

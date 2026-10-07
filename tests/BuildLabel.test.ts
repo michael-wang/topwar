@@ -13,7 +13,7 @@ describe('build label', () => {
     expect(rule).toContain('bottom: calc(var(--hud-inset-bottom) + 3px)');
     expect(rule).not.toMatch(/(?:right|bottom):\s*3px/);
     expect(rule).not.toContain('--hud-safe-');
-    const xp = css.match(/\.xp-hud\s*\{([^}]+)\}/)![1];
+    const xp = css.match(/\.combat-control-strip\s*\{([^}]+)\}/)![1];
     expect(xp).toContain('left: var(--hud-safe-left); right: var(--hud-safe-right); bottom: var(--hud-safe-bottom)');
     expect(css).toContain('--hud-safe-bottom: calc(var(--hud-inset-bottom) + var(--hud-margin))');
   });
