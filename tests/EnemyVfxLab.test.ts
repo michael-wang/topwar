@@ -83,7 +83,7 @@ it('restarts the deterministic Lv6 MG fixture with one specialist, 60 Grunts and
  for(let i=0;i<300;i++)sim.step(1/60,{targetX:0},tuning);
  expect(sim.getState().enemyStream!.nextEnemyId).toBe(s.enemyStream!.nextEnemyId);
  expect(sim.getState().enemies.filter(e=>e.lane===2)).toHaveLength(0);
- expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBeNull();
+ expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBe(0);
  for(let i=0;i<3;i++)expect(make().getState()).toEqual(s);
 });
 
@@ -100,7 +100,7 @@ it('restarts EVOLVE at 210/220 XP with three Rifles and a deterministic ordinary
   expect(initial.enemies.every(e => e.hp === (e.archetype === 'heavy' ? c.catharsis!.heavyHp : 1))).toBe(true);
   expect(initial.boss).toBeNull();
   expect(initial.grenade).toMatchObject({ inventory: 0, supply: null, flight: null });
-  expect(initial.giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
+  expect(initial.giantEncounter).toEqual({ scheduledAtSeconds: 0, spawned: true });
   expect(createEnemyVfxLab({ ...options, seed: 42 }, c.weapon.rifle.fireRate, 'evolve').getState()).toEqual(initial);
   for (let i = 0; i < 3; i++) expect(make().getState()).toEqual(initial);
 });
@@ -122,7 +122,7 @@ it('earns the EVOLVE upgrade from ten real Grunt kills within 1–3 seconds, wit
   expect(ticks / 60).toBeLessThanOrEqual(3);
   expect(evolved.progression).toEqual({ level: 6, xp: 0 });
   expect(evolved.squad.count).toBe(1);
-  expect(evolved.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(8);
+  expect(evolved.enemies.filter(e => e.archetype === 'grunt' && e.id <= 18)).toHaveLength(8);
   expect(sim.consumePresentationEvents()).toEqual([]);
   expect(restored.getState()).toEqual(evolved);
   restored.restoreState(JSON.parse(JSON.stringify(evolved)));
@@ -132,6 +132,6 @@ it('earns the EVOLVE upgrade from ten real Grunt kills within 1–3 seconds, wit
   }
   expect(restored.getState()).toEqual(sim.getState());
   expect(sim.getState().projectiles.some(p => p.kind === 'machineGun')).toBe(true);
-  expect(sim.getState().enemyStream!.nextEnemyId).toBe(initial.enemyStream!.nextEnemyId);
-  expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBeNull();
+  expect(sim.getState().enemyStream!.nextEnemyId).toBe(initial.enemyStream!.nextEnemyId + 60);
+  expect(sim.getState().giantEncounter!.scheduledAtSeconds).toBe(0);
 });

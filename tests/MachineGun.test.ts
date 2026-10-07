@@ -77,8 +77,8 @@ it('improves cadence, Grunt pack clear and fifteen-hit Heavy TTK over Lv5',()=>{
   expect(mg.heavy.focusedSeconds).toBeLessThan(rifle.heavy.focusedSeconds);
   expect(mg.heavy.focusedSeconds).toBeGreaterThan(.7);expect(mg.heavy.focusedSeconds).toBeLessThan(.85);
 });
-it('keeps Giant and reinforcement naturally unreachable at the temporary Lv6 cap',()=>{
-  expect(balance.giant.unlockLevel).toBe(7);const sim=controlledSimulation(6);step(sim,60*20);
+it('keeps reinforcement deferred and isolated no-stream MG measurements free of Giant',()=>{
+  expect(balance.giant.unlockLevel).toBe(5);const sim=controlledSimulation(6);step(sim,60*20);
   expect(sim.getState().giantEncounter).toEqual({scheduledAtSeconds:null,spawned:false});
   expect(sim.getState().reinforcement).toEqual({startedAtSeconds:null,arrived:false});
   expect(progressionStage(6,balance.progression).weaponFamily).toBe('machineGun');

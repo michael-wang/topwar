@@ -31,7 +31,7 @@ export function laneWave(waveIndex: number, seed: number, config: CatharsisConfi
   return { lanes, heavy, rewardLane: quiet.length ? quiet[compositionRng.nextInt(quiet.length)] : lanes[0] };
 }
 
-export function laneCompositionForRow(row: number, seed: number, config: CatharsisConfig, halfWidth: number):
+export function laneCompositionForRow(row: number, seed: number, config: CatharsisConfig & { heavyCount?: number }, halfWidth: number):
   { x: number; z: number; archetype: 'grunt' | 'heavy'; lane?: number }[] {
   const wave = laneWave(Math.floor(row / config.waveRows), seed, config);
   const slot = row % config.waveRows;
@@ -40,6 +40,9 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
     const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
     const spacing = positions[1] - positions[0];
     const rng = new SeededRng((seed ^ Math.imul(row + 1, 0xc2b2ae35)) >>> 0);
+    const rotation = Math.floor(row / config.waveRows) % wave.lanes.length;
+    const heavyMembers = new Set(Array.from({ length: config.heavyCount ?? (wave.heavy ? 1 : 0) },
+      (_, index) => config.heavyCount === undefined ? 0 : (rotation + index) % config.groupSize));
     const members = Array.from({ length: config.groupSize }, (_, member) => {
       const lane = wave.lanes[member % wave.lanes.length];
       const spread = spacing * config.lateralSpreadFraction;
@@ -50,15 +53,17 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
         // Beachward only: even the rear of a newly admitted crowd stays at entry.
         // Population changes density, never the group's longitudinal footprint.
         z: -rng.nextFloat() * config.crowdDepthSpan,
-        archetype: member === 0 && wave.heavy ? 'heavy' as const : 'grunt' as const };
+        archetype: heavyMembers.has(member) ? 'heavy' as const : 'grunt' as const };
     });
-    const heavy = members.find(member => member.archetype === 'heavy');
-    if (heavy) {
+    const clearedLanes = new Set<number>();
+    for (const heavy of members.filter(member => member.archetype === 'heavy')) {
       heavy.x = positions[heavy.lane];
       heavy.z = -config.crowdDepthSpan;
+      if (clearedLanes.has(heavy.lane)) continue;
+      clearedLanes.add(heavy.lane);
       // Only this lane's leader gets clearance; Grunts remain overlapping seeded crowds.
       const clearance = Math.min(config.heavyFrontClearance, config.crowdDepthSpan);
-      for (const member of members) if (member !== heavy && member.lane === heavy.lane) {
+      for (const member of members) if (member.archetype === 'grunt' && member.lane === heavy.lane) {
         member.z = -config.crowdDepthSpan + clearance
           + (member.z + config.crowdDepthSpan) * (config.crowdDepthSpan - clearance) / config.crowdDepthSpan;
       }

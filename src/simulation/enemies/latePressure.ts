@@ -5,16 +5,21 @@ import { requiredXp, type ProgressionState } from '../progression';
 
 // Derived only when admitting future groups; no latch, extra RNG or enemy edits.
 export function pressureWaveSettings(balance: CatharsisConfig, progression: ProgressionState):
-  Pick<CatharsisConfig, 'pressureLaneCount' | 'heavyChance'> {
+  Pick<CatharsisConfig, 'pressureLaneCount' | 'heavyChance'> & { heavyCount?: number } {
+  if (progression.level === 6 && balance.pressureRamp?.lv6) return {
+    pressureLaneCount: balance.pressureRamp.lv6.pressureLaneCount,
+    heavyChance: balance.heavyChance, heavyCount: balance.pressureRamp.lv6.heavyCount };
   const stage = progression.level === 4 ? balance.pressureRamp?.lv4
     : progression.level === 5 ? balance.pressureRamp?.lv5 : undefined;
   return stage && progression.xp / requiredXp(progression.level, balance.progression) >= stage.xpFraction
-    ? { pressureLaneCount: stage.pressureLaneCount, heavyChance: stage.heavyChance }
+    ? { pressureLaneCount: stage.pressureLaneCount, heavyChance: stage.heavyChance ?? balance.heavyChance,
+      ...(stage.heavyCount !== undefined ? { heavyCount: stage.heavyCount } : {}) }
     : { pressureLaneCount: balance.pressureLaneCount, heavyChance: balance.heavyChance };
 }
 
 // Quantity only; future groups use the current level, existing enemies stay untouched.
 export function pressureGroupSize(balance: CatharsisConfig, level: number): number {
+  if (level === 6 && balance.pressureRamp?.lv6) return balance.pressureRamp.lv6.groupSize;
   const multiplier = balance.pressureMultipliers[Math.min(level - 1, balance.pressureMultipliers.length - 1)];
   return Math.round(balance.groupSize * multiplier);
 }
@@ -30,7 +35,7 @@ export function advanceGiantEncounter(previous: NonNullable<SimulationState['gia
   const state = { ...previous };
   if (!balance.giant.enabled || state.spawned || level < balance.giant.unlockLevel) return state;
   state.scheduledAtSeconds ??= nowSeconds + balance.giant.introDelaySeconds;
-  if (nowSeconds < state.scheduledAtSeconds) return state;
+  if (nowSeconds + 1e-9 < state.scheduledAtSeconds) return state;
   const lanes = attackLanePositions(balance.laneCount, halfWidth, balance.edgeInset);
   const counts = lanes.map((_, lane) => enemies.filter(e => e.lane === lane && e.z > playerZ).length);
   // Interior corridors keep the large first silhouette inside the portrait framing.

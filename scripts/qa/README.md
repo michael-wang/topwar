@@ -47,12 +47,13 @@ Audio capture measures the browser signal, not physical device/speaker latency.
 
 ## Enemy VFX Lab
 
-Development defense builds show six compact buttons below Pause:
+Development defense builds show seven compact buttons below Pause:
 
 - **GRUNT:** ten Grunts, Lv1 / one Rifle; review contact blood, pale intact lift/fade.
 - **HEAVY:** three Heavies, Lv3 / one Rifle; review surviving hits and weighted collapse.
 - **GIANT:** one Giant, Lv5 / three Rifles; review chip hits, maul/dust impact and long death.
-- **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds; no timer promotion or Grenade dependency. No Giant/Boss or stream refill.
+- **CURVE:** Lv4 / 150 of 180 XP / two Rifles / center, two seeded late-Lv4 groups (46 Grunts, two Heavies). Normal streams remain active. Review real XP into Lv5, its six-second natural Giant, real XP into Lv6, immediate release crowd and subsequent 60-person groups.
+- **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds, including its immediate 59-Grunt/one-Heavy release; no timer promotion or Grenade dependency. No Giant/Boss or ordinary stream refill.
 - **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
 - **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / one held Grenade. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
 
@@ -64,10 +65,10 @@ simulation mode. Normal `/` remains Lv1 until a button is used;
 `?review=threats` remains a separate art fixture. Production excludes lab controls
 and fixture code behind `import.meta.env.DEV`.
 
-Physical **5** restarts EVOLVE and **6** restarts MG through the button reset path.
+Physical **4** restarts CURVE, **5** restarts EVOLVE and **6** restarts MG through the button reset path.
 These DEV shortcuts ignore repeats, Ctrl/Alt/Meta modifiers, interactive/editable/TUNE focus
 and input before Tap-to-Start or after the app stops. Fixture buttons release
-focus for immediate lane keys and the `5 → 6 → 6 → 5` loop. They also work as
+focus for immediate lane keys and the `4 → 5 → 6 → 6 → 4` loop. They also work as
 restarts while paused. Production excludes both controls and key handlers.
 
 `node scripts/qa/evolution-fixture-sanity.mjs` checks the real button/key paths
@@ -77,8 +78,7 @@ over six alternating EVOLVE/MG cycles. Captures/results default to ignored
 `artifacts/evolve-review`. It accepts the same browser environment overrides.
 The current authored fixture evolves at **1.00 second** in both widths, after
 exactly ten ordinary Grunt kills. Six alternating review cycles held steady at
-85 geometries, 11 textures and a 32-slot projectile pool. All 743 automated tests,
-typecheck/build and existing startup/audio/production sanity checks pass. These
+85 geometries, 11 textures and a 32-slot projectile pool. These
 software-rendered captures verify the review loop, not physical-phone performance
 or the human judgment that evolution feels like a power upgrade.
 
@@ -92,6 +92,8 @@ as the other scripts. The production sanity script also guards lab exclusion.
 `node scripts/qa/p2a-metrics.mjs` extends the P1.5 normal/hesitation pilot through Lv6 for seeds 1–50 (100 runs), with unchanged Grenade policy. It reports Lv2–6 times, Lv5 duration, evolution counts/pressure, casualties and controlled three-Rifle vs one-MG cadence, 30-Grunt pack clear and Heavy TTK. `node scripts/qa/machine-gun-sanity.mjs` checks real MG controls, 390/350 portrait, HUD/firing, lane changes, Pause/Retry, casualty-state evolution, snapshot family restore, repeated resources and warmed real-RAF audio/frame diagnostics against the same Lv5 crowd. Results/captures default to ignored `artifacts/p2a`; durable evidence is in `P2A_REPORT.md`. SwiftShader measurements are not physical-phone certification.
 
 ## P2B Pressure Comeback
+
+The P2B composition below is historical; P2C replaces its late Heavy chances and Lv5 fronts.
 
 `node scripts/qa/p2b-metrics.mjs` uses the saved pre-change
 `artifacts/p2b/baseline/metrics.json` (generated with `p2a-metrics.mjs` at the
@@ -110,3 +112,28 @@ environment overrides above. `grenade-lab-sanity.mjs` now measures emergency
 targeting without asserting the superseded maximum-crowd target. A no-enemy or
 out-of-range state preserves the charge. `P2B_REPORT.md` records mixed pressure
 evidence; software renderer results are not physical-phone certification.
+
+## P2C Threat Ladder
+
+`node scripts/qa/p2c-metrics.mjs artifacts/p2c/current` runs seeds 1–50 with
+normal and 1.8-second Lv3 hesitation pilots, both nearest-threat and proactive
+Giant-priority policies (200 runs). It follows ten seconds beyond Lv6 and records
+level times, phase active/near-defense/hit-debt/Heavy peaks, threshold crossings,
+ordinary versus release admissions, Giant scheduling/first hit/death/XP and
+release composition plus 2/5/10-second MG counts. Baseline measurements were
+captured before editing at `53bed55`; the refined pressure counters were also
+run with that commit's JSON through the compatible legacy chance/no-Lv6-override
+path, reproducing the original timing/cohort results. To repeat that comparison,
+save its game JSON then pass `--baseline --baseline-config=path/to/game.json`.
+
+`node scripts/qa/threat-ladder-sanity.mjs` exercises real CURVE/physical 4 at
+390×844 and 350×844, natural XP/Giant/evolution, Pause/Retry, deterministic
+continuation, repeated release resources and a warmed native-RAF sample of the
+natural MG release state. Captures/results default to `artifacts/p2c/browser`.
+Use `TOPWAR_QA_URL`, `TOPWAR_PLAYWRIGHT_MODULE` and `TOPWAR_CHROME_PATH` as with
+other browser scripts. `ThreatLadder.test.ts` checks exact composition/debt,
+Heavy rotation/clearance, backward compatibility, one-time shoreline release,
+consumed rows, ordinary cadence, snapshot clocks and Giant lifecycle across Lv6.
+Run the existing evolution, MG, emergency Grenade, audio-start and production
+sanity scripts too. Durable results and unresolved human questions are in
+`P2C_REPORT.md`; software frame timings are not physical-phone certification.

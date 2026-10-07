@@ -1,4 +1,5 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
+import { admitDefenseGroup } from './enemies/defenseGroup';
 import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
   type GrenadeState, type GrenadeEvent } from './grenade';
 import { pressureGroupSize, pressureWaveSettings, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
@@ -234,6 +235,13 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       || !Number.isSafeInteger(cursor.nextEnemyId + stream.columns)) {
       throw new Error('Simulation enemy stream exceeds the supported range');
     }
+    if (catharsis?.balance.defenseMode) {
+      admitDefenseGroup(enemies, cursor, cursor.nextRowIndex, stream.seed,
+        { ...catharsis.balance, ...pressureWaveSettings(catharsis.balance, progression),
+          groupSize: pressureGroupSize(catharsis.balance, progression.level) }, catharsis.trackHalfWidth, rowZ);
+      cursor.nextRowIndex++;
+      continue;
+    }
     const offsets = catharsis
       ? laneCompositionForRow(cursor.nextRowIndex, stream.seed, catharsis.balance.defenseMode
         ? { ...catharsis.balance, ...pressureWaveSettings(catharsis.balance, progression),
@@ -307,6 +315,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'progression')) fields.push('progression');
   if (Object.hasOwn(state, 'reinforcement')) fields.push('reinforcement');
   if (Object.hasOwn(state, 'giantEncounter')) fields.push('giantEncounter');
+  if (Object.hasOwn(state, 'machineGunReleaseAtSeconds')) fields.push('machineGunReleaseAtSeconds');
   if (Object.hasOwn(state, 'landingAssault')) fields.push('landingAssault');
   if (Object.hasOwn(state, 'grenade')) fields.push('grenade');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
@@ -363,6 +372,12 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   }
   // An already-spawned threat may be forced by an art fixture below natural unlock.
   const giantEncounter = state.giantEncounter;
+  const releaseAt = state.machineGunReleaseAtSeconds;
+  if (releaseAt !== undefined && !catharsis?.balance.defenseMode) throw new Error('Release requires defense mode');
+  if (releaseAt !== undefined && releaseAt !== null && (!catharsis?.balance.defenseMode
+    || typeof releaseAt !== 'number' || !Number.isFinite(releaseAt) || releaseAt < 0
+    || releaseAt > (state.elapsedSeconds as number) || !isPlainObject(progression)
+    || (progression.level as number) < 6)) throw new Error('Invalid Machine Gun release state');
   if (giantEncounter !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(giantEncounter)
     || Object.keys(giantEncounter).length !== 2 || typeof giantEncounter.spawned !== 'boolean'
     || !(giantEncounter.scheduledAtSeconds === null || (typeof giantEncounter.scheduledAtSeconds === 'number'
@@ -671,6 +686,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     state: {
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
+      // Older Lv6 snapshots already represent an established MG run; never inject a retroactive wave.
+      ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: releaseAt === undefined
+        ? ((progression?.level as number) >= 6 ? 0 : null) : releaseAt as number | null } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: landingAssault ? { ...landingAssault } as unknown as NonNullable<SimulationState['landingAssault']> : emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { reinforcement: reinforcement
         ? { startedAtSeconds: reinforcement.startedAtSeconds as number | null, arrived: reinforcement.arrived as boolean }
@@ -784,6 +802,7 @@ export class Simulation {
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
+      ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: null } : {}),
       tick: 0,
       elapsedSeconds: 0,
       levelId: level.id,
@@ -1017,9 +1036,7 @@ export class Simulation {
         nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
-    const giantEncounter = this.state.giantEncounter && catharsis && enemyStream
-      ? advanceGiantEncounter(this.state.giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
-        catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream) : this.state.giantEncounter;
+    let giantEncounter = this.state.giantEncounter;
     if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue) {
       const interval = this.enemyStreamDefinition.spacing * catharsis.balance.waveRows / tuning.forwardSpeed;
       // Consume dormant legacy rows without spawning: disabling the experiment later must not
@@ -1385,8 +1402,26 @@ export class Simulation {
       }
     }
     if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
+    if (giantEncounter && catharsis && enemyStream && squad.count > 0)
+      giantEncounter = advanceGiantEncounter(giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
+        catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream);
+    let machineGunReleaseAtSeconds = this.state.machineGunReleaseAtSeconds;
+    if (machineGunReleaseAtSeconds === null && progression?.level === 6 && squad.count > 0
+      && catharsis?.balance.pressureRamp?.lv6 && enemyStream && this.enemyStreamDefinition) {
+      const balance = catharsis.balance;
+      // Consume the next group row, even when evolution occurs between stream rows.
+      // Its crowd enters at today's shoreline, and that row can never be admitted again.
+      const row = Math.ceil(enemyStream.nextRowIndex / balance.waveRows) * balance.waveRows;
+      if (!Number.isSafeInteger(row + 1)) throw new Error('Release row exceeds supported range');
+      admitDefenseGroup(enemies, enemyStream, row, this.enemyStreamDefinition.seed,
+        { ...balance, ...pressureWaveSettings(balance, progression), groupSize: pressureGroupSize(balance, 6) },
+        catharsis.trackHalfWidth, nextZ + balance.defenseSpawnAheadDistance);
+      enemyStream.nextRowIndex = row + 1;
+      machineGunReleaseAtSeconds = nextElapsedSeconds;
+    }
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
+      ...(machineGunReleaseAtSeconds !== undefined ? { machineGunReleaseAtSeconds } : {}),
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
       weapons: { ...(memberCooldowns ? { rifleMemberCooldowns: memberCooldowns } : {}), rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,

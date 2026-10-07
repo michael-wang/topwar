@@ -16,7 +16,7 @@ const tuning = { moveSpeed: 5, forwardSpeed: .6, trackHalfWidth: 3.2, defenseLin
 const step = (sim: Simulation, count: number) => { for (let i = 0; i < count; i++) sim.step(1 / 60, { targetX: 0 }, tuning); };
 
 it('changes only future group quantity from LV5 and retains bounded deterministic crowds', () => {
-  expect([1,2,3,4,5,6,7].map(l => pressureGroupSize(balance, l))).toEqual([24,24,24,24,30,32,35]);
+  expect([1,2,3,4,5,6,7].map(l => pressureGroupSize(balance, l))).toEqual([24,24,24,24,30,60,35]);
   expect(pressureGroupSize(balance, 100)).toBe(40);
   const live = { ...balance, groupSize: pressureGroupSize(balance, 7) };
   const group = laneCompositionForRow(120, 17, live, 3.2);
@@ -40,15 +40,15 @@ it('preserves the old LV1–4 stream exactly before any progression unlock', () 
   expect(sim.getState().giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
 });
 
-it('schedules exactly one deferred LV7 introduction, restores its pending clock and never respawns after death', () => {
+it('schedules exactly one Lv5 six-second introduction, restores its pending clock and never respawns after death', () => {
   const sim = make(), state = sim.getState();
-  state.progression = { level: 7, xp: 0 }; state.weapons.rifleCooldownRemainingSeconds = 1000;
+  state.progression = { level: 5, xp: 0 }; state.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(state); step(sim, 1);
-  const pending = sim.getState(); expect(pending.giantEncounter!.scheduledAtSeconds).toBeCloseTo(4 + 1 / 60);
+  const pending = sim.getState(); expect(pending.giantEncounter!.scheduledAtSeconds).toBeCloseTo(6 + 1 / 60);
   const restored = make(); restored.restoreState(JSON.parse(JSON.stringify(pending)));
   pending.giantEncounter!.spawned = true;
   expect(sim.getState().giantEncounter!.spawned).toBe(false);
-  step(sim, 245); step(restored, 245);
+  step(sim, 365); step(restored, 365);
   expect(sim.getState()).toEqual(restored.getState());
   const introduced = sim.getState(), giant = introduced.enemies.find(e => e.archetype === 'giant')!;
   expect(giant.hp).toBe(172); expect(giant.lane).toBeGreaterThan(0); expect(giant.lane).toBeLessThan(4);

@@ -11,9 +11,9 @@ const config=GameConfigSchema.parse(data), balance=config.catharsis!;
 const level=LevelDefinitionSchema.parse(levelData);
 
 it.each([[1,27,3,.25],[2,59,3,.25],[3,109,3,.25],[4,0,3,.25],[4,62,3,.25],
-  [4,63,4,.35],[4,179,4,.35],[5,0,3,.25],[5,54,3,.25],[5,55,4,.5],[5,219,4,.5],[6,0,3,.25]])
+  [4,63,4,.25],[4,179,4,.25],[5,0,3,.25],[5,54,3,.25],[5,55,3,.25],[5,219,3,.25],[6,0,3,.25]])
   ('authors future fronts/chance for Lv%s XP%s as %s / %s', (level,xp,fronts,chance) => {
-    expect(pressureWaveSettings(balance,{level,xp})).toEqual({pressureLaneCount:fronts,heavyChance:chance});
+    expect(pressureWaveSettings(balance,{level,xp})).toEqual({pressureLaneCount:fronts,heavyChance:chance, ...((level===6 || (level===4&&xp>=63) || (level===5&&xp>=55)) ? {heavyCount:1} : {})});
   });
 
 it('uses the current authored XP requirement and leaves old snapshot balances on their original path', () => {
@@ -21,25 +21,24 @@ it('uses the current authored XP requirement and leaves old snapshot balances on
   expect(pressureWaveSettings(edited,{level:4,xp:69}).pressureLaneCount).toBe(3);
   expect(pressureWaveSettings(edited,{level:4,xp:70}).pressureLaneCount).toBe(4);
   expect(pressureWaveSettings(edited,{level:5,xp:74}).heavyChance).toBe(.25);
-  expect(pressureWaveSettings(edited,{level:5,xp:75}).heavyChance).toBe(.5);
+  expect(pressureWaveSettings(edited,{level:5,xp:75}).heavyCount).toBe(1);
   const old=structuredClone(balance);delete old.pressureRamp;
   expect(pressureWaveSettings(old,{level:5,xp:219})).toEqual({pressureLaneCount:3,heavyChance:.25});
 });
 
-it('keeps group populations, HP and speeds fixed while increasing distinct fronts and seeded Heavy frequency', () => {
-  for (const [level,xp,chance] of [[4,63,.35],[5,55,.5]]) {
+it('keeps group populations, HP and speeds fixed while authoring late fronts and exact Heavy counts', () => {
+  for (const [level,xp] of [[4,63],[5,55]]) {
     const late={...balance,...pressureWaveSettings(balance,{level,xp}),groupSize:pressureGroupSize(balance,level)};
-    const early={...late,...pressureWaveSettings(balance,{level,xp:0})};
+    const early={...balance,...pressureWaveSettings(balance,{level,xp:0})};
     let earlyHeavies=0,lateHeavies=0;
     for(let group=0;group<1000;group++) {
       const earlyWave=laneWave(group,17,early),lateWave=laneWave(group,17,late);
-      earlyHeavies+=Number(earlyWave.heavy);lateHeavies+=Number(lateWave.heavy);
-      expect(lateWave.lanes).toHaveLength(4);expect(new Set(lateWave.lanes).size).toBe(4);
-      if(earlyWave.heavy)expect(lateWave.heavy).toBe(true);
+      earlyHeavies+=Number(earlyWave.heavy);lateHeavies+=laneCompositionForRow(group*balance.waveRows,17,late,3.2).filter(e=>e.archetype==='heavy').length;
+      expect(lateWave.lanes).toHaveLength(level===4?4:3);expect(new Set(lateWave.lanes).size).toBe(level===4?4:3);
     }
-    expect(lateHeavies).toBeGreaterThan(earlyHeavies);expect(lateHeavies/1000).toBeCloseTo(chance,1);
+    expect(lateHeavies).toBeGreaterThan(earlyHeavies);expect(lateHeavies).toBe(1000);
     const members=laneCompositionForRow(120,17,late,3.2);
-    expect(members).toHaveLength(level===4?24:30);expect(new Set(members.map(e=>e.lane)).size).toBe(4);
+    expect(members).toHaveLength(level===4?24:30);expect(new Set(members.map(e=>e.lane)).size).toBe(level===4?4:3);
     expect(members).toEqual(laneCompositionForRow(120,17,late,3.2));
     expect([late.heavyHp,late.gruntSpeed,late.heavySpeed]).toEqual([15,.25,.12]);
   }
@@ -70,7 +69,7 @@ it.each([4,5])('admits only future Lv%s groups using saved XP, with identical JS
   expect(after.enemies[0]).toMatchObject({id:1,hp:7,lane:2,x:0});
   const admitted=after.enemies.filter(e=>e.id>=3);
   expect(admitted).toHaveLength(levelNumber===4?24:30);
-  expect(new Set(admitted.map(e=>e.lane)).size).toBe(4);
+  expect(new Set(admitted.map(e=>e.lane)).size).toBe(levelNumber===4?4:3);
   expect(after.catharsis!.balance).toEqual(balance);
 });
 

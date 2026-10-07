@@ -1,14 +1,18 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
+import { admitDefenseGroup } from '../simulation/enemies/defenseGroup';
+import { effectiveSeed } from '../simulation/enemies/effectiveSeed';
+import { pressureWaveSettings } from '../simulation/enemies/latePressure';
 import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectivePrimaryFireRate, requiredXp } from '../simulation/progression';
 
-export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade' | 'evolve' | 'machineGun';
+export type EnemyVfxLabRole = 'grunt' | 'heavy' | 'giant' | 'grenade' | 'curve' | 'evolve' | 'machineGun';
 export const ENEMY_VFX_LAB = {
   grunt: { level: 1, soldiers: 1, depths: [8, 10, 12, 14, 16, 18, 20, 22, 24, 26] },
   heavy: { level: 3, soldiers: 1, depths: [10, 15, 20] },
   giant: { level: 5, soldiers: 3, depths: [14] },
   grenade: { level: 3, soldiers: 1 },
+  curve: { level: 4, soldiers: 2 },
   evolve: { level: 5, soldiers: 3 },
   machineGun: { level: 6, soldiers: 1 },
 } as const;
@@ -29,10 +33,16 @@ export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: numb
   const x = lanes[lane];
   state.player = { x, z: 0, selectedLane: lane };
   state.progression = { level: fixture.level, xp: role === 'evolve'
-    ? Math.max(0, requiredXp(fixture.level, balance.progression) - 10) : 0 };
+    ? Math.max(0, requiredXp(fixture.level, balance.progression) - 10) : role === 'curve' ? 150 : 0 };
   if (fixture.soldiers > 1)
     state.squad = addRifleSoldiers(state.squad, fixture.soldiers - 1, 1, options.tiers.mergeCount);
-  if (role === 'evolve') {
+  if (role === 'curve') {
+    state.enemies = [];
+    state.enemyStream.nextEnemyId = 1;
+    for (const [wave, depth] of [24, 31].entries()) admitDefenseGroup(state.enemies, state.enemyStream,
+      wave * balance.waveRows, effectiveSeed(state.seed, options.level.enemyStream.seed),
+      { ...balance, ...pressureWaveSettings(balance, state.progression) }, catharsis.trackHalfWidth, depth);
+  } else if (role === 'evolve') {
     // Ten ordinary Grunt kills cross the authored boundary. No scripted level
     // change: three staggered Rifles earn the upgrade through normal combat.
     state.enemies = Array.from({ length: 18 }, (_, index) => {
@@ -67,12 +77,16 @@ export function createEnemyVfxLab(options: SimulationOptions, baseFireRate: numb
       archetype: role, lane, x, z, hp: role === 'giant' ? balance.giant.hp : role === 'heavy' ? balance.heavyHp : 1 }));
   }
   state.projectiles = []; state.streamRewards = []; state.gates = []; state.pickups = [];
-  state.giantEncounter = { scheduledAtSeconds: role === 'giant' ? 0 : null, spawned: role === 'giant' };
+  const isolatedGiant = role === 'giant' || role === 'evolve' || role === 'machineGun';
+  state.giantEncounter = { scheduledAtSeconds: isolatedGiant ? 0 : null, spawned: isolatedGiant };
+  state.machineGunReleaseAtSeconds = role === 'machineGun' ? 0 : null;
   // The defense camera is fixed but authoritative player Z advances. Place the
   // validated cursor well beyond a review run, without changing stream rules.
   const stream = options.level.enemyStream;
-  state.enemyStream.nextRowIndex = Math.max(state.enemyStream.nextRowIndex,
-    Math.ceil((balance.defenseSpawnAheadDistance + 600 - stream.startZ) / stream.spacing) + 1);
+  state.enemyStream.nextRowIndex = role === 'curve'
+    ? Math.ceil((balance.defenseSpawnAheadDistance - stream.startZ) / (stream.spacing * balance.waveRows)) * balance.waveRows
+    : Math.max(state.enemyStream.nextRowIndex,
+      Math.ceil((balance.defenseSpawnAheadDistance + 600 - stream.startZ) / stream.spacing) + 1);
   state.enemyStream.nextEnemyId = state.enemies.length + 1;
   const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
   state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers },

@@ -5,8 +5,10 @@ import { ProgressionConfigSchema, progressionDefaults } from './progressionConfi
 const pressureRampStage = z.strictObject({
   xpFraction: z.number().finite().gt(0).lt(1),
   pressureLaneCount: z.number().int().min(1).max(16),
-  heavyChance: z.number().finite().min(0).max(1),
-});
+  heavyChance: z.number().finite().min(0).max(1).optional(),
+  heavyCount: z.number().int().min(0).max(100).optional(),
+}).refine(stage => (stage.heavyChance === undefined) !== (stage.heavyCount === undefined),
+  { message: 'Author exactly one Heavy composition rule' });
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
@@ -36,7 +38,7 @@ export const CatharsisConfigSchema = z.strictObject({
   pressureMultipliers: z.array(z.number().finite().min(1).max(4)).min(1).default([1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65]),
   giant: z.strictObject({
     enabled: z.boolean().default(false),
-    unlockLevel: z.number().int().min(6).default(7),
+    unlockLevel: z.number().int().min(5).default(7),
     introDelaySeconds: z.number().finite().nonnegative().default(4),
     hp: z.number().finite().positive().default(210),
     xp: z.number().int().nonnegative().default(120),
@@ -62,7 +64,11 @@ export const CatharsisConfigSchema = z.strictObject({
   // Absent in older snapshots: retain their one/two-front composition path.
   pressureLaneCount: z.number().int().min(1).max(16).optional(),
   // Optional so older snapshots retain their original future-wave behavior.
-  pressureRamp: z.strictObject({ lv4: pressureRampStage, lv5: pressureRampStage }).optional(),
+  pressureRamp: z.strictObject({ lv4: pressureRampStage, lv5: pressureRampStage,
+    lv6: z.strictObject({ groupSize: z.number().int().min(1).max(100),
+      pressureLaneCount: z.number().int().min(1).max(16),
+      heavyCount: z.number().int().min(0).max(100) }).optional(),
+  }).optional(),
   groupSize: z.number().int().min(1).max(100),
   groupRowStride: z.number().int().positive(),
   secondLaneChance: z.number().min(0).max(1),
@@ -83,7 +89,12 @@ export const CatharsisConfigSchema = z.strictObject({
   .refine(value => value.pressureLaneCount === undefined || value.pressureLaneCount <= value.laneCount,
     { message: 'Pressure lane count must fit inside the battlefield' })
   .refine(value => !value.pressureRamp || [value.pressureRamp.lv4, value.pressureRamp.lv5]
-    .every(stage => stage.pressureLaneCount <= value.laneCount),
-    { message: 'Pressure ramp fronts must fit inside the battlefield' });
+    .every(stage => stage.pressureLaneCount <= value.laneCount)
+    && (!value.pressureRamp.lv6 || value.pressureRamp.lv6.pressureLaneCount <= value.laneCount),
+    { message: 'Pressure ramp fronts must fit inside the battlefield' })
+  .refine(value => !value.pressureRamp || [value.pressureRamp.lv4, value.pressureRamp.lv5].every((stage, index) =>
+    (stage.heavyCount ?? 0) <= Math.round(value.groupSize * value.pressureMultipliers[Math.min(index + 3, value.pressureMultipliers.length - 1)]))
+    && (!value.pressureRamp.lv6 || value.pressureRamp.lv6.heavyCount <= value.pressureRamp.lv6.groupSize),
+    { message: 'Heavy count must fit inside its group population' });
 
 export type CatharsisConfig = z.infer<typeof CatharsisConfigSchema>;

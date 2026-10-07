@@ -1,7 +1,6 @@
 # Catharsis Experiment — Current Progression and Deferred Late Game
 
-Current P2A progression is specified in `GAME_SPEC.md`: Lv1–Lv6: Rifle stages then one 18 Hz Machine Gun. Giant natural unlock is deferred to Lv7. The late-game experiment below is retained infrastructure and is unreachable in normal P1 play; its earlier timing measurements are historical, not the current Rifle curve.
-P2B adds the narrow XP-fraction Lv4/Lv5 pressure ramp and global emergency Grenade targeting described in `GAME_SPEC.md`. Population multipliers, HP, speeds and XP curve remain fixed. `P2B_REPORT.md` records its deterministic measurements. Giant and landing assault remain deferred.
+Current P2C progression is specified in `GAME_SPEC.md`: Lv1–Lv6 Rifle stages then one 18 Hz Machine Gun. The one-shot natural Giant arrives at Lv5 +6 seconds; explicit late pressure uses one Heavy per group and Lv6 alone overrides population to 60, including its immediate release crowd. `P2C_REPORT.md` records current measurements. Grenade, HP, speeds and XP are unchanged. The LV7 landing-assault experiment below remains unreachable under the natural Lv6 cap; its earlier timings and progression assumptions are historical.
 The accepted LV1–LV3 / early-LV4 combat baseline stays locked: one defended normal lane is
 barely manageable, while three active fronts exceed one soldier's capacity.
 Kills now earn automatic Rifle power so previously overwhelming fronts can
@@ -10,12 +9,10 @@ introduced. Grenade is the single active emergency tool. Deferred LV7 adds the f
 
 ## Deferred experiment: dramatic Giants + post-LV7 elite overlap
 
-LV1–LV6, the first Giant's gameplay and the LV7 reinforcement remain unchanged.
-Soldier B arrives in 1.1 s, then both soldiers fire at 6.9 Hz into the same lane.
-The actual activation clock still grants **10 full seconds** of existing pressure
-before assault. There is no player nerf, ordinary HP scaling, warning label or
-cinematic pause. Giant damage/reward resolve immediately in simulation; reveal,
-collapse and debris are disposable presentation.
+The retained LV7 infrastructure grants reinforcement after 1.1 seconds, then a
+10-second window before assault. It is outside the current natural progression.
+Giant damage/reward resolve immediately in simulation; reveal, collapse and
+debris remain disposable presentation in the current Lv5 encounter as well.
 
 ### Giant arrival and defeat
 
@@ -61,7 +58,7 @@ clears visual pools and cancels pending audio from the previous run.
 | `activeSoftCap` | 180, unchanged |
 | `secondGiantDelaySeconds` | **18** after assault start (retained key names first additional Giant) |
 | `giantFollowupDelaySeconds` | **10** after that Giant's actual admission |
-| `maxSimultaneousGiants` | **2** including any surviving first LV6 Giant |
+| `maxSimultaneousGiants` | **2** including any surviving first natural Giant |
 
 Expected Heavies per wave are `previousHeavyChance × 66 / LV7GroupSize × 2`,
 initially **0.943** (1.43% of troops), versus 0.613 previously. Two independently
@@ -75,8 +72,8 @@ Admission waits for space below the soft-cap and fewer than two live Giants.
 Placement avoids any live Giant lane and prefers two-lane separation, balancing
 current pressure and portrait visibility. There are two additional encounters
 per run; no three-Giant overlaps or indefinite respawn loop. All retain
-**172 HP / 120 XP / 0.08 additional approach speed**. The first LV6 unlock/delay,
-collision and isolated TTK are unchanged (about24.48 s single /12.25 s pair).
+**172 HP / 120 XP / 0.08 additional approach speed**. Historical isolated timings
+were about 24.48 s single / 12.25 s pair under that experiment's weapon setup.
 
 Concentrated lane pairs still rotate through a seeded shuffled pair cycle.
 Crowds retain bounded 9-unit depth, 0.42 spread, intentional overlap and 53-unit

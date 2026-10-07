@@ -112,6 +112,7 @@ export interface SimulationState {
   landingAssault?: LandingAssaultState;
   reinforcement?: { startedAtSeconds: number | null; arrived: boolean };
   giantEncounter?: { scheduledAtSeconds: number | null; spawned: boolean };
+  machineGunReleaseAtSeconds?: number | null;
   progression?: { level: number; xp: number };
   catharsis?: { balance: CatharsisConfig; trackHalfWidth: number; rewardRowsPerReward?: number };
   tick: number;

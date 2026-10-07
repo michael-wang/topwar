@@ -30,8 +30,9 @@
     "secondLaneChance": 0.4,
     "heavyChance": 0.25,
     "pressureRamp": {
-      "lv4": { "xpFraction": 0.35, "pressureLaneCount": 4, "heavyChance": 0.35 },
-      "lv5": { "xpFraction": 0.25, "pressureLaneCount": 4, "heavyChance": 0.50 }
+      "lv4": { "xpFraction": 0.35, "pressureLaneCount": 4, "heavyCount": 1 },
+      "lv5": { "xpFraction": 0.25, "pressureLaneCount": 3, "heavyCount": 1 },
+      "lv6": { "groupSize": 60, "pressureLaneCount": 3, "heavyCount": 1 }
     },
     "gruntSpeed": 0.25,
     "heavySpeed": 0.12,
@@ -88,8 +89,8 @@
     "pressureMultipliers": [1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65],
     "giant": {
       "enabled": true,
-      "unlockLevel": 7,
-      "introDelaySeconds": 4,
+      "unlockLevel": 5,
+      "introDelaySeconds": 6,
       "hp": 172,
       "xp": 120,
       "speed": 0.08,

@@ -37,10 +37,10 @@ function setup(enabled = true) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-it('routes physical 5/6 and EVOLVE/MG clicks through exactly the same callback', () => {
+it('routes physical 4/5/6 and CURVE/EVOLVE/MG clicks through exactly the same callback', () => {
   const { controls, root, select, press } = setup();
-  expect(root.children.map(b => b.textContent)).toEqual(['GRUNT', 'HEAVY', 'GIANT', 'GRENADE', 'EVOLVE', 'MG']);
-  for (const [index, code, role] of [[4, 'Digit5', 'evolve'], [5, 'Digit6', 'machineGun']] as const) {
+  expect(root.children.map(b => b.textContent)).toEqual(['GRUNT', 'HEAVY', 'GIANT', 'GRENADE', 'CURVE', 'EVOLVE', 'MG']);
+  for (const [index, code, role] of [[4, 'Digit4', 'curve'], [5, 'Digit5', 'evolve'], [6, 'Digit6', 'machineGun']] as const) {
     const button = root.children[index];
     button.dispatchEvent(new Event('click'));
     expect(select.mock.lastCall).toEqual([role]);
@@ -49,17 +49,17 @@ it('routes physical 5/6 and EVOLVE/MG clicks through exactly the same callback',
     expect(select.mock.lastCall).toEqual([role]);
     controls.setSelected(role);
     expect(button.attrs['aria-pressed']).toBe('true');
-    expect(button.title).toContain(code === 'Digit5' ? '(5)' : '(6)');
+    expect(button.title).toContain(`(${code.slice(-1)})`);
   }
-  expect(select).toHaveBeenCalledTimes(4);
+  expect(select).toHaveBeenCalledTimes(6);
   controls.dispose();
 });
 
 it('ignores repeats, modifiers, unrelated keys and pre-start/stopped shortcuts', () => {
   const { controls, select, canUse, press } = setup(false);
-  press('Digit5'); press('Digit6');
+  press('Digit4'); press('Digit5'); press('Digit6');
   canUse.mockReturnValue(true);
-  for (const code of ['Digit5', 'Digit6']) {
+  for (const code of ['Digit4', 'Digit5', 'Digit6']) {
     press(code, { repeat: true }); press(code, { ctrlKey: true });
     press(code, { altKey: true }); press(code, { metaKey: true });
   }
@@ -74,6 +74,7 @@ it.each(['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA', 'SUMMARY', 'OPTION', 'editable
     const target = new ElementStub(kind === 'editable' || kind === 'nested-interactive' || kind === 'TUNE' ? 'DIV' : kind);
     target.isContentEditable = kind === 'editable';
     target.interactiveAncestor = kind === 'nested-interactive' || kind === 'TUNE';
+    expect(press('Digit4', { target }).defaultPrevented).toBe(false);
     expect(press('Digit5', { target }).defaultPrevented).toBe(false);
     expect(press('Digit6', { target }).defaultPrevented).toBe(false);
     expect(select).not.toHaveBeenCalled();
@@ -82,7 +83,7 @@ it.each(['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA', 'SUMMARY', 'OPTION', 'editable
 
 it('removes the keyboard handler on disposal', () => {
   const { controls, root, select, press } = setup();
-  controls.dispose(); press('Digit5'); press('Digit6');
+  controls.dispose(); press('Digit4'); press('Digit5'); press('Digit6');
   expect(select).not.toHaveBeenCalled();
   expect(root.remove).toHaveBeenCalledOnce();
 });

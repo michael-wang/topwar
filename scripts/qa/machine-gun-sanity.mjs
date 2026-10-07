@@ -78,7 +78,7 @@ try {
     await reset();
     await page.evaluate(level=>{
       const a=window.__testApp;
-      if(level===5){const s=a.simulation.getState();s.progression.level=5;s.squad={count:3,rocketCount:0,rifleCounts:[3],rifleRemainder:0};
+      if(level===5){const s=a.simulation.getState();s.progression.level=5;s.machineGunReleaseAtSeconds=null;s.squad={count:3,rocketCount:0,rifleCounts:[3],rifleRemainder:0};
         s.weapons.rifleMemberCooldowns=[0,1/13.5,2/13.5];a.simulation.restoreState(s);a.previousWeaponFamily='rifle';a.previousDefenseValue=3n;}
       a.previousFrameTimestampMs=null;a.frameId=requestAnimationFrame(a.renderFrame);
     },level);

@@ -22,7 +22,7 @@ try {
   await page.waitForSelector('.game-start-overlay');
   await page.keyboard.press('5'); await page.keyboard.press('6');
   assert(await page.evaluate(() => window.__testApp.vfxLabRole === null && window.__testApp.simulation.getState().progression.level === 1), 'Pre-start shortcuts ignored');
-  assert(await page.locator('.enemy-vfx-lab button').count() === 6, 'Six DEV controls');
+  assert(await page.locator('.enemy-vfx-lab button').count() === 7, 'Seven DEV controls');
   await page.getByRole('button', { name: 'Start game with audio' }).click();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => {
@@ -58,7 +58,7 @@ try {
     const seconds = evolved.state.elapsedSeconds;
     assert(evolved.state.progression.level === 6 && seconds >= 1 && seconds <= 3, 'Natural kill XP evolves within 1–3 seconds');
     assert(evolved.state.squad.count === 1 && evolved.weapon === 'machineGun' && evolved.levelUp, 'One specialist / MG HUD / level-up');
-    assert(evolved.state.enemies.filter(e => e.archetype === 'grunt').length === 8, 'Ten ordinary Grunt kills');
+    assert(evolved.state.enemies.filter(e => e.archetype === 'grunt' && e.id <= 18).length === 8, 'Ten ordinary Grunt kills');
     assert(!evolved.cues.some(c => c === 'damage' || c === 'fatal'), 'No transformation damage feedback');
     await page.screenshot({ path: `${out}/evolve-unlock-${width}.png` });
     await advance(200); const firing = await sample();

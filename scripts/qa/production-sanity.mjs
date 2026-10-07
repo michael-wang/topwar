@@ -8,7 +8,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
-if (['Enemy VFX Lab', 'enemy-vfx-lab', 'EVOLVE', 'Digit5', 'Digit6'].some(marker => shippingJs.includes(marker)))
+if (['Enemy VFX Lab', 'enemy-vfx-lab', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6'].some(marker => shippingJs.includes(marker)))
   throw Error('Development VFX Lab controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
