@@ -4,6 +4,24 @@ import { GrenadeRenderer } from '../src/rendering/GrenadeRenderer';
 import { GrenadeButton } from '../src/ui/GrenadeButton';
 import type { GameRenderState } from '../src/rendering/RenderState';
 
+it.each([38,47])('stretches the existing analytic arc to shoreline depth %s without changing flight resources', depth => {
+  const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene);
+  const children=[...scene.children];
+  for(const t of [0,.5,1]) {
+    renderer.update({supply:null,originZ:5,elapsedSeconds:1+.65*t,
+      flight:{startX:0,startZ:5,targetX:1.4,targetZ:5+depth,startedAtSeconds:1,
+        flightSeconds:.65,damageEnemyHp:9,blastRadius:4}},0);
+    const flight=scene.getObjectByName('grenade-flight')!;
+    expect(flight.position.x).toBeCloseTo(-1.4*t);
+    expect(flight.position.z).toBeCloseTo(depth*t);
+    expect(Number.isFinite(flight.position.y)).toBe(true);
+    if(t===.5)expect(flight.position.y).toBeGreaterThan(3);
+    expect(scene.children).toEqual(children);
+    expect(renderer.getDebugStats().dustCapacity).toBe(16);
+  }
+  renderer.dispose();
+});
+
 it('projects a deterministic arc and reuses bounded explosion resources across resets',()=>{
   const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene);
   const state:NonNullable<GameRenderState['grenade']>={supply:null,originZ:5,elapsedSeconds:1.325,

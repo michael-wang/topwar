@@ -30,7 +30,7 @@ to its base power window, including Lv6. Older snapshot balances without the
 optional ramp field retain their original future-wave composition.
 
 `src/simulation/grenade.ts::grenadeTarget` now considers living defense enemies
-in every lane within 24 units of absolute approach depth. Lowest world Z is
+in every lane on the active battlefield (the historical distance cap was removed in the r3 hotfix). Lowest world Z is
 closest to the defense line; stable enemy ID breaks ties. Living enemies at or
 just past player Z remain eligible and take priority over enemies still
 approaching it. The local group is all living defense enemies inside radius 4
@@ -39,7 +39,7 @@ once. The captured urgent position is inside the resulting circle. Existing
 flight and normal enemy movement continue; there is no homing or motion freeze.
 
 Grenade capacity 1, damage 9 enemy HP, radius 4, no falloff, .65-second flight,
-range 24, Lv3 +8-second one-hit Supply, Q/button request and ordinary XP remain
+Lv3 +8-second one-hit Supply, Q/button request and ordinary XP remain
 unchanged. HP, speeds, XP curve/rewards, weapons, soldier progression, cadence,
 art/death/coastal presentation and audio startup remain unchanged. Giant stays
 deferred to Lv7; no new weapon or archetype is introduced.

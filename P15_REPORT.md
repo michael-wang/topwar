@@ -18,16 +18,16 @@ Authored in `public/game-data/game.json → catharsis.grenade`, validated by `sr
 | Damage | 9 defense-enemy HP, no falloff |
 | Blast radius | 2 world units, circular X/Z distance, inclusive boundary |
 | Flight | 0.65 simulation seconds; captured destination |
-| Throw range | 24 forward world units |
+| Supply pressure-scoring depth | 24 forward world units (supply placement only; no throw-distance limit) |
 | Normal supply depth | 14 units ahead; prefer lanes allowing at least 6 |
 | Front clearance | 1.25 units ahead of the nearest same-lane enemy |
 | Lane distance penalty | 3 HP of placement score per lane from the selected lane |
 
-Placement scores remaining HP within throw range plus lane distance. It first considers lanes with a readable clear depth; if all are obstructed, it chooses the most open lane and brings the supply closer. The supply remains at its captured player-relative depth until shot, so a slow player does not lose the only teaching item to scrolling. Extreme already-surrounded cases can have insufficient clearance; no enemies are moved or despawned to manufacture a safe lane.
+Placement scores remaining HP within the 24-unit supply pressure window plus lane distance. It first considers lanes with a readable clear depth; if all are obstructed, it chooses the most open lane and brings the supply closer. The supply remains at its captured player-relative depth until shot, so a slow player does not lose the only teaching item to scrolling. Extreme already-surrounded cases can have insufficient clearance; no enemies are moved or despawned to manufacture a safe lane.
 
 The button appears on acquisition, shows one charge and pulses twice. It is safe-area anchored and isolated from lane taps. Start/Pause/death/empty inventory/no eligible target disable activation. The app queues a one-shot input for the next fixed simulation tick; only a valid captured throw consumes inventory. Held charges survive Lv4/Lv5. Retry clears the encounter and HUD. No recurring supplies, grenade weapon progression, modal tutorial or generic active-item framework.
 
-Eligible same-lane enemies ahead and within range are candidate anchors. The selected anchor maximizes all defense enemies inside the circle, including adjacent lanes. Ties use nearest Z then enemy ID. Detonation visits living victims in ID order. Rifle, retained rocket and Grenade now share `Simulation.step`'s `damageEnemy → awardKill → grantXp` lethal boundary; no separate Grenade XP calculation. Nominal per-victim kill rewards in the transient event come from that same boundary; normal overflow/cap semantics remain in `grantXp`.
+The initial same-lane/densest-cluster anchor policy was superseded: current targeting uses the nearest living defense enemy across the entire active battlefield, without a throw-distance cap (see `GAME_SPEC.md`). Detonation visits living victims in ID order. Rifle, retained rocket and Grenade share `Simulation.step`'s `damageEnemy → awardKill → grantXp` lethal boundary; no separate Grenade XP calculation. Nominal per-victim kill rewards in the transient event come from that same boundary; normal overflow/cap semantics remain in `grantXp`.
 
 Grunt dies; full-health Heavy remains at **6/15**; Giant remains at **163/172** (5.23% damage). Legacy Boss is excluded. Flight parameters, inventory, supply and lifecycle clocks are plain validated snapshot data. Restore clears transient events, not held/airborne gameplay state.
 

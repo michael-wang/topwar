@@ -27,6 +27,7 @@ const mock = vi.hoisted(() => ({
   reviewConstructed: vi.fn(),
   reviewFixture: vi.fn(),
   grenadeConstructed: vi.fn(),
+  grenadeUpdate: vi.fn(),
   step: vi.fn(),
   stepLane: vi.fn(),
   setRuntimeBalance: vi.fn(),
@@ -164,7 +165,7 @@ vi.mock('../src/ui/BattleInfoHud', () => ({ BattleInfoHud: class {
 } }));
 vi.mock('../src/ui/GrenadeButton', () => ({ GrenadeButton: class {
   constructor(_viewport: unknown, activate: unknown) { mock.grenadeConstructed(activate); }
-  update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
+  update = mock.grenadeUpdate; reset = vi.fn(); dispose = vi.fn();
 } }));
 vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
   element = {} as HTMLElement;
@@ -1138,6 +1139,23 @@ describe('Q primary active item', () => {
       expect(mock.step.mock.calls.filter(call => call[1].throwGrenade)).toHaveLength(1);
       expect(s.state.grenade.inventory).toBe(1); // App requests; simulation owns consumption.
     } finally { s.dispose(); }
+  });
+
+  it.each([38,47])('enables the Lv6 button and both request paths with only distant enemies at depth %s', async depth => {
+    const s=setup();
+    try {
+      s.state.enemies[0].z=depth;
+      s.state.progression={level:6,xp:0};
+      s.state.squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
+      await startGame(s.app);s.raf.frame(0);s.raf.frame(100);
+      expect(mock.grenadeUpdate).toHaveBeenLastCalledWith(1,true,true);
+      s.button();expect(s.control.takeGrenadeRequest()).toBe(true);
+      s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(true);
+      expect(s.state.grenade.inventory).toBe(1); // Only simulation consumes.
+      s.raf.key('p');s.raf.frame(200);
+      expect(mock.grenadeUpdate).toHaveBeenLastCalledWith(1,true,false);
+      s.button();s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
+    } finally {s.dispose();}
   });
 
   it('ignores Q from interactive, editable, nested-button and TUNE focus', async () => {

@@ -13,7 +13,7 @@ No deployment. This report describes the P2A commit containing this file.
 - Lv6 is **Machine Gun I / exactly one living specialist / 18 Hz**. Projectile speed **60**, range **80**, one projectile/event, **1 defense-enemy HP** per bullet. No AoE, penetration, knockback, stun, suppression or archetype multiplier. Full-health Heavy requires 15 hits; Giant requires ordinary one-HP hits.
 - Crossing the family boundary replaces 3/2/1 living Rifles with one Tier-1 specialist. It neither heals a dead squad nor emits casualties, death visuals, damage flashes or XP changes. Old-family bullets are discarded and primary/member clocks reset to 1/18 second. Actual contact events in the same render frame retain damage feedback. Held/in-flight Grenade is independent and preserved.
 - Natural Giant unlock **6→7**, beyond cap. HP 172 and its DEV/review fixture unchanged; reinforcement and disabled landing assault remain deferred. Existing quantity multipliers are unchanged, including Lv6 1.35 (32-member future groups). No global difficulty edit.
-- Accepted Grenade unchanged: capacity 1, damage 9 HP, radius 4, no falloff, flight .65 s, range 24, first supply Lv3+8 s, one-hit acquisition, current-lane targeting/ties, Q and ordinary kill XP.
+- Accepted Grenade unchanged: capacity 1, damage 9 HP, radius 4, no falloff, flight .65 s, first supply Lv3+8 s, one-hit acquisition, current-lane targeting/ties, Q and ordinary kill XP.
 
 ## Engineering and presentation
 

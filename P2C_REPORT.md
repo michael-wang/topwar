@@ -18,7 +18,7 @@ One Giant is scheduled on the exact Lv5 crossing tick, due six simulation second
 
 Lv6 retains one specialist, 18 Hz, 1 enemy HP per bullet, speed 60, range 80. Its immediate seeded 59-Grunt/one-Heavy crowd enters 38–47 units ahead, alongside survivors. Consuming the next ordinary group row prevents later duplication: the first subsequent normal group is 6–12 seconds later, then six-second cadence resumes. Nine-unit depth, base groupSize 24 and the multiplier table remain unchanged; Lv7 does not inherit the override.
 
-XP costs remain [28,60,110,180,220], rewards Grunt 1 / Heavy 10 / Giant 120. The existing cap discards excess XP at Lv6. Grenade remains capacity 1 / 9 HP / radius 4 / .65s / range 24 / Lv3 +8s supply, with global emergency targeting and shared Q/button input. No new archetype, weapon, damage multiplier, speed, art or audio-startup changes.
+XP costs remain [28,60,110,180,220], rewards Grunt 1 / Heavy 10 / Giant 120. The existing cap discards excess XP at Lv6. Grenade remains capacity 1 / 9 HP / radius 4 / .65s / Lv3 +8s supply, with global emergency targeting and shared Q/button input. No new archetype, weapon, damage multiplier, speed, art or audio-startup changes.
 
 ## Implementation and persistence
 

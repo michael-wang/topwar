@@ -6,7 +6,7 @@ Starting baseline: `3e2b640a78a65b064cf6643ec6dffe0602ef1048`. HEAD, origin/main
 
 ## Authored behavior and scope
 
-Only the authored Grenade **blastRadius changes from 2 to 4 world units**, in `public/game-data/game.json → catharsis.grenade` and its validated defaults in `src/config/grenadeConfig.ts`. Damage stays **9 defense-enemy HP**, no falloff, capacity1, flight0.65s, forward range24, first supply Lv3+8s, one Rifle hit. Target anchors, nearest-Z/ID ties, capture, deterministic circular victim order and ordinary XP are unchanged. Heavy15 →6 and Giant172 →163. No global difficulty, XP curve, stream, lane composition or death-presentation changes.
+Only the authored Grenade **blastRadius changes from 2 to 4 world units**, in `public/game-data/game.json → catharsis.grenade` and its validated defaults in `src/config/grenadeConfig.ts`. Damage stays **9 defense-enemy HP**, no falloff, capacity1, flight0.65s, first supply Lv3+8s, one Rifle hit. Target anchors, nearest-Z/ID ties, capture, deterministic circular victim order and ordinary XP are unchanged. Heavy15 →6 and Giant172 →163. No global difficulty, XP curve, stream, lane composition or death-presentation changes.
 
 `GrenadeRenderer` already uses the authoritative detonation radius for flash scale, ground-ring scale and dust travel. Radius4 therefore doubles all three footprints; a focused test verifies it. The same **16 dust instances**, meshes, geometries and materials are reused. No new effect slots or per-victim allocations were introduced.
 

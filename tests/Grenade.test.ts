@@ -10,8 +10,9 @@ const tuning = { ...config.player, trackHalfWidth: 3.2, defenseLineOffset: 1.5, 
   bossRadius: 2, forwardSpeed: 0, rifle: config.weapon.rifle, rocket: config.weapon.rocket };
 const held = () => ({ ...emptyGrenade(), lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0, inventory: 1 as const });
 it('authors the four-unit blast without changing single-target damage or supply/flight values', () => {
+  expect(balance.grenade).not.toHaveProperty('throwRange');
   expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, capacity: 3,
-    flightSeconds: .65, throwRange: 24, supplyDelaySeconds: 8, supplyHitsRequired: 1 });
+    flightSeconds: .65, supplyPressureDepth: 24, supplyDelaySeconds: 8, supplyHitsRequired: 1 });
 });
 function armed() {
   const sim = make(), s = sim.getState(); s.grenade = held();
@@ -68,6 +69,14 @@ it('chooses a nearby clear lane and places supply ahead of the nearest same-lane
   const supply = placeGrenadeSupply(s,balance.grenade);
   expect(supply.lane).toBe(3); expect(supply.depth).toBe(10.75);
 });
+it('keeps the supply-only pressure window unchanged without limiting throw targets', () => {
+  const s=make().getState();
+  s.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:25,hp:15}];
+  expect(placeGrenadeSupply(s,balance.grenade).lane).toBe(2);
+  s.enemies[0].z=24;
+  expect(placeGrenadeSupply(s,balance.grenade).lane).toBe(1);
+  expect(grenadeTarget(s,balance.grenade)!.anchorId).toBe(1);
+});
 it('requires one same-lane Rifle hit, consumes it, and fills three charges once across Lv4', () => {
   const sim = make(), s = sim.getState(); s.progression = {level:4,xp:0};
   s.grenade = {...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,supply:{lane:2,x:0,depth:8}};
@@ -87,11 +96,10 @@ it('centers the nearest global cluster with stable ID ties and a fixed capture',
   sim.step(1/60,{targetX:0,throwGrenade:true},tuning); const f=sim.getState().grenade!.flight!;
   sim.stepLane(1); ticks(sim,20);expect(sim.getState().grenade!.flight!.targetZ).toBe(f.targetZ);
 });
-it('does not consume a no-enemy or out-of-range throw or activate after death', () => {
-  for(const mode of ['empty','range','dead']) {
+it('does not consume a no-enemy throw or activate after death', () => {
+  for(const mode of ['empty','dead']) {
     const sim=armed(),s=sim.getState();
     if(mode==='empty')s.enemies=[];
-    if(mode==='range')s.enemies.forEach(e=>e.z=balance.grenade.throwRange+1);
     if(mode==='dead')s.squad={count:0,rocketCount:0,rifleCounts:[],rifleRemainder:0};
     sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
     expect(sim.getState().grenade!.inventory).toBe(1);expect(sim.getState().grenade!.flight).toBeNull();
@@ -185,7 +193,7 @@ it('clears the smaller near emergency instead of a dense distant selected-lane c
   expect(sim.getState().progression!.xp).toBe(3);
 });
 
-it.each([0,-.1,.1,24])('keeps a living emergency at relative depth %s eligible even outside the selected lane', depth => {
+it.each([0,-.1,.1,10,24,38,44,47])('keeps a living emergency at relative depth %s eligible even outside the selected lane', depth => {
   const s=make().getState();s.player.z=12;s.player.selectedLane=4;
   s.enemies=[{id:1,tier:1,archetype:'grunt',lane:0,x:-2.8,z:12+depth,hp:1}];
   expect(grenadeTarget(s,balance.grenade)).toEqual({anchorId:1,x:-2.8,z:12+depth});

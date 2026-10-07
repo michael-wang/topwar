@@ -38,10 +38,9 @@ export function enemiesInBlast<T extends Enemy>(enemies: readonly T[], x: number
 export interface GrenadeTarget { x: number; z: number; anchorId: number }
 export function grenadeTarget(state: SimulationFrameState, config: GrenadeConfig): GrenadeTarget | undefined {
   if (!state.catharsis?.balance.defenseMode || !state.squad.count) return undefined;
-  // Range and urgency use approach depth across every lane. Still-living
-  // enemies at/just past player Z remain eligible until authoritative removal.
-  const anchors = state.enemies.filter(e => e.archetype !== undefined && e.hp > 0
-    && Math.abs(e.z - state.player.z) <= config.throwRange);
+  // Every living defense enemy is eligible, including the distant shoreline
+  // release crowd and enemies at/just past player Z until authoritative removal.
+  const anchors = state.enemies.filter(e => e.archetype !== undefined && e.hp > 0);
   // The defense line is behind player Z: a surviving enemy that has crossed
   // player Z is more urgent than one still approaching it, not less urgent.
   const anchor = anchors.sort((a, b) => a.z - b.z || a.id - b.id)[0];
@@ -59,7 +58,7 @@ export function placeGrenadeSupply(state: SimulationFrameState, config: GrenadeC
   const candidates = lanes.map((x, lane) => {
     const ahead = state.enemies.filter(e => e.lane === lane && e.z > state.player.z);
     const nearest = Math.min(Infinity, ...ahead.map(e => e.z - state.player.z));
-    const debt = ahead.filter(e => e.z - state.player.z <= config.throwRange).reduce((sum, e) => sum + e.hp, 0);
+    const debt = ahead.filter(e => e.z - state.player.z <= config.supplyPressureDepth).reduce((sum, e) => sum + e.hp, 0);
     return { lane, x, nearest, score: debt + Math.abs(lane - state.player.selectedLane!) * config.supplyLaneDistancePenalty };
   });
   const readable = candidates.filter(c => c.nearest >= config.supplyMinDepth + config.supplyFrontClearance);
