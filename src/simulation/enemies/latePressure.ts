@@ -36,6 +36,14 @@ export function advanceGiantEncounter(previous: NonNullable<SimulationState['gia
   if (!balance.giant.enabled || state.spawned || level < balance.giant.unlockLevel) return state;
   state.scheduledAtSeconds ??= nowSeconds + balance.giant.introDelaySeconds;
   if (nowSeconds + 1e-9 < state.scheduledAtSeconds) return state;
+  spawnInteriorGiant(playerZ, balance, halfWidth, enemies, cursor);
+  state.spawned = true;
+  return state;
+}
+
+// Shared placement/HP/ID boundary, independent of the encounter scheduler.
+export function spawnInteriorGiant(playerZ: number, balance: CatharsisConfig, halfWidth: number,
+  enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState): void {
   const lanes = attackLanePositions(balance.laneCount, halfWidth, balance.edgeInset);
   const counts = lanes.map((_, lane) => enemies.filter(e => e.lane === lane && e.z > playerZ).length);
   // Interior corridors keep the large first silhouette inside the portrait framing.
@@ -46,6 +54,4 @@ export function advanceGiantEncounter(previous: NonNullable<SimulationState['gia
   if (!Number.isSafeInteger(cursor.nextEnemyId + 1)) throw new Error('Giant ID exceeds supported range');
   enemies.push({ id: cursor.nextEnemyId++, tier: 1, archetype: 'giant', lane, x: lanes[lane],
     z: playerZ + balance.defenseSpawnAheadDistance - balance.crowdDepthSpan, hp: balance.giant.hp });
-  state.spawned = true;
-  return state;
 }

@@ -25,6 +25,9 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   if (!catharsis?.balance.defenseMode || !state.enemyStream || !options.level.enemyStream)
     throw new Error('DEV Review requires the defense enemy stream');
   const balance = catharsis.balance;
+  // Isolated short reviews must not acquire recurring threats/pickups. CURVE
+  // intentionally follows the natural progression and post-cap continuation.
+  if (role !== 'curve') balance.postCapSurvival.enabled = false;
   const lane = Math.floor(balance.laneCount / 2);
   const lanes = attackLanePositions(balance.laneCount, catharsis.trackHalfWidth, balance.edgeInset);
   const x = lanes[lane];

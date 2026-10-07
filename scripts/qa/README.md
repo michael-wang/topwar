@@ -169,3 +169,19 @@ consumed rows, ordinary cadence, snapshot clocks and Giant lifecycle across Lv6.
 Run the existing evolution, MG, emergency Grenade, audio-start and production
 sanity scripts too. Durable results and unresolved human questions are in
 `P2C_REPORT.md`; software frame timings are not physical-phone certification.
+
+## Temporary post-cap survival
+
+`node scripts/qa/postcap-metrics.mjs` runs natural progression and 150 post-cap
+seconds for seeds 1–10, 17, 42, plus 360 seconds for seed 1. It records fixed
+Giant/Supply opportunities and skip reasons, admissions, acquisitions, reserves,
+throws, pressure/debt, casualties and empty periods. A separate 180-second
+seed-42 policy spends recurring charges to verify continued pickup/use cycles;
+three disabled runs verify identical natural progression timing before cap.
+`node scripts/qa/postcap-sanity.mjs` reviews the production `/topwar/` build at
+390×844 and 350×844 through 150+ post-cap seconds, Q/touch, Pause/Retry,
+pending/active Supply snapshots, bounded repeat effects and a software-rendered
+native-RAF sample. It exposes the app only through a test-side response hook,
+never a shipping debug export. Use the existing browser runtime environment
+variables documented above. `PostCapSurvival.test.ts` covers disabled behavior,
+exact Heavy groups, skip/no-catch-up scheduling and MG +1 acquisition.

@@ -1,5 +1,16 @@
 {
   "catharsis": {
+    "postCapSurvival": {
+      "enabled": true,
+      "startLevel": 6,
+      "ordinaryGroupSize": 3,
+      "pressureLaneCount": 3,
+      "heavyCount": 3,
+      "giantIntervalSeconds": 24,
+      "maxSimultaneousGiants": 1,
+      "grenadeSupplyIntervalSeconds": 30,
+      "grenadeSupplyAmount": 1
+    },
     "grenade": {
       "capacity": 3,
       "damageEnemyHp": 9,

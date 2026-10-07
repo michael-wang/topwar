@@ -1,5 +1,7 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { admitDefenseGroup } from './enemies/defenseGroup';
+import { advancePostCapSurvival, emptyPostCapSurvival, postCapOrdinarySettings,
+  PostCapSurvivalStateSchema, type PostCapSurvivalState } from './postCapSurvival';
 import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
   type GrenadeState, type GrenadeEvent } from './grenade';
 import { pressureGroupSize, pressureWaveSettings, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
@@ -208,7 +210,8 @@ function validSquadCount(count: unknown): count is number {
 function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamSimulationState,
   stream: EnemyStreamDefinition, playerZ: number, power: TierPower,
   boss: BossSimulationState | null, bossHpScale: number,
-  catharsis?: SimulationState['catharsis'], progression: ProgressionState = { level: 1, xp: 0 }): BossSimulationState | null {
+  catharsis?: SimulationState['catharsis'], progression: ProgressionState = { level: 1, xp: 0 },
+  postCapSurvival?: PostCapSurvivalState): BossSimulationState | null {
   const horizonZ = playerZ + (catharsis?.balance.defenseMode
     ? catharsis.balance.defenseSpawnAheadDistance : stream.spawnAheadDistance);
   if (!Number.isFinite(horizonZ)) throw new Error('Simulation enemy stream horizon is non-finite');
@@ -238,7 +241,8 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
     if (catharsis?.balance.defenseMode) {
       admitDefenseGroup(enemies, cursor, cursor.nextRowIndex, stream.seed,
         { ...catharsis.balance, ...pressureWaveSettings(catharsis.balance, progression),
-          groupSize: pressureGroupSize(catharsis.balance, progression.level) }, catharsis.trackHalfWidth, rowZ);
+          groupSize: pressureGroupSize(catharsis.balance, progression.level),
+          ...postCapOrdinarySettings(catharsis.balance, postCapSurvival) }, catharsis.trackHalfWidth, rowZ);
       cursor.nextRowIndex++;
       continue;
     }
@@ -318,6 +322,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'machineGunReleaseAtSeconds')) fields.push('machineGunReleaseAtSeconds');
   if (Object.hasOwn(state, 'landingAssault')) fields.push('landingAssault');
   if (Object.hasOwn(state, 'grenade')) fields.push('grenade');
+  if (Object.hasOwn(state, 'postCapSurvival')) fields.push('postCapSurvival');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -325,7 +330,6 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const grenade = state.grenade === undefined ? undefined : GrenadeStateSchema.parse(state.grenade);
   if (grenade && (!catharsis?.balance.defenseMode
     || grenade.inventory > catharsis.balance.grenade.capacity
-    || (grenade.flight !== null && grenade.inventory >= catharsis.balance.grenade.capacity)
     || [grenade.lv3EnteredAtSeconds, grenade.supplySpawnedAtSeconds, grenade.acquiredAtSeconds,
       grenade.flight?.startedAtSeconds].some(t => t != null && t > (state.elapsedSeconds as number))
     || (grenade.supply && (grenade.supply.lane >= catharsis.balance.laneCount
@@ -333,6 +337,12 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
         catharsis.trackHalfWidth, catharsis.balance.edgeInset)[grenade.supply.lane]) > 1e-9))))
     throw new Error('Invalid Grenade snapshot');
   const progression = state.progression;
+  // Disabled config discards even stale temporary state; old snapshots start fresh.
+  const postCapSurvival = catharsis?.balance.defenseMode && catharsis.balance.postCapSurvival.enabled
+    ? PostCapSurvivalStateSchema.parse(state.postCapSurvival ?? emptyPostCapSurvival()) : emptyPostCapSurvival();
+  if (postCapSurvival.startedAtSeconds !== null && (postCapSurvival.startedAtSeconds > (state.elapsedSeconds as number)
+    || !isPlainObject(progression) || (progression.level as number) < catharsis!.balance.postCapSurvival.startLevel
+    || state.machineGunReleaseAtSeconds == null)) throw new Error('Invalid post-cap activation');
   if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
     || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
     || (progression.level as number) < 1 || !Number.isSafeInteger(progression.xp)
@@ -688,6 +698,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     state: {
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
+      ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       // Older Lv6 snapshots already represent an established MG run; never inject a retroactive wave.
       ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: releaseAt === undefined
         ? ((progression?.level as number) >= 6 ? 0 : null) : releaseAt as number | null } : {}),
@@ -801,6 +812,7 @@ export class Simulation {
     this.state = {
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
+      ...(catharsis?.balance.defenseMode ? { postCapSurvival: emptyPostCapSurvival() } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
@@ -1035,7 +1047,7 @@ export class Simulation {
       && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
     if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
-        nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression);
+        nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression, this.state.postCapSurvival);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
     let giantEncounter = this.state.giantEncounter;
@@ -1166,9 +1178,11 @@ export class Simulation {
           this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics, grenade?.supply);
         if (!hit) break;
         if (hit.kind === 'grenadeSupply') {
+          const rewardAmount = grenade!.supply!.rewardAmount;
           grenade!.supply = null;
-          grenade!.inventory = grenadeConfig!.capacity;
-          grenade!.acquiredAtSeconds = nextElapsedSeconds;
+          grenade!.inventory = rewardAmount === undefined ? grenadeConfig!.capacity
+            : Math.min(grenadeConfig!.capacity, grenade!.inventory + rewardAmount);
+          grenade!.acquiredAtSeconds ??= nextElapsedSeconds;
           this.grenadeEvents.push({ kind: 'grenadeAcquired' });
         } else if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
@@ -1421,7 +1435,11 @@ export class Simulation {
       enemyStream.nextRowIndex = row + 1;
       machineGunReleaseAtSeconds = nextElapsedSeconds;
     }
+    const postCapSurvival = advancePostCapSurvival(this.state.postCapSurvival,
+      { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
+        player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade });
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
+      ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
       ...(machineGunReleaseAtSeconds !== undefined ? { machineGunReleaseAtSeconds } : {}),
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
@@ -1458,6 +1476,7 @@ export class Simulation {
       ...this.state,
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),
+      ...(this.state.postCapSurvival ? { postCapSurvival: { ...this.state.postCapSurvival } } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
