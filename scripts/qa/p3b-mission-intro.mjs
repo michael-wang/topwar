@@ -5,7 +5,7 @@ const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/
 const out=process.argv[2]??'artifacts/p3b-mission-intro';mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results=[];
-async function setup(width,locale='zh-TW'){
+async function setup(width,locale='zh-TW',beforeNavigate=async()=>{}){
  const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,locale}),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/audio/'))requests.push(r.url());});
@@ -18,6 +18,7 @@ async function setup(width,locale='zh-TW'){
   AudioBufferSourceNode.prototype.stop=function(...args){if(this.__voice)window.__voiceEvents.push({kind:'stop',time:window.__testApp.simulation.getState().elapsedSeconds});return stop.apply(this,args);};
  });
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();','window.__testApp=app;app.start();')});});
+ await beforeNavigate(page);
  await page.goto('http://127.0.0.1:5173/');await page.waitForSelector('.game-start-overlay');
  return {page,errors,requests};
 }
@@ -25,7 +26,8 @@ try{
  for(const width of [390,350]){
   const {page,errors,requests}=await setup(width);
   if(width===350)await page.locator('.beachhead-defense').evaluate(e=>e.style.setProperty('--hud-inset-bottom','34px'));
-  assert.equal(requests.length,0);assert(await page.locator('.field-observer').isHidden());
+  assert.equal(requests.length,1);assert(await page.locator('.field-observer').isHidden());
+  assert.equal(await page.evaluate(()=>window.__testApp.audio.context),null);
   await page.getByRole('button',{name:'Start game with audio'}).tap();
   const stopRecording=await startGameRecording(page,width);
   await page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=.5);
@@ -46,7 +48,7 @@ try{
   await page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=4.3);
   assert.equal(await page.locator('.field-observer p').textContent(),'請守住防線。完畢！');
   await page.screenshot({path:`${out}/${width}-phrase-3.png`});
-  await page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=6.7);
+  await page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=6.7&&!window.__testApp.fieldObserver.missionTimeline.active);
   assert(await page.locator('.field-observer').isHidden());
   const finished=await page.evaluate(()=>window.__testApp.simulation.getState());
   assert(finished.enemies.some(e=>active.enemies.some(before=>before.id===e.id&&before.z>e.z)));
@@ -87,11 +89,13 @@ try{
  await english.page.screenshot({path:`${out}/350-english.png`});await english.page.close();
  results.push({locale:'en',requests:english.requests,errors:english.errors});
  // A deliberately delayed decode cannot hold up enemies or leave stale speech after the window.
- const delayed=await setup(350);let release;
+ let release;
  const gate=new Promise(r=>release=r);
- await delayed.page.route('**/audio/observer_mission_intro_zh-TW.mp3',async route=>{await gate;await route.continue();});
+ const delayed=await setup(350,'zh-TW',async page=>{
+  await page.route('**/audio/observer_mission_intro_zh-TW.mp3',async route=>{await gate;await route.continue();});
+ });
  await delayed.page.getByRole('button',{name:'Start game with audio'}).tap();
- await delayed.page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=6.7);
+ await delayed.page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=9.2);
  assert(await delayed.page.locator('.field-observer').isHidden());release();await delayed.page.waitForTimeout(300);
  assert.deepEqual(await delayed.page.evaluate(()=>window.__voiceEvents),[]);
  assert((await delayed.page.evaluate(()=>window.__testApp.simulation.getState().enemies.length))>0);

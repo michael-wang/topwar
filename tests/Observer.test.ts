@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 // @ts-expect-error Vitest runs in Node; project typecheck exposes browser types only.
 import { createHash } from 'node:crypto';
 import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue } from '../src/ui/observerLocale';
-import { ObserverTimeline } from '../src/presentation/ObserverTimeline';
-import { ObserverVoice, observerVoiceAssets, observerMissionVoiceAssets } from '../src/audio/ObserverVoice';
+import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '../src/presentation/ObserverTimeline';
+import { ObserverVoice, ObserverVoiceFiles, observerVoiceAssets, observerMissionVoiceAssets } from '../src/audio/ObserverVoice';
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
 import { FieldObserver } from '../src/ui/FieldObserver';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
@@ -52,6 +52,59 @@ function audioHarness() {
   }), createBiquadFilter:node, createGain:node } as unknown as AudioContext;
   return { context, nodes };
 }
+it.each([0,.5,1,2])('starts a ready mission recording at offset zero after %ss preparation, independent of gameplay time',readyAt=>{
+  const t=new MissionObserverTimeline();t.start(0);let beginCount=0,start=0;
+  for(let tick=0;tick<600;tick++){
+    const now=tick/60,frame=t.update(now,true,false,now>=readyAt?'ready':'pending');
+    if(frame.begin){beginCount++;start=now;expect(frame.offset).toBe(0);expect(frame.audible).toBe(true);}
+    if(now<Math.max(.2,readyAt))expect(frame.visible).toBe(false);
+  }
+  expect(beginCount).toBe(1);expect(start).toBeCloseTo(Math.max(.2,readyAt));expect(t.active).toBe(false);
+});
+it('bounds intro waiting, chooses subtitle-only once and refuses late speech after fallback or completion',()=>{
+  const t=new MissionObserverTimeline();t.start(0);let began=0;
+  for(let tick=0;tick<660;tick++){
+    const now=tick/60,frame=t.update(now,true,false,now>=4?'ready':'pending');
+    if(frame.begin){began++;expect(now).toBeCloseTo(.2+missionIntroTiming.readinessWaitSeconds);}
+    expect(frame.audible).toBe(false);
+  }
+  expect(began).toBe(1);expect(t.update(1,true,false,'ready').visible).toBe(false);
+});
+it('freezes readiness wait and speech on Pause; Retry cancels either phase and starts a fresh attempt',()=>{
+  const t=new MissionObserverTimeline();t.start(0);
+  for(let tick=0;tick<=60;tick++)t.update(tick/60,true,false,'pending');
+  for(let n=0;n<200;n++)expect(t.update(1,true,true,'ready').visible).toBe(false);
+  const begun=t.update(1,true,false,'ready');expect(begun).toMatchObject({begin:true,offset:0,audible:true});
+  expect(t.update(1.1,true,true,'ready').offset).toBeCloseTo(.1);
+  expect(t.update(1.1,true,false,'ready').offset).toBeCloseTo(.1);
+  t.start(0);expect(t.update(0,true,false,'ready').visible).toBe(false);
+  expect(t.update(.2,true,false,'ready')).toMatchObject({begin:true,offset:0});
+  t.start(0);t.update(.1,true,false,'pending');t.start(0);
+  expect(t.update(.2,true,false,'ready')).toMatchObject({begin:true,offset:0});
+});
+it('fetches cold files before activation without creating audio sources, reuses warm bytes, and tolerates missing audio',async()=>{
+  const bytes=new ArrayBuffer(8),fetcher=vi.fn(async()=>({ok:true,arrayBuffer:async()=>bytes}));
+  vi.stubGlobal('fetch',fetcher);const files=new ObserverVoiceFiles();
+  await files.prefetch('/intro.mp3');await files.prefetch('/intro.mp3');expect(fetcher).toHaveBeenCalledOnce();
+  const decode=vi.fn(async(_bytes:ArrayBuffer)=>({duration:5.64} as AudioBuffer));
+  await files.load('/intro.mp3',{decodeAudioData:decode} as unknown as AudioContext);
+  expect(fetcher).toHaveBeenCalledOnce();expect(decode.mock.calls[0]?.[0]).not.toBe(bytes);
+  fetcher.mockRejectedValueOnce(Error('offline'));
+  expect(await files.load('/missing.mp3',{decodeAudioData:decode} as unknown as AudioContext)).toBeNull();
+  expect(await files.load('/missing.mp3',{decodeAudioData:decode} as unknown as AudioContext)).toBeNull();
+  expect(fetcher).toHaveBeenCalledTimes(2);files.clear();
+});
+it('never starts an unready mission clip from a late decode callback, including after reset',async()=>{
+  const {context,nodes}=audioHarness();let resolve!: (b:AudioBuffer)=>void;
+  const loader=vi.fn(()=>new Promise<AudioBuffer>(r=>resolve=r));
+  const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
+  expect(voice.prepare('zh-TW','missionIntro')).toBe('pending');
+  voice.sync('zh-TW',0,false,6.2,'missionIntro');voice.sync('zh-TW',1,false,6.2,'missionIntro');voice.reset();
+  resolve({duration:5.64} as AudioBuffer);await Promise.resolve();await Promise.resolve();
+  expect(nodes).toHaveLength(0);expect(voice.prepare('zh-TW','missionIntro')).toBe('ready');
+  voice.sync('zh-TW',0,false,6.2,'missionIntro');await Promise.resolve();
+  expect(nodes[0].start).toHaveBeenCalledWith(0,0);voice.dispose();
+});
 it('bundles the exact approved Mandarin bytes and leaves English without a recording', () => {
   expect(observerVoiceAssets).toEqual({ 'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null });
   const bytes = readFileSync('public/audio/observer_destroyer_zh-TW.mp3');
@@ -99,10 +152,17 @@ class ElementStub extends EventTarget {
 function missionUi() {
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   vi.stubGlobal('navigator',{languages:['zh-TW']});vi.stubGlobal('window',{});
-  const audio={play:vi.fn(),syncRadio:vi.fn()};
+  const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)};
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
+it('prepares the selected intro language before Start without playing or arming dialogue',()=>{
+  const {ui,audio}=missionUi();
+  (ui.selector as unknown as ElementStub).children[1].dispatchEvent(new Event('click'));
+  (ui.selector as unknown as ElementStub).children[0].dispatchEvent(new Event('click'));
+  expect(audio.prepareRadio.mock.lastCall).toEqual(['zh-TW','missionIntro']);
+  expect(audio.play).not.toHaveBeenCalled();expect(ui.element.hidden).toBe(true);ui.dispose();
+});
 it('bundles the untouched mission recording and approved short bilingual phrases',()=>{
   const bytes=readFileSync('public/audio/observer_mission_intro_zh-TW.mp3');
   expect(createHash('sha256').update(bytes).digest('hex')).toBe('8d681e6d96786f1ede9eccca1e455a74f92211f1c0e45ab685c67da2eca6ff84');
@@ -169,7 +229,7 @@ it('updates matching subtitles and locale without restarting combat; Retry hides
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   vi.stubGlobal('navigator',{languages:['zh-TW']});
   vi.stubGlobal('window',{localStorage:{getItem:(k:string)=>stored.get(k),setItem:(k:string,v:string)=>stored.set(k,v)}});
-  const audio={play:vi.fn(),syncRadio:vi.fn()}, host=new ElementStub(), ui=new FieldObserver(host as unknown as HTMLElement,audio);
+  const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)}, host=new ElementStub(), ui=new FieldObserver(host as unknown as HTMLElement,audio);
   for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
   expect(ui.element.hidden).toBe(false);expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerDialogue['zh-TW']);
   const en=(ui.selector as unknown as ElementStub).children[1];en.dispatchEvent(new Event('click'));

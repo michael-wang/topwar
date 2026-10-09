@@ -19,7 +19,7 @@ try{
  });
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();','window.__testApp=app;app.start();')});});
  await page.goto('http://127.0.0.1:5173/');await page.waitForSelector('.game-start-overlay');await page.waitForTimeout(350);
- assert.equal(requests.length,0);assert.equal(await page.evaluate(()=>window.__testApp.audio.context),null);
+ assert.equal(requests.length,1);assert.equal(await page.evaluate(()=>window.__testApp.audio.context),null);
  await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');await selectDevFixture(page,'naval');
  await page.evaluate(()=>window.__voiceEvents=[]);
  const stopRecording=await startGameRecording(page,350);

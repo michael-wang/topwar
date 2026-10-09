@@ -1,4 +1,5 @@
-import { ObserverVoice } from './ObserverVoice';
+import { ObserverVoice, ObserverVoiceFiles, observerVoiceAsset, type ObserverAudioReadiness } from './ObserverVoice';
+import { publicAssetUrl } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
@@ -187,6 +188,9 @@ export class GameAudio {
   private weaponBus: GainNode | null = null;
   private radioDuckBus: GainNode | null = null;
   private voice: ObserverVoice | null = null;
+  private readonly voiceFiles = new ObserverVoiceFiles();
+  private readonly preparedRadio = new Map<string, { locale: ObserverLocale; message: ObserverMessage }>();
+  private activationDenied = false;
   private radioActive = false;
   private readonly radioSources = new Set<AudioScheduledSourceNode>();
   private supplyRewardAtMs: number | null = null;
@@ -210,6 +214,15 @@ export class GameAudio {
   get needsResume(): boolean {
     return !!this.context && this.context.state === 'suspended';
   }
+  prepareRadio(locale: ObserverLocale, message: ObserverMessage): ObserverAudioReadiness {
+    const asset = observerVoiceAsset(locale, message);
+    if (this.disposed || !asset || !globalThis.AudioContext) return 'unavailable';
+    if (!this.preparedRadio.has(asset)) this.preparedRadio.set(asset, { locale, message });
+    void this.voiceFiles.prefetch(publicAssetUrl(asset));
+    const ready = this.voice?.prepare(locale, message) ?? 'pending';
+    if (ready === 'unavailable' || this.activationDenied) return 'unavailable';
+    return ready === 'ready' && this.unlocked && this.context?.state === 'running' ? 'ready' : 'pending';
+  }
 
   // Called directly within a real app-owned gesture, never from the frame loop.
   activate(): Promise<AudioActivationResult> {
@@ -226,6 +239,9 @@ export class GameAudio {
         this.master.gain.value = 0.70;
         this.master.connect(context.destination);
       }
+      this.activationDenied = false;
+      this.voice ??= new ObserverVoice(context, this.master, undefined, this.voiceFiles.load);
+      for (const {locale, message} of this.preparedRadio.values()) this.voice.prepare(locale, message);
       // Some browsers leave resume pending; audio must never trap the ready screen.
       const resumed = context.resume();
       this.activation = new Promise<AudioActivationResult>((resolve) => {
@@ -235,10 +251,11 @@ export class GameAudio {
           if (this.disposed) return resolve('unavailable');
           this.unlocked = context.state === 'running';
           resolve(this.unlocked ? 'running' : 'denied');
-        }, () => { clearTimeout(timeout); resolve('denied'); });
+        }, () => { clearTimeout(timeout); this.activationDenied = true; resolve('denied'); });
       }).finally(() => { this.activation = null; });
       return this.activation;
     } catch {
+      this.activationDenied = true;
       return Promise.resolve('denied');
     }
   }
@@ -289,7 +306,7 @@ export class GameAudio {
     }
     this.radioActive = active;
     if (!this.unlocked || !this.context || !this.master) return;
-    this.voice ??= new ObserverVoice(this.context, this.master);
+    this.voice ??= new ObserverVoice(this.context, this.master, undefined, this.voiceFiles.load);
     this.voice.sync(locale, offset, paused || this.context.state !== 'running', windowSeconds, message);
   }
 
@@ -456,6 +473,7 @@ export class GameAudio {
     this.active.clear();
     this.radioSources.clear();
     this.voice?.dispose(); this.voice = null;
+    this.voiceFiles.clear(); this.preparedRadio.clear();
     this.radioDuckBus?.disconnect(); this.radioDuckBus = null;
     this.music?.dispose();
     this.music = null;
