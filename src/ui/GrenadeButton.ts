@@ -27,6 +27,16 @@ export class GrenadeButton {
     this.element.hidden = true; this.element.disabled = true; this.previousInventory = 0;
     this.element.classList.remove('grenade-acquired');
   }
+  getBounds(): DOMRect { return this.element.getBoundingClientRect(); }
+  beginSupplyTransfer():void {this.element.classList.remove('grenade-acquired');this.element.classList.add('grenade-transferring');}
+  presentSupplyTransfer(scale:number,glow:number):void {
+    this.element.style.setProperty('--supply-reward-scale',String(scale));
+    this.element.style.setProperty('--supply-reward-glow',`${glow*14}px`);
+  }
+  endSupplyTransfer():void {
+    this.element.classList.remove('grenade-transferring');
+    this.element.style.removeProperty('--supply-reward-scale');this.element.style.removeProperty('--supply-reward-glow');
+  }
   dispose(): void {
     this.element.removeEventListener('pointerdown', this.stopPointer);
     this.element.removeEventListener('click', this.click); this.element.remove();

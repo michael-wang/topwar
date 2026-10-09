@@ -30,6 +30,7 @@
       "supplyPressureDepth": 24,
       "supplyDelaySeconds": 8,
       "supplyHitsRequired": 10,
+      "supplyDestruction": { "mode": "staged", "recoverySeconds": 0.7 },
       "supplyDepth": 14,
       "supplyMinDepth": 6,
       "supplyFrontClearance": 1.25,

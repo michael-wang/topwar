@@ -20,7 +20,7 @@ export const CatharsisConfigSchema = z.strictObject({
   carnival: CarnivalConfigSchema.default(carnivalDefaults),
   postCapSurvival: PostCapSurvivalConfigSchema.default(postCapSurvivalDefaults),
   // Missing Grenade configuration belongs to historical one-hit snapshots.
-  grenade: GrenadeConfigSchema.default({ ...grenadeDefaults, supplyHitsRequired: 1 }),
+  grenade: GrenadeConfigSchema.default({ ...grenadeDefaults, supplyHitsRequired: 1, supplyDestruction: undefined }),
   machineGun: z.strictObject({
     fireRate: z.number().finite().positive().default(18),
     projectileSpeed: z.number().finite().positive().default(60),

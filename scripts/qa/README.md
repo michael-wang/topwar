@@ -250,3 +250,10 @@ exact Heavy groups, skip/no-catch-up scheduling and MG +1 acquisition.
 ## P2.6 Supply and button polish
 
 `node scripts/qa/p26-sanity.mjs` captures lower button edges at 390×844 and 350×844 with simulated bottom safe-area insets 0/20/34px (the 34px case also includes top/side insets). It exercises normal, held left/right, focus-visible and paused/disabled states, checks layout, and captures ten-hit teaching Supply feedback/acquisition. It also checks partial-progress Pause/restore, recurring MG acquisition and selected-entry Retry. Inspect the generated `*-edges.png` images visually; bounds alone do not verify the border. Runtime overrides match the other browser scripts; output defaults to ignored `artifacts/p26/browser`. These are desktop browser checks, not physical-device certification.
+
+
+## P2.7 staged Supply destruction
+
+`node scripts/qa/p27-sanity.mjs` checks Lv3 Rifle, Lv6 single MG and Lv8 three-MG acquisition at 390×844 and 350×844 (including a 34px simulated bottom inset). It captures each crate stage, three teaching reward items and one recurring reward item; verifies real HUD inventory during immediate throws, sequential arrivals, cue order, Pause during recovery/flight, snapshot restoration and Retry during flight. Test-side response interception exposes the app only to QA; no production debug API is added. Output defaults to ignored `artifacts/p27/browser`. Browser runtime overrides match the scripts above. Inspect stage and flight captures visually. `SupplyDestruction.test.ts`, `SupplyTransfer.test.ts` and the retained `GrenadeSupplyHits.test.ts` cover staged behavior, presentation and historical one-/ten-hit compatibility. Desktop emulation does not certify physical-phone performance or speaker balance.
+
+`node scripts/qa/p27-record.mjs` records the complete composited 390px Rifle sequence with game audio to `artifacts/p27/recording/rifle-supply-390.webm`, using Chrome screencast frames and its built-in MediaRecorder. The accompanying performance sample compares CPU frame cost outside/during the transfer within that recorded scene; it is not a dense-battle benchmark or a baseline-build comparison.

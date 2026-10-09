@@ -9,7 +9,7 @@ import { CatharsisConfigSchema } from '../src/config/catharsisConfig';
 const make=()=>new Simulation({...carnivalOptions,level:{id:'supply',length:100,enemyGroups:[],upgradeGates:[]}});
 function supplyRun(kind:'rifle'|'machineGun'='rifle',inventory=0,recurring=false,hitsRequired=10) {
   const sim=make(),s=sim.getState();s.progression={level:kind==='rifle'?3:6,xp:0};
-  const config={...s.catharsis!.balance.grenade,supplyHitsRequired:hitsRequired};
+  const config={...s.catharsis!.balance.grenade,supplyHitsRequired:hitsRequired,supplyDestruction:undefined};
   s.catharsis!.balance.grenade=config;
   s.grenade={...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,
     acquiredAtSeconds:recurring?0:null,inventory,
@@ -42,7 +42,8 @@ it('restores partial progress and its frozen requirement, and Retry starts fresh
   clone.restoreState(JSON.parse(JSON.stringify(saved)));saved.grenade!.supply!.hitProgress=8;
   expect(clone.getState()).toEqual(sim.getState());
   for(const s of [sim,clone])s.setCatharsisBalance({...s.getState().catharsis!.balance,
-    grenade:{...s.getState().catharsis!.balance.grenade,supplyHitsRequired:1}});
+    grenade:{...s.getState().catharsis!.balance.grenade,supplyHitsRequired:1,
+      supplyDestruction:{mode:'staged',recoverySeconds:.7}}});
   for(let i=0;i<5;i++){hit(sim);hit(clone);expect(sim.getState()).toEqual(clone.getState());}
   expect(sim.getState().grenade!.inventory).toBe(0);hit(sim);hit(clone);expect(sim.getState()).toEqual(clone.getState());
   expect(sim.getState().grenade!.inventory).toBe(3);expect(supplyRun().getState().grenade!.supply!.hitProgress).toBe(0);

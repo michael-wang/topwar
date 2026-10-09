@@ -106,7 +106,7 @@ it('skips full-inventory and uncollected Supply slots; spending does not bank a 
   s.grenade!.inventory=2;advance(s,start+31);expect(s.grenade!.supply).toBeNull();
   advance(s,start+60);const supply=structuredClone(s.grenade!.supply);
   expect(supply!.rewardAmount).toBe(1);expect(s.grenade!.inventory).toBe(2);
-  expect(supply).toMatchObject({hitsRequired:10,hitProgress:0});
+  expect(supply).toMatchObject({destruction:{mode:'staged',stage:0,recoverySeconds:.7,recoverAtSeconds:0}});
   advance(s,start+90);expect(s.grenade!.supply).toEqual(supply);
   s.grenade!.supply=null;advance(s,start+91);expect(s.grenade!.supply).toBeNull();
   advance(s,start+120);expect(s.grenade!.supply).not.toBeNull();

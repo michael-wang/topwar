@@ -20,6 +20,7 @@ import { GameAudio } from '../audio/GameAudio';
 import { TierHud } from '../ui/TierHud';
 import { highestIntroducedTierForRow } from '../simulation/tiers/tierRules';
 import { defaultRuntimeTuning, type RuntimeTuning } from './runtimeTuning';
+import { SupplyRewardTransfer } from '../ui/SupplyRewardTransfer';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { ControlHint } from '../ui/ControlHint';
 import { TuningPanel } from '../ui/TuningPanel';
@@ -69,6 +70,7 @@ export class GameApp {
   private readonly xpHud: XpHud | null;
   private readonly battleInfo: BattleInfoHud | null;
   private readonly grenadeButton: GrenadeButton | null;
+  private readonly supplyTransfer: SupplyRewardTransfer | null;
   private grenadeRequested = false;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
@@ -121,6 +123,8 @@ export class GameApp {
     this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;
     this.battleInfo = this.config.catharsis?.defenseMode ? new BattleInfoHud(viewport) : null;
     this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, this.requestGrenade) : null;
+    this.supplyTransfer=this.grenadeButton ? new SupplyRewardTransfer(viewport,this.grenadeButton,
+      (x,z,now)=>this.renderer.projectSupplyPosition(x,z,now)) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.tuningPanel = import.meta.env.DEV ? new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
@@ -222,7 +226,7 @@ export class GameApp {
     this.xpHud?.dispose();
     this.controlStrip?.dispose();
     this.battleInfo?.dispose();
-    this.grenadeButton?.dispose();
+    this.supplyTransfer?.dispose();this.grenadeButton?.dispose();
     this.gameOverOverlay.dispose();
     this.tuningPanel?.dispose();
     this.hudActions.dispose();
@@ -266,7 +270,7 @@ export class GameApp {
     this.audio.resetObservation();
     this.xpHud?.reset();
     this.battleInfo?.reset();
-    this.grenadeButton?.reset();
+    this.supplyTransfer?.reset();this.grenadeButton?.reset();
     this.grenadeRequested = false;
     this.progressionObserver.reset();
     if (import.meta.env.DEV && this.devReviewFixture && initialState.progression && initialState.catharsis) {
@@ -482,7 +486,9 @@ export class GameApp {
         !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
           && !!grenadeTarget(state, state.catharsis!.balance.grenade));
       const grenadeEvents = this.simulation.consumeGrenadeEvents();
+      this.audio.presentSupply(grenadeEvents,this.presentationMs);
       for (const event of grenadeEvents) {
+        if(event.kind==='grenadeSupplyOpened')this.supplyTransfer?.present(event,this.presentationMs);
         if (event.kind === 'grenadeAcquired') this.audio.play('reward');
         else if (event.kind === 'grenadeDetonated') this.audio.play('groundArtillery', { kind: 'groundArtillery', volumeScale: .65, durationScale: .55, pitchScale: 1.5 });
       }
@@ -547,6 +553,7 @@ export class GameApp {
       if (renderEvents.length > 0) this.renderer.present(renderEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
+      this.supplyTransfer?.update(this.presentationMs);
       const renderFinishedMs = perf ? performance.now() : 0;
       this.audio.updateEnvironment(this.presentationMs);
       if (perf) {

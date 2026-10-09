@@ -533,6 +533,13 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .grenade-button:focus-visible { outline: 3px solid #ffe4a4; outline-offset: 4px; }
 .grenade-acquired { animation: grenade-acquired .55s ease-out; }
 .game-paused .grenade-acquired { animation-play-state: paused; }
+.grenade-button.grenade-transferring { transform: scale(var(--supply-reward-scale, 1));
+  filter: drop-shadow(0 0 var(--supply-reward-glow, 0px) #ffcf78); }
+.supply-reward-transfer { position: absolute; inset: 0; z-index: 16; pointer-events: none; overflow: hidden; }
+.supply-reward-item { position: absolute; left: 0; top: 0; width: 34px; height: 34px; color: #365740;
+  filter: drop-shadow(1px 0 0 #fff2c4) drop-shadow(-1px 0 0 #fff2c4) drop-shadow(0 2px 2px #182b36); }
+.supply-reward-item[hidden] { display: none; }
+.supply-reward-item svg { width: 100%; height: 100%; }
 @keyframes grenade-acquired { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.1); } }
 @media (max-width: 370px) {
   .combat-control-strip { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; }

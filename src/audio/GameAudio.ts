@@ -1,13 +1,14 @@
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
+import type { GrenadeEvent } from '../simulation/grenade';
 
 // Existing audio cue delay is independent of the removed visual crash system.
 const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 
 export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
-  | 'giantDeath' | 'groundArtillery' | 'skyFlak';
+  | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
 interface ObservedReward { id: number; hitProgress: number }
@@ -109,7 +110,14 @@ export class AudioCueObserver {
 
 type ToneShape = { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number; attackSeconds?: number; delaySeconds?: number };
+const rewardTone: ToneShape = { from: 630, to: 980, seconds: .14, wave: 'sine', volume: .11 };
 const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?: ToneShape }> = {
+  supplyImpact: {from:1900,to:950,seconds:.11,wave:'sine',volume:.09,
+    secondary:{from:850,to:430,seconds:.085,wave:'triangle',volume:.06}},
+  supplyCrack: {from:310,to:90,seconds:.13,wave:'sawtooth',volume:.07,
+    secondary:{from:2300,to:360,seconds:.10,wave:'triangle',volume:.06}},
+  supplyOpen: {from:220,to:75,seconds:.20,wave:'triangle',volume:.15,
+    secondary:{from:980,to:220,seconds:.12,wave:'square',volume:.045}},
   levelUp: { from: 660, to: 880, seconds: .16, wave: 'sine', volume: .17,
     secondary: { from: 880, to: 1320, seconds: .24, wave: 'sine', volume: .14, delaySeconds: .13 } },
   rifle: { from: 1050, to: 280, seconds: .038, wave: 'sawtooth', volume: .09 },
@@ -117,7 +125,7 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
   heavyRifle: { from: 850, to: 210, seconds: .055, wave: 'sawtooth', volume: .12,
     secondary: { from: 170, to: 75, seconds: .075, wave: 'triangle', volume: .04 } },
   rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.08 },
-  reward: { from: 630, to: 980, seconds: 0.14, wave: 'sine', volume: 0.11 },
+  reward: rewardTone,
   damage: { from: 360, to: 125, seconds: .16, wave: 'triangle', volume: .18,
     secondary: { from: 145, to: 60, seconds: .14, wave: 'sine', volume: .065 } },
   fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: .22 },
@@ -158,6 +166,8 @@ export class GameAudio {
   }
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
+  private weaponBus: GainNode | null = null;
+  private supplyRewardAtMs: number | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();
   private rumbleBuffer: AudioBuffer | null = null;
   private readonly observer = new AudioCueObserver();
@@ -216,6 +226,7 @@ export class GameAudio {
   }
 
   resetObservation(): void {
+    this.supplyRewardAtMs=null;
     // Retry/load must not play a crash scheduled by the previous run's lethal hit.
     for (const source of this.active) { try { source.stop(); } catch { /* already ended */ } }
     this.observer.reset();
@@ -223,6 +234,7 @@ export class GameAudio {
     this.nextEnvironmentCueMs = -Infinity;
     this.musicPresentationMs = 0;
     this.music?.reset();
+    if(this.weaponBus&&this.context){this.weaponBus.gain.cancelScheduledValues(this.context.currentTime);this.weaponBus.gain.value=1;}
   }
 
   updateMusic(presentationMs: number, frame: MusicFrame): void {
@@ -233,6 +245,14 @@ export class GameAudio {
   }
 
   silenceMusic(): void { this.music?.silence(); }
+
+  presentSupply(events: readonly GrenadeEvent[],nowMs:number):void {
+    for(const event of events) {
+      if(event.kind==='grenadeSupplyDamaged')this.play(event.stage===1?'supplyImpact':'supplyCrack');
+      else if(event.kind==='grenadeSupplyOpened'){this.play('supplyOpen');this.supplyRewardAtMs=nowMs+210;}
+    }
+    if(this.supplyRewardAtMs!==null&&nowMs>=this.supplyRewardAtMs){this.supplyRewardAtMs=null;this.play('reward');}
+  }
 
   updateEnvironment(nowMs: number): void {
     const events = this.environment.update(nowMs);
@@ -250,6 +270,16 @@ export class GameAudio {
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
       const shape = cueShape[cue];
+      const weapon = cue==='rifle'||cue==='machineGun'||cue==='heavyRifle';
+      if(weapon&&!this.weaponBus){this.weaponBus=context.createGain();this.weaponBus.gain.value=1;this.weaponBus.connect(this.master);}
+      if(cue==='supplyOpen'&&this.weaponBus){
+        // Briefly clear space for opening and the unchanged reward chime,
+        // including already-playing MG voices. Gameplay fire is unaffected.
+        this.weaponBus.gain.cancelScheduledValues(context.currentTime);
+        this.weaponBus.gain.setValueAtTime(.3,context.currentTime);
+        this.weaponBus.gain.setValueAtTime(.3,context.currentTime+.35);
+        this.weaponBus.gain.exponentialRampToValueAtTime(1,context.currentTime+.45);
+      }
       const environmental = cue === 'groundArtillery' || cue === 'skyFlak' || cue === 'giantDeath';
       const filter = environmental ? context.createBiquadFilter() : null;
       if (filter) {
@@ -287,7 +317,7 @@ export class GameAudio {
         }
         gain.gain.exponentialRampToValueAtTime(.001, toneEnd);
         oscillator.connect(gain);
-        gain.connect(filter ?? this.master!);
+        gain.connect(filter ?? (weapon ? this.weaponBus! : this.master!));
         oscillator.onended = () => {
           oscillator.disconnect();
           gain.disconnect();
@@ -337,6 +367,7 @@ export class GameAudio {
     this.music?.dispose();
     this.music = null;
     this.master?.disconnect();
+    this.weaponBus?.disconnect();this.weaponBus=null;
     if (this.context) void this.context.close().catch(() => {});
     this.context = null;
     this.master = null;

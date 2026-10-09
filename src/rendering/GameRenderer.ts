@@ -46,6 +46,7 @@ export class GameRenderer {
   private readonly grenadeRenderer = new GrenadeRenderer(this.scene);
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
+  private readonly supplyProjection = new THREE.Vector3();
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
   private readonly enemyRenderer: EnemyRenderer;
@@ -126,6 +127,12 @@ export class GameRenderer {
 
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
     this.grenadeRenderer.present(events, nowMs);
+  }
+
+  projectSupplyPosition(x: number, z: number, nowMs: number): { x: number; y: number } {
+    this.supplyProjection.set(-x,.9+.07*Math.sin(nowMs/220),z).project(this.camera);
+    return {x:(this.supplyProjection.x+1)*this.viewport.clientWidth/2,
+      y:(1-this.supplyProjection.y)*this.viewport.clientHeight/2};
   }
 
   presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {

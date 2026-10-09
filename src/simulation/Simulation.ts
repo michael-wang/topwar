@@ -348,6 +348,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (state.defenseWaves !== undefined && (!catharsis?.balance.defenseMode || state.enemyStream === null))
     throw new Error('Defense wave clock requires a defense stream');
   const grenade = state.grenade === undefined ? undefined : GrenadeStateSchema.parse(state.grenade);
+  if (grenade?.supply?.destruction && grenade.supply.destruction.recoverAtSeconds
+    > (state.elapsedSeconds as number) + grenade.supply.destruction.recoverySeconds + 1e-9)
+    throw new Error('Invalid supply recovery clock');
   if (grenade && (!catharsis?.balance.defenseMode
     || grenade.inventory > catharsis.balance.grenade.capacity
     || [grenade.lv3EnteredAtSeconds, grenade.supplySpawnedAtSeconds, grenade.acquiredAtSeconds,
@@ -1228,15 +1231,23 @@ export class Simulation {
         if (!hit) break;
         if (hit.kind === 'grenadeSupply') {
           const supply = grenade!.supply!;
+          const destruction = supply.destruction;
           const progress = (supply.hitProgress ?? 0) + 1;
           // Acquisition counts successful projectiles, never their damage.
-          if (progress >= (supply.hitsRequired ?? 1)) {
+          const eligible = !destruction || nextElapsedSeconds + 1e-9 >= destruction.recoverAtSeconds;
+          const opened = eligible && (destruction ? destruction.stage === 2 : progress >= (supply.hitsRequired ?? 1));
+          if (opened) {
             grenade!.supply = null;
             grenade!.inventory = supply.rewardAmount === undefined ? grenadeConfig!.capacity
               : Math.min(grenadeConfig!.capacity, grenade!.inventory + supply.rewardAmount);
             grenade!.acquiredAtSeconds ??= nextElapsedSeconds;
-            this.grenadeEvents.push({ kind: 'grenadeAcquired' });
-          } else {
+            this.grenadeEvents.push(destruction ? { kind: 'grenadeSupplyOpened', x: supply.x,
+              z: nextZ + supply.depth, amount: supply.rewardAmount ?? grenadeConfig!.capacity } : { kind: 'grenadeAcquired' });
+          } else if (destruction && eligible) {
+            destruction.stage = (destruction.stage + 1) as 1 | 2;
+            destruction.recoverAtSeconds = nextElapsedSeconds + destruction.recoverySeconds;
+            this.grenadeEvents.push({ kind: 'grenadeSupplyDamaged', stage: destruction.stage });
+          } else if (!destruction) {
             supply.hitProgress = progress;
             this.grenadeEvents.push({ kind: 'grenadeSupplyHit' });
           }

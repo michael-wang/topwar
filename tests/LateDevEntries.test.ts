@@ -82,7 +82,7 @@ it.each(entries)('%s runs normal waves, progression, Giants and recurring Suppli
       supplies++; expect(after.grenade!.supply.rewardAmount).toBe(1);
     }
     for (const event of sim.consumeGrenadeEvents()) {
-      if (event.kind === 'grenadeAcquired') acquisitions++;
+      if (event.kind === 'grenadeAcquired' || event.kind === 'grenadeSupplyOpened') acquisitions++;
       else detonations++;
     }
     clone.consumeGrenadeEvents(); sim.consumePresentationEvents(); clone.consumePresentationEvents();

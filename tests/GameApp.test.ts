@@ -167,6 +167,9 @@ vi.mock('../src/ui/GrenadeButton', () => ({ GrenadeButton: class {
   constructor(_viewport: unknown, activate: unknown) { mock.grenadeConstructed(activate); }
   update = mock.grenadeUpdate; reset = vi.fn(); dispose = vi.fn();
 } }));
+vi.mock('../src/ui/SupplyRewardTransfer', () => ({SupplyRewardTransfer: class {
+  present=vi.fn();update=vi.fn();reset=vi.fn();dispose=vi.fn();
+}}));
 vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
   element = {} as HTMLElement;
   constructor(_viewport: HTMLElement, togglePaused: () => void) {
