@@ -1,4 +1,8 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
+import { artilleryDefaults } from '../config/artilleryConfig';
+import { artilleryHits, effectiveArtilleryLane, makeArtilleryShell, validateArtillery,
+  type ArtilleryLaunch, type ArtilleryEvent } from './artillery';
+import { afterOneSoldierCasualty } from './squad/composition';
 import { advanceCarnival, carnivalOwnsSpawning, CarnivalStateSchema, emptyCarnival } from './carnival';
 import { admitDefenseGroup } from './enemies/defenseGroup';
 import { advanceDefenseWaves, DefenseWaveStateSchema } from './enemies/defenseWaves';
@@ -55,6 +59,7 @@ export interface RuntimeBalance {
 }
 
 export interface SimulationInput {
+  artilleryLaunches?: readonly ArtilleryLaunch[];
   targetX: number;
   throwGrenade?: boolean;
 }
@@ -341,10 +346,12 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'postCapSurvival')) fields.push('postCapSurvival');
   if (Object.hasOwn(state, 'carnival')) fields.push('carnival');
   if (Object.hasOwn(state, 'defenseWaves')) fields.push('defenseWaves');
+  if (Object.hasOwn(state, 'artillery')) fields.push('artillery');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
   const catharsis = Object.hasOwn(state, 'catharsis') ? validateCatharsis(state.catharsis) : undefined;
+  if (state.artillery !== undefined && !catharsis?.balance.defenseMode) throw Error('Artillery requires Defense Mode');
   if (state.defenseWaves !== undefined && (!catharsis?.balance.defenseMode || state.enemyStream === null))
     throw new Error('Defense wave clock requires a defense stream');
   const grenade = state.grenade === undefined ? undefined : GrenadeStateSchema.parse(state.grenade);
@@ -731,6 +738,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
 
   return {
     state: {
+      ...(state.artillery !== undefined ? { artillery: validateArtillery(state.artillery,
+        state.elapsedSeconds as number, attackLanePositions(catharsis!.balance.laneCount,
+          catharsis!.trackHalfWidth, catharsis!.balance.edgeInset), player.z as number, (squad.count as number) > 0) } : {}),
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
@@ -784,6 +794,7 @@ export class Simulation {
   private bossHpScale: number;
   private presentationEvents: PresentationEvent[] = [];
   private grenadeEvents: GrenadeEvent[] = [];
+  private artilleryEvents: ArtilleryEvent[] = [];
   private static readonly MAX_PRESENTATION_EVENTS = 256;
 
   constructor(options: SimulationOptions) {
@@ -984,6 +995,28 @@ export class Simulation {
     return selectedLane + direction >= 0 && selectedLane + direction < experiment.balance.laneCount;
   }
 
+  // Encounter adapters supply muzzle transforms and optional per-source flight parameters.
+  // No production scheduler invokes this in P3-A.
+  launchArtillery(launch: ArtilleryLaunch): number | null {
+    const state = this.state, c = state.catharsis;
+    if (!c?.balance.defenseMode || state.squad.count === 0) return null;
+    const config = c.balance.artillery ?? artilleryDefaults;
+    const artillery = state.artillery ?? { version: 1 as const, nextId: 1, shells: [] };
+    if (artillery.shells.length >= config.maxActive) return null;
+    const lanes = attackLanePositions(c.balance.laneCount, c.trackHalfWidth, c.balance.edgeInset);
+    const shell = makeArtilleryShell(artillery.nextId, launch,
+      launch.targetLane ?? effectiveArtilleryLane(state.player.x, lanes), lanes, state.player.z,
+      state.elapsedSeconds, config, (lanes[1] - lanes[0]) * config.impactLaneFraction);
+    this.state = { ...state, artillery: { version: 1, nextId: shell.id + 1, shells: [...artillery.shells, shell] } };
+    this.artilleryEvents.push({ kind: 'artilleryLaunch', shell: structuredClone(shell) });
+    return shell.id;
+  }
+
+  cancelArtillery(id?: number): void {
+    if (this.state.artillery) this.state = { ...this.state, artillery: { ...this.state.artillery,
+      shells: id === undefined ? [] : this.state.artillery.shells.filter(shell => shell.id !== id) } };
+  }
+
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
     if (!Number.isFinite(dtSeconds) || dtSeconds <= 0) {
       throw new Error('Simulation dtSeconds must be finite and greater than zero');
@@ -1026,6 +1059,7 @@ export class Simulation {
     if (!Number.isFinite(nextElapsedSeconds) || !Number.isSafeInteger(this.state.tick + 1)) {
       throw new Error('Simulation time or tick exceeds the supported range');
     }
+    for (const launch of input.artilleryLaunches ?? []) this.launchArtillery(launch);
 
     // Full steering reaches the outer attack corridor instead of overshooting
     // its narrow rifle collision width. Drag remains continuous between lanes.
@@ -1418,6 +1452,28 @@ export class Simulation {
       }
       if (boss.slamCooldownRemainingSeconds < 0) boss.slamCooldownRemainingSeconds = 0;
     }
+    let artillery = this.state.artillery;
+    if (artillery) {
+      const pending = [] as typeof artillery.shells;
+      for (const shell of [...artillery.shells].sort((a, b) => a.impactAtSeconds - b.impactAtSeconds || a.id - b.id)) {
+        if (squad.count === 0) break;
+        if (shell.impactAtSeconds > nextElapsedSeconds + 1e-9) { pending.push(shell); continue; }
+        // Sample the real constant-speed lane motion, including arrival before step end.
+        const age = Math.max(0, shell.impactAtSeconds - this.state.elapsedSeconds);
+        const impactX = currentX + Math.sign(difference) * Math.min(Math.abs(difference), maxHorizontalDelta * age / dtSeconds);
+        const hit = artilleryHits(shell, impactX, nextZ);
+        this.artilleryEvents.push({ kind: 'artilleryImpact', id: shell.id,
+          x: shell.target.x, z: shell.target.z, radius: shell.radius, atSeconds: shell.impactAtSeconds, hit });
+        if (hit) {
+          const before = copySquadForPresentation(squad), casualty = afterOneSoldierCasualty(squad);
+          squad = casualty.squad;
+          stepEvents.push({ kind: 'artilleryContact', shellId: shell.id,
+            attackerX: shell.target.x, attackerZ: shell.target.z, playerX: impactX, playerZ: nextZ,
+            before, after: copySquadForPresentation(squad), affectedMembers: casualty.affectedMembers });
+        }
+      }
+      artillery = { ...artillery, shells: squad.count > 0 ? pending : [] };
+    }
     if (squad.count === 0 && stepEvents.length > 0) survivingProjectiles.length = 0;
     // MG casualties consume the front of the Tier-1 roster. Keep each survivor's
     // shot phase when its index shifts; do not inherit a removed member's clock.
@@ -1515,6 +1571,7 @@ export class Simulation {
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),
       ...(defenseWaves ? { defenseWaves } : {}),
+      ...(artillery ? { artillery } : {}),
       ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
       ...(machineGunReleaseAtSeconds !== undefined ? { machineGunReleaseAtSeconds } : {}),
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
@@ -1528,6 +1585,10 @@ export class Simulation {
           this.presentationEvents.length - Simulation.MAX_PRESENTATION_EVENTS);
       }
     }
+  }
+
+  consumeArtilleryEvents(): ArtilleryEvent[] {
+    const events = this.artilleryEvents; this.artilleryEvents = []; return events;
   }
 
   consumeGrenadeEvents(): GrenadeEvent[] {
@@ -1549,6 +1610,7 @@ export class Simulation {
   getState(): SimulationState {
     return {
       ...this.state,
+      ...(this.state.artillery ? { artillery: structuredClone(this.state.artillery) } : {}),
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),
       ...(this.state.postCapSurvival ? { postCapSurvival: { ...this.state.postCapSurvival } } : {}),
@@ -1584,6 +1646,7 @@ export class Simulation {
           (stream.startZ + nextRow * stream.spacing - origin - balance.defenseSpawnAheadDistance) / LEGACY_DEFENSE_FORWARD_SPEED) };
       }
       s.player.z = 0;
+      for (const shell of s.artillery?.shells ?? []) { shell.source.position.z -= origin; shell.target.z -= origin; }
       for (const enemy of s.enemies) enemy.z -= origin;
       for (const projectile of s.projectiles) projectile.z -= origin;
       if (s.grenade?.flight) { s.grenade.flight.startZ -= origin; s.grenade.flight.targetZ -= origin; }
@@ -1613,6 +1676,7 @@ export class Simulation {
     }
     this.state = candidate.state;
     this.grenadeEvents = [];
+    this.artilleryEvents = [];
     this.rng = candidate.rng;
     this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed,
       candidate.state.catharsis?.rewardRowsPerReward ?? this.enemyStreamDefinition?.rewards?.rowsPerReward);

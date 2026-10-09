@@ -1,5 +1,7 @@
 import { ART } from '../art/ArtDirection';
 import { GrenadeRenderer } from './GrenadeRenderer';
+import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
+import type { ArtilleryEvent } from '../simulation/artillery';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { BattlefieldAir } from './environment/BattlefieldAir';
 import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
@@ -38,12 +40,14 @@ export class GameRenderer {
       enemies: this.enemyRenderer.getDebugStats(),
       projectiles: this.projectileRenderer.getDebugStats(),
       grenade: this.grenadeRenderer.getDebugStats(),
+      artillery: this.artilleryRenderer?.getDebugStats() ?? { capacity: 0, shells: 0, warnings: 0, impacts: 0 },
       shadows: this.contactShadows.getDebugStats(),
       environment: this.environment.getDebugStats(),
     };
   }
   private readonly scene = new THREE.Scene();
   private readonly grenadeRenderer = new GrenadeRenderer(this.scene);
+  private artilleryRenderer: EnemyArtilleryRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private readonly supplyProjection = new THREE.Vector3();
@@ -116,6 +120,8 @@ export class GameRenderer {
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.grenadeRenderer.update(state.grenade, nowMs);
+    if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
+    this.artilleryRenderer?.update(state.artillery, nowMs);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -123,6 +129,12 @@ export class GameRenderer {
     trackHalfWidth: number, formationSpacing: number): void {
     this.squadRenderer.present(events, nowMs, trackHalfWidth, formationSpacing);
     this.enemyRenderer.present(events, nowMs);
+  }
+
+  presentArtillery(events: readonly ArtilleryEvent[], nowMs: number): void {
+    if (!events.length) return;
+    this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
+    this.artilleryRenderer.present(events, nowMs);
   }
 
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
@@ -144,6 +156,7 @@ export class GameRenderer {
   resetFeedback(visualSalt=0): void {
     this.air.reset();
     this.grenadeRenderer.reset();
+    this.artilleryRenderer?.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset(visualSalt);
     this.bossRenderer.reset();
@@ -158,6 +171,7 @@ export class GameRenderer {
     this.stopResizeHandling();
     this.air.dispose();
     this.grenadeRenderer.dispose();
+    this.artilleryRenderer?.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
     this.contactShadows.dispose();

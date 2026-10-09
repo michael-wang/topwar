@@ -36,6 +36,7 @@ import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
 import { progressionStage } from '../simulation/progression';
+import { shellReviewLaunches } from './ShellReview';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -413,6 +414,7 @@ export class GameApp {
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
     if (this.paused) {
+      this.audio.silenceArtillery();
       this.grenadeRequested = false;
       this.keyboardInput.stop();
       this.dragInput.stop();
@@ -458,7 +460,9 @@ export class GameApp {
         const stepStartedMs = perf ? performance.now() : 0;
         const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
         dtSeconds,
-        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}) },
+        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}),
+          ...(import.meta.env.DEV && this.devReviewFixture === 'shell'
+            ? { artilleryLaunches: shellReviewLaunches(this.simulation.getFrameState()) } : {}) },
         {
           moveSpeed: this.runtimeTuning.moveSpeed,
           forwardSpeed: this.runtimeTuning.forwardSpeed,
@@ -493,6 +497,9 @@ export class GameApp {
         else if (event.kind === 'grenadeDetonated') this.audio.play('grenadeExplosion');
       }
       this.renderer.presentGrenade(grenadeEvents, this.presentationMs);
+      const artilleryEvents = this.simulation.consumeArtilleryEvents();
+      for (const event of artilleryEvents) this.audio.play(event.kind === 'artilleryLaunch' ? 'enemyCannon' : 'enemyShellImpact');
+      this.renderer.presentArtillery(artilleryEvents, this.presentationMs);
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);
         if (levelUp) {

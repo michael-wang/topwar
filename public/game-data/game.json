@@ -1,5 +1,6 @@
 {
   "catharsis": {
+    "artillery": { "horizontalSpeed": 24, "gravity": 8, "minimumFlightSeconds": 0.5, "impactLaneFraction": 0.42, "maxActive": 8 },
     "defenseMotionVersion": 2,
     "defenseWaves": { "intervalSeconds": 6, "firstWaveDelaySeconds": 1.6666666666666667 },
     "carnival": {

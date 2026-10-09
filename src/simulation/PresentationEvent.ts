@@ -2,6 +2,16 @@ import type { SquadSimulationState } from './SimulationState';
 import type { CasualtyMember } from './squad/composition';
 
 export type PresentationEvent = {
+  kind: 'artilleryContact';
+  shellId: number;
+  attackerX: number;
+  attackerZ: number;
+  playerX: number;
+  playerZ: number;
+  before: SquadSimulationState;
+  after: SquadSimulationState;
+  affectedMembers: CasualtyMember[];
+} | {
   kind: 'normalEnemyContact';
   enemyId: number;
   enemyTier: number;

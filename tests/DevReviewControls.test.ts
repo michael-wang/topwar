@@ -39,7 +39,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('routes physical 4/5/6 and CURVE/EVOLVE/MG clicks through exactly the same callback', () => {
   const { controls, root, select, press } = setup();
-  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG', 'LATE', 'MG7', 'MG8', 'CARNIVAL', 'CRATE3', 'CRATE8']);
+  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG', 'LATE', 'MG7', 'MG8', 'CARNIVAL', 'CRATE3', 'CRATE8', 'SHELL']);
   for (const [index, code, role] of [[1, 'Digit4', 'curve'], [2, 'Digit5', 'evolve'], [3, 'Digit6', 'machineGun']] as const) {
     const button = root.children[index];
     button.dispatchEvent(new Event('click'));
@@ -99,11 +99,11 @@ it('selects all playable late entries through the same restart callback and rele
   controls.dispose();
 });
 
-it.each(['crate3', 'crate8'] as const)('restarts %s without adding a shortcut', role => {
+it.each(['crate3', 'crate8', 'shell'] as const)('restarts %s without adding a shortcut', role => {
   const { controls, root, select } = setup();
   const button = root.children.find(b => b.dataset.role === role)!;
   button.dispatchEvent(new Event('click')); controls.setSelected(role);
   expect(select.mock.lastCall).toEqual([role]); expect(button.blur).toHaveBeenCalledOnce();
-  expect(button.attrs['aria-pressed']).toBe('true'); expect(button.title).toContain('Supply destruction');
+  expect(button.attrs['aria-pressed']).toBe('true'); expect(button.title).toContain(role === 'shell' ? 'artillery dodge test' : 'Supply destruction');
   controls.dispose();
 });

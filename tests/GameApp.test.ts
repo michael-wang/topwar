@@ -98,6 +98,7 @@ vi.mock('../src/simulation/Simulation', () => ({
     getFrameState = mock.getState;
     consumePresentationEvents = mock.consumePresentationEvents;
     consumeGrenadeEvents = vi.fn(() => []);
+    consumeArtilleryEvents = vi.fn(() => []);
   },
 }));
 
@@ -106,6 +107,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
     render = mock.render;
     present = mock.present;
     presentGrenade = vi.fn();
+    presentArtillery = vi.fn();
     presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;
     startResizeHandling = mock.startResizeHandling;

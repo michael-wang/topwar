@@ -1,0 +1,72 @@
+import {mkdirSync,writeFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {selectDevFixture} from './dev-fixture-controls.mjs';
+import {startGameRecording,inspectRecordingFrames} from './browser-recording.mjs';
+const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
+const out=process.argv[2]??'artifacts/p3a/browser';mkdirSync(out,{recursive:true});
+const record=process.argv.includes('--record');
+const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const results={runs:[],errors:[]};
+try{for(const width of [390,350,1100]){
+ const mobile=width<500,height=mobile?844:900,page=await browser.newPage({viewport:{width,height},isMobile:mobile,hasTouch:mobile,deviceScaleFactor:1});
+ page.on('pageerror',e=>results.errors.push(e.message));
+ await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();',`window.__testApp=app;window.__events=[];
+ const present=app.renderer.presentArtillery.bind(app.renderer);app.renderer.presentArtillery=(events,ms)=>{window.__events.push(...events.map(e=>({...e,ms,wall:performance.now()})));return present(events,ms)};app.start();`)});});
+ await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/');
+ const start=page.getByRole('button',{name:'Start game with audio'});if(mobile)await start.tap();else await start.click();
+ await page.waitForFunction(()=>window.__testApp.startup==='started');await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));await selectDevFixture(page,'shell');
+ if(width===350)await page.locator('.beachhead-defense').evaluate(e=>e.style.setProperty('--hud-inset-bottom','34px'));
+ await page.evaluate(()=>{const a=window.__testApp;window.__clock=performance.now();window.__advance=n=>{for(let i=0;i<n;i++){window.__clock+=1000/60;a.renderFrame(window.__clock);cancelAnimationFrame(a.frameId);}};});
+ const advance=n=>page.evaluate(n=>window.__advance(n),n),state=()=>page.evaluate(()=>window.__testApp.simulation.getState());
+ const shot=label=>page.screenshot({path:`${out}/${width}-${label}.png`});
+ const restart=async()=>{await page.evaluate(()=>{window.__testApp.retry();window.__events=[];});await advance(1);};
+ await advance(1);const initial=await state();assert.equal(initial.squad.count,3);assert.equal(initial.enemies.length,0);assert.equal(initial.progression.level,8);
+ await advance(63);await shot('launch');await advance(34);await shot('ascent');await advance(30);await shot('apex');
+ const partial=await state();assert.equal(partial.artillery.shells.length,1);
+ const pose=()=>page.evaluate(()=>{const a=window.__testApp,s=a.renderer.scene.getObjectByName('enemy-shell-0'),w=a.renderer.scene.getObjectByName('enemy-shell-warning-0');return{shell:s.position.toArray(),warning:w.position.toArray(),scale:w.scale.x,opacity:w.children[2].material.opacity};});
+ const p=await pose();assert.equal(p.scale,partial.artillery.shells[0].radius);
+ assert.deepEqual(p.warning,[-partial.artillery.shells[0].target.x,.035,partial.artillery.shells[0].target.z]);
+ await page.getByRole('button',{name:'Pause game',exact:true}).click();await advance(90);assert.deepEqual(await state(),partial);assert.deepEqual(await pose(),p);await shot('paused');
+ await page.getByRole('button',{name:'Resume game',exact:true}).click();await page.evaluate(s=>window.__testApp.simulation.restoreState(s),partial);
+ await page.evaluate(()=>document.activeElement?.blur());
+ if(mobile)await page.getByRole('button',{name:'Move right',exact:true}).tap();else await page.keyboard.press('ArrowRight');
+ await advance(40);await shot('descent-dodge');await advance(35);
+ assert.equal((await state()).squad.count,3);assert.equal((await state()).artillery.shells.length,0);assert.equal(await page.evaluate(()=>window.__events.filter(e=>e.kind==='artilleryImpact').length),1);
+ await shot('miss');await restart();
+ for(let i=0;i<75&&(await state()).squad.count===3;i++)await advance(3);
+ assert.equal((await state()).squad.count,2);await shot('hit');
+ for(let i=0;i<120&&(await state()).squad.count>0;i++)await advance(5);
+ assert.equal((await state()).squad.count,0);assert.equal((await state()).artillery.shells.length,0);await advance(30);await shot('game-over');
+ assert(await page.getByRole('button',{name:'Retry',exact:true}).isVisible());await page.getByRole('button',{name:'Retry',exact:true}).click();await advance(1);assert.deepEqual(await state(),initial);await shot('retry');
+ const gameplay=await page.evaluate(()=>window.__events.filter(e=>e.kind==='artilleryImpact'));
+ if(record&&mobile){
+  await restart();await page.evaluate(()=>{window.__testApp.previousFrameTimestampMs=null;window.__testApp.fixedStepLoop.reset();});
+  const stop=await startGameRecording(page,width);await page.evaluate(()=>window.__testApp.renderFrame(performance.now()));
+  await page.waitForFunction(()=>window.__events.some(e=>e.kind==='artilleryLaunch'));await page.waitForTimeout(600);
+  await page.getByRole('button',{name:'Pause game',exact:true}).tap();await page.waitForTimeout(650);await page.getByRole('button',{name:'Resume game',exact:true}).tap();
+  await page.waitForFunction(()=>window.__testApp.simulation.getState().squad.count===0,{},{timeout:30000});await page.waitForTimeout(500);
+  await page.getByRole('button',{name:'Retry',exact:true}).tap();await page.waitForTimeout(350);
+  const hitTimes=await page.evaluate(()=>window.__events.filter(e=>e.kind==='artilleryImpact').map(e=>(e.wall-window.__capture.startedAt)/1000));
+  const bytes=await stop();writeFileSync(`${out}/${width}-hits-pause-retry.webm`,bytes);
+  await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-hits`,[1.12,2.1,...hitTimes.flatMap(t=>[Math.max(0,t-.12),t+.15]),hitTimes.at(-1)+.6]);
+  await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__testApp.retry();window.__events=[];window.__testApp.previousFrameTimestampMs=null;});
+  const stopDodge=await startGameRecording(page,width);await page.evaluate(()=>window.__testApp.renderFrame(performance.now()));
+  for(let id=1;id<=5;id++){
+   await page.waitForFunction(id=>window.__events.some(e=>e.kind==='artilleryLaunch'&&e.shell.id===id),id,{timeout:30000});
+   if(id===5)await shot('overlapping');
+   await page.waitForTimeout(300);
+   const direction=await page.evaluate(()=>{const s=window.__testApp.simulation.getState(),lane=s.player.selectedLane,threats=new Set(s.artillery.shells.map(s=>s.targetLane));
+    return [-1,1].sort((a,b)=>Math.abs(lane+a-2)-Math.abs(lane+b-2)).find(d=>lane+d>=0&&lane+d<5&&!threats.has(lane+d));});
+   assert(direction);await page.evaluate(()=>document.activeElement?.blur());await page.keyboard.press(direction===-1?'ArrowLeft':'ArrowRight');
+  }
+  await page.waitForFunction(()=>window.__events.filter(e=>e.kind==='artilleryImpact').length>=5);
+  assert.equal((await state()).squad.count,3);await page.waitForTimeout(900);
+  const dodgeTimes=await page.evaluate(()=>window.__events.filter(e=>e.kind==='artilleryLaunch'||e.kind==='artilleryImpact').map(e=>({kind:e.kind,time:(e.wall-window.__capture.startedAt)/1000})));
+  const dodgeBytes=await stopDodge();writeFileSync(`${out}/${width}-dodge-overlap.webm`,dodgeBytes);
+  await inspectRecordingFrames(browser,dodgeBytes,width,`${out}/${width}-dodge`,[1.15,2.3,...dodgeTimes.filter(e=>e.kind==='artilleryImpact').map(e=>e.time+.12)]);
+  writeFileSync(`${out}/${width}-recording-events.json`,JSON.stringify({hitTimes,dodgeTimes},null,2));
+ }
+ await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
+ results.runs.push({width,gameplay,stats:await page.evaluate(()=>window.__testApp.renderer.getDebugStats())});
+ console.log('P3-A checked',width);await page.close();
+}assert.deepEqual(results.errors,[]);}catch(error){console.error('QA FAILURE',error);throw error;}finally{writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));await browser.close();}

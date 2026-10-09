@@ -1,4 +1,6 @@
 export interface GameRenderState {
+  readonly artillery?: { readonly shells: readonly Readonly<import('../simulation/artillery').ArtilleryShell>[];
+    readonly elapsedSeconds: number };
   readonly grenade?: {
     readonly supply: Readonly<NonNullable<import('../simulation/grenade').GrenadeState['supply']>> | null;
     readonly flight: Readonly<NonNullable<import('../simulation/grenade').GrenadeState['flight']>> | null;

@@ -1,4 +1,5 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
+import { createShellReview } from './ShellReview';
 import { emptyCarnival } from '../simulation/carnival';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 import { admitDefenseGroup } from '../simulation/enemies/defenseGroup';
@@ -9,7 +10,7 @@ import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage, requiredXp } from '../simulation/progression';
 import { placeGrenadeSupply } from '../simulation/grenade';
 
-export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival' | 'crate3' | 'crate8';
+export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival' | 'crate3' | 'crate8' | 'shell';
 export const DEV_REVIEW_FIXTURES = {
   grenade: { level: 3, soldiers: 1 },
   curve: { level: 4, soldiers: 2 },
@@ -21,12 +22,14 @@ export const DEV_REVIEW_FIXTURES = {
   carnival: { level: 6, soldiers: 1 },
   crate3: { level: 3, soldiers: 1 },
   crate8: { level: 8, soldiers: 3 },
+  shell: { level: 8, soldiers: 3 },
 } as const;
 
 // App-owned QA adapter, never a simulation mode or serialized debug flag.
 // Ordinary HP, damage, movement, lane targeting and progression apply thereafter.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
+  if (role === 'shell') return createShellReview(options);
   if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);
   const fixture = DEV_REVIEW_FIXTURES[role];
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,

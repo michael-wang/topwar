@@ -11,9 +11,10 @@ export class GrenadeExplosion {
   private readonly color = new THREE.Color();
   private readonly slots: ReturnType<GrenadeExplosion['createSlot']>[] = [];
   private readonly scorch: GroundScorchMarks;
-  constructor(private readonly scene: THREE.Scene) {
+  constructor(private readonly scene: THREE.Scene, slots: number = GRENADE_FX.slots) {
+    if (!Number.isInteger(slots) || slots < 1 || slots > 8) throw Error('Invalid explosion pool capacity');
     this.scorch = new GroundScorchMarks(scene);
-    for (let i = 0; i < GRENADE_FX.slots; i++) this.slots.push(this.createSlot(i));
+    for (let i = 0; i < slots; i++) this.slots.push(this.createSlot(i));
     this.reset();
   }
   private createSlot(index: number) {

@@ -105,6 +105,19 @@ export function afterCasualties(squad: SquadSimulationState, casualties: number 
 }
 
 export interface CasualtyMember { index: number; tier: number; rocket: boolean }
+// Artillery removes one physical member, regardless of tier/formation overlap.
+// Preserve the surviving roster; use the same casualty presentation descriptors.
+export function afterOneSoldierCasualty(squad: SquadSimulationState): {
+  squad: SquadSimulationState; affectedMembers: CasualtyMember[] } {
+  if (squad.count === 0) return { squad, affectedMembers: [] };
+  const rifleCounts = [...squad.rifleCounts], tierIndex = rifleCounts.findIndex(n => n > 0);
+  if (tierIndex >= 0) rifleCounts[tierIndex]--;
+  while (rifleCounts.length && rifleCounts.at(-1) === 0) rifleCounts.pop();
+  return { squad: { count: squad.count - 1, rifleCounts,
+    rocketCount: squad.rocketCount - (tierIndex < 0 ? 1 : 0),
+    rifleRemainder: rifleCounts.length ? squad.rifleRemainder : 0 },
+    affectedMembers: [{ index: 0, tier: tierIndex + 1, rocket: tierIndex < 0 }] };
+}
 const MAX_PRESENTED_CASUALTIES = 48;
 
 export function afterCasualtiesWithBreakdown(squad: SquadSimulationState,
