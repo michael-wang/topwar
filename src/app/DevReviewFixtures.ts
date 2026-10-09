@@ -7,8 +7,9 @@ import { pressureGroupSize, pressureWaveSettings } from '../simulation/enemies/l
 import { advancePostCapSurvival, postCapOrdinarySettings } from '../simulation/postCapSurvival';
 import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage, requiredXp } from '../simulation/progression';
+import { placeGrenadeSupply } from '../simulation/grenade';
 
-export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival';
+export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival' | 'crate3' | 'crate8';
 export const DEV_REVIEW_FIXTURES = {
   grenade: { level: 3, soldiers: 1 },
   curve: { level: 4, soldiers: 2 },
@@ -18,12 +19,15 @@ export const DEV_REVIEW_FIXTURES = {
   mg7: { level: 7, soldiers: 2 },
   mg8: { level: 8, soldiers: 3 },
   carnival: { level: 6, soldiers: 1 },
+  crate3: { level: 3, soldiers: 1 },
+  crate8: { level: 8, soldiers: 3 },
 } as const;
 
 // App-owned QA adapter, never a simulation mode or serialized debug flag.
 // Ordinary HP, damage, movement, lane targeting and progression apply thereafter.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
+  if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);
   const fixture = DEV_REVIEW_FIXTURES[role];
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
     startSquad: 1, startRocketCount: 0 });
@@ -123,6 +127,35 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   state.enemyStream.nextEnemyId = state.enemies.length + 1;
   if (!playableLate && role !== 'curve' && role !== 'carnival')
     state.defenseWaves = { nextAtSeconds: 1000 };
+  const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
+  state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers },
+    (_, index) => index * interval / fixture.soldiers);
+  simulation.restoreState(state);
+  return simulation;
+}
+
+function createSupplyReview(options: SimulationOptions, baseFireRate: number,
+  role: 'crate3' | 'crate8'): Simulation {
+  const fixture = DEV_REVIEW_FIXTURES[role];
+  // An empty level definition removes admission entirely, including after long
+  // pauses/restores. No distant wave clock, fake hits or simulation debug mode.
+  const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
+    startSquad: fixture.soldiers, startRocketCount: 0,
+    level: { ...options.level, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } });
+  const state = simulation.getState(), balance = state.catharsis?.balance;
+  if (!balance?.defenseMode || !balance.grenade.supplyDestruction
+    || fixture.level > maxProgressionLevel(balance.progression))
+    throw new Error('Supply DEV review requires staged Defense supplies and its authored level');
+  balance.carnival.enabled = false;
+  balance.postCapSurvival.enabled = false;
+  state.carnival = emptyCarnival(true);
+  state.progression = { level: fixture.level, xp: 0 };
+  state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
+  state.machineGunReleaseAtSeconds = role === 'crate8' ? 0 : null;
+  state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0,
+    acquiredAtSeconds: role === 'crate8' ? 0 : null, inventory: role === 'crate8' ? 1 : 0,
+    supply: { ...placeGrenadeSupply(state, balance.grenade), ...(role === 'crate8' ? { rewardAmount: 1 as const } : {}) },
+    flight: null };
   const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
   state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers },
     (_, index) => index * interval / fixture.soldiers);

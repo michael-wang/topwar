@@ -21,7 +21,7 @@ export class DevReviewControls {
     this.element.className = 'dev-review-controls';
     this.element.setAttribute('aria-label', 'DEV Review');
     this.element.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 0 16px';
-    for (const role of ['grenade', 'curve', 'evolve', 'machineGun', 'late', 'mg7', 'mg8', 'carnival'] as const) {
+    for (const role of ['grenade', 'curve', 'evolve', 'machineGun', 'late', 'mg7', 'mg8', 'carnival', 'crate3', 'crate8'] as const) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = role === 'machineGun' ? 'MG' : role.toUpperCase();
       button.dataset.role = role; button.setAttribute('aria-pressed', 'false');
@@ -29,6 +29,8 @@ export class DevReviewControls {
       if (role === 'late' || role === 'mg7' || role === 'mg8')
         button.title = `Restart playable Lv${role === 'late' ? 6 : role === 'mg7' ? 7 : 8} with normal spawning and progression`;
       if (role === 'carnival') button.title = 'Restart Lv6 before the Machine Gun release and full Carnival';
+      if (role === 'crate3') button.title = 'Restart Lv3 Rifle teaching Supply destruction and three Grenade transfers';
+      if (role === 'crate8') button.title = 'Restart Lv8 three-MG recurring Supply destruction and one Grenade transfer';
       button.style.cssText = 'min-height:44px;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 11px var(--font-utility, sans-serif);cursor:pointer;touch-action:manipulation';
       button.addEventListener('click', () => {
         select(role);
