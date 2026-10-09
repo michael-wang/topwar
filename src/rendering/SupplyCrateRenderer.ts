@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameRenderState } from './RenderState';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { crateFragmentPose } from '../presentation/GrenadeMotion';
+import { GOLDEN_GRENADE } from '../art/GoldenGrenade';
 
 export class SupplyCrateRenderer {
   private readonly box = new THREE.BoxGeometry(1, 1, 1);
@@ -13,6 +14,10 @@ export class SupplyCrateRenderer {
   private readonly badge = new THREE.Group();
   private readonly cracks = new THREE.Group();
   private readonly glint = new THREE.Group();
+  private readonly interiorMaterial = new THREE.MeshBasicMaterial({ color: '#211d19' });
+  private readonly interior = new THREE.Mesh(this.box, this.interiorMaterial);
+  private readonly contentsMaterial = new THREE.MeshStandardMaterial({ color: GOLDEN_GRENADE.gold, roughness: .35, metalness: .35 });
+  private readonly contents = new THREE.Group();
   private readonly circle = new THREE.CircleGeometry(1, 24);
   private readonly shadowMaterial = new THREE.MeshBasicMaterial({ color: '#302b22', transparent: true, opacity: .22, depthWrite: false });
   private readonly shadow = new THREE.Mesh(this.circle, this.shadowMaterial);
@@ -34,11 +39,17 @@ export class SupplyCrateRenderer {
       piece(x, 0, -.5, .13, 1, .05, true); piece(x, 0, .5, .13, 1, .05, true);
       piece(x, .56, 0, .13, .06, 1, true);
     }
-    for (let i = 0; i < 3; i++) {
-      const crack = new THREE.Mesh(this.box, this.metal); crack.scale.set(.055, .32, .025);
-      crack.position.set((i % 2 ? .34 : .22), -.28 + i * .27, -.515); crack.rotation.z = i % 2 ? -.55 : .55;
+    for (let i = 0; i < 4; i++) {
+      const crack = new THREE.Mesh(this.box, this.interiorMaterial); crack.scale.set(.09, .38, .035);
+      crack.position.set(i<2?-.54:.54, i%2?.19:-.19, -.66); crack.rotation.z = i % 2 ? -.65 : .65;
       this.cracks.add(crack);
     }
+    this.interior.name='supply-dark-interior'; this.interior.scale.set(1.1,.88,.65);
+    for(const x of [-.3,.3]) {
+      const grenade=new THREE.Mesh(this.sphere,this.contentsMaterial); grenade.position.set(x,.08,-.30); grenade.scale.set(.18,.25,.15);
+      const cap=new THREE.Mesh(this.box,this.pale); cap.position.set(x,.33,-.30); cap.scale.set(.10,.08,.10); this.contents.add(grenade,cap);
+    }
+    this.contents.name='supply-golden-contents';
     const plate = new THREE.Mesh(this.circle, this.pale); plate.rotation.y = Math.PI; plate.scale.set(.31, .38, 1); plate.position.z = .035;
     const body = new THREE.Mesh(this.sphere, this.metal); body.scale.set(.19, .26, .12);
     const lever = new THREE.Mesh(this.box, this.pale); lever.scale.set(.1, .13, .1); lever.position.y = .25;
@@ -52,7 +63,7 @@ export class SupplyCrateRenderer {
     }
     this.glint.position.set(-.48, .42, -.57);
     this.shadow.name = 'supply-contact-shadow'; this.shadow.rotation.x = -Math.PI / 2; this.shadow.scale.set(1, .65, 1);
-    this.group.add(this.badge, this.cracks, this.glint); scene.add(this.group, this.shadow); this.reset();
+    this.group.add(this.badge, this.cracks, this.glint,this.interior,this.contents); scene.add(this.group, this.shadow); this.reset();
   }
   present(events: readonly GrenadeEvent[], nowMs: number): void {
     for (const event of events) {
@@ -75,7 +86,8 @@ export class SupplyCrateRenderer {
     this.glint.scale.setScalar(Math.max(0, Math.sin(nowMs / 650)) ** 8);
     this.group.rotation.set(0, 0, opening ? 0 : Math.sin((nowMs - this.hitAtMs) * .055) * .08 * jolt || 0);
     this.badge.visible = !opening; this.cracks.visible = !opening && stage > 0;
-    this.cracks.scale.x = stage === 2 ? 1.4 : 1;
+    this.interior.visible = !opening && stage>0; this.contents.visible = !opening && stage===2;
+    this.cracks.scale.set(stage===2?1.12:1,stage===2?1.12:1,1);
     this.wood.emissive.set('#ffd898'); this.wood.emissiveIntensity = opening ? 0 : .045 + .035 * Math.sin(nowMs / 550) + jolt * .25;
     let opacity = 1;
     for (const [index, piece] of this.pieces.entries()) {
@@ -85,17 +97,19 @@ export class SupplyCrateRenderer {
         mesh.position.set(rest.x + p.x, p.y - .9, rest.z + p.z);
         mesh.rotation.set(p.spin, p.spin * .4, p.spin * .65); opacity = p.opacity;
       } else if (index < 8) {
-        mesh.position.x += stage * (index % 2 ? .045 : -.045);
-        mesh.position.z += stage === 2 ? (rest.z >= 0 ? .07 : -.07) : 0;
-        mesh.rotation.z = stage === 2 ? (index % 2 ? .07 : -.07) : 0;
+        mesh.position.x += stage * (index % 2 ? .14 : -.14);
+        mesh.position.y += stage * (index % 3 - 1) * .045;
+        mesh.position.z += stage * (rest.z >= 0 ? .07 : -.07);
+        mesh.rotation.z = (index % 2 ? .11 : -.11) * stage;
       } else if (index >= 10 && stage > 0) {
-        mesh.rotation.z = (index % 2 ? -1 : 1) * stage * .12;
-        mesh.position.z -= stage * .04;
+        mesh.rotation.z = (index % 2 ? -1 : 1) * stage * .28;
+        mesh.position.x += (rest.x>0?1:-1)*stage*.08;
+        mesh.position.z -= stage * .08;
       }
     }
     for (const material of [this.wood, this.metal]) { material.transparent = opacity < 1; material.opacity = opacity; }
   }
   get visible(): boolean { return this.group.visible; }
   reset(): void { this.opening = null; this.hitAtMs = -Infinity; this.group.visible = false; this.shadow.visible = false; }
-  dispose(): void { this.scene.remove(this.group, this.shadow); for (const resource of [this.box, this.sphere, this.circle, this.wood, this.metal, this.pale, this.shadowMaterial]) resource.dispose(); }
+  dispose(): void { this.scene.remove(this.group, this.shadow); for (const resource of [this.box, this.sphere, this.circle, this.wood, this.metal, this.pale, this.shadowMaterial,this.interiorMaterial,this.contentsMaterial]) resource.dispose(); }
 }

@@ -30,7 +30,7 @@ try {for(const width of [390,350]) {
   const advance=ticks=>page.evaluate(n=>window.__advance(n),ticks);
   const state=()=>page.evaluate(()=>window.__testApp.simulation.getState());
   const initial=await state(),expected=role==='crate3'?3:2,count=role==='crate3'?3:1;
-  assert.equal(initial.grenade.supply.destruction.stage,0);assert.equal(initial.enemies.length,14);
+  assert.equal(initial.grenade.supply.destruction.stage,0);assert.equal(initial.enemies.length,38);
   assert(initial.enemies.every(e=>e.x>0));assert(initial.grenade.supply.x<0);
   await page.evaluate(()=>window.__cues=[]);await advance(1);
   await page.screenshot({path:`${out}/${width}-${role}-intact.png`});
@@ -51,7 +51,7 @@ try {for(const width of [390,350]) {
    if(stage===3)break;
   }
   assert.equal(times.length,3);assert(times[1]-times[0]>=.7-1e-8&&times[2]-times[1]>=.7-1e-8);
-  assert.equal((await state()).grenade.inventory,expected);await advance(count===3?25:12);
+  assert.equal((await state()).grenade.inventory,expected);await advance(count===3?52:20);
   assert.equal(await page.locator('.supply-reward-item:visible').count(),count);
   await page.screenshot({path:`${out}/${width}-${role}-transfer.png`});
   const transforms=()=>page.locator('.supply-reward-item').evaluateAll(items=>items.map(e=>e.style.transform));

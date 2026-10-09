@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {selectDevFixture} from './dev-fixture-controls.mjs';
 import {startGameRecording,inspectRecordingFrames} from './browser-recording.mjs';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const out=process.argv[2]??'artifacts/p29/browser';mkdirSync(out,{recursive:true});
+const out=process.argv[2]??'artifacts/p210/browser';mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={runs:[],errors:[]};
 try{for(const width of [390,350])for(const role of ['crate3','crate8']){
@@ -28,11 +28,22 @@ try{for(const width of [390,350])for(const role of ['crate3','crate8']){
    }
   }if(stage===3)break;
  }
- assert.equal(previous,3);await advance(role==='crate3'?52:20);
- assert.equal(await page.locator('.supply-reward-item:visible').count(),role==='crate3'?3:1);
- await page.screenshot({path:`${out}/${width}-${role}-transfer.png`});await advance(80);
+ assert.equal(previous,3);
+ const transferMetrics=Array.from({length:role==='crate3'?3:1},()=>({peak:0,last:null}));
+ for(let tick=0;tick<132;tick++){
+  await advance(1);
+  const frame=await page.evaluate(()=>{const target=document.querySelector('.grenade-button svg').getBoundingClientRect();return [...document.querySelectorAll('.supply-reward-item')].map(e=>{const r=e.getBoundingClientRect(),m=new DOMMatrix(getComputedStyle(e).transform);return{hidden:e.hidden,x:r.x,y:r.y,w:r.width,h:r.height,size:108*Math.hypot(m.a,m.b),cx:r.x+r.width/2,cy:r.y+r.height/2,tx:target.x+target.width/2,ty:target.y+target.height/2,icon:target.width};});});
+  for(let i=0;i<transferMetrics.length;i++)if(!frame[i].hidden){const f=frame[i],m=transferMetrics[i];assert(f.x>=0&&f.y>=0&&f.x+f.w<=width&&f.y+f.h<=844);m.peak=Math.max(m.peak,f.size);m.last=f;}
+  if(tick===(role==='crate3'?51:19)){
+   assert.equal(frame.filter(f=>!f.hidden).length,transferMetrics.length);
+   await page.screenshot({path:`${out}/${width}-${role}-transfer.png`});
+   const transforms=()=>page.locator('.supply-reward-item').evaluateAll(items=>items.map(e=>e.style.transform));
+   await page.getByRole('button',{name:'Pause game',exact:true}).tap();const frozen=await transforms();await advance(30);assert.deepEqual(await transforms(),frozen);await page.getByRole('button',{name:'Resume game',exact:true}).tap();
+  }
+ }
+ for(const m of transferMetrics){assert(m.peak>=102);assert(Math.hypot(m.last.cx-m.last.tx,m.last.cy-m.last.ty)<14);assert(Math.abs(m.last.size-m.last.icon)<2);}
  assert(await page.locator('.grenade-button').isEnabled());const before=await state();
- assert.equal(before.grenade.inventory,role==='crate3'?3:2);
+ assert.equal(before.grenade.inventory,role==='crate3'?3:2);assert.equal(before.enemies.filter(e=>e.archetype==='grunt').length,36);
  if(role==='crate8'){await page.evaluate(()=>document.activeElement?.blur());await page.keyboard.press('KeyQ');}else await page.locator('.grenade-button').tap();
  await advance(1);const flight=await state();assert.equal(flight.grenade.inventory,before.grenade.inventory-1);assert(flight.grenade.flight.targetX>0);
  await page.getByRole('button',{name:'Pause game',exact:true}).tap();await advance(30);assert.deepEqual(await state(),flight);
@@ -63,8 +74,9 @@ try{for(const width of [390,350])for(const role of ['crate3','crate8']){
  await page.waitForFunction(()=>{const e=window.__events.find(e=>e.kind==='grenadeDetonated');return e&&window.__testApp.presentationMs-e.ms>1800;});
  const recorded=await page.evaluate(()=>window.__events),video=await stop();writeFileSync(`${out}/${width}-${role}.webm`,video);
  const blastAt=(recorded.find(e=>e.kind==='grenadeDetonated').wall-await page.evaluate(()=>window.__capture.startedAt))/1000;
- await inspectRecordingFrames(browser,video,width,`${out}/${width}-${role}`,[.15,.95,blastAt+.06,blastAt+.3,blastAt+.7,blastAt+1.5]);
- results.runs.push({width,role,victims:blast.victims,reaction,videoBlastSeconds:blastAt});
+ const openAt=(recorded.find(e=>e.kind==='grenadeSupplyOpened').wall-await page.evaluate(()=>window.__capture.startedAt))/1000;
+ await inspectRecordingFrames(browser,video,width,`${out}/${width}-${role}`,[.15,.95,openAt+.3,openAt+.66,openAt+1.02,blastAt+.3,blastAt+.7]);
+ results.runs.push({width,role,transferMetrics,victims:blast.victims,reaction,videoBlastSeconds:blastAt});
  if(role==='crate3'){
   await page.evaluate(s=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.retry();
    s.enemies=Array.from({length:40},(_,i)=>({id:i+1,tier:1,archetype:'grunt',lane:i%5,x:(i%5-2)*1.4,z:15+Math.floor(i/5)*.7,hp:1}));
@@ -72,5 +84,5 @@ try{for(const width of [390,350])for(const role of ['crate3','crate8']){
   },initial);
   await page.screenshot({path:`${out}/${width}-crate-crowd.png`});
  }
- console.log('P2.9 checked',width,role);await page.close();
+ console.log('P2.10 checked',width,role);await page.close();
 }assert.deepEqual(results.errors,[]);}finally{writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));await browser.close();}

@@ -25,7 +25,7 @@ it.each(['crate3', 'crate8'] as const)('%s starts an intact, aligned real Supply
   expect(effectivePrimaryFireRate(config.weapon.rifle.fireRate, initial.progression!.level, initial.catharsis!.balance)).toBe(recurring ? 18 : 4.5);
   expect(initial.weapons.rifleMemberCooldowns).toHaveLength(members);
   expect(new Set(initial.weapons.rifleMemberCooldowns).size).toBe(members);
-  expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(12);
+  expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(36);
   expect(initial.enemies.find(e => e.archetype === 'heavy')!.hp).toBe(config.catharsis!.heavyHp);
   expect(initial.enemies.find(e => e.archetype === 'giant')!.hp).toBe(config.catharsis!.giant.hp);
   expect(initial.enemies.every(e => e.x > 0 && e.z >= 18)).toBe(true);
@@ -96,13 +96,13 @@ it.each(['crate3', 'crate8'] as const)('%s opens safely then blasts Grunts while
   const event = sim.consumeGrenadeEvents().find(e => e.kind === 'grenadeDetonated')!;
   expect(event.kind).toBe('grenadeDetonated');
   if (event.kind !== 'grenadeDetonated') throw new Error('Missing blast');
-  expect(event.victims.filter(v => v.killed)).toHaveLength(12);
+  expect(event.victims.filter(v => v.killed)).toHaveLength(36);
   expect(sim.getState().enemies.map(e => [e.archetype, e.hp])).toEqual([
     ['heavy', config.catharsis!.heavyHp - 9], ['giant', config.catharsis!.giant.hp - 9]]);
-  expect(sim.getState().progression!.xp).toBe(role === 'crate3' ? 12 : 0);
+  expect(sim.getState().progression!.xp).toBe(role === 'crate3' ? 36 : 0);
   expect(make(role).getState()).toEqual(initial);
   // Running beyond all former schedule horizons never introduces another wave or crate.
   step(sim, 2400);
-  expect(sim.getState().enemies.every(e => e.id === 13 || e.id === 14)).toBe(true);
+  expect(sim.getState().enemies.every(e => e.id === 37 || e.id === 38)).toBe(true);
   expect(sim.getState().grenade!.supply).toBeNull();
 });

@@ -38,7 +38,7 @@ try{for(const width of [390,350])for(const role of ['crate3','crate8','grenade',
     if(stage===1){await page.getByRole('button',{name:'Pause game',exact:true}).tap();const frozen=await state();await advance(30);assert.deepEqual(await state(),frozen);await page.getByRole('button',{name:'Resume game',exact:true}).tap();}
    }if(stage===3)break;
   }
-  await advance(role==='crate3'?25:12);assert.equal(await page.locator('.supply-reward-item:visible').count(),role==='crate3'?3:1);
+  await advance(role==='crate3'?52:20);assert.equal(await page.locator('.supply-reward-item:visible').count(),role==='crate3'?3:1);
   await page.screenshot({path:`${out}/${width}-${role}-transfer.png`});await advance(80);
  }else await advance(120);
  assert(await page.locator('.grenade-button').isEnabled());const before=await state();

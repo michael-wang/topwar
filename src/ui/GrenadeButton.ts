@@ -28,6 +28,7 @@ export class GrenadeButton {
     this.element.classList.remove('grenade-acquired');
   }
   getBounds(): DOMRect { return this.element.getBoundingClientRect(); }
+  getIconBounds(): DOMRect { return this.element.querySelector('svg')!.getBoundingClientRect(); }
   beginSupplyTransfer():void {this.element.classList.remove('grenade-acquired');this.element.classList.add('grenade-transferring');}
   presentSupplyTransfer(scale:number,glow:number):void {
     this.element.style.setProperty('--supply-reward-scale',String(scale));
