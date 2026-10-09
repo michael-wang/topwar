@@ -4,5 +4,5 @@ import { progressionStage, type ProgressionState, type ProgressionBalance } from
 export function loadoutPresentation(state: Readonly<ProgressionState>, balance: ProgressionBalance) {
   const plan = progressionStage(state.level, balance);
   return { weapon: plan.weaponFamily, weaponStage: plan.fireRateStage,
-    squadStage: plan.weaponFamily === 'rifle' && plan.squadStage > 1 ? plan.squadStage : null };
+    squadStage: plan.squadStage > 1 ? plan.squadStage : null };
 }

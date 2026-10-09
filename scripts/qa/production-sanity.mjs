@@ -36,7 +36,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  if(!/^[0-9a-f]{7,40}$/.test(sha))throw Error('Missing build SHA');
  const config=await configResponse?.json(),levelData=await levelResponse?.json();
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
- if(!config.catharsis.defenseMode||config.catharsis.grenade.capacity!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220]')throw Error('Stale defense/progression/Grenade config');
+ if(!config.catharsis.defenseMode||config.catharsis.grenade.capacity!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220,200,300]')throw Error('Stale defense/progression/Grenade config');
  if(!await page.locator('#game-viewport.beachhead-defense').count()||await page.getByText(/ENEMY LV/).isVisible())throw Error('Production loaded legacy bridge/HUD');
  for(const url of runtimeRequests){const u=new URL(url);if(u.searchParams.getAll('v').length!==1||u.searchParams.get('v')!==sha)throw Error(`Unversioned or mismatched runtime asset: ${url}`);}
  if(runtimeRequests.filter(url=>new URL(url).pathname.endsWith('.glb')).length!==13)throw Error('Missing versioned model requests');

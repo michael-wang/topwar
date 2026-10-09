@@ -8,18 +8,18 @@ import { projectRenderState } from '../src/app/projectRenderState';
 const config=GameConfigSchema.parse(data), balance=config.catharsis!;
 const step=(sim:ReturnType<typeof controlledSimulation>, ticks=1)=>{for(let i=0;i<ticks;i++)sim.step(1/60,{targetX:0},pilotTuning);};
 
-it('authors six explicit stages, unchanged Rifle progression and a 220 XP family boundary',()=>{
-  expect(balance.progression.xpRequirements).toEqual([28,60,110,180,220]);
+it('authors eight explicit stages, unchanged Rifle progression and a 220 XP family boundary',()=>{
+  expect(balance.progression.xpRequirements).toEqual([28,60,110,180,220,200,300]);
   expect(balance.progression.levelPlan.map(p=>[p.weaponFamily,p.fireRateStage,p.squadStage])).toEqual([
-    ['rifle',1,1],['rifle',2,1],['rifle',3,1],['rifle',3,2],['rifle',3,3],['machineGun',1,1]]);
+    ['rifle',1,1],['rifle',2,1],['rifle',3,1],['rifle',3,2],['rifle',3,3],['machineGun',1,1],['machineGun',1,2],['machineGun',1,3]]);
   expect(balance.machineGun).toEqual({fireRate:18,projectileSpeed:60,range:80,damageEnemyHp:1});
   expect(grantXp({level:5,xp:219},1,balance.progression)).toEqual({level:6,xp:0});
-  expect(grantXp({level:1,xp:0},100000,balance.progression)).toEqual({level:6,xp:0});
+  expect(grantXp({level:1,xp:0},100000,balance.progression)).toEqual({level:8,xp:0});
 });
 it('validates relational plan length and family-local stage progression',()=>{
   const source=structuredClone(data);
   source.catharsis.progression.levelPlan.pop();source.catharsis.progression.xpRequirements.pop();
-  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toHaveLength(5);
+  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toHaveLength(7);
   source.catharsis.progression.xpRequirements.pop();expect(()=>GameConfigSchema.parse(source)).toThrow();
   for (const patch of [ {weaponFamily:'rocket'}, {weaponFamily:'rifle',squadStage:1}, {fireRateStage:2} ]) {
     const bad=structuredClone(data);Object.assign(bad.catharsis.progression.levelPlan[5],patch);
@@ -53,7 +53,7 @@ it('crosses several stages in a burst Grenade kill grant and produces one cohere
   s.grenade={lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,acquiredAtSeconds:0,inventory:0,supply:null,
     flight:{startX:0,startZ:0,targetX:0,targetZ:12,startedAtSeconds:0,flightSeconds:1/60,damageEnemyHp:9,blastRadius:4}};
   sim.restoreState(s);step(sim);
-  expect(sim.getState().progression).toEqual({level:6,xp:0});expect(sim.getState().squad.count).toBe(1);
+  expect(sim.getState().progression).toEqual({level:6,xp:99});expect(sim.getState().squad.count).toBe(1);
   expect(sim.consumePresentationEvents()).toEqual([]);expect(sim.consumeGrenadeEvents()[0]).toMatchObject({kind:'grenadeDetonated'});
   step(sim,60);expect(sim.getState().squad.count).toBe(1);
 });
@@ -86,18 +86,18 @@ it('keeps reinforcement deferred and isolated no-stream MG measurements free of 
 
 it('evolves coherently if a live XP threshold edit crosses the family boundary',()=>{
  const sim=controlledSimulation(5),s=sim.getState();s.progression!.xp=210;sim.restoreState(s);
- sim.setCatharsisBalance({...balance,progression:{...balance.progression,xpRequirements:[28,60,110,180,200]}});
- expect(sim.getState().progression).toEqual({level:6,xp:0});expect(sim.getState().squad.count).toBe(1);
+ sim.setCatharsisBalance({...balance,progression:{...balance.progression,xpRequirements:[28,60,110,180,200,200,300]}});
+ expect(sim.getState().progression).toEqual({level:6,xp:10});expect(sim.getState().squad.count).toBe(1);
  expect(sim.getState().weapons.rifleMemberCooldowns).toEqual([1/18]);expect(sim.consumePresentationEvents()).toEqual([]);
  expect(()=>sim.restoreState(JSON.parse(JSON.stringify(sim.getState())))).not.toThrow();
 });
-it('ordinary burst Grenade rewards cross Lv5 to the capped Lv6 exactly once',()=>{
+it('ordinary burst Grenade rewards cross Lv5 to Lv6 with overflow exactly once',()=>{
  const sim=controlledSimulation(5),s=sim.getState();s.progression!.xp=215;
  s.enemies=Array.from({length:12},(_,i)=>({id:i+1,tier:1,archetype:'grunt' as const,lane:2,x:0,z:12+i*.1,hp:1}));
  s.weapons.rifleCooldownRemainingSeconds=10;s.weapons.rifleMemberCooldowns=[10,10,10];
  s.grenade={lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,acquiredAtSeconds:0,inventory:0,supply:null,
  flight:{startX:0,startZ:0,targetX:0,targetZ:12,startedAtSeconds:0,flightSeconds:1/60,damageEnemyHp:9,blastRadius:4}};
- sim.restoreState(s);step(sim);expect(sim.getState().progression).toEqual({level:6,xp:0});expect(sim.getState().squad.count).toBe(1);
+ sim.restoreState(s);step(sim);expect(sim.getState().progression).toEqual({level:6,xp:7});expect(sim.getState().squad.count).toBe(1);
  const event=sim.consumeGrenadeEvents().find(e=>e.kind==='grenadeDetonated')!;
  expect(event.kind==='grenadeDetonated' && event.victims.reduce((sum,v)=>sum+v.killXp,0)).toBe(12);
  step(sim,120);expect(sim.getState().squad.count).toBe(1);expect(sim.consumeGrenadeEvents()).toEqual([]);

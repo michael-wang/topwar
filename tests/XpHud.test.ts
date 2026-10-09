@@ -97,7 +97,7 @@ it('gives level a dedicated large number and keeps the HUD container structural'
 });
 
 it('keeps the max-level bar full without charged or imminent animation and resets on Retry',()=>{
-  const {hud,root}=make();hud.update({level:6,xp:0},balance,0);
+  const {hud,root}=make();hud.update({level:8,xp:0},balance,0);
   expect(root.children[1].children[0].style.clipPath).toBe('inset(0 0% 0 0 round .45rem)');
   expect(root.classes.has('xp-complete')).toBe(true);
   expect(root.classes.has('xp-charged')).toBe(false);expect(root.classes.has('xp-imminent')).toBe(false);

@@ -74,6 +74,19 @@ function positiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
+// Retain existing shot phases and place each new member in the largest gap.
+function appendMemberClocks(clocks: number[], count: number, interval: number): void {
+  while (clocks.length < count) {
+    const phases = clocks.map(clock => clock % interval).sort((a, b) => a - b);
+    let gap = -1, phase = interval / 2;
+    phases.forEach((start, index) => {
+      const end = phases[(index + 1) % phases.length] + (index === phases.length - 1 ? interval : 0);
+      if (end - start > gap) { gap = end - start; phase = (start + gap / 2) % interval; }
+    });
+    clocks.push(phase || interval);
+  }
+}
+
 function validateCatharsis(value: unknown): NonNullable<SimulationState['catharsis']> {
   if (!isPlainObject(value) || Object.keys(value).length !== (Object.hasOwn(value, 'rewardRowsPerReward') ? 3 : 2)) {
     throw new Error('Invalid lane experiment state');
@@ -442,8 +455,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   validateSquad(squad as unknown as SimulationState['squad'], mergeCount);
   if (progression && catharsis && (progression as {level:number}).level <= maxProgressionLevel(catharsis.balance.progression)
     && progressionStage((progression as {level:number}).level, catharsis.balance.progression).weaponFamily === 'machineGun'
-    && ((squad.count as number) > 1 || squad.rocketCount !== 0 || (squad.rifleCounts as number[]).slice(1).some(Boolean)
-      || squad.rifleRemainder !== 0)) throw new Error('Machine Gun progression requires one Tier-1 specialist or a dead squad');
+    && ((squad.count as number) > progressionStage((progression as {level:number}).level, catharsis.balance.progression).squadStage
+      || squad.rocketCount !== 0 || (squad.rifleCounts as number[]).slice(1).some(Boolean)
+      || squad.rifleRemainder !== 0)) throw new Error('Machine Gun squad exceeds its unlocked stage or contains non-specialists');
 
   if (!Array.isArray(state.enemies)) throw new Error('Simulation enemies must be an array');
   const enemyIds = new Set<number>();
@@ -910,11 +924,24 @@ export class Simulation {
       && progressionStage(this.state.progression.level, previous.balance.progression).weaponFamily !== 'machineGun'
       && progressionStage(progression.level, next.balance.progression).weaponFamily === 'machineGun';
     // Live XP/plan edits must retain the same family/squad invariant as a kill.
-    const evolved = evolves ? {
-      squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 }, projectiles: [],
+    const evolvedCount = progression ? progressionStage(progression.level, next.balance.progression).squadStage : 1;
+    const evolved: Partial<SimulationState> = evolves ? {
+      squad: { count: evolvedCount, rocketCount: 0, rifleCounts: [evolvedCount], rifleRemainder: 0 }, projectiles: [],
       weapons: { ...this.state.weapons, rifleCooldownRemainingSeconds: 1 / next.balance.machineGun.fireRate,
         rocketCooldownRemainingSeconds: 0, rifleMemberCooldowns: [1 / next.balance.machineGun.fireRate] },
     } : {};
+    if (evolves) appendMemberClocks(evolved.weapons!.rifleMemberCooldowns!, evolvedCount, 1 / next.balance.machineGun.fireRate);
+    else if (progression && this.state.progression && this.state.squad.count > 0
+      && progression.level > this.state.progression.level
+      && progressionStage(progression.level, next.balance.progression).weaponFamily === 'machineGun') {
+      const delta = evolvedCount - progressionStage(this.state.progression.level, previous.balance.progression).squadStage;
+      if (delta > 0) {
+        evolved.squad = addRifleSoldiers(this.state.squad, delta, 1, this.tiers.mergeCount);
+        const clocks = [...(this.state.weapons.rifleMemberCooldowns ?? [this.state.weapons.rifleCooldownRemainingSeconds])];
+        appendMemberClocks(clocks, evolved.squad.count, 1 / next.balance.machineGun.fireRate);
+        evolved.weapons = { ...this.state.weapons, rifleMemberCooldowns: clocks };
+      }
+    }
     this.state = { ...this.state, ...evolved, catharsis: next, ...(progression ? { progression } : {}), enemies: this.state.enemies.map((enemy) =>
       enemy.archetype === 'heavy' ? { ...enemy,
         hp: enemy.hp / previous.balance.heavyHp * next.balance.heavyHp }
@@ -1042,7 +1069,9 @@ export class Simulation {
     // Old snapshots with an already-arrived reinforcement receive the full reward window on load.
     if (landingAssault && this.state.reinforcement?.arrived && landingAssault.reinforcementActiveAtSeconds === null)
       landingAssault.reinforcementActiveAtSeconds = this.state.elapsedSeconds;
-    const assaultDue = catharsis?.balance.landingAssault.enabled && landingAssault?.reinforcementActiveAtSeconds !== null
+    const legacyReinforcement = progression && catharsis
+      && progression.level > maxProgressionLevel(catharsis.balance.progression);
+    const assaultDue = legacyReinforcement && catharsis?.balance.landingAssault.enabled && landingAssault?.reinforcementActiveAtSeconds !== null
       && landingAssault?.reinforcementActiveAtSeconds !== undefined
       && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
     if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
@@ -1352,6 +1381,16 @@ export class Simulation {
       if (boss.slamCooldownRemainingSeconds < 0) boss.slamCooldownRemainingSeconds = 0;
     }
     if (squad.count === 0 && stepEvents.length > 0) survivingProjectiles.length = 0;
+    // MG casualties consume the front of the Tier-1 roster. Keep each survivor's
+    // shot phase when its index shifts; do not inherit a removed member's clock.
+    if (memberCooldowns && this.state.progression && catharsis
+      && progressionStage(this.state.progression.level, catharsis.balance.progression).weaponFamily === 'machineGun') {
+      const lost = this.state.squad.count - squad.count;
+      if (lost > 0) {
+        memberCooldowns.splice(0, lost);
+        nextCooldowns.rifle = memberCooldowns[0] ?? 0;
+      }
+    }
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
     // A gained level shortens the next scheduled shot without restarting the weapon clock.
@@ -1380,31 +1419,23 @@ export class Simulation {
           continue;
         }
         const delta = stage.squadStage - previous.squadStage;
-        if (delta > 0) {
+        if (delta > 0 && (stage.weaponFamily === 'rifle' || squad.count > 0)) {
           const before = squad.count - squad.rocketCount;
           squad = addRifleSoldiers(squad, delta, 1, this.tiers.mergeCount);
-          const interval = 1 / effectiveRifleFireRate(tuning.rifle.fireRate, level, catharsis.balance.progression);
+          const interval = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, level, catharsis.balance);
           if (memberCooldowns) {
             memberCooldowns.length = before;
-            // Place newcomers in the largest gap between existing shot phases.
-            while (memberCooldowns.length < squad.count - squad.rocketCount) {
-              const phases = memberCooldowns.map(clock => clock % interval).sort((a, b) => a - b);
-              let gap = -1, phase = interval / 2;
-              phases.forEach((start, index) => {
-                const end = phases[(index + 1) % phases.length] + (index === phases.length - 1 ? interval : 0);
-                if (end - start > gap) { gap = end - start; phase = (start + gap / 2) % interval; }
-              });
-              memberCooldowns.push(phase || interval);
-            }
+            appendMemberClocks(memberCooldowns, squad.count - squad.rocketCount, interval);
           }
         }
       }
     }
     if (grenade && grenade.lv3EnteredAtSeconds === null && this.state.progression!.level < 3 && progression!.level >= 3)
       grenade.lv3EnteredAtSeconds = nextElapsedSeconds;
-    // Deferred late-game behavior, independent of the P1 Lv4/Lv5 rewards.
+    // Retained out-of-plan experiment only. Authored stages own their rewards.
     let reinforcement = this.state.reinforcement;
-    if (reinforcement && progression && catharsis && squad.count > 0) {
+    if (reinforcement && progression && catharsis && squad.count > 0
+      && progression.level > maxProgressionLevel(catharsis.balance.progression)) {
       const balance = catharsis.balance.progression;
       if (reinforcement.startedAtSeconds === null && progression.level >= balance.reinforcementLevel)
         reinforcement = { startedAtSeconds: nextElapsedSeconds, arrived: false };
@@ -1422,7 +1453,7 @@ export class Simulation {
       giantEncounter = advanceGiantEncounter(giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
         catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream);
     let machineGunReleaseAtSeconds = this.state.machineGunReleaseAtSeconds;
-    if (machineGunReleaseAtSeconds === null && progression?.level === 6 && squad.count > 0
+    if (machineGunReleaseAtSeconds === null && progression && progression.level >= 6 && squad.count > 0
       && catharsis?.balance.pressureRamp?.lv6 && enemyStream && this.enemyStreamDefinition) {
       const balance = catharsis.balance;
       // Consume the next group row, even when evolution occurs between stream rows.
@@ -1430,7 +1461,7 @@ export class Simulation {
       const row = Math.ceil(enemyStream.nextRowIndex / balance.waveRows) * balance.waveRows;
       if (!Number.isSafeInteger(row + 1)) throw new Error('Release row exceeds supported range');
       admitDefenseGroup(enemies, enemyStream, row, this.enemyStreamDefinition.seed,
-        { ...balance, ...pressureWaveSettings(balance, progression), groupSize: pressureGroupSize(balance, 6) },
+        { ...balance, ...pressureWaveSettings(balance, { level: 6, xp: 0 }), groupSize: pressureGroupSize(balance, 6) },
         catharsis.trackHalfWidth, nextZ + balance.defenseSpawnAheadDistance);
       enemyStream.nextRowIndex = row + 1;
       machineGunReleaseAtSeconds = nextElapsedSeconds;

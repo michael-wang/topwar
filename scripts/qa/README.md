@@ -1,3 +1,7 @@
+# Stage 1 P1 MG progression
+
+With Vite running, `node scripts/qa/mg-progression-sanity.mjs` checks real kill-driven Lv6/7/8 upgrades at 390×844 and 350×844, one/two/three rendered MG members, individual firing feedback, squad pips, XP cap, HUD bounds/overlap, Pause, touch, deterministic snapshot continuation and normal Retry. It uses a test-side app hook only; no new shipping fixture. PNGs and JSON go to ignored `artifacts/stage1-p1`. Existing browser runtime overrides below apply. Six-level cap expectations in historical reports/scripts are historical; use this check for P1 progression.
+
 # Browser sanity
 
 ## Start presentation / control glyphs

@@ -123,7 +123,7 @@ it('handles Grenade XP overflow with one release while a pending Lv5 Giant survi
   const snapshot = JSON.parse(JSON.stringify(sim.getState())), restored = new Simulation(options);
   restored.restoreState(snapshot); step(sim, 39); step(restored, 39);
   const evolved = sim.getState(); expect(evolved).toEqual(restored.getState());
-  expect(evolved.progression).toEqual({ level: 6, xp: 0 }); expect(evolved.squad.count).toBe(1);
+  expect(evolved.progression).toEqual({ level: 6, xp: 20 }); expect(evolved.squad.count).toBe(1);
   expect(evolved.enemies).toHaveLength(60); expect(evolved.enemyStream!.nextEnemyId).toBe(91);
   const blast = sim.consumeGrenadeEvents().find(event => event.kind === 'grenadeDetonated');
   expect(blast?.kind === 'grenadeDetonated' && blast.victims.filter(v => v.killed).length).toBe(30);

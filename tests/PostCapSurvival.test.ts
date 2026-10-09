@@ -198,11 +198,11 @@ it.each(['evolve','machineGun'] as const)('keeps the isolated %s review free of 
   expect(sim.getState().enemies).toHaveLength(0);
 });
 
-it('keeps max-level XP capped and future reinforcement/landing assault unreachable',()=>{
+it('retains Lv6 XP toward new MG stages without legacy reinforcement/landing assault',()=>{
   const sim=capped(),s=sim.getState();s.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:3,hp:1}];
   s.enemyStream!.nextRowIndex=10000;s.enemyStream!.nextEnemyId=2;
   s.weapons.rifleMemberCooldowns=[0];s.weapons.rifleCooldownRemainingSeconds=0;sim.restoreState(s);ticks(sim,60);
-  expect(sim.getState().enemies).toHaveLength(0);expect(sim.getState().progression).toEqual({level:6,xp:0});
+  expect(sim.getState().enemies).toHaveLength(0);expect(sim.getState().progression).toEqual({level:6,xp:10});
   expect(sim.getState().reinforcement).toEqual({startedAtSeconds:null,arrived:false});
   expect(sim.getState().landingAssault!.startedAtSeconds).toBeNull();
 });

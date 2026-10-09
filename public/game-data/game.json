@@ -55,7 +55,7 @@
     "heavyDepthMultiplier": 1.15,
     "rewardAimRadius": 0.5,
     "progression": {
-      "xpRequirements": [28, 60, 110, 180, 220],
+      "xpRequirements": [28, 60, 110, 180, 220, 200, 300],
       "levelPlan": [
         {
           "fireRateStage": 1,
@@ -86,6 +86,16 @@
           "weaponFamily": "machineGun",
           "fireRateStage": 1,
           "squadStage": 1
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 1,
+          "squadStage": 2
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 1,
+          "squadStage": 3
         }
       ],
       "fireRateMultipliers": [1, 1.25, 1.5],
