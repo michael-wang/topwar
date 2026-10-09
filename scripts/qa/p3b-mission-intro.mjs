@@ -5,11 +5,12 @@ const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/
 const out=process.argv[2]??'artifacts/p3b-mission-intro';mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results=[];
-async function setup(width,locale='zh-TW',beforeNavigate=async()=>{}){
+async function setup(width,locale='en-US',beforeNavigate=async()=>{}){
  const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,locale}),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/audio/'))requests.push(r.url());});
  await page.addInitScript(()=>{
+  localStorage.setItem('topwar.observer.locale','en');
   window.__voiceEvents=[];const start=AudioBufferSourceNode.prototype.start,stop=AudioBufferSourceNode.prototype.stop;
   AudioBufferSourceNode.prototype.start=function(...args){const a=window.__testApp;
    if(a?.audio.voice?.source===this){this.__voice=true;window.__voiceEvents.push({kind:'start',offset:args[1]??0,time:a.simulation.getState().elapsedSeconds,locale:a.fieldObserver.locale,message:a.audio.voice.message,duration:this.buffer.duration});}
@@ -61,10 +62,8 @@ try{
   await page.waitForFunction(n=>window.__voiceEvents.filter(e=>e.kind==='start').length>n,starts);
   const retried=await page.evaluate(()=>window.__voiceEvents.filter(e=>e.kind==='start').at(-1));
   assert(retried.offset<.06,JSON.stringify(retried));
-  await page.locator('.observer-languages button[lang="en"]').tap();await page.waitForTimeout(100);
-  assert.equal(await page.locator('.field-observer p').textContent(),'Field Observer here.');
-  assert.equal(await page.evaluate(()=>window.__testApp.audio.voice.source),null);
-  await page.locator('.observer-languages button[lang="zh-TW"]').tap();await page.waitForTimeout(100);
+  assert.equal(await page.locator('.observer-languages').count(),0);
+  assert.equal(await page.locator('.field-observer p').textContent(),'這裡是觀測官。');
   assert(await page.evaluate(()=>!!window.__testApp.audio.voice.source));
   // Restoring forward into an active phrase also cancels speech without restarting it.
   await page.evaluate(s=>window.__testApp.simulation.restoreState(s),active);await page.waitForTimeout(100);
@@ -78,16 +77,20 @@ try{
   await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-mission`,[.75,2.2,4.8]);
   await page.close();console.log('Mission intro checked',width);
  }
- // An English-only attempt never requests or plays Mandarin speech.
+ // English browser and saved English preference still receive Mandarin and Chinese subtitles.
  const english=await setup(350,'en-US');
  await english.page.getByRole('button',{name:'Start game with audio'}).tap();
- for(const [at,text] of [[.6,'Field Observer here.'],[2.1,'Enemy forces are approaching the harbor!'],[4.2,'Hold the line. Over.']]){
+ for(const [at,text] of [[.6,'這裡是觀測官。'],[2.1,'敵軍正朝港口逼近！'],[4.2,'請守住防線。完畢！']]){
   await english.page.waitForFunction(t=>window.__testApp.simulation.getState().elapsedSeconds>=t,at);
   assert.equal(await english.page.locator('.field-observer p').textContent(),text);
  }
- assert.equal(english.requests.length,0);assert.deepEqual(await english.page.evaluate(()=>window.__voiceEvents),[]);assert.deepEqual(english.errors,[]);
+ assert.equal(english.requests.filter(url=>url.includes('observer_mission_intro_zh-TW.mp3')).length,1);
+ assert.equal(new Set(english.requests).size,english.requests.length);assert(english.requests.length<=2);
+ assert.equal(await english.page.locator('.observer-languages').count(),0);
+ const englishStarts=await english.page.evaluate(()=>window.__voiceEvents.filter(e=>e.kind==='start'));
+ assert.equal(englishStarts.length,1);assert.equal(englishStarts[0].locale,'zh-TW');assert.deepEqual(english.errors,[]);
  await english.page.screenshot({path:`${out}/350-english.png`});await english.page.close();
- results.push({locale:'en',requests:english.requests,errors:english.errors});
+ results.push({browserLocale:'en-US',savedLocale:'en',observerLocale:'zh-TW',requests:english.requests,errors:english.errors});
  // A deliberately delayed decode cannot hold up enemies or leave stale speech after the window.
  let release;
  const gate=new Promise(r=>release=r);

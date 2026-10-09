@@ -1,4 +1,6 @@
 export type ObserverLocale = 'zh-TW' | 'en';
+// Closed playtest policy. Keep the bilingual resources/helpers for later testing.
+export const FIELD_OBSERVER_LOCALE: ObserverLocale = 'zh-TW';
 export type ObserverMessage = 'destroyer' | 'missionIntro';
 export const observerMissionDialogue: Record<ObserverLocale, readonly string[]> = {
   'zh-TW': ['這裡是觀測官。', '敵軍正朝港口逼近！', '請守住防線。完畢！'],

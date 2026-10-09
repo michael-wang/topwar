@@ -29,9 +29,8 @@ try{
  const paused=await page.evaluate(()=>({source:window.__testApp.audio.voice.source,time:window.__testApp.simulation.getState().elapsedSeconds}));assert.equal(paused.source,null);assert(Math.abs(paused.time-before.time)<.1);
  await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.waitForTimeout(300);
  const resumed=await page.evaluate(()=>window.__voiceEvents.filter(e=>e.kind==='start').at(-1));assert(resumed.offset>.7&&resumed.offset<1.3);
- await page.locator('.observer-languages button[lang="en"]').tap();await page.waitForTimeout(200);
- assert.equal(await page.evaluate(()=>window.__testApp.audio.voice.source),null);assert.equal(await page.locator('.field-observer p').getAttribute('lang'),'en');
- await page.locator('.observer-languages button[lang="zh-TW"]').tap();await page.waitForTimeout(250);
+ assert.equal(await page.locator('.observer-languages').count(),0);
+ assert.equal(await page.locator('.field-observer p').getAttribute('lang'),'zh-TW');
  assert(await page.evaluate(()=>!!window.__testApp.audio.voice.source));
  const duck=await page.evaluate(()=>window.__testApp.audio.radioDuckBus.gain.value);assert(duck<.65);
  // Selection uses the same Retry path; a cached clip must not resume the old sentence.
@@ -43,7 +42,7 @@ try{
  const ended=await page.evaluate(()=>window.__voiceEvents.filter(e=>e.kind==='end').at(-1));assert(ended.time<8.8);
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().destroyer.nextShotIndex),0);
  await page.waitForFunction(()=>window.__testApp.simulation.getState().destroyer.nextShotIndex===1);
- const bytes=await stopRecording();writeFileSync(`${out}/350-voice-pause-switch-retry.webm`,bytes);
+ const bytes=await stopRecording();writeFileSync(`${out}/350-voice-pause-retry.webm`,bytes);
  await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
  const events=await page.evaluate(()=>window.__voiceEvents);assert(events.filter(e=>e.kind==='start').every(e=>e.locale==='zh-TW'&&e.rate===1));
  assert.equal(new Set(requests).size,requests.length);assert(requests.length<=2);assert.deepEqual(errors,[]);

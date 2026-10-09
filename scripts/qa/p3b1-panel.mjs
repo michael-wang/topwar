@@ -1,7 +1,7 @@
 import {mkdirSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const out='artifacts/p3b1/panel';mkdirSync(out,{recursive:true});
+const out=process.argv[2]??'artifacts/p3b1/panel';mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results=[];
 try{for(const width of [390,350]){
@@ -21,8 +21,8 @@ try{for(const width of [390,350]){
  const paused=await page.evaluate(()=>({time:window.__testApp.simulation.getState().elapsedSeconds,offset:window.__testApp.audio.voice.offset}));
  await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().elapsedSeconds),paused.time);
  assert.equal(await page.evaluate(()=>window.__testApp.audio.voice.source),null);
- await page.locator('.observer-languages button[lang="en"]').tap();
- await page.locator('.observer-languages button[lang="zh-TW"]').tap();
+ assert.equal(await page.locator('.observer-languages').count(),0);
+ assert.equal(await page.locator('.field-observer p').getAttribute('lang'),'zh-TW');
  assert.equal(await page.evaluate(()=>window.__sources.length),1);
  await page.getByRole('button',{name:'Resume game',exact:true}).tap();
  await page.waitForFunction(()=>window.__sources.length===2);

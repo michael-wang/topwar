@@ -156,10 +156,8 @@ function missionUi() {
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
-it('prepares the selected intro language before Start without playing or arming dialogue',()=>{
+it('prepares Mandarin before Start without playing or arming dialogue',()=>{
   const {ui,audio}=missionUi();
-  (ui.selector as unknown as ElementStub).children[1].dispatchEvent(new Event('click'));
-  (ui.selector as unknown as ElementStub).children[0].dispatchEvent(new Event('click'));
   expect(audio.prepareRadio.mock.lastCall).toEqual(['zh-TW','missionIntro']);
   expect(audio.play).not.toHaveBeenCalled();expect(ui.element.hidden).toBe(true);ui.dispose();
 });
@@ -190,12 +188,11 @@ it('presents three mission phrases once, freezes with Pause and restarts only on
   ui.startMission(0);for(let tick=0;tick<60;tick++)ui.update(undefined,undefined,tick/60,true,false);
   expect(audio.play).toHaveBeenCalledTimes(3);expect(ui.element.hidden).toBe(false);ui.dispose();
 });
-it('restores mid-intro as subtitles without repeated speech and switches only the active phrase',()=>{
+it('restores mid-intro as Chinese subtitles without repeated speech',()=>{
   const {ui,audio,text}=missionUi();ui.startMission(0);ui.update(undefined,undefined,2.5,true,false);
   expect(ui.element.hidden).toBe(false);expect(audio.play).not.toHaveBeenCalled();
   expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false,6.2,'missionIntro']);
-  (ui.selector as unknown as ElementStub).children[1].dispatchEvent(new Event('click'));
-  expect(text()).toBe(observerMissionDialogue.en[1]);
+  expect(text()).toBe(observerMissionDialogue['zh-TW'][1]);
   ui.reset();ui.update(undefined,undefined,3,true,false);expect(ui.element.hidden).toBe(true);
   ui.startMission(10);ui.update(undefined,undefined,10,true,false);expect(ui.element.hidden).toBe(true);
   ui.startMission(0);for(let tick=0;tick<20;tick++)ui.update(undefined,undefined,tick/60,true,false);
@@ -224,17 +221,20 @@ it('keeps mission and naval recordings distinct, cancels delayed old dialogue an
   voice.sync('en',1,false,6.2,'missionIntro');expect(nodes[1].stop).toHaveBeenCalledOnce();
   voice.reset();voice.sync('zh-TW',null,false,6.2,'missionIntro');expect(loader).toHaveBeenCalledTimes(2);voice.dispose();
 });
-it('updates matching subtitles and locale without restarting combat; Retry hides the panel and cancels voice', () => {
-  const stored = new Map<string,string>();
+it.each(['en-US','zh-CN','ja','zh-TW'])('ignores %s browser language and saved English without creating a selector', browserLocale => {
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
-  vi.stubGlobal('navigator',{languages:['zh-TW']});
-  vi.stubGlobal('window',{localStorage:{getItem:(k:string)=>stored.get(k),setItem:(k:string,v:string)=>stored.set(k,v)}});
+  const getItem=vi.fn(()=> 'en'),setItem=vi.fn();
+  vi.stubGlobal('navigator',{languages:[browserLocale]});
+  vi.stubGlobal('window',{localStorage:{getItem,setItem}});
   const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)}, host=new ElementStub(), ui=new FieldObserver(host as unknown as HTMLElement,audio);
   for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
   expect(ui.element.hidden).toBe(false);expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerDialogue['zh-TW']);
-  const en=(ui.selector as unknown as ElementStub).children[1];en.dispatchEvent(new Event('click'));
-  expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerDialogue.en);
-  expect([...stored.values()]).toEqual(['en']);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
+  expect(host.children).toEqual([ui.element]);expect('selector' in ui).toBe(false);
+  expect(getItem).not.toHaveBeenCalled();expect(setItem).not.toHaveBeenCalled();
+  expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
   ui.update(state,config,119/60,true,true);expect(audio.syncRadio.mock.lastCall?.[2]).toBe(true);
-  ui.reset();expect(ui.element.hidden).toBe(true);expect(audio.syncRadio.mock.lastCall).toEqual(['en',null,false]);ui.dispose();
+  ui.reset();expect(ui.element.hidden).toBe(true);expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false]);
+  ui.startMission(0);for(let tick=0;tick<60;tick++)ui.update(undefined,undefined,tick/60,true,false);
+  expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerMissionDialogue['zh-TW'][0]);
+  expect(audio.syncRadio.mock.calls.every(call=>call[0]==='zh-TW')).toBe(true);ui.dispose();
 });

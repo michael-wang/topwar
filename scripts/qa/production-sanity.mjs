@@ -18,13 +18,14 @@ const authoredLevel=JSON.parse(readFileSync('public/game-data/levels/level-001.j
 try {
 for(const width of [390,350]){
 for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
- const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const errors=[];
+ const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'en-US'});const errors=[];
  const runtimeRequests=[];let configResponse,levelResponse;
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  page.on('requestfailed',r=>errors.push(`Request failed: ${r.url()}`));
  page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/topwar/game-data/')||u.pathname.startsWith('/topwar/models/'))runtimeRequests.push(r.url());});
  page.on('response',r=>{const path=new URL(r.url()).pathname;if(r.status()>=400)errors.push(`HTTP ${r.status()}: ${r.url()}`);if(path==='/topwar/game-data/game.json')configResponse=r;if(path==='/topwar/game-data/levels/level-001.json')levelResponse=r;});
  await page.addInitScript(()=>{
+   localStorage.setItem('topwar.observer.locale','en');
    window.__qaJsonFetches=[];window.__qaUnhandled=[];
    window.addEventListener('unhandledrejection',e=>window.__qaUnhandled.push(String(e.reason)));
    const nativeFetch=window.fetch.bind(window);
@@ -64,6 +65,8 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
    window.__qaHudStableAt??=performance.now();return performance.now()-window.__qaHudStableAt>=500;
  },level);
  const actual=await page.locator('.xp-level-number').textContent();
+ if(await page.locator('.observer-languages').count())throw Error('Language selector survived closed-playtest policy');
+ if(await page.locator('.field-observer p').getAttribute('lang')!=='zh-TW')throw Error('Observer did not ignore English browser and saved preference');
  if(await page.locator('#game-viewport').getAttribute('data-input-presentation')!=='touch'||await page.locator('.combat-keycue:visible').count())throw Error('Production touch Start exposed keyboard hints');
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  const labControls=await page.locator('.dev-review-controls').count();

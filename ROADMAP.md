@@ -10,11 +10,11 @@
 
 ## NOW
 
-**P3-B closed playtest validation.** Validate Carnival → Destroyer → temporary Survival, artillery dodge readability and the bilingual Field Observer. Validate the approved provisional Mandarin recording in combat; approve an English recording while English subtitles and radio beeps remain available. No automatic P3-C work.
+**P3-B closed playtest validation.** Validate Carnival → Destroyer → temporary Survival, artillery dodge readability and the Traditional Chinese Field Observer. Validate the approved provisional Mandarin recording in combat. English resources remain dormant until international testing. No automatic P3-C work.
 
 ## NEXT
 
-1. Review the observer portrait in context and approve the English voice performance.
+1. Review the observer portrait in context and the Mandarin voice mix in combat.
 2. Human-playtest naval warnings, overlapping shots and clean phase handoffs.
 3. Measure physical-phone performance before authoring further encounters.
 

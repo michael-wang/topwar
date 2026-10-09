@@ -2,7 +2,7 @@ import { publicAssetUrl } from '../core/publicAssetUrl';
 import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
-import { loadObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue,
+import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue,
   type ObserverLocale, type ObserverMessage } from './observerLocale';
 
 export interface ObserverAudio {
@@ -13,7 +13,6 @@ export interface ObserverAudio {
 }
 export class FieldObserver {
   readonly element = document.createElement('aside');
-  readonly selector = document.createElement('div');
   private readonly portrait = document.createElement('img');
   private readonly text = document.createElement('p');
   private readonly lamp = document.createElement('span');
@@ -21,40 +20,22 @@ export class FieldObserver {
   private readonly missionTimeline = new MissionObserverTimeline();
   private message: ObserverMessage = 'destroyer';
   private phrase = 0;
-  private readonly buttons: HTMLButtonElement[] = [];
-  private locale: ObserverLocale;
+  private readonly locale = FIELD_OBSERVER_LOCALE;
   private expression = '';
   private frame = { offset: null as number | null, paused: false, duration: 0 };
-  private storage: Storage | undefined;
   constructor(host: HTMLElement, private readonly audio: ObserverAudio) {
-    try { this.storage = window.localStorage; } catch { /* Browser may deny storage access itself. */ }
-    this.locale = loadObserverLocale(navigator.languages, this.storage);
     this.audio.prepareRadio(this.locale, 'missionIntro');
     this.element.className = 'field-observer'; this.element.hidden = true;
     this.element.setAttribute('aria-live', 'polite');
     this.portrait.alt = ''; this.portrait.width = 72; this.portrait.height = 82;
     this.lamp.className = 'observer-radio-light'; this.lamp.setAttribute('aria-hidden', 'true');
     this.element.append(this.portrait, this.text, this.lamp);
-    this.selector.className = 'observer-languages'; this.selector.setAttribute('aria-label', 'Radio language');
-    this.selector.addEventListener('pointerdown', event => event.stopPropagation());
-    for (const locale of ['zh-TW', 'en'] as const) {
-      const button = document.createElement('button'); button.type = 'button';
-      button.textContent = locale === 'zh-TW' ? '繁中' : 'EN'; button.lang = locale;
-      button.addEventListener('click', () => {
-        this.locale = locale; saveObserverLocale(locale, this.storage); this.updateText();
-        this.audio.prepareRadio(this.locale, this.element.hidden ? 'missionIntro' : this.message);
-        this.audio.syncRadio(this.locale, this.frame.offset, this.frame.paused, this.frame.duration, this.message);
-        button.blur(); // Return keyboard lane/Q input to combat, as the DEV selector does.
-      });
-      this.buttons.push(button); this.selector.append(button);
-    }
-    this.updateText(); host.append(this.element, this.selector);
+    this.updateText(); host.append(this.element);
   }
   private updateText(): void {
     this.text.textContent = this.message === 'missionIntro'
       ? observerMissionDialogue[this.locale][this.phrase] : observerDialogue[this.locale];
     this.text.lang = this.locale;
-    this.buttons.forEach(button => button.setAttribute('aria-pressed', String(button.lang === this.locale)));
   }
   startMission(now: number): void {
     this.reset();
@@ -95,5 +76,5 @@ export class FieldObserver {
     this.timeline.reset(); this.missionTimeline.reset();
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
   }
-  dispose(): void { this.reset(); this.element.remove(); this.selector.remove(); }
+  dispose(): void { this.reset(); this.element.remove(); }
 }

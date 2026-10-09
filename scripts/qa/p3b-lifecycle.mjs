@@ -17,7 +17,7 @@ try{for(const denied of [false,true]){
  await page.waitForFunction(()=>window.__testApp.startup==='started');await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));await selectDevFixture(page,'naval');
  await page.evaluate(()=>{window.__clock=performance.now();window.__advance=n=>{for(let i=0;i<n;i++){const a=window.__testApp;a.renderFrame(window.__clock+=1000/60);cancelAnimationFrame(a.frameId);}};});
  await page.evaluate(()=>window.__advance(130));assert(await page.locator('.field-observer').isVisible());
- await page.locator('.observer-languages button[lang="zh-TW"]').tap();assert.equal(await page.locator('.field-observer p').getAttribute('lang'),'zh-TW');
+ assert.equal(await page.locator('.observer-languages').count(),0);assert.equal(await page.locator('.field-observer p').getAttribute('lang'),'zh-TW');
  await page.keyboard.press('ArrowRight');assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().player.selectedLane),3);
  await page.evaluate(()=>window.__advance(1000));assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().squad.count),0);
  assert(await page.getByRole('button',{name:'Retry',exact:true}).isVisible());await page.screenshot({path:`${out}/${denied?'denied':'enabled'}-game-over.png`});

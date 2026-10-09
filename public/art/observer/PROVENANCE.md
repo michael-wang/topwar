@@ -19,7 +19,7 @@ Mandarin asset: `public/audio/observer_destroyer_zh-TW.mp3`. Supplied by the pro
 - Chrome decoded duration: 5.40734694 seconds, mono (the supplied estimate was approximately 6.48 seconds). The configured 7.2-second window accommodates both.
 - Traditional Chinese subtitle: 注意，左前方發現敵方驅逐艦！準備閃避砲擊。完畢！
 
-English has no approved recording and its manifest entry remains null: English subtitles and radio beeps only, with no Mandarin substitution or missing-file request. No SpeechSynthesis or placeholder speech is used.
+English has no approved recording and its manifest entry remains null: the English resources remain dormant while the closed playtest always uses Traditional Chinese, with no missing-file request. No SpeechSynthesis or placeholder speech is used.
 
 Mission-intro bytes prefetch before Start without creating an AudioContext or playing. Decoding begins after the Start gesture creates the context; speech waits for successful activation. `publicAssetUrl` supplies the GitHub Pages base path and build cache version. Assets decode once per asset; failures fall back to subtitles. Runtime WebAudio applies mild communication-band filtering and independent music/weapon ducking. Pause resumes from the presentation offset; Retry and locale switches cancel stale playback. Historical snapshots retain their saved encounter schedules; a window shorter than the decoded recording uses subtitles instead of truncating the voice.
 
