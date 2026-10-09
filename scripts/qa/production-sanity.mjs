@@ -8,7 +8,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
-if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6'].some(marker => shippingJs.includes(marker)))
+if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'Late DEV entry requires'].some(marker => shippingJs.includes(marker)))
   throw Error('Development review controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -58,6 +58,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  const labControls=await page.locator('.dev-review-controls').count();
  const devMenu=await page.locator('.tuning-panel').count();
+ if(await page.locator('[data-role="late"],[data-role="mg7"],[data-role="mg8"]').count())throw Error('Production contains late DEV entries');
  const hiddenMovement=await page.locator('.touch-steering-band,.touch-steering-zone').count();
  if(hiddenMovement!==0||await page.locator('.movement-button:visible').count()!==2)throw Error('Production movement controls are not exclusively visible buttons');
  const mgLabControls=await page.locator('[data-role="machineGun"]').count();

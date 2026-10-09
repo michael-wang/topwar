@@ -97,6 +97,7 @@ No permanent right-side fixture stack remains. Browser scripts use
 - **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds, including its immediate 59-Grunt/one-Heavy release; no timer promotion or Grenade dependency. No Giant/Boss or ordinary stream refill.
 - **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
 - **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / three held Grenades. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
+- **LATE / MG7 / MG8:** playable Lv6 / Lv7 / Lv8, zero XP, one / two / three MG Soldiers, independent 18 Hz clocks, three Grenade charges and a normal late group. Teaching Supply, first Giant introduction and Lv6 release are already completed. Normal waves, damage, XP and progression remain active. The temporary survival fallback is enabled, including recurring Giant and +1 Supply opportunities. Retry restores the selected entry. No additional shortcuts.
 
 Buttons restart deterministic validated fixtures using real HP, damage and P1
 progression. Switching roles clears projectiles and all presentation feedback;
@@ -105,6 +106,15 @@ visual salt. The review set is presentation QA, not gameplay configuration or a 
 simulation mode. Normal `/` remains Lv1 until a button is used;
 `?review=threats` remains a separate art fixture. Production excludes review controls
 and fixture code behind `import.meta.env.DEV`.
+
+`node scripts/qa/late-dev-sanity.mjs` checks all seven menu actions fit at
+390×844 and 350×844, then tests the three playable late entries through real
+selection, touch Grenade, Pause and Retry paths. Each runs 150 seconds of normal
+combat, with natural Lv6→7→8 progression, snapshot replay, squad/firing/HUD
+checks and no repeated release or legacy reinforcement. Existing 4/5/6 shortcuts
+and the isolated MG crowd are checked afterward. Captures/results default to
+ignored `artifacts/stage1-p1-late`. Accelerated runs omit intermediate GPU draws;
+this validates behavior and layout, not physical-phone performance.
 
 Physical **4** restarts CURVE, **5** restarts EVOLVE and **6** restarts MG through the button reset path.
 These DEV shortcuts ignore repeats, Ctrl/Alt/Meta modifiers, interactive/editable/TUNE focus

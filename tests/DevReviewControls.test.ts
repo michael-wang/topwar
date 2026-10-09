@@ -39,7 +39,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('routes physical 4/5/6 and CURVE/EVOLVE/MG clicks through exactly the same callback', () => {
   const { controls, root, select, press } = setup();
-  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG']);
+  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG', 'LATE', 'MG7', 'MG8']);
   for (const [index, code, role] of [[1, 'Digit4', 'curve'], [2, 'Digit5', 'evolve'], [3, 'Digit6', 'machineGun']] as const) {
     const button = root.children[index];
     button.dispatchEvent(new Event('click'));
@@ -63,7 +63,7 @@ it('ignores repeats, modifiers, unrelated keys and pre-start/stopped shortcuts',
     press(code, { repeat: true }); press(code, { ctrlKey: true });
     press(code, { altKey: true }); press(code, { metaKey: true });
   }
-  for (const code of ['KeyQ', 'KeyP', 'ArrowLeft', 'ArrowRight', 'Space', 'Escape', 'Numpad5', 'Numpad6']) press(code);
+  for (const code of ['KeyQ', 'KeyP', 'ArrowLeft', 'ArrowRight', 'Space', 'Escape', 'Numpad5', 'Numpad6', 'Digit7', 'Digit8']) press(code);
   expect(select).not.toHaveBeenCalled();
   controls.dispose();
 });
@@ -86,4 +86,15 @@ it('removes the keyboard handler on disposal', () => {
   controls.dispose(); press('Digit4'); press('Digit5'); press('Digit6');
   expect(select).not.toHaveBeenCalled();
   expect(root.remove).toHaveBeenCalledOnce();
+});
+
+it('selects all playable late entries through the same restart callback and releases focus', () => {
+  const { controls, root, select } = setup();
+  for (const role of ['late', 'mg7', 'mg8'] as const) {
+    const button = root.children.find(b => b.dataset.role === role)!;
+    button.dispatchEvent(new Event('click')); controls.setSelected(role);
+    expect(select.mock.lastCall).toEqual([role]); expect(button.blur).toHaveBeenCalledOnce();
+    expect(button.attrs['aria-pressed']).toBe('true'); expect(button.title).toContain('normal spawning');
+  }
+  controls.dispose();
 });
