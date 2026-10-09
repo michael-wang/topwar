@@ -106,6 +106,7 @@ it('skips full-inventory and uncollected Supply slots; spending does not bank a 
   s.grenade!.inventory=2;advance(s,start+31);expect(s.grenade!.supply).toBeNull();
   advance(s,start+60);const supply=structuredClone(s.grenade!.supply);
   expect(supply!.rewardAmount).toBe(1);expect(s.grenade!.inventory).toBe(2);
+  expect(supply).toMatchObject({hitsRequired:10,hitProgress:0});
   advance(s,start+90);expect(s.grenade!.supply).toEqual(supply);
   s.grenade!.supply=null;advance(s,start+91);expect(s.grenade!.supply).toBeNull();
   advance(s,start+120);expect(s.grenade!.supply).not.toBeNull();
@@ -118,7 +119,7 @@ it('never overwrites the uncollected teaching Supply',()=>{
   advance(s,start+30);expect(s.grenade.supply).toEqual({lane:2,x:0,depth:8});
 });
 
-it.each([0,1,2,3])('one MG hit collects +1 from inventory %s, clamped at three',inventory=>{
+it.each([0,1,2,3])('historical one-hit MG supply collects +1 from inventory %s, clamped at three',inventory=>{
   const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;
   s.grenade={...held(inventory),supply:{lane:2,x:0,depth:8,rewardAmount:1}};
   s.projectiles=[{id:1,kind:'machineGun',tier:1,lane:2,x:0,z:s.player.z+7.5,slopeX:0,speed:60,

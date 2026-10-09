@@ -484,7 +484,7 @@ export class GameApp {
       const grenadeEvents = this.simulation.consumeGrenadeEvents();
       for (const event of grenadeEvents) {
         if (event.kind === 'grenadeAcquired') this.audio.play('reward');
-        else this.audio.play('groundArtillery', { kind: 'groundArtillery', volumeScale: .65, durationScale: .55, pitchScale: 1.5 });
+        else if (event.kind === 'grenadeDetonated') this.audio.play('groundArtillery', { kind: 'groundArtillery', volumeScale: .65, durationScale: .55, pitchScale: 1.5 });
       }
       this.renderer.presentGrenade(grenadeEvents, this.presentationMs);
       if (state.progression && state.catharsis) {

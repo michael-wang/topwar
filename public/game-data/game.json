@@ -29,7 +29,7 @@
       "flightSeconds": 0.65,
       "supplyPressureDepth": 24,
       "supplyDelaySeconds": 8,
-      "supplyHitsRequired": 1,
+      "supplyHitsRequired": 10,
       "supplyDepth": 14,
       "supplyMinDepth": 6,
       "supplyFrontClearance": 1.25,

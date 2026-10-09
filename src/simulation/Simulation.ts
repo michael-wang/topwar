@@ -1227,12 +1227,19 @@ export class Simulation {
           this.state.player.z, nextZ, minimumFraction, piercedEnemyIds, this.collisionDiagnostics, grenade?.supply);
         if (!hit) break;
         if (hit.kind === 'grenadeSupply') {
-          const rewardAmount = grenade!.supply!.rewardAmount;
-          grenade!.supply = null;
-          grenade!.inventory = rewardAmount === undefined ? grenadeConfig!.capacity
-            : Math.min(grenadeConfig!.capacity, grenade!.inventory + rewardAmount);
-          grenade!.acquiredAtSeconds ??= nextElapsedSeconds;
-          this.grenadeEvents.push({ kind: 'grenadeAcquired' });
+          const supply = grenade!.supply!;
+          const progress = (supply.hitProgress ?? 0) + 1;
+          // Acquisition counts successful projectiles, never their damage.
+          if (progress >= (supply.hitsRequired ?? 1)) {
+            grenade!.supply = null;
+            grenade!.inventory = supply.rewardAmount === undefined ? grenadeConfig!.capacity
+              : Math.min(grenadeConfig!.capacity, grenade!.inventory + supply.rewardAmount);
+            grenade!.acquiredAtSeconds ??= nextElapsedSeconds;
+            this.grenadeEvents.push({ kind: 'grenadeAcquired' });
+          } else {
+            supply.hitProgress = progress;
+            this.grenadeEvents.push({ kind: 'grenadeSupplyHit' });
+          }
         } else if (hit.kind === 'gate') {
           hit.gate.hitProgress++;
           if (hit.gate.hitProgress === hit.gate.reward.hitsRequired) {

@@ -20,6 +20,7 @@ export class GrenadeRenderer {
   private readonly dust = new THREE.InstancedMesh(this.sphere, this.dustMaterial, 16);
   private readonly transform = new THREE.Object3D();
   private burst: { x: number; z: number; radius: number; atMs: number } | null = null;
+  private supplyHitAtMs = -Infinity;
 
   constructor(private readonly scene: THREE.Scene) {
     const crate = new THREE.Mesh(this.box, this.sea); crate.scale.set(1.05, .8, .65);
@@ -40,11 +41,16 @@ export class GrenadeRenderer {
     group.add(body, lever); return group;
   }
   present(events: readonly GrenadeEvent[], nowMs: number): void {
-    for (const event of events) if (event.kind === 'grenadeDetonated')
-      this.burst = { x: event.x, z: event.z, radius: event.radius, atMs: nowMs };
+    for (const event of events) {
+      if (event.kind === 'grenadeSupplyHit') this.supplyHitAtMs = nowMs;
+      else if (event.kind === 'grenadeDetonated') this.burst = { x: event.x, z: event.z, radius: event.radius, atMs: nowMs };
+    }
   }
   update(state: GameRenderState['grenade'], nowMs: number): void {
     this.supply.visible = !!state?.supply;
+    const hit = state?.supply ? Math.max(0, 1 - (nowMs - this.supplyHitAtMs) / 140) : 0;
+    this.sea.emissive.set('#ffe5ad'); this.sea.emissiveIntensity = hit * .65;
+    this.supply.scale.setScalar(1 + hit * .07);
     if (state?.supply) {
       this.supply.position.set(-state.supply.x, .9 + .07 * Math.sin(nowMs / 220), state.supply.depth);
       this.supply.rotation.y = .12 * Math.sin(nowMs / 600);
@@ -81,7 +87,9 @@ export class GrenadeRenderer {
   }
   getDebugStats() { return { supply: this.supply.visible, flight: this.flight.visible,
     burst: this.burst !== null, dustCapacity: 16 }; }
-  reset(): void { this.burst = null; this.supply.visible = this.flight.visible = this.flash.visible = this.dust.visible = this.ring.visible = false; }
+  reset(): void { this.burst = null; this.supplyHitAtMs = -Infinity;
+    this.sea.emissiveIntensity = 0; this.supply.scale.setScalar(1);
+    this.supply.visible = this.flight.visible = this.flash.visible = this.dust.visible = this.ring.visible = false; }
   dispose(): void {
     this.scene.remove(this.supply, this.flight, this.flash, this.dust, this.ring); this.dust.dispose();
     for (const resource of [this.sphere, this.box, this.ringGeometry, this.olive, this.sea, this.plaster, this.flashMaterial, this.dustMaterial, this.ringMaterial]) resource.dispose();

@@ -366,13 +366,14 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .combat-progression { min-width: 0; }
 .movement-button {
   width: 64px; height: 60px; padding: 0; display: grid; place-items: center; box-sizing: border-box;
-  border: 1px solid #8b9db0; border-bottom: 4px solid #101b2b; border-radius: 8px;
-  background: linear-gradient(#435c75, #273d55); color: #f8f5e9; box-shadow: inset 0 1px 0 #ffffff38, 0 2px 2px #09142499;
+  border: 1px solid #8b9db0; border-radius: 8px;
+  /* Keep the lower bevel inside a continuous border, including its corners. */
+  background: linear-gradient(#435c75, #273d55); color: #f8f5e9; box-shadow: inset 0 1px 0 #ffffff38, inset 0 -3px 0 #101b2b, 0 2px 2px #09142499;
   cursor: pointer; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent;
 }
 .movement-button, .movement-button * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
 .movement-button svg { width: 50px; height: 50px; max-width: calc(100% - 8px); pointer-events: none; filter: drop-shadow(0 2px 0 #122039); }
-.movement-button.is-held { transform: translateY(2px); border-bottom-width: 2px; border-color: #ffb45b;
+.movement-button.is-held { transform: translateY(2px); border-color: #ffb45b;
   background: linear-gradient(#56799a, #345471); color: #ffdb9c; box-shadow: inset 0 2px 5px #0c192e88, 0 0 8px #ffae4938; }
 .movement-button:disabled { cursor: default; color: #91a0b0; border-color: #435469; background: #263649; box-shadow: none; }
 .movement-button:focus-visible { outline: 2px solid var(--combat-gold); outline-offset: 2px; }

@@ -4,6 +4,20 @@ import { GrenadeRenderer } from '../src/rendering/GrenadeRenderer';
 import { GrenadeButton } from '../src/ui/GrenadeButton';
 import type { GameRenderState } from '../src/rendering/RenderState';
 
+it('pulses the existing crate on a hit, freezes with presentation time and resets without resources',()=>{
+  const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene);
+  const state={supply:{lane:2,x:0,depth:14,hitsRequired:10,hitProgress:1},flight:null,originZ:0,elapsedSeconds:1};
+  const supply=scene.getObjectByName('grenade-supply')!;
+  const crate=supply.children[0] as THREE.Mesh<THREE.BoxGeometry,THREE.MeshStandardMaterial>;
+  const children=[...scene.children];renderer.present([{kind:'grenadeSupplyHit'}],100);renderer.update(state,100);
+  expect(crate.material.emissiveIntensity).toBeGreaterThan(0);expect(supply.scale.x).toBeGreaterThan(1);
+  const scale=supply.scale.x;renderer.update(state,100);expect(supply.scale.x).toBe(scale);
+  renderer.update(state,240);expect(crate.material.emissiveIntensity).toBe(0);expect(supply.scale.x).toBe(1);
+  renderer.present([{kind:'grenadeSupplyHit'}],300);renderer.update(state,300);renderer.reset();renderer.update(state,300);
+  expect(crate.material.emissiveIntensity).toBe(0);expect(supply.scale.x).toBe(1);expect(scene.children).toEqual(children);
+  renderer.dispose();expect(scene.children).toHaveLength(0);
+});
+
 it.each([38,47])('stretches the existing analytic arc to shoreline depth %s without changing flight resources', depth => {
   const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene);
   const children=[...scene.children];

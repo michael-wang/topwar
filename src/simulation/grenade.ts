@@ -9,7 +9,13 @@ export const GrenadeStateSchema = z.strictObject({
   lv3EnteredAtSeconds: clock.nullable(), supplySpawnedAtSeconds: clock.nullable(),
   acquiredAtSeconds: clock.nullable(), inventory: z.number().int().min(0).max(3),
   supply: z.strictObject({ lane: z.number().int().nonnegative(), x: finite, depth: finite.positive(),
-    rewardAmount: z.literal(1).optional() }).nullable(),
+    rewardAmount: z.literal(1).optional(),
+    // Absent together means a historical one-hit supply. New supplies freeze
+    // their requirement at spawn so live tuning cannot reinterpret progress.
+    hitsRequired: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+    hitProgress: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
+  }).refine(s => s.hitsRequired === undefined ? s.hitProgress === undefined
+    : s.hitProgress !== undefined && s.hitProgress < s.hitsRequired, 'Invalid supply hit progress').nullable(),
   flight: z.strictObject({ startX: finite, startZ: finite, targetX: finite, targetZ: finite,
     startedAtSeconds: clock, flightSeconds: finite.positive(), damageEnemyHp: finite.positive(),
     blastRadius: finite.positive() }).nullable(),
@@ -24,7 +30,7 @@ export const GrenadeStateSchema = z.strictObject({
   if (invalid) ctx.addIssue({ code: 'custom', message: 'Inconsistent Grenade lifecycle' });
 });
 export type GrenadeState = z.infer<typeof GrenadeStateSchema>;
-export type GrenadeEvent = { kind: 'grenadeAcquired' } | {
+export type GrenadeEvent = { kind: 'grenadeAcquired' } | { kind: 'grenadeSupplyHit' } | {
   kind: 'grenadeDetonated'; x: number; z: number; radius: number;
   victims: { id: number; archetype: 'grunt' | 'heavy' | 'giant'; damage: number; killed: boolean; killXp: number }[];
 };
@@ -68,6 +74,6 @@ export function placeGrenadeSupply(state: SimulationFrameState, config: GrenadeC
   // open lane and move the supply closer rather than hiding it behind an enemy.
   const choice = readable.length ? readable.sort((a, b) => a.score - b.score || a.lane - b.lane)[0]
     : candidates.sort((a, b) => b.nearest - a.nearest || a.score - b.score || a.lane - b.lane)[0];
-  return { lane: choice.lane, x: choice.x,
+  return { lane: choice.lane, x: choice.x, hitsRequired: config.supplyHitsRequired, hitProgress: 0,
     depth: Math.min(config.supplyDepth, Math.max(config.supplyFrontClearance, choice.nearest - config.supplyFrontClearance)) };
 }

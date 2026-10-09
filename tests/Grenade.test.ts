@@ -12,7 +12,7 @@ const held = () => ({ ...emptyGrenade(), lv3EnteredAtSeconds: 0, supplySpawnedAt
 it('authors the four-unit blast without changing single-target damage or supply/flight values', () => {
   expect(balance.grenade).not.toHaveProperty('throwRange');
   expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, capacity: 3,
-    flightSeconds: .65, supplyPressureDepth: 24, supplyDelaySeconds: 8, supplyHitsRequired: 1 });
+    flightSeconds: .65, supplyPressureDepth: 24, supplyDelaySeconds: 8, supplyHitsRequired: 10 });
 });
 function armed() {
   const sim = make(), s = sim.getState(); s.grenade = held();
@@ -77,7 +77,7 @@ it('keeps the supply-only pressure window unchanged without limiting throw targe
   expect(placeGrenadeSupply(s,balance.grenade).lane).toBe(1);
   expect(grenadeTarget(s,balance.grenade)!.anchorId).toBe(1);
 });
-it('requires one same-lane Rifle hit, consumes it, and fills three charges once across Lv4', () => {
+it('preserves an historical one-hit supply, consumes its Rifle hit, and fills three charges once across Lv4', () => {
   const sim = make(), s = sim.getState(); s.progression = {level:4,xp:0};
   s.grenade = {...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,supply:{lane:2,x:0,depth:8}};
   sim.restoreState(s); ticks(sim,20);
@@ -137,7 +137,7 @@ it('rejects corrupt lifecycle/config and future snapshot clocks',()=>{
   for(const patch of [{inventory:4},{inventory:1,acquiredAtSeconds:null},{acquiredAtSeconds:10},{supplySpawnedAtSeconds:null}]) {
     const s=sim.getState();Object.assign(s.grenade!,patch);expect(()=>sim.restoreState(s)).toThrow();
   }
-  for(const patch of [{capacity:4},{damageEnemyHp:0},{flightSeconds:0},{blastRadius:-1},{supplyHitsRequired:2}])
+  for(const patch of [{capacity:4},{damageEnemyHp:0},{flightSeconds:0},{blastRadius:-1},{supplyHitsRequired:0},{supplyHitsRequired:1.5}])
     expect(()=>GameConfigSchema.parse({...data,catharsis:{...data.catharsis,grenade:{...data.catharsis.grenade,...patch}}})).toThrow();
 });
 
