@@ -50,7 +50,7 @@ try{for(const [width,locale] of [[390,'en'],[350,'zh-TW']]){
   const direction=await page.evaluate(()=>{const s=window.__testApp.simulation.getState(),lane=s.player.selectedLane,targets=new Set(s.artillery.shells.map(s=>s.targetLane));return[-1,1].sort((a,b)=>Math.abs(lane+a-2)-Math.abs(lane+b-2)).find(d=>lane+d>=0&&lane+d<5&&!targets.has(lane+d));});
   assert(direction);await page.getByRole('button',{name:direction<0?'Move left':'Move right',exact:true}).tap();
  }
- await page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=21.5);await shot('exit');
+ await page.waitForFunction(()=>window.__testApp.simulation.getState().elapsedSeconds>=24.5);await shot('exit');
  await page.waitForFunction(()=>window.__testApp.simulation.getState().destroyer.status==='complete');await page.waitForTimeout(400);await shot('complete');
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().squad.count),2);
  const events=await page.evaluate(()=>window.__events.map(e=>({...e,time:(e.wall-window.__capture.startedAt)/1000})));
@@ -59,9 +59,9 @@ try{for(const [width,locale] of [[390,'en'],[350,'zh-TW']]){
  await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
  const launch=events.find(e=>e.kind==='artilleryLaunch'),hit=events.find(e=>e.kind==='artilleryImpact');
  const overlap=events.find(e=>e.kind==='artilleryLaunch'&&e.shell.id===4);
- await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-naval`,[1.9,3.5,launch.time+.12,launch.time+.5,hit.time-.15,hit.time+.15,overlap.time+.15,22.5]);
+ await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-naval`,[1.9,3.5,launch.time+.12,launch.time+.5,hit.time-.15,hit.time+.15,overlap.time+.15,25.5]);
  const audio=await page.evaluate(async bytes=>{const c=new AudioContext(),b=await c.decodeAudioData(new Uint8Array(bytes).buffer);let peak=0,squares=0,clipped=0,n=0;for(let channel=0;channel<b.numberOfChannels;channel++)for(const s of b.getChannelData(channel)){peak=Math.max(peak,Math.abs(s));squares+=s*s;n++;if(Math.abs(s)>=.999)clipped++;}await c.close();return{duration:b.duration,peak,rms:Math.sqrt(squares/n),clipped};},Array.from(bytes));
  assert.equal(audio.clipped,0);assert(audio.rms>.0001);
- assert.equal(requests.filter(u=>new URL(u).pathname.startsWith('/audio/')).length,0);assert.deepEqual(errors,[]);
+ assert.equal(requests.filter(u=>new URL(u).pathname.startsWith('/audio/')).length,1);assert.deepEqual(errors,[]);
  results.push({width,locale,events,radio,audio,errors,bytes:bytes.length});writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));console.log('Recorded NAVAL',width,locale,audio);await page.close();
 }}finally{await browser.close();}

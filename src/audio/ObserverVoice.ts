@@ -1,8 +1,10 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
 import type { ObserverLocale } from '../ui/observerLocale';
 
-// Fill only after recordings and their provenance have been approved. Null never issues a request.
-export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = { 'zh-TW': null, en: null };
+// User-approved provisional Mandarin recording; English awaits an approved asset.
+export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
+  'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null,
+};
 export type VoiceLoader = (url: string, context: AudioContext) => Promise<AudioBuffer | null>;
 const loadVoice: VoiceLoader = async (url, context) => {
   try {
@@ -19,6 +21,7 @@ export class ObserverVoice {
   private gain: GainNode | null = null;
   private locale: ObserverLocale | null = null;
   private offset = 0;
+  private windowSeconds = Infinity;
   private paused = false;
   private generation = 0;
   private started = false;
@@ -26,25 +29,37 @@ export class ObserverVoice {
   constructor(private readonly context: AudioContext, private readonly output: AudioNode,
     private readonly assets = observerVoiceAssets, private readonly loader: VoiceLoader = loadVoice) {}
 
-  sync(locale: ObserverLocale, offset: number | null, paused: boolean): void {
-    if (this.disposed) return;
-    if (offset === null) { if (this.locale !== null) this.reset(); return; }
-    const changed = this.locale !== locale || this.paused !== paused;
-    this.offset = offset;
-    if (changed) { this.stop(); this.generation++; this.started = false; }
-    this.locale = locale; this.paused = paused;
+  private prepare(locale: ObserverLocale): Promise<AudioBuffer | null> | null {
     const asset = this.assets[locale];
-    if (paused || this.started || !asset) return;
-    this.started = true;
-    const generation = this.generation;
+    if (!asset) return null;
     let pending = this.cache.get(locale);
     if (!pending) {
       pending = this.loader(publicAssetUrl(asset), this.context).catch(() => null);
       this.cache.set(locale, pending);
     }
+    return pending;
+  }
+
+  sync(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity): void {
+    if (this.disposed) return;
+    // GameAudio calls this only after Tap-to-Start activation. Decode early without
+    // creating a playback source, so the first spoken words are ready at the cue.
+    const pending = this.prepare(locale);
+    if (offset === null) { if (this.locale !== null) this.reset(); return; }
+    const changed = this.locale !== locale || this.paused !== paused;
+    this.offset = offset;
+    this.windowSeconds = windowSeconds;
+    if (changed) { this.stop(); this.generation++; this.started = false; }
+    this.locale = locale; this.paused = paused;
+    if (paused || this.started || !pending) return;
+    this.started = true;
+    const generation = this.generation;
     void pending.then(buffer => {
       if (!buffer || this.disposed || generation !== this.generation || this.paused
-        || this.context.state !== 'running' || this.offset >= buffer.duration) return;
+        || this.context.state !== 'running' || this.offset >= buffer.duration
+        // Historical snapshots keep their old authoritative attack clocks. Use
+        // subtitles rather than cutting a newly approved, longer recording short.
+        || buffer.duration > this.windowSeconds) return;
       try {
         const source = this.context.createBufferSource();
         const filter = this.context.createBiquadFilter();

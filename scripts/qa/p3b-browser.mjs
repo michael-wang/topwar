@@ -21,7 +21,7 @@ try{for(const width of [390,350,1100]){
   }};});
  const advance=n=>page.evaluate(n=>window.__advance(n),n),shot=name=>page.screenshot({path:`${out}/${width}-${name}.png`});
  await advance(1);await shot('entry-start');await advance(60);await shot('entry');await advance(150);await shot('station');
- await advance(138);await shot('first-launch');await advance(60);await shot('flight');
+ await advance(318);await shot('first-launch');await advance(60);await shot('flight');
  const partial=await page.evaluate(()=>window.__testApp.simulation.getState());
  await page.getByRole('button',{name:'Pause game',exact:true}).click();await advance(60);
  assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),partial);await shot('paused');

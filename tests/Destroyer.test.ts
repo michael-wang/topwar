@@ -17,7 +17,7 @@ function dodge(s: Simulation) {
 }
 it('keeps deterministic muzzle transforms aligned through entry, station and exit', () => {
   const scene = new THREE.Scene(), r = new DestroyerRenderer(scene), p = new THREE.Vector3();
-  for (const age of [0, .75, 2, 3.2, 5.8, 14.3, 21, 23.9]) {
+  for (const age of [0, .75, 2, 3.2, 8.8, 17.3, 24, 26.9]) {
     r.update({ state: { status: 'active', startedAtSeconds: 0, nextShotIndex: 0 }, config: c, elapsedSeconds: age });
     scene.updateMatrixWorld(true); r.muzzle.getWorldPosition(p); const m = destroyerMuzzle(age,c).position;
     expect(p.distanceTo(new THREE.Vector3(-m.x,m.y,m.z))).toBeLessThan(1e-10);
@@ -27,7 +27,7 @@ it('keeps deterministic muzzle transforms aligned through entry, station and exi
 });
 it('fires five locked, deterministic shots after the introduction, including overlap, then exits', () => {
   const s=make(), events=[];let peak=0;
-  for(let i=0;i<60*26;i++){dodge(s);step(s);events.push(...s.consumeArtilleryEvents());peak=Math.max(peak,s.getFrameState().artillery!.shells.length);}
+  for(let i=0;i<60*(c.durationSeconds+2);i++){dodge(s);step(s);events.push(...s.consumeArtilleryEvents());peak=Math.max(peak,s.getFrameState().artillery!.shells.length);}
   const launches=events.filter(e=>e.kind==='artilleryLaunch');expect(launches).toHaveLength(5);
   launches.forEach((e,i)=>{expect(e.shell.launchedAtSeconds).toBeCloseTo(c.shotTimes[i]);expect(e.shell.source).toEqual(destroyerMuzzle(e.shell.launchedAtSeconds,c));});
   expect(launches[0].shell.launchedAtSeconds).toBeGreaterThan(c.radioAtSeconds+c.radioDurationSeconds);
@@ -39,7 +39,7 @@ it('resolves real one-soldier hits and cancels future attacks on death; Retry re
   expect(s.getState().destroyer!.nextShotIndex).toBe(4);expect(s.getState().artillery!.shells).toEqual([]);
   const dead=s.getState();step(s,600);expect(s.getState()).toEqual(dead);expect(make().getState()).toEqual(initial);
 });
-it.each([60,360,870,1260,1410])('continues snapshots without duplicate launches at tick %i',tick=>{
+it.each([60,360,870,1260,1410,1560])('continues snapshots without duplicate launches at tick %i',tick=>{
   const a=make();for(let i=0;i<tick;i++){dodge(a);step(a);}a.consumeArtilleryEvents();
   const b=make();b.restoreState(JSON.parse(JSON.stringify(a.getState())));expect(b.consumeArtilleryEvents()).toEqual([]);
   for(let i=0;i<120;i++)for(const s of [a,b]){dodge(s);step(s);}
@@ -54,10 +54,24 @@ it('rejects impossible phase clocks/cursors and skips historical snapshots past 
   delete old.catharsis!.balance.destroyer;s.restoreState(old);expect(s.getState().destroyer).toBeUndefined();
 });
 it('consumes missed shot opportunities without a deferred volley',()=>{
-  const r=advanceDestroyer({status:'active',startedAtSeconds:0,nextShotIndex:0},c,undefined,15,true);
+  const r=advanceDestroyer({status:'active',startedAtSeconds:0,nextShotIndex:0},c,undefined,18,true);
   expect(r).toEqual({state:{status:'active',startedAtSeconds:0,nextShotIndex:4},fire:true});
-  expect(advanceDestroyer(r.state,c,undefined,15.1,true).fire).toBe(false);
+  expect(advanceDestroyer(r.state,c,undefined,18.1,true).fire).toBe(false);
   expect(advanceDestroyer(emptyDestroyer(),c,{status:'skipped',startedAtSeconds:null,elapsedSeconds:0,nextWaveIndex:0},0,true).state.status).toBe('skipped');
+});
+it('preserves the shorter encounter clocks serialized by pre-voice P3-B snapshots',()=>{
+  const a=make(),old=a.getState();
+  Object.assign(old.catharsis!.balance.destroyer!,{durationSeconds:24,exitAtSeconds:20,
+    radioDurationSeconds:4.2,shotTimes:[5.8,9,13,14.3,18]});
+  a.restoreState(old);for(let i=0;i<400;i++){dodge(a);step(a);}a.consumeArtilleryEvents();
+  const b=make();b.restoreState(JSON.parse(JSON.stringify(a.getState())));
+  const launches:number[]=[];
+  for(let i=400;i<1500;i++)for(const s of [a,b]){dodge(s);step(s);}
+  expect(b.getState()).toEqual(a.getState());
+  expect(b.getState().catharsis!.balance.destroyer!.radioDurationSeconds).toBe(4.2);
+  expect(b.getState().destroyer!.status).toBe('complete');
+  for(const e of b.consumeArtilleryEvents())if(e.kind==='artilleryLaunch')launches.push(e.shell.launchedAtSeconds);
+  expect(launches).toHaveLength(4);launches.forEach((time,i)=>expect(time).toBeCloseTo([9,13,14.3,18][i]));
 });
 it('hands Carnival to Destroyer to survival once, consumes wave deadlines, and keeps XP/remaining enemies active',()=>{
   const s=carnivalEntry(17);let navalStart:number|null=null,fallbackStart:number|null=null;let launches=0;
@@ -75,7 +89,7 @@ it('hands Carnival to Destroyer to survival once, consumes wave deadlines, and k
       const added=a.enemies.filter(e=>e.id>=b.enemyStream!.nextEnemyId);expect(added.length).toBeLessThanOrEqual(3);
     }
   }
-  expect(navalStart).toBeCloseTo(24+1/60);expect(fallbackStart).toBeCloseTo(navalStart!+24);
+  expect(navalStart).toBeCloseTo(24+1/60);expect(fallbackStart).toBeCloseTo(navalStart!+c.durationSeconds);
   expect(launches).toBe(5);expect(s.getState().progression!.level).toBeGreaterThanOrEqual(7);
   expect(s.getState().postCapSurvival!.nextGiantAtSeconds).toBeCloseTo(fallbackStart!+24);
 });

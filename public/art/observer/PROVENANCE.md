@@ -10,10 +10,17 @@ Neutral: Original compact transparent radio portrait of a young adult female Fie
 
 Alert edit: Preserve identity, crop, uniform, cap, palette and transparent background. Change only the brows, eyes and mouth to calm, focused concern while delivering a professional warning. Do not exaggerate fear or excitement.
 
-## Optional prerecorded dialogue
+## Prerecorded dialogue
 
-**No speech recordings are bundled or approved yet.** `src/audio/ObserverVoice.ts` has explicit null asset entries for both locales. Null entries perform no fetch. The game presents localized subtitles and procedural radio opening/completion beeps. It never uses SpeechSynthesis or fabricated placeholder speech.
+Mandarin asset: `public/audio/observer_destroyer_zh-TW.mp3`. Supplied by the project owner and explicitly human-approved as a provisional female Field Observer performance on 2026-10-10. Copied unchanged from the supplied Downloads file; no generation, replacement, trimming, normalization or re-encoding. Performer/service and separate license details were not supplied; approval is recorded from the owner's integration instruction.
 
-To integrate approved recordings, place compressed local audio in `public/audio/observer/`, record the performer/generation service, permission/license, approval date and exact line here, then set the corresponding manifest path. `publicAssetUrl` supplies the GitHub Pages base path and build cache version. Assets load once per locale; decoding/network failures fall back silently to subtitles. Use a clear young adult female voice: calm professional Taiwanese Mandarin for zh-TW and comparable English delivery. Recordings must fit the configured radio window (currently 4.2 seconds); review pacing and adjust the authored intro/first-shot timing together if approved performances require more time. Do not speed up an unsuitable performance to meet this provisional window.
+- Bytes: 103455.
+- SHA-256: `3e54fc46e2efbb050b7cb0ab6d863c4a938e13436214e83ef81d56faf3806ae8`.
+- Chrome decoded duration: 5.40734694 seconds, mono (the supplied estimate was approximately 6.48 seconds). The configured 7.2-second window accommodates both.
+- Traditional Chinese subtitle: 注意，左前方發現敵方驅逐艦！準備閃避砲擊。完畢！
 
-The WebAudio player applies mild communication-band filtering, resumes from the presentation offset after Pause, cancels on Retry/language change, and ducks music/weapons through independent gain stages. Natural pronunciation, intelligibility and final loudness with real recordings remain acceptance items.
+English has no approved recording and its manifest entry remains null: English subtitles and radio beeps only, with no Mandarin substitution or missing-file request. No SpeechSynthesis or placeholder speech is used.
+
+Playback preloads after Tap-to-Start activation without playing. `publicAssetUrl` supplies the GitHub Pages base path and build cache version. Assets decode once per locale; failures fall back to subtitles. Runtime WebAudio applies mild communication-band filtering and independent music/weapon ducking. Pause resumes from the presentation offset; Retry and locale switches cancel stale playback. Historical snapshots retain their saved encounter schedules; a window shorter than the decoded recording uses subtitles instead of truncating the voice.
+
+The new fixed radio window is 1.3–8.5 seconds, first shot 8.8 seconds. All later attacks and departure shift by three seconds, preserving their spacing; no combat timing depends on playback callbacks.

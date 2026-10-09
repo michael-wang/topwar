@@ -275,7 +275,7 @@ export class GameAudio {
     this.music.update(presentationMs, { ...frame, musicVolume: frame.musicVolume * (this.radioActive ? .65 : 1) });
   }
 
-  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean): void {
+  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity): void {
     if (paused) {
       for (const source of this.radioSources) { try { source.stop(); } catch { /* ended */ } this.active.delete(source); }
       this.radioSources.clear();
@@ -289,7 +289,7 @@ export class GameAudio {
     this.radioActive = active;
     if (!this.unlocked || !this.context || !this.master) return;
     this.voice ??= new ObserverVoice(this.context, this.master);
-    this.voice.sync(locale, offset, paused || this.context.state !== 'running');
+    this.voice.sync(locale, offset, paused || this.context.state !== 'running', windowSeconds);
   }
 
   silenceMusic(): void { this.music?.silence(); }

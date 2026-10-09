@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-export const destroyerDefaults = { enabled: false, durationSeconds: 24, entrySeconds: 3.2,
-  exitAtSeconds: 20, radioAtSeconds: 1.3, radioDurationSeconds: 4.2,
-  shotTimes: [5.8, 9, 13, 14.3, 18], startX: -28, stationX: -4, exitX: 30, z: 56 };
+export const destroyerDefaults = { enabled: false, durationSeconds: 27, entrySeconds: 3.2,
+  exitAtSeconds: 23, radioAtSeconds: 1.3, radioDurationSeconds: 7.2,
+  shotTimes: [8.8, 12, 16, 17.3, 21], startX: -28, stationX: -4, exitX: 30, z: 56 };
 export const DestroyerConfigSchema = z.strictObject({
   enabled: z.boolean(), durationSeconds: z.number().finite().min(10).max(60),
   entrySeconds: z.number().finite().positive(), exitAtSeconds: z.number().finite().positive(),

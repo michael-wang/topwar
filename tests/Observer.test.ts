@@ -1,7 +1,11 @@
 import { afterEach, expect, it, vi } from 'vitest';
+// @ts-expect-error Vitest runs in Node; project typecheck exposes browser types only.
+import { readFileSync } from 'node:fs';
+// @ts-expect-error Vitest runs in Node; project typecheck exposes browser types only.
+import { createHash } from 'node:crypto';
 import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue } from '../src/ui/observerLocale';
 import { ObserverTimeline } from '../src/presentation/ObserverTimeline';
-import { ObserverVoice } from '../src/audio/ObserverVoice';
+import { ObserverVoice, observerVoiceAssets } from '../src/audio/ObserverVoice';
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
 import { FieldObserver } from '../src/ui/FieldObserver';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
@@ -17,7 +21,7 @@ it('selects Traditional Chinese browser locales, English fallback and persisted 
 });
 it('announces once on the simulation clock, freezes during Pause, and does not replay restored messages', () => {
   const t = new ObserverTimeline();let opens = 0, closes = 0;
-  for (let tick = 0; tick < 400; tick++) {
+  for (let tick = 0; tick < 600; tick++) {
     const frame = t.update(state, config, tick / 60, true);
     opens += Number(frame.begin);closes += Number(frame.end);
     if (tick === 100) for (let i = 0; i < 100; i++) {
@@ -48,6 +52,23 @@ function audioHarness() {
   }), createBiquadFilter:node, createGain:node } as unknown as AudioContext;
   return { context, nodes };
 }
+it('bundles the exact approved Mandarin bytes and leaves English without a recording', () => {
+  expect(observerVoiceAssets).toEqual({ 'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null });
+  const bytes = readFileSync('public/audio/observer_destroyer_zh-TW.mp3');
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe('3e54fc46e2efbb050b7cb0ab6d863c4a938e13436214e83ef81d56faf3806ae8');
+  expect(config.radioDurationSeconds).toBeGreaterThan(6.48);
+  expect(config.shotTimes[0]).toBeGreaterThan(config.radioAtSeconds + config.radioDurationSeconds);
+});
+it('preloads silently, plays once, stops Mandarin on English selection and never truncates a short historical window', async () => {
+  const {context,nodes}=audioHarness(), loader=vi.fn(async()=>({duration:5.407} as AudioBuffer));
+  const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
+  voice.sync('zh-TW',null,false);await Promise.resolve();expect(loader).toHaveBeenCalledOnce();expect(nodes).toHaveLength(0);
+  voice.sync('zh-TW',0,false,7.2);await Promise.resolve();expect(nodes).toHaveLength(1);expect(nodes[0].start).toHaveBeenCalledWith(0,0);
+  for(let i=0;i<10;i++)voice.sync('zh-TW',i/60,false,7.2);expect(nodes).toHaveLength(1);
+  voice.sync('en',1,false,7.2);expect(nodes[0].stop).toHaveBeenCalledOnce();expect(nodes).toHaveLength(1);
+  voice.reset();voice.sync('zh-TW',0,false,4.2);await Promise.resolve();expect(nodes).toHaveLength(1);
+  expect(loader).toHaveBeenCalledOnce();voice.dispose();
+});
 it('never requests missing recordings; caches failed approved-asset requests without repeated retries', async () => {
   const {context,nodes} = audioHarness(), loader = vi.fn(async () => null);
   const missing = new ObserverVoice(context, {} as AudioNode, {en:null,'zh-TW':null}, loader);

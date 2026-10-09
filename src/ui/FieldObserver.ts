@@ -6,7 +6,7 @@ import { loadObserverLocale, saveObserverLocale, observerDialogue, type Observer
 
 export interface ObserverAudio {
   play(cue: 'radioOpen' | 'radioClose'): void;
-  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean): void;
+  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds?: number): void;
 }
 export class FieldObserver {
   readonly element = document.createElement('aside');
@@ -18,7 +18,7 @@ export class FieldObserver {
   private readonly buttons: HTMLButtonElement[] = [];
   private locale: ObserverLocale;
   private expression = '';
-  private frame = { offset: null as number | null, paused: false };
+  private frame = { offset: null as number | null, paused: false, duration: 0 };
   private storage: Storage | undefined;
   constructor(host: HTMLElement, private readonly audio: ObserverAudio) {
     try { this.storage = window.localStorage; } catch { /* Browser may deny storage access itself. */ }
@@ -35,7 +35,7 @@ export class FieldObserver {
       button.textContent = locale === 'zh-TW' ? '繁中' : 'EN'; button.lang = locale;
       button.addEventListener('click', () => {
         this.locale = locale; saveObserverLocale(locale, this.storage); this.updateText();
-        this.audio.syncRadio(this.locale, this.frame.offset, this.frame.paused);
+        this.audio.syncRadio(this.locale, this.frame.offset, this.frame.paused, this.frame.duration);
         button.blur(); // Return keyboard lane/Q input to combat, as the DEV selector does.
       });
       this.buttons.push(button); this.selector.append(button);
@@ -59,8 +59,8 @@ export class FieldObserver {
     }
     if (frame.begin) this.audio.play('radioOpen');
     if (frame.end) this.audio.play('radioClose');
-    this.frame = { offset: frame.audible ? frame.offset : null, paused };
-    this.audio.syncRadio(this.locale, this.frame.offset, paused);
+    this.frame = { offset: frame.audible ? frame.offset : null, paused, duration: frame.duration };
+    this.audio.syncRadio(this.locale, this.frame.offset, paused, frame.duration);
   }
   reset(): void { this.timeline.reset(); this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false); }
   dispose(): void { this.reset(); this.element.remove(); this.selector.remove(); }
