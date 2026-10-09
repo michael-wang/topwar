@@ -6,6 +6,7 @@ import { loadLevelDefinition } from './level/LevelLoader';
 import { publicAssetUrl } from './core/publicAssetUrl';
 import { loadCharacterAssets } from './rendering/CharacterAssets';
 import './style.css';
+import './ui/arcade.css';
 import { perfEnabled } from './app/PerfDiagnostics';
 import { threatReviewEnabled } from './app/ThreatReview';
 import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';

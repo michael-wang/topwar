@@ -1,0 +1,154 @@
+/* Defense-only art layer. Layout, fill clipping and animation clocks live in style.css
+   and the existing presenters. Decorative cuts never clip interactive hit areas. */
+.beachhead-defense {
+  --combat-surface: var(--ui-ink);
+  --combat-paper: var(--ui-paper);
+  --combat-hot: var(--ui-orange);
+  --combat-gold: var(--ui-gold);
+}
+
+.beachhead-defense .combat-control-strip {
+  border-color: var(--ui-edge);
+  border-radius: 8px 13px 5px 11px;
+  background: color-mix(in srgb, var(--ui-deep) 97%, transparent);
+  box-shadow: 0 3px 0 var(--ui-ink), inset 0 2px 0 #ffffff20, inset 0 -2px 0 #07121c;
+}
+.beachhead-defense .combat-control-strip::before {
+  content: ''; position: absolute; top: -1px; left: 20px; width: 21px; height: 3px;
+  background: var(--ui-paper); pointer-events: none;
+}
+.beachhead-defense .movement-button {
+  border-color: var(--ui-edge); color: var(--ui-paper); background: var(--ui-deep);
+  box-shadow: inset 0 1px 0 var(--ui-paper), inset 0 -4px 0 #091722, 0 2px 0 #07121c;
+  isolation: isolate;
+}
+.beachhead-defense .movement-left { border-radius: 10px 4px 11px 5px; }
+.beachhead-defense .movement-right { border-radius: 4px 11px 5px 10px; }
+.beachhead-defense .movement-button::before {
+  content: ''; position: absolute; inset: 3px 3px 7px; z-index: -1;
+  border-radius: 6px 2px 7px 3px; background: var(--ui-steel);
+  box-shadow: inset 0 2px 0 #ffffff26; clip-path: var(--ui-plaque); pointer-events: none;
+}
+.beachhead-defense .movement-right::before { border-radius: 2px 7px 3px 6px; }
+.beachhead-defense .movement-button::after {
+  content: ''; position: absolute; width: 7px; height: 2px; right: 7px; top: 7px;
+  background: var(--ui-edge); pointer-events: none;
+}
+.beachhead-defense .movement-right::after { right: auto; left: 7px; width: 2px; height: 7px; }
+.beachhead-defense .movement-button svg { filter: drop-shadow(0 3px 0 var(--ui-ink)); }
+/* Compress only the face. Held and focused buttons retain exactly the same hit rectangle. */
+.beachhead-defense .movement-button.is-held {
+  transform: none; border-color: var(--ui-gold); color: var(--ui-paper);
+  box-shadow: inset 0 2px 0 #07121c, inset 0 -2px 0 #091722;
+}
+.beachhead-defense .movement-button.is-held::before {
+  inset: 5px 3px; background: #527389; box-shadow: inset 0 2px 0 #172d3a99;
+}
+.beachhead-defense .movement-button.is-held svg { transform: translateY(2px); filter: drop-shadow(0 1px 0 var(--ui-ink)); }
+.beachhead-defense .movement-button:disabled { color: #8999a5; border-color: #596d7b; background: var(--ui-deep); }
+.beachhead-defense .movement-button:disabled::before { background: #2c4152; box-shadow: none; }
+.beachhead-defense .movement-button:disabled::after { opacity: .3; }
+
+.beachhead-defense .xp-track {
+  isolation: isolate; border-color: var(--ui-edge);
+  box-shadow: inset 0 2px 3px #010812cc, 0 2px 0 #07101c;
+}
+/* Offset outer armor leaves the original inner track and every fill pixel untouched. */
+.beachhead-defense .xp-track::before {
+  content: ''; position: absolute; inset: -4px -3px -3px -5px; z-index: -1;
+  border: 2px solid var(--ui-edge); border-radius: 4px 8px 3px 7px;
+  clip-path: var(--ui-plaque); pointer-events: none;
+  box-shadow: inset 0 2px 0 var(--ui-paper), inset 0 -2px 0 var(--ui-ink);
+}
+.beachhead-defense .xp-level { gap: 3px; color: var(--ui-paper); }
+.beachhead-defense .xp-level-prefix {
+  font-size: 17px; font-style: normal; transform: translateY(3px) rotate(-2deg);
+  border-bottom: 2px solid var(--ui-gold); line-height: 1;
+}
+.beachhead-defense .xp-level-number {
+  font-size: 40px; font-style: normal; transform: translateY(-1px) rotate(1deg);
+  text-shadow: -2px -2px 0 var(--ui-ink), 2px -2px 0 var(--ui-ink), -2px 2px 0 var(--ui-ink),
+    2px 2px 0 var(--ui-ink), 2px 4px 0 #07121c;
+}
+.beachhead-defense .level-up-message strong {
+  display: inline-block; padding: 4px 8px 5px; color: var(--ui-paper);
+  background: var(--ui-ink); border-bottom: 3px solid var(--ui-orange);
+  clip-path: var(--ui-plaque); transform: rotate(-2deg); text-shadow: 1px 2px 0 #07121c;
+  font-size: 1.35rem; letter-spacing: .04em;
+}
+
+.beachhead-defense .pause-button {
+  border-color: var(--ui-edge); border-radius: 5px 11px 4px 8px;
+  background: var(--ui-deep); color: var(--ui-paper);
+  box-shadow: inset 0 2px 0 #ffffff26, inset 3px 0 0 var(--ui-ink), 2px 3px 0 var(--ui-ink);
+}
+.beachhead-defense .pause-button:active { box-shadow: inset 0 2px 0 #07121c, 1px 1px 0 var(--ui-ink); }
+.beachhead-defense .pause-overlay:not([hidden]), .beachhead-defense .game-over-overlay:not([hidden]) {
+  background: color-mix(in srgb, var(--ui-ink) 38%, transparent);
+}
+.beachhead-defense .pause-overlay > span, .beachhead-defense .game-over-overlay h1 {
+  position: relative; isolation: isolate; margin: 0; padding: 9px 18px 13px;
+  font: 900 clamp(44px, 13vw, 58px)/1 var(--font-combat-display);
+  letter-spacing: .025em; color: var(--ui-paper); transform: rotate(-2deg);
+  text-shadow: var(--ui-offset) 3px 0 #07121c; filter: drop-shadow(2px 4px 0 #07121c);
+}
+.beachhead-defense .pause-overlay > span::before, .beachhead-defense .game-over-overlay h1::before {
+  content: ''; position: absolute; z-index: -1; inset: 0;
+  background: var(--ui-deep); clip-path: var(--ui-plaque);
+  border-top: 2px solid var(--ui-edge); border-bottom: 4px solid var(--ui-gold);
+}
+.beachhead-defense .pause-overlay > span::after, .beachhead-defense .game-over-overlay h1::after {
+  content: ''; position: absolute; width: 10px; height: 3px; right: 8px; top: 7px;
+  background: var(--ui-paper);
+}
+.beachhead-defense .game-over-overlay h1 { font-size: clamp(40px, 12vw, 54px); transform: rotate(1deg); }
+.beachhead-defense .game-over-overlay h1::before { border-bottom-color: var(--ui-danger); }
+.beachhead-defense .game-over-overlay button {
+  min-width: 110px; min-height: 48px; border: 2px solid var(--ui-paper); border-radius: 4px 10px 5px 8px;
+  background: var(--ui-deep); color: var(--ui-paper); font: 900 22px/1 var(--font-combat-display);
+  letter-spacing: .04em; box-shadow: inset 0 2px 0 #ffffff26, 2px 4px 0 var(--ui-ink);
+}
+.beachhead-defense .game-over-overlay button:hover { background: var(--ui-steel); }
+.beachhead-defense .game-over-overlay button:active { box-shadow: inset 0 2px 0 #07121c, 1px 1px 0 var(--ui-ink); }
+.beachhead-defense .game-over-overlay button:focus-visible { outline: 2px solid var(--ui-gold); outline-offset: 4px; }
+
+.beachhead-defense .game-start-overlay span {
+  position: relative; isolation: isolate; padding: 7px 11px 10px;
+  font: 900 clamp(26px, 7.6vw, 32px)/1.1 var(--font-combat-display); letter-spacing: .06em;
+  color: var(--ui-paper); text-shadow: 2px 2px 0 var(--ui-ink), -1px -1px 0 var(--ui-ink);
+  transform: translateY(6vh) rotate(-1deg);
+}
+.beachhead-defense .game-start-overlay span::before {
+  content: ''; position: absolute; z-index: -1; inset: 2px 0 0;
+  clip-path: var(--ui-plaque); background: color-mix(in srgb, var(--ui-deep) 85%, transparent);
+  border-bottom: 3px solid var(--ui-orange);
+}
+.beachhead-defense .game-start-overlay.is-activating span { transform: translateY(6vh) rotate(-1deg) scale(.97); }
+
+/* Frame only: the golden icon, its 36px destination and transfer transforms stay owned
+   by GrenadeHud / SupplyRewardTransfer. The backing never covers the inventory badge. */
+.beachhead-defense .grenade-button { border-radius: 7px 17px 8px 13px; }
+.beachhead-defense .grenade-button::after {
+  content: ''; position: absolute; left: 5px; top: 6px; width: 3px; height: 8px;
+  background: var(--ui-gold); box-shadow: 1px 1px 0 var(--ui-ink); pointer-events: none;
+}
+.beachhead-defense .grenade-button:disabled::after { background: #718094; }
+.beachhead-defense .grenade-button strong { border-radius: 4px 7px 3px 6px; }
+.beachhead-defense .battle-weapon-icon { position: relative; isolation: isolate; color: var(--ui-paper); }
+.beachhead-defense .battle-weapon-icon::before {
+  content: ''; position: absolute; z-index: -1; inset: 2px -3px 0; background: var(--ui-deep);
+  clip-path: var(--ui-plaque); border-bottom: 2px solid var(--ui-edge); opacity: .9;
+}
+.beachhead-defense .xp-pip:not(.is-empty) { color: var(--ui-gold); }
+.beachhead-defense .battle-squad-pips .xp-pip:not(.is-empty) { color: var(--ui-paper); }
+.beachhead-defense .battle-weapon-pips { border-bottom: 2px solid var(--ui-ink); }
+
+@media (max-width: 370px) {
+  .beachhead-defense .xp-level-number { font-size: 36px; }
+  .beachhead-defense .xp-level-prefix { font-size: 16px; }
+  .beachhead-defense .level-up-message strong { font-size: 1.15rem; padding-inline: 3px; letter-spacing: .02em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .beachhead-defense .xp-hud.level-up .xp-track { animation: none; }
+  .beachhead-defense .level-up .level-up-message { animation: none; opacity: 1; transform: none; }
+}

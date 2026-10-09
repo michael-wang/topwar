@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { XP_FILL_GRADIENT } from '../src/ui/xpPalette';
 import { ART } from '../src/art/ArtDirection';
+import { UI_ART } from '../src/art/UiArt';
 import { illustratedMaterial } from '../src/rendering/art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../src/rendering/art/PaintedGeometry';
 import { paintDaubTexture, sandWashTexture } from '../src/rendering/art/PaintedTextures';
@@ -54,6 +55,9 @@ it('shares centralized legacy and coastal tokens with the DOM HUD', () => {
   expect(setProperty).toHaveBeenCalledWith('--coast-plaster', ART.coastalUi.plaster);
   expect(setProperty).toHaveBeenCalledWith('--coast-ink', ART.coastalUi.ink);
   expect(setProperty).toHaveBeenCalledWith('--coast-foam', ART.coastalUi.foam);
+  expect(setProperty).toHaveBeenCalledWith('--ui-ink', UI_ART.ink);
+  expect(setProperty).toHaveBeenCalledWith('--ui-plaque', UI_ART.plaque);
+  expect(setProperty).toHaveBeenCalledWith('--ui-danger', ART.enemyHealth.heavy);
 });
 
 

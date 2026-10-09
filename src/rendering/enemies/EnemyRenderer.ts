@@ -145,7 +145,7 @@ export class EnemyRenderer {
   private readonly heavyReactionMatrices?: readonly [THREE.Matrix4, THREE.Matrix4];
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
-  private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth);
+  private readonly barFrameTexture = framedBarTexture(false, ART.enemyHealth, 'armor');
   private readonly barHitColor = new THREE.Color(ART.enemyHealth.hit);
   private readonly barFillTexture = framedBarTexture(true);
   private readonly barBackingMaterial = new THREE.SpriteMaterial({ map: this.barFrameTexture, depthTest: false, toneMapped: false });

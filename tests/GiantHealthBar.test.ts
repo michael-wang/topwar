@@ -6,6 +6,23 @@ import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { characterFamilies } from './characterModel';
 import type { EnemyRenderState } from '../src/rendering/RenderState';
+import { ART } from '../src/art/ArtDirection';
+
+it('changes only the outer armor artwork, preserving every inner-track and fill pixel', () => {
+  const rounded = framedBarTexture(false, ART.enemyHealth);
+  const armor = framedBarTexture(false, ART.enemyHealth, 'armor');
+  const fill = framedBarTexture(true, ART.enemyHealth);
+  const armorFill = framedBarTexture(true, ART.enemyHealth, 'armor');
+  expect(armorFill.image.data).toEqual(fill.image.data);
+  expect(armor.image.data).not.toEqual(rounded.image.data);
+  for (let y = 0; y < BAR_TEXTURE_LAYOUT.height; y++) for (let x = 0; x < BAR_TEXTURE_LAYOUT.width; x++) {
+    if (!giantFillContains(x, y, 1)) continue;
+    const i = (y * BAR_TEXTURE_LAYOUT.width + x) * 4;
+    expect(armor.image.data.slice(i, i + 4)).toEqual(rounded.image.data.slice(i, i + 4));
+    expect(armor.image.data[i + 3]).toBe(255);
+  }
+  rounded.dispose(); armor.dispose(); fill.dispose(); armorFill.dispose();
+});
 
 it('contains full, half and low HP within the same rounded inner track at any world scale', () => {
   const { width, height, trackInset, radius } = BAR_TEXTURE_LAYOUT;

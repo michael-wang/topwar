@@ -4,7 +4,9 @@ export class PauseOverlay {
   constructor(viewport: HTMLElement) {
     this.element = document.createElement('div');
     this.element.className = 'pause-overlay';
-    this.element.textContent = 'PAUSED';
+    const title = document.createElement('span');
+    title.textContent = 'PAUSED';
+    this.element.append(title);
     this.element.hidden = true;
     viewport.append(this.element);
   }
