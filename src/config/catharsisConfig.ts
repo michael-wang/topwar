@@ -3,6 +3,7 @@ import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
 import { ProgressionConfigSchema, progressionDefaults } from './progressionConfig';
 import { PostCapSurvivalConfigSchema, postCapSurvivalDefaults } from './postCapSurvivalConfig';
 import { CarnivalConfigSchema, carnivalDefaults } from './carnivalConfig';
+import { DefenseWaveConfigSchema, defenseWaveDefaults, LEGACY_DEFENSE_FORWARD_SPEED } from './defenseConfig';
 
 const pressureRampStage = z.strictObject({
   xpFraction: z.number().finite().gt(0).lt(1),
@@ -14,6 +15,8 @@ const pressureRampStage = z.strictObject({
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
+  defenseMotionVersion: z.literal(2).optional(),
+  defenseWaves: DefenseWaveConfigSchema.default(defenseWaveDefaults),
   carnival: CarnivalConfigSchema.default(carnivalDefaults),
   postCapSurvival: PostCapSurvivalConfigSchema.default(postCapSurvivalDefaults),
   grenade: GrenadeConfigSchema.default(grenadeDefaults),
@@ -103,6 +106,12 @@ export const CatharsisConfigSchema = z.strictObject({
   .refine(value => !value.pressureRamp || [value.pressureRamp.lv4, value.pressureRamp.lv5].every((stage, index) =>
     (stage.heavyCount ?? 0) <= Math.round(value.groupSize * value.pressureMultipliers[Math.min(index + 3, value.pressureMultipliers.length - 1)]))
     && (!value.pressureRamp.lv6 || value.pressureRamp.lv6.heavyCount <= value.pressureRamp.lv6.groupSize),
-    { message: 'Heavy count must fit inside its group population' });
+    { message: 'Heavy count must fit inside its group population' })
+  .transform(value => value.defenseMode && value.defenseMotionVersion === undefined ? {
+    ...value, defenseMotionVersion: 2 as const,
+    gruntSpeed: value.gruntSpeed + LEGACY_DEFENSE_FORWARD_SPEED,
+    heavySpeed: value.heavySpeed + LEGACY_DEFENSE_FORWARD_SPEED,
+    giant: { ...value.giant, speed: value.giant.speed + LEGACY_DEFENSE_FORWARD_SPEED },
+  } : value);
 
 export type CatharsisConfig = z.infer<typeof CatharsisConfigSchema>;

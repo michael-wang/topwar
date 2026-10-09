@@ -113,14 +113,16 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   const isolatedGiant = role === 'evolve' || role === 'machineGun' || playableLate || role === 'carnival';
   state.giantEncounter = { scheduledAtSeconds: isolatedGiant ? 0 : null, spawned: isolatedGiant };
   state.machineGunReleaseAtSeconds = role === 'machineGun' || playableLate ? 0 : null;
-  // The defense camera is fixed but authoritative player Z advances. Place the
-  // validated cursor well beyond a review run, without changing stream rules.
+  // Preserve each review's seeded composition cursor. Isolated reviews defer
+  // ordinary admission with an explicit clock, independent of player position.
   const stream = options.level.enemyStream;
   if (!playableLate && role !== 'carnival') state.enemyStream.nextRowIndex = role === 'curve'
     ? Math.ceil((balance.defenseSpawnAheadDistance - stream.startZ) / (stream.spacing * balance.waveRows)) * balance.waveRows
     : Math.max(state.enemyStream.nextRowIndex,
       Math.ceil((balance.defenseSpawnAheadDistance + 600 - stream.startZ) / stream.spacing) + 1);
   state.enemyStream.nextEnemyId = state.enemies.length + 1;
+  if (!playableLate && role !== 'curve' && role !== 'carnival')
+    state.defenseWaves = { nextAtSeconds: 1000 };
   const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
   state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers },
     (_, index) => index * interval / fixture.soldiers);

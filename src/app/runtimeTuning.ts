@@ -33,7 +33,7 @@ export function defaultRuntimeTuning(config: Readonly<GameConfig>, level: LevelD
     rifleHigherTierPowerMultiplier: config.tiers.rifleHigherTierPowerMultiplier,
     fireRate: config.weapon.rifle.fireRate,
     moveSpeed: config.player.moveSpeed,
-    forwardSpeed: config.player.forwardSpeed,
+    forwardSpeed: config.catharsis?.defenseMode ? 0 : config.player.forwardSpeed,
     bossHpScale: 3,
     musicVolume: 0.50,
   };

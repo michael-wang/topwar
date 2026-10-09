@@ -100,7 +100,7 @@ it('projects current Heavy max HP and keeps slower gait entirely outside gamepla
   expect(enemyRunFrame(1, 0, 650)).toBe(enemyRunFrame(1, 650, 650));
   expect(enemyWalkPose(1, 0, 650).leftArm).toBeCloseTo(enemyWalkPose(1, 650, 650).leftArm);
   for (let tick = 0; tick < 60; tick++) { enemyRunFrame(1, tick * 16, 650); sim.step(1 / 60, { targetX: 0 }, tuning); }
-  expect(sim.getState().enemies[0].z).toBeCloseTo(19.88);
+  expect(sim.getState().enemies[0].z).toBeCloseTo(19.28);
 });
 
 it('awards each penetrating kill and retained rocket kill through the same kill boundary', () => {

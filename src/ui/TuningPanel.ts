@@ -75,11 +75,11 @@ export class TuningPanel {
     }
     this.element.append(summary, content);
     for (const control of controls) {
-      if (defenseMode && ['rewardRowsPerReward', 'enemyHigherTierPowerMultiplier', 'rifleHigherTierPowerMultiplier', 'bossHpScale', 'moveSpeed'].includes(control.key)) continue;
+      if (defenseMode && ['rewardRowsPerReward', 'enemyHigherTierPowerMultiplier', 'rifleHigherTierPowerMultiplier', 'bossHpScale', 'moveSpeed', 'forwardSpeed'].includes(control.key)) continue;
       if (defaults[control.key] === undefined) continue;
       const label = document.createElement('label');
       label.textContent = control.key === 'enemyHigherTierPowerMultiplier' && defaults.enemyVisualScale !== undefined
-        ? 'Boss base HP / tier' : defenseMode && control.key === 'forwardSpeed' ? 'Approach pace' : defenseMode && control.key === 'fireRate' ? 'Base fire rate' : control.label;
+        ? 'Boss base HP / tier' : defenseMode && control.key === 'fireRate' ? 'Base fire rate' : control.label;
       const input = control.key === 'bossHpScale'
         ? document.createElement('select') : document.createElement('input');
       if ('choices' in control) {

@@ -1,5 +1,7 @@
 {
   "catharsis": {
+    "defenseMotionVersion": 2,
+    "defenseWaves": { "intervalSeconds": 6, "firstWaveDelaySeconds": 1.6666666666666667 },
     "carnival": {
       "enabled": true,
       "durationSeconds": 24,
@@ -54,8 +56,8 @@
       "lv5": { "xpFraction": 0.25, "pressureLaneCount": 3, "heavyCount": 1 },
       "lv6": { "groupSize": 60, "pressureLaneCount": 3, "heavyCount": 1 }
     },
-    "gruntSpeed": 0.25,
-    "heavySpeed": 0.12,
+    "gruntSpeed": 0.85,
+    "heavySpeed": 0.72,
     "heavyHp": 15,
     "enemyVisualScale": 1.4,
     "heavyVisualScale": 1.35,
@@ -123,7 +125,7 @@
       "introDelaySeconds": 6,
       "hp": 172,
       "xp": 120,
-      "speed": 0.08,
+      "speed": 0.68,
       "visualScale": 1.9,
       "widthMultiplier": 0.94,
       "gaitCycleMs": 850

@@ -1,6 +1,8 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { advanceCarnival, carnivalOwnsSpawning, CarnivalStateSchema, emptyCarnival } from './carnival';
 import { admitDefenseGroup } from './enemies/defenseGroup';
+import { advanceDefenseWaves, DefenseWaveStateSchema } from './enemies/defenseWaves';
+import { LEGACY_DEFENSE_FORWARD_SPEED } from '../config/defenseConfig';
 import { advancePostCapSurvival, emptyPostCapSurvival, postCapOrdinarySettings,
   PostCapSurvivalStateSchema, type PostCapSurvivalState } from './postCapSurvival';
 import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
@@ -338,10 +340,13 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'grenade')) fields.push('grenade');
   if (Object.hasOwn(state, 'postCapSurvival')) fields.push('postCapSurvival');
   if (Object.hasOwn(state, 'carnival')) fields.push('carnival');
+  if (Object.hasOwn(state, 'defenseWaves')) fields.push('defenseWaves');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
   const catharsis = Object.hasOwn(state, 'catharsis') ? validateCatharsis(state.catharsis) : undefined;
+  if (state.defenseWaves !== undefined && (!catharsis?.balance.defenseMode || state.enemyStream === null))
+    throw new Error('Defense wave clock requires a defense stream');
   const grenade = state.grenade === undefined ? undefined : GrenadeStateSchema.parse(state.grenade);
   if (grenade && (!catharsis?.balance.defenseMode
     || grenade.inventory > catharsis.balance.grenade.capacity
@@ -727,6 +732,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),
+      ...(state.defenseWaves !== undefined ? { defenseWaves: DefenseWaveStateSchema.parse(state.defenseWaves) } : {}),
       // Older Lv6 snapshots already represent an established MG run; never inject a retroactive wave.
       ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: releaseAt === undefined
         ? ((progression?.level as number) >= 6 ? 0 : null) : releaseAt as number | null } : {}),
@@ -842,6 +848,7 @@ export class Simulation {
       ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival: emptyPostCapSurvival() } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival: emptyCarnival() } : {}),
+      ...(catharsis?.balance.defenseMode && enemyStream ? { defenseWaves: { nextAtSeconds: catharsis.balance.defenseWaves.firstWaveDelaySeconds } } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
@@ -1030,7 +1037,7 @@ export class Simulation {
     const nextX = Math.abs(difference) <= maxHorizontalDelta
       ? targetX
       : currentX + Math.sign(difference) * maxHorizontalDelta;
-    const proposedNextZ = this.state.player.z + tuning.forwardSpeed * dtSeconds;
+    const proposedNextZ = this.state.catharsis?.balance.defenseMode ? 0 : this.state.player.z + tuning.forwardSpeed * dtSeconds;
     const offsets = createDefenseSquadFormation(this.state.squad.count, tuning.formationSpacing, this.state.catharsis?.balance.defenseMode ? this.state.catharsis.balance.progression : undefined);
     const currentBoss = this.state.boss;
     const bossContact = currentBoss && !currentBoss.engaged && (
@@ -1090,29 +1097,19 @@ export class Simulation {
       && landingAssault?.reinforcementActiveAtSeconds !== undefined
       && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
     const carnivalSpawning = carnivalOwnsSpawning(this.state);
-    if (carnivalSpawning && enemyStream && this.enemyStreamDefinition) {
-      // Consume covered distance rows; handoff must never dump deferred waves.
-      const row = Math.floor((nextZ + catharsis!.balance.defenseSpawnAheadDistance
-        - this.enemyStreamDefinition.startZ) / this.enemyStreamDefinition.spacing) + 1;
-      if (!Number.isSafeInteger(row)) throw new Error('Carnival stream row exceeds supported range');
-      enemyStream.nextRowIndex = Math.max(enemyStream.nextRowIndex, row);
-    }
-    if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue && !carnivalSpawning) {
+    let defenseWaves = this.state.defenseWaves;
+    if (catharsis?.balance.defenseMode && defenseWaves && enemyStream && this.enemyStreamDefinition)
+      defenseWaves = advanceDefenseWaves(defenseWaves, { ...this.state, enemies, enemyStream }, nextElapsedSeconds,
+        this.enemyStreamDefinition.seed, !assaultDue && !carnivalSpawning);
+    if (!catharsis?.balance.defenseMode && enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression, this.state.postCapSurvival);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
     let giantEncounter = this.state.giantEncounter;
     if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue && !carnivalSpawning) {
-      const interval = this.enemyStreamDefinition.spacing * catharsis.balance.waveRows / tuning.forwardSpeed;
-      // Consume dormant legacy rows without spawning: disabling the experiment later must not
-      // dump a backlog of distance-based waves into the restored beach.
-      const nextRow = Math.floor((nextZ + catharsis.balance.defenseSpawnAheadDistance
-        - this.enemyStreamDefinition.startZ) / this.enemyStreamDefinition.spacing) + 1;
-      if (!Number.isSafeInteger(nextRow)) throw new Error('Landing stream row exceeds supported range');
-      enemyStream.nextRowIndex = Math.max(enemyStream.nextRowIndex, nextRow);
-      // A paused approach cannot generate an infinite/zero cadence; wait until it resumes.
-      if (tuning.forwardSpeed > 0) landingAssault = advanceLandingAssault(landingAssault, nextElapsedSeconds,
+      const interval = catharsis.balance.defenseWaves.intervalSeconds;
+      landingAssault = advanceLandingAssault(landingAssault, nextElapsedSeconds,
         nextZ, catharsis.balance, catharsis.trackHalfWidth, this.enemyStreamDefinition.seed, interval, enemies, enemyStream);
     }
     const enemyCollisionIndex = new EnemyCollisionIndex(enemies);
@@ -1488,6 +1485,7 @@ export class Simulation {
         { ...balance, ...pressureWaveSettings(balance, { level: 6, xp: 0 }), groupSize: pressureGroupSize(balance, 6) },
         catharsis.trackHalfWidth, nextZ + balance.defenseSpawnAheadDistance);
       enemyStream.nextRowIndex = row + 1;
+      if (defenseWaves) defenseWaves.nextAtSeconds += balance.defenseWaves.intervalSeconds;
       machineGunReleaseAtSeconds = nextElapsedSeconds;
     }
     const phaseFrame = { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
@@ -1498,6 +1496,7 @@ export class Simulation {
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),
+      ...(defenseWaves ? { defenseWaves } : {}),
       ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
       ...(machineGunReleaseAtSeconds !== undefined ? { machineGunReleaseAtSeconds } : {}),
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
@@ -1536,6 +1535,7 @@ export class Simulation {
       ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),
       ...(this.state.postCapSurvival ? { postCapSurvival: { ...this.state.postCapSurvival } } : {}),
       ...(this.state.carnival ? { carnival: { ...this.state.carnival } } : {}),
+      ...(this.state.defenseWaves ? { defenseWaves: { ...this.state.defenseWaves } } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
@@ -1556,6 +1556,24 @@ export class Simulation {
 
   restoreState(state: SimulationState): void {
     const candidate = validateState(state, this.tiers.mergeCount);
+    if (candidate.state.catharsis?.balance.defenseMode) {
+      const s = candidate.state, origin = s.player.z, balance = s.catharsis!.balance;
+      if (!s.defenseWaves && s.enemyStream && this.authoredEnemyStreamDefinition) {
+        const stream = this.authoredEnemyStreamDefinition;
+        const nextRow = Math.ceil(s.enemyStream.nextRowIndex / balance.waveRows) * balance.waveRows;
+        // One-time conversion of old distance cursor to a deadline, not a virtual player.
+        s.defenseWaves = { nextAtSeconds: s.elapsedSeconds + Math.max(0,
+          (stream.startZ + nextRow * stream.spacing - origin - balance.defenseSpawnAheadDistance) / LEGACY_DEFENSE_FORWARD_SPEED) };
+      }
+      s.player.z = 0;
+      for (const enemy of s.enemies) enemy.z -= origin;
+      for (const projectile of s.projectiles) projectile.z -= origin;
+      if (s.grenade?.flight) { s.grenade.flight.startZ -= origin; s.grenade.flight.targetZ -= origin; }
+      if ([...s.enemies.map(e => e.z), ...s.projectiles.map(p => p.z),
+        ...(s.grenade?.flight ? [s.grenade.flight.startZ, s.grenade.flight.targetZ] : []),
+        ...(s.defenseWaves ? [s.defenseWaves.nextAtSeconds] : [])].some(n => !Number.isFinite(n)))
+        throw new Error('Defense snapshot rebase exceeds supported range');
+    }
     if ((candidate.state.enemyStream !== null) !== (this.enemyStreamDefinition !== undefined)) {
       throw new Error('Simulation enemy stream state does not match the loaded level');
     }

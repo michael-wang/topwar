@@ -23,8 +23,8 @@ it('uses five configurable corridors and a 3 Hz baseline without changing archet
   expect(balance.groupSize).toBe(24);
   expect(balance.waveRows).toBe(6);
   expect(config.player.forwardSpeed).toBe(.6);
-  expect(balance.gruntSpeed).toBe(.25);
-  expect(balance.heavySpeed).toBe(.12);
+  expect(balance.gruntSpeed).toBe(.85);
+  expect(balance.heavySpeed).toBe(.72);
   expect(balance.heavyHp).toBe(15);
   expect(config.weapon.rifle.fireRate).toBe(3);
   for (const count of [3, 4, 5]) {
@@ -53,19 +53,17 @@ it('uses a defense shoreline horizon while leaving the legacy stream horizon unc
   const legacy = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0, tiers: config.tiers });
   expect(legacy.getState().enemyStream!.nextRowIndex).toBe(111);
   expect(Math.max(...legacy.getState().enemies.map(enemy => enemy.z))).toBeGreaterThan(90);
-  // Advance the stream across a new entry boundary; every new member appears on the beach.
+  // A due deadline admits at the fixed shoreline, independent of player position.
   const state = defense.getState();
   const nextId = state.enemyStream!.nextEnemyId;
-  state.player.z = 2.2;
+  state.defenseWaves = { nextAtSeconds: 0 };
   defense.restoreState(state);
   defense.step(1 / 60, { targetX: 0 }, tuning);
   const advanced = defense.getState();
   const newEnemies = advanced.enemies.filter(enemy => enemy.id >= nextId);
   expect(newEnemies).toHaveLength(24);
   expect(newEnemies.every(enemy => enemy.z - advanced.player.z <= balance.defenseSpawnAheadDistance)).toBe(true);
-  const nextGroupRow = Math.ceil(state.enemyStream!.nextRowIndex / balance.waveRows) * balance.waveRows;
-  const nextGroupZ = level.enemyStream!.startZ + nextGroupRow * level.enemyStream!.spacing;
-  expect(newEnemies.every(enemy => enemy.z - advanced.player.z >= nextGroupZ - advanced.player.z - balance.crowdDepthSpan - .02)).toBe(true);
+  expect(newEnemies.every(enemy => enemy.z >= balance.defenseSpawnAheadDistance - balance.crowdDepthSpan)).toBe(true);
 });
 
 it('projects Heavy proportions while leaving Grunts and all simulation outcomes unchanged', () => {
@@ -87,7 +85,7 @@ it('projects Heavy proportions while leaving Grunts and all simulation outcomes 
     balance.lateralSpreadFraction, balance.defenseSpawnAheadDistance, config.weapon.rifle.fireRate,
     balance.heavyHp, config.player.forwardSpeed, balance.gruntSpeed, balance.heavySpeed,
     balance.waveRows, balance.heavyChance, balance.laneCount, balance.laneSwitchSeconds])
-    .toEqual([24, 3, 9, .42, 47, 3, 15, .6, .25, .12, 6, .25, 5, .15]);
+    .toEqual([24, 3, 9, .42, 47, 3, 15, .6, .85, .72, 6, .25, 5, .15]);
   for (let tick = 0; tick < 1800; tick++) {
     if (tick === 120 || tick === 700) { current.stepLane(-1); old.stepLane(-1); }
     current.step(1 / 60, { targetX: 0 }, tuning);
@@ -211,7 +209,7 @@ it('tunes density for future groups and restores its balance and stream continua
   }
   const after = original.getState();
   expect(after.enemies.filter(enemy => enemy.id >= newIds).length).toBeGreaterThanOrEqual(100);
-  expect(after.enemyStream!.nextEnemyId - newIds).toBe(500);
+  expect(after.enemyStream!.nextEnemyId - newIds).toBe(400); // Four six-second opportunities in 20 seconds.
   expect(restored.getState()).toEqual(after);
 });
 
@@ -324,7 +322,7 @@ it.each([3, 5, 10])('keeps Heavy durability fixed at 15 hits with a %i Hz Rifle'
     expect(simulation.getState().elapsedSeconds).toBeLessThan(6);
   }
   expect(hits).toBe(15);
-  expect(simulation.getState().elapsedSeconds).toBeCloseTo(14 / fireRate + 15 / 60, 1);
+  expect(simulation.getState().elapsedSeconds).toBeCloseTo(14 / fireRate + (15 - balance.heavySpeed * 14 / fireRate) / 60, 1);
 });
 
 it('applies explicit Heavy live tuning above 15 without changing Grunt health', () => {
@@ -362,7 +360,7 @@ it('projects standing defenders and relative enemy/projectile positions while si
   const simulation = make(true);
   simulation.step(.1, { targetX: 0 }, tuning);
   const state = simulation.getFrameState();
-  expect(state.player.z).toBeGreaterThan(0);
+  expect(state.player.z).toBe(0);
   const view = projectRenderState(state, { catharsis: state.catharsis, trackHalfWidth: 3.2,
     formationSpacing: .45, defenseLineOffset: 1.5, bossVisualScale: 7 });
   expect(view.player.z).toBe(0);

@@ -24,7 +24,7 @@ it('changes only future group quantity from LV5 and retains bounded deterministi
   expect(group).toHaveLength(35);
   expect(group.every(e => e.z >= -9 && e.z <= 0 && Math.abs(e.x) <= 2.8 + 1e-12)).toBe(true);
   expect(new Set(group.map(e => e.lane)).size).toBe(3);
-  expect(balance.heavyHp).toBe(15); expect(balance.gruntSpeed).toBe(.25);
+  expect(balance.heavyHp).toBe(15); expect(balance.gruntSpeed).toBe(.85);
   expect(config.weapon.rifle.fireRate).toBe(3);
 });
 
@@ -66,7 +66,7 @@ it('awards Giant XP only on a player kill, while HP and movement stay independen
   state.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: 3, hp: 28 }];
   state.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(state); step(sim, 60);
-  expect(sim.getState().enemies[0].z).toBeCloseTo(2.92);
+  expect(sim.getState().enemies[0].z).toBeCloseTo(2.32);
   const injured = sim.getState(); injured.enemies[0].hp = 1; injured.weapons.rifleCooldownRemainingSeconds = 0;
   sim.restoreState(injured); step(sim, 60);
   expect(sim.getState().progression).toEqual({level:3,xp:32});

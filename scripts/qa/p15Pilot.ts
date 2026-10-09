@@ -20,7 +20,8 @@ export function pressure(state: SimulationFrameState) {
     nearLaneDebt: debt.map((_,lane)=>near.filter(e=>e.lane===lane).reduce((sum,e)=>sum+e.hp,0)),
     nearestDistance: distances.length ? Math.min(...distances) : null,
     approximateTimeToContact: ahead.length ? Math.min(...ahead.map(e=>Math.max(0,e.z-state.player.z
-      -config.player.memberRadius-config.tiers.normalEnemyRadius)/(config.player.forwardSpeed+enemyApproachSpeed(e,balance)))) : null,
+      -config.player.memberRadius-config.tiers.normalEnemyRadius)/((state.catharsis?.balance.defenseMode ? 0 : config.player.forwardSpeed)
+        +enemyApproachSpeed(e,balance)))) : null,
     heavyOverlap: ahead.filter(e=>e.archetype==='heavy').length };
 }
 export function runPilot(seed: number, hesitation = false, useGrenade = true, adjacentOnly = false, targetLevel = 5,

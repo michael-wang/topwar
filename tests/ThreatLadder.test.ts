@@ -90,7 +90,8 @@ it('migrates older Lv6 snapshots without injecting a release and validates the n
 
 it('consumes the immediate group row and resumes ordinary sixty-person groups at six-second cadence', () => {
   const sim = createDevReviewFixture(options, 3, 'evolve'), start = sim.getState();
-  start.enemyStream!.nextRowIndex = 30; sim.restoreState(start);
+  start.enemyStream!.nextRowIndex = 30;
+  start.defenseWaves = { nextAtSeconds: balance.defenseWaves.firstWaveDelaySeconds }; sim.restoreState(start);
   while (sim.getState().progression!.level === 5) step(sim);
   const released = sim.getState(), releasedId = released.enemyStream!.nextEnemyId;
   expect(released.enemyStream!.nextRowIndex).toBe(31);

@@ -474,7 +474,7 @@ Initial gameplay coordinates:
 
 - X: horizontal lane movement
 - Y: vertical/up if needed for visuals
-- Z: forward progression
+- Z: battlefield depth; Defense player is fixed at zero, retained non-defense player advances
 
 The player primarily controls X.
 
@@ -535,6 +535,14 @@ The temporary closed-playtest `postCapSurvival` layer is isolated in its own con
 
 ### Authored Carnival boundary
 
-`simulation/carnival.ts` owns a single deterministic phase with pending/active/complete/skipped status, an activation timestamp, elapsed simulation time and consumed opportunity index. Activation follows the existing one-time MG release; progression does not determine completion. While active, it admits only seeded authored Grunt batches, caps additional admissions, consumes covered ordinary-stream rows, and suspends Giant/survival scheduling. Full/missed slots never queue. At completion, `Simulation` hands ownership to the existing temporary survival helper with fresh clocks. That handoff is the extension point for later authored content; no generic campaign system is introduced.
+`simulation/carnival.ts` owns a single deterministic phase with pending/active/complete/skipped status, an activation timestamp, elapsed simulation time and consumed opportunity index. Activation follows the existing one-time MG release; progression does not determine completion. While active, it admits only seeded authored Grunt batches, caps additional admissions, consumes ordinary time slots, and suspends Giant/survival scheduling. Full/missed slots never queue. At completion, `Simulation` hands ownership to the existing temporary survival helper with fresh clocks. That handoff is the extension point for later authored content; no generic campaign system is introduced.
 
 Configuration is snapshot data and defaults disabled when absent. Snapshots predating Carnival skip it once the release/established MG state exists; they never receive retroactive waves. New phase fields are validated and copied as plain data. Existing isolated DEV reviews disable Carnival; post-phase late entries explicitly skip it, while the CARNIVAL entry uses a pending release. Renderer resources and UI selection remain outside simulation snapshots.
+
+### Stationary Defense admission and compatibility
+
+Defense movement keeps authoritative player Z at zero. Enemy speed configuration contains the full approach rates (Grunt .85, Heavy .72, Giant .68); the legacy player `forwardSpeed` remains for non-defense only. Existing enemy-relative contact sweeps and defense-line casualties operate against this stationary position. Rendering continues to consume the same player-relative projection.
+
+`simulation/enemies/defenseWaves.ts` owns one plain `nextAtSeconds` deadline. Configured first delay and interval replace distance admission after the unchanged startup fill; future groups use a fixed defense-relative spawn origin. The row cursor identifies deterministic compositions, not travel. MG release consumes one ordinary slot; active authored/legacy assault phases consume scheduled slots without admitting ordinary groups. Missed slots cannot accumulate a handoff burst. Carnival and temporary survival retain their own lifecycle clocks.
+
+`defenseMotionVersion: 2` marks full enemy approach speeds. Missing version in accepted old Defense config migrates each enemy speed by the former .6 approach contribution exactly once. Restoring an old nonzero-Z Defense snapshot subtracts its player origin from enemies, projectiles and airborne Grenade endpoints, then sets player Z to zero. Already-relative supply/pickup/gate coordinates and progression/weapon/phase clocks stay unchanged. A missing wave deadline is derived once from the old next wave row and remaining distance at the accepted .6 pace; no virtual moving player persists. Both six-level and eight-level plans remain valid. Arbitrary historical forward-speed overrides were not serialized and cannot be reconstructed; compatibility uses the accepted baseline. Non-defense snapshots retain their coordinates and movement.

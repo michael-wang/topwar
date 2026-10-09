@@ -40,7 +40,7 @@ it('keeps group populations, HP and speeds fixed while authoring late fronts and
     const members=laneCompositionForRow(120,17,late,3.2);
     expect(members).toHaveLength(level===4?24:30);expect(new Set(members.map(e=>e.lane)).size).toBe(level===4?4:3);
     expect(members).toEqual(laneCompositionForRow(120,17,late,3.2));
-    expect([late.heavyHp,late.gruntSpeed,late.heavySpeed]).toEqual([15,.25,.12]);
+    expect([late.heavyHp,late.gruntSpeed,late.heavySpeed]).toEqual([15,.85,.72]);
   }
 });
 
@@ -51,7 +51,7 @@ it.each([4,5])('admits only future Lv%s groups using saved XP, with identical JS
   const threshold=levelNumber===4?63:55;
   s.progression={level:levelNumber,xp:threshold-1};
   s.weapons.rifleCooldownRemainingSeconds=100;s.weapons.rifleMemberCooldowns=[100];
-  s.enemyStream!.nextRowIndex=120;
+  s.enemyStream!.nextRowIndex=120; s.defenseWaves={nextAtSeconds:2/60};
   s.player.z=level.enemyStream!.startZ+120*level.enemyStream!.spacing-balance.defenseSpawnAheadDistance-.02;
   s.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:s.player.z+20,hp:7}];
   s.enemyStream!.nextEnemyId=2;sim.restoreState(s);

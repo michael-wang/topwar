@@ -110,6 +110,7 @@ export interface LandingAssaultState {
 export interface SimulationState {
   postCapSurvival?: import('./postCapSurvival').PostCapSurvivalState;
   carnival?: import('./carnival').CarnivalState;
+  defenseWaves?: import('./enemies/defenseWaves').DefenseWaveState;
   grenade?: import('./grenade').GrenadeState;
   landingAssault?: LandingAssaultState;
   reinforcement?: { startedAtSeconds: number | null; arrived: boolean };

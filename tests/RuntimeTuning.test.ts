@@ -29,9 +29,9 @@ describe('temporary runtime tuning', () => {
   it('starts from the committed authored defaults and rejects obsolete mouse sensitivity', () => {
     expect(defaultRuntimeTuning(config, level)).toEqual({ bulletSpeed: 60, bulletRange: 80,
       rewardRowsPerReward: 6, enemyHigherTierPowerMultiplier: 10,
-      rifleHigherTierPowerMultiplier: 10, fireRate: 3, moveSpeed: 5, forwardSpeed: .6,
-      bossHpScale: 3, musicVolume: .50, enemyVisualScale: 1.4, gruntSpeed: .25,
-      heavyHp: 15, heavySpeed: .12, heavyChance: .25, groupSize: 24 });
+      rifleHigherTierPowerMultiplier: 10, fireRate: 3, moveSpeed: 5, forwardSpeed: 0,
+      bossHpScale: 3, musicVolume: .50, enemyVisualScale: 1.4, gruntSpeed: .85,
+      heavyHp: 15, heavySpeed: .72, heavyChance: .25, groupSize: 24 });
     expect(() => GameConfigSchema.parse({ ...gameData, controls: { mouseSensitivity: 1 } })).toThrow();
   });
 

@@ -240,3 +240,9 @@ native-RAF sample. It exposes the app only through a test-side response hook,
 never a shipping debug export. Use the existing browser runtime environment
 variables documented above. `PostCapSurvival.test.ts` covers disabled behavior,
 exact Heavy groups, skip/no-catch-up scheduling and MG +1 acquisition.
+
+## P2.5 Stationary Defense
+
+`node scripts/qa/stationary-metrics.mjs <output-directory>` runs the same adjacent-lane/Grenade pilot for seeds 1, 17, 42, 99 and 2026 through 240 seconds, plus natural Carnival availability runs. Save baseline output before changing gameplay, or set `TOPWAR_QA_ROOT` to an isolated checkout of the baseline. Controlled no-fire cases also measure enemy arrival at the defense line from 20 units. It records Lv2–8 times, admissions/composition, active-enemy samples, release/phase clocks, casualties/failures, and snapshots at Lv5, airborne Grenade, release, active Carnival and handoff. Availability means at least six living Grunts ahead of the squad within the 47-unit horizon, in any reachable lane; it does not promise selected-lane hits.
+
+`node scripts/qa/stationary-compat.mjs <baseline-output-directory>` rebases those actual baseline snapshots, checks preserved lifecycle/cooldown state and repeats 600 fixed ticks after a JSON round trip. `node scripts/qa/stationary-sanity.mjs` checks CURVE, EVOLVE, CARNIVAL, LATE, MG7 and MG8 at 390×844 and 350×844: Z=0, real touch lane movement/Grenades, Pause, deterministic snapshot continuation and exact selected-entry Retry. Browser runtime overrides match the scripts above. Captures default to ignored `artifacts/stage1-p25`. Run `late-dev-sanity.mjs`, `carnival-sanity.mjs` and `production-sanity.mjs` alongside it for HUD, recurring gameplay, crowd rendering and production DEV exclusion. Software WebGL observations do not certify physical-phone performance.
