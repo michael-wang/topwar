@@ -24,3 +24,17 @@ English has no approved recording and its manifest entry remains null: English s
 Playback preloads after Tap-to-Start activation without playing. `publicAssetUrl` supplies the GitHub Pages base path and build cache version. Assets decode once per locale; failures fall back to subtitles. Runtime WebAudio applies mild communication-band filtering and independent music/weapon ducking. Pause resumes from the presentation offset; Retry and locale switches cancel stale playback. Historical snapshots retain their saved encounter schedules; a window shorter than the decoded recording uses subtitles instead of truncating the voice.
 
 The new fixed radio window is 1.3–8.5 seconds, first shot 8.8 seconds. All later attacks and departure shift by three seconds, preserving their spacing; no combat timing depends on playback callbacks.
+
+### Mission introduction
+
+`public/audio/observer_mission_intro_zh-TW.mp3` was supplied by the project owner for provisional P3-B use on 2026-10-10 and copied unchanged. No generated replacement, trimming or re-encoding. Performer/service and separate license details were not supplied.
+
+- Bytes: 107217.
+- SHA-256: `8d681e6d96786f1ede9eccca1e455a74f92211f1c0e45ab685c67da2eca6ff84`.
+- Supplied duration: approximately 5.64 seconds; Chrome decoded duration: 5.64244898 seconds.
+- Intended Chinese transcript supplied by the owner: 「這裡是觀測官。」「敵軍正朝港口逼近！」「請守住防線。完畢！」
+- Provisional approved English subtitles: “Field Observer here.” / “Enemy forces are approaching the harbor!” / “Hold the line. Over.” No English speech asset.
+
+The existing radio panel shows one phrase at a time. Presentation starts at mission time 0.2 seconds; phrase offsets are 0 / 1.5 / 3.7 seconds in a 6.2-second window. Timing is approximate, not a transcription derived from audio. The supplied script and actual recording need human listening confirmation; no claim is made that they were independently matched by an automated transcript.
+
+Gameplay continues during the introduction. The same voice player, filters, radio beeps and ducking are reused. Fresh missions and Retry arm this presentation; loading snapshots does not arm a new introduction. Isolated DEV scenarios retain their encounter-specific dialogue.

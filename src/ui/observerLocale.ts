@@ -1,4 +1,9 @@
 export type ObserverLocale = 'zh-TW' | 'en';
+export type ObserverMessage = 'destroyer' | 'missionIntro';
+export const observerMissionDialogue: Record<ObserverLocale, readonly string[]> = {
+  'zh-TW': ['這裡是觀測官。', '敵軍正朝港口逼近！', '請守住防線。完畢！'],
+  en: ['Field Observer here.', 'Enemy forces are approaching the harbor!', 'Hold the line. Over.'],
+};
 export const observerDialogue: Record<ObserverLocale, string> = {
   'zh-TW': '注意，左前方發現敵方驅逐艦！準備閃避砲擊。完畢！',
   en: 'Enemy destroyer approaching from the left! Incoming naval fire. Over.',

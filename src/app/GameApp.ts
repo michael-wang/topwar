@@ -275,6 +275,7 @@ export class GameApp {
     this.damageFlash.reset();
     this.fieldObserver?.reset();
     this.audio.resetObservation();
+    if (!this.devReviewFixture && !this.reviewThreats) this.fieldObserver?.startMission(initialState.elapsedSeconds);
     this.xpHud?.reset();
     this.battleInfo?.reset();
     this.supplyTransfer?.reset();this.grenadeButton?.reset();
@@ -356,6 +357,7 @@ export class GameApp {
     this.presentationMs = 0;
     this.audio.resetObservation();
     this.startup = 'started';
+    if (!this.devReviewFixture && !this.reviewThreats) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
     this.startOverlay.finish();
     this.startInputs();
   }

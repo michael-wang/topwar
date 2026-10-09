@@ -62,6 +62,7 @@ try{for(const [width,locale] of [[390,'en'],[350,'zh-TW']]){
  await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-naval`,[1.9,3.5,launch.time+.12,launch.time+.5,hit.time-.15,hit.time+.15,overlap.time+.15,25.5]);
  const audio=await page.evaluate(async bytes=>{const c=new AudioContext(),b=await c.decodeAudioData(new Uint8Array(bytes).buffer);let peak=0,squares=0,clipped=0,n=0;for(let channel=0;channel<b.numberOfChannels;channel++)for(const s of b.getChannelData(channel)){peak=Math.max(peak,Math.abs(s));squares+=s*s;n++;if(Math.abs(s)>=.999)clipped++;}await c.close();return{duration:b.duration,peak,rms:Math.sqrt(squares/n),clipped};},Array.from(bytes));
  assert.equal(audio.clipped,0);assert(audio.rms>.0001);
- assert.equal(requests.filter(u=>new URL(u).pathname.startsWith('/audio/')).length,1);assert.deepEqual(errors,[]);
+ const audioRequests=requests.filter(u=>new URL(u).pathname.startsWith('/audio/'));
+ assert.equal(new Set(audioRequests).size,audioRequests.length);assert(audioRequests.length<=2);assert.deepEqual(errors,[]);
  results.push({width,locale,events,radio,audio,errors,bytes:bytes.length});writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));console.log('Recorded NAVAL',width,locale,audio);await page.close();
 }}finally{await browser.close();}

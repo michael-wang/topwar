@@ -12,7 +12,7 @@ import type { UpgradeGateSimulationState } from '../src/simulation/SimulationSta
 import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
-  update() {} reset() {} dispose() {}
+  update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
@@ -22,10 +22,11 @@ vi.mock('../src/ui/DevReviewControls', () => ({ DevReviewControls: class {
   setSelected() {} dispose() {}
 } }));
 vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...args: unknown[]) => {
-  mock.reviewFixture(...args); return { getState: mock.getState };
+  mock.reviewFixture(...args); return { getState: mock.getState, getFrameState: mock.getState };
 } }));
 
 const mock = vi.hoisted(() => ({
+  missionIntro: vi.fn(),
   constructedWith: vi.fn(),
   reviewConstructed: vi.fn(),
   reviewFixture: vi.fn(),
@@ -321,6 +322,20 @@ async function startGame(app: GameApp): Promise<void> {
   app.start();
   await (app as unknown as { beginGameplay(): Promise<void> }).beginGameplay();
 }
+
+it('starts the mission intro only after activation, rearms Retry, and keeps isolated DEV fixtures unchanged',async()=>{
+  const raf=createRaf();
+  const config={...gameData,catharsis:CatharsisConfigSchema.parse(gameData.catharsis)} as unknown as GameConfig;
+  const viewport=Object.assign(new EventTarget(),{classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
+  const store={getConfig:()=>config,subscribe:()=>()=>{}} as unknown as ConfigStore;
+  const app=new GameApp(viewport as unknown as HTMLElement,store,level,{} as CharacterAssets);
+  app.start();raf.frame(0);expect(mock.missionIntro).not.toHaveBeenCalled();
+  await startGame(app);expect(mock.missionIntro).toHaveBeenCalledOnce();
+  raf.frame(100);raf.frame(100+1000/60);expect(mock.step).toHaveBeenCalled();
+  const retry=mock.overlayConstructedWith.mock.lastCall![0];retry();expect(mock.missionIntro).toHaveBeenCalledTimes(2);
+  const select=mock.reviewConstructed.mock.lastCall![0];select('naval');expect(mock.missionIntro).toHaveBeenCalledTimes(2);
+  app.dispose();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

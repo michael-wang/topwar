@@ -1,12 +1,14 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
-import { ObserverTimeline } from '../presentation/ObserverTimeline';
+import { ObserverTimeline, missionIntroTiming } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
-import { loadObserverLocale, saveObserverLocale, observerDialogue, type ObserverLocale } from './observerLocale';
+import { loadObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue,
+  type ObserverLocale, type ObserverMessage } from './observerLocale';
 
 export interface ObserverAudio {
   play(cue: 'radioOpen' | 'radioClose'): void;
-  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds?: number): void;
+  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds?: number,
+    message?: ObserverMessage): void;
 }
 export class FieldObserver {
   readonly element = document.createElement('aside');
@@ -15,6 +17,11 @@ export class FieldObserver {
   private readonly text = document.createElement('p');
   private readonly lamp = document.createElement('span');
   private readonly timeline = new ObserverTimeline();
+  private readonly missionTimeline = new ObserverTimeline();
+  private missionStart: number | null = null;
+  private missionVoiceLead = 0;
+  private message: ObserverMessage = 'destroyer';
+  private phrase = 0;
   private readonly buttons: HTMLButtonElement[] = [];
   private locale: ObserverLocale;
   private expression = '';
@@ -35,7 +42,7 @@ export class FieldObserver {
       button.textContent = locale === 'zh-TW' ? '繁中' : 'EN'; button.lang = locale;
       button.addEventListener('click', () => {
         this.locale = locale; saveObserverLocale(locale, this.storage); this.updateText();
-        this.audio.syncRadio(this.locale, this.frame.offset, this.frame.paused, this.frame.duration);
+        this.audio.syncRadio(this.locale, this.frame.offset, this.frame.paused, this.frame.duration, this.message);
         button.blur(); // Return keyboard lane/Q input to combat, as the DEV selector does.
       });
       this.buttons.push(button); this.selector.append(button);
@@ -43,14 +50,41 @@ export class FieldObserver {
     this.updateText(); host.append(this.element, this.selector);
   }
   private updateText(): void {
-    this.text.textContent = observerDialogue[this.locale]; this.text.lang = this.locale;
+    this.text.textContent = this.message === 'missionIntro'
+      ? observerMissionDialogue[this.locale][this.phrase] : observerDialogue[this.locale];
+    this.text.lang = this.locale;
     this.buttons.forEach(button => button.setAttribute('aria-pressed', String(button.lang === this.locale)));
   }
+  startMission(now: number): void {
+    this.reset();
+    // Only an explicit fresh attempt can arm the intro. Restoring a snapshot is
+    // never a new mission, and a completed intro stays retired after rewinds.
+    if (now !== 0) return;
+    this.missionStart = now;
+    this.missionTimeline.updateWindow(now, missionIntroTiming.atSeconds,
+      missionIntroTiming.durationSeconds, now, true);
+  }
   update(state: DestroyerState | undefined, config: DestroyerSettings | undefined, now: number, alive: boolean, paused: boolean): void {
-    const frame = this.timeline.update(state, config, now, alive);
+    const navalFrame = this.timeline.update(state, config, now, alive);
+    let frame = navalFrame;
+    let message: ObserverMessage = 'destroyer';
+    if (this.missionStart !== null) {
+      if (navalFrame.visible || !alive) this.missionStart = null;
+      else {
+        frame = this.missionTimeline.updateWindow(this.missionStart, missionIntroTiming.atSeconds,
+          missionIntroTiming.durationSeconds, now, alive);
+        message = 'missionIntro';
+        if (frame.offset >= frame.duration || now < this.missionStart) this.missionStart = null;
+      }
+    }
+    const phrase = message === 'missionIntro'
+      ? missionIntroTiming.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at ? i : index, 0) : 0;
+    if (message !== this.message || phrase !== this.phrase) {
+      this.message = message; this.phrase = phrase; this.updateText();
+    }
     this.element.hidden = !frame.visible;
     if (frame.visible) {
-      const expression = frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
+      const expression = message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
       if (expression !== this.expression) { this.expression = expression; this.portrait.src = publicAssetUrl(`art/observer/${expression}.webp`); }
       const fade = Math.min(1, frame.offset / .18, (frame.duration - frame.offset) / .22);
       this.element.style.opacity = String(Math.max(0, fade));
@@ -59,9 +93,17 @@ export class FieldObserver {
     }
     if (frame.begin) this.audio.play('radioOpen');
     if (frame.end) this.audio.play('radioClose');
-    this.frame = { offset: frame.audible ? frame.offset : null, paused, duration: frame.duration };
-    this.audio.syncRadio(this.locale, this.frame.offset, paused, frame.duration);
+    // A render frame can cross the intro cue by several simulation ticks. Keep
+    // the first syllable, then preserve that small offset through Pause/Resume.
+    if (frame.begin && message === 'missionIntro') this.missionVoiceLead = frame.offset;
+    const lead = message === 'missionIntro' ? this.missionVoiceLead : 0;
+    this.frame = { offset: frame.audible ? Math.max(0, frame.offset - lead) : null,
+      paused, duration: frame.duration - lead };
+    this.audio.syncRadio(this.locale, this.frame.offset, paused, this.frame.duration, message);
   }
-  reset(): void { this.timeline.reset(); this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false); }
+  reset(): void {
+    this.timeline.reset(); this.missionTimeline.reset(); this.missionStart = null; this.missionVoiceLead = 0;
+    this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
+  }
   dispose(): void { this.reset(); this.element.remove(); this.selector.remove(); }
 }

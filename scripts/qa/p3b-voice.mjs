@@ -21,6 +21,7 @@ try{
  await page.goto('http://127.0.0.1:5173/');await page.waitForSelector('.game-start-overlay');await page.waitForTimeout(350);
  assert.equal(requests.length,0);assert.equal(await page.evaluate(()=>window.__testApp.audio.context),null);
  await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');await selectDevFixture(page,'naval');
+ await page.evaluate(()=>window.__voiceEvents=[]);
  const stopRecording=await startGameRecording(page,350);
  await page.waitForFunction(()=>window.__testApp.audio.voice?.source!==null&&window.__testApp.audio.voice?.source!==undefined);
  await page.waitForTimeout(900);const before=await page.evaluate(()=>({offset:window.__testApp.audio.voice.offset,time:window.__testApp.simulation.getState().elapsedSeconds}));
@@ -45,7 +46,7 @@ try{
  const bytes=await stopRecording();writeFileSync(`${out}/350-voice-pause-switch-retry.webm`,bytes);
  await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
  const events=await page.evaluate(()=>window.__voiceEvents);assert(events.filter(e=>e.kind==='start').every(e=>e.locale==='zh-TW'&&e.rate===1));
- assert.equal(requests.length,1);assert.deepEqual(errors,[]);
+ assert.equal(new Set(requests).size,requests.length);assert(requests.length<=2);assert.deepEqual(errors,[]);
  writeFileSync(`${out}/results.json`,JSON.stringify({events,requests,errors,duck,before,paused,resumed,restart,ended},null,2));
  await inspectRecordingFrames(browser,bytes,350,`${out}/350-voice`,[1.8,2.6,3.3,6.0,10.0]);console.log('Approved voice lifecycle passed',events);
 }finally{await browser.close();}

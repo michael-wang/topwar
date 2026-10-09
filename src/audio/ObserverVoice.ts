@@ -1,9 +1,12 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
-import type { ObserverLocale } from '../ui/observerLocale';
+import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 
 // User-approved provisional Mandarin recording; English awaits an approved asset.
 export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
   'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null,
+};
+export const observerMissionVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
+  'zh-TW': 'audio/observer_mission_intro_zh-TW.mp3', en: null,
 };
 export type VoiceLoader = (url: string, context: AudioContext) => Promise<AudioBuffer | null>;
 const loadVoice: VoiceLoader = async (url, context) => {
@@ -15,11 +18,12 @@ const loadVoice: VoiceLoader = async (url, context) => {
 
 /** One local recording at a time. The offset always follows the presentation's simulation clock. */
 export class ObserverVoice {
-  private readonly cache = new Map<ObserverLocale, Promise<AudioBuffer | null>>();
+  private readonly cache = new Map<string, Promise<AudioBuffer | null>>();
   private source: AudioBufferSourceNode | null = null;
   private filter: BiquadFilterNode | null = null;
   private gain: GainNode | null = null;
   private locale: ObserverLocale | null = null;
+  private message: ObserverMessage = 'destroyer';
   private offset = 0;
   private windowSeconds = Infinity;
   private paused = false;
@@ -27,30 +31,32 @@ export class ObserverVoice {
   private started = false;
   private disposed = false;
   constructor(private readonly context: AudioContext, private readonly output: AudioNode,
-    private readonly assets = observerVoiceAssets, private readonly loader: VoiceLoader = loadVoice) {}
+    private readonly assets = observerVoiceAssets, private readonly loader: VoiceLoader = loadVoice,
+    private readonly missionAssets = observerMissionVoiceAssets) {}
 
-  private prepare(locale: ObserverLocale): Promise<AudioBuffer | null> | null {
-    const asset = this.assets[locale];
+  private prepare(locale: ObserverLocale, message: ObserverMessage): Promise<AudioBuffer | null> | null {
+    const asset = (message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
     if (!asset) return null;
-    let pending = this.cache.get(locale);
+    let pending = this.cache.get(asset);
     if (!pending) {
       pending = this.loader(publicAssetUrl(asset), this.context).catch(() => null);
-      this.cache.set(locale, pending);
+      this.cache.set(asset, pending);
     }
     return pending;
   }
 
-  sync(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity): void {
+  sync(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity,
+    message: ObserverMessage = 'destroyer'): void {
     if (this.disposed) return;
     // GameAudio calls this only after Tap-to-Start activation. Decode early without
     // creating a playback source, so the first spoken words are ready at the cue.
-    const pending = this.prepare(locale);
+    const pending = this.prepare(locale, message);
     if (offset === null) { if (this.locale !== null) this.reset(); return; }
-    const changed = this.locale !== locale || this.paused !== paused;
+    const changed = this.locale !== locale || this.paused !== paused || this.message !== message;
     this.offset = offset;
     this.windowSeconds = windowSeconds;
     if (changed) { this.stop(); this.generation++; this.started = false; }
-    this.locale = locale; this.paused = paused;
+    this.locale = locale; this.paused = paused; this.message = message;
     if (paused || this.started || !pending) return;
     this.started = true;
     const generation = this.generation;

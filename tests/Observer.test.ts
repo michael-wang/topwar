@@ -3,9 +3,9 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 // @ts-expect-error Vitest runs in Node; project typecheck exposes browser types only.
 import { createHash } from 'node:crypto';
-import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue } from '../src/ui/observerLocale';
+import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue } from '../src/ui/observerLocale';
 import { ObserverTimeline } from '../src/presentation/ObserverTimeline';
-import { ObserverVoice, observerVoiceAssets } from '../src/audio/ObserverVoice';
+import { ObserverVoice, observerVoiceAssets, observerMissionVoiceAssets } from '../src/audio/ObserverVoice';
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
 import { FieldObserver } from '../src/ui/FieldObserver';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
@@ -96,6 +96,74 @@ class ElementStub extends EventTarget {
   append(...children:ElementStub[]){this.children.push(...children);}
   setAttribute(key:string,value:string){this.attrs[key]=value;}
 }
+function missionUi() {
+  vi.stubGlobal('document',{createElement:()=>new ElementStub()});
+  vi.stubGlobal('navigator',{languages:['zh-TW']});vi.stubGlobal('window',{});
+  const audio={play:vi.fn(),syncRadio:vi.fn()};
+  const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio);
+  return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
+}
+it('bundles the untouched mission recording and approved short bilingual phrases',()=>{
+  const bytes=readFileSync('public/audio/observer_mission_intro_zh-TW.mp3');
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe('8d681e6d96786f1ede9eccca1e455a74f92211f1c0e45ab685c67da2eca6ff84');
+  expect(observerMissionVoiceAssets.en).toBeNull();
+  expect(observerMissionDialogue['zh-TW'].join('')).toBe('這裡是觀測官。敵軍正朝港口逼近！請守住防線。完畢！');
+  expect(observerMissionDialogue.en.join(' ')).toBe('Field Observer here. Enemy forces are approaching the harbor! Hold the line. Over.');
+});
+it('presents three mission phrases once, freezes with Pause and restarts only on a fresh attempt',()=>{
+  const {ui,audio,text}=missionUi();ui.startMission(0);
+  const shown=new Set<string>();
+  for(let tick=0;tick<420;tick++){
+    ui.update(undefined,undefined,tick/60,true,false);
+    if(!ui.element.hidden)shown.add(text());
+    if(tick===60){
+      for(let n=0;n<30;n++)ui.update(undefined,undefined,1,true,true);
+      expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);
+      expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',.8,true,6.2,'missionIntro']);
+    }
+  }
+  expect([...shown]).toEqual(observerMissionDialogue['zh-TW']);
+  expect(audio.play.mock.calls).toEqual([['radioOpen'],['radioClose']]);
+  expect(ui.element.hidden).toBe(true);
+  for(let tick=0;tick<180;tick++)ui.update(undefined,undefined,tick/60,true,false);
+  expect(ui.element.hidden).toBe(true);expect(audio.play).toHaveBeenCalledTimes(2);
+  ui.startMission(0);for(let tick=0;tick<60;tick++)ui.update(undefined,undefined,tick/60,true,false);
+  expect(audio.play).toHaveBeenCalledTimes(3);expect(ui.element.hidden).toBe(false);ui.dispose();
+});
+it('restores mid-intro as subtitles without repeated speech and switches only the active phrase',()=>{
+  const {ui,audio,text}=missionUi();ui.startMission(0);ui.update(undefined,undefined,2.5,true,false);
+  expect(ui.element.hidden).toBe(false);expect(audio.play).not.toHaveBeenCalled();
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false,6.2,'missionIntro']);
+  (ui.selector as unknown as ElementStub).children[1].dispatchEvent(new Event('click'));
+  expect(text()).toBe(observerMissionDialogue.en[1]);
+  ui.reset();ui.update(undefined,undefined,3,true,false);expect(ui.element.hidden).toBe(true);
+  ui.startMission(10);ui.update(undefined,undefined,10,true,false);expect(ui.element.hidden).toBe(true);
+  ui.startMission(0);for(let tick=0;tick<20;tick++)ui.update(undefined,undefined,tick/60,true,false);
+  ui.update(undefined,undefined,.35,false,false);expect(ui.element.hidden).toBe(true);ui.dispose();
+});
+it('keeps the opening syllable when a render frame crosses the cue and resumes from that same voice clock',()=>{
+  const {ui,audio}=missionUi();ui.startMission(0);
+  ui.update(undefined,undefined,.1,true,false);ui.update(undefined,undefined,.3,true,false);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBe(0);
+  ui.update(undefined,undefined,.35,true,true);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(.05);
+  ui.update(undefined,undefined,.35,true,false);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(.05);ui.dispose();
+});
+it('keeps mission and naval recordings distinct, cancels delayed old dialogue and caches each recording once',async()=>{
+  const {context,nodes}=audioHarness();let resolve!: (b:AudioBuffer)=>void;
+  const loader=vi.fn((url:string)=>url.includes('mission_intro')
+    ?new Promise<AudioBuffer>(r=>resolve=r):Promise.resolve({duration:5.407} as AudioBuffer));
+  const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
+  voice.sync('zh-TW',0,false,6.2,'missionIntro');
+  voice.sync('zh-TW',0,false,7.2,'destroyer');await Promise.resolve();await Promise.resolve();
+  expect(nodes).toHaveLength(1);resolve({duration:5.64} as AudioBuffer);await Promise.resolve();await Promise.resolve();
+  expect(nodes).toHaveLength(1);
+  voice.sync('zh-TW',1,false,6.2,'missionIntro');await Promise.resolve();
+  expect(nodes[0].stop).toHaveBeenCalledOnce();expect(nodes[1].start).toHaveBeenCalledWith(0,1);
+  voice.sync('en',1,false,6.2,'missionIntro');expect(nodes[1].stop).toHaveBeenCalledOnce();
+  voice.reset();voice.sync('zh-TW',null,false,6.2,'missionIntro');expect(loader).toHaveBeenCalledTimes(2);voice.dispose();
+});
 it('updates matching subtitles and locale without restarting combat; Retry hides the panel and cancels voice', () => {
   const stored = new Map<string,string>();
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});

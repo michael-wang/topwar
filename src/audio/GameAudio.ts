@@ -1,5 +1,5 @@
 import { ObserverVoice } from './ObserverVoice';
-import type { ObserverLocale } from '../ui/observerLocale';
+import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
@@ -275,7 +275,8 @@ export class GameAudio {
     this.music.update(presentationMs, { ...frame, musicVolume: frame.musicVolume * (this.radioActive ? .65 : 1) });
   }
 
-  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity): void {
+  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity,
+    message: ObserverMessage = 'destroyer'): void {
     if (paused) {
       for (const source of this.radioSources) { try { source.stop(); } catch { /* ended */ } this.active.delete(source); }
       this.radioSources.clear();
@@ -289,7 +290,7 @@ export class GameAudio {
     this.radioActive = active;
     if (!this.unlocked || !this.context || !this.master) return;
     this.voice ??= new ObserverVoice(this.context, this.master);
-    this.voice.sync(locale, offset, paused || this.context.state !== 'running', windowSeconds);
+    this.voice.sync(locale, offset, paused || this.context.state !== 'running', windowSeconds, message);
   }
 
   silenceMusic(): void { this.music?.silence(); }

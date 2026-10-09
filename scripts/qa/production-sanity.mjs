@@ -38,10 +38,12 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
   const asset=await page.request.get(`http://127.0.0.1:5181/topwar/art/observer/${expression}.webp?v=${sha}`);
   if(!asset.ok()||!asset.headers()['content-type']?.includes('image/webp'))throw Error('Missing local observer portrait under Pages base path');
  }
- const voice=await page.request.get(`http://127.0.0.1:5181/topwar/audio/observer_destroyer_zh-TW.mp3?v=${sha}`);
- if(!voice.ok()||!voice.headers()['content-type']?.includes('audio/mpeg')
-   ||!(await voice.body()).equals(readFileSync('public/audio/observer_destroyer_zh-TW.mp3')))
-   throw Error('Approved observer voice missing or altered under Pages base path');
+ for(const name of ['observer_destroyer_zh-TW.mp3','observer_mission_intro_zh-TW.mp3']){
+  const voice=await page.request.get(`http://127.0.0.1:5181/topwar/audio/${name}?v=${sha}`);
+  if(!voice.ok()||!voice.headers()['content-type']?.includes('audio/mpeg')
+    ||!(await voice.body()).equals(readFileSync(`public/audio/${name}`)))
+    throw Error('Approved observer voice missing or altered under Pages base path');
+ }
  const config=await configResponse?.json(),levelData=await levelResponse?.json();
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
  if(!config.catharsis.defenseMode||config.catharsis.grenade.capacity!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220,200,300]')throw Error('Stale defense/progression/Grenade config');
