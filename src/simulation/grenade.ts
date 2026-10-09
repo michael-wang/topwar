@@ -38,7 +38,7 @@ export type GrenadeEvent = { kind: 'grenadeAcquired' } | { kind: 'grenadeSupplyH
   | { kind: 'grenadeSupplyDamaged'; stage: 1 | 2 }
   | { kind: 'grenadeSupplyOpened'; x: number; z: number; amount: number } | {
   kind: 'grenadeDetonated'; x: number; z: number; radius: number;
-  victims: { id: number; archetype: 'grunt' | 'heavy' | 'giant'; damage: number; killed: boolean; killXp: number }[];
+  victims: { id: number; x: number; z: number; archetype: 'grunt' | 'heavy' | 'giant'; damage: number; killed: boolean; killXp: number }[];
 };
 export const emptyGrenade = (): GrenadeState => ({ lv3EnteredAtSeconds: null,
   supplySpawnedAtSeconds: null, acquiredAtSeconds: null, inventory: 0, supply: null, flight: null });
@@ -49,7 +49,7 @@ export function enemiesInBlast<T extends Enemy>(enemies: readonly T[], x: number
     && (e.x - x) ** 2 + (e.z - z) ** 2 <= radius ** 2).sort((a, b) => a.id - b.id);
 }
 
-export interface GrenadeTarget { x: number; z: number; anchorId: number }
+export interface GrenadeTarget { x: number; z: number; anchorId: number | null }
 export function grenadeTarget(state: SimulationFrameState, config: GrenadeConfig): GrenadeTarget | undefined {
   if (!state.catharsis?.balance.defenseMode || !state.squad.count) return undefined;
   // Every living defense enemy is eligible, including the distant shoreline
@@ -58,7 +58,7 @@ export function grenadeTarget(state: SimulationFrameState, config: GrenadeConfig
   // The defense line is behind player Z: a surviving enemy that has crossed
   // player Z is more urgent than one still approaching it, not less urgent.
   const anchor = anchors.sort((a, b) => a.z - b.z || a.id - b.id)[0];
-  if (!anchor) return undefined;
+  if (!anchor) return { anchorId: null, x: 0, z: state.player.z + config.emptyFieldDepth };
   const local = enemiesInBlast(state.enemies, anchor.x, anchor.z, config.blastRadius);
   // The unweighted centroid stays in this convex circle, so the captured urgent
   // position remains inside the blast. ID ordering also fixes sum rounding.

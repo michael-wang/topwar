@@ -94,7 +94,7 @@ it('synthesizes distinct impact/crack/open tones and ducks existing MG voices fo
     await audio.activate();audio.play('machineGun');const bus=gains[1];
     audio.play('supplyImpact');audio.play('supplyCrack');audio.play('supplyOpen');
     expect(voices).toHaveLength(7);
-    expect([voices[1],voices[3],voices[5]].map(v=>v.frequency.setValueAtTime.mock.calls[0][0])).toEqual([1900,310,220]);
+    expect([voices[1],voices[3],voices[5]].map(v=>v.frequency.setValueAtTime.mock.calls[0][0])).toEqual([1900,240,160]);
     expect(voices.every(v=>v.start.mock.calls.length===1)).toBe(true);
     expect(gains[2].connect).toHaveBeenCalledWith(bus);
     expect(bus.gain.setValueAtTime).toHaveBeenCalledWith(.3,0);

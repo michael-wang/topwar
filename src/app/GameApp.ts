@@ -490,7 +490,7 @@ export class GameApp {
       for (const event of grenadeEvents) {
         if(event.kind==='grenadeSupplyOpened')this.supplyTransfer?.present(event,this.presentationMs);
         if (event.kind === 'grenadeAcquired') this.audio.play('reward');
-        else if (event.kind === 'grenadeDetonated') this.audio.play('groundArtillery', { kind: 'groundArtillery', volumeScale: .65, durationScale: .55, pitchScale: 1.5 });
+        else if (event.kind === 'grenadeDetonated') this.audio.play('grenadeExplosion');
       }
       this.renderer.presentGrenade(grenadeEvents, this.presentationMs);
       if (state.progression && state.catharsis) {

@@ -1185,7 +1185,7 @@ describe('Q primary active item', () => {
     } finally {s.dispose();}
   });
 
-  it('blocks Q before start, paused, dead, empty or without a target; allows enemies in another lane', async () => {
+  it('blocks Q before start, paused, dead or empty; allows both empty fields and enemies in another lane', async () => {
     const s = setup();
     try {
       s.app.start();s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
@@ -1198,7 +1198,7 @@ describe('Q primary active item', () => {
       s.state.grenade.inventory=1;s.state.player.selectedLane=0;
       s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(true);
       const enemies=s.state.enemies;s.state.enemies=[];
-      s.raf.key('q');s.button();expect(s.control.takeGrenadeRequest()).toBe(false);
+      s.raf.key('q');s.button();expect(s.control.takeGrenadeRequest()).toBe(true);
       expect(s.state.grenade.inventory).toBe(1);
       s.state.enemies=enemies;s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(true);
       s.app.stop();s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);

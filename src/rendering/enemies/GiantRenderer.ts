@@ -92,6 +92,13 @@ export class GiantRenderer {
     scene.add(this.group, this.haze);
   }
   get id(): number | undefined { return this.previous?.id; }
+  applyBlastReaction(x: number, z: number, strength: number): void {
+    this.group.position.x += x * strength * .07;
+    this.group.position.z += z * strength * .07;
+    this.group.rotation.x += z * strength * .12;
+    this.group.rotation.z -= x * strength * .12;
+    this.group.updateMatrixWorld(true);
+  }
   copyBodyWorld(target: THREE.Matrix4): boolean {
     if (!this.previous || !this.group.visible) return false;
     this.group.updateMatrixWorld(true); target.copy(this.group.matrixWorld);

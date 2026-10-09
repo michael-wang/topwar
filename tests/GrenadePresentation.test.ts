@@ -10,9 +10,9 @@ it('pulses the existing crate on a hit, freezes with presentation time and reset
   const supply=scene.getObjectByName('grenade-supply')!;
   const crate=supply.children[0] as THREE.Mesh<THREE.BoxGeometry,THREE.MeshStandardMaterial>;
   const children=[...scene.children];renderer.present([{kind:'grenadeSupplyHit'}],100);renderer.update(state,100);
-  expect(crate.material.emissiveIntensity).toBeGreaterThan(0);expect(supply.scale.x).toBeGreaterThan(1);
-  const scale=supply.scale.x;renderer.update(state,100);expect(supply.scale.x).toBe(scale);
-  renderer.update(state,240);expect(crate.material.emissiveIntensity).toBe(0);expect(supply.scale.x).toBe(1);
+  expect(crate.material.emissiveIntensity).toBeGreaterThan(0);renderer.update(state,120);expect(supply.rotation.z).not.toBe(0);
+  const tilt=supply.rotation.z;renderer.update(state,120);expect(supply.rotation.z).toBe(tilt);
+  renderer.update(state,270);expect(crate.material.emissiveIntensity).toBe(0);expect(supply.rotation.z).toBe(0);
   renderer.present([{kind:'grenadeSupplyHit'}],300);renderer.update(state,300);renderer.reset();renderer.update(state,300);
   expect(crate.material.emissiveIntensity).toBe(0);expect(supply.scale.x).toBe(1);expect(scene.children).toEqual(children);
   renderer.dispose();expect(scene.children).toHaveLength(0);
@@ -47,7 +47,7 @@ it('projects a deterministic arc and reuses bounded explosion resources across r
     renderer.present([{kind:'grenadeDetonated',x:1.4,z:15,radius:2,victims:[]}],0);
     renderer.update({...state,flight:null},80);expect(renderer.getDebugStats().burst).toBe(true);
     expect(scene.getObjectByName('grenade-dust')!.position).toEqual(new THREE.Vector3());
-    renderer.update({...state,flight:null},900);expect(renderer.getDebugStats()).toEqual({supply:false,flight:false,burst:false,dustCapacity:16});
+    renderer.update({...state,flight:null},1200);expect(renderer.getDebugStats()).toMatchObject({supply:false,flight:false,burst:false,dustCapacity:16,activeExplosions:0});
     expect(scene.children).toEqual(children);renderer.reset();expect(scene.children.every(c=>!c.visible)).toBe(true);
   }
   renderer.dispose();expect(scene.children).toHaveLength(0);
@@ -57,6 +57,7 @@ it('doubles flash, ring and dust footprint for radius four without allocating mo
   const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene);
   const state={supply:null,flight:null,originZ:0,elapsedSeconds:1};
   const footprint=(radius:number)=>{
+    renderer.reset();
     renderer.present([{kind:'grenadeDetonated',x:0,z:10,radius,victims:[]}],0);
     renderer.update(state,160);
     const dust=scene.getObjectByName('grenade-dust') as THREE.InstancedMesh,matrix=new THREE.Matrix4();

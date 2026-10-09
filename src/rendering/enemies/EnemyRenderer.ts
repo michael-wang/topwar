@@ -25,6 +25,8 @@ import type { PresentationEvent } from '../../simulation/PresentationEvent';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
+import type { GrenadeEvent } from '../../simulation/grenade';
+import { GRENADE_FX, radialBlastDirection, airborneGrenadePose, survivingBlastStrength } from '../../presentation/GrenadeMotion';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
 
@@ -37,6 +39,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  blast: { x: number; z: number } | null;
   frozenRoot: THREE.Matrix4;
   recoilDirection: THREE.Vector2;
   variant:number;
@@ -91,10 +94,11 @@ interface CrowdBatch {
 
 export class EnemyRenderer {
   getDebugStats(): { current: number; bodyCapacities: number[]; tierCapacities: number[];
-    deathVisuals: number; contactVisuals: number } {
+    deathVisuals: number; contactVisuals: number; airborneDeaths: number; blastReactions: number } {
     return { current: this.previousEnemies.size, bodyCapacities: this.batches.flatMap(batch => batch.bodyCapacity),
       tierCapacities: this.batches.flatMap(batch => batch.capacity), deathVisuals: this.deathVisuals.reduce((n,v)=>n+(v.group.visible?1:0),0),
-      contactVisuals: this.contactVisuals.length };
+      contactVisuals: this.contactVisuals.length,
+      airborneDeaths: this.deathVisuals.filter(v => v.group.visible && v.blast).length, blastReactions: this.blastReactions.size };
   }
   private readonly batches: CrowdBatch[] = [];
   private readonly roleBatches: Record<'grunt' | 'heavy', CrowdBatch>;
@@ -133,6 +137,10 @@ export class EnemyRenderer {
   private readonly blood: IntegratedDeathBlood;
   private readonly hitBlood: BloodSplat;
   private readonly hitImpulse = new EnemyHitImpulse();
+  private readonly blastDeaths = new Map<number, { x: number; z: number }>();
+  private readonly blastReactions = new Map<number, { x: number; z: number; atMs: number }>();
+  private readonly blastAxis = new THREE.Vector3();
+  private readonly blastRotation = new THREE.Matrix4();
   // Grunt retains its captured pose; Giant owns its matrices in GiantRenderer.
   private readonly heavyReactionMatrices?: readonly [THREE.Matrix4, THREE.Matrix4];
   private readonly deathBatches: CrowdDeathBatches;
@@ -203,6 +211,18 @@ export class EnemyRenderer {
     }
   }
 
+  presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
+    for (const event of events) {
+      if (event.kind !== 'grenadeDetonated') continue;
+      const available = Math.max(0, GRENADE_FX.airborneLimit - this.deathVisuals.filter(v => v.group.visible && v.blast).length - this.blastDeaths.size);
+      const launched = event.victims.filter(v => v.killed && v.archetype === 'grunt')
+        .sort((a, b) => (Math.imul(a.id, 2654435761) >>> 0) - (Math.imul(b.id, 2654435761) >>> 0)).slice(0, available);
+      for (const victim of launched) this.blastDeaths.set(victim.id, radialBlastDirection(victim.x, victim.z, event.x, event.z, victim.id));
+      for (const victim of event.victims) if (!victim.killed && victim.archetype !== 'grunt' && (this.blastReactions.has(victim.id) || this.blastReactions.size < 64))
+        this.blastReactions.set(victim.id, { ...radialBlastDirection(victim.x, victim.z, event.x, event.z, victim.id), atMs: nowMs });
+    }
+  }
+
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean, attackerX?: number, attackerZ?: number): void {
     this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     if (sceneMode !== undefined) {
@@ -238,6 +258,8 @@ export class EnemyRenderer {
       this.previousEnemies.set(enemy.id, { ...enemy });
     }
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
+    this.blastDeaths.clear();
+    for (const [id, reaction] of this.blastReactions) if (!currentIds.has(id) || nowMs - reaction.atMs >= GRENADE_FX.reactionMs) this.blastReactions.delete(id);
     this.hitImpulse.prune(currentIds);
     this.contactIds.clear();
     this.updateDeaths(nowMs);
@@ -247,6 +269,8 @@ export class EnemyRenderer {
       const renderer = this.giantRenderers.find(slot => slot.id === enemy.id)
         ?? this.giantRenderers.find(slot => slot.available(nowMs));
       renderer?.update(enemy, nowMs, this.heavyHits, this.hitImpulse);
+      const blast = this.blastReactions.get(enemy.id);
+      if (blast) renderer?.applyBlastReaction(blast.x, blast.z, survivingBlastStrength(nowMs - blast.atMs));
     }
     for (const renderer of this.giantRenderers) if (!currentIds.has(renderer.id ?? -1)) renderer.update(undefined, nowMs, this.heavyHits, this.hitImpulse);
     this.giantImpactDust.update(nowMs);
@@ -350,6 +374,15 @@ export class EnemyRenderer {
       const impact = this.hitImpulse.strength(enemy.id, nowMs), style = ENEMY_HIT_STYLE[heavy ? 'heavy' : 'grunt'];
       transform.position.z += style.distance * impact;
       transform.rotation.x += style.lean * impact;
+      const blast = this.blastReactions.get(enemy.id);
+      const blastStrength = blast ? survivingBlastStrength(nowMs - blast.atMs) : 0;
+      const blastRoll = blast ? -blast.x * blastStrength * .34 : 0;
+      if (blast) {
+        transform.position.x += blast.x * blastStrength * .22;
+        transform.position.z += blast.z * blastStrength * .22;
+        transform.rotation.x += blast.z * blastStrength * .34;
+        transform.rotation.z += blastRoll;
+      }
       setEnemyScale(transform.scale, enemy, presentation.scaleY);
       if (step) transform.scale.y *= 1 - step.landing * presentation.stepWeight!.compression;
       transform.scale.y *= 1 - Math.max((presentation.hitCompression ?? 0) * hitStrength, style.compression * impact);
@@ -363,11 +396,11 @@ export class EnemyRenderer {
       this.heavyHits.setBody(enemy.id, batch.family.runFrames[frame].geometry, transform.matrix, nowMs);
       const helmet = batch.helmetMeshes[palette];
       // Gear follows the torso a little late; retain the same instancing batches.
-      transform.rotation.z = sway * .82;
+      transform.rotation.z = sway * .82 + blastRoll;
       transform.updateMatrix();
       helmet.setMatrixAt(index, transform.matrix);
       const vest = batch.vestMeshes[palette];
-      transform.rotation.z = sway * .92;
+      transform.rotation.z = sway * .92 + blastRoll;
       transform.updateMatrix();
       vest.setMatrixAt(index, transform.matrix);
       let rendered = this.renderedCrowd.get(enemy.id);
@@ -395,6 +428,7 @@ export class EnemyRenderer {
   }
 
   reset(visualSalt=0): void {
+    this.blastDeaths.clear(); this.blastReactions.clear();
     this.deathSequence.reset(visualSalt);
     this.previousEnemies.clear();
     this.liveIds.clear();
@@ -582,7 +616,7 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, heavy: false, role });
+      this.deathVisuals.push({ blast: null, frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, heavy: false, role });
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number, attackerX?: number, attackerZ?: number): THREE.Group | undefined {
@@ -592,7 +626,7 @@ export class EnemyRenderer {
     const procedural = presentation.materialStyle === 'vertex-colors';
     const role = family.role;
     let visual = this.deathVisuals.find(candidate => !candidate.group.visible);
-    if (!visual) visual = this.deathVisuals.reduce((oldest, candidate) =>
+    if (!visual) visual = this.deathVisuals.filter(candidate => !candidate.blast).reduce((oldest, candidate) =>
       candidate.startedAtMs < oldest.startedAtMs ? candidate : oldest);
     if (!this.sameParts(visual.parts, parts)) {
       const rebind = (target: THREE.MeshStandardMaterial, source: THREE.MeshStandardMaterial, surface: 'death' | 'gear') => {
@@ -612,6 +646,7 @@ export class EnemyRenderer {
     }
     visual.startedAtMs = nowMs;
     visual.variant=variant;
+    visual.blast = this.blastDeaths.get(enemy.id) ?? null;
     visual.role = role;
     visual.heavy = enemy.archetype === 'heavy';
     // Keep depth writes during the intact fade so a hollow helmet shell
@@ -656,10 +691,19 @@ export class EnemyRenderer {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
       if (visual.role === 'grunt') {
-        const pose = gruntDeathBody(elapsed);
+        const air = visual.blast ? airborneGrenadePose(elapsed) : null;
+        const pose = air ?? gruntDeathBody(elapsed);
         // World Y only: captured gait, helmet lag, rotation and scale stay exact.
         // Blood owns its separate captured ground-space clock and never inherits lift.
         visual.group.matrix.copy(visual.frozenRoot);
+        if (air && visual.blast) {
+          this.blastAxis.set(visual.blast.z, 0, -visual.blast.x);
+          this.blastRotation.makeRotationAxis(this.blastAxis, air.angle);
+          visual.group.matrix.premultiply(this.blastRotation);
+          visual.group.matrix.elements[12] = visual.frozenRoot.elements[12] + visual.blast.x * air.distance;
+          visual.group.matrix.elements[13] = visual.frozenRoot.elements[13];
+          visual.group.matrix.elements[14] = visual.frozenRoot.elements[14] + visual.blast.z * air.distance;
+        }
         visual.group.matrix.elements[13] += pose.lift;
         visual.group.matrixWorldNeedsUpdate = true;
         visual.group.visible = pose.visible;

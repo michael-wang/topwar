@@ -44,12 +44,47 @@ it('spends three charges sequentially, blocks overlapping flights, and restores 
   sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
   expect(sim.getState().grenade!.inventory).toBe(0);expect(sim.getState().grenade!.flight).toBeNull();
 });
-it.each([0,1,2,3])('restores inventory %s and preserves it for an invalid throw', inventory => {
+it.each([0,1,2,3])('restores inventory %s and spends one charge for an empty-field throw', inventory => {
   const sim=armed(),s=sim.getState();s.grenade!.inventory=inventory;s.enemies=[];sim.restoreState(s);
   const clone=make();clone.restoreState(JSON.parse(JSON.stringify(sim.getState())));
-  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(clone,1);
-  expect(sim.getState()).toEqual(clone.getState());expect(sim.getState().grenade!.inventory).toBe(inventory);
+  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);clone.step(1/60,{targetX:0,throwGrenade:true},tuning);
+  expect(sim.getState()).toEqual(clone.getState());expect(sim.getState().grenade!.inventory).toBe(Math.max(0,inventory-1));
+  expect(sim.getState().grenade!.flight?.targetZ).toBe(inventory ? 14 : undefined);
   expect(make().getState().grenade).toEqual(emptyGrenade());
+});
+
+it('lands an empty-field throw at the fixed center, with no XP, retargeting or duplicate consumption',()=>{
+  const sim=armed(),s=sim.getState();s.enemies=[];s.grenade!.inventory=3;s.player.x=2.8;s.player.selectedLane=4;sim.restoreState(s);
+  expect(grenadeTarget(s,balance.grenade)).toEqual({anchorId:null,x:0,z:14});
+  sim.step(1/60,{targetX:2.8,throwGrenade:true},tuning);
+  const saved=sim.getState(),clone=make();clone.restoreState(JSON.parse(JSON.stringify(saved)));
+  for(let i=0;i<37;i++){sim.step(1/60,{targetX:-2.8,throwGrenade:true},tuning);clone.step(1/60,{targetX:-2.8,throwGrenade:true},tuning);}
+  expect(sim.getState().grenade!.inventory).toBe(2);expect(sim.getState().grenade!.flight).toMatchObject({targetX:0,targetZ:14});
+  ticks(sim,1);ticks(clone,1);expect(sim.getState()).toEqual(clone.getState());
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeDetonated',x:0,z:14,radius:4,victims:[]}]);
+  expect(sim.getState().progression).toEqual(s.progression);ticks(sim,90);expect(sim.consumeGrenadeEvents()).toEqual([]);
+});
+
+it('restores historical config without an empty-field depth and preserves already captured flights',()=>{
+  const sim=armed(),s=sim.getState();s.enemies=[];
+  delete (s.catharsis!.balance.grenade as Partial<typeof balance.grenade>).emptyFieldDepth;
+  sim.restoreState(JSON.parse(JSON.stringify(s)));
+  expect(sim.getState().catharsis!.balance.grenade.emptyFieldDepth).toBe(14);
+  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
+  const flying=sim.getState();flying.catharsis!.balance.grenade.emptyFieldDepth=20;
+  sim.restoreState(JSON.parse(JSON.stringify(flying)));
+  expect(sim.getState().grenade!.flight!.targetZ).toBe(14);
+});
+
+it('damages a real enemy entering an initially empty landing area exactly once',()=>{
+  const sim=armed(),s=sim.getState();s.enemies=[];sim.restoreState(s);
+  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(sim,20);
+  const entered=sim.getState();entered.enemies=[{id:9,archetype:'grunt',tier:1,lane:2,x:0,z:14,hp:1}];sim.restoreState(entered);
+  expect(sim.getState().grenade!.flight).toMatchObject({targetX:0,targetZ:14});ticks(sim,18);
+  expect(sim.getState().enemies).toEqual([]);expect(sim.getState().progression!.xp).toBe(s.progression!.xp+1);
+  const blast=sim.consumeGrenadeEvents();expect(blast).toHaveLength(1);expect(blast[0]).toMatchObject({kind:'grenadeDetonated',victims:[{id:9,killed:true,killXp:1}]});
+  const after=sim.getState();sim.restoreState(JSON.parse(JSON.stringify(after)));ticks(sim,60);
+  expect(sim.consumeGrenadeEvents()).toEqual([]);expect(sim.getState().progression).toEqual(after.progression);
 });
 it('schedules from the actual Lv3 crossing, then spawns at eight seconds even without further XP', () => {
   const sim = make(), s = sim.getState(); s.progression = { level: 2, xp: 59 };
@@ -96,11 +131,11 @@ it('centers the nearest global cluster with stable ID ties and a fixed capture',
   sim.step(1/60,{targetX:0,throwGrenade:true},tuning); const f=sim.getState().grenade!.flight!;
   sim.stepLane(1); ticks(sim,20);expect(sim.getState().grenade!.flight!.targetZ).toBe(f.targetZ);
 });
-it('does not consume a no-enemy throw or activate after death', () => {
-  for(const mode of ['empty','dead']) {
+it('does not activate after death, with or without enemies', () => {
+  for(const mode of ['empty','enemies']) {
     const sim=armed(),s=sim.getState();
     if(mode==='empty')s.enemies=[];
-    if(mode==='dead')s.squad={count:0,rocketCount:0,rifleCounts:[],rifleRemainder:0};
+    s.squad={count:0,rocketCount:0,rifleCounts:[],rifleRemainder:0};
     sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
     expect(sim.getState().grenade!.inventory).toBe(1);expect(sim.getState().grenade!.flight).toBeNull();
   }

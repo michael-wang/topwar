@@ -1317,7 +1317,7 @@ export class Simulation {
       const victims = enemiesInBlast(enemies, flight.targetX, flight.targetZ, flight.blastRadius).map(enemy => {
         const damage = Math.min(enemy.hp, flight.damageEnemyHp);
         const killXp = damageEnemy(enemy, flight.damageEnemyHp);
-        return { id: enemy.id, archetype: enemy.archetype!, damage, killed: enemy.hp <= 0, killXp };
+        return { id: enemy.id, x: enemy.x, z: enemy.z, archetype: enemy.archetype!, damage, killed: enemy.hp <= 0, killXp };
       });
       this.grenadeEvents.push({ kind: 'grenadeDetonated', x: flight.targetX, z: flight.targetZ, radius: flight.blastRadius, victims });
       grenade.flight = null;

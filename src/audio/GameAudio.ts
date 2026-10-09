@@ -8,7 +8,7 @@ const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 
 export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
-  | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen';
+  | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen' | 'grenadeExplosion';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
 interface ObservedReward { id: number; hitProgress: number }
@@ -114,10 +114,13 @@ const rewardTone: ToneShape = { from: 630, to: 980, seconds: .14, wave: 'sine', 
 const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?: ToneShape }> = {
   supplyImpact: {from:1900,to:950,seconds:.11,wave:'sine',volume:.09,
     secondary:{from:850,to:430,seconds:.085,wave:'triangle',volume:.06}},
-  supplyCrack: {from:310,to:90,seconds:.13,wave:'sawtooth',volume:.07,
-    secondary:{from:2300,to:360,seconds:.10,wave:'triangle',volume:.06}},
-  supplyOpen: {from:220,to:75,seconds:.20,wave:'triangle',volume:.15,
-    secondary:{from:980,to:220,seconds:.12,wave:'square',volume:.045}},
+  supplyCrack: {from:240,to:65,seconds:.10,wave:'sawtooth',volume:.085,
+    secondary:{from:520,to:110,seconds:.075,wave:'square',volume:.045,delaySeconds:.035}},
+  supplyOpen: {from:160,to:48,seconds:.24,wave:'triangle',volume:.15,
+    secondary:{from:730,to:85,seconds:.16,wave:'sawtooth',volume:.075}},
+  grenadeExplosion: {from:165,to:38,seconds:.22,wave:'sine',volume:.25,
+    secondary:{from:68,to:27,seconds:1.05,wave:'triangle',volume:.12,attackSeconds:.025},
+    tertiary:{from:440,to:90,seconds:.095,wave:'sawtooth',volume:.065}},
   levelUp: { from: 660, to: 880, seconds: .16, wave: 'sine', volume: .17,
     secondary: { from: 880, to: 1320, seconds: .24, wave: 'sine', volume: .14, delaySeconds: .13 } },
   rifle: { from: 1050, to: 280, seconds: .038, wave: 'sawtooth', volume: .09 },
@@ -170,6 +173,9 @@ export class GameAudio {
   private supplyRewardAtMs: number | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();
   private rumbleBuffer: AudioBuffer | null = null;
+  private grenadeBuffer: AudioBuffer | null = null;
+  private readonly grenadeSources = new Set<AudioScheduledSourceNode>();
+  private lastGrenadeAudioSeconds = -Infinity;
   private readonly observer = new AudioCueObserver();
   private readonly environment = new EnvironmentAudioScheduler();
   private music: ProceduralMusic | null = null;
@@ -226,6 +232,7 @@ export class GameAudio {
   }
 
   resetObservation(): void {
+    this.lastGrenadeAudioSeconds = -Infinity; this.grenadeSources.clear();
     this.supplyRewardAtMs=null;
     // Retry/load must not play a crash scheduled by the previous run's lethal hit.
     for (const source of this.active) { try { source.stop(); } catch { /* already ended */ } }
@@ -269,6 +276,15 @@ export class GameAudio {
     const context = this.context;
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
+      if (cue === 'grenadeExplosion') {
+        if (context.currentTime - this.lastGrenadeAudioSeconds < .12) return;
+        this.lastGrenadeAudioSeconds = context.currentTime;
+        // Four sources per blast; cap even injected/repeated cues at two blasts.
+        while (this.grenadeSources.size > 4) {
+          const source = this.grenadeSources.values().next().value!;
+          source.stop(); this.grenadeSources.delete(source); this.active.delete(source);
+        }
+      }
       const shape = cueShape[cue];
       const weapon = cue==='rifle'||cue==='machineGun'||cue==='heavyRifle';
       if(weapon&&!this.weaponBus){this.weaponBus=context.createGain();this.weaponBus.gain.value=1;this.weaponBus.connect(this.master);}
@@ -280,11 +296,11 @@ export class GameAudio {
         this.weaponBus.gain.setValueAtTime(.3,context.currentTime+.35);
         this.weaponBus.gain.exponentialRampToValueAtTime(1,context.currentTime+.45);
       }
-      const environmental = cue === 'groundArtillery' || cue === 'skyFlak' || cue === 'giantDeath';
+      const environmental = cue === 'groundArtillery' || cue === 'skyFlak' || cue === 'giantDeath' || cue === 'grenadeExplosion';
       const filter = environmental ? context.createBiquadFilter() : null;
       if (filter) {
         filter.type = 'lowpass';
-        filter.frequency.value = cue === 'groundArtillery' ? 380 : 600;
+        filter.frequency.value = cue === 'grenadeExplosion' ? 2400 : cue === 'groundArtillery' ? 380 : 600;
         filter.connect(this.master);
       }
       const start = context.currentTime;
@@ -295,7 +311,7 @@ export class GameAudio {
         ? (this.rumbleBuffer ??= this.createRumbleBuffer(context)) : null;
       const tones = [shape, shape.secondary, shape.tertiary].filter(
         (tone): tone is ToneShape => tone !== undefined);
-      let remaining = tones.length + (cue === 'groundArtillery' || cue === 'giantDeath' ? 1 : 0);
+      let remaining = tones.length + (cue === 'groundArtillery' || cue === 'giantDeath' || cue === 'grenadeExplosion' ? 1 : 0);
       const playTone = (tone: ToneShape): void => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
@@ -323,12 +339,22 @@ export class GameAudio {
           gain.disconnect();
           if (--remaining === 0) filter?.disconnect();
           this.active.delete(oscillator);
+          this.grenadeSources.delete(oscillator);
         };
         this.active.add(oscillator);
+        if (cue === 'grenadeExplosion') this.grenadeSources.add(oscillator);
         oscillator.start(toneStart);
         oscillator.stop(toneEnd);
       };
       for (const tone of tones) playTone(tone);
+      if (cue === 'grenadeExplosion') {
+        const source = context.createBufferSource(), gain = context.createGain();
+        source.buffer = this.grenadeBuffer ??= this.createGrenadeBuffer(context);
+        gain.gain.setValueAtTime(.25, start); gain.gain.exponentialRampToValueAtTime(.001, start + 1.1);
+        source.connect(gain); gain.connect(filter!);
+        source.onended = () => { source.disconnect(); gain.disconnect(); if (--remaining === 0) filter?.disconnect(); this.active.delete(source); this.grenadeSources.delete(source); };
+        this.active.add(source); this.grenadeSources.add(source); source.start(start); source.stop(start + 1.1);
+      }
       if (cue === 'groundArtillery' || cue === 'giantDeath') {
         const source = context.createBufferSource();
         const gain = context.createGain();
@@ -372,6 +398,19 @@ export class GameAudio {
     this.context = null;
     this.master = null;
     this.rumbleBuffer = null;
+    this.grenadeBuffer = null; this.grenadeSources.clear();
+  }
+
+  private createGrenadeBuffer(context: AudioContext): AudioBuffer {
+    const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * 1.1), context.sampleRate);
+    const samples = buffer.getChannelData(0); let seed = 0x48ad71, low = 0;
+    for (let i = 0; i < samples.length; i++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      const white = seed / 0x80000000 - 1, seconds = i / context.sampleRate;
+      low = low * .94 + white * .06;
+      samples[i] = white * .65 * Math.exp(-seconds * 13) + low * 2.3;
+    }
+    return buffer;
   }
 
   private createRumbleBuffer(context: AudioContext): AudioBuffer {

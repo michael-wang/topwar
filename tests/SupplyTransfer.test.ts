@@ -40,12 +40,12 @@ it('keeps every curve inside the viewport, with its final position at the actual
 });
 it('restores visibly distinct crate stages without replaying damage, and resets a final opening',()=>{
   const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene);
-  const supply=scene.getObjectByName('grenade-supply')!,lid=supply.children[1],contents=supply.children[4];
-  const heights:number[]=[];
+  const supply=scene.getObjectByName('grenade-supply')!,lid=supply.children[9],strap=supply.getObjectByName('crate-retaining-strap')!;
+  const angles:number[]=[];
   for(const stage of [0,1,2] as const){renderer.update({originZ:0,elapsedSeconds:0,flight:null,
     supply:{lane:2,x:0,depth:14,destruction:{mode:'staged',stage,recoverySeconds:.7,recoverAtSeconds:stage?.7:0}}},0);
-    heights.push(lid.position.y);expect(contents.visible).toBe(stage===2);}
-  expect(heights[1]).toBeGreaterThan(heights[0]);expect(heights[2]).toBeGreaterThan(heights[1]);
+    angles.push(Math.abs(strap.rotation.z));expect(lid.position.y).toBe(.48);}
+  expect(angles[1]).toBeGreaterThan(angles[0]);expect(angles[2]).toBeGreaterThan(angles[1]);
   renderer.present([{kind:'grenadeSupplyOpened',x:1.4,z:14,amount:3}],0);
   renderer.update({originZ:0,elapsedSeconds:0,supply:null,flight:null},100);
   expect(supply.visible).toBe(true);expect(supply.position.x).toBe(-1.4);

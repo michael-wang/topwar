@@ -27,6 +27,7 @@
       "damageEnemyHp": 9,
       "blastRadius": 4,
       "flightSeconds": 0.65,
+      "emptyFieldDepth": 14,
       "supplyPressureDepth": 24,
       "supplyDelaySeconds": 8,
       "supplyHitsRequired": 10,
