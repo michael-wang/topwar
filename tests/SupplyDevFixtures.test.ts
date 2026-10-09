@@ -25,7 +25,12 @@ it.each(['crate3', 'crate8'] as const)('%s starts an intact, aligned real Supply
   expect(effectivePrimaryFireRate(config.weapon.rifle.fireRate, initial.progression!.level, initial.catharsis!.balance)).toBe(recurring ? 18 : 4.5);
   expect(initial.weapons.rifleMemberCooldowns).toHaveLength(members);
   expect(new Set(initial.weapons.rifleMemberCooldowns).size).toBe(members);
-  expect(initial.enemies).toEqual([]); expect(initial.enemyStream).toBeNull(); expect(initial.defenseWaves).toBeUndefined();
+  expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(12);
+  expect(initial.enemies.find(e => e.archetype === 'heavy')!.hp).toBe(config.catharsis!.heavyHp);
+  expect(initial.enemies.find(e => e.archetype === 'giant')!.hp).toBe(config.catharsis!.giant.hp);
+  expect(initial.enemies.every(e => e.x > 0 && e.z >= 18)).toBe(true);
+  expect(initial.player.x).toBeLessThan(0); expect(initial.player.selectedLane).toBe(1);
+  expect(initial.enemyStream).toBeNull(); expect(initial.defenseWaves).toBeUndefined();
   expect(initial.catharsis!.balance.postCapSurvival.enabled).toBe(false);
   expect(initial.catharsis!.balance.carnival.enabled).toBe(false);
   expect(initial.grenade).toMatchObject({ inventory: recurring ? 1 : 0, supplySpawnedAtSeconds: 0,
@@ -70,7 +75,34 @@ it.each(['crate3', 'crate8'] as const)('%s uses three real damage events with re
   expect(new Set(sim.getState().projectiles.map(p => p.memberIndex)).size).toBe(role === 'crate3' ? 1 : 3);
   const later = sim.getState(); later.elapsedSeconds = 1200; later.tick = 72000;
   sim.restoreState(later); step(sim, 180);
-  expect(sim.getState().enemies).toEqual([]); expect(sim.getState().grenade!.supply).toBeNull();
+  expect(sim.getState().enemies.map(e => [e.id, e.hp])).toEqual(initial.enemies.map(e => [e.id, e.hp]));
+  expect(sim.getState().grenade!.supply).toBeNull();
   expect(sim.getState().progression).toEqual(initial.progression); expect(sim.consumeGrenadeEvents()).toEqual([]);
   expect(make(role).getState()).toEqual(initial);
+});
+
+it.each(['crate3', 'crate8'] as const)('%s opens safely then blasts Grunts while Heavy and Giant survive at ordinary HP', role => {
+  const sim = make(role), initial = sim.getState();
+  while (sim.getState().grenade!.supply) step(sim);
+  const ready = sim.getState();
+  expect(ready.elapsedSeconds).toBeLessThan(4);
+  expect(ready.enemies.every(e => e.z > 14)).toBe(true);
+  expect(ready.enemies.map(e => e.hp)).toEqual(initial.enemies.map(e => e.hp));
+  sim.consumeGrenadeEvents();
+  sim.step(1 / 60, { targetX: 0, throwGrenade: true }, pilotTuning);
+  const restored = make(role); restored.restoreState(JSON.parse(JSON.stringify(sim.getState())));
+  step(sim, 40); step(restored, 40);
+  expect(restored.getState()).toEqual(sim.getState());
+  const event = sim.consumeGrenadeEvents().find(e => e.kind === 'grenadeDetonated')!;
+  expect(event.kind).toBe('grenadeDetonated');
+  if (event.kind !== 'grenadeDetonated') throw new Error('Missing blast');
+  expect(event.victims.filter(v => v.killed)).toHaveLength(12);
+  expect(sim.getState().enemies.map(e => [e.archetype, e.hp])).toEqual([
+    ['heavy', config.catharsis!.heavyHp - 9], ['giant', config.catharsis!.giant.hp - 9]]);
+  expect(sim.getState().progression!.xp).toBe(role === 'crate3' ? 12 : 0);
+  expect(make(role).getState()).toEqual(initial);
+  // Running beyond all former schedule horizons never introduces another wave or crate.
+  step(sim, 2400);
+  expect(sim.getState().enemies.every(e => e.id === 13 || e.id === 14)).toBe(true);
+  expect(sim.getState().grenade!.supply).toBeNull();
 });

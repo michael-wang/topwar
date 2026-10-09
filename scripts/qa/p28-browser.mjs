@@ -24,6 +24,8 @@ try{for(const width of [390,350])for(const role of ['crate3','crate8','grenade',
   s.defenseWaves.nextAtSeconds=1000;s.weapons.rifleCooldownRemainingSeconds=1000;s.weapons.rifleMemberCooldowns=[1000,1000,1000];a.simulation.restoreState(s);
  });
  if(role==='grenade')await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.weapons.rifleCooldownRemainingSeconds=1000;s.weapons.rifleMemberCooldowns=[1000];a.simulation.restoreState(s);});
+ // P2.9 testbeds include targets; this retained check intentionally isolates empty-field throws.
+ if(role.startsWith('crate'))await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.enemies=[];a.simulation.restoreState(s);});
  const initial=await page.evaluate(()=>window.__testApp.simulation.getState());
  if(width===350)await page.locator('.beachhead-defense').evaluate(v=>v.style.setProperty('--hud-inset-bottom','34px'));
  await page.evaluate(()=>{const a=window.__testApp;window.__clock=0;window.__advance=n=>{for(let i=0;i<n;i++){window.__clock+=1000/60;a.renderFrame(window.__clock);cancelAnimationFrame(a.frameId);}};});

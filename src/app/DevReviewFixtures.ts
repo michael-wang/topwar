@@ -152,6 +152,19 @@ function createSupplyReview(options: SimulationOptions, baseFireRate: number,
   state.progression = { level: fixture.level, xp: 0 };
   state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   state.machineGunReleaseAtSeconds = role === 'crate8' ? 0 : null;
+  const lanes = attackLanePositions(balance.laneCount, state.catharsis!.trackHalfWidth, balance.edgeInset);
+  state.player = { x: lanes[1], z: 0, selectedLane: 1 };
+  // QA coordinates only: separated shooting corridor, ordinary HP/movement.
+  // The compact right-hand group puts all three roles inside one initial blast.
+  const right = balance.laneCount - 2;
+  state.enemies = Array.from({ length: 12 }, (_, index) => {
+    const lane = right + index % 2;
+    return { id: index + 1, tier: 1, archetype: 'grunt' as const, lane,
+      x: lanes[lane], z: 18 + Math.floor(index / 2) * .35, hp: 1 };
+  });
+  state.enemies.push(
+    { id: 13, tier: 1, archetype: 'heavy', lane: right, x: lanes[right], z: 20, hp: balance.heavyHp },
+    { id: 14, tier: 1, archetype: 'giant', lane: right + 1, x: lanes[right + 1], z: 20.5, hp: balance.giant.hp });
   state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0,
     acquiredAtSeconds: role === 'crate8' ? 0 : null, inventory: role === 'crate8' ? 1 : 0,
     supply: { ...placeGrenadeSupply(state, balance.grenade), ...(role === 'crate8' ? { rewardAmount: 1 as const } : {}) },

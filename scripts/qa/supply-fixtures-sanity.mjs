@@ -30,7 +30,8 @@ try {for(const width of [390,350]) {
   const advance=ticks=>page.evaluate(n=>window.__advance(n),ticks);
   const state=()=>page.evaluate(()=>window.__testApp.simulation.getState());
   const initial=await state(),expected=role==='crate3'?3:2,count=role==='crate3'?3:1;
-  assert.equal(initial.grenade.supply.destruction.stage,0);assert.equal(initial.enemies.length,0);
+  assert.equal(initial.grenade.supply.destruction.stage,0);assert.equal(initial.enemies.length,14);
+  assert(initial.enemies.every(e=>e.x>0));assert(initial.grenade.supply.x<0);
   await page.evaluate(()=>window.__cues=[]);await advance(1);
   await page.screenshot({path:`${out}/${width}-${role}-intact.png`});
   const times=[];let stage=0;

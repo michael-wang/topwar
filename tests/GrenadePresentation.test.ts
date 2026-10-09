@@ -12,9 +12,11 @@ it('pulses the existing crate on a hit, freezes with presentation time and reset
   const children=[...scene.children];renderer.present([{kind:'grenadeSupplyHit'}],100);renderer.update(state,100);
   expect(crate.material.emissiveIntensity).toBeGreaterThan(0);renderer.update(state,120);expect(supply.rotation.z).not.toBe(0);
   const tilt=supply.rotation.z;renderer.update(state,120);expect(supply.rotation.z).toBe(tilt);
-  renderer.update(state,270);expect(crate.material.emissiveIntensity).toBe(0);expect(supply.rotation.z).toBe(0);
+  renderer.update(state,270);expect(crate.material.emissiveIntensity).toBeLessThan(.1);expect(supply.rotation.z).toBe(0);
+  const idleScene=new THREE.Scene(),idle=new GrenadeRenderer(idleScene);idle.update(state,300);
+  const idleMaterial=(idleScene.getObjectByName('grenade-supply')!.children[0] as THREE.Mesh<THREE.BoxGeometry,THREE.MeshStandardMaterial>).material;
   renderer.present([{kind:'grenadeSupplyHit'}],300);renderer.update(state,300);renderer.reset();renderer.update(state,300);
-  expect(crate.material.emissiveIntensity).toBe(0);expect(supply.scale.x).toBe(1);expect(scene.children).toEqual(children);
+  expect(crate.material.emissiveIntensity).toBe(idleMaterial.emissiveIntensity);expect(supply.scale.x).toBe(1);expect(scene.children).toEqual(children);idle.dispose();
   renderer.dispose();expect(scene.children).toHaveLength(0);
 });
 

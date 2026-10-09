@@ -1,5 +1,14 @@
 // Deterministic presentation only; never applied to authoritative positions.
 export const GRENADE_FX = { durationMs: 1200, slots: 2, airborneLimit: 8, airborneMs: 1150, reactionMs: 650 } as const;
+export const GRENADE_DEBRIS_COUNT = 24;
+export function grenadeDebrisPose(index: number, ageMs: number, radius: number) {
+  const t = Math.max(0, ageMs / 1000), vy = 3 + index % 5 * 1.1;
+  const landing = (vy + Math.sqrt(vy * vy + 6.4)) / 16;
+  const flight = Math.min(t, landing), angle = index * 2.3999632297;
+  const distance = flight * radius * (.85 + index % 4 * .18);
+  return { x: Math.cos(angle) * distance, z: Math.sin(angle) * distance,
+    y: Math.max(.06, .2 + vy * flight - 8 * flight * flight), spin: flight * (index % 2 ? 9 : -7) };
+}
 export function radialBlastDirection(x: number, z: number, centerX: number, centerZ: number, id: number) {
   const dx = centerX - x, dz = z - centerZ, length = Math.hypot(dx, dz);
   const angle = id * 2.399963229728653;
