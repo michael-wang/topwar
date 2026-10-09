@@ -27,7 +27,7 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'missionIntro');
     this.element.className = 'field-observer'; this.element.hidden = true;
     this.element.setAttribute('aria-live', 'polite');
-    this.portrait.alt = ''; this.portrait.width = 72; this.portrait.height = 82;
+    this.portrait.alt = ''; this.portrait.width = 110; this.portrait.height = 110;
     this.lamp.className = 'observer-radio-light'; this.lamp.setAttribute('aria-hidden', 'true');
     this.element.append(this.portrait, this.text, this.lamp);
     this.updateText(); host.append(this.element);
