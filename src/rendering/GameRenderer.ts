@@ -1,6 +1,7 @@
 import { ART } from '../art/ArtDirection';
 import { GrenadeRenderer } from './GrenadeRenderer';
 import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
+import { DestroyerRenderer } from './DestroyerRenderer';
 import type { ArtilleryEvent } from '../simulation/artillery';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { BattlefieldAir } from './environment/BattlefieldAir';
@@ -48,6 +49,7 @@ export class GameRenderer {
   private readonly scene = new THREE.Scene();
   private readonly grenadeRenderer = new GrenadeRenderer(this.scene);
   private artilleryRenderer: EnemyArtilleryRenderer | null = null;
+  private destroyerRenderer: DestroyerRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private readonly supplyProjection = new THREE.Vector3();
@@ -120,8 +122,10 @@ export class GameRenderer {
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.grenadeRenderer.update(state.grenade, nowMs);
+    if (state.destroyer?.state.status === 'active') this.destroyerRenderer ??= new DestroyerRenderer(this.scene);
+    this.destroyerRenderer?.update(state.destroyer);
     if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
-    this.artilleryRenderer?.update(state.artillery, nowMs);
+    this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera.quaternion);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -157,6 +161,7 @@ export class GameRenderer {
     this.air.reset();
     this.grenadeRenderer.reset();
     this.artilleryRenderer?.reset();
+    this.destroyerRenderer?.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset(visualSalt);
     this.bossRenderer.reset();
@@ -172,6 +177,7 @@ export class GameRenderer {
     this.air.dispose();
     this.grenadeRenderer.dispose();
     this.artilleryRenderer?.dispose();
+    this.destroyerRenderer?.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
     this.contactShadows.dispose();

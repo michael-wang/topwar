@@ -1,4 +1,6 @@
 export interface GameRenderState {
+  readonly destroyer?: { readonly state: Readonly<import('../simulation/destroyer').DestroyerState>;
+    readonly config: import('../config/destroyerConfig').DestroyerSettings; readonly elapsedSeconds: number };
   readonly artillery?: { readonly shells: readonly Readonly<import('../simulation/artillery').ArtilleryShell>[];
     readonly elapsedSeconds: number };
   readonly grenade?: {

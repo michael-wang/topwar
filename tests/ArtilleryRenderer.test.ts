@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { EnemyArtilleryRenderer } from '../src/rendering/EnemyArtilleryRenderer';
 import { makeArtilleryShell, sampleArtillery } from '../src/simulation/artillery';
 import { artilleryDefaults } from '../src/config/artilleryConfig';
+import { warningInnerRadius } from '../src/presentation/ArtilleryWarning';
+import { GrenadeExplosion } from '../src/rendering/GrenadeExplosion';
 
 const shell = makeArtilleryShell(1, { source: { id: 'test', type: 'offshore', position: { x: -3, y: 1.2, z: 52 } } },
   2, [-2.8, -1.4, 0, 1.4, 2.8], 0, 0, artilleryDefaults, .588);
@@ -40,4 +42,34 @@ it('keeps all resources bounded across repeated overlapping impacts, rewinds and
     r.reset(); expect(r.getDebugStats()).toEqual({ capacity: 8, shells: 0, warnings: 0, impacts: 0 });
   }
   r.dispose(); expect(scene.children).toHaveLength(0);
+});
+
+it('fills the true elapsed proportion inward while retaining the collision boundary', () => {
+  for (const progress of [0, .25, .5, .9, 1]) expect(1 - warningInnerRadius(progress) ** 2).toBeCloseTo(progress);
+  const scene = new THREE.Scene(), r = new EnemyArtilleryRenderer(scene);
+  r.update({ shells: [shell], elapsedSeconds: shell.flightSeconds / 2 }, 500);
+  const warning = scene.getObjectByName('enemy-shell-warning-0')!;
+  const fill = warning.children[1] as THREE.Mesh;
+  expect(fill.geometry.attributes.position.getX(0)).toBeCloseTo(Math.sqrt(.5));
+  expect(warning.scale.x).toBe(shell.radius); expect(fill.material).toMatchObject({ depthTest: true });
+  r.dispose();
+});
+
+it('refreshes one 450ms alert that follows the actual player and freezes with presentation time', () => {
+  const scene = new THREE.Scene(), r = new EnemyArtilleryRenderer(scene);
+  r.present([{ kind: 'artilleryLaunch', shell }], 1000);
+  r.update({ shells: [shell], elapsedSeconds: 1 }, 1200, { x: 1.2, z: 0 });
+  const alert = scene.getObjectByName('artillery-lock-on')!;
+  expect(alert.visible).toBe(true); expect(alert.position.x).toBe(-1.2);
+  const scale = alert.scale.x; r.update({ shells: [shell], elapsedSeconds: 1 }, 1200); expect(alert.scale.x).toBe(scale);
+  r.present([{ kind: 'artilleryLaunch', shell }], 1300);
+  r.update({ shells: [shell], elapsedSeconds: 1 }, 1700); expect(alert.visible).toBe(true);
+  r.update({ shells: [shell], elapsedSeconds: 1 }, 1750); expect(alert.visible).toBe(false);
+  r.reset(); expect(alert.visible).toBe(false); r.dispose();
+});
+
+it('omits persistent enemy-shell stains while preserving player Grenade stains', () => {
+  const a = new GrenadeExplosion(new THREE.Scene(), 8, false), b = new GrenadeExplosion(new THREE.Scene());
+  for (const r of [a, b]) { r.present(0, 0, .588, 0); r.update(1300, 0); }
+  expect(a.activeScorches).toBe(0); expect(b.activeScorches).toBe(1); a.dispose(); b.dispose();
 });

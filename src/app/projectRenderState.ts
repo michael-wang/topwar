@@ -18,6 +18,8 @@ export function projectRenderState(state: SimulationFrameState,
   const defenseMode = !!config.catharsis?.balance.defenseMode;
   const originZ = defenseMode ? state.player.z : 0;
   return {
+    ...(state.destroyer && state.catharsis?.balance.destroyer ? { destroyer: { state: state.destroyer,
+      config: state.catharsis.balance.destroyer, elapsedSeconds: state.elapsedSeconds } } : {}),
     ...(state.artillery ? { artillery: { shells: state.artillery.shells, elapsedSeconds: state.elapsedSeconds } } : {}),
     ...(state.grenade ? { grenade: { supply: state.grenade.supply, flight: state.grenade.flight,
       elapsedSeconds: state.elapsedSeconds, originZ } } : {}),

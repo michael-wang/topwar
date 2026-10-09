@@ -1,3 +1,4 @@
+import './ui/observer.css';
 import { applyArtTheme } from './ui/ArtTheme';
 import { GameApp } from './app/GameApp';
 import { ConfigStore } from './config/ConfigStore';

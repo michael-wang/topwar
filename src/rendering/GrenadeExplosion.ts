@@ -10,10 +10,10 @@ export class GrenadeExplosion {
   private readonly transform = new THREE.Object3D();
   private readonly color = new THREE.Color();
   private readonly slots: ReturnType<GrenadeExplosion['createSlot']>[] = [];
-  private readonly scorch: GroundScorchMarks;
-  constructor(private readonly scene: THREE.Scene, slots: number = GRENADE_FX.slots) {
+  private readonly scorch: GroundScorchMarks | null;
+  constructor(private readonly scene: THREE.Scene, slots: number = GRENADE_FX.slots, persistentScorch = true) {
     if (!Number.isInteger(slots) || slots < 1 || slots > 8) throw Error('Invalid explosion pool capacity');
-    this.scorch = new GroundScorchMarks(scene);
+    this.scorch = persistentScorch ? new GroundScorchMarks(scene) : null;
     for (let i = 0; i < slots; i++) this.slots.push(this.createSlot(i));
     this.reset();
   }
@@ -46,10 +46,10 @@ export class GrenadeExplosion {
     const slot = this.slots.find(s => nowMs - s.atMs >= GRENADE_FX.durationMs)
       ?? this.slots.reduce((a, b) => a.atMs < b.atMs ? a : b);
     Object.assign(slot, { atMs: nowMs, x, z, radius });
-    this.scorch.present(x, z, radius, nowMs);
+    this.scorch?.present(x, z, radius, nowMs);
   }
   update(nowMs: number, originZ: number): void {
-    this.scorch.update(nowMs, originZ);
+    this.scorch?.update(nowMs, originZ);
     for (const s of this.slots) {
       const age = nowMs - s.atMs, t = age / 1000, r = s.radius, x = -s.x, z = s.z - originZ;
       const active = age >= 0 && age < GRENADE_FX.durationMs;
@@ -103,10 +103,10 @@ export class GrenadeExplosion {
     }
   }
   get active(): number { return this.slots.filter(s => s.meshes.some(m => m.visible)).length; }
-  get activeScorches(): number { return this.scorch.active; }
-  reset(): void { this.scorch.reset(); for (const s of this.slots) { s.atMs = -Infinity; s.meshes.forEach(m => { m.visible = false; }); } }
+  get activeScorches(): number { return this.scorch?.active ?? 0; }
+  reset(): void { this.scorch?.reset(); for (const s of this.slots) { s.atMs = -Infinity; s.meshes.forEach(m => { m.visible = false; }); } }
   dispose(): void {
-    this.scorch.dispose();
+    this.scorch?.dispose();
     for (const s of this.slots) { this.scene.remove(...s.meshes); for (const m of s.meshes) if (m instanceof THREE.InstancedMesh) m.dispose(); s.materials.forEach(m => m.dispose()); }
     this.sphere.dispose(); this.box.dispose(); this.ringGeometry.dispose();
   }

@@ -1,0 +1,18 @@
+.beachhead-defense .observer-languages {
+  position:absolute; z-index:12; top:calc(var(--hud-inset-top, 0px) + 9px); left:50%; transform:translateX(-50%);
+  display:flex; gap:2px; padding:2px; border:1px solid #c3a264; border-radius:3px 7px 3px 3px; background:#182b3b;
+}
+.observer-languages button { min-width:44px; min-height:44px; padding:3px; border:0; border-radius:2px; color:#ebe4ce; background:transparent; font:bold 11px system-ui; cursor:pointer; }
+.observer-languages button[aria-pressed=true] { background:#e6af45; color:#182b3b; }
+.observer-languages button:focus-visible { outline:2px solid #fff1cb; outline-offset:2px; }
+.beachhead-defense .field-observer {
+  position:absolute; z-index:9; pointer-events:none; left:12px; top:calc(var(--hud-inset-top, 0px) + 62px);
+  box-sizing:border-box; width:min(310px, calc(100% - 24px)); min-height:88px; padding:9px 14px 9px 78px;
+  background:#182b3bf2; border:2px solid #e0c78d; border-radius:3px 12px 4px 7px;
+  box-shadow:3px 3px 0 #101d2c; color:#fff0d2; display:flex; align-items:center;
+}
+.field-observer[hidden] { display:none; }
+.field-observer img { position:absolute; width:72px; height:82px; object-fit:contain; left:1px; bottom:0; }
+.field-observer p { margin:0; font:600 13px/1.38 system-ui, sans-serif; text-wrap:pretty; }
+.observer-radio-light { position:absolute; right:6px; top:7px; width:4px; height:4px; border-radius:50%; background:#ffb547; }
+@media (prefers-reduced-motion: reduce) { .field-observer { transform:none !important; } }

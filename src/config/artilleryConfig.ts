@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Structural bound shared with the visual pool; ordinary play has no artillery source yet.
+// Structural bound shared by authored artillery sources and the visual pool.
 export const ARTILLERY_CAPACITY = 8;
 export const ArtilleryFlightSchema = z.strictObject({
   horizontalSpeed: z.number().finite().min(4).max(200),

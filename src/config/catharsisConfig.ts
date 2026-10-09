@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ArtilleryConfigSchema } from './artilleryConfig';
+import { DestroyerConfigSchema } from './destroyerConfig';
 import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
 import { ProgressionConfigSchema, progressionDefaults } from './progressionConfig';
 import { PostCapSurvivalConfigSchema, postCapSurvivalDefaults } from './postCapSurvivalConfig';
@@ -16,6 +17,7 @@ const pressureRampStage = z.strictObject({
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
+  destroyer: DestroyerConfigSchema.optional(),
   artillery: ArtilleryConfigSchema.optional(),
   defenseMotionVersion: z.literal(2).optional(),
   defenseWaves: DefenseWaveConfigSchema.default(defenseWaveDefaults),

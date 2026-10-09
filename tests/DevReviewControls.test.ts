@@ -39,7 +39,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('routes physical 4/5/6 and CURVE/EVOLVE/MG clicks through exactly the same callback', () => {
   const { controls, root, select, press } = setup();
-  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG', 'LATE', 'MG7', 'MG8', 'CARNIVAL', 'CRATE3', 'CRATE8', 'SHELL']);
+  expect(root.children.map(b => b.textContent)).toEqual(['GRENADE', 'CURVE', 'EVOLVE', 'MG', 'LATE', 'MG7', 'MG8', 'CARNIVAL', 'CRATE3', 'CRATE8', 'SHELL', 'NAVAL']);
   for (const [index, code, role] of [[1, 'Digit4', 'curve'], [2, 'Digit5', 'evolve'], [3, 'Digit6', 'machineGun']] as const) {
     const button = root.children[index];
     button.dispatchEvent(new Event('click'));

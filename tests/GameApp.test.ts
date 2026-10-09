@@ -11,6 +11,9 @@ import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInp
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
 import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
+vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
+  update() {} reset() {} dispose() {}
+} }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
 } }));

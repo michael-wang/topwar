@@ -1,5 +1,6 @@
 {
   "catharsis": {
+    "destroyer": { "enabled": true, "durationSeconds": 24, "entrySeconds": 3.2, "exitAtSeconds": 20, "radioAtSeconds": 1.3, "radioDurationSeconds": 4.2, "shotTimes": [5.8, 9, 13, 14.3, 18], "startX": -28, "stationX": -4, "exitX": 30, "z": 56 },
     "artillery": { "horizontalSpeed": 24, "gravity": 8, "minimumFlightSeconds": 0.5, "impactLaneFraction": 0.42, "maxActive": 8 },
     "defenseMotionVersion": 2,
     "defenseWaves": { "intervalSeconds": 6, "firstWaveDelaySeconds": 1.6666666666666667 },

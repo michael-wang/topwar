@@ -1,5 +1,6 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { artilleryDefaults } from '../config/artilleryConfig';
+import { advanceDestroyer, destroyerMuzzle, emptyDestroyer, validateDestroyer } from './destroyer';
 import { artilleryHits, effectiveArtilleryLane, makeArtilleryShell, validateArtillery,
   type ArtilleryLaunch, type ArtilleryEvent } from './artillery';
 import { afterOneSoldierCasualty } from './squad/composition';
@@ -347,6 +348,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'carnival')) fields.push('carnival');
   if (Object.hasOwn(state, 'defenseWaves')) fields.push('defenseWaves');
   if (Object.hasOwn(state, 'artillery')) fields.push('artillery');
+  if (Object.hasOwn(state, 'destroyer')) fields.push('destroyer');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -384,6 +386,13 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     || state.machineGunReleaseAtSeconds == null)) throw new Error('Invalid post-cap activation');
   if (carnival.status === 'active' && postCapSurvival.startedAtSeconds !== null)
     throw new Error('Carnival and survival cannot own spawning together');
+  const destroyer = catharsis?.balance.defenseMode && catharsis.balance.destroyer
+    ? validateDestroyer(state.destroyer ?? emptyDestroyer(carnival.status === 'complete' || carnival.status === 'skipped'
+      || postCapSurvival.startedAtSeconds !== null), catharsis.balance.destroyer, state.elapsedSeconds as number,
+      isPlainObject(state.squad) && (state.squad.count as number) > 0) : undefined;
+  if (state.destroyer !== undefined && !destroyer) throw Error('Destroyer requires Defense configuration');
+  if (destroyer?.status === 'active' && (carnival.status === 'active' || postCapSurvival.startedAtSeconds !== null))
+    throw Error('Destroyer cannot share spawning ownership');
   if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
     || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
     || (progression.level as number) < 1 || !Number.isSafeInteger(progression.xp)
@@ -745,6 +754,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),
+      ...(destroyer ? { destroyer } : {}),
       ...(state.defenseWaves !== undefined ? { defenseWaves: DefenseWaveStateSchema.parse(state.defenseWaves) } : {}),
       // Older Lv6 snapshots already represent an established MG run; never inject a retroactive wave.
       ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: releaseAt === undefined
@@ -862,6 +872,7 @@ export class Simulation {
       ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival: emptyPostCapSurvival() } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival: emptyCarnival() } : {}),
+      ...(catharsis?.balance.defenseMode && catharsis.balance.destroyer ? { destroyer: emptyDestroyer() } : {}),
       ...(catharsis?.balance.defenseMode && enemyStream ? { defenseWaves: { nextAtSeconds: catharsis.balance.defenseWaves.firstWaveDelaySeconds } } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
@@ -1134,17 +1145,18 @@ export class Simulation {
       && landingAssault?.reinforcementActiveAtSeconds !== undefined
       && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
     const carnivalSpawning = carnivalOwnsSpawning(this.state);
+    const navalSpawning = this.state.destroyer?.status === 'active';
     let defenseWaves = this.state.defenseWaves;
     if (catharsis?.balance.defenseMode && defenseWaves && enemyStream && this.enemyStreamDefinition)
       defenseWaves = advanceDefenseWaves(defenseWaves, { ...this.state, enemies, enemyStream }, nextElapsedSeconds,
-        this.enemyStreamDefinition.seed, !assaultDue && !carnivalSpawning);
+        this.enemyStreamDefinition.seed, !assaultDue && !carnivalSpawning && !navalSpawning);
     if (!catharsis?.balance.defenseMode && enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression, this.state.postCapSurvival);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
     let giantEncounter = this.state.giantEncounter;
-    if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue && !carnivalSpawning) {
+    if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue && !carnivalSpawning && !navalSpawning) {
       const interval = catharsis.balance.defenseWaves.intervalSeconds;
       landingAssault = advanceLandingAssault(landingAssault, nextElapsedSeconds,
         nextZ, catharsis.balance, catharsis.trackHalfWidth, this.enemyStreamDefinition.seed, interval, enemies, enemyStream);
@@ -1543,7 +1555,7 @@ export class Simulation {
       }
     }
     if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
-    if (giantEncounter && catharsis && enemyStream && squad.count > 0 && !carnivalSpawning
+    if (giantEncounter && catharsis && enemyStream && squad.count > 0 && !carnivalSpawning && !navalSpawning
       && !(catharsis.balance.carnival.enabled && this.state.carnival?.status === 'pending' && progression!.level >= 6))
       giantEncounter = advanceGiantEncounter(giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
         catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream);
@@ -1565,11 +1577,14 @@ export class Simulation {
     const phaseFrame = { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
       player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade };
     const carnival = advanceCarnival(this.state.carnival, phaseFrame, this.enemyStreamDefinition?.seed ?? this.state.seed);
-    const postCapSurvival = carnival.status === 'active' ? emptyPostCapSurvival()
+    const naval = this.state.destroyer ? advanceDestroyer(this.state.destroyer, catharsis?.balance.destroyer,
+      carnival, nextElapsedSeconds, squad.count > 0) : undefined;
+    const postCapSurvival = carnival.status === 'active' || naval?.state.status === 'active' ? emptyPostCapSurvival()
       : advancePostCapSurvival(this.state.postCapSurvival, phaseFrame);
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),
+      ...(naval ? { destroyer: naval.state } : {}),
       ...(defenseWaves ? { defenseWaves } : {}),
       ...(artillery ? { artillery } : {}),
       ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
@@ -1578,6 +1593,7 @@ export class Simulation {
       weapons: { ...(memberCooldowns ? { rifleMemberCooldowns: memberCooldowns } : {}), rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
+    if (naval?.fire) this.launchArtillery({ source: destroyerMuzzle(nextElapsedSeconds - naval.state.startedAtSeconds!, catharsis!.balance.destroyer!) });
     if (stepEvents.length > 0) {
       this.presentationEvents.push(...stepEvents);
       if (this.presentationEvents.length > Simulation.MAX_PRESENTATION_EVENTS) {
@@ -1615,6 +1631,7 @@ export class Simulation {
       ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),
       ...(this.state.postCapSurvival ? { postCapSurvival: { ...this.state.postCapSurvival } } : {}),
       ...(this.state.carnival ? { carnival: { ...this.state.carnival } } : {}),
+      ...(this.state.destroyer ? { destroyer: { ...this.state.destroyer } } : {}),
       ...(this.state.defenseWaves ? { defenseWaves: { ...this.state.defenseWaves } } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),

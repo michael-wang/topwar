@@ -1,7 +1,10 @@
+import { ObserverVoice } from './ObserverVoice';
+import type { ObserverLocale } from '../ui/observerLocale';
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 import type { GrenadeEvent } from '../simulation/grenade';
+import { LOCK_ON_AUDIO_GAP_SECONDS } from '../presentation/ArtilleryWarning';
 
 // Existing audio cue delay is independent of the removed visual crash system.
 const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
@@ -9,7 +12,7 @@ const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
   | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen' | 'grenadeExplosion'
-  | 'enemyCannon' | 'enemyShellImpact';
+  | 'enemyCannon' | 'enemyShellImpact' | 'enemyLockOn' | 'radioOpen' | 'radioClose';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
 interface ObservedReward { id: number; hitProgress: number }
@@ -113,6 +116,11 @@ type ToneShape = { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number; attackSeconds?: number; delaySeconds?: number };
 const rewardTone: ToneShape = { from: 630, to: 980, seconds: .14, wave: 'sine', volume: .11 };
 const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?: ToneShape }> = {
+  radioOpen: { from: 920, to: 920, seconds: .085, wave: 'sine', volume: .10,
+    secondary: { from: 1280, to: 1280, seconds: .075, wave: 'sine', volume: .07, delaySeconds: .09 } },
+  radioClose: { from: 1100, to: 760, seconds: .12, wave: 'sine', volume: .09 },
+  enemyLockOn: { from: 880, to: 1200, seconds: .10, wave: 'triangle', volume: .10,
+    secondary: { from: 880, to: 1200, seconds: .10, wave: 'triangle', volume: .10, delaySeconds: .14 } },
   enemyCannon: { from: 105, to: 32, seconds: .3, wave: 'triangle', volume: .16,
     secondary: { from: 58, to: 24, seconds: .85, wave: 'sine', volume: .1 },
     tertiary: { from: 270, to: 60, seconds: .10, wave: 'sawtooth', volume: .045 } },
@@ -177,6 +185,10 @@ export class GameAudio {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private weaponBus: GainNode | null = null;
+  private radioDuckBus: GainNode | null = null;
+  private voice: ObserverVoice | null = null;
+  private radioActive = false;
+  private readonly radioSources = new Set<AudioScheduledSourceNode>();
   private supplyRewardAtMs: number | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();
   private rumbleBuffer: AudioBuffer | null = null;
@@ -184,6 +196,7 @@ export class GameAudio {
   private readonly grenadeSources = new Set<AudioScheduledSourceNode>();
   private readonly artillerySources = new Set<AudioScheduledSourceNode>();
   private lastGrenadeAudioSeconds = -Infinity;
+  private lastLockOnSeconds = -Infinity;
   private readonly observer = new AudioCueObserver();
   private readonly environment = new EnvironmentAudioScheduler();
   private music: ProceduralMusic | null = null;
@@ -240,11 +253,13 @@ export class GameAudio {
   }
 
   resetObservation(): void {
+    this.syncRadio('en', null, false);
     this.silenceArtillery();
     this.lastGrenadeAudioSeconds = -Infinity; this.grenadeSources.clear();
     this.supplyRewardAtMs=null;
     // Retry/load must not play a crash scheduled by the previous run's lethal hit.
     for (const source of this.active) { try { source.stop(); } catch { /* already ended */ } }
+    this.radioSources.clear();
     this.observer.reset();
     this.environment.reset();
     this.nextEnvironmentCueMs = -Infinity;
@@ -257,12 +272,30 @@ export class GameAudio {
     this.musicPresentationMs = presentationMs;
     if (!this.unlocked || !this.context || this.context.state !== 'running' || !this.master) return;
     this.music ??= new ProceduralMusic(this.context, this.master);
-    this.music.update(presentationMs, frame);
+    this.music.update(presentationMs, { ...frame, musicVolume: frame.musicVolume * (this.radioActive ? .65 : 1) });
+  }
+
+  syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean): void {
+    if (paused) {
+      for (const source of this.radioSources) { try { source.stop(); } catch { /* ended */ } this.active.delete(source); }
+      this.radioSources.clear();
+    }
+    const active = offset !== null && !paused;
+    if (active !== this.radioActive && this.radioDuckBus && this.context) {
+      const gain = this.radioDuckBus.gain, now = this.context.currentTime;
+      gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now);
+      gain.exponentialRampToValueAtTime(active ? .6 : 1, now + .15);
+    }
+    this.radioActive = active;
+    if (!this.unlocked || !this.context || !this.master) return;
+    this.voice ??= new ObserverVoice(this.context, this.master);
+    this.voice.sync(locale, offset, paused || this.context.state !== 'running');
   }
 
   silenceMusic(): void { this.music?.silence(); }
 
   silenceArtillery(): void {
+    this.lastLockOnSeconds = -Infinity;
     for (const source of this.artillerySources) { try { source.stop(); } catch { /* already ended */ }
       this.active.delete(source); }
     this.artillerySources.clear();
@@ -291,6 +324,10 @@ export class GameAudio {
     const context = this.context;
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
+      if (cue === 'enemyLockOn') {
+        if (context.currentTime - this.lastLockOnSeconds < LOCK_ON_AUDIO_GAP_SECONDS) return;
+        this.lastLockOnSeconds = context.currentTime;
+      }
       const artillery = cue === 'enemyCannon' || cue === 'enemyShellImpact';
       // Two four-source reports may overlap; ambient artillery owns a separate scheduler.
       if (artillery) while (this.artillerySources.size > 4) {
@@ -308,7 +345,7 @@ export class GameAudio {
       }
       const shape = cueShape[cue];
       const weapon = cue==='rifle'||cue==='machineGun'||cue==='heavyRifle';
-      if(weapon&&!this.weaponBus){this.weaponBus=context.createGain();this.weaponBus.gain.value=1;this.weaponBus.connect(this.master);}
+      if(weapon&&!this.weaponBus){this.weaponBus=context.createGain();this.weaponBus.gain.value=1;this.radioDuckBus=context.createGain();this.radioDuckBus.gain.value=this.radioActive ? .6 : 1;this.weaponBus.connect(this.radioDuckBus);this.radioDuckBus.connect(this.master);}
       if(cue==='supplyOpen'&&this.weaponBus){
         // Briefly clear space for opening and the unchanged reward chime,
         // including already-playing MG voices. Gameplay fire is unaffected.
@@ -363,10 +400,12 @@ export class GameAudio {
           this.active.delete(oscillator);
           this.grenadeSources.delete(oscillator);
           this.artillerySources.delete(oscillator);
+          this.radioSources.delete(oscillator);
         };
         this.active.add(oscillator);
         if (cue === 'grenadeExplosion') this.grenadeSources.add(oscillator);
-        if (artillery) this.artillerySources.add(oscillator);
+        if (artillery || cue === 'enemyLockOn') this.artillerySources.add(oscillator);
+        if (cue === 'radioOpen' || cue === 'radioClose') this.radioSources.add(oscillator);
         oscillator.start(toneStart);
         oscillator.stop(toneEnd);
       };
@@ -414,6 +453,9 @@ export class GameAudio {
       oscillator.disconnect();
     }
     this.active.clear();
+    this.radioSources.clear();
+    this.voice?.dispose(); this.voice = null;
+    this.radioDuckBus?.disconnect(); this.radioDuckBus = null;
     this.music?.dispose();
     this.music = null;
     this.master?.disconnect();

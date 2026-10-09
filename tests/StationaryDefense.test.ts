@@ -6,7 +6,10 @@ import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { CatharsisConfigSchema } from '../src/config/catharsisConfig';
 import { DefenseWaveConfigSchema } from '../src/config/defenseConfig';
 
-const make=(seed=17)=>new Simulation({...carnivalOptions,seed});
+// Isolate the accepted motion/fallback; naval handoff has dedicated coverage.
+const fallbackOptions={...carnivalOptions,catharsis:{...carnivalOptions.catharsis,
+  balance:{...carnivalOptions.catharsis.balance,destroyer:{...carnivalOptions.catharsis.balance.destroyer!,enabled:false}}}};
+const make=(seed=17)=>new Simulation({...fallbackOptions,seed});
 const step=(sim:Simulation,n=1)=>{for(let i=0;i<n;i++)sim.step(1/60,{targetX:0},pilotTuning);};
 const quiet=()=>{
   const sim=new Simulation({...carnivalOptions,level:{id:'contact',length:100,enemyGroups:[],upgradeGates:[]}});
@@ -92,7 +95,7 @@ it('rejects invalid timer snapshots without partial restoration',()=>{
 });
 
 it('consumes phase-owned ordinary deadlines and resumes only the next slot after Carnival',()=>{
-  const sim=createDevReviewFixture(carnivalOptions,3,'carnival');
+  const sim=createDevReviewFixture(fallbackOptions,3,'carnival');
   step(sim);const release=sim.getState().machineGunReleaseAtSeconds;
   expect(sim.getState().defenseWaves!.nextAtSeconds).toBeCloseTo(5/3+6);
   const resumed:number[]=[];

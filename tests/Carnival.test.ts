@@ -8,6 +8,8 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import data from '../public/game-data/game.json';
 
 const step = (sim: Simulation, n = 1) => { for (let i=0;i<n;i++) sim.step(1/60,{targetX:0},pilotTuning); };
+const withoutNaval = (sim: Simulation) => { const balance=sim.getState().catharsis!.balance;
+  sim.setCatharsisBalance({...balance,destroyer:{...balance.destroyer!,enabled:false}});return sim; };
 const roundTrip = (sim: Simulation) => { const clone=carnivalEntry();clone.restoreState(JSON.parse(JSON.stringify(sim.getState())));return clone; };
 
 it('starts CARNIVAL before one unchanged 59-Grunt / one-Heavy release and resets exactly', () => {
@@ -48,7 +50,7 @@ it('admits timed alternating Grunt batches, caps active enemies, and consumes bl
 });
 
 it('keeps authored waves through real Lv7, then hands off once with no queued ordinary waves or Giants', () => {
-  const sim=carnivalEntry(17);let lv7:number|null=null,ordinaryAfter=0;
+  const sim=withoutNaval(carnivalEntry(17));let lv7:number|null=null,ordinaryAfter=0;
   for(let tick=0;tick<60*31;tick++) {
     const b=sim.getState();if(tick%12===0){const lane=carnivalPilotLane(b);if(lane!==b.player.selectedLane)sim.stepLane(lane<b.player.selectedLane! ? -1:1);}
     step(sim);const s=sim.getState();
@@ -109,7 +111,7 @@ it('rejects corrupt phase clocks and simultaneous ownership without mutating the
 });
 
 it('can disable Carnival at runtime without replaying it or accumulating a spawn backlog', () => {
-  const sim=carnivalEntry();step(sim,600);sim.setCatharsisBalance({...sim.getState().catharsis!.balance,
+  const sim=withoutNaval(carnivalEntry());step(sim,600);sim.setCatharsisBalance({...sim.getState().catharsis!.balance,
     carnival:{...carnivalConfig.catharsis!.carnival,enabled:false}});step(sim);
   expect(sim.getState().carnival!.status).toBe('complete');expect(sim.getState().postCapSurvival!.startedAtSeconds).not.toBeNull();
   sim.setCatharsisBalance(carnivalConfig.catharsis!);step(sim);expect(sim.getState().carnival!.status).toBe('complete');

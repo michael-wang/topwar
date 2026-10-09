@@ -108,6 +108,7 @@ export interface LandingAssaultState {
 }
 
 export interface SimulationState {
+  destroyer?: import('./destroyer').DestroyerState;
   artillery?: import('./artillery').ArtilleryState;
   postCapSurvival?: import('./postCapSurvival').PostCapSurvivalState;
   carnival?: import('./carnival').CarnivalState;

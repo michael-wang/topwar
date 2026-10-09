@@ -1,3 +1,4 @@
+import { FieldObserver } from '../ui/FieldObserver';
 import { ProgressionLevelObserver } from '../presentation/ProgressionLevelUp';
 import { BattleInfoHud } from '../ui/BattleInfoHud';
 import { CombatControlStrip } from '../ui/CombatControlStrip';
@@ -71,6 +72,7 @@ export class GameApp {
   private readonly xpHud: XpHud | null;
   private readonly battleInfo: BattleInfoHud | null;
   private readonly grenadeButton: GrenadeButton | null;
+  private readonly fieldObserver: FieldObserver | null;
   private readonly supplyTransfer: SupplyRewardTransfer | null;
   private grenadeRequested = false;
   private readonly unsubscribeConfig: () => void;
@@ -116,6 +118,7 @@ export class GameApp {
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
     this.audio = new GameAudio();
+    this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio) : null;
     this.startOverlay = new GameStartOverlay(viewport);
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);
@@ -213,6 +216,7 @@ export class GameApp {
     this.hudActions.setPaused(false);
     this.viewport.classList?.remove('game-paused');
     this.renderer.stopResizeHandling();
+    this.fieldObserver?.reset();
     this.audio.silenceMusic();
   }
 
@@ -236,6 +240,7 @@ export class GameApp {
     this.pauseOverlay.dispose();
     this.tierHud.dispose();
     this.damageFlash.dispose();
+    this.fieldObserver?.dispose();
     this.audio.dispose();
     this.perfHud?.dispose();
     this.renderer.dispose();
@@ -268,6 +273,7 @@ export class GameApp {
     this.hudActions.setPaused(false);
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
+    this.fieldObserver?.reset();
     this.audio.resetObservation();
     this.xpHud?.reset();
     this.battleInfo?.reset();
@@ -485,6 +491,7 @@ export class GameApp {
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
       if (state.squad.count === 0) this.laneInput?.stop();
+      this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused);
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
@@ -498,7 +505,10 @@ export class GameApp {
       }
       this.renderer.presentGrenade(grenadeEvents, this.presentationMs);
       const artilleryEvents = this.simulation.consumeArtilleryEvents();
-      for (const event of artilleryEvents) this.audio.play(event.kind === 'artilleryLaunch' ? 'enemyCannon' : 'enemyShellImpact');
+      for (const event of artilleryEvents) {
+        this.audio.play(event.kind === 'artilleryLaunch' ? 'enemyCannon' : 'enemyShellImpact');
+        if (event.kind === 'artilleryLaunch') this.audio.play('enemyLockOn');
+      }
       this.renderer.presentArtillery(artilleryEvents, this.presentationMs);
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);

@@ -8,7 +8,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
-if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'CRATE3', 'CRATE8', 'SHELL review requires', 'shell-review-muzzle', 'artillery dodge test', 'Supply DEV review requires', 'Late DEV entry requires', 'Restart Lv6 before the Machine Gun release and full Carnival'].some(marker => shippingJs.includes(marker)))
+if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'CRATE3', 'CRATE8', 'NAVAL', 'createNavalReview', 'SHELL review requires', 'shell-review-muzzle', 'artillery dodge test', 'Supply DEV review requires', 'Late DEV entry requires', 'Restart Lv6 before the Machine Gun release and full Carnival'].some(marker => shippingJs.includes(marker)))
   throw Error('Development review controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -34,6 +34,10 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  await page.waitForSelector('.game-start-overlay');
  const sha=(await page.locator('.build-label').textContent()).split(' · ').at(-1);
  if(!/^[0-9a-f]{7,40}$/.test(sha))throw Error('Missing build SHA');
+ for(const expression of ['neutral','alert']){
+  const asset=await page.request.get(`http://127.0.0.1:5181/topwar/art/observer/${expression}.webp?v=${sha}`);
+  if(!asset.ok()||!asset.headers()['content-type']?.includes('image/webp'))throw Error('Missing local observer portrait under Pages base path');
+ }
  const config=await configResponse?.json(),levelData=await levelResponse?.json();
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
  if(!config.catharsis.defenseMode||config.catharsis.grenade.capacity!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220,200,300]')throw Error('Stale defense/progression/Grenade config');

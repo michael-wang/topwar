@@ -36,5 +36,13 @@ it('uses dedicated artillery reports with bounded overlap and cancels tails on P
   expect(audio.getDebugStats().sfxSources).toBe(8); expect(context.createBuffer).toHaveBeenCalledOnce();
   audio.silenceArtillery(); expect(audio.getDebugStats().sfxSources).toBe(0);
   audio.play('enemyCannon'); audio.resetObservation(); expect(audio.getDebugStats().sfxSources).toBe(0);
-  expect(sources.every(s=>s.stop.mock.calls.length>=2)).toBe(true); audio.dispose();
+  expect(sources.every(s=>s.stop.mock.calls.length>=2)).toBe(true);
+  audio.play('enemyLockOn'); const warned = sources.length;
+  for(let i=0;i<20;i++)audio.play('enemyLockOn');expect(sources).toHaveLength(warned);
+  context.currentTime=.4;audio.play('enemyLockOn');expect(sources).toHaveLength(warned+2);
+  audio.silenceArtillery();expect(audio.getDebugStats().sfxSources).toBe(0);
+  audio.play('radioOpen');expect(audio.getDebugStats().sfxSources).toBe(2);
+  audio.syncRadio('en', .02, true);expect(audio.getDebugStats().sfxSources).toBe(0);
+  audio.play('radioClose');expect(audio.getDebugStats().sfxSources).toBe(1);
+  audio.resetObservation();expect(sources.at(-1)!.stop.mock.calls.length).toBe(2);audio.dispose();
 });
