@@ -51,7 +51,7 @@ try {
     const buttons = await page.locator('.dev-review-controls button').evaluateAll(bs => bs.map(b => {
       const r = b.getBoundingClientRect(); return { label: b.textContent, x:r.x, right:r.right, y:r.y, bottom:r.bottom, height:r.height };
     }));
-    assert(buttons.map(b=>b.label).join(',') === 'GRENADE,CURVE,EVOLVE,MG,LATE,MG7,MG8', 'All seven entries');
+    assert(buttons.map(b=>b.label).join(',') === 'GRENADE,CURVE,EVOLVE,MG,LATE,MG7,MG8,CARNIVAL', 'All eight entries');
     assert(buttons.every(b => b.x >= 0 && b.right <= width && b.y >= 0 && b.bottom <= 844 && b.height >= 44), 'Menu touch bounds');
     await page.screenshot({ path: `${out}/${width}-menu.png` });
     const runs = [];

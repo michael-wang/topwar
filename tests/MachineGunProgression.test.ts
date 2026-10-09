@@ -83,13 +83,17 @@ it.each([[421, 7, 1, 2], [900, 8, 0, 3]])(
     expect(state.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(1);
     expect(new Set(state.enemies.map(e => e.lane)).size).toBe(3);
     expect(state.machineGunReleaseAtSeconds).toBe(state.elapsedSeconds);
-    expect(state.postCapSurvival!.startedAtSeconds).toBe(state.elapsedSeconds);
+    expect(state.postCapSurvival!.startedAtSeconds).toBeNull();
+    expect(state.carnival).toMatchObject({ status: 'active', startedAtSeconds: state.elapsedSeconds });
     const nextId = state.enemyStream!.nextEnemyId;
     const clone = make(true); clone.restoreState(JSON.parse(JSON.stringify(state)));
     ticks(sim, 180); ticks(clone, 180);
     expect(sim.getState()).toEqual(clone.getState());
     expect(sim.getState().machineGunReleaseAtSeconds).toBe(state.machineGunReleaseAtSeconds);
-    expect(sim.getState().enemyStream!.nextEnemyId).toBe(nextId);
+    const admitted = sim.getState().enemyStream!.nextEnemyId - nextId;
+    expect(admitted).toBeGreaterThan(0);expect(admitted).toBeLessThanOrEqual(balance.carnival.groupSize);
+    expect(sim.getState().enemies.length).toBeLessThanOrEqual(balance.carnival.activeEnemyLimit);
+    expect(sim.getState().carnival!.nextWaveIndex).toBe(1);
     expect(sim.getState().landingAssault!.reinforcementActiveAtSeconds).toBeNull();
   });
 

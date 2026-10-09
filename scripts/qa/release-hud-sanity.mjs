@@ -68,7 +68,7 @@ try {
     assert((await state()).grenade.inventory===3&&!(await state()).grenade.flight,'Invalid target preserves all three');
     await page.locator('.tuning-panel > summary').click();
     const labels=await page.locator('.dev-review-controls button').allTextContents();
-    assert(labels.join(',')==='GRENADE,CURVE,EVOLVE,MG,LATE,MG7,MG8','Seven DEV review actions');await capture('dev-menu');
+    assert(labels.join(',')==='GRENADE,CURVE,EVOLVE,MG,LATE,MG7,MG8,CARNIVAL','Eight DEV review actions');await capture('dev-menu');
     await page.keyboard.press('Escape');await page.evaluate(()=>document.activeElement.blur());
     for(const [key,level] of [['4',4],['5',5],['6',6]]) {
       await page.keyboard.press(key);await advance(40);assert((await state()).progression.level===level,`DEV ${key}`);

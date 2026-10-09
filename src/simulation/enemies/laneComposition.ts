@@ -31,9 +31,11 @@ export function laneWave(waveIndex: number, seed: number, config: CatharsisConfi
   return { lanes, heavy, rewardLane: quiet.length ? quiet[compositionRng.nextInt(quiet.length)] : lanes[0] };
 }
 
-export function laneCompositionForRow(row: number, seed: number, config: CatharsisConfig & { heavyCount?: number }, halfWidth: number):
+export function laneCompositionForRow(row: number, seed: number, config: CatharsisConfig & { heavyCount?: number }, halfWidth: number,
+  authoredLanes?: readonly number[]):
   { x: number; z: number; archetype: 'grunt' | 'heavy'; lane?: number }[] {
   const wave = laneWave(Math.floor(row / config.waveRows), seed, config);
+  if (authoredLanes) wave.lanes = [...authoredLanes];
   const slot = row % config.waveRows;
   if (config.defenseMode) {
     if (slot !== 0) return [];

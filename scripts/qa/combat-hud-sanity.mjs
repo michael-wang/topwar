@@ -46,7 +46,7 @@ try {
     }));
   });
   // All fixture actions still reset exactly; the disclosure returns focus and closes.
-  for (const role of ['grenade', 'curve', 'evolve', 'machineGun', 'late', 'mg7', 'mg8']) {
+  for (const role of ['grenade', 'curve', 'evolve', 'machineGun', 'late', 'mg7', 'mg8', 'carnival']) {
     await selectDevFixture(page, role); const first = await state();
     assert(await page.locator('.dev-review-controls').isHidden(), `${role}: menu auto-closes`);
     await selectDevFixture(page, role);

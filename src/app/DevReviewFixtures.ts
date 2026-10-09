@@ -1,4 +1,5 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
+import { emptyCarnival } from '../simulation/carnival';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 import { admitDefenseGroup } from '../simulation/enemies/defenseGroup';
 import { effectiveSeed } from '../simulation/enemies/effectiveSeed';
@@ -7,7 +8,7 @@ import { advancePostCapSurvival, postCapOrdinarySettings } from '../simulation/p
 import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage, requiredXp } from '../simulation/progression';
 
-export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8';
+export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival';
 export const DEV_REVIEW_FIXTURES = {
   grenade: { level: 3, soldiers: 1 },
   curve: { level: 4, soldiers: 2 },
@@ -16,6 +17,7 @@ export const DEV_REVIEW_FIXTURES = {
   late: { level: 6, soldiers: 1 },
   mg7: { level: 7, soldiers: 2 },
   mg8: { level: 8, soldiers: 3 },
+  carnival: { level: 6, soldiers: 1 },
 } as const;
 
 // App-owned QA adapter, never a simulation mode or serialized debug flag.
@@ -30,13 +32,18 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
     throw new Error('DEV Review requires the defense enemy stream');
   const balance = catharsis.balance;
   const playableLate = role === 'late' || role === 'mg7' || role === 'mg8';
-  if (playableLate && (fixture.level > maxProgressionLevel(balance.progression)
+  if ((playableLate || role === 'carnival') && (fixture.level > maxProgressionLevel(balance.progression)
     || progressionStage(fixture.level, balance.progression).weaponFamily !== 'machineGun'
     || progressionStage(fixture.level, balance.progression).squadStage !== fixture.soldiers))
     throw new Error('Late DEV entry requires its authored Machine Gun squad stage');
   // Isolated short reviews must not acquire recurring threats/pickups. CURVE
   // intentionally follows the natural progression and post-cap continuation.
-  if (playableLate) balance.postCapSurvival.enabled = true;
+  if (role !== 'curve' && role !== 'carnival') {
+    balance.carnival.enabled = false;
+    state.carnival = emptyCarnival(true);
+  }
+  if (role === 'carnival') balance.carnival.enabled = true;
+  if (playableLate || role === 'carnival') balance.postCapSurvival.enabled = true;
   else if (role !== 'curve') balance.postCapSurvival.enabled = false;
   const lane = Math.floor(balance.laneCount / 2);
   const lanes = attackLanePositions(balance.laneCount, catharsis.trackHalfWidth, balance.edgeInset);
@@ -46,14 +53,14 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
     ? Math.max(0, requiredXp(fixture.level, balance.progression) - 10) : role === 'curve' ? 150 : 0 };
   if (fixture.soldiers > 1)
     state.squad = addRifleSoldiers(state.squad, fixture.soldiers - 1, 1, options.tiers.mergeCount);
-  if (playableLate) {
+  if (playableLate || role === 'carnival') {
     // Skip the already-completed Lv5 introduction and Lv6 release, not future
     // encounters. Teaching Supply is acquired; reserves can be used immediately.
     state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
     state.machineGunReleaseAtSeconds = 0;
     state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
       inventory: balance.grenade.capacity, supply: null, flight: null };
-    state.postCapSurvival = advancePostCapSurvival(state.postCapSurvival, state);
+    if (playableLate) state.postCapSurvival = advancePostCapSurvival(state.postCapSurvival, state);
     state.enemies = [];
     state.enemyStream.nextEnemyId = 1;
     // Admit one ordinary late group at the current horizon's last wave row.
@@ -61,7 +68,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
     const stream = options.level.enemyStream;
     const row = Math.max(0, Math.floor((balance.defenseSpawnAheadDistance - stream.startZ)
       / (stream.spacing * balance.waveRows)) * balance.waveRows);
-    admitDefenseGroup(state.enemies, state.enemyStream, row, effectiveSeed(state.seed, stream.seed),
+    if (playableLate) admitDefenseGroup(state.enemies, state.enemyStream, row, effectiveSeed(state.seed, stream.seed),
       { ...balance, ...pressureWaveSettings(balance, state.progression),
         groupSize: pressureGroupSize(balance, fixture.level), ...postCapOrdinarySettings(balance, state.postCapSurvival) },
       catharsis.trackHalfWidth, stream.startZ + row * stream.spacing);
@@ -103,13 +110,13 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
       inventory: balance.grenade.capacity, supply: null, flight: null };
   }
   state.projectiles = []; state.streamRewards = []; state.gates = []; state.pickups = [];
-  const isolatedGiant = role === 'evolve' || role === 'machineGun' || playableLate;
+  const isolatedGiant = role === 'evolve' || role === 'machineGun' || playableLate || role === 'carnival';
   state.giantEncounter = { scheduledAtSeconds: isolatedGiant ? 0 : null, spawned: isolatedGiant };
   state.machineGunReleaseAtSeconds = role === 'machineGun' || playableLate ? 0 : null;
   // The defense camera is fixed but authoritative player Z advances. Place the
   // validated cursor well beyond a review run, without changing stream rules.
   const stream = options.level.enemyStream;
-  if (!playableLate) state.enemyStream.nextRowIndex = role === 'curve'
+  if (!playableLate && role !== 'carnival') state.enemyStream.nextRowIndex = role === 'curve'
     ? Math.ceil((balance.defenseSpawnAheadDistance - stream.startZ) / (stream.spacing * balance.waveRows)) * balance.waveRows
     : Math.max(state.enemyStream.nextRowIndex,
       Math.ceil((balance.defenseSpawnAheadDistance + 600 - stream.startZ) / stream.spacing) + 1);

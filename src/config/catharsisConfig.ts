@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
 import { ProgressionConfigSchema, progressionDefaults } from './progressionConfig';
 import { PostCapSurvivalConfigSchema, postCapSurvivalDefaults } from './postCapSurvivalConfig';
+import { CarnivalConfigSchema, carnivalDefaults } from './carnivalConfig';
 
 const pressureRampStage = z.strictObject({
   xpFraction: z.number().finite().gt(0).lt(1),
@@ -13,6 +14,7 @@ const pressureRampStage = z.strictObject({
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
+  carnival: CarnivalConfigSchema.default(carnivalDefaults),
   postCapSurvival: PostCapSurvivalConfigSchema.default(postCapSurvivalDefaults),
   grenade: GrenadeConfigSchema.default(grenadeDefaults),
   machineGun: z.strictObject({
@@ -84,7 +86,9 @@ export const CatharsisConfigSchema = z.strictObject({
   heavyHeightMultiplier: z.number().finite().positive().max(2).default(1),
   heavyDepthMultiplier: z.number().finite().positive().max(2).default(1),
   rewardAimRadius: z.number().finite().positive(),
-}).refine((value) => value.defenseMode || (value.groupSize - 1) * value.groupRowStride < value.waveRows,
+}).refine(value => !value.carnival.enabled || value.carnival.laneGroups.every(lanes => lanes.every(lane => lane < value.laneCount)),
+  { message: 'Carnival lanes must fit inside the battlefield' })
+  .refine((value) => value.defenseMode || (value.groupSize - 1) * value.groupRowStride < value.waveRows,
   { message: 'Group must fit inside one wave' })
   .refine(value => value.landingAssault.groupSize <= value.landingAssault.activeSoftCap,
     { message: 'Landing group must fit inside the active soft cap' })

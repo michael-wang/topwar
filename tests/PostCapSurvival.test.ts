@@ -12,6 +12,7 @@ import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 const config=GameConfigSchema.parse(data),balance=config.catharsis!;
 const make=(enabled=true)=>new Simulation({seed:17,level:LevelDefinitionSchema.parse(levelData),startSquad:1,
   startRocketCount:0,tiers:config.tiers,catharsis:{trackHalfWidth:3.2,balance:{...balance,
+    carnival:{...balance.carnival,enabled:false}, // Exercise the independently retained fallback.
     postCapSurvival:{...balance.postCapSurvival,enabled}}}});
 const held=(inventory=0)=>({...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,acquiredAtSeconds:0,inventory});
 const ticks=(sim:Simulation,count:number)=>{for(let i=0;i<count;i++)sim.step(1/60,{targetX:0},pilotTuning);};

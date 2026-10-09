@@ -93,7 +93,7 @@ then choose a fixture; selection closes the menu and returns focus to gameplay.
 No permanent right-side fixture stack remains. Browser scripts use
 `selectDevFixture` from `dev-fixture-controls.mjs` to follow this same path:
 
-- **CURVE:** Lv4 / 150 of 180 XP / two Rifles / center, two seeded late-Lv4 groups (46 Grunts, two Heavies). Normal streams remain active. Review real XP into Lv5, its six-second natural Giant, real XP into Lv6, immediate release crowd and subsequent 60-person groups.
+- **CURVE:** Lv4 / 150 of 180 XP / two Rifles / center, two seeded late-Lv4 groups (46 Grunts, two Heavies). Normal streams remain active. Review real XP into Lv5, its six-second natural Giant, real XP into Lv6, immediate release crowd, Carnival and survival handoff.
 - **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds, including its immediate 59-Grunt/one-Heavy release; no timer promotion or Grenade dependency. No Giant/Boss or ordinary stream refill.
 - **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
 - **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / three held Grenades. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
@@ -107,7 +107,48 @@ simulation mode. Normal `/` remains Lv1 until a button is used;
 `?review=threats` remains a separate art fixture. Production excludes review controls
 and fixture code behind `import.meta.env.DEV`.
 
-`node scripts/qa/late-dev-sanity.mjs` checks all seven menu actions fit at
+**CARNIVAL** starts Lv6 / zero XP / one MG immediately before the original
+60-person release. It uses the full authored phase, normal progression, three
+held Grenades and subsequent temporary survival. First Giant introduction is
+already completed. Retry restarts the release and all phase clocks; no shortcut.
+
+`node scripts/qa/carnival-metrics.mjs` measures five seeds (1/17/42/99/2026),
+DEV and natural Lv1 starts, MG-only and aggressive Grenade pilots: 20 runs.
+The pilot takes at most one adjacent lane step per 200ms, selecting the nearest
+threat (or the original Giant while safe), without hit/XP injection. Meaningful
+availability means at least six living Grunts ahead within the 47-unit spawn
+horizon, across any reachable lanes. It does not promise selected-lane hits.
+Results include every wave, survivors sampled every two seconds, first-20/full
+availability, longest gap, Lv7 time, active/projectile peaks and casualties.
+Outputs default to ignored `artifacts/stage1-p2/metrics.json`.
+
+`node scripts/qa/carnival-sanity.mjs` uses the real DEV menu at 390×844 and
+350×844. It captures release/crowd/Lv7/handoff, checks HUD bounds, Pause,
+snapshot replay and actual Retry, and compares a five-second real RAF sample
+of Carnival with sparse LATE. It uses desktop software WebGL; frame cadence is
+not phone certification. Outputs default to `artifacts/stage1-p2/browser`.
+
+P2 validation (2026-10-09): 24 seconds; 15 opportunities at 2–23 seconds;
+36 Grunts per opportunity, clipped to an 80-active admission limit. The initial
+59-Grunt/one-Heavy release is exempt. Across 20 final runs, first-20 availability
+was 96.7–100%, longest gap 0.67 seconds, casualties/failures zero, and peak
+projectiles 72. MG-only Lv7 arrival was 12.0–14.55 seconds; aggressive Grenades
+could bring it to 9.5 seconds. DEV starts admitted 490–591 Grunts plus one Heavy;
+natural starts admitted 357–453 Grunts plus one Heavy, excluding inherited enemies.
+Natural opening peaks were 140–173; additional batches waited until capacity freed.
+MG-only survivor ranges at 0/4/8/12/16/20/24 seconds were
+60–173 / 71–120 / 80 / 61–64 / 50–73 / 46–76 / 31–49.
+
+The cap was reduced from 160 after rendering measurements. At 390×844 and
+350×844, the 80-cap real RAF samples averaged about 50ms/frame (20 FPS), versus
+82–84ms at cap 160 and 16.7ms for sparse LATE, using desktop SwiftShader.
+Final dense samples peaked around 246k triangles / 142 draw calls; simulation
+p95 was 0.2–0.3ms and render submission p95 1.7ms. GPU/frame cadence remains a
+physical-device validation risk. Existing edge-lane squad cropping also remains;
+P2 does not change formation, camera, environment or controls. Final evidence:
+`artifacts/stage1-p2/final/metrics.json` and `artifacts/stage1-p2/cap80-browser/`.
+
+`node scripts/qa/late-dev-sanity.mjs` checks all eight menu actions fit at
 390×844 and 350×844, then tests the three playable late entries through real
 selection, touch Grenade, Pause and Retry paths. Each runs 150 seconds of normal
 combat, with natural Lv6→7→8 progression, snapshot replay, squad/firing/HUD

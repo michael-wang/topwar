@@ -23,7 +23,7 @@ try {
   await page.waitForSelector('.game-start-overlay');
   await page.keyboard.press('5'); await page.keyboard.press('6');
   assert(await page.evaluate(() => window.__testApp.devReviewFixture === null && window.__testApp.simulation.getState().progression.level === 1), 'Pre-start shortcuts ignored');
-  assert(await page.locator('.dev-review-controls button').count() === 7, 'Seven DEV review controls');
+  assert(await page.locator('.dev-review-controls button').count() === 8, 'Eight DEV review controls');
   await page.getByRole('button', { name: 'Start game with audio' }).click();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => {

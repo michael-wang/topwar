@@ -8,7 +8,8 @@ import { advanceLandingAssault, emptyLandingAssault, landingComposition, landing
 import type { EnemySimulationState } from '../src/simulation/SimulationState';
 const config = GameConfigSchema.parse(data);
 // Preserve the deferred experiment against its original six-level plan.
-const balance = { ...config.catharsis!, progression: { ...config.catharsis!.progression,
+const balance = { ...config.catharsis!, carnival: { ...config.catharsis!.carnival, enabled: false },
+  progression: { ...config.catharsis!.progression,
   levelPlan: config.catharsis!.progression.levelPlan.slice(0, 6),
   xpRequirements: config.catharsis!.progression.xpRequirements.slice(0, 5) } };
 const make = (enabled = true) => new Simulation({ seed: 17, level: LevelDefinitionSchema.parse(levelData),

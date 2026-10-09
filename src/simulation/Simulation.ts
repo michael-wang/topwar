@@ -1,4 +1,5 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
+import { advanceCarnival, carnivalOwnsSpawning, CarnivalStateSchema, emptyCarnival } from './carnival';
 import { admitDefenseGroup } from './enemies/defenseGroup';
 import { advancePostCapSurvival, emptyPostCapSurvival, postCapOrdinarySettings,
   PostCapSurvivalStateSchema, type PostCapSurvivalState } from './postCapSurvival';
@@ -336,6 +337,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'landingAssault')) fields.push('landingAssault');
   if (Object.hasOwn(state, 'grenade')) fields.push('grenade');
   if (Object.hasOwn(state, 'postCapSurvival')) fields.push('postCapSurvival');
+  if (Object.hasOwn(state, 'carnival')) fields.push('carnival');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -350,12 +352,23 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
         catharsis.trackHalfWidth, catharsis.balance.edgeInset)[grenade.supply.lane]) > 1e-9))))
     throw new Error('Invalid Grenade snapshot');
   const progression = state.progression;
+  // Established snapshots predate authored phases: never replay their evolution.
+  const carnival = CarnivalStateSchema.parse(state.carnival ?? emptyCarnival(
+    state.machineGunReleaseAtSeconds != null || (isPlainObject(progression) && (progression.level as number) >= 6)));
+  if (carnival.startedAtSeconds !== null && (!catharsis?.balance.defenseMode
+    || carnival.startedAtSeconds !== state.machineGunReleaseAtSeconds
+    || !isPlainObject(progression) || (progression.level as number) < 6
+    || carnival.startedAtSeconds + carnival.elapsedSeconds > (state.elapsedSeconds as number) + 1e-8
+    || (carnival.status === 'active' && Math.abs(carnival.startedAtSeconds + carnival.elapsedSeconds - (state.elapsedSeconds as number)) > 1e-8)))
+    throw new Error('Invalid Carnival activation or elapsed time');
   // Disabled config discards even stale temporary state; old snapshots start fresh.
   const postCapSurvival = catharsis?.balance.defenseMode && catharsis.balance.postCapSurvival.enabled
     ? PostCapSurvivalStateSchema.parse(state.postCapSurvival ?? emptyPostCapSurvival()) : emptyPostCapSurvival();
   if (postCapSurvival.startedAtSeconds !== null && (postCapSurvival.startedAtSeconds > (state.elapsedSeconds as number)
     || !isPlainObject(progression) || (progression.level as number) < catharsis!.balance.postCapSurvival.startLevel
     || state.machineGunReleaseAtSeconds == null)) throw new Error('Invalid post-cap activation');
+  if (carnival.status === 'active' && postCapSurvival.startedAtSeconds !== null)
+    throw new Error('Carnival and survival cannot own spawning together');
   if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
     || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
     || (progression.level as number) < 1 || !Number.isSafeInteger(progression.xp)
@@ -713,6 +726,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
+      ...(catharsis?.balance.defenseMode ? { carnival } : {}),
       // Older Lv6 snapshots already represent an established MG run; never inject a retroactive wave.
       ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: releaseAt === undefined
         ? ((progression?.level as number) >= 6 ? 0 : null) : releaseAt as number | null } : {}),
@@ -827,6 +841,7 @@ export class Simulation {
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival: emptyPostCapSurvival() } : {}),
+      ...(catharsis?.balance.defenseMode ? { carnival: emptyCarnival() } : {}),
       ...(catharsis?.balance.defenseMode ? { progression: { level: 1, xp: 0 }, reinforcement: { startedAtSeconds: null, arrived: false } } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { giantEncounter: { scheduledAtSeconds: null, spawned: false } } : {}),
@@ -1074,13 +1089,21 @@ export class Simulation {
     const assaultDue = legacyReinforcement && catharsis?.balance.landingAssault.enabled && landingAssault?.reinforcementActiveAtSeconds !== null
       && landingAssault?.reinforcementActiveAtSeconds !== undefined
       && nextElapsedSeconds + 1e-9 >= landingAssault.reinforcementActiveAtSeconds + catharsis.balance.landingAssault.powerWindowSeconds;
-    if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue) {
+    const carnivalSpawning = carnivalOwnsSpawning(this.state);
+    if (carnivalSpawning && enemyStream && this.enemyStreamDefinition) {
+      // Consume covered distance rows; handoff must never dump deferred waves.
+      const row = Math.floor((nextZ + catharsis!.balance.defenseSpawnAheadDistance
+        - this.enemyStreamDefinition.startZ) / this.enemyStreamDefinition.spacing) + 1;
+      if (!Number.isSafeInteger(row)) throw new Error('Carnival stream row exceeds supported range');
+      enemyStream.nextRowIndex = Math.max(enemyStream.nextRowIndex, row);
+    }
+    if (enemyStream && this.enemyStreamDefinition && !boss?.engaged && !assaultDue && !carnivalSpawning) {
       boss = extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition,
         nextZ, this.tiers, boss, this.bossHpScale, catharsis, progression, this.state.postCapSurvival);
       extendRewardStream(streamRewards, enemyStream, this.enemyStreamDefinition, nextZ, catharsis, nextX);
     }
     let giantEncounter = this.state.giantEncounter;
-    if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue) {
+    if (landingAssault && catharsis && enemyStream && this.enemyStreamDefinition && assaultDue && !carnivalSpawning) {
       const interval = this.enemyStreamDefinition.spacing * catharsis.balance.waveRows / tuning.forwardSpeed;
       // Consume dormant legacy rows without spawning: disabling the experiment later must not
       // dump a backlog of distance-based waves into the restored beach.
@@ -1449,7 +1472,8 @@ export class Simulation {
       }
     }
     if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
-    if (giantEncounter && catharsis && enemyStream && squad.count > 0)
+    if (giantEncounter && catharsis && enemyStream && squad.count > 0 && !carnivalSpawning
+      && !(catharsis.balance.carnival.enabled && this.state.carnival?.status === 'pending' && progression!.level >= 6))
       giantEncounter = advanceGiantEncounter(giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
         catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream);
     let machineGunReleaseAtSeconds = this.state.machineGunReleaseAtSeconds;
@@ -1466,11 +1490,14 @@ export class Simulation {
       enemyStream.nextRowIndex = row + 1;
       machineGunReleaseAtSeconds = nextElapsedSeconds;
     }
-    const postCapSurvival = advancePostCapSurvival(this.state.postCapSurvival,
-      { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
-        player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade });
+    const phaseFrame = { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
+      player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade };
+    const carnival = advanceCarnival(this.state.carnival, phaseFrame, this.enemyStreamDefinition?.seed ?? this.state.seed);
+    const postCapSurvival = carnival.status === 'active' ? emptyPostCapSurvival()
+      : advancePostCapSurvival(this.state.postCapSurvival, phaseFrame);
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
+      ...(catharsis?.balance.defenseMode ? { carnival } : {}),
       ...(grenade ? { grenade } : {}), streamRewards: survivingStreamRewards,
       ...(machineGunReleaseAtSeconds !== undefined ? { machineGunReleaseAtSeconds } : {}),
       pickups: survivingPickups, nextPickupId, projectiles: survivingProjectiles,
@@ -1508,6 +1535,7 @@ export class Simulation {
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),
       ...(this.state.postCapSurvival ? { postCapSurvival: { ...this.state.postCapSurvival } } : {}),
+      ...(this.state.carnival ? { carnival: { ...this.state.carnival } } : {}),
       ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
