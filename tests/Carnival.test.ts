@@ -63,7 +63,7 @@ it('keeps authored waves through real Lv7, then hands off once with no queued or
     } else if(s.carnival!.status==='complete') {
       expect(s.carnival!.elapsedSeconds).toBe(24);
       expect(s.postCapSurvival!.startedAtSeconds).toBeCloseTo(s.machineGunReleaseAtSeconds!+24);
-      if(added.length){ordinaryAfter++;expect(added).toHaveLength(3);expect(added.every(e=>e.archetype==='heavy')).toBe(true);}
+      if(added.length){ordinaryAfter++;expect(s.enemyStream!.nextEnemyId-b.enemyStream!.nextEnemyId).toBe(b.progression!.level===8?42:30);expect(added.filter(e=>e.archetype==='heavy')).toHaveLength(b.progression!.level===8?6:4);}
     }
     expect(s.reinforcement!.arrived).toBe(false);sim.consumePresentationEvents();
   }

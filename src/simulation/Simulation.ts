@@ -264,7 +264,7 @@ function extendEnemyStream(enemies: EnemySimulationState[], cursor: EnemyStreamS
       admitDefenseGroup(enemies, cursor, cursor.nextRowIndex, stream.seed,
         { ...catharsis.balance, ...pressureWaveSettings(catharsis.balance, progression),
           groupSize: pressureGroupSize(catharsis.balance, progression.level),
-          ...postCapOrdinarySettings(catharsis.balance, postCapSurvival) }, catharsis.trackHalfWidth, rowZ);
+          ...postCapOrdinarySettings(catharsis.balance, postCapSurvival, progression?.level) }, catharsis.trackHalfWidth, rowZ);
       cursor.nextRowIndex++;
       continue;
     }
@@ -1612,6 +1612,9 @@ export class Simulation {
       carnival, nextElapsedSeconds, squad.count > 0) : undefined;
     const postCapSurvival = carnival.status === 'active' || naval?.state.status === 'active' ? emptyPostCapSurvival()
       : advancePostCapSurvival(this.state.postCapSurvival, phaseFrame);
+    if (defenseWaves && this.state.postCapSurvival?.startedAtSeconds == null && postCapSurvival.startedAtSeconds !== null
+      && catharsis?.balance.postCapSurvival.firstWaveDelaySeconds !== undefined)
+      defenseWaves = { nextAtSeconds: postCapSurvival.startedAtSeconds + catharsis.balance.postCapSurvival.firstWaveDelaySeconds };
     this.state = { ...this.state, ...(landingAssault ? { landingAssault } : {}), ...(reinforcement ? { reinforcement } : {}), ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, boss, enemyStream, gates,
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),

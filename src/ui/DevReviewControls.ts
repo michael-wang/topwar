@@ -14,7 +14,7 @@ export class DevReviewControls {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = role.toUpperCase();
       button.dataset.role = role; button.setAttribute('aria-pressed', 'false');
-      if (role === 'late') button.title = 'Restart playable Lv6 with normal spawning and progression';
+      if (role === 'late') button.title = 'Restart Lv8 with three Machine Guns and Survival pressure';
       if (role === 'crate3') button.title = 'Restart Lv3 Rifle teaching Supply destruction and three Grenade transfers';
       if (role === 'crate8') button.title = 'Restart Lv8 three-MG recurring Supply destruction and one Grenade transfer';
       if (role === 'naval') button.title = 'Restart Lv8 Destroyer assault and Field Observer communication';

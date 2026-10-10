@@ -17,12 +17,12 @@ export const emptyPostCapSurvival = (): PostCapSurvivalState => ({
   startedAtSeconds: null, nextGiantAtSeconds: null, nextGrenadeSupplyAtSeconds: null,
 });
 
-export function postCapOrdinarySettings(balance: CatharsisConfig, state?: PostCapSurvivalState):
+export function postCapOrdinarySettings(balance: CatharsisConfig, state?: PostCapSurvivalState, level = 0):
   { groupSize: number; pressureLaneCount: number; heavyCount: number } | undefined {
   const c = balance.postCapSurvival;
-  return c.enabled && state?.startedAtSeconds != null
-    ? { groupSize: c.ordinaryGroupSize, pressureLaneCount: c.pressureLaneCount, heavyCount: c.heavyCount }
-    : undefined;
+  if (!c.enabled || state?.startedAtSeconds == null) return undefined;
+  const profile = c.advancedProfile && level >= c.advancedProfile.startLevel ? c.advancedProfile : c;
+  return { groupSize: profile.ordinaryGroupSize, pressureLaneCount: profile.pressureLaneCount, heavyCount: profile.heavyCount };
 }
 
 // Advance fixed opportunities, never a backlog. A late restored/large step can
@@ -49,7 +49,8 @@ export function advancePostCapSurvival(previous: PostCapSurvivalState | undefine
       nextGrenadeSupplyAtSeconds: now + c.grenadeSupplyIntervalSeconds };
   }
   if (now + 1e-9 >= state.nextGiantAtSeconds!) {
-    if (frame.enemies.filter(e => e.hp > 0 && e.archetype === 'giant').length < c.maxSimultaneousGiants)
+    if ((c.maxActiveEnemies === undefined || frame.enemies.filter(e => e.hp > 0).length < c.maxActiveEnemies)
+      && frame.enemies.filter(e => e.hp > 0 && e.archetype === 'giant').length < c.maxSimultaneousGiants)
       spawnInteriorGiant(frame.player.z, balance, frame.catharsis!.trackHalfWidth, frame.enemies, frame.enemyStream);
     state.nextGiantAtSeconds = nextSlot(state.nextGiantAtSeconds!, now, c.giantIntervalSeconds);
   }

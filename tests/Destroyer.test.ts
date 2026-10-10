@@ -88,7 +88,8 @@ it('runs Carnival and Destroyer concurrently, then hands off to survival once, c
       expect(a.defenseWaves!.nextAtSeconds).toBeGreaterThan(a.elapsedSeconds);
     }
     if(a.postCapSurvival!.startedAtSeconds!==null){fallbackStart??=a.postCapSurvival!.startedAtSeconds;
-      const added=a.enemies.filter(e=>e.id>=b.enemyStream!.nextEnemyId);expect(added.length).toBeLessThanOrEqual(3);
+      const added=a.enemies.filter(e=>e.id>=b.enemyStream!.nextEnemyId);const giantCount=added.filter(e=>e.archetype==='giant').length;
+      if(added.length>giantCount){expect(a.enemyStream!.nextEnemyId-b.enemyStream!.nextEnemyId-giantCount).toBe(b.progression!.level===8?42:30);expect(added.filter(e=>e.archetype==='heavy')).toHaveLength(b.progression!.level===8?6:4);}
     }
   }
   expect(navalStart).toBeCloseTo(1/60);expect(fallbackStart).toBeCloseTo(navalStart!+c.durationSeconds);

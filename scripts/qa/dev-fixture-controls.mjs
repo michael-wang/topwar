@@ -26,7 +26,7 @@ export async function selectDevFixture(page, role) {
           tiers: { ...c.tiers, enemyHigherTierPowerMultiplier: t.enemyHigherTierPowerMultiplier,
             rifleHigherTierPowerMultiplier: t.rifleHigherTierPowerMultiplier },
           rewardRowsPerReward: t.rewardRowsPerReward, bossHpScale: t.bossHpScale };
-        const simulation = createDevReviewFixture(options, t.fireRate, role);
+        const simulation = createDevReviewFixture(options, t.fireRate, role === 'late6' ? 'late' : role);
         if (role === 'shell') {
           const step = simulation.step.bind(simulation);
           simulation.step = (dt, input, tuning) => step(dt,

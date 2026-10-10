@@ -16,13 +16,22 @@
     "postCapSurvival": {
       "enabled": true,
       "startLevel": 6,
-      "ordinaryGroupSize": 3,
+      "ordinaryGroupSize": 30,
       "pressureLaneCount": 3,
-      "heavyCount": 3,
+      "heavyCount": 4,
       "giantIntervalSeconds": 24,
       "maxSimultaneousGiants": 1,
       "grenadeSupplyIntervalSeconds": 30,
-      "grenadeSupplyAmount": 1
+      "grenadeSupplyAmount": 1,
+      "advancedProfile": {
+        "startLevel": 8,
+        "ordinaryGroupSize": 42,
+        "heavyCount": 6,
+        "pressureLaneCount": 4
+      },
+      "waveIntervalSeconds": 6,
+      "firstWaveDelaySeconds": 1,
+      "maxActiveEnemies": 180
     },
     "grenade": {
       "capacity": 3,

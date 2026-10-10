@@ -33,7 +33,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   role: DevReviewFixture): Simulation {
   if (role === 'rifle') return new Simulation({ ...options, seed: 0x21b101 });
   if (role === 'shell') return createShellReview(options);
-  if (role === 'late' || role === 'naval' || role === 'crate3' || role === 'crate8')
+  if (role === 'naval' || role === 'crate3' || role === 'crate8')
     return createRuntimeFixture(options, baseFireRate, role);
   const fixture = DEV_REVIEW_FIXTURES[role];
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
@@ -42,7 +42,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   if (!catharsis?.balance.defenseMode || !state.enemyStream || !options.level.enemyStream)
     throw new Error('DEV Review requires the defense enemy stream');
   const balance = catharsis.balance;
-  const playableLate = role === 'mg7' || role === 'mg8';
+  const playableLate = role === 'late' || role === 'mg7' || role === 'mg8';
   if ((playableLate || role === 'carnival') && (fixture.level > maxProgressionLevel(balance.progression)
     || progressionStage(fixture.level, balance.progression).weaponFamily !== 'machineGun'
     || progressionStage(fixture.level, balance.progression).squadStage !== fixture.soldiers))
@@ -81,9 +81,10 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
       / (stream.spacing * balance.waveRows)) * balance.waveRows);
     if (playableLate) admitDefenseGroup(state.enemies, state.enemyStream, row, effectiveSeed(state.seed, stream.seed),
       { ...balance, ...pressureWaveSettings(balance, state.progression),
-        groupSize: pressureGroupSize(balance, fixture.level), ...postCapOrdinarySettings(balance, state.postCapSurvival) },
+        groupSize: pressureGroupSize(balance, fixture.level), ...postCapOrdinarySettings(balance, state.postCapSurvival, fixture.level) },
       catharsis.trackHalfWidth, stream.startZ + row * stream.spacing);
     state.enemyStream.nextRowIndex = row + 1;
+    if (playableLate && balance.postCapSurvival.waveIntervalSeconds) state.defenseWaves!.nextAtSeconds = balance.postCapSurvival.waveIntervalSeconds;
   } else if (role === 'curve') {
     state.enemies = [];
     state.enemyStream.nextEnemyId = 1;

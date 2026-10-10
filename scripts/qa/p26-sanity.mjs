@@ -10,6 +10,11 @@ try {
     const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
     page.on('pageerror',e=>results.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')results.errors.push(m.text());});
     await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('app.start();','window.__testApp=app;app.start();')});});
+    // Explicit historical hit-count path; normal play keeps staged destruction.
+    await page.route(/\/game-data\/game(?:\.[a-f0-9]+)?\.json(?:\?.*)?$/,async route=>{
+      const response=await route.fetch(),data=await response.json();delete data.catharsis.grenade.supplyDestruction;
+      await route.fulfill({response,body:JSON.stringify(data)});
+    });
     await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173');
     await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
     await page.evaluate(()=>{
@@ -72,8 +77,8 @@ try {
         hits.push(progress);assert.equal(s.progression.xp,0);assert.equal(s.enemies.length,0);
         if(progress<10)assert.equal(s.grenade.inventory,0);
         if(progress===1) {
-          hitVisual=await page.evaluate(()=>{const supply=window.__testApp.renderer.grenadeRenderer.supply;return{scale:supply.scale.x,emissive:supply.children[0].material.emissiveIntensity};});
-          assert(hitVisual.emissive>0&&hitVisual.scale>1);await page.screenshot({path:`${out}/${width}-supply-hit.png`});
+          hitVisual=await page.evaluate(()=>{const a=window.__testApp,crate=a.renderer.grenadeRenderer.crate;return{visible:crate.group.visible,pulseAge:a.presentationMs-crate.hitAtMs,emissive:crate.wood.emissiveIntensity};});
+          assert(hitVisual.visible&&hitVisual.pulseAge>=0&&hitVisual.pulseAge<160&&hitVisual.emissive>.08);await page.screenshot({path:`${out}/${width}-supply-hit.png`});
         }
         if(progress===4) {
           partial=s;await page.getByRole('button',{name:'Pause game',exact:true}).tap();await advance(20);assert.deepEqual(await state(),partial);
@@ -87,7 +92,7 @@ try {
       if(!s.grenade.supply){assert.equal(s.grenade.inventory,3);break;}
     }
     assert.deepEqual(hits,[1,2,3,4,5,6,7,8,9,10]);await page.screenshot({path:`${out}/${width}-supply-acquired.png`});
-    await selectDevFixture(page,'late');const initial=await state();
+    await selectDevFixture(page,'late6');const initial=await state();
     await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.grenade.inventory=2;s.enemies=[];s.defenseWaves.nextAtSeconds=1000;
       s.weapons.rifleMemberCooldowns=[1000];s.weapons.rifleCooldownRemainingSeconds=1000;a.simulation.restoreState(s);});
     await advance(1810,false);await advance(1);assert.equal((await state()).grenade.supply.rewardAmount,1);

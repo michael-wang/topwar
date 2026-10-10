@@ -110,10 +110,10 @@ it('consumes phase-owned ordinary deadlines and resumes only the next slot after
       expect(added.every(e=>e.archetype==='grunt')).toBe(true);
     } else if(after.enemyStream!.nextEnemyId>before.enemyStream!.nextEnemyId) {
       resumed.push(after.elapsedSeconds);
-      expect(after.enemyStream!.nextEnemyId-before.enemyStream!.nextEnemyId).toBe(3);
+      expect(after.enemyStream!.nextEnemyId-before.enemyStream!.nextEnemyId).toBe(before.progression!.level===8?42:30);
     }
   }
-  expect(resumed).toHaveLength(2);expect(resumed[0]).toBeCloseTo(5/3+24);expect(resumed[1]-resumed[0]).toBeCloseTo(6);
+  expect(resumed).toHaveLength(2);expect(resumed[0]).toBeCloseTo(release!+24+1);expect(resumed[1]-resumed[0]).toBeCloseTo(6);
   expect(sim.getState().carnival!.elapsedSeconds).toBe(24);
 });
 

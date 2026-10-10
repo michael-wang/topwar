@@ -8,10 +8,11 @@ import { pressureGroupSize, pressureWaveSettings } from '../simulation/enemies/l
 import { advancePostCapSurvival, postCapOrdinarySettings } from '../simulation/postCapSurvival';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage } from '../simulation/progression';
 import { placeGrenadeSupply } from '../simulation/grenade';
+import { addRifleSoldiers } from '../simulation/squad/composition';
 
 export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval';
 export const DEV_REVIEW_FIXTURES = {
-  late: { level: 6, soldiers: 1 }, crate3: { level: 3, soldiers: 1 },
+  late: { level: 8, soldiers: 3 }, crate3: { level: 3, soldiers: 1 },
   crate8: { level: 8, soldiers: 3 }, naval: { level: 8, soldiers: 3 },
 } as const;
 
@@ -38,6 +39,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   const lanes = attackLanePositions(balance.laneCount, catharsis.trackHalfWidth, balance.edgeInset);
   state.player = { x: lanes[lane], z: 0, selectedLane: lane };
   state.progression = { level: fixture.level, xp: 0 };
+  state.squad = addRifleSoldiers(state.squad, fixture.soldiers - 1, 1, options.tiers.mergeCount);
   // Skip the completed teaching encounters; retain ordinary admission and Survival.
   state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   state.machineGunReleaseAtSeconds = 0;
@@ -51,12 +53,15 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
     / (stream.spacing * balance.waveRows)) * balance.waveRows);
   admitDefenseGroup(state.enemies, state.enemyStream, row, effectiveSeed(state.seed, stream.seed),
     { ...balance, ...pressureWaveSettings(balance, state.progression),
-      groupSize: pressureGroupSize(balance, fixture.level), ...postCapOrdinarySettings(balance, state.postCapSurvival) },
+      groupSize: pressureGroupSize(balance, fixture.level), ...postCapOrdinarySettings(balance, state.postCapSurvival, fixture.level) },
     catharsis.trackHalfWidth, stream.startZ + row * stream.spacing);
   state.enemyStream.nextRowIndex = row + 1;
   state.projectiles = []; state.streamRewards = []; state.gates = []; state.pickups = [];
   state.enemyStream.nextEnemyId = state.enemies.length + 1;
-  state.weapons.rifleMemberCooldowns = [0];
+  const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
+  state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers }, (_, index) => index * interval / fixture.soldiers);
+  // An immediate complete group is already present in this review entry.
+  state.defenseWaves!.nextAtSeconds = balance.postCapSurvival.waveIntervalSeconds ?? balance.defenseWaves.intervalSeconds;
   simulation.restoreState(state);
   return simulation;
 }

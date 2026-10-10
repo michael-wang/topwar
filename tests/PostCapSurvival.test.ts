@@ -29,12 +29,15 @@ function advance(s:ReturnType<typeof frame>,now:number) {
   s.elapsedSeconds=now;s.postCapSurvival=advancePostCapSurvival(s.postCapSurvival,s);return s;
 }
 
-it('authors an optional narrow layer and validates one Heavy per front',()=>{
-  expect(balance.postCapSurvival).toEqual({enabled:true,startLevel:6,ordinaryGroupSize:3,pressureLaneCount:3,
-    heavyCount:3,giantIntervalSeconds:24,maxSimultaneousGiants:1,grenadeSupplyIntervalSeconds:30,grenadeSupplyAmount:1});
+it('authors mixed profiles and validates group/front/cap bounds',()=>{
+  expect(balance.postCapSurvival).toEqual({enabled:true,startLevel:6,ordinaryGroupSize:30,pressureLaneCount:3,
+    heavyCount:4,giantIntervalSeconds:24,maxSimultaneousGiants:1,grenadeSupplyIntervalSeconds:30,grenadeSupplyAmount:1,
+    advancedProfile:{startLevel:8,ordinaryGroupSize:42,pressureLaneCount:4,heavyCount:6},
+    waveIntervalSeconds:6,firstWaveDelaySeconds:1,maxActiveEnemies:180});
   const legacy=structuredClone(data) as any;delete legacy.catharsis.postCapSurvival;
   expect(GameConfigSchema.parse(legacy).catharsis!.postCapSurvival.enabled).toBe(false);
-  for(const patch of [{ordinaryGroupSize:4},{heavyCount:2},{pressureLaneCount:6,heavyCount:6,ordinaryGroupSize:6},
+  for(const patch of [{ordinaryGroupSize:3},{heavyCount:31},{pressureLaneCount:6,heavyCount:6,ordinaryGroupSize:30},
+    {maxActiveEnemies:20},{waveIntervalSeconds:0},{firstWaveDelaySeconds:0},
     {giantIntervalSeconds:0},{grenadeSupplyAmount:3},{maxSimultaneousGiants:2}]) {
     const bad=structuredClone(data);Object.assign(bad.catharsis.postCapSurvival,patch);
     expect(()=>GameConfigSchema.parse(bad)).toThrow();
@@ -64,18 +67,18 @@ it.each([true,false])('preserves the one-time 60-person release with enabled=%s'
   expect(sim.getState().machineGunReleaseAtSeconds).toBe(release);
 });
 
-it.each([true,false])('uses only three Heavies after activation, or retained capped groups when disabled (%s)',enabled=>{
+it.each([true,false])('uses mixed Lv6 groups after activation, or retained capped groups when disabled (%s)',enabled=>{
   const sim=capped(enabled),s=sim.getState();let nextId=s.enemyStream!.nextEnemyId;
   const admissions:number[]=[];
   for(let t=0;t<60*20;t++) {
     ticks(sim,1);const now=sim.getFrameState();
     if(now.enemyStream!.nextEnemyId===nextId)continue;
     const group=now.enemies.filter(e=>e.id>=nextId);
-    expect(group).toHaveLength(enabled?3:60);
-    expect(group.filter(e=>e.archetype==='heavy')).toHaveLength(enabled?3:1);
-    expect(group.filter(e=>e.archetype==='grunt')).toHaveLength(enabled?0:59);
+    expect(group).toHaveLength(enabled?30:60);
+    expect(group.filter(e=>e.archetype==='heavy')).toHaveLength(enabled?4:1);
+    expect(group.filter(e=>e.archetype==='grunt')).toHaveLength(enabled?26:59);
     expect(new Set(group.map(e=>e.lane)).size).toBe(3);
-    if(enabled)expect(group.every(e=>e.hp===15)).toBe(true);
+    if(enabled)expect(group.every(e=>e.hp===(e.archetype==='heavy'?15:1))).toBe(true);
     admissions.push(now.elapsedSeconds);nextId=now.enemyStream!.nextEnemyId;
   }
   expect(admissions.length).toBeGreaterThanOrEqual(2);
@@ -120,7 +123,7 @@ it('never overwrites the uncollected teaching Supply',()=>{
 });
 
 it.each([0,1,2,3])('historical one-hit MG supply collects +1 from inventory %s, clamped at three',inventory=>{
-  const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;
+  const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;s.defenseWaves!.nextAtSeconds=10000;
   s.grenade={...held(inventory),supply:{lane:2,x:0,depth:8,rewardAmount:1}};
   s.projectiles=[{id:1,kind:'machineGun',tier:1,lane:2,x:0,z:s.player.z+7.5,slopeX:0,speed:60,
     damage:config.tiers.tier1Power,remainingRange:80,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
@@ -132,7 +135,7 @@ it.each([0,1,2,3])('historical one-hit MG supply collects +1 from inventory %s, 
 });
 
 it('allows Supply acquisition to fill reserves while one Grenade is in flight',()=>{
-  const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;
+  const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;s.defenseWaves!.nextAtSeconds=10000;
   s.grenade={...held(2),supply:{lane:2,x:0,depth:8,rewardAmount:1},flight:{startX:0,startZ:0,
     targetX:0,targetZ:40,startedAtSeconds:0,flightSeconds:.65,damageEnemyHp:9,blastRadius:4}};
   s.projectiles=[{id:1,kind:'machineGun',tier:1,lane:2,x:0,z:s.player.z+7.5,slopeX:0,speed:60,
@@ -144,7 +147,7 @@ it('allows Supply acquisition to fill reserves while one Grenade is in flight',(
 });
 
 it.each(['pending','supply'] as const)('restores %s schedules and placement deterministically without duplicated admissions',phase=>{
-  const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;
+  const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;s.defenseWaves!.nextAtSeconds=10000;
   sim.restoreState(s);if(phase==='supply')ticks(sim,1800);
   const snapshot=sim.getState(),clone=make();clone.restoreState(JSON.parse(JSON.stringify(snapshot)));
   if(phase==='supply')expect(snapshot.grenade!.supply!.rewardAmount).toBe(1);
@@ -202,7 +205,7 @@ it.each(['evolve','machineGun'] as const)('keeps the isolated %s review free of 
 
 it('retains Lv6 XP toward new MG stages without legacy reinforcement/landing assault',()=>{
   const sim=capped(),s=sim.getState();s.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:3,hp:1}];
-  s.enemyStream!.nextRowIndex=10000;s.enemyStream!.nextEnemyId=2;
+  s.enemyStream!.nextRowIndex=10000;s.defenseWaves!.nextAtSeconds=10000;s.enemyStream!.nextEnemyId=2;
   s.weapons.rifleMemberCooldowns=[0];s.weapons.rifleCooldownRemainingSeconds=0;sim.restoreState(s);ticks(sim,60);
   expect(sim.getState().enemies).toHaveLength(0);expect(sim.getState().progression).toEqual({level:6,xp:10});
   expect(sim.getState().reinforcement).toEqual({startedAtSeconds:null,arrived:false});

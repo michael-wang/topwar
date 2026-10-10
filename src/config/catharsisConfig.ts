@@ -106,7 +106,8 @@ export const CatharsisConfigSchema = z.strictObject({
     .every(stage => stage.pressureLaneCount <= value.laneCount)
     && (!value.pressureRamp.lv6 || value.pressureRamp.lv6.pressureLaneCount <= value.laneCount),
     { message: 'Pressure ramp fronts must fit inside the battlefield' })
-  .refine(value => !value.postCapSurvival.enabled || value.postCapSurvival.pressureLaneCount <= value.laneCount,
+  .refine(value => !value.postCapSurvival.enabled || value.postCapSurvival.pressureLaneCount <= value.laneCount
+    && (!value.postCapSurvival.advancedProfile || value.postCapSurvival.advancedProfile.pressureLaneCount <= value.laneCount),
     { message: 'Post-cap fronts must fit inside the battlefield' })
   .refine(value => !value.pressureRamp || [value.pressureRamp.lv4, value.pressureRamp.lv5].every((stage, index) =>
     (stage.heavyCount ?? 0) <= Math.round(value.groupSize * value.pressureMultipliers[Math.min(index + 3, value.pressureMultipliers.length - 1)]))

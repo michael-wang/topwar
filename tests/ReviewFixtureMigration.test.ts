@@ -7,7 +7,7 @@ import { createDevReviewFixture, type DevReviewFixture } from './helpers/ReviewF
 import hashes from './fixtures/review-state-hashes.json';
 
 // Captured before cleanup at 2081abe: migration must preserve every scenario,
-// including the retained human entries delegated to the runtime factory.
+// including the historical Lv6 LATE retained by the test-only factory.
 it.each(Object.entries(hashes))('preserves the complete accepted %s fixture state', async (role, hash) => {
   // Freeze the old authored balance: this golden protects fixture migration,
   // rather than preventing future, intentional balance changes.
@@ -16,6 +16,7 @@ it.each(Object.entries(hashes))('preserves the complete accepted %s fixture stat
   oldData.catharsis.pressureRamp.lv4.heavyCount = 1;
   oldData.catharsis.pressureRamp.lv5.heavyCount = 1;
   delete (oldData.catharsis.destroyer as Partial<typeof oldData.catharsis.destroyer>).startPolicy;
+  oldData.catharsis.postCapSurvival = {enabled:true,startLevel:6,ordinaryGroupSize:3,pressureLaneCount:3,heavyCount:3,giantIntervalSeconds:24,maxSimultaneousGiants:1,grenadeSupplyIntervalSeconds:30,grenadeSupplyAmount:1} as typeof oldData.catharsis.postCapSurvival;
   const c = GameConfigSchema.parse(oldData);
   const simulation = createDevReviewFixture({ seed: 17, level: LevelDefinitionSchema.parse(levelData),
     startSquad: 1, startRocketCount: 0, tiers: c.tiers,

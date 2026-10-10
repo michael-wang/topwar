@@ -24,7 +24,7 @@ try{for(const width of [350,390])for(const legacy of [false,true]){
   window.__milestones={1:0};let nextDecision=0;
   window.__advance=seconds=>{skip=true;try{for(let tick=0;tick<seconds*60;tick++){
    const s=a.simulation.getState();
-   if(s.catharsis&&s.tick>=nextDecision){nextDecision=s.tick+12;
+   if(!a.paused&&s.catharsis&&s.tick>=nextDecision){nextDecision=s.tick+12;
     const nearest=[...s.enemies].sort((a,b)=>a.z-b.z||a.id-b.id)[0],giant=s.enemies.find(e=>e.archetype==='giant');
     let lane=s.grenade.supply?.lane??(giant&&(!nearest||nearest.z>10)?giant:nearest)?.lane??s.player.selectedLane;
     const targets=new Set(s.artillery?.shells.map(shell=>shell.targetLane));

@@ -22,8 +22,9 @@ it.each(entries)('%s starts at Lv%i with %i MG members and a valid deterministic
   expect(state.giantEncounter).toEqual({ scheduledAtSeconds: 0, spawned: true });
   expect(state.grenade).toMatchObject({ inventory: 3, acquiredAtSeconds: 0, supply: null, flight: null });
   expect(state.postCapSurvival).toEqual({ startedAtSeconds: 0, nextGiantAtSeconds: 24, nextGrenadeSupplyAtSeconds: 30 });
-  expect(state.enemies).toHaveLength(3);
-  expect(state.enemies.every(e => e.archetype === 'heavy' && e.hp === 15)).toBe(true);
+  expect(state.enemies).toHaveLength(level === 8 ? 42 : 30);
+  expect(state.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(level === 8 ? 6 : 4);
+  expect(state.enemies.every(e => e.hp === (e.archetype === 'heavy' ? 15 : 1))).toBe(true);
   expect(state.enemyStream!.nextRowIndex).toBeLessThan(100);
   expect(state.reinforcement).toEqual({ startedAtSeconds: null, arrived: false });
   expect(state.landingAssault!.reinforcementActiveAtSeconds).toBeNull();
@@ -74,8 +75,10 @@ it.each(entries)('%s runs normal waves, progression, Giants and recurring Suppli
     const ordinary = admitted.filter(e => e.archetype !== 'giant');
     if (ordinary.length) {
       ordinaryGroups++;
-      expect(ordinary).toHaveLength(3); // A replayed 60-person release fails here.
-      expect(ordinary.every(e => e.archetype === 'heavy')).toBe(true);
+      const level = before.progression!.level;
+      const giantsAdded = admitted.filter(e => e.archetype === 'giant').length;
+      expect(after.enemyStream!.nextEnemyId - nextEnemyId - giantsAdded).toBe(level === 8 ? 42 : 30); // Includes same-tick kills.
+      expect(ordinary.filter(e => e.archetype === 'heavy')).toHaveLength(level === 8 ? 6 : 4);
     }
     giants += admitted.filter(e => e.archetype === 'giant').length;
     if (!supplyWasPresent && after.grenade!.supply) {
