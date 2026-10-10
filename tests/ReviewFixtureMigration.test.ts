@@ -15,10 +15,15 @@ it.each(Object.entries(hashes))('preserves the complete accepted %s fixture stat
   Object.assign(oldData.catharsis.giant, { unlockLevel: 5, introDelaySeconds: 6 });
   oldData.catharsis.pressureRamp.lv4.heavyCount = 1;
   oldData.catharsis.pressureRamp.lv5.heavyCount = 1;
+  delete (oldData.catharsis.destroyer as Partial<typeof oldData.catharsis.destroyer>).startPolicy;
   const c = GameConfigSchema.parse(oldData);
   const simulation = createDevReviewFixture({ seed: 17, level: LevelDefinitionSchema.parse(levelData),
     startSquad: 1, startRocketCount: 0, tiers: c.tiers,
     catharsis: { balance: c.catharsis!, trackHalfWidth: c.track.halfWidth } }, c.weapon.rifle.fireRate, role as DevReviewFixture);
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(simulation.getState())));
+  const state = simulation.getState();
+  expect(state.catharsis!.balance.destroyer!.startPolicy).toBe('afterCarnival');
+  // The new default is the explicit equivalent of the old omitted policy.
+  Reflect.deleteProperty(state.catharsis!.balance.destroyer!, 'startPolicy');
+  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(state)));
   expect(Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, '0')).join('')).toBe(hash);
 });

@@ -33,7 +33,10 @@ export function advanceDestroyer(previous: DestroyerState, c: DestroyerSettings 
   if (!alive) return { state, fire: false };
   if (state.status === 'pending') {
     if (carnival?.status === 'skipped') return { state: emptyDestroyer(true), fire: false };
-    if (carnival?.status === 'complete') state = { status: 'active', startedAtSeconds: now, nextShotIndex: 0 };
+    if (c.startPolicy === 'withCarnival' && (carnival?.status === 'active' || carnival?.status === 'complete'))
+      state = { status: 'active', startedAtSeconds: carnival.startedAtSeconds, nextShotIndex: 0 };
+    else if (c.startPolicy !== 'withCarnival' && carnival?.status === 'complete')
+      state = { status: 'active', startedAtSeconds: now, nextShotIndex: 0 };
   }
   if (state.status !== 'active') return { state, fire: false };
   const age = now - state.startedAtSeconds!;

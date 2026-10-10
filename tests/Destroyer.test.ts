@@ -73,23 +73,25 @@ it('preserves the shorter encounter clocks serialized by pre-voice P3-B snapshot
   for(const e of b.consumeArtilleryEvents())if(e.kind==='artilleryLaunch')launches.push(e.shell.launchedAtSeconds);
   expect(launches).toHaveLength(4);launches.forEach((time,i)=>expect(time).toBeCloseTo([9,13,14.3,18][i]));
 });
-it('hands Carnival to Destroyer to survival once, consumes wave deadlines, and keeps XP/remaining enemies active',()=>{
+it('runs Carnival and Destroyer concurrently, then hands off to survival once, consumes wave deadlines, and keeps XP/remaining enemies active',()=>{
   const s=carnivalEntry(17);let navalStart:number|null=null,fallbackStart:number|null=null;let launches=0;
   for(let i=0;i<60*62;i++){
-    const b=s.getState();if(b.destroyer?.status==='active')dodge(s);
-    else if(i%12===0){const lane=carnivalPilotLane(b);if(lane!==b.player.selectedLane)s.stepLane(lane<b.player.selectedLane! ? -1:1);}
+    const b=s.getState();if(i%12===0){const lane=carnivalPilotLane(b);if(lane!==b.player.selectedLane)s.stepLane(lane<b.player.selectedLane! ? -1:1);}
     s.step(1/60,{targetX:0,throwGrenade:carnivalPilotGrenade(s.getFrameState())},pilotTuning);
     const a=s.getState();launches+=s.consumeArtilleryEvents().filter(e=>e.kind==='artilleryLaunch').length;
     if(a.destroyer!.status==='active'){
       navalStart??=a.destroyer!.startedAtSeconds;expect(a.postCapSurvival!.startedAtSeconds).toBeNull();
-      expect(a.enemies.filter(e=>e.id>=b.enemyStream!.nextEnemyId)).toEqual([]);
+      const admitted=a.enemies.filter(e=>e.id>=b.enemyStream!.nextEnemyId);
+      if(b.machineGunReleaseAtSeconds===null){expect(admitted).toHaveLength(60);expect(admitted.filter(e=>e.archetype==='heavy')).toHaveLength(1);}
+      else if(a.carnival!.status==='active'){expect(admitted.length).toBeLessThanOrEqual(36);expect(admitted.every(e=>e.archetype==='grunt')).toBe(true);}
+      else expect(admitted).toEqual([]);
       expect(a.defenseWaves!.nextAtSeconds).toBeGreaterThan(a.elapsedSeconds);
     }
     if(a.postCapSurvival!.startedAtSeconds!==null){fallbackStart??=a.postCapSurvival!.startedAtSeconds;
       const added=a.enemies.filter(e=>e.id>=b.enemyStream!.nextEnemyId);expect(added.length).toBeLessThanOrEqual(3);
     }
   }
-  expect(navalStart).toBeCloseTo(24+1/60);expect(fallbackStart).toBeCloseTo(navalStart!+c.durationSeconds);
+  expect(navalStart).toBeCloseTo(1/60);expect(fallbackStart).toBeCloseTo(navalStart!+c.durationSeconds);
   expect(launches).toBe(5);expect(s.getState().progression!.level).toBeGreaterThanOrEqual(7);
-  expect(s.getState().postCapSurvival!.nextGiantAtSeconds).toBeCloseTo(fallbackStart!+24);
+  expect(s.getState().postCapSurvival!.nextGiantAtSeconds).toBeCloseTo(fallbackStart!+48);
 });

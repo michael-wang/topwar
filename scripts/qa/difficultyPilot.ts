@@ -4,7 +4,6 @@ import { GameConfigSchema } from '../../src/config/configSchema';
 import { LevelDefinitionSchema } from '../../src/level/LevelDefinition';
 import { Simulation } from '../../src/simulation/Simulation';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
-import { carnivalPilotLane } from './carnivalPilot';
 import { pilotTuning } from './p15Pilot';
 
 export function runDifficultyPilot(seed: number, retainSnapshots = false) {
@@ -21,7 +20,10 @@ export function runDifficultyPilot(seed: number, retainSnapshots = false) {
     if (tick % 12 === 0) {
       const current = before.player.selectedLane!;
       const unsafe = new Set(before.artillery?.shells.map(s => s.targetLane));
-      const preferred = carnivalPilotLane(before);
+      const nearest = [...before.enemies].filter(e => e.z > before.player.z).sort((a, b) => a.z - b.z || a.id - b.id)[0];
+      const giant = before.enemies.find(e => e.archetype === 'giant');
+      const preferred = before.grenade?.supply?.lane
+        ?? (giant && (!nearest || nearest.z - before.player.z > 10) ? giant : nearest)?.lane ?? current;
       // One adjacent input every 200ms. Avoid locked artillery lanes, including
       // both shells during overlap. No simulation, targeting or damage overrides.
       const choices = [current - 1, current, current + 1].filter(l => l >= 0 && l < 5 && !unsafe.has(l));

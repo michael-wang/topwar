@@ -30,12 +30,15 @@ export function advanceCarnival(previous: CarnivalState | undefined, frame: Simu
     if (state.status === 'active') state.status = 'complete';
     return state;
   }
-  if (!frame.squad.count || !frame.enemyStream) return state;
-  if (state.status === 'pending' && frame.machineGunReleaseAtSeconds != null)
+  if (!frame.enemyStream) return state;
+  if (state.status === 'pending' && frame.squad.count && frame.machineGunReleaseAtSeconds != null)
     state = { ...state, status: 'active', startedAtSeconds: frame.machineGunReleaseAtSeconds };
   if (state.status !== 'active') return state;
   state.elapsedSeconds = Math.min(c.durationSeconds, Math.max(0, frame.elapsedSeconds - state.startedAtSeconds!));
   if (state.elapsedSeconds + 1e-9 >= c.durationSeconds) return { ...state, status: 'complete', elapsedSeconds: c.durationSeconds };
+  // The lethal artillery tick still advances the phase clock, but admits no
+  // enemies. Subsequent Game Over ticks freeze in Simulation, as before.
+  if (!frame.squad.count) return state;
   const due = c.firstWaveSeconds + state.nextWaveIndex * c.waveIntervalSeconds;
   if (state.elapsedSeconds + 1e-9 < due) return state;
   // Skip missed opportunities after a large step, including cap-blocked slots.

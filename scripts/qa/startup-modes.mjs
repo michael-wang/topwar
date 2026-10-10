@@ -28,9 +28,16 @@ try{for(const width of [350,390])for(const legacy of [false,true]){
     const nearest=[...s.enemies].sort((a,b)=>a.z-b.z||a.id-b.id)[0],giant=s.enemies.find(e=>e.archetype==='giant');
     let lane=s.grenade.supply?.lane??(giant&&(!nearest||nearest.z>10)?giant:nearest)?.lane??s.player.selectedLane;
     const targets=new Set(s.artillery?.shells.map(shell=>shell.targetLane));
-    if(targets.has(s.player.selectedLane))lane=[0,1,2,3,4].filter(l=>!targets.has(l)).sort((a,b)=>Math.abs(a-s.player.selectedLane)-Math.abs(b-s.player.selectedLane))[0]??lane;
+    // Do not move into a locked lane merely because a Grunt/Supply is there.
+    lane=[s.player.selectedLane-1,s.player.selectedLane,s.player.selectedLane+1].filter(l=>l>=0&&l<5&&!targets.has(l))
+      .sort((a,b)=>Math.abs(a-lane)-Math.abs(b-lane)||a-b)[0]??s.player.selectedLane;
     if(lane!==s.player.selectedLane)a.simulation.stepLane(lane<s.player.selectedLane?-1:1);
-    if(s.grenade.inventory&&!s.grenade.flight&&nearest&&nearest.z<14){window.dispatchEvent(new KeyboardEvent('keydown',{key:'q',code:'KeyQ'}));window.dispatchEvent(new KeyboardEvent('keyup',{key:'q',code:'KeyQ'}));}
+    if(s.grenade.inventory&&!s.grenade.flight&&nearest){
+     const radius=s.catharsis.balance.grenade.blastRadius,cluster=s.enemies.filter(e=>Math.hypot(e.x-nearest.x,e.z-nearest.z)<=radius);
+     const x=cluster.reduce((n,e)=>n+e.x,0)/cluster.length,z=cluster.reduce((n,e)=>n+e.z,0)/cluster.length;
+     const victims=s.enemies.filter(e=>Math.hypot(e.x-x,e.z-z)<=radius),depth=z-s.player.z;
+     if(victims.length>=6&&depth<=14||depth<=10&&victims.reduce((n,e)=>n+e.hp,0)>=12){window.dispatchEvent(new KeyboardEvent('keydown',{key:'q',code:'KeyQ'}));window.dispatchEvent(new KeyboardEvent('keyup',{key:'q',code:'KeyQ'}));}
+    }
    }
    a.renderFrame(clock+=1000/60);cancelAnimationFrame(a.frameId);
    const now=a.simulation.getState();if(now.progression)window.__milestones[now.progression.level]??=now.elapsedSeconds;
@@ -41,7 +48,7 @@ try{for(const width of [350,390])for(const legacy of [false,true]){
   await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.player.z=20;a.simulation.restoreState(s);window.__advance(1);});
   assert(await page.evaluate(()=>!!window.__testApp.simulation.getState().boss));
  }
- else{for(let i=0;i<32;i++){await page.evaluate(()=>window.__advance(5));const s=await page.evaluate(()=>window.__testApp.simulation.getState());assert(s.squad.count>0);if(s.progression.level===8)break;}
+ else{for(let i=0;i<48;i++){await page.evaluate(()=>window.__advance(5));const s=await page.evaluate(()=>window.__testApp.simulation.getState());assert(s.squad.count>0,JSON.stringify({time:s.elapsedSeconds,progression:s.progression,destroyer:s.destroyer}));if(s.progression.level===8)break;}
   assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),8);
   assert.deepEqual(Object.keys(await page.evaluate(()=>window.__milestones)),['1','2','3','4','5','6','7','8']);
  }

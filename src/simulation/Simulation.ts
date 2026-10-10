@@ -378,6 +378,19 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     || carnival.startedAtSeconds + carnival.elapsedSeconds > (state.elapsedSeconds as number) + 1e-8
     || (carnival.status === 'active' && Math.abs(carnival.startedAtSeconds + carnival.elapsedSeconds - (state.elapsedSeconds as number)) > 1e-8)))
     throw new Error('Invalid Carnival activation or elapsed time');
+  const carnivalConfig = catharsis?.balance.carnival;
+  if (carnival.startedAtSeconds !== null && carnivalConfig?.enabled) {
+    // Active saves must have consumed every due opportunity, even when the cap
+    // blocked admission. Completed large-step saves may retain an older cursor:
+    // they never admit again, and remain compatible with historical snapshots.
+    const age = carnival.elapsedSeconds;
+    const atEnd = age + 1e-9 >= carnivalConfig.durationSeconds;
+    const last = atEnd ? carnivalConfig.durationSeconds - 1e-8 : age + 1e-9;
+    const consumed = Math.max(0, Math.floor((last - carnivalConfig.firstWaveSeconds) / carnivalConfig.waveIntervalSeconds) + 1);
+    const alive = isPlainObject(state.squad) && (state.squad.count as number) > 0;
+    if (carnival.nextWaveIndex > consumed || (alive && carnival.status === 'active'
+      && (atEnd || carnival.nextWaveIndex !== consumed))) throw Error('Invalid Carnival clock or consumed opportunity cursor');
+  }
   // Disabled config discards even stale temporary state; old snapshots start fresh.
   const postCapSurvival = catharsis?.balance.defenseMode && catharsis.balance.postCapSurvival.enabled
     ? PostCapSurvivalStateSchema.parse(state.postCapSurvival ?? emptyPostCapSurvival()) : emptyPostCapSurvival();
@@ -391,8 +404,26 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       || postCapSurvival.startedAtSeconds !== null), catharsis.balance.destroyer, state.elapsedSeconds as number,
       isPlainObject(state.squad) && (state.squad.count as number) > 0) : undefined;
   if (state.destroyer !== undefined && !destroyer) throw Error('Destroyer requires Defense configuration');
-  if (destroyer?.status === 'active' && (carnival.status === 'active' || postCapSurvival.startedAtSeconds !== null))
-    throw Error('Destroyer cannot share spawning ownership');
+  const navalConfig = catharsis?.balance.destroyer;
+  if (destroyer?.status === 'active' && postCapSurvival.startedAtSeconds !== null)
+    throw Error('Destroyer and survival cannot share spawning ownership');
+  if (destroyer?.startedAtSeconds != null && carnival.startedAtSeconds !== null) {
+    if (navalConfig?.startPolicy === 'withCarnival'
+      ? destroyer.startedAtSeconds !== carnival.startedAtSeconds
+      : carnival.status === 'active' || destroyer.startedAtSeconds + 1e-8 < carnival.startedAtSeconds + carnival.elapsedSeconds)
+      throw Error('Invalid Destroyer encounter-start policy or phase clock');
+  }
+  if (navalConfig?.enabled && navalConfig.startPolicy === 'withCarnival' && destroyer?.status === 'pending'
+    && (carnival.status === 'active' || carnival.status === 'complete'))
+    throw Error('Concurrent Destroyer must start with Carnival');
+  if (postCapSurvival.startedAtSeconds !== null && destroyer?.status === 'pending' && navalConfig?.enabled
+    && carnival.status !== 'skipped') throw Error('Survival cannot precede Destroyer');
+  if (postCapSurvival.startedAtSeconds !== null
+    && ((carnival.startedAtSeconds !== null
+      && postCapSurvival.startedAtSeconds + 1e-8 < carnival.startedAtSeconds + carnival.elapsedSeconds)
+      || (navalConfig?.enabled && destroyer?.status === 'complete' && destroyer.startedAtSeconds !== null
+        && postCapSurvival.startedAtSeconds + 1e-8 < destroyer.startedAtSeconds + navalConfig.durationSeconds)))
+    throw Error('Survival clock precedes authored encounter completion');
   if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
     || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
     || (progression.level as number) < 1 || !Number.isSafeInteger(progression.xp)

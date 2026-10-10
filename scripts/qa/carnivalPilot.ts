@@ -22,7 +22,11 @@ export function carnivalEntry(seed = 17) {
 export function carnivalPilotLane(s: SimulationFrameState): number {
   const nearest = [...s.enemies].filter(e => e.z > s.player.z).sort((a,b) => a.z-b.z || a.id-b.id)[0];
   const giant = s.enemies.find(e => e.archetype === 'giant');
-  return s.grenade?.supply?.lane ?? (giant && (!nearest || nearest.z-s.player.z>10) ? giant : nearest)?.lane ?? s.player.selectedLane!;
+  const preferred = s.grenade?.supply?.lane ?? (giant && (!nearest || nearest.z-s.player.z>10) ? giant : nearest)?.lane ?? s.player.selectedLane!;
+  const current = s.player.selectedLane!, danger = new Set(s.artillery?.shells.map(shell => shell.targetLane));
+  // Adjacent safe choice, retaining the combat preference when no shell threatens it.
+  return [current-1,current,current+1].filter(l=>l>=0&&l<5&&!danger.has(l))
+    .sort((a,b)=>Math.abs(a-preferred)-Math.abs(b-preferred)||a-b)[0] ?? current;
 }
 export function carnivalPilotGrenade(s: SimulationFrameState, distant = false): boolean {
   const c=s.catharsis!.balance.grenade, target=grenadeTarget(s,c);

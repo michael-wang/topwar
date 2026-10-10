@@ -81,9 +81,10 @@ try {
     });const performanceSample=await measure();await capture('sustained');
     while((await state()).carnival.elapsedSeconds<18)await advance(500);
     await capture('lv7');while((await state()).carnival.status!=='complete')await advance(100);
-    const end=await state();assert(end.carnival.elapsedSeconds===24 && end.destroyer.status==='active' && end.postCapSurvival.startedAtSeconds===null,'24-second Carnival handoff to Destroyer');
+    const end=await state();assert(end.carnival.elapsedSeconds===24 && end.destroyer.status==='active' && end.postCapSurvival.startedAtSeconds===null,'24-second Carnival completes during Destroyer');
     assert(end.progression.level>=7 && end.machineGunReleaseAtSeconds===frozen.machineGunReleaseAtSeconds,'Natural progression, single release');
-    await capture('handoff');await advance(27500);
+    assert(Math.abs(end.destroyer.startedAtSeconds-end.machineGunReleaseAtSeconds)<1e-8,'Concurrent entrance');
+    await capture('handoff');await advance(3500);
     const navalEnd=await state();assert(navalEnd.destroyer.status==='complete' && navalEnd.postCapSurvival.startedAtSeconds!==null && navalEnd.squad.count>0,'Destroyer completes before Survival');
     await advance(7000);const fallback=await state();
     // The three MGs can kill a resumed group before the seven-second sample.

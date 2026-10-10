@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
-export const destroyerDefaults = { enabled: false, durationSeconds: 27, entrySeconds: 3.2,
+export const destroyerDefaults = { startPolicy: 'afterCarnival' as const, enabled: false, durationSeconds: 27, entrySeconds: 3.2,
   exitAtSeconds: 23, radioAtSeconds: 1.3, radioDurationSeconds: 7.2,
   shotTimes: [8.8, 12, 16, 17.3, 21], startX: -28, stationX: -4, exitX: 30, z: 56 };
 export const DestroyerConfigSchema = z.strictObject({
+  // Missing policy belongs to historical sequential snapshots/configs. Keep
+  // their clock instead of retroactively replaying an Lv6 entrance.
+  startPolicy: z.enum(['afterCarnival', 'withCarnival']).default('afterCarnival'),
   enabled: z.boolean(), durationSeconds: z.number().finite().min(10).max(60),
   entrySeconds: z.number().finite().positive(), exitAtSeconds: z.number().finite().positive(),
   radioAtSeconds: z.number().finite().nonnegative(), radioDurationSeconds: z.number().finite().positive(),

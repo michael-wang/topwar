@@ -139,7 +139,7 @@ The migrated browser checks retain their scenario assertions:
 
 - `evolution-fixture-sanity.mjs`: ten real kills into Lv6, first MG fire, inert removed keys, Pause/Retry, focus guards and six bounded-resource reset cycles.
 - `late-dev-sanity.mjs`: four menu buttons fit both mobile widths, then LATE/MG7/MG8 progression, Grenades, snapshots and 150 seconds of ordinary combat per entry.
-- `carnival-sanity.mjs`: full 24-second Carnival, snapshot replay and Pause, then the authored Destroyer phase before temporary Survival; exact Retry.
+- `carnival-sanity.mjs`: full 24-second Carnival concurrent with Destroyer, snapshot replay and Pause, then the 27-second naval completion before temporary Survival; exact Retry.
 - `p3a-browser.mjs`: test-only SHELL launches, overlapping flights, dodge/impact, Pause/Retry and snapshot continuation.
 
 ## Permanent Ink Spear validation
@@ -260,3 +260,7 @@ Use `p28-perf.mjs` before and after changes with identical seeded scenes, withou
 ## Golden Grenade presentation
 
 `node scripts/qa/p210-browser.mjs` records both 36-Grunt testbeds at 390×844 and 350×844, including a simulated 34px bottom inset. It checks each pooled reward's peak size, full silhouette bounds, final size/position against the real HUD icon, Pause during flight, rewards, partial/in-flight snapshots and exact Retry. Captures include Stage 1/2 and each sequential golden reward at peak, plus real 36-Grunt blasts with surviving Heavy/Giant reactions. Inspect the recordings and extracted frames at native portrait size. Outputs default to ignored `artifacts/p210/browser`. Use the unchanged seeded `p28-perf.mjs` for before/after rendering costs; the crowd increase is restricted to CRATE3/CRATE8, so its ordinary GRENADE benchmark remains comparable.
+
+## P3-B.4 difficulty overlap
+
+`node scripts/qa/difficulty-metrics.mjs artifacts/p3b4/final` runs natural Lv1–8 for seeds 1, 17, 42, 99 and 2026 at 60Hz with an adjacent, artillery-aware 200ms pilot. It records level times, Giant combat, Heavy admissions, release/phase/shell clocks, casualties and peaks; seed 17 includes plain snapshots. `node scripts/qa/difficulty-browser.mjs final` replays its natural Carnival entry at both portrait sizes with three 28-second CPU-4x/DPR-1 samples and separate recordings. It does not add shipping hooks. Historical comparisons may use `revision-server.mjs <revision> --balance` to serve exact historical source and game.json; other public asset changes remain forbidden. Use matched samples without simultaneous browser workloads. SwiftShader does not measure physical-phone GPU performance.
