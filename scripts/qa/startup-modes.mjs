@@ -3,7 +3,7 @@ import { preview } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const out='artifacts/p3b3/modes';mkdirSync(out,{recursive:true});
+const out=process.env.TOPWAR_MODES_OUT??'artifacts/p3b3/modes';mkdirSync(out,{recursive:true});
 const server=await preview({preview:{host:'127.0.0.1',port:5185,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results=[];

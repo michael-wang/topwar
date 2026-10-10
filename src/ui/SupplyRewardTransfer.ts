@@ -27,11 +27,20 @@ export class SupplyRewardTransfer {
   private readonly items=Array.from({length:3},()=>document.createElement('div'));
   private transfer:{atMs:number;x:number;z:number;count:number;arrived:number}|null=null;
   private lastArrivalMs=-Infinity;
+  private bounds: {width:number;height:number;cx:number;cy:number;dx:number;dy:number;iconSize:number;origin:{x:number;y:number}}|null=null;
+  private buttonScale=1;
+  private readonly invalidate=():void=>{this.bounds=null;};
+  private readonly resizeObserver=new ResizeObserver(this.invalidate);
+  private readonly styleObserver=new MutationObserver(this.invalidate);
   constructor(private readonly viewport:HTMLElement,private readonly button:GrenadeButton,
     private readonly project:(x:number,z:number,nowMs:number)=>{x:number;y:number}) {
     this.layer.className='supply-reward-transfer';this.layer.setAttribute('aria-hidden','true');
     for(const item of this.items){item.className='supply-reward-item';item.innerHTML=goldenGrenadeIcon;item.hidden=true;this.layer.append(item);}
     viewport.append(this.layer);
+    this.resizeObserver.observe(viewport);
+    this.styleObserver.observe(viewport,{attributes:true,attributeFilter:['style','class']});
+    window.addEventListener('resize',this.invalidate);
+    window.visualViewport?.addEventListener('resize',this.invalidate);
   }
   present(event:Extract<GrenadeEvent,{kind:'grenadeSupplyOpened'}>,nowMs:number):void {
     this.reset();this.transfer={atMs:nowMs,x:event.x,z:event.z,count:Math.min(3,event.amount),arrived:0};
@@ -39,28 +48,36 @@ export class SupplyRewardTransfer {
   }
   update(nowMs:number):void {
     const s=this.transfer;if(!s)return;
+    // Measure only on entry/resize, before this frame's style writes. Recover
+    // unscaled geometry if a resize occurs during the existing button pulse.
+    if(!this.bounds){
+      const viewport=this.viewport.getBoundingClientRect(),icon=this.button.getIconBounds(),button=this.button.getBounds();
+      const cx=button.x+button.width/2,cy=button.y+button.height/2;
+      this.bounds={width:viewport.width,height:viewport.height,cx:cx-viewport.x,cy:cy-viewport.y,
+        dx:(icon.x+icon.width/2-cx)/this.buttonScale,dy:(icon.y+icon.height/2-cy)/this.buttonScale,
+        iconSize:icon.width/this.buttonScale,origin:this.project(s.x,s.z,s.atMs)};
+    }
     const c=SUPPLY_TRANSFER;
     let arrived=0;
     for(let i=0;i<s.count;i++)if(nowMs-s.atMs-c.delayMs-i*c.staggerMs>=c.flightMs)arrived++;
     if(arrived>s.arrived){s.arrived=arrived;this.lastArrivalMs=nowMs;}
     const pulse=Math.max(0,1-(nowMs-this.lastArrivalMs)/c.pulseMs);
     const growth=s.count===3 ? .82+.18*Math.min(1,(nowMs-s.atMs)/(c.delayMs+2*c.staggerMs+c.flightMs)) : 1;
-    // Apply this clock's pulse before measuring the icon, avoiding one-frame
-    // feedback (and size drift when the same paused clock is rendered again).
-    this.button.presentSupplyTransfer(growth+pulse*(s.count===3?.1:.06),pulse);
-    const bounds=this.viewport.getBoundingClientRect(),dest=this.button.getIconBounds();
-    const target={x:dest.x+dest.width/2-bounds.x,y:dest.y+dest.height/2-bounds.y};
-    const origin=this.project(s.x,s.z,s.atMs);
+    this.buttonScale=growth+pulse*(s.count===3?.1:.06);
+    this.button.presentSupplyTransfer(this.buttonScale,pulse);
+    const bounds=this.bounds,iconSize=bounds.iconSize*this.buttonScale;
+    const target={x:bounds.cx+bounds.dx*this.buttonScale,y:bounds.cy+bounds.dy*this.buttonScale};
+    const origin=bounds.origin;
     for(let i=0;i<this.items.length;i++) {
       const age=nowMs-s.atMs-c.delayMs-i*c.staggerMs,t=age/c.flightMs,item=this.items[i];
       item.hidden=i>=s.count||t<0||t>=1;
       if(item.hidden)continue;
-      const p=supplyTransferPoint(t,origin,target,i,s.count,bounds.width,bounds.height,dest.width);
-      const scale=supplyTransferScale(t,dest.width);
+      const p=supplyTransferPoint(t,origin,target,i,s.count,bounds.width,bounds.height,iconSize);
+      const scale=supplyTransferScale(t,iconSize);
       item.style.transform=`translate(${p.x}px,${p.y}px) translate(-50%,-50%) rotate(${(i%2?1:-1)*8*Math.sin(t*Math.PI)}deg) scale(${scale})`;
     }
     if(s.arrived===s.count&&pulse===0)this.reset();
   }
-  reset():void {this.transfer=null;this.lastArrivalMs=-Infinity;for(const item of this.items)item.hidden=true;this.button.endSupplyTransfer();}
-  dispose():void {this.reset();this.layer.remove();}
+  reset():void {this.transfer=null;this.bounds=null;this.buttonScale=1;this.lastArrivalMs=-Infinity;for(const item of this.items)item.hidden=true;this.button.endSupplyTransfer();}
+  dispose():void {this.reset();this.resizeObserver.disconnect();this.styleObserver.disconnect();window.removeEventListener('resize',this.invalidate);window.visualViewport?.removeEventListener('resize',this.invalidate);this.layer.remove();}
 }

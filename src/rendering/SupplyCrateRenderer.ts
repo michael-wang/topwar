@@ -9,6 +9,8 @@ export class SupplyCrateRenderer {
   private readonly sphere = new THREE.SphereGeometry(1, 10, 7);
   private readonly wood = new THREE.MeshStandardMaterial({ color: '#d4a640', roughness: .8 });
   private readonly metal = new THREE.MeshStandardMaterial({ color: '#283533', roughness: .8 });
+  private readonly fadingWood = this.wood.clone();
+  private readonly fadingMetal = this.metal.clone();
   private readonly pale = new THREE.MeshBasicMaterial({ color: '#eadfbb' });
   private readonly group = new THREE.Group();
   private readonly badge = new THREE.Group();
@@ -25,6 +27,7 @@ export class SupplyCrateRenderer {
   private opening: { x: number; z: number; atMs: number } | null = null;
   private hitAtMs = -Infinity;
   constructor(private readonly scene: THREE.Scene) {
+    this.fadingWood.transparent = this.fadingMetal.transparent = true;
     this.group.name = 'grenade-supply';
     const piece = (x: number, y: number, z: number, sx: number, sy: number, sz: number, metal = false) => {
       const mesh = new THREE.Mesh(this.box, metal ? this.metal : this.wood);
@@ -107,9 +110,16 @@ export class SupplyCrateRenderer {
         mesh.position.z -= stage * .08;
       }
     }
-    for (const material of [this.wood, this.metal]) { material.transparent = opacity < 1; material.opacity = opacity; }
+    this.fadingWood.emissive.copy(this.wood.emissive); this.fadingWood.emissiveIntensity = this.wood.emissiveIntensity;
+    this.fadingWood.opacity = this.fadingMetal.opacity = opacity;
+    for (const { mesh } of this.pieces) mesh.material = mesh.name === 'crate-retaining-strap'
+      ? (opacity < 1 ? this.fadingMetal : this.metal) : (opacity < 1 ? this.fadingWood : this.wood);
+  }
+  preparationMeshes(): THREE.Mesh[] {
+    // Keep the opaque and fade programs alive; no shader variant switch at first breakup.
+    return [new THREE.Mesh(this.box, this.fadingWood), new THREE.Mesh(this.box, this.fadingMetal)];
   }
   get visible(): boolean { return this.group.visible; }
   reset(): void { this.opening = null; this.hitAtMs = -Infinity; this.group.visible = false; this.shadow.visible = false; }
-  dispose(): void { this.scene.remove(this.group, this.shadow); for (const resource of [this.box, this.sphere, this.circle, this.wood, this.metal, this.pale, this.shadowMaterial,this.interiorMaterial,this.contentsMaterial]) resource.dispose(); }
+  dispose(): void { this.scene.remove(this.group, this.shadow); for (const resource of [this.box, this.sphere, this.circle, this.wood, this.metal, this.fadingWood, this.fadingMetal, this.pale, this.shadowMaterial,this.interiorMaterial,this.contentsMaterial]) resource.dispose(); }
 }

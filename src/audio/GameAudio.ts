@@ -6,6 +6,7 @@ import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { LOCK_ON_AUDIO_GAP_SECONDS } from '../presentation/ArtilleryWarning';
+import { IdlePreparation } from '../presentation/IdlePreparation';
 
 // Existing audio cue delay is independent of the removed visual crash system.
 const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
@@ -208,6 +209,7 @@ export class GameAudio {
   private nextEnvironmentCueMs = -Infinity;
   private unlocked = false;
   private disposed = false;
+  private preparation: IdlePreparation | null = null;
 
   private activation: Promise<AudioActivationResult> | null = null;
 
@@ -250,6 +252,7 @@ export class GameAudio {
           clearTimeout(timeout);
           if (this.disposed) return resolve('unavailable');
           this.unlocked = context.state === 'running';
+          if (this.unlocked && !this.preparation) this.preparation = new IdlePreparation(this.prepareEffects(context));
           resolve(this.unlocked ? 'running' : 'denied');
         }, () => { clearTimeout(timeout); this.activationDenied = true; resolve('denied'); });
       }).finally(() => { this.activation = null; });
@@ -464,6 +467,7 @@ export class GameAudio {
   }
 
   dispose(): void {
+    this.preparation?.dispose(); this.preparation = null;
     if (this.disposed) return;
     this.disposed = true;
     for (const oscillator of this.active) {
@@ -488,6 +492,22 @@ export class GameAudio {
   }
 
   private createGrenadeBuffer(context: AudioContext): AudioBuffer {
+    const steps = this.grenadeSamples(context);
+    for (;;) { const next = steps.next(); if (next.done) return next.value; }
+  }
+
+  private *prepareEffects(context: AudioContext): Generator<void> {
+    if (!this.grenadeBuffer) {
+      const buffer = yield* this.grenadeSamples(context);
+      this.grenadeBuffer ??= buffer;
+    }
+    if (!this.rumbleBuffer) {
+      const buffer = yield* this.rumbleSamples(context);
+      this.rumbleBuffer ??= buffer;
+    }
+  }
+
+  private *grenadeSamples(context: AudioContext): Generator<void, AudioBuffer> {
     const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * 1.1), context.sampleRate);
     const samples = buffer.getChannelData(0); let seed = 0x48ad71, low = 0;
     for (let i = 0; i < samples.length; i++) {
@@ -495,11 +515,17 @@ export class GameAudio {
       const white = seed / 0x80000000 - 1, seconds = i / context.sampleRate;
       low = low * .94 + white * .06;
       samples[i] = white * .65 * Math.exp(-seconds * 13) + low * 2.3;
+      if (i % 2048 === 2047) yield;
     }
     return buffer;
   }
 
   private createRumbleBuffer(context: AudioContext): AudioBuffer {
+    const steps = this.rumbleSamples(context);
+    for (;;) { const next = steps.next(); if (next.done) return next.value; }
+  }
+
+  private *rumbleSamples(context: AudioContext): Generator<void, AudioBuffer> {
     const frames = Math.ceil(context.sampleRate * 1.7);
     const buffer = context.createBuffer(1, frames, context.sampleRate);
     const samples = buffer.getChannelData(0);
@@ -509,6 +535,7 @@ export class GameAudio {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
       low = low * .83 + (seed / 0x80000000 - 1) * .17;
       samples[index] = low;
+      if (index % 2048 === 2047) yield;
     }
     return buffer;
   }

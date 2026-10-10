@@ -42,6 +42,7 @@ export class GrenadeRenderer {
   getDebugStats() { return { supply: this.crate.visible, flight: this.flight.visible,
     burst: this.explosion.active > 0, dustCapacity: 16, explosionSlots: 2, activeExplosions: this.explosion.active,
     activeScorches: this.explosion.activeScorches }; }
+  preparationMeshes(): THREE.Mesh[] { return this.crate.preparationMeshes(); }
   reset(): void { this.crate.reset(); this.explosion.reset(); this.flight.visible = false; }
   dispose(): void {
     this.crate.dispose(); this.explosion.dispose(); this.scene.remove(this.flight);

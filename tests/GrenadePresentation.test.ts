@@ -84,6 +84,18 @@ class ElementStub extends EventTarget {
   remove(){this.removed=true;}
 }
 afterEach(()=>vi.unstubAllGlobals());
+it('does not rewrite inventory text, labels or classes on unchanged gameplay frames',()=>{
+  vi.stubGlobal('document',{createElement:()=>new ElementStub()});
+  const viewport=new ElementStub(),hud=new GrenadeButton(viewport as unknown as HTMLElement,vi.fn()),button=viewport.children[0];
+  hud.update(3,true,true);
+  const label=vi.spyOn(button,'setAttribute'),write=vi.fn();
+  Object.defineProperty(button.querySelector('strong'),'textContent',{set:write});
+  button.classList.add.mockClear();button.classList.remove.mockClear();button.classList.toggle.mockClear();
+  for(let i=0;i<120;i++)hud.update(3,true,true);
+  expect(label).not.toHaveBeenCalled();expect(write).not.toHaveBeenCalled();
+  expect(button.classList.add).not.toHaveBeenCalled();expect(button.classList.remove).not.toHaveBeenCalled();
+  expect(button.classList.toggle).not.toHaveBeenCalled();hud.dispose();
+});
 it('shows 3/2/1/0 with one acquisition accent, retaining reserves while unavailable',()=>{
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   const viewport=new ElementStub(),hud=new GrenadeButton(viewport as unknown as HTMLElement,vi.fn()),button=viewport.children[0];

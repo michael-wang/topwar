@@ -1,4 +1,5 @@
 import { ART } from '../art/ArtDirection';
+import { IdlePreparation } from '../presentation/IdlePreparation';
 import { GrenadeRenderer } from './GrenadeRenderer';
 import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
 import { DestroyerRenderer } from './DestroyerRenderer';
@@ -67,6 +68,7 @@ export class GameRenderer {
   private readonly air = new BattlefieldAir(this.scene);
   private resizeObserver: ResizeObserver | null = null;
   private disposed = false;
+  private preparation: IdlePreparation | null = null;
   private readonly skyFill = new THREE.HemisphereLight('#c8e0e9', '#bda57e', 1.9);
   private readonly sunlight = new THREE.DirectionalLight('#fff0d4', 1.55);
   private coastalLighting = false;
@@ -89,6 +91,66 @@ export class GameRenderer {
     this.camera.position.set(0, 6.5, -10);
     this.camera.lookAt(0, 0, 12.5);
     this.resize();
+    this.renderer.domElement.addEventListener('webglcontextrestored', this.restartPreparation);
+    this.renderer.domElement.addEventListener('webglcontextlost', this.suspendPreparation);
+  }
+
+  preparePresentation(): void {
+    if (!this.disposed && !this.preparation) this.preparation = new IdlePreparation(this.preparationSteps());
+  }
+  private readonly restartPreparation = (): void => {
+    if (!this.preparation) return;
+    this.preparation.dispose(); this.preparation = null; this.preparePresentation();
+  };
+  private readonly suspendPreparation = (): void => { this.preparation?.dispose(); };
+  private *preparationSteps(): Generator<unknown> {
+    // Submit programs without querying synchronous shader diagnostics. Each idle
+    // step handles one material layout; there are no uncancellable polling promises.
+    for (const object of this.environment.preparationObjects())
+      yield* this.prepareObject(object);
+    for (const mesh of this.grenadeRenderer.preparationMeshes())
+      yield* this.prepareObject(mesh);
+    // These resources are used by Stage 1, but neither construction nor compilation
+    // belongs in Tap-to-Start or in the first incoming shell/Destroyer render.
+    if (this.coastalLighting) {
+      this.destroyerRenderer ??= new DestroyerRenderer(this.scene); yield;
+      this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene); yield;
+    }
+    if (!this.renderer.extensions.has('KHR_parallel_shader_compile')) return;
+    const seen = new Set<string>();
+    function* objects(root: THREE.Object3D): Generator<THREE.Object3D> {
+      for (const child of root.children) { yield child; yield* objects(child); }
+    }
+    for (const object of objects(this.scene)) {
+      if (!(object instanceof THREE.Mesh || object instanceof THREE.Sprite) || !object.layers.test(this.camera.layers)) continue;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      // Distinct materials and instancing/color layouts need distinct preparation.
+      const key = materials.map(m => m.uuid).join(',') + ':' + (object instanceof THREE.InstancedMesh ? `instances:${!!object.instanceColor}` : 'single');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      yield* this.prepareObject(object);
+    }
+  }
+  private *prepareObject(object: THREE.Object3D): Generator<void> {
+    // Submission alone did not reduce first-use stalls on drivers without
+    // nonblocking completion support. Avoid speculative GPU work on those devices.
+    if (!this.renderer.extensions.has('KHR_parallel_shader_compile')) return;
+    const materials = this.renderer.compile(object, this.camera, this.scene);
+    yield;
+    // Three r180 compileAsync polls these same programs, but its internal timer
+    // cannot be cancelled on disposal/context loss. Keep polling in our owned queue.
+    const programs = new Set([...materials].map(material => (this.renderer.properties.get(material) as {
+      currentProgram: { isReady(): boolean; getUniforms(): unknown };
+    }).currentProgram));
+    const deadline = performance.now() + 5000;
+    for (const program of programs) {
+      while (!program.isReady()) {
+        if (performance.now() >= deadline) return;
+        yield;
+      }
+      program.getUniforms();
+      yield;
+    }
   }
 
   startResizeHandling(): void {
@@ -175,6 +237,9 @@ export class GameRenderer {
 
   dispose(): void {
     if (this.disposed) return;
+    this.preparation?.dispose(); this.preparation = null;
+    this.renderer.domElement.removeEventListener('webglcontextrestored', this.restartPreparation);
+    this.renderer.domElement.removeEventListener('webglcontextlost', this.suspendPreparation);
     this.stopResizeHandling();
     this.air.dispose();
     this.grenadeRenderer.dispose();

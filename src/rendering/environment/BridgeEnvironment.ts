@@ -9,6 +9,7 @@ import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
 import { sandWashTexture } from '../art/PaintedTextures';
 import * as THREE from 'three';
+import { unfoggedBasicMaterial } from '../art/unfoggedBasicMaterial';
 import { ARTILLERY_SITES, ArtilleryScheduler, type ArtilleryLayer } from './ArtilleryScheduler';
 import { WarActivityScheduler, SKY_FLAK_STARTED, SHIP_PASS_MS,
   AIRCRAFT_PASS_MS } from './WarActivityScheduler';
@@ -609,6 +610,8 @@ export class BridgeEnvironment {
     }
   }
 
+  preparationObjects(): THREE.Object3D[] { return this.aircraft; }
+
   private buildActivity(): void {
     const block = paintedBlockGeometry();
     this.geometries.push(block);
@@ -649,8 +652,8 @@ export class BridgeEnvironment {
     this.shipLayer.add(this.ship);
 
     for (let index = 0; index < 2; index++) {
-      const planeMaterial = new THREE.MeshBasicMaterial({ color: ART.world.steel,
-        transparent: true, opacity: 0, depthWrite: false, fog: false });
+      const planeMaterial = unfoggedBasicMaterial({ color: ART.world.steel,
+        transparent: true, opacity: 0, depthWrite: false });
       this.aircraftMaterials.push(planeMaterial);
       this.materials.push(planeMaterial);
       const plane = new THREE.Group();

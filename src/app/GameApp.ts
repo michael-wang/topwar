@@ -361,6 +361,7 @@ export class GameApp {
     if (!this.devReviewFixture && !this.reviewThreats) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
     this.startOverlay.finish();
     this.startInputs();
+    this.renderer.preparePresentation();
   }
 
   private readonly onStartPointerDown = (event: PointerEvent): void => {

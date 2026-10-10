@@ -11,8 +11,13 @@ class Element {
 afterEach(()=>vi.unstubAllGlobals());
 it('uses exactly three pooled items, staggered arrivals, frozen presentation time and responsive destinations',()=>{
   vi.stubGlobal('document',{createElement:()=>new Element()});const viewport=new Element();
+  const observers:{callback:()=>void;disconnect:ReturnType<typeof vi.fn>}[]=[];
+  class Observer {disconnect=vi.fn();observe=vi.fn();constructor(readonly callback:()=>void){observers.push(this);}}
+  vi.stubGlobal('ResizeObserver',Observer);vi.stubGlobal('MutationObserver',Observer);
+  vi.stubGlobal('window',{addEventListener:vi.fn(),removeEventListener:vi.fn()});
   let buttonScale=1;
-  const button={getIconBounds:()=>({x:52-18*buttonScale,y:712-18*buttonScale,width:36*buttonScale,height:36*buttonScale}),beginSupplyTransfer:vi.fn(),
+  let centerY=712;
+  const button={getBounds:()=>({x:20,y:centerY-32,width:64,height:64}),getIconBounds:vi.fn(()=>({x:52-18*buttonScale,y:centerY-18*buttonScale,width:36*buttonScale,height:36*buttonScale})),beginSupplyTransfer:vi.fn(),
     presentSupplyTransfer:vi.fn((scale:number)=>{buttonScale=scale;}),endSupplyTransfer:vi.fn()};
   const transfer=new SupplyRewardTransfer(viewport as unknown as HTMLElement,button as unknown as GrenadeButton,()=>({x:175,y:400}));
   const items=viewport.children[0].children;
@@ -21,6 +26,9 @@ it('uses exactly three pooled items, staggered arrivals, frozen presentation tim
   transfer.update(850);expect(items.filter(i=>!i.hidden)).toHaveLength(3);
   expect(new Set(items.map(i=>i.style.transform)).size).toBe(3);
   const frozen=items.map(i=>i.style.transform);transfer.update(850);expect(items.map(i=>i.style.transform)).toEqual(frozen);
+  expect(button.getIconBounds).toHaveBeenCalledOnce();
+  centerY-=34;observers[1].callback();transfer.update(850);
+  expect(button.getIconBounds).toHaveBeenCalledTimes(2);expect(items.map(i=>i.style.transform)).not.toEqual(frozen);
   transfer.update(1000);expect(items.filter(i=>!i.hidden)).toHaveLength(2);
   transfer.update(1360);expect(items.filter(i=>!i.hidden)).toHaveLength(1);
   transfer.update(1720);expect(items.filter(i=>!i.hidden)).toHaveLength(0);
@@ -28,6 +36,7 @@ it('uses exactly three pooled items, staggered arrivals, frozen presentation tim
   transfer.present({kind:'grenadeSupplyOpened',x:0,z:14,amount:1},2100);transfer.update(2400);
   expect(items.filter(i=>!i.hidden)).toHaveLength(1);expect(viewport.children[0].children).toBe(items);
   transfer.reset();expect(items.every(i=>i.hidden)).toBe(true);transfer.dispose();
+  expect(observers.every(o=>o.disconnect.mock.calls.length===1)).toBe(true);
 });
 it('peaks at more than three times the old 34px size, then smoothly shrinks to the measured HUD icon',()=>{
   expect(SUPPLY_TRANSFER.peakSize*supplyTransferScale(.3)).toBeGreaterThanOrEqual(34*3);

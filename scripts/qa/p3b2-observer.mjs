@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { selectDevFixture } from './dev-fixture-controls.mjs';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
   'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const phase = process.argv[2] ?? 'after', out = `artifacts/p3b2/${phase}`;
+const phase = process.argv[2] ?? 'after', out = process.env.TOPWAR_OBSERVER_OUT ?? `artifacts/p3b2/${phase}`;
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ headless: true,
   executablePath: process.env.TOPWAR_CHROME_PATH ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe',

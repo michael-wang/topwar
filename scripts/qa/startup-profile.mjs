@@ -3,7 +3,7 @@ import { build, preview } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
-const phase = process.argv[2] ?? 'after', out = resolve(`artifacts/p3b3/${phase}`);
+const phase = process.argv[2] ?? 'after', out = resolve(process.env.TOPWAR_STARTUP_OUT ?? `artifacts/p3b3/${phase}`);
 mkdirSync(out, { recursive: true });
 await build({ build: { outDir: `${out}/dist` }, plugins: [{
   name: 'startup-qa-only', enforce: 'pre', transform(source, id) {

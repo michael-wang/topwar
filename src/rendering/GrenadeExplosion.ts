@@ -29,6 +29,8 @@ export class GrenadeExplosion {
     const smoke = new THREE.InstancedMesh(this.sphere, smokeMat, 10), dust = new THREE.InstancedMesh(this.sphere, dustMat, 16);
     const sparks = new THREE.InstancedMesh(this.box, sparkMat, 12), ring = new THREE.Mesh(this.ringGeometry, ringMat);
     const debris = new THREE.InstancedMesh(this.box, debrisMat, GRENADE_DEBRIS_COUNT);
+    // The first render needs the same instancing-color shader as idle preparation.
+    for (let i = 0; i < 7; i++) fire.setColorAt(i, this.color.set(i % 3 === 0 ? '#ffe299' : i % 3 === 1 ? '#ffac3d' : '#ee4820'));
     for (let i = 0; i < GRENADE_DEBRIS_COUNT; i++) debris.setColorAt(i, this.color.set(['#393029', '#736047', '#c29a5b', '#ed9e42'][i % 4]));
     // The compact hot core must remain visible inside the overlapping fire lobes.
     fire.renderOrder = 1; core.renderOrder = 2;

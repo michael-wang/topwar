@@ -114,6 +114,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
     presentArtillery = vi.fn();
     presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;
+    preparePresentation = vi.fn();
     startResizeHandling = mock.startResizeHandling;
     stopResizeHandling = mock.stopResizeHandling;
     dispose = mock.dispose;
