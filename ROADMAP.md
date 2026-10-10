@@ -10,7 +10,7 @@
 
 ## NOW
 
-**P3-B closed playtest validation.** Validate Carnival → Destroyer → temporary Survival, artillery dodge readability and the Traditional Chinese Field Observer. Validate the approved provisional Mandarin recording in combat. English resources remain dormant until international testing. No automatic P3-C work.
+**P3-B closed playtest validation.** Compare DEV projectile P1/P2/P3 on a physical phone, starting with ordinary Lv1 Rifle; no final tracer direction is selected. Continue Carnival → Destroyer → temporary Survival, artillery dodge and Traditional Chinese Field Observer playtests. English resources remain dormant until international testing. No automatic P3-C work.
 
 ## NEXT
 

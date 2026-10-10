@@ -17,6 +17,7 @@ vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
 } }));
+vi.mock('../src/ui/DevProjectileControls', () => ({ DevProjectileControls: class { dispose() {} } }));
 vi.mock('../src/ui/DevReviewControls', () => ({ DevReviewControls: class {
   constructor(_viewport: unknown, select: unknown, canUseShortcuts: unknown) { mock.reviewConstructed(select, canUseShortcuts); }
   setSelected() {} dispose() {}

@@ -10,8 +10,9 @@ import { addRifleSoldiers } from '../simulation/squad/composition';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage, requiredXp } from '../simulation/progression';
 import { placeGrenadeSupply } from '../simulation/grenade';
 
-export type DevReviewFixture = 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival' | 'crate3' | 'crate8' | 'shell' | 'naval';
+export type DevReviewFixture = 'rifle' | 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival' | 'crate3' | 'crate8' | 'shell' | 'naval';
 export const DEV_REVIEW_FIXTURES = {
+  rifle: { level: 1, soldiers: 1 },
   grenade: { level: 3, soldiers: 1 },
   curve: { level: 4, soldiers: 2 },
   evolve: { level: 5, soldiers: 3 },
@@ -30,6 +31,7 @@ export const DEV_REVIEW_FIXTURES = {
 // Ordinary HP, damage, movement, lane targeting and progression apply thereafter.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
+  if (role === 'rifle') return new Simulation({ ...options, seed: 0x21b101 });
   if (role === 'shell') return createShellReview(options);
   if (role === 'naval') return createNavalReview(options);
   if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);

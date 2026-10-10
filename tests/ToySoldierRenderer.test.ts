@@ -765,16 +765,16 @@ it('presents progression power independently of tiers with reusable member burst
   expect((body.material as THREE.MeshStandardMaterial).emissive.getHex()).toBe(0);
   renderer.dispose(); expect(scene.getObjectByName('player-level-up-burst')).toBeUndefined();
 });
-it('makes tracers warmer/louder temporarily and resets the afterglow on Retry', () => {
+it('keeps tracer colors and blending stable over time and Retry', () => {
   const scene = new THREE.Scene(); const renderer = new ProjectileRenderer(scene, bulletModel());
   const shots = [{ id: 1, tier: 1, kind: 'rifle' as const, x: 0, z: 3, hitRadiusBonus: 0 }];
   renderer.update(shots, 0);
   const glow = scene.getObjectByName('tracer-glows') as THREE.InstancedMesh;
   expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
-  renderer.presentLevelUp(100); renderer.update(shots, 200);
-  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(.55);
+  renderer.update(shots, 200);
+  expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
   renderer.update(shots, 1501); expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
-  renderer.presentLevelUp(1600); renderer.reset(); renderer.update(shots, 1700);
+  renderer.reset(); renderer.update(shots, 1700);
   expect((glow.material as THREE.MeshBasicMaterial).opacity).toBe(ART.projectile.accentOpacity);
   renderer.dispose();
 });

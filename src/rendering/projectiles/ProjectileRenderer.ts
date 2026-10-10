@@ -1,8 +1,7 @@
 import { ART } from '../../art/ArtDirection';
-import { WEAPON_AFTERGLOW_MS } from '../../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
-import { defenseTracerGeometry, DefenseTracerTransform } from './DefenseTracer';
+import { defenseTracerGeometry, DefenseTracerTransform, type DefenseTracerPresentation } from './DefenseTracer';
 
 export function projectilePulseScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / 65);
@@ -31,7 +30,7 @@ export class ProjectileRenderer {
   private readonly activeIds = new Set<number>();
   private readonly defenseGeometry: THREE.BufferGeometry;
   private capacity = 8;
-  private afterglowUntilMs = -Infinity;
+  private presentation: DefenseTracerPresentation | null = null;
   private body: THREE.InstancedMesh;
   private glow: THREE.InstancedMesh;
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.projectile.core,
@@ -48,14 +47,18 @@ export class ProjectileRenderer {
     this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
   }
 
-  presentLevelUp(nowMs: number): void { this.afterglowUntilMs = nowMs + WEAPON_AFTERGLOW_MS; }
+  setDefensePresentation(presentation: DefenseTracerPresentation): void {
+    if (this.presentation && this.presentation.geometry !== presentation.geometry) this.presentation.geometry.dispose();
+    this.presentation = presentation;
+  }
 
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now(),
     defenseCamera?: THREE.PerspectiveCamera, cssHeight = 1): void {
     this.ensureCapacity(projectiles.length);
     const defense = !!defenseCamera;
     if (defenseCamera) defenseCamera.updateMatrixWorld();
-    this.body.geometry = this.glow.geometry = defense ? this.defenseGeometry : this.bullet.geometry;
+    const presentation = defense ? this.presentation : null;
+    this.body.geometry = this.glow.geometry = defense ? presentation?.geometry ?? this.defenseGeometry : this.bullet.geometry;
     // Draw the ink silhouette, then an unattenuated ivory core. Keep both in the
     // transparent queue so the outline cannot cover the core.
     if (this.tracerMaterial.transparent !== defense) {
@@ -64,12 +67,10 @@ export class ProjectileRenderer {
     }
     this.glow.renderOrder = defense ? 1 : 0;
     this.body.renderOrder = defense ? 2 : 0;
-    const afterglow = nowMs < this.afterglowUntilMs;
-    this.glowMaterial.color.set(afterglow ? ART.coastalUi.aqua : defense ? ART.defenseTracer.outline : ART.projectile.accent);
-    this.tracerMaterial.color.set(afterglow ? ART.coastalUi.energy : ART.projectile.core);
+    this.glowMaterial.color.set(defense ? presentation?.outline ?? ART.defenseTracer.outline : ART.projectile.accent);
+    this.tracerMaterial.color.set(presentation?.core ?? ART.projectile.core);
     // Normal ink (or the retained Legacy red edge) darkens pale sand.
-    this.glowMaterial.blending = afterglow ? THREE.AdditiveBlending : THREE.NormalBlending;
-    this.glowMaterial.opacity = afterglow ? .55 : defense ? 1 : ART.projectile.accentOpacity;
+    this.glowMaterial.opacity = defense ? 1 : ART.projectile.accentOpacity;
     const activeIds = this.activeIds;
     activeIds.clear();
     for (let index = 0; index < projectiles.length; index++) {
@@ -82,11 +83,13 @@ export class ProjectileRenderer {
         projectile.kind === 'rocket' ? .66 : this.rifleOrigin.height, projectile.z);
       if (defenseCamera) {
         const edge = this.defenseTransform.apply(transform, defenseCamera, cssHeight,
-          projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus, afterglow);
+          projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus, presentation?.size, !!presentation);
+        const fullLength = transform.scale.z;
+        transform.scale.z *= presentation?.coreLengthRatio ?? 1;
         transform.updateMatrix();
         this.body.setMatrixAt(index, transform.matrix);
-        transform.scale.x = afterglow ? transform.scale.x * 2.4 : transform.scale.x + edge;
-        transform.scale.z = afterglow ? transform.scale.z * 1.12 : transform.scale.z + edge;
+        transform.scale.x += edge;
+        transform.scale.z = fullLength + edge;
         transform.updateMatrix();
         this.glow.setMatrixAt(index, transform.matrix);
         continue;
@@ -98,7 +101,6 @@ export class ProjectileRenderer {
         transform.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
           1 + 0.45 * projectile.hitRadiusBonus, length * pulse);
       }
-      if (afterglow && projectile.kind !== 'rocket') { transform.scale.x *= 1.2; transform.scale.y *= 1.2; }
       transform.updateMatrix();
       this.body.setMatrixAt(index, transform.matrix);
       const glowWidth = projectile.kind === 'rocket' ? 2.4 : 2.4 + 1.7 * projectile.hitRadiusBonus;
@@ -117,7 +119,6 @@ export class ProjectileRenderer {
   }
 
   reset(): void {
-    this.afterglowUntilMs = -Infinity;
     this.pulse.reset();
     this.activeIds.clear();
     this.body.count = 0;
@@ -133,6 +134,7 @@ export class ProjectileRenderer {
     this.tracerMaterial.dispose();
     this.glowMaterial.dispose();
     this.defenseGeometry.dispose();
+    this.presentation?.geometry.dispose();
   }
 
   private createBatch(name: string, material: THREE.Material, capacity: number): THREE.InstancedMesh {

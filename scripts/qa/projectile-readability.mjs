@@ -45,7 +45,7 @@ try {
   await fixture(1);
   row.geometry=await page.evaluate(()=>{const p=window.__testApp.renderer.projectileRenderer,b=p.bullet.geometry;b.computeBoundingBox();return {min:b.boundingBox.min,max:b.boundingBox.max,origin:p.rifleOrigin,camera:window.__testApp.renderer.camera.toJSON(),viewport:{width:window.__testApp.renderer.viewport.clientWidth,height:window.__testApp.renderer.viewport.clientHeight}};});
   for(const afterglow of [false,true])for(const z of [5,10,20,30,40,60,100]) {
-   row.measurements.push(await page.evaluate(({z,afterglow})=>{const r=window.__testApp.renderer,p=r.projectileRenderer,shot={id:900,kind:'rifle',tier:1,x:0,z,hitRadiusBonus:0};p.reset();if(afterglow)p.presentLevelUp(0);p.update([shot],0,r.camera,r.viewport.clientHeight);p.update([shot],100,r.camera,r.viewport.clientHeight);window.__draw();return {z,afterglow,sizes:window.__sizes()};},{z,afterglow}));
+   row.measurements.push(await page.evaluate(({z,afterglow})=>{const r=window.__testApp.renderer,p=r.projectileRenderer,shot={id:900,kind:'rifle',tier:1,x:0,z,hitRadiusBonus:0};p.reset();if(afterglow)p.presentLevelUp?.(0);p.update([shot],0,r.camera,r.viewport.clientHeight);p.update([shot],100,r.camera,r.viewport.clientHeight);window.__draw();return {z,afterglow,sizes:window.__sizes()};},{z,afterglow}));
   }
   row.coreSamples=await page.evaluate(()=>{
    const T=window.__THREE,r=window.__testApp.renderer,p=r.projectileRenderer,visible=r.scene.children.map(o=>[o,o.visible]),background=r.scene.background;
@@ -71,14 +71,15 @@ try {
    }
    results.push(row);writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));await page.close();continue;
   }
-  // Live movement montage includes each required level, normal fire and its stronger afterglow.
+  // Historical comparison: old renderers expose afterglow; current renderers
+  // deliberately have no projectile Level Up effect, so that segment stays normal.
   const stop=await startGameRecording(page,width,height);
   for(const level of [1,3,5,6,7,8]) {
    await fixture(level);
    await page.evaluate(()=>{const a=window.__testApp;a.previousFrameTimestampMs=null;a.frameId=requestAnimationFrame(a.renderFrame);});
    await page.waitForTimeout(350);
    for(const glow of [false,true]) {
-    await page.evaluate(glow=>{const a=window.__testApp;if(glow)a.renderer.projectileRenderer.presentLevelUp(a.presentationMs);},glow);
+    await page.evaluate(glow=>{const a=window.__testApp;if(glow)a.renderer.projectileRenderer.presentLevelUp?.(a.presentationMs);},glow);
     await page.waitForTimeout(150);
     await page.screenshot({path:`${out}/lv${level}-${glow?'glow':'normal'}-${width}.png`});
     assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),level,'Capture must remain at its named level');

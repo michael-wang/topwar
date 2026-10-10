@@ -18,9 +18,9 @@ it('uses an ivory core and non-additive red edge in the existing two pooled draw
   expect(material.blending).toBe(THREE.NormalBlending);
   expect(material.opacity).toBe(ART.projectile.accentOpacity);
   expect(projectilePulseScale(0)).toBe(1.35); expect(projectilePulseScale(65)).toBe(1);
-  renderer.presentLevelUp(100); renderer.update([shot], 200);
-  expect(material.color.getHexString()).toBe(ART.coastalUi.aqua.slice(1));
-  expect(material.blending).toBe(THREE.AdditiveBlending);
+  renderer.update([shot], 200);
+  expect(material.color.getHexString()).toBe('d84c4b');
+  expect(material.blending).toBe(THREE.NormalBlending);
   renderer.reset(); renderer.update([shot], 250);
   expect(material.color.getHexString()).toBe('d84c4b');
   renderer.dispose(); expect(scene.children).toHaveLength(0);

@@ -5,6 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { grenadeTarget } from '../src/simulation/grenade';
+import { Simulation } from '../src/simulation/Simulation';
 
 const c = GameConfigSchema.parse(gameData), level = LevelDefinitionSchema.parse(levelData);
 const options = { seed: 19, level, startSquad: c.player.startSquad,
@@ -15,6 +16,12 @@ const tuning = { moveSpeed: c.player.moveSpeed, forwardSpeed: c.player.forwardSp
   formationSpacing: c.player.formationSpacing, memberRadius: c.player.memberRadius,
   normalEnemyRadius: c.tiers.normalEnemyRadius, bossRadius: c.bosses.basic.radius,
   rifle: c.weapon.rifle, rocket: c.weapon.rocket };
+
+it('offers a quick ordinary Lv1 entry without changing authored gameplay configuration', () => {
+  const fixture = createDevReviewFixture(options, c.weapon.rifle.fireRate, 'rifle');
+  expect(fixture.getState()).toEqual(new Simulation({ ...options, seed: 0x21b101 }).getState());
+  expect(fixture.getState().progression).toEqual({ level: 1, xp: 0 });
+});
 
 it('restarts a deterministic Lv3 Grenade crowd with three fresh charges and no natural refill', () => {
   const make = () => createDevReviewFixture(options, c.weapon.rifle.fireRate, 'grenade');
