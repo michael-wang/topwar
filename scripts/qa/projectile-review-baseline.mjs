@@ -1,16 +1,15 @@
 import { execFileSync } from 'node:child_process';
 import { transformWithEsbuild } from 'vite';
 
-// Freeze just the baseline projectile path for matched 54 Hz runs. The current
-// DEV UI remains mounted; its presentation setter is inert in this QA baseline.
+// QA-only replay of the physical-phone-selected P3 at the accepted baseline.
 export async function installReviewBaseline(page) {
-  for (const name of ['ProjectileRenderer', 'DefenseTracer']) {
-    let source = execFileSync('git', ['show', `79c6bf33644f0451523617e3e6f24d9f9d815369:src/rendering/projectiles/${name}.ts`], { encoding: 'utf8' });
-    if (name === 'ProjectileRenderer') source = source.replace('  presentLevelUp(', '  setDefensePresentation() {}\n  presentLevelUp(');
-    const { code } = await transformWithEsbuild(source, `${name}.ts`);
-    await page.route(new RegExp(`/src/rendering/projectiles/${name}\\.ts(\\?.*)?$`), route => route.fulfill({ contentType: 'application/javascript', body: code
+  const baseline = '2081abe74baf5928984584a552c394c86f626297';
+  for (const path of ['rendering/projectiles/ProjectileRenderer', 'rendering/projectiles/DefenseTracer', 'ui/DevProjectileControls']) {
+    let source = execFileSync('git', ['show', baseline + ':src/' + path + '.ts'], { encoding: 'utf8' });
+    if (path.endsWith('ProjectileRenderer')) source = "import { DEV_TRACERS, devTracerGeometry } from '/src/ui/DevProjectileControls.ts';\n" + source.replace('this.defenseGeometry = defenseTracerGeometry(bullet.geometry);', 'this.defenseGeometry = defenseTracerGeometry(bullet.geometry); this.setDefensePresentation({...DEV_TRACERS.P3,geometry:devTracerGeometry()});');
+    const { code } = await transformWithEsbuild(source, path + '.ts');
+    await page.route(new RegExp('/src/' + path + '\\.ts(\\?.*)?$'), route => route.fulfill({ contentType: 'application/javascript', body: code
       .replaceAll('../../art/ArtDirection', '/src/art/ArtDirection.ts')
-      .replaceAll('../../presentation/ProgressionLevelUp', '/src/presentation/ProgressionLevelUp.ts')
       .replaceAll('./DefenseTracer', '/src/rendering/projectiles/DefenseTracer.ts')
       .replaceAll('"three"', '"/node_modules/.vite/deps/three.js"') }));
   }

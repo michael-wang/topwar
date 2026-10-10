@@ -19,7 +19,9 @@ try {
       const {carnivalPilotLane}=await import('/scripts/qa/carnivalPilot.ts');
       window.__nextDecision=0;
       window.__pilot=()=>{const s=a.simulation.getFrameState();if(s.tick<window.__nextDecision)return;
-        window.__nextDecision=s.tick+12;const lane=carnivalPilotLane(s);if(lane!==s.player.selectedLane){
+        window.__nextDecision=s.tick+12;let lane=carnivalPilotLane(s);
+        const danger=new Set(s.artillery?.shells.map(shell=>shell.targetLane));
+        if(danger.has(lane)||danger.has(s.player.selectedLane))lane=[0,1,2,3,4].filter(l=>!danger.has(l)).sort((a,b)=>Math.abs(a-s.player.selectedLane)-Math.abs(b-s.player.selectedLane))[0]??lane;if(lane!==s.player.selectedLane){
           const key=lane<s.player.selectedLane?'a':'d',code=lane<s.player.selectedLane?'KeyA':'KeyD';
           window.dispatchEvent(new KeyboardEvent('keydown',{key,code,bubbles:true}));window.dispatchEvent(new KeyboardEvent('keyup',{key,code,bubbles:true}));}};
       window.__advance=(ms,pilot=true)=>{for(let t=0;t<ms;t+=100){if(pilot)window.__pilot();
@@ -29,7 +31,7 @@ try {
     const advance=(ms,pilot=true)=>page.evaluate(({ms,pilot})=>window.__advance(ms,pilot),{ms,pilot});
     await page.locator('.tuning-panel > summary').tap();
     const menu=await page.locator('.dev-review-controls button').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return{label:b.textContent,x:r.x,right:r.right,bottom:r.bottom,height:r.height};}));
-    assert(menu.length===8 && menu.at(-1).label==='CARNIVAL','Eight preserved menu entries');
+    assert(menu.map(b=>b.label).join(',')==='LATE,CRATE3,CRATE8,NAVAL','Four retained menu entries');
     assert(menu.every(b=>b.x>=0&&b.right<=width&&b.bottom<=844&&b.height>=44),'Menu fits portrait');
     await page.screenshot({path:`${out}/${width}-menu.png`});
     await selectDevFixture(page,'carnival');const initial=await state();
@@ -79,9 +81,11 @@ try {
     });const performanceSample=await measure();await capture('sustained');
     while((await state()).carnival.elapsedSeconds<18)await advance(500);
     await capture('lv7');while((await state()).carnival.status!=='complete')await advance(100);
-    const end=await state();assert(end.carnival.elapsedSeconds===24 && end.postCapSurvival.startedAtSeconds!==null,'24-second handoff');
+    const end=await state();assert(end.carnival.elapsedSeconds===24 && end.destroyer.status==='active' && end.postCapSurvival.startedAtSeconds===null,'24-second Carnival handoff to Destroyer');
     assert(end.progression.level>=7 && end.machineGunReleaseAtSeconds===frozen.machineGunReleaseAtSeconds,'Natural progression, single release');
-    await capture('handoff');await advance(7000);const fallback=await state();
+    await capture('handoff');await advance(27500);
+    const navalEnd=await state();assert(navalEnd.destroyer.status==='complete' && navalEnd.postCapSurvival.startedAtSeconds!==null && navalEnd.squad.count>0,'Destroyer completes before Survival');
+    await advance(7000);const fallback=await state();
     // The three MGs can kill a resumed group before the seven-second sample.
     assert(fallback.enemyStream.nextEnemyId>=end.enemyStream.nextEnemyId+3,'Fallback ordinary groups resume');
     await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.squad={count:0,rifleCounts:[],rocketCount:0,rifleRemainder:0};

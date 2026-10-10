@@ -19,7 +19,7 @@ try {
   await page.goto(process.env.TOPWAR_QA_URL ?? 'http://127.0.0.1:5173');
   await page.waitForSelector('.game-start-overlay');
   await page.keyboard.press('q'); await page.keyboard.press('4');
-  assert(await page.locator('.game-start-overlay').isVisible(), 'Q/DEV shortcuts preserve Tap-to-Start');
+  assert(await page.locator('.game-start-overlay').isVisible(), 'Q and removed fixture keys preserve Tap-to-Start');
   assert(await page.locator('.dev-review-controls').isHidden(), 'No permanent DEV fixture stack');
   await page.screenshot({ path: `${out}/start-390.png` });
   await page.getByRole('button', { name: 'Start game with audio' }).tap();
@@ -125,7 +125,7 @@ try {
     assert(await page.locator('.grenade-button strong').textContent() === '0' && await page.locator('.grenade-button').isDisabled(), 'Readable empty charge and disabled state');
     assert(await page.locator('.grenade-button').evaluate(e => e.classList.contains('grenade-empty') && getComputedStyle(e).animationName === 'none'), 'Empty is subdued without ready glow');
     await capture(`grenade-empty-${width}`);
-    await page.keyboard.press('5');
+    await selectDevFixture(page, 'evolve');
     // Review both side panels together, including a legally held charge carried into MG.
     await page.evaluate(() => {
       const a = window.__testApp, s = a.simulation.getState();
@@ -134,7 +134,7 @@ try {
       a.simulation.restoreState(s);
     });
     await advance(40);
-    assert((await state()).progression.level === 5, 'Physical 5 / Lv5 Rifle');
+    assert((await state()).progression.level === 5, 'QA EVOLVE / Lv5 Rifle');
     assert(await page.locator('.battle-info').getAttribute('data-weapon-family') === 'rifle', 'Rifle silhouette identity');
     assert(await page.locator('.battle-weapon-pips .is-filled').count() === 3 && await page.locator('.battle-squad-pips .is-filled').count() === 3, 'Rifle stage 3 and unlocked squad stage 3');
     await capture(`rifle-lv5-${width}`);
@@ -151,9 +151,9 @@ try {
     await capture(`mg-evolution-${width}`);
     await advance(1500);
     await capture(`evolved-lv6-${width}`);
-    await page.keyboard.press('6'); await advance(300); await capture(`mg-lv6-${width}`);
-    await page.keyboard.press('4'); await advance(40);
-    assert((await state()).progression.level === 4, 'Physical 4 / CURVE');
+    await selectDevFixture(page, 'machineGun'); await advance(300); await capture(`mg-lv6-${width}`);
+    await selectDevFixture(page, 'curve'); await advance(40);
+    assert((await state()).progression.level === 4, 'QA CURVE');
     for (const fromLevel of [1,2,3,4]) {
       await selectDevFixture(page, 'grenade');
       await page.evaluate(level => {

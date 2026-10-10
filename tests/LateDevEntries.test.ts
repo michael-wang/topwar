@@ -3,7 +3,7 @@ import gameData from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createDevReviewFixture, type DevReviewFixture } from '../src/app/DevReviewFixtures';
+import { createDevReviewFixture, type DevReviewFixture } from './helpers/ReviewFixtures';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 
 const config = GameConfigSchema.parse(gameData);

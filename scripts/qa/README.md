@@ -10,7 +10,7 @@ With Vite running, `node scripts/qa/mg-progression-sanity.mjs` checks real kill-
 
 ## Final pre-release checks
 
-`node scripts/qa/release-hud-sanity.mjs` checks 390×844 / 350×844 coarse-pointer and 1100×844 fine-pointer layouts: Start-derived A/D/Q overlays (actual mouse versus touch Start), no defense hint, settled acquisition pulse, charges 3→2→1→0 via the shared Q/button path, concurrent-flight blocking, snapshot with two reserves plus flight, flight Pause, invalid target preservation, normal Retry, only four review menu actions and physical 4/5/6. Captures/JSON default to `artifacts/pre-release/browser`.
+`node scripts/qa/release-hud-sanity.mjs` checks 390×844 / 350×844 coarse-pointer and 1100×844 fine-pointer layouts: Start-derived A/D/Q overlays (actual mouse versus touch Start), no defense hint, settled acquisition pulse, charges 3→2→1→0 via the shared Q/button path, concurrent-flight blocking, snapshot with two reserves plus flight, flight Pause, invalid target preservation, normal Retry, only four review menu actions and QA-only CURVE/EVOLVE/MG selection. Captures/JSON default to `artifacts/pre-release/browser`.
 
 `node scripts/qa/grenade-capacity-metrics.mjs` compares capacity 1 versus 3 with all other current values identical: seeds 1–50, normal and 1.8-second hesitation pilots, one adjacent lane step per 200ms and the existing crowd/emergency throw policy. It records every valid launch/detonation, per-throw kills/ordinary XP and pressure, Lv3/acquisition/Lv4 clocks, overflow, failures and unfinished flights through two seconds after Lv6. Duration averages exclude runs that fail before Lv4; those failures remain in the report. Outputs default to `artifacts/pre-release/capacity-metrics.json`. These are diagnostic policies, not human-play certification. See `PRE_RELEASE_REPORT.md` for results and mixed evidence.
 
@@ -30,7 +30,7 @@ Chrome emulation does not certify physical iOS/Safari long-press or thumb comfor
 four deterministic fixture resets, menu close/Escape/focus ownership, Pause,
 lower-left icon/charge Grenade via Q/tap, lower-right transparent weapon telemetry,
 all six authored pip stages, casualty-independent unlocks, real kill-driven Lv1→5
-new-pip feedback, real Lv5→Lv6 silhouette pulse, physical 4/5/6, and synthetic safe-area
+new-pip feedback, real Lv5→Lv6 silhouette pulse, QA-only CURVE/EVOLVE/MG selection, and synthetic safe-area
 insets. It captures 390×844 and 350×844 ready/unavailable/empty/paused/menu/Rifle/MG states in
 `artifacts/combat-hud`. Pair with `p15-browser.mjs` for actual supply acquisition
 and burst XP, `audio-start-sanity.mjs` for real startup gestures, and
@@ -39,7 +39,7 @@ and burst XP, `audio-start-sanity.mjs` for real startup gestures, and
 
 ## P1.5 Grenade and pressure
 
-`node scripts/qa/grenade-review-sanity.mjs` uses the real DEV **GRENADE** button, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five three-throw cycles, recording first-use warm-up separately, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records historical one-charge measurements. No fixture damage or balance overrides.
+`node scripts/qa/grenade-review-sanity.mjs` uses the test-only **GRENADE** helper, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five three-throw cycles, recording first-use warm-up separately, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records historical one-charge measurements. No fixture damage or balance overrides.
 
 `node scripts/qa/p15-metrics.mjs` runs 200 deterministic comparisons: seeds 1–50, normal/1.8-second Lv3 hesitation, each with/without Grenade use. It loads the actual TypeScript simulation through Vite, needs no browser/server and writes `artifacts/p15/metrics.json` plus detailed seed-1/17/42 timelines. These runs use the current authored capacity. The controls acquire the supply but never throw, isolating use from acquisition cost. The pilot is a diagnostic, not a human-survival guarantee. `P15_REPORT.md` records policy, results and mixed evidence.
 
@@ -105,98 +105,62 @@ timestamped browser-screen frames and native master-bus audio for local recordin
 QA. The original speaker connection is preserved; no autoplay exemption is used.
 Audio capture measures the browser signal, not physical device/speaker latency.
 
-## DEV Review
+## DEV Review and test-only scenarios
 
-Development defense builds put four fixture actions inside the top-left **DEV**
-tool disclosure, above the existing balance/audio controls. Click DEV (or Escape),
-then choose a fixture; selection closes the menu and returns focus to gameplay.
-No permanent right-side fixture stack remains. Browser scripts use
-`selectDevFixture` from `dev-fixture-controls.mjs` to follow this same path:
+The human DEV menu contains exactly **LATE, CRATE3, CRATE8, NAVAL**, above the
+existing balance/audio controls. Selection closes the menu and retains ordinary
+Retry behavior. Buttons are at least 44px tall. The obsolete 4/5/6 shortcuts and
+projectile selector are removed; production contains none of these controls.
 
-- **CURVE:** Lv4 / 150 of 180 XP / two Rifles / center, two seeded late-Lv4 groups (46 Grunts, two Heavies). Normal streams remain active. Review real XP into Lv5, its six-second natural Giant, real XP into Lv6, immediate release crowd, Carnival and survival handoff.
-- **EVOLVE:** Lv5 / 210 of 220 XP / three Rifles, center selected, 18 Grunts (12 center) and two side-lane Heavies across five lanes. Ordinary auto-fire earns ten Grunt XP and crosses into Lv6 within 1–3 seconds, including its immediate 59-Grunt/one-Heavy release; no timer promotion or Grenade dependency. No Giant/Boss or ordinary stream refill.
-- **MG:** Lv6 / one specialist, 60 Grunts and five Heavies across five lanes at scattered depths 8–24. Center lane has 12 Grunts and one Heavy; ordinary HP/collision/XP, no Giant/Boss, no stream refill. MG resets the crowd; focus returns for lane keys.
-- **GRENADE:** 45 Grunts / three Heavies across five uneven lanes, Lv3 / one Rifle / three held Grenades. Press Q or the left active button, then GRENADE to restart. The fixture button releases focus for immediate Q; Q otherwise ignores interactive/TUNE focus.
-- **LATE / MG7 / MG8:** playable Lv6 / Lv7 / Lv8, zero XP, one / two / three MG Soldiers, independent 18 Hz clocks, three Grenade charges and a normal late group. Teaching Supply, first Giant introduction and Lv6 release are already completed. Normal waves, damage, XP and progression remain active. The temporary survival fallback is enabled, including recurring Giant and +1 Supply opportunities. Retry restores the selected entry. No additional shortcuts.
+Browser scripts use `selectDevFixture(page, role)` from `dev-fixture-controls.mjs`.
+For retained roles it clicks the actual menu. For removed roles it imports
+`tests/helpers/ReviewFixtures.ts` into the QA browser and installs a test-side
+simulation factory on the existing test-side app exposure. Application code does
+not import or expose these helpers. Retry continues the QA scenario; clearing
+`app.devReviewFixture` restores the ordinary application factory. SHELL's tick
+schedule is injected by the helper into simulation input, outside GameApp.
 
-Buttons restart deterministic validated fixtures using real HP, damage and P1
-progression. Switching roles clears projectiles and all presentation feedback;
-Retry restarts the selected fixture. Repeated restarts vary only the development
-visual salt. The review set is presentation QA, not gameplay configuration or a saved
-simulation mode. Normal `/` remains Lv1 until a button is used;
-`?review=threats` remains a separate art fixture. Production excludes review controls
-and fixture code behind `import.meta.env.DEV`.
+The migrated scenarios preserve the baseline state and behavior:
 
-**CARNIVAL** starts Lv6 / zero XP / one MG immediately before the original
-60-person release. It uses the full authored phase, normal progression, three
-held Grenades and subsequent temporary survival. First Giant introduction is
-already completed. Retry restarts the release and all phase clocks; no shortcut.
+- RIFLE: seeded ordinary Lv1, normal progression.
+- GRENADE: Lv3 with three charges, 45 Grunts and three Heavies.
+- CURVE: Lv4 / 150 XP / two Rifles, natural progression and Giant introduction.
+- EVOLVE: Lv5 / 210 XP / three Rifles; ten ordinary kills earn Lv6.
+- MG: isolated Lv6 crowd of 60 Grunts and five Heavies.
+- MG7/MG8: playable two/three-MG late states with ordinary scheduling.
+- CARNIVAL: pending Lv6 release and the full accepted 24-second gameplay phase.
+- SHELL: independent artillery singles and overlapping flights.
 
-`node scripts/qa/carnival-metrics.mjs` measures five seeds (1/17/42/99/2026),
-DEV and natural Lv1 starts, MG-only and aggressive Grenade pilots: 20 runs.
-The pilot takes at most one adjacent lane step per 200ms, selecting the nearest
-threat (or the original Giant while safe), without hit/XP injection. Meaningful
-availability means at least six living Grunts ahead within the 47-unit spawn
-horizon, across any reachable lanes. It does not promise selected-lane hits.
-Results include every wave, survivors sampled every two seconds, first-20/full
-availability, longest gap, Lv7 time, active/projectile peaks and casualties.
-Outputs default to ignored `artifacts/stage1-p2/metrics.json`.
+`ReviewFixtureMigration.test.ts` compares all thirteen initial state hashes
+against baseline 2081abe, including the four retained runtime entries. Existing
+combat, snapshot and deterministic continuation tests still exercise each scenario.
 
-`node scripts/qa/carnival-sanity.mjs` uses the real DEV menu at 390×844 and
-350×844. It captures release/crowd/Lv7/handoff, checks HUD bounds, Pause,
-snapshot replay and actual Retry, and compares a five-second real RAF sample
-of Carnival with sparse LATE. It uses desktop software WebGL; frame cadence is
-not phone certification. Outputs default to `artifacts/stage1-p2/browser`.
+The migrated browser checks retain their scenario assertions:
 
-P2 validation (2026-10-09): 24 seconds; 15 opportunities at 2–23 seconds;
-36 Grunts per opportunity, clipped to an 80-active admission limit. The initial
-59-Grunt/one-Heavy release is exempt. Across 20 final runs, first-20 availability
-was 96.7–100%, longest gap 0.67 seconds, casualties/failures zero, and peak
-projectiles 72. MG-only Lv7 arrival was 12.0–14.55 seconds; aggressive Grenades
-could bring it to 9.5 seconds. DEV starts admitted 490–591 Grunts plus one Heavy;
-natural starts admitted 357–453 Grunts plus one Heavy, excluding inherited enemies.
-Natural opening peaks were 140–173; additional batches waited until capacity freed.
-MG-only survivor ranges at 0/4/8/12/16/20/24 seconds were
-60–173 / 71–120 / 80 / 61–64 / 50–73 / 46–76 / 31–49.
+- `evolution-fixture-sanity.mjs`: ten real kills into Lv6, first MG fire, inert removed keys, Pause/Retry, focus guards and six bounded-resource reset cycles.
+- `late-dev-sanity.mjs`: four menu buttons fit both mobile widths, then LATE/MG7/MG8 progression, Grenades, snapshots and 150 seconds of ordinary combat per entry.
+- `carnival-sanity.mjs`: full 24-second Carnival, snapshot replay and Pause, then the authored Destroyer phase before temporary Survival; exact Retry.
+- `p3a-browser.mjs`: test-only SHELL launches, overlapping flights, dodge/impact, Pause/Retry and snapshot continuation.
 
-The cap was reduced from 160 after rendering measurements. At 390×844 and
-350×844, the 80-cap real RAF samples averaged about 50ms/frame (20 FPS), versus
-82–84ms at cap 160 and 16.7ms for sparse LATE, using desktop SwiftShader.
-Final dense samples peaked around 246k triangles / 142 draw calls; simulation
-p95 was 0.2–0.3ms and render submission p95 1.7ms. GPU/frame cadence remains a
-physical-device validation risk. Existing edge-lane squad cropping also remains;
-P2 does not change formation, camera, environment or controls. Final evidence:
-`artifacts/stage1-p2/final/metrics.json` and `artifacts/stage1-p2/cap80-browser/`.
+## Permanent Ink Spear validation
 
-`node scripts/qa/late-dev-sanity.mjs` checks all eight menu actions fit at
-390×844 and 350×844, then tests the three playable late entries through real
-selection, touch Grenade, Pause and Retry paths. Each runs 150 seconds of normal
-combat, with natural Lv6→7→8 progression, snapshot replay, squad/firing/HUD
-checks and no repeated release or legacy reinforcement. Existing 4/5/6 shortcuts
-and the isolated MG crowd are checked afterward. Captures/results default to
-ignored `artifacts/stage1-p1-late`. Accelerated runs omit intermediate GPU draws;
-this validates behavior and layout, not physical-phone performance.
+`node scripts/qa/projectile-finalization.mjs` checks normal DEV and actual shipping
+production bundles at 350×844 / 390×844, including exact selected P3 colors/geometry,
+no selector, four working DEV entries, inert 4/5/6, stable Level Up appearance,
+Pause, Retry and snapshot presentation. PNGs and decoded WebM recordings are
+written to `artifacts/p3b34/visual`. Shipping observation is injected by the browser;
+it does not alter the renderer or add a shipping app hook.
 
-Physical **4** restarts CURVE, **5** restarts EVOLVE and **6** restarts MG through the button reset path.
-These DEV shortcuts ignore repeats, Ctrl/Alt/Meta modifiers, interactive/editable/TUNE focus
-and input before Tap-to-Start or after the app stops. Fixture buttons release
-focus for immediate lane keys and the `4 → 5 → 6 → 6 → 4` loop. They also work as
-restarts while paused. Production excludes both controls and key handlers.
+`node scripts/qa/projectile-performance.mjs before` replays the exact selected
+P3 renderer from 2081abe; `after` uses the current implementation. Both use the
+same migrated MG8 scenario at DPR2 / 4× CPU, three measured six-second runs at
+each mobile size. Use `TOPWAR_PROJECTILE_OUT` to select the output directory.
+The older `projectile-readability.mjs` remains a historical comparison to P3B32.
 
-`node scripts/qa/evolution-fixture-sanity.mjs` checks the real button/key paths
-at 390×844 and 350×844, ten ordinary kills into Lv6, specialist/HUD/first-shot
-transition, exact reset, Pause/Retry, focus/repeat guards and bounded resources
-over six alternating EVOLVE/MG cycles. Captures/results default to ignored
-`artifacts/evolve-review`. It accepts the same browser environment overrides.
-The current authored fixture evolves at **1.00 second** in both widths, after
-exactly ten ordinary Grunt kills. Six alternating review cycles held steady at
-85 geometries, 11 textures and a 32-slot projectile pool. These
-software-rendered captures verify the review loop, not physical-phone performance
-or the human judgment that evolution feels like a power upgrade.
 
 ## P2A Machine Gun
 
-`node scripts/qa/p2a-metrics.mjs` extends the P1.5 normal/hesitation pilot through Lv6 for seeds 1–50 (100 runs), with unchanged Grenade policy. It reports Lv2–6 times, Lv5 duration, evolution counts/pressure, casualties and controlled three-Rifle vs one-MG cadence, 30-Grunt pack clear and Heavy TTK. `node scripts/qa/machine-gun-sanity.mjs` checks real MG controls, 390/350 portrait, HUD/firing, lane changes, Pause/Retry, casualty-state evolution, snapshot family restore, repeated resources and warmed real-RAF audio/frame diagnostics against the same Lv5 crowd. Results/captures default to ignored `artifacts/p2a`; durable evidence is in `P2A_REPORT.md`. SwiftShader measurements are not physical-phone certification.
+`node scripts/qa/p2a-metrics.mjs` extends the P1.5 normal/hesitation pilot through Lv6 for seeds 1–50 (100 runs), with unchanged Grenade policy. It reports Lv2–6 times, Lv5 duration, evolution counts/pressure, casualties and controlled three-Rifle vs one-MG cadence, 30-Grunt pack clear and Heavy TTK. `node scripts/qa/machine-gun-sanity.mjs` checks the test-only MG fixture and real gameplay controls, 390/350 portrait, HUD/firing, lane changes, Pause/Retry, casualty-state evolution, snapshot family restore, repeated resources and warmed real-RAF audio/frame diagnostics against the same Lv5 crowd. Results/captures default to ignored `artifacts/p2a`; durable evidence is in `P2A_REPORT.md`. SwiftShader measurements are not physical-phone certification.
 
 ## P2B Pressure Comeback
 
@@ -233,7 +197,7 @@ run with that commit's JSON through the compatible legacy chance/no-Lv6-override
 path, reproducing the original timing/cohort results. To repeat that comparison,
 save its game JSON then pass `--baseline --baseline-config=path/to/game.json`.
 
-`node scripts/qa/threat-ladder-sanity.mjs` exercises real CURVE/physical 4 at
+`node scripts/qa/threat-ladder-sanity.mjs` exercises the test-only CURVE fixture at
 390×844 and 350×844, natural XP/Giant/evolution, Pause/Retry, deterministic
 continuation, repeated release resources and a warmed native-RAF sample of the
 natural MG release state. Captures/results default to `artifacts/p2c/browser`.

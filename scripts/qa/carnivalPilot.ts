@@ -4,7 +4,7 @@ import { GameConfigSchema } from '../../src/config/configSchema';
 import { LevelDefinitionSchema } from '../../src/level/LevelDefinition';
 import { Simulation } from '../../src/simulation/Simulation';
 import type { SimulationFrameState } from '../../src/simulation/SimulationState';
-import { createDevReviewFixture } from '../../src/app/DevReviewFixtures';
+import { createDevReviewFixture } from '../../tests/helpers/ReviewFixtures';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
 import { pilotTuning } from './p15Pilot';
 

@@ -15,7 +15,7 @@ try {
   });
   await page.goto((process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173')+'/?perf=1');
   await page.waitForSelector('.game-start-overlay');
-  assert(await page.locator('.dev-review-controls [data-role="machineGun"]').count()===1,'DEV MG control');
+  assert(await page.locator('.dev-review-controls [data-role="machineGun"]').count()===0,'Obsolete DEV MG control absent');
   await page.getByRole('button',{name:'Start game with audio'}).click();
   await page.waitForFunction(()=>window.__testApp.startup==='started');
   await page.addStyleTag({content:'.perf-hud{display:none}'});

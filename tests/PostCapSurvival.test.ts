@@ -7,7 +7,7 @@ import { Simulation } from '../src/simulation/Simulation';
 import { emptyGrenade } from '../src/simulation/grenade';
 import { advancePostCapSurvival, emptyPostCapSurvival } from '../src/simulation/postCapSurvival';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
-import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
+import { createDevReviewFixture } from './helpers/ReviewFixtures';
 
 const config=GameConfigSchema.parse(data),balance=config.catharsis!;
 const make=(enabled=true)=>new Simulation({seed:17,level:LevelDefinitionSchema.parse(levelData),startSquad:1,

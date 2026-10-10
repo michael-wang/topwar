@@ -1,5 +1,5 @@
 import { selectDevFixture } from './dev-fixture-controls.mjs';
-// Real DEV controls and keyboard paths. Uses the ordinary simulation; no XP grants.
+// Test-only fixtures use ordinary simulation; removed keys remain inert.
 import { mkdirSync, writeFileSync } from 'node:fs';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
   'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
@@ -23,7 +23,7 @@ try {
   await page.waitForSelector('.game-start-overlay');
   await page.keyboard.press('5'); await page.keyboard.press('6');
   assert(await page.evaluate(() => window.__testApp.devReviewFixture === null && window.__testApp.simulation.getState().progression.level === 1), 'Pre-start shortcuts ignored');
-  assert(await page.locator('.dev-review-controls button').count() === 8, 'Eight DEV review controls');
+  assert(await page.locator('.dev-review-controls button').count() === 4, 'Four DEV review controls');
   await page.getByRole('button', { name: 'Start game with audio' }).click();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => {
@@ -66,8 +66,8 @@ try {
     assert(firing.state.projectiles.some(p => p.kind === 'machineGun'), 'First MG shots');
     await page.screenshot({ path: `${out}/evolve-mg-${width}.png` });
     results.portraits[width] = { evolutionSeconds: seconds, rifleBefore: 3, specialistAfter: 1, ordinaryKillsToUnlock: 10, weapon: evolved.weapon };
-    await page.keyboard.press('6'); const mg = await sample(); mgInitial ??= mg.state;
-    assert(JSON.stringify(mg.state) === JSON.stringify(mgInitial), 'Physical 6 restarts exact MG fixture');
+    await selectDevFixture(page, 'machineGun'); const mg = await sample(); mgInitial ??= mg.state;
+    assert(JSON.stringify(mg.state) === JSON.stringify(mgInitial), 'QA MG restarts exact MG fixture');
     assert(mg.state.enemies.filter(e => e.archetype === 'grunt').length === 60 && mg.state.enemies.filter(e => e.archetype === 'heavy').length === 5, 'MG 60/5 crowd');
     assert(new Set(mg.state.enemies.map(e => e.lane)).size === 5 && !mg.state.boss && !mg.state.enemies.some(e => e.archetype === 'giant'), 'MG five lanes / no Giant or Boss');
     await advance(3200); const cleared = await sample();
@@ -75,8 +75,8 @@ try {
     await page.keyboard.press('p'); const frozen = (await sample()).state;
     await advance(500); assert(JSON.stringify((await sample()).state) === JSON.stringify(frozen), 'Pause freezes fixture');
     await page.keyboard.press('p');
-    await page.keyboard.press('6'); assert(JSON.stringify((await sample()).state) === JSON.stringify(mgInitial), 'Repeated physical 6 resets');
-    await page.keyboard.press('5'); assert(JSON.stringify((await sample()).state) === JSON.stringify(evolveInitial), 'Physical 5 returns to exact EVOLVE');
+    await selectDevFixture(page, 'machineGun'); assert(JSON.stringify((await sample()).state) === JSON.stringify(mgInitial), 'Repeated QA MG resets');
+    await selectDevFixture(page, 'evolve'); assert(JSON.stringify((await sample()).state) === JSON.stringify(evolveInitial), 'QA EVOLVE returns to exact EVOLVE');
     await page.evaluate(() => window.__testApp.retry());
     assert(JSON.stringify((await sample()).state) === JSON.stringify(evolveInitial), 'Retry preserves EVOLVE');
   }
@@ -100,8 +100,8 @@ try {
   }
   // Warm the two disposable weapon presentations, then alternate repeatedly.
   for (let i = 0; i < 6; i++) {
-    await page.keyboard.press('5'); await advance(1500);
-    await page.keyboard.press('6'); await advance(3200);
+    await selectDevFixture(page, 'evolve'); await advance(1500);
+    await selectDevFixture(page, 'machineGun'); await advance(3200);
     const { stats } = await sample();
     results.cycles.push({ geometries: stats.geometries, textures: stats.textures, projectilePool: stats.projectiles.pool });
   }

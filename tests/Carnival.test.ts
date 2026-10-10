@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { carnivalEntry, carnivalOptions, carnivalConfig, carnivalPilotLane, runCarnivalPilot } from '../scripts/qa/carnivalPilot';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
-import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
+import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import { Simulation } from '../src/simulation/Simulation';
 import { advanceCarnival, emptyCarnival } from '../src/simulation/carnival';
 import { GameConfigSchema } from '../src/config/configSchema';

@@ -1,7 +1,7 @@
 import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
-import { defenseTracerGeometry, DefenseTracerTransform, type DefenseTracerPresentation } from './DefenseTracer';
+import { defenseTracerGeometry, DefenseTracerTransform } from './DefenseTracer';
 
 export function projectilePulseScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / 65);
@@ -30,7 +30,6 @@ export class ProjectileRenderer {
   private readonly activeIds = new Set<number>();
   private readonly defenseGeometry: THREE.BufferGeometry;
   private capacity = 8;
-  private presentation: DefenseTracerPresentation | null = null;
   private body: THREE.InstancedMesh;
   private glow: THREE.InstancedMesh;
   private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.projectile.core,
@@ -42,14 +41,9 @@ export class ProjectileRenderer {
   constructor(private readonly scene: THREE.Scene,
     private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     private readonly rifleOrigin = { height: .64, offsetX: 0 }) {
-    this.defenseGeometry = defenseTracerGeometry(bullet.geometry);
+    this.defenseGeometry = defenseTracerGeometry();
     this.body = this.createBatch('rifle-tracers', this.tracerMaterial, this.capacity);
     this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
-  }
-
-  setDefensePresentation(presentation: DefenseTracerPresentation): void {
-    if (this.presentation && this.presentation.geometry !== presentation.geometry) this.presentation.geometry.dispose();
-    this.presentation = presentation;
   }
 
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now(),
@@ -57,8 +51,7 @@ export class ProjectileRenderer {
     this.ensureCapacity(projectiles.length);
     const defense = !!defenseCamera;
     if (defenseCamera) defenseCamera.updateMatrixWorld();
-    const presentation = defense ? this.presentation : null;
-    this.body.geometry = this.glow.geometry = defense ? presentation?.geometry ?? this.defenseGeometry : this.bullet.geometry;
+    this.body.geometry = this.glow.geometry = defense ? this.defenseGeometry : this.bullet.geometry;
     // Draw the ink silhouette, then an unattenuated ivory core. Keep both in the
     // transparent queue so the outline cannot cover the core.
     if (this.tracerMaterial.transparent !== defense) {
@@ -67,8 +60,8 @@ export class ProjectileRenderer {
     }
     this.glow.renderOrder = defense ? 1 : 0;
     this.body.renderOrder = defense ? 2 : 0;
-    this.glowMaterial.color.set(defense ? presentation?.outline ?? ART.defenseTracer.outline : ART.projectile.accent);
-    this.tracerMaterial.color.set(presentation?.core ?? ART.projectile.core);
+    this.glowMaterial.color.set(defense ? ART.defenseTracer.outline : ART.projectile.accent);
+    this.tracerMaterial.color.set(defense ? ART.defenseTracer.core : ART.projectile.core);
     // Normal ink (or the retained Legacy red edge) darkens pale sand.
     this.glowMaterial.opacity = defense ? 1 : ART.projectile.accentOpacity;
     const activeIds = this.activeIds;
@@ -83,9 +76,9 @@ export class ProjectileRenderer {
         projectile.kind === 'rocket' ? .66 : this.rifleOrigin.height, projectile.z);
       if (defenseCamera) {
         const edge = this.defenseTransform.apply(transform, defenseCamera, cssHeight,
-          projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus, presentation?.size, !!presentation);
+          projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus);
         const fullLength = transform.scale.z;
-        transform.scale.z *= presentation?.coreLengthRatio ?? 1;
+        transform.scale.z *= ART.defenseTracer.coreLengthRatio;
         transform.updateMatrix();
         this.body.setMatrixAt(index, transform.matrix);
         transform.scale.x += edge;
@@ -134,7 +127,6 @@ export class ProjectileRenderer {
     this.tracerMaterial.dispose();
     this.glowMaterial.dispose();
     this.defenseGeometry.dispose();
-    this.presentation?.geometry.dispose();
   }
 
   private createBatch(name: string, material: THREE.Material, capacity: number): THREE.InstancedMesh {

@@ -34,12 +34,10 @@ import { LaneStepInput } from '../input/LaneStepInput';
 import { createThreatReview } from './ThreatReview';
 import { createDevReviewFixture, type DevReviewFixture } from './DevReviewFixtures';
 import { DevReviewControls } from '../ui/DevReviewControls';
-import { DevProjectileControls } from '../ui/DevProjectileControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
 import { progressionStage } from '../simulation/progression';
-import { shellReviewLaunches } from './ShellReview';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -99,7 +97,6 @@ export class GameApp {
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
   private readonly devReview: DevReviewControls | null;
-  private readonly devProjectiles: DevProjectileControls | null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
 
@@ -144,16 +141,13 @@ export class GameApp {
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
     }, !!this.config.catharsis?.defenseMode) : null;
-    this.devProjectiles = import.meta.env.DEV && this.config.catharsis?.defenseMode
-      ? new DevProjectileControls(this.tuningPanel!.reviewControlsHost,
-        presentation => this.renderer.setProjectilePresentation(presentation), () => this.tuningPanel?.close()) : null;
     this.devReview = import.meta.env.DEV && this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
         this.devReviewFixture = role;
         this.devReview?.setSelected(role);
         this.tuningPanel?.close();
         this.retry();
-      }, () => this.running && this.startup === 'started') : null;
+      }) : null;
 
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
@@ -242,7 +236,6 @@ export class GameApp {
     this.tuningPanel?.dispose();
     this.hudActions.dispose();
     this.devReview?.dispose();
-    this.devProjectiles?.dispose();
     this.controlHint?.dispose();
     this.pauseOverlay.dispose();
     this.tierHud.dispose();
@@ -476,9 +469,7 @@ export class GameApp {
         const stepStartedMs = perf ? performance.now() : 0;
         const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
         dtSeconds,
-        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}),
-          ...(import.meta.env.DEV && this.devReviewFixture === 'shell'
-            ? { artilleryLaunches: shellReviewLaunches(this.simulation.getFrameState()) } : {}) },
+        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}) },
         {
           moveSpeed: this.runtimeTuning.moveSpeed,
           forwardSpeed: this.runtimeTuning.forwardSpeed,

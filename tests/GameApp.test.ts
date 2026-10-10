@@ -17,9 +17,8 @@ vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
 } }));
-vi.mock('../src/ui/DevProjectileControls', () => ({ DevProjectileControls: class { dispose() {} } }));
 vi.mock('../src/ui/DevReviewControls', () => ({ DevReviewControls: class {
-  constructor(_viewport: unknown, select: unknown, canUseShortcuts: unknown) { mock.reviewConstructed(select, canUseShortcuts); }
+  constructor(_viewport: unknown, select: unknown) { mock.reviewConstructed(select); }
   setSelected() {} dispose() {}
 } }));
 vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...args: unknown[]) => {
@@ -1104,7 +1103,7 @@ it('restarts selected development fixtures and clears renderer feedback on every
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
   const select = mock.reviewConstructed.mock.lastCall![0] as (role: string) => void;
-  for (const role of ['grenade', 'grenade', 'curve', 'evolve', 'machineGun', 'evolve']) {
+  for (const role of ['late', 'late', 'crate3', 'crate8', 'naval', 'crate3']) {
     const before = mock.resetFeedback.mock.calls.length;
     select(role);
     expect(mock.panelClose).toHaveBeenCalledTimes(before + 1);
@@ -1112,14 +1111,14 @@ it('restarts selected development fixtures and clears renderer feedback on every
     expect(mock.resetFeedback.mock.calls.length).toBe(before + 1);
   }
   const retry = mock.overlayConstructedWith.mock.lastCall![0] as () => void;
-  retry(); expect(mock.reviewFixture.mock.lastCall![2]).toBe('evolve');
+  retry(); expect(mock.reviewFixture.mock.lastCall![2]).toBe('crate3');
   expect(mock.resetFeedback.mock.calls.map(call=>call[0])).toEqual([0,1,2,3,4,5,6]);
   expect(mock.resetFeedback).toHaveBeenCalledTimes(7);
   app.dispose();
 });
 
 
-it('omits every DEV review control, including GRENADE, EVOLVE and MG, outside DEV', () => {
+it('omits every DEV review control, including LATE, CRATE3, CRATE8 and NAVAL, outside DEV', () => {
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
@@ -1256,20 +1255,6 @@ describe('intentional gameplay startup', () => {
     raf.key('p');raf.key('p');mock.overlayConstructedWith.mock.lastCall![0]();
     pointer(expected==='desktop'?'touch':'mouse');raf.key('a');
     expect(attributes.get('data-input-presentation')).toBe(expected);app.dispose();
-  });
-  it('opens DEV fixture shortcuts only after startup and closes them when stopped', async () => {
-    createRaf();
-    const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
-    const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
-    const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
-    const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-    const canUse = mock.reviewConstructed.mock.lastCall![1] as () => boolean;
-    expect(canUse()).toBe(false);
-    await startGame(app);
-    expect(canUse()).toBe(true);
-    app.stop();
-    expect(canUse()).toBe(false);
-    app.dispose();
   });
   it('renders a frozen initial world for a long wait, without observers, cues or steps', async () => {
     const raf = createRaf();

@@ -3,7 +3,7 @@ import data from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createShellReview, shellReviewLaunches, SHELL_REVIEW_SOURCE } from '../src/app/ShellReview';
+import { createShellReview, shellReviewLaunches, SHELL_REVIEW_SOURCE } from './helpers/ShellReview';
 import { sampleArtillery, artilleryHits, effectiveArtilleryLane } from '../src/simulation/artillery';
 import { attackLanePositions } from '../src/simulation/enemies/laneComposition';
 import { pilotTuning } from '../scripts/qa/p15Pilot';

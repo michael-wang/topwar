@@ -1,5 +1,5 @@
 import { selectDevFixture } from './dev-fixture-controls.mjs';
-// Real DEV CURVE input, fixed-step gameplay and disposable renderer. No scripted XP/levels.
+// Test-only CURVE setup, fixed-step gameplay and disposable renderer. No scripted XP/levels.
 import {mkdirSync,writeFileSync} from 'node:fs';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const out=process.argv[2]??'artifacts/p2c/browser';mkdirSync(out,{recursive:true});
@@ -30,7 +30,7 @@ try{
   assert(start.state.enemies.length===48&&start.state.enemies.filter(e=>e.archetype==='heavy').length===2,'Representative 46/2 crowd');
   await advance(100);await page.screenshot({path:`${out}/curve-lv4-${width}.png`});
   await page.keyboard.press('p');const frozen=(await sample()).state;await advance(500);assert(JSON.stringify((await sample()).state)===JSON.stringify(frozen),'Pause freezes CURVE');await page.keyboard.press('p');
-  await advance(100);await page.keyboard.press('4');assert(JSON.stringify((await sample()).state)===JSON.stringify(initial),'Physical 4 reset');
+  await advance(100);await selectDevFixture(page, 'curve');assert(JSON.stringify((await sample()).state)===JSON.stringify(initial),'QA CURVE reset');
   await page.evaluate(()=>window.__testApp.retry());assert(JSON.stringify((await sample()).state)===JSON.stringify(initial),'Retry CURVE reset');
   const records=[],captured=new Set();let evolvedAt=null,giantAt=null;
   for(let tick=0;tick<1000;tick++){
@@ -61,7 +61,7 @@ try{
    if(JSON.stringify(third)!==JSON.stringify(fourth))throw Error('Post-transition snapshot '+role);
    records.push({role,level:second.progression.level,release:second.machineGunReleaseAtSeconds});}return records;});
  for(let cycle=0;cycle<6;cycle++){
-  await page.keyboard.press('5');await advance(1700);const released=await sample();
+  await selectDevFixture(page, 'evolve');await advance(1700);const released=await sample();
   assert(released.state.enemies.length>=60,'Visible release crowd');
   await advance(3000,true);const after=await sample();
   result.resources.push({geometries:after.stats.geometries,textures:after.stats.textures,projectilePool:after.stats.projectiles.pool});

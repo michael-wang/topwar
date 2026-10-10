@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { carnivalOptions, carnivalEntry, carnivalPilotLane, carnivalPilotGrenade } from '../scripts/qa/carnivalPilot';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
-import { createNavalReview } from '../src/app/ShellReview';
+import { createNavalReview } from '../src/app/NavalReview';
 import { advanceDestroyer, destroyerMuzzle, destroyerPose, emptyDestroyer } from '../src/simulation/destroyer';
 import { DestroyerRenderer } from '../src/rendering/DestroyerRenderer';
 import { type Simulation } from '../src/simulation/Simulation';

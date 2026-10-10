@@ -98,7 +98,7 @@ try {
     await page.getByRole('button', { name: 'Move right', exact: true }).focus(); await page.keyboard.press('Enter');
     assert((await sample()).state.player.selectedLane === tapLane, 'Keyboard/assistive button activation');
     await page.evaluate(() => document.activeElement.blur());
-    await page.keyboard.press('5'); await advance(40);
+    await selectDevFixture(page, 'evolve'); await advance(40);
     assert(await page.locator('.xp-level-number').textContent() === '5', 'Lv5 readable');
     const clip = await page.locator('.xp-fill').evaluate(e => e.style.clipPath);
     assert(Math.abs(parseFloat(clip.split(' ')[1]) - (1 - 210 / 220) * 100) < .001, 'Exact 210/220 XP fill');

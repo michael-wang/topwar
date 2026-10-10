@@ -51,7 +51,7 @@ try {
     const buttons = await page.locator('.dev-review-controls button').evaluateAll(bs => bs.map(b => {
       const r = b.getBoundingClientRect(); return { label: b.textContent, x:r.x, right:r.right, y:r.y, bottom:r.bottom, height:r.height };
     }));
-    assert(buttons.map(b=>b.label).join(',') === 'GRENADE,CURVE,EVOLVE,MG,LATE,MG7,MG8,CARNIVAL', 'All eight entries');
+    assert(buttons.map(b=>b.label).join(',') === 'LATE,CRATE3,CRATE8,NAVAL', 'Four retained entries');
     assert(buttons.every(b => b.x >= 0 && b.right <= width && b.y >= 0 && b.bottom <= 844 && b.height >= 44), 'Menu touch bounds');
     await page.screenshot({ path: `${out}/${width}-menu.png` });
     const runs = [];
@@ -114,10 +114,13 @@ try {
         nextEnemyId:end.enemyStream.nextEnemyId, pause:true, retry:true, snapshotReplay:replay });
       console.log('Passed', width, role);
     }
-    // Retry leaves focus on a button; shortcuts intentionally ignore that focus.
+    // Removed keyboard shortcuts stay inert; QA still exercises the same scenarios.
     await page.evaluate(() => document.activeElement?.blur());
-    for (const [key, level] of [['4',4],['5',5],['6',6]]) {
-      await page.keyboard.press(key); assert((await state()).progression.level === level, `Shortcut ${key}`);
+    const beforeKeys=JSON.stringify(await state());
+    for(const key of ['4','5','6'])await page.keyboard.press(key);
+    assert(JSON.stringify(await state())===beforeKeys,'Removed shortcuts stay inert');
+    for (const [role, level] of [['curve',4],['evolve',5],['machineGun',6]]) {
+      await selectDevFixture(page,role); assert((await state()).progression.level === level, `QA ${role}`);
     }
     assert((await state()).enemies.length === 65 && !(await state()).catharsis.balance.postCapSurvival.enabled, 'Original isolated MG unchanged');
     report.portraits[width] = { buttons, runs }; await page.close();

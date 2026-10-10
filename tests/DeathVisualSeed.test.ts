@@ -5,7 +5,7 @@ import bloodSource from '../src/rendering/enemies/IntegratedDeathBlood.ts?raw';
 import fluidSource from '../src/rendering/enemies/FluidBloodSplash.ts?raw';
 import seedSource from '../src/rendering/enemies/DeathVisualSeed.ts?raw';
 import appSource from '../src/app/GameApp.ts?raw';
-import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
+import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import gameData from '../public/game-data/game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import level from '../public/game-data/levels/level-001.json';

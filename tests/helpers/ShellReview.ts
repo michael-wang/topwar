@@ -1,10 +1,10 @@
-import { Simulation, type SimulationOptions } from '../simulation/Simulation';
-import type { SimulationFrameState } from '../simulation/SimulationState';
-import type { ArtilleryLaunch } from '../simulation/artillery';
-import { emptyCarnival } from '../simulation/carnival';
-import { emptyDestroyer } from '../simulation/destroyer';
+import { Simulation, type SimulationOptions } from '../../src/simulation/Simulation';
+import type { SimulationFrameState } from '../../src/simulation/SimulationState';
+import type { ArtilleryLaunch } from '../../src/simulation/artillery';
+import { emptyCarnival } from '../../src/simulation/carnival';
+import { emptyDestroyer } from '../../src/simulation/destroyer';
 
-// DEV-only source/schedule. No encounter pattern lives in the shared artillery engine.
+// Test-only source/schedule. No encounter pattern lives in the shared artillery engine.
 export const SHELL_REVIEW_SOURCE = { id: 'shell-review-muzzle', type: 'offshore-test',
   position: { x: -3, y: 1.2, z: 52 } } as const;
 const launchTicks = [60, 300, 540, 780, 819, 1080, 1119];
@@ -27,13 +27,5 @@ export function createShellReview(options: SimulationOptions): Simulation {
   state.artillery = { version: 1, nextId: 1, shells: [] };
   if (balance.destroyer) state.destroyer = emptyDestroyer(true);
   state.weapons.rifleMemberCooldowns = [0, 1 / (balance.machineGun.fireRate * 3), 2 / (balance.machineGun.fireRate * 3)];
-  simulation.restoreState(state); return simulation;
-}
-
-export function createNavalReview(options: SimulationOptions): Simulation {
-  const simulation = createShellReview(options), state = simulation.getState();
-  if (!state.catharsis?.balance.destroyer) throw Error('NAVAL review requires Destroyer configuration');
-  state.catharsis.balance.destroyer.enabled = true;
-  state.destroyer = { status: 'active', startedAtSeconds: 0, nextShotIndex: 0 };
   simulation.restoreState(state); return simulation;
 }

@@ -11,7 +11,6 @@ import * as THREE from 'three';
 import { AttackLaneRenderer } from './AttackLaneRenderer';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
-import type { DefenseTracerPresentation } from './projectiles/DefenseTracer';
 import { coastalCameraFov, renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
@@ -221,10 +220,6 @@ export class GameRenderer {
 
   presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {
     this.squadRenderer.presentLevelUp(event, nowMs);
-  }
-
-  setProjectilePresentation(presentation: DefenseTracerPresentation): void {
-    this.projectileRenderer.setDefensePresentation(presentation);
   }
 
   resetFeedback(visualSalt=0): void {

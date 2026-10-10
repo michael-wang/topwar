@@ -3,7 +3,7 @@ import gameData from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
+import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import { grenadeTarget } from '../src/simulation/grenade';
 import { Simulation } from '../src/simulation/Simulation';
 
