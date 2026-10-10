@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 const phase = process.argv[2] ?? 'after', out = resolve(process.env.TOPWAR_STARTUP_OUT ?? `artifacts/p3b3/${phase}`);
 mkdirSync(out, { recursive: true });
-await build({ build: { outDir: `${out}/dist` }, plugins: [{
+if (!process.env.TOPWAR_STARTUP_REUSE_BUILD) await build({ build: { outDir: `${out}/dist` }, plugins: [{
   name: 'startup-qa-only', enforce: 'pre', transform(source, id) {
     const mark = name => `performance.mark('qa:${name}');`;
     if (id.endsWith('/src/main.ts')) source = source.replace('const configStore =', `${mark('main')}const configStore =`)

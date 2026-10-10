@@ -53,6 +53,7 @@ export class GameRenderer {
   private destroyerRenderer: DestroyerRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
+  private viewportCssHeight = 1;
   private readonly supplyProjection = new THREE.Vector3();
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
@@ -182,7 +183,8 @@ export class GameRenderer {
     if (state.streamRewards.length && !this.streamRewardRenderer) throw new Error('Recruitment stream requires legacy character assets');
     this.streamRewardRenderer?.update(state.streamRewards, nowMs);
     this.contactShadows.update(state, this.squadRenderer, nowMs);
-    this.projectileRenderer.update(state.projectiles, nowMs);
+    this.projectileRenderer.update(state.projectiles, nowMs, state.defenseMode ? this.camera : undefined,
+      this.viewportCssHeight);
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.grenadeRenderer.update(state.grenade, nowMs);
@@ -283,6 +285,7 @@ export class GameRenderer {
   private readonly resize = (): void => {
     if (this.disposed || this.viewport.clientWidth === 0 || this.viewport.clientHeight === 0) return;
     const size = renderSize(this.viewport.clientWidth, this.viewport.clientHeight);
+    this.viewportCssHeight = size.height;
     this.camera.aspect = size.aspect;
     this.camera.fov = this.coastalLighting ? coastalCameraFov(size.aspect) : 48;
     this.camera.updateProjectionMatrix();

@@ -119,6 +119,8 @@ It cannot know that Three.js exists.
 
 ### Rendering
 
+Defense tracers retain two pooled `InstancedMesh` batches. One owned, tapered copy of the bullet geometry is shared by the ivory core and ink outline; Legacy uses the borrowed GLB unchanged. Camera-plane transforms align the tail with projected motion and keep its head at the rendered projectile position. CSS-pixel size floors have world-space caps, use cached viewport dimensions, and affect no simulation data. Both layers use existing basic materials, with the core drawn after the outline and below health indicators. Retry resets presentation; renderer disposal releases the owned geometry.
+
 Consumes simulation state and makes it visible.
 
 It owns:
