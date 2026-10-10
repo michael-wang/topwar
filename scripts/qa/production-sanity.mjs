@@ -4,10 +4,13 @@ import { preview } from 'vite';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ??
   'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 import { mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { publicAssets } from '../public-assets.mjs';
+const { manifest } = publicAssets('public');
 const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
+if (shippingJs.includes('__testApp') || shippingJs.includes('qa:scene-start')) throw Error('QA instrumentation leaked into production');
 if (['EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'CRATE3', 'CRATE8', 'NAVAL', 'createNavalReview', 'SHELL review requires', 'shell-review-muzzle', 'artillery dodge test', 'Supply DEV review requires', 'Late DEV entry requires', 'Restart Lv6 before the Machine Gun release and full Carnival'].some(marker => shippingJs.includes(marker)))
   throw Error('Development review controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
@@ -23,7 +26,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  page.on('requestfailed',r=>errors.push(`Request failed: ${r.url()}`));
  page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/topwar/game-data/')||u.pathname.startsWith('/topwar/models/'))runtimeRequests.push(r.url());});
- page.on('response',r=>{const path=new URL(r.url()).pathname;if(r.status()>=400)errors.push(`HTTP ${r.status()}: ${r.url()}`);if(path==='/topwar/game-data/game.json')configResponse=r;if(path==='/topwar/game-data/levels/level-001.json')levelResponse=r;});
+ page.on('response',r=>{const path=new URL(r.url()).pathname;if(r.status()>=400)errors.push(`HTTP ${r.status()}: ${r.url()}`);if(path===`/topwar/${manifest['game-data/game.json']}`)configResponse=r;if(path===`/topwar/${manifest['game-data/levels/level-001.json']}`)levelResponse=r;});
  await page.addInitScript(()=>{
    localStorage.setItem('topwar.observer.locale','en');
    window.__qaJsonFetches=[];window.__qaUnhandled=[];
@@ -36,11 +39,11 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  const sha=(await page.locator('.build-label').textContent()).split(' · ').at(-1);
  if(!/^[0-9a-f]{7,40}$/.test(sha))throw Error('Missing build SHA');
  for(const expression of ['neutral','alert']){
-  const asset=await page.request.get(`http://127.0.0.1:5181/topwar/art/observer/${expression}.webp?v=${sha}`);
+  const asset=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`art/observer/${expression}.webp`]}`);
   if(!asset.ok()||!asset.headers()['content-type']?.includes('image/webp'))throw Error('Missing local observer portrait under Pages base path');
  }
  for(const name of ['observer_destroyer_zh-TW.mp3','observer_mission_intro_zh-TW.mp3']){
-  const voice=await page.request.get(`http://127.0.0.1:5181/topwar/audio/${name}?v=${sha}`);
+  const voice=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`audio/${name}`]}`);
   if(!voice.ok()||!voice.headers()['content-type']?.includes('audio/mpeg')
     ||!(await voice.body()).equals(readFileSync(`public/audio/${name}`)))
     throw Error('Approved observer voice missing or altered under Pages base path');
@@ -49,10 +52,11 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
  if(!config.catharsis.defenseMode||config.catharsis.grenade.capacity!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220,200,300]')throw Error('Stale defense/progression/Grenade config');
  if(!await page.locator('#game-viewport.beachhead-defense').count()||await page.getByText(/ENEMY LV/).isVisible())throw Error('Production loaded legacy bridge/HUD');
- for(const url of runtimeRequests){const u=new URL(url);if(u.searchParams.getAll('v').length!==1||u.searchParams.get('v')!==sha)throw Error(`Unversioned or mismatched runtime asset: ${url}`);}
- if(runtimeRequests.filter(url=>new URL(url).pathname.endsWith('.glb')).length!==13)throw Error('Missing versioned model requests');
+ for(const url of runtimeRequests){const u=new URL(url);if(u.search||!Object.values(manifest).some(path=>u.pathname===`/topwar/${path}`))throw Error(`Unversioned or mismatched runtime asset: ${url}`);}
+ if(runtimeRequests.filter(url=>new URL(url).pathname.endsWith('.glb')).length!==1)throw Error('Defense must request exactly the bullet');
+ if(new Set(runtimeRequests).size!==runtimeRequests.length)throw Error('Duplicate runtime resource request');
  const jsonFetches=await page.evaluate(()=>window.__qaJsonFetches);
- for(const path of ['game-data/game.json','game-data/levels/level-001.json'])if(!jsonFetches.some(r=>r.url===`/topwar/${path}?v=${sha}`&&r.cache==='no-store'))throw Error(`Missing versioned no-store fetch: ${path}`);
+ for(const path of ['game-data/game.json','game-data/levels/level-001.json'])if(!jsonFetches.some(r=>r.url===`/topwar/${manifest[path]}`&&r.cache===undefined))throw Error(`Missing content-addressed fetch: ${path}`);
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  await page.getByRole('button',{name:'Start game with audio'}).tap();
  // Review's frozen pre-start badge is already Lv5. Wait for a stable post-start

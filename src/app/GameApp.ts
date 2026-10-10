@@ -1,4 +1,5 @@
 import { FieldObserver } from '../ui/FieldObserver';
+import type { ObserverPortraits } from '../ui/ObserverPortraits';
 import { ProgressionLevelObserver } from '../presentation/ProgressionLevelUp';
 import { BattleInfoHud } from '../ui/BattleInfoHud';
 import { CombatControlStrip } from '../ui/CombatControlStrip';
@@ -102,7 +103,7 @@ export class GameApp {
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
-    private readonly reviewThreats = false) {
+    private readonly reviewThreats = false, audio = new GameAudio(), portraits?: ObserverPortraits) {
     this.viewport.setAttribute?.('data-input-presentation', 'touch');
     this.perf = perfEnabled ? new PerfDiagnostics() : null;
     this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
@@ -117,8 +118,8 @@ export class GameApp {
     this.previousWeaponFamily = initialState.progression && initialState.catharsis
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
-    this.audio = new GameAudio();
-    this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio) : null;
+    this.audio = audio;
+    this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
     this.startOverlay = new GameStartOverlay(viewport);
     this.tierHud = new TierHud(viewport);
     this.pauseOverlay = new PauseOverlay(viewport);

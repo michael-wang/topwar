@@ -68,9 +68,29 @@ The first script requires the Vite development server and checks review/normal
 starts, firing, keyboard/touch input, pause and Retry. The second requires a
 current `npm run build` and opens a temporary local preview for production start
 guards. It verifies actual config/level/model requests under `/topwar/` carry
-exactly one build-SHA version, JSON uses `no-store`, fetched data matches authored
+content-addressed filenames, Defense loads only the bullet GLB, fetched data matches authored
 data, and defense mode / three Grenades / current progression replace the legacy
 bridge HUD. Neither deploys or changes shipping code. Both fail on browser errors.
+
+## P3-B.3 startup and readiness
+
+`node scripts/qa/startup-profile.mjs before` / `after` builds an instrumented production
+copy under `artifacts/p3b3/<phase>/dist` and measures three cold/fresh-context and warm/same-context
+navigations at each of 350×844 and 390×844. Run `before` on the baseline before editing
+shipping source. No request interception disables the HTTP cache. The local preview uses a
+600-second static cache lifetime, CDP 1.6 Mbps / 150 ms latency and 4× CPU throttling;
+the browser is desktop Chrome/SwiftShader with DPR 2. Run performance captures alone.
+JSON includes resource timing/bytes, config/level marks, GLB parse spans, renderer/first
+scene timing, decode completion, first voice offset and blank-portrait frames.
+
+`startup-readiness.mjs before` reuses that saved baseline build; `startup-readiness.mjs after`
+uses the current production `dist`. Both record 350/390 introductions with audio. The after
+run also covers delayed/hung image decode, partial/total image failure, Pause/Resume and Retry
+reuse. `startup-modes.mjs` checks production natural Lv1–8, retained legacy Boss startup,
+Pause/Retry and deterministic snapshot continuation at both widths. Only test-side responses
+expose the app or select legacy config; no shipping debug API is added. Run `p3b-browser.mjs`
+and `p3b2-observer.mjs after` against Vite for NAVAL and expression/composition checks.
+These captures do not establish physical-phone rendering or speaker latency.
 
 An optional first argument sets the output directory (default `artifacts/sanity`).
 `TOPWAR_QA_URL` overrides the development URL. `TOPWAR_PLAYWRIGHT_MODULE` may

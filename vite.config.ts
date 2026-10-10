@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { publicAssets } from './scripts/public-assets.mjs';
 
 const projectDirectory = fileURLToPath(new URL('.', import.meta.url));
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
@@ -14,14 +15,17 @@ function readShortSha(): string {
   } catch { return 'unknown'; }
 }
 const shortSha = readShortSha();
+const assets = publicAssets(fileURLToPath(new URL('./public', import.meta.url)));
 
 export default defineConfig(({ command, isPreview }) => ({
   base: command === 'build' || isPreview ? '/topwar/' : '/',
+  build: { copyPublicDir: false },
   define: {
     __TOPWAR_VERSION__: JSON.stringify(version),
     __TOPWAR_SHA__: JSON.stringify(shortSha),
+    __TOPWAR_PUBLIC_ASSETS__: JSON.stringify(assets.manifest),
   },
-  plugins: [{
+  plugins: [assets.plugin, {
     name: 'art-showcase-dev-route',
     configureServer(server) {
       server.middlewares.use((request, response, next) => {

@@ -5,7 +5,7 @@ export interface LevelLoaderOptions {
 }
 
 async function fetchLevelJson(url: string): Promise<unknown> {
-  const response = await (import.meta.env.PROD ? fetch(url, { cache: 'no-store' }) : fetch(url));
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }

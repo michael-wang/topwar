@@ -8,6 +8,7 @@ import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '.
 import { ObserverVoice, ObserverVoiceFiles, observerVoiceAssets, observerMissionVoiceAssets } from '../src/audio/ObserverVoice';
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
 import { FieldObserver } from '../src/ui/FieldObserver';
+import type { PreparedObserverPortraits } from '../src/ui/ObserverPortraits';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
 afterEach(() => vi.unstubAllGlobals());
 it('selects Traditional Chinese browser locales, English fallback and persisted overrides safely', () => {
@@ -105,6 +106,21 @@ it('never starts an unready mission clip from a late decode callback, including 
   voice.sync('zh-TW',0,false,6.2,'missionIntro');await Promise.resolve();
   expect(nodes[0].start).toHaveBeenCalledWith(0,0);voice.dispose();
 });
+it('bounds hung voice fetches and aborts pending requests on disposal', async () => {
+  vi.useFakeTimers();
+  const signals: AbortSignal[] = [];
+  vi.stubGlobal('fetch', vi.fn((_url: string, options: RequestInit) => new Promise((_resolve, reject) => {
+    const signal = options.signal!; signals.push(signal);
+    signal.addEventListener('abort', () => reject(new Error('aborted')));
+  })));
+  try {
+    const files = new ObserverVoiceFiles(), timed = files.prefetch('/intro.mp3');
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(signals[0].aborted).toBe(true); expect(await timed).toBeNull();
+    const pending = files.prefetch('/destroyer.mp3');files.clear();
+    expect(signals[1].aborted).toBe(true);expect(await pending).toBeNull();
+  } finally { vi.useRealTimers(); }
+});
 it('bundles the exact approved Mandarin bytes and leaves English without a recording', () => {
   expect(observerVoiceAssets).toEqual({ 'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null });
   const bytes = readFileSync('public/audio/observer_destroyer_zh-TW.mp3');
@@ -115,7 +131,8 @@ it('bundles the exact approved Mandarin bytes and leaves English without a recor
 it('preloads silently, plays once, stops Mandarin on English selection and never truncates a short historical window', async () => {
   const {context,nodes}=audioHarness(), loader=vi.fn(async()=>({duration:5.407} as AudioBuffer));
   const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
-  voice.sync('zh-TW',null,false);await Promise.resolve();expect(loader).toHaveBeenCalledOnce();expect(nodes).toHaveLength(0);
+  voice.sync('zh-TW',null,false);expect(loader).not.toHaveBeenCalled();
+  voice.prepare('zh-TW','destroyer');await Promise.resolve();expect(loader).toHaveBeenCalledOnce();expect(nodes).toHaveLength(0);
   voice.sync('zh-TW',0,false,7.2);await Promise.resolve();expect(nodes).toHaveLength(1);expect(nodes[0].start).toHaveBeenCalledWith(0,0);
   for(let i=0;i<10;i++)voice.sync('zh-TW',i/60,false,7.2);expect(nodes).toHaveLength(1);
   voice.sync('en',1,false,7.2);expect(nodes[0].stop).toHaveBeenCalledOnce();expect(nodes).toHaveLength(1);
@@ -147,15 +164,41 @@ class ElementStub extends EventTarget {
   children: ElementStub[] = []; style: Record<string,string>={}; attrs:Record<string,string>={};
   hidden=false; lang=''; textContent=''; src=''; remove=vi.fn(); blur=vi.fn();
   append(...children:ElementStub[]){this.children.push(...children);}
+  replaceWith=vi.fn();
   setAttribute(key:string,value:string){this.attrs[key]=value;}
 }
-function missionUi() {
+const readyPortraits = (): PreparedObserverPortraits => ({ readiness: 'ready', get: () => new ElementStub() as unknown as HTMLImageElement });
+function missionUi(portraits = readyPortraits()) {
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   vi.stubGlobal('navigator',{languages:['zh-TW']});vi.stubGlobal('window',{});
   const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)};
-  const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio);
+  const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio,portraits);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
+it('waits for decoded portraits before starting all parts of the mission at offset zero', () => {
+  let ready = false;
+  const prepared = readyPortraits();
+  const {ui,audio} = missionUi({ get readiness() { return ready ? 'ready' : 'pending'; }, get: e => ready ? prepared.get(e) : null });
+  ui.startMission(0);
+  for (let tick=0; tick<90; tick++) ui.update(undefined,undefined,tick/60,true,false);
+  expect(ui.element.hidden).toBe(true);expect(audio.play).not.toHaveBeenCalled();
+  ready=true;ui.update(undefined,undefined,1.5,true,false);
+  expect(ui.element.hidden).toBe(false);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',0,false,6.2,'missionIntro']);ui.dispose();
+});
+it('suppresses a missing-portrait attempt without late pop-in, but reuses readiness on Retry', () => {
+  let ready = false;
+  const prepared = readyPortraits();
+  const {ui,audio} = missionUi({ get readiness() { return ready ? 'ready' : 'pending'; }, get: e => ready ? prepared.get(e) : null });
+  ui.startMission(0);
+  for (let tick=0; tick<190; tick++) ui.update(undefined,undefined,tick/60,true,false);
+  ready=true;
+  for (let tick=190; tick<550; tick++) ui.update(undefined,undefined,tick/60,true,false);
+  expect(ui.element.hidden).toBe(true);expect(audio.play).not.toHaveBeenCalled();
+  expect(audio.syncRadio.mock.calls.every(call=>call[1]===null)).toBe(true);
+  ui.startMission(0);for(let tick=0;tick<20;tick++)ui.update(undefined,undefined,tick/60,true,false);
+  expect(ui.element.hidden).toBe(false);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');ui.dispose();
+});
 it('prepares Mandarin before Start without playing or arming dialogue',()=>{
   const {ui,audio}=missionUi();
   expect(audio.prepareRadio.mock.lastCall).toEqual(['zh-TW','missionIntro']);
@@ -226,7 +269,7 @@ it.each(['en-US','zh-CN','ja','zh-TW'])('ignores %s browser language and saved E
   const getItem=vi.fn(()=> 'en'),setItem=vi.fn();
   vi.stubGlobal('navigator',{languages:[browserLocale]});
   vi.stubGlobal('window',{localStorage:{getItem,setItem}});
-  const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)}, host=new ElementStub(), ui=new FieldObserver(host as unknown as HTMLElement,audio);
+  const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)}, host=new ElementStub(), ui=new FieldObserver(host as unknown as HTMLElement,audio,readyPortraits());
   for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
   expect(ui.element.hidden).toBe(false);expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerDialogue['zh-TW']);
   expect(host.children).toEqual([ui.element]);expect('selector' in ui).toBe(false);

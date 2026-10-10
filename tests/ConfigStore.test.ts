@@ -16,15 +16,15 @@ const store = (storage?: ConfigStorage, source: unknown = data) => new ConfigSto
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('runtime config with generic tiers', () => {
-  it('loads and reloads production config from the versioned Pages path without cache reuse', async () => {
+  it('loads and reloads production config from its content-addressed Pages path', async () => {
     vi.stubEnv('PROD', true); vi.stubEnv('BASE_URL', '/topwar/');
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(data)));
     vi.stubGlobal('fetch', fetchMock);
     const config = new ConfigStore();
     await config.load(); await config.reloadBase();
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenNthCalledWith(1, `/topwar/game-data/game.json?v=${__TOPWAR_SHA__}`, { cache: 'no-store' });
-    expect(fetchMock).toHaveBeenNthCalledWith(2, `/topwar/game-data/game.json?v=${__TOPWAR_SHA__}`, { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `/topwar/${__TOPWAR_PUBLIC_ASSETS__['game-data/game.json']}`);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `/topwar/${__TOPWAR_PUBLIC_ASSETS__['game-data/game.json']}`);
     expect(config.getConfig()).toEqual(base);
   });
 

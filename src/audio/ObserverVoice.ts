@@ -16,10 +16,15 @@ export type VoiceLoader = (url: string, context: AudioContext) => Promise<AudioB
 /** Fetching bytes needs no audio permission. Context creation/playback still belongs to the Start gesture. */
 export class ObserverVoiceFiles {
   private readonly files = new Map<string, Promise<ArrayBuffer | null>>();
+  private readonly requests = new Set<AbortController>();
   prefetch(url: string): Promise<ArrayBuffer | null> {
     let file = this.files.get(url);
     if (!file) {
-      file = fetch(url).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+      const controller = new AbortController();
+      this.requests.add(controller);
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      file = fetch(url, { signal: controller.signal }).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)
+        .finally(() => { clearTimeout(timeout); this.requests.delete(controller); });
       this.files.set(url, file);
     }
     return file;
@@ -30,7 +35,7 @@ export class ObserverVoiceFiles {
       return bytes ? await context.decodeAudioData(bytes.slice(0)) : null;
     } catch { return null; }
   };
-  clear(): void { this.files.clear(); }
+  clear(): void { for (const request of this.requests) request.abort(); this.requests.clear(); this.files.clear(); }
 }
 const loadVoice: VoiceLoader = async (url, context) => {
   try {
@@ -79,10 +84,9 @@ export class ObserverVoice {
   sync(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity,
     message: ObserverMessage = 'destroyer'): void {
     if (this.disposed) return;
-    // GameAudio calls this only after Tap-to-Start activation. Decode early without
-    // creating a playback source, so the first spoken words are ready at the cue.
-    const pending = this.load(locale, message);
+    // Preparation is explicit: an idle sync must not fetch later-use dialogue.
     if (offset === null) { if (this.locale !== null) this.reset(); return; }
+    const pending = this.load(locale, message);
     const changed = this.locale !== locale || this.paused !== paused || this.message !== message;
     this.offset = offset;
     this.windowSeconds = windowSeconds;

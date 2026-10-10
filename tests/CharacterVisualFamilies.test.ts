@@ -32,6 +32,7 @@ describe('named character visual families', () => {
       const assets = await loadCharacterAssets();
       const model = (name: string) => models.get(`/models/toy-soldier-${name}.glb`)!;
       const { player, grunt, heavy, giant, boss } = assets.families;
+      if (!boss) throw new Error('Legacy load must include Boss');
       expect(load).toHaveBeenCalledTimes(13);
       expect(models.size).toBe(13);
       expect([...models.keys()].sort()).toEqual(Object.values(LEGACY_MODEL_FILES)
@@ -78,6 +79,37 @@ describe('named character visual families', () => {
       disposals.push(...[...new Set(threatModels.map(mesh => mesh.material))].map(m => vi.spyOn(m, 'dispose')));
       assets.dispose();
       for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
+    } finally { load.mockRestore(); }
+  });
+
+  it('loads only the bullet for Defense and disposes once', async () => {
+    const models: THREE.Mesh[] = [];
+    const load = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async () => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+      models.push(mesh); return { scene: new THREE.Group().add(mesh) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+    });
+    try {
+      const assets = await loadCharacterAssets(false);
+      expect(load.mock.calls.map(([url]) => url)).toEqual(['/models/toy-soldier-bullet.glb']);
+      expect(assets.families.boss).toBeUndefined();
+      expect(assets.rewardHelmet).toBeUndefined();
+      const dispose = models.map(m => vi.spyOn(m.geometry, 'dispose'));
+      assets.dispose(); assets.dispose();
+      for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
+    } finally { load.mockRestore(); }
+  });
+
+  it('cleans up even resources that complete after another model fails validation', async () => {
+    const models = [new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()),
+      new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial())];
+    const dispose = models.map(m => vi.spyOn(m.geometry, 'dispose'));
+    const load = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async url => {
+      if (url.includes('bullet')) { await new Promise(r => setTimeout(r, 5)); return { scene: new THREE.Group().add(models[1]) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>; }
+      return { scene: new THREE.Group().add(models[0], new THREE.Mesh()) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>;
+    });
+    try {
+      await expect(loadCharacterAssets()).rejects.toThrow('must have one mesh');
+      for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
     } finally { load.mockRestore(); }
   });
 

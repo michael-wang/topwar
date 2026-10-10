@@ -11,6 +11,9 @@ import './ui/arcade.css';
 import { perfEnabled } from './app/PerfDiagnostics';
 import { threatReviewEnabled } from './app/ThreatReview';
 import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';
+import { GameAudio } from './audio/GameAudio';
+import { ObserverPortraits } from './ui/ObserverPortraits';
+import { FIELD_OBSERVER_LOCALE } from './ui/observerLocale';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
 if (!viewport) {
@@ -25,11 +28,22 @@ const configStore = new ConfigStore();
 async function startGame(): Promise<void> {
   let level: LevelDefinition;
   let assets;
+  const audio = new GameAudio();
+  let portraits: ObserverPortraits | undefined;
   try {
-    await configStore.load();
-    level = await loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json'));
-    assets = await loadCharacterAssets();
+    const data = await Promise.all([
+      configStore.load(),
+      loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json')),
+    ]);
+    level = data[1];
+    const defense = !!configStore.getConfig().catharsis?.defenseMode;
+    if (defense) {
+      portraits = new ObserverPortraits();
+      audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'missionIntro');
+    }
+    assets = await loadCharacterAssets(!defense);
   } catch (error) {
+    portraits?.dispose(); audio.dispose();
     console.error('Failed to load game assets or data', error);
     gameViewport.classList.add('game-viewport-error');
     gameViewport.textContent = 'Failed to load game assets or data. See console for details.';
@@ -37,7 +51,7 @@ async function startGame(): Promise<void> {
   }
 
   const app = new GameApp(gameViewport, configStore, level, assets,
-    perfEnabled(window.location.search), threatReviewEnabled(window.location.search));
+    perfEnabled(window.location.search), threatReviewEnabled(window.location.search), audio, portraits);
   app.start();
 }
 

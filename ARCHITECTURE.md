@@ -191,10 +191,19 @@ Base game data lives under `public/game-data/` and is loaded at runtime with `fe
 This deliberately avoids importing balance JSON into the JS bundle.
 
 Production runtime public URLs go through `publicAssetUrl()`, which preserves the
-Pages base path and adds one `v` query parameter from the injected build SHA.
-This keeps config, level data and GLB cache entries aligned with the JS build.
-Production config/level JSON fetches additionally use `cache: 'no-store'`;
-development retains unversioned URLs and its normal fetch behavior.
+Pages base path and resolves the build's content-addressed manifest. JSON, GLBs,
+portraits and MP3s are emitted once with a SHA-256 content suffix; unchanged bytes
+keep the same URL across commits. Config and level data use normal browser caching
+because their filenames identify their bytes. New JS references the matching data
+and assets; missing old hashes fail instead of silently receiving different bytes.
+Development retains editable, unversioned public URLs. The build-label SHA remains
+independent of asset identity. No Service Worker or offline cache is involved.
+
+Startup loads config and level data concurrently. Defense requests only the bullet
+GLB, builds the existing procedural character families and omits legacy Boss and
+recruitment renderers. Non-Defense startup still loads all 13 GLBs. Mode selection
+is a startup decision; snapshots preserve the existing mode-validation contracts.
+Model loads settle before partial-failure cleanup; resources remain renderer-owned.
 
 Examples:
 
@@ -563,4 +572,6 @@ The pure destroyer pose and muzzle-offset functions are shared by simulation and
 
 Mission-introduction and Destroyer dialogue share the same radio/voice path with an explicit message identity. Decode caching is keyed by asset path, and switching messages cancels the prior source and any delayed decode callback. The mission introduction is explicitly armed by fresh Start/Retry only and retired after its simulation-time window; snapshot restoration cannot rearm it. Its three subtitle phrases are presentation data, not simulation gates. The Destroyer warning takes precedence if a restored scene overlaps the intro window; no dialogue queues or encounter timing dependencies are introduced.
 
-`MissionObserverTimeline` waits up to 2.5 simulation seconds after the intro's 0.2-second cue for both decoded audio and an activated context. It then starts its own 6.2-second presentation clock at offset zero, or commits to subtitles only for that attempt. Late readiness never upgrades an already-running subtitle-only introduction into mid-sentence speech. Pause freezes waiting and playback offsets; Retry resets the disposable clock. The one-second global activation deadline is unchanged, and no MP3 promise blocks gameplay. A timed-out resume may still recover audio later, but cannot replay a finished/fallback introduction. The observer panel uses an 83% background alpha without whole-component opacity or backdrop blur.
+`MissionObserverTimeline` waits up to 2.5 simulation seconds after the intro's 0.2-second cue for portrait preparation, decoded audio and an activated context. It then starts its own 6.2-second presentation clock at offset zero, or commits to subtitles only when audio is unavailable. Late audio readiness cannot start mid-sentence speech. Pause freezes waiting and playback offsets; Retry resets the disposable clock. The one-second global activation deadline is unchanged, and no presentation-asset promise blocks gameplay.
+
+`ObserverPortraits` starts both approved 110×110 portraits alongside intro-byte prefetch, before GLB loading and renderer construction. Both images decode before normal presentation; expression switching inserts the decoded elements rather than assigning a visible image's source. An eight-second wall-time deadline bounds preparation and voice fetches. Each communication freezes its available portraits: one decoded expression can substitute for the other, and no decoded portrait suppresses that whole communication (panel, radio cues and voice) without late pop-in. Retry and subsequent communications reuse successful preparation. A timed-out resume cannot replay a finished/fallback introduction. Destroyer voice preparation begins when its encounter becomes active, not during idle startup. The observer panel retains its 83% background and breakout composition.

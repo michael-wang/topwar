@@ -8,12 +8,12 @@ const url = '/game-data/levels/level-001.json';
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('loadLevelDefinition', () => {
-  it('loads production level JSON through the versioned public URL without cache reuse', async () => {
+  it('loads production level JSON through its content-addressed public URL', async () => {
     vi.stubEnv('PROD', true); vi.stubEnv('BASE_URL', '/topwar/');
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(authoredLevel)));
     vi.stubGlobal('fetch', fetchMock);
     expect(await loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json'))).toEqual(authoredLevel);
-    expect(fetchMock).toHaveBeenCalledWith(`/topwar/game-data/levels/level-001.json?v=${__TOPWAR_SHA__}`, { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenCalledWith(`/topwar/${__TOPWAR_PUBLIC_ASSETS__['game-data/levels/level-001.json']}`);
   });
 
   it('keeps development level loading valid without production cache options', async () => {

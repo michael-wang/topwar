@@ -46,7 +46,7 @@ function mergeObjects(base: PlainObject, patch: PlainObject): PlainObject {
 async function fetchConfigJson(url: string): Promise<unknown> {
   let response: Response;
   try {
-    response = await (import.meta.env.PROD ? fetch(url, { cache: 'no-store' }) : fetch(url));
+    response = await fetch(url);
   } catch (error) {
     throw new Error(`Failed to fetch config from ${url}`, { cause: error });
   }
