@@ -50,7 +50,7 @@ export const CatharsisConfigSchema = z.strictObject({
   pressureMultipliers: z.array(z.number().finite().min(1).max(4)).min(1).default([1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65]),
   giant: z.strictObject({
     enabled: z.boolean().default(false),
-    unlockLevel: z.number().int().min(5).default(7),
+    unlockLevel: z.number().int().min(4).default(7),
     introDelaySeconds: z.number().finite().nonnegative().default(4),
     hp: z.number().finite().positive().default(210),
     xp: z.number().int().nonnegative().default(120),

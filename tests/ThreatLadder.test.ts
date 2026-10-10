@@ -14,14 +14,14 @@ const options = { seed: 17, level: LevelDefinitionSchema.parse(levelData), start
   startRocketCount: 0, tiers: config.tiers, catharsis: { balance, trackHalfWidth: config.track.halfWidth } };
 const step = (sim: Simulation, ticks = 1) => { for (let i = 0; i < ticks; i++) sim.step(1 / 60, { targetX: 0 }, pilotTuning); };
 
-it.each([[4, 63, 24, 4, 38], [5, 55, 30, 3, 44], [6, 0, 60, 3, 74]])(
+it.each([[4, 63, 24, 4, 52], [5, 55, 30, 3, 72], [6, 0, 60, 3, 74]])(
   'authors exact Lv%i composition without changing total population or HP', (level, xp, population, fronts, debt) => {
     const authored = { ...balance, ...pressureWaveSettings(balance, { level, xp }), groupSize: pressureGroupSize(balance, level) };
     for (const seed of [1, 17, 42]) for (let wave = 0; wave < 12; wave++) {
       const group = laneCompositionForRow(wave * balance.waveRows, seed, authored, 3.2);
       expect(group).toHaveLength(population);
       expect(new Set(group.map(e => e.lane)).size).toBe(fronts);
-      expect(group.filter(e => e.archetype === 'heavy')).toHaveLength(1);
+      expect(group.filter(e => e.archetype === 'heavy')).toHaveLength(level===4?2:level===5?3:1);
       expect(group.reduce((sum, e) => sum + (e.archetype === 'heavy' ? balance.heavyHp : 1), 0)).toBe(debt);
       const heavy = group.find(e => e.archetype === 'heavy')!;
       expect(group.filter(e => e.lane === heavy.lane && e.archetype === 'grunt')
@@ -135,14 +135,15 @@ it('handles Grenade XP overflow with one release while a pending Lv5 Giant survi
   expect(introduced.machineGunReleaseAtSeconds).toBe(evolved.machineGunReleaseAtSeconds);
 });
 
-it('CURVE resets deterministically, crosses Lv5 through XP and schedules Giant on that exact tick', () => {
+it('CURVE resets deterministically, spawns its Lv4 Giant immediately, crosses Lv5 through XP and retains the encounter', () => {
   const make = () => createDevReviewFixture(options, 3, 'curve');
   const sim = make(), initial = sim.getState();
   expect(initial.progression).toEqual({ level: 4, xp: 150 });
   expect(initial.squad.count).toBe(2); expect(initial.player.selectedLane).toBe(2);
-  expect(initial.enemies).toHaveLength(48); expect(initial.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(2);
+  expect(initial.enemies).toHaveLength(48); expect(initial.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(4);
   expect(initial.giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
   expect(initial).toEqual(make().getState());
+  step(sim); expect(sim.getState().giantEncounter).toEqual({scheduledAtSeconds:1/60,spawned:true});
   for (let tick = 0; tick < 1800 && sim.getState().progression!.level === 4; tick++) {
     const state = sim.getState(), nearest = [...state.enemies].sort((a,b) => a.z-b.z || a.id-b.id)[0];
     if (nearest && tick % 12 === 0) while (sim.getState().player.selectedLane !== nearest.lane)
@@ -150,7 +151,7 @@ it('CURVE resets deterministically, crosses Lv5 through XP and schedules Giant o
     step(sim);
   }
   const lv5 = sim.getState(); expect(lv5.progression!.level).toBe(5); expect(lv5.squad.count).toBe(3);
-  expect(lv5.giantEncounter!.scheduledAtSeconds).toBeCloseTo(lv5.elapsedSeconds + 6);
+  expect(lv5.giantEncounter!.scheduledAtSeconds).toBeCloseTo(1/60);
   const restored = new Simulation(options); restored.restoreState(JSON.parse(JSON.stringify(lv5)));
   step(sim, 360); step(restored, 360); expect(restored.getState()).toEqual(sim.getState());
   expect(sim.getState().enemies.filter(e => e.archetype === 'giant')).toHaveLength(1);

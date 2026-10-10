@@ -13,7 +13,7 @@ const level=LevelDefinitionSchema.parse(levelData);
 it.each([[1,27,3,.25],[2,59,3,.25],[3,109,3,.25],[4,0,3,.25],[4,62,3,.25],
   [4,63,4,.25],[4,179,4,.25],[5,0,3,.25],[5,54,3,.25],[5,55,3,.25],[5,219,3,.25],[6,0,3,.25]])
   ('authors future fronts/chance for Lv%s XP%s as %s / %s', (level,xp,fronts,chance) => {
-    expect(pressureWaveSettings(balance,{level,xp})).toEqual({pressureLaneCount:fronts,heavyChance:chance, ...((level===6 || (level===4&&xp>=63) || (level===5&&xp>=55)) ? {heavyCount:1} : {})});
+    expect(pressureWaveSettings(balance,{level,xp})).toEqual({pressureLaneCount:fronts,heavyChance:chance, ...((level===6 || (level===4&&xp>=63) || (level===5&&xp>=55)) ? {heavyCount:level===4?2:level===5?3:1} : {})});
   });
 
 it('uses the current authored XP requirement and leaves old snapshot balances on their original path', () => {
@@ -21,7 +21,7 @@ it('uses the current authored XP requirement and leaves old snapshot balances on
   expect(pressureWaveSettings(edited,{level:4,xp:69}).pressureLaneCount).toBe(3);
   expect(pressureWaveSettings(edited,{level:4,xp:70}).pressureLaneCount).toBe(4);
   expect(pressureWaveSettings(edited,{level:5,xp:74}).heavyChance).toBe(.25);
-  expect(pressureWaveSettings(edited,{level:5,xp:75}).heavyCount).toBe(1);
+  expect(pressureWaveSettings(edited,{level:5,xp:75}).heavyCount).toBe(3);
   const old=structuredClone(balance);delete old.pressureRamp;
   expect(pressureWaveSettings(old,{level:5,xp:219})).toEqual({pressureLaneCount:3,heavyChance:.25});
 });
@@ -36,7 +36,7 @@ it('keeps group populations, HP and speeds fixed while authoring late fronts and
       earlyHeavies+=Number(earlyWave.heavy);lateHeavies+=laneCompositionForRow(group*balance.waveRows,17,late,3.2).filter(e=>e.archetype==='heavy').length;
       expect(lateWave.lanes).toHaveLength(level===4?4:3);expect(new Set(lateWave.lanes).size).toBe(level===4?4:3);
     }
-    expect(lateHeavies).toBeGreaterThan(earlyHeavies);expect(lateHeavies).toBe(1000);
+    expect(lateHeavies).toBeGreaterThan(earlyHeavies);expect(lateHeavies).toBe(level===4?2000:3000);
     const members=laneCompositionForRow(120,17,late,3.2);
     expect(members).toHaveLength(level===4?24:30);expect(new Set(members.map(e=>e.lane)).size).toBe(level===4?4:3);
     expect(members).toEqual(laneCompositionForRow(120,17,late,3.2));
@@ -50,6 +50,7 @@ it.each([4,5])('admits only future Lv%s groups using saved XP, with identical JS
   const sim=make(),s=sim.getState();
   const threshold=levelNumber===4?63:55;
   s.progression={level:levelNumber,xp:threshold-1};
+  s.giantEncounter={scheduledAtSeconds:0,spawned:true};
   s.weapons.rifleCooldownRemainingSeconds=100;s.weapons.rifleMemberCooldowns=[100];
   s.enemyStream!.nextRowIndex=120; s.defenseWaves={nextAtSeconds:2/60};
   s.player.z=level.enemyStream!.startZ+120*level.enemyStream!.spacing-balance.defenseSpawnAheadDistance-.02;
@@ -69,6 +70,7 @@ it.each([4,5])('admits only future Lv%s groups using saved XP, with identical JS
   expect(after.enemies[0]).toMatchObject({id:1,hp:7,lane:2,x:0});
   const admitted=after.enemies.filter(e=>e.id>=3);
   expect(admitted).toHaveLength(levelNumber===4?24:30);
+  expect(admitted.filter(e=>e.archetype==='heavy')).toHaveLength(levelNumber===4?2:3);
   expect(new Set(admitted.map(e=>e.lane)).size).toBe(levelNumber===4?4:3);
   expect(after.catharsis!.balance).toEqual(balance);
 });

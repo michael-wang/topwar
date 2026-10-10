@@ -15,6 +15,33 @@ const tuning = { moveSpeed: 5, forwardSpeed: .6, trackHalfWidth: 3.2, defenseLin
   rifle: config.weapon.rifle, rocket: config.weapon.rocket };
 const step = (sim: Simulation, count: number) => { for (let i = 0; i < count; i++) sim.step(1 / 60, { targetX: 0 }, tuning); };
 
+it('spawns the authored Giant on the exact ordinary kill tick reaching Lv4, alongside retained waves', () => {
+  const sim = make(), s = sim.getState();
+  s.progression = { level: 3, xp: 109 };
+  s.enemies.push({ id: s.enemyStream!.nextEnemyId++, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: 3, hp: 1 });
+  s.projectiles = [{ id: 1, kind: 'rifle', tier: 1, lane: 2, x: 0, z: 2.5, slopeX: 0,
+    speed: 60, damage: config.tiers.tier1Power, remainingRange: 80, blastRadius: 0, hitRadiusBonus: 0, penetrationRemaining: 0 }];
+  s.weapons.nextProjectileId = 2;
+  sim.restoreState(s); step(sim, 1);
+  const first = sim.getState(), giant = first.enemies.find(e => e.archetype === 'giant')!;
+  expect(first.progression).toEqual({ level: 4, xp: 0 });
+  expect(first.giantEncounter).toEqual({ scheduledAtSeconds: first.elapsedSeconds, spawned: true });
+  expect(giant).toMatchObject({ hp: 172, z: first.player.z + 38 });
+  const counts = [1, 2, 3].map(lane => ({ lane, count: first.enemies.filter(e => e.id !== giant.id && e.lane === lane).length }));
+  counts.sort((a, b) => a.count - b.count || Math.abs(a.lane - 2) - Math.abs(b.lane - 2) || a.lane - b.lane);
+  expect(giant.lane).toBe(counts[0].lane);
+  expect(first.enemies.some(e => e.archetype === 'grunt')).toBe(true);
+  expect(first.enemies.some(e => e.archetype === 'heavy')).toBe(true);
+  const clone = make(); clone.restoreState(JSON.parse(JSON.stringify(first)));
+  step(sim, 360); step(clone, 360);
+  expect(clone.getState()).toEqual(sim.getState());
+  expect(sim.getState().enemies.filter(e => e.archetype === 'giant')).toHaveLength(1);
+  const killed = sim.getState(); killed.enemies = killed.enemies.filter(e => e.id !== giant.id);
+  sim.restoreState(killed); step(sim, 360);
+  expect(sim.getState().enemies.some(e => e.archetype === 'giant')).toBe(false);
+  expect(make().getState().giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
+});
+
 it('changes only future group quantity from LV5 and retains bounded deterministic crowds', () => {
   expect([1,2,3,4,5,6,7].map(l => pressureGroupSize(balance, l))).toEqual([24,24,24,24,30,60,35]);
   expect(pressureGroupSize(balance, 100)).toBe(40);
@@ -40,8 +67,9 @@ it('preserves the old LV1–4 stream exactly before any progression unlock', () 
   expect(sim.getState().giantEncounter).toEqual({ scheduledAtSeconds: null, spawned: false });
 });
 
-it('schedules exactly one Lv5 six-second introduction, restores its pending clock and never respawns after death', () => {
+it('preserves a historical Lv5 six-second introduction, restores its pending clock and never respawns after death', () => {
   const sim = make(), state = sim.getState();
+  state.catharsis!.balance.giant = { ...balance.giant, unlockLevel: 5, introDelaySeconds: 6 };
   state.progression = { level: 5, xp: 0 }; state.weapons.rifleCooldownRemainingSeconds = 1000;
   sim.restoreState(state); step(sim, 1);
   const pending = sim.getState(); expect(pending.giantEncounter!.scheduledAtSeconds).toBeCloseTo(6 + 1 / 60);
