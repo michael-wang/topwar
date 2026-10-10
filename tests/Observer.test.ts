@@ -186,18 +186,37 @@ it('waits for decoded portraits before starting all parts of the mission at offs
   expect(ui.element.hidden).toBe(false);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
   expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',0,false,6.2,'missionIntro']);ui.dispose();
 });
-it('suppresses a missing-portrait attempt without late pop-in, but reuses readiness on Retry', () => {
+it('keeps ready speech with an emblem at the portrait deadline, freezes it, and reuses portraits on Retry', () => {
   let ready = false;
   const prepared = readyPortraits();
   const {ui,audio} = missionUi({ get readiness() { return ready ? 'ready' : 'pending'; }, get: e => ready ? prepared.get(e) : null });
   ui.startMission(0);
   for (let tick=0; tick<190; tick++) ui.update(undefined,undefined,tick/60,true,false);
+  expect(ui.element.hidden).toBe(false);
+  expect((ui as any).portrait.className).toBe('observer-fallback');
+  const firstSpeech = audio.syncRadio.mock.calls.find(call=>call[1]!==null);
+  expect(firstSpeech).toEqual(['zh-TW',0,false,6.2,'missionIntro']);
   ready=true;
-  for (let tick=190; tick<550; tick++) ui.update(undefined,undefined,tick/60,true,false);
-  expect(ui.element.hidden).toBe(true);expect(audio.play).not.toHaveBeenCalled();
-  expect(audio.syncRadio.mock.calls.every(call=>call[1]===null)).toBe(true);
+  for (let tick=190; tick<530; tick++) ui.update(undefined,undefined,tick/60,true,false);
+  expect((ui as any).portrait.className).toBe('observer-fallback');
+  expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
   ui.startMission(0);for(let tick=0;tick<20;tick++)ui.update(undefined,undefined,tick/60,true,false);
-  expect(ui.element.hidden).toBe(false);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');ui.dispose();
+  expect(ui.element.hidden).toBe(false);expect((ui as any).portrait.className).not.toBe('observer-fallback');
+  expect(audio.play).toHaveBeenCalledTimes(2);ui.dispose();
+});
+it('preserves critical Destroyer subtitles and radio with no portraits, including mission precedence', () => {
+  const {ui,audio,text}=missionUi({readiness:'unavailable',get:()=>null});ui.startMission(0);
+  for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
+  expect(ui.element.hidden).toBe(false);expect(text()).toBe(observerDialogue['zh-TW']);
+  expect((ui as any).portrait.className).toBe('observer-fallback');
+  expect(audio.syncRadio.mock.lastCall?.[1]).not.toBeNull();ui.dispose();
+});
+it('makes the audio decision independently when portraits remain pending at the deadline', () => {
+  for(const readiness of ['ready','pending','unavailable'] as const){
+    const t=new MissionObserverTimeline();t.start(0);let first:any;
+    for(let tick=0;tick<180;tick++){const f=t.update(tick/60,true,false,readiness,true);if(f.begin)first=f;}
+    expect(first).toMatchObject({visible:true,begin:true,offset:0,audible:readiness==='ready'});
+  }
 });
 it('prepares Mandarin before Start without playing or arming dialogue',()=>{
   const {ui,audio}=missionUi();

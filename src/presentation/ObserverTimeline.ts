@@ -14,7 +14,7 @@ export class MissionObserverTimeline {
   get active(): boolean { return this.attempt !== null; }
   reset(): void { this.attempt = null; this.started = null; this.voiced = false; }
   start(now: number): void { this.reset(); if (now === 0) { this.attempt = now; this.previous = now; } }
-  update(now: number, alive: boolean, paused: boolean, readiness: 'pending' | 'ready' | 'unavailable') {
+  update(now: number, alive: boolean, paused: boolean, readiness: 'pending' | 'ready' | 'unavailable', portraitsPending = false) {
     const hidden = { owns: false, visible: false, begin: false, end: false,
       offset: 0, duration: missionIntroTiming.durationSeconds, audible: false };
     if (this.attempt === null || !alive) { this.reset(); return hidden; }
@@ -28,7 +28,7 @@ export class MissionObserverTimeline {
     let begin = false;
     if (this.started === null) {
       const cue = this.attempt + missionIntroTiming.atSeconds;
-      if (paused || now < cue || (readiness === 'pending' && now < cue + missionIntroTiming.readinessWaitSeconds))
+      if (paused || now < cue || ((readiness === 'pending' || portraitsPending) && now < cue + missionIntroTiming.readinessWaitSeconds))
         return { ...hidden, owns: true };
       this.started = now; this.voiced = readiness === 'ready'; begin = true;
     }

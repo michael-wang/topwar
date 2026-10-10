@@ -7,7 +7,8 @@
 .field-observer[hidden] { display:none; }
 /* Fixed bust slot: cap clears the top controls; shoulders overlap the plaque.
    Both expressions share a square composition, so phrases never shift the face. */
-.field-observer img { position:absolute; width:110px; height:110px; object-fit:contain; left:-5px; bottom:-8px; }
+.field-observer img, .field-observer .observer-fallback { position:absolute; width:110px; height:110px; object-fit:contain; left:-5px; bottom:-8px; }
+.observer-fallback svg { width:100%; height:100%; }
 .field-observer p { margin:0; font:600 13px/1.38 system-ui, sans-serif; text-wrap:pretty; }
 .observer-radio-light { position:absolute; right:6px; top:7px; width:4px; height:4px; border-radius:50%; background:#ffb547; }
 @media (prefers-reduced-motion: reduce) { .field-observer { transform:none !important; } }

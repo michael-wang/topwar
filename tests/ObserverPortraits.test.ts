@@ -21,7 +21,8 @@ it('starts both images immediately and exposes only decoded elements for reuse',
   expect(images.map(i => i.src)).toEqual(['/art/observer/neutral.webp', '/art/observer/alert.webp']);
   expect(portraits.readiness).toBe('pending'); expect(portraits.get('neutral')).toBeNull();
   images[0].resolve(); await Promise.resolve();
-  expect(portraits.readiness).toBe('pending');
+  expect(portraits.readiness).toBe('ready');
+  expect(portraits.get('alert')).toBe(images[0]);
   images[1].resolve(); await Promise.resolve();
   expect(portraits.readiness).toBe('ready');
   expect(portraits.get('neutral')).toBe(images[0]); expect(portraits.get('alert')).toBe(images[1]);

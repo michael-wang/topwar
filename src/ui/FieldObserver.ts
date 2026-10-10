@@ -1,4 +1,5 @@
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
+import { observerEmblem } from './observerEmblem';
 import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
@@ -13,7 +14,8 @@ export interface ObserverAudio {
 }
 export class FieldObserver {
   readonly element = document.createElement('aside');
-  private portrait = document.createElement('img');
+  private readonly fallback = document.createElement('div');
+  private portrait: HTMLElement = this.fallback;
   private presented = false;
   private attemptPortraits: Record<ObserverExpression, HTMLImageElement | null> = { neutral: null, alert: null };
   private readonly text = document.createElement('p');
@@ -30,7 +32,8 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'missionIntro');
     this.element.className = 'field-observer'; this.element.hidden = true;
     this.element.setAttribute('aria-live', 'polite');
-    this.portrait.alt = ''; this.portrait.width = 110; this.portrait.height = 110;
+    this.fallback.className = 'observer-fallback'; this.fallback.setAttribute('aria-hidden', 'true');
+    this.fallback.innerHTML = observerEmblem;
     this.lamp.className = 'observer-radio-light'; this.lamp.setAttribute('aria-hidden', 'true');
     this.element.append(this.portrait, this.text, this.lamp);
     this.updateText(); host.append(this.element);
@@ -55,13 +58,14 @@ export class FieldObserver {
       if (navalFrame.visible || !alive) this.missionTimeline.reset();
       else {
         const audioReady = this.audio.prepareRadio(this.locale, 'missionIntro');
-        const intro = this.missionTimeline.update(now, alive, paused,
-          this.portraits.readiness === 'pending' ? 'pending' : audioReady);
+        const intro = this.missionTimeline.update(now, alive, paused, audioReady,
+          this.portraits.readiness === 'pending');
         if (intro.owns) { frame = intro; message = 'missionIntro'; }
       }
     }
     const phrase = message === 'missionIntro'
       ? missionIntroTiming.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at ? i : index, 0) : 0;
+    if (message !== this.message) this.presented = false;
     if (message !== this.message || phrase !== this.phrase) {
       this.message = message; this.phrase = phrase; this.updateText();
     }
@@ -71,20 +75,19 @@ export class FieldObserver {
       this.attemptPortraits = { neutral: this.portraits.get('neutral'), alert: this.portraits.get('alert') };
       this.presented = true;
     }
-    const canPresent = !!this.attemptPortraits.neutral;
-    this.element.hidden = !frame.visible || !canPresent;
+    this.element.hidden = !frame.visible;
     if (frame.visible) {
       const expression = message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
-      const prepared = this.attemptPortraits[expression];
-      if (prepared && prepared !== this.portrait) { this.portrait.replaceWith(prepared); this.portrait = prepared; }
+      const prepared = this.attemptPortraits[expression] ?? this.fallback;
+      if (prepared !== this.portrait) { this.portrait.replaceWith(prepared); this.portrait = prepared; }
       this.expression = expression;
       const fade = Math.min(1, frame.offset / .18, (frame.duration - frame.offset) / .22);
       this.element.style.transform = `translateX(${(1 - fade) * -12}px)`;
       this.lamp.style.transform = `scale(${.8 + .2 * Math.sin(frame.offset * 12) ** 2})`;
     }
-    if (frame.begin && canPresent) this.audio.play('radioOpen');
-    if (frame.end && canPresent) this.audio.play('radioClose');
-    this.frame = { offset: frame.audible && canPresent ? frame.offset : null, paused, duration: frame.duration };
+    if (frame.begin) this.audio.play('radioOpen');
+    if (frame.end) this.audio.play('radioClose');
+    this.frame = { offset: frame.audible ? frame.offset : null, paused, duration: frame.duration };
     this.audio.syncRadio(this.locale, this.frame.offset, paused, this.frame.duration, message);
     if (!frame.visible) this.presented = false;
   }

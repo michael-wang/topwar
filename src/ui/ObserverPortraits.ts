@@ -32,7 +32,7 @@ export class ObserverPortraits implements PreparedObserverPortraits {
     }
   }
   get readiness(): 'pending' | 'ready' | 'unavailable' {
-    return this.pending ? 'pending' : this.images.size ? 'ready' : 'unavailable';
+    return this.images.size ? 'ready' : this.pending ? 'pending' : 'unavailable';
   }
   get(expression: ObserverExpression): HTMLImageElement | null {
     return this.images.get(expression) ?? this.images.get('neutral') ?? this.images.get('alert') ?? null;
