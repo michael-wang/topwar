@@ -56,3 +56,19 @@ it('does not install the obsolete 4/5/6 shortcuts',()=>{
   for(const code of ['Digit4','Digit5','Digit6'])expect(press(code).defaultPrevented).toBe(false);
   expect(select).not.toHaveBeenCalled();controls.dispose();
 });
+
+it('adds a separate collapsible MG TEST section with five touch presets and shared selected state',()=>{
+  const {controls,root,select}=setup(),section=controls.mgTest as unknown as ElementStub;
+  expect(section.tagName).toBe('DETAILS');expect(section.children[0].textContent).toBe('MG TEST');
+  const buttons=section.children[1].children;
+  expect(buttons.map(b=>b.textContent)).toEqual(['MG6','MG7','MG8','MG9','MG10']);
+  for(const button of buttons){
+    expect(button.style.cssText).toContain('min-height:48px');
+    button.dispatchEvent(new Event('click'));controls.setSelected(button.dataset.role as 'mg6');
+    expect(select.mock.lastCall).toEqual([button.dataset.role]);expect(button.blur).toHaveBeenCalledOnce();
+    expect(buttons.filter(b=>b.attrs['aria-pressed']==='true')).toEqual([button]);
+    expect(root.children.every(b=>b.attrs['aria-pressed']==='false')).toBe(true);
+  }
+  controls.setSelected('late');expect(buttons.every(b=>b.attrs['aria-pressed']==='false')).toBe(true);
+  controls.dispose();expect(section.remove).toHaveBeenCalledOnce();
+});

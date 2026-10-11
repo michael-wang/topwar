@@ -1,9 +1,11 @@
 import type { DevReviewFixture } from '../app/DevReviewFixtures';
+import { MG_TEST_PRESETS, type MachineGunReviewFixture } from '../app/DevMachineGunReview';
 
 // Constructed only behind import.meta.env.DEV. Inline styling stays out of the
 // shipping CSS, along with the controls and fixture factory in production JS.
 export class DevReviewControls {
   readonly element = document.createElement('div');
+  readonly mgTest = document.createElement('details');
   private readonly buttons: HTMLButtonElement[] = [];
   private readonly stopPointer = (event: Event) => event.stopPropagation();
   constructor(viewport: HTMLElement, select: (role: DevReviewFixture) => void) {
@@ -28,6 +30,25 @@ export class DevReviewControls {
     }
     this.element.addEventListener('pointerdown', this.stopPointer);
     viewport.append(this.element);
+    this.mgTest.className = 'dev-mg-test';
+    this.mgTest.style.cssText = 'margin:0 0 16px';
+    const summary = document.createElement('summary'); summary.textContent = 'MG TEST';
+    summary.style.cssText = 'min-height:44px;width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 12px var(--font-utility, sans-serif);cursor:pointer;touch-action:manipulation';
+    this.mgTest.append(summary);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding-top:6px';
+    for (const role of Object.keys(MG_TEST_PRESETS) as MachineGunReviewFixture[]) {
+      const preset = MG_TEST_PRESETS[role], button = document.createElement('button');
+      button.type = 'button'; button.textContent = role.toUpperCase(); button.dataset.role = role;
+      button.title = `Restart Lv${preset.level} with ${preset.soldiers} Stage ${preset.weaponStage} MGs in the shared comparison crowd`;
+      button.setAttribute('aria-pressed', 'false');
+      button.style.cssText = 'min-height:48px;margin:0;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 12px var(--font-utility, sans-serif);cursor:pointer;touch-action:manipulation';
+      button.addEventListener('click', () => { select(role); button.blur(); });
+      this.buttons.push(button); grid.append(button);
+    }
+    this.mgTest.append(grid);
+    this.mgTest.addEventListener('pointerdown', this.stopPointer);
+    viewport.append(this.mgTest);
   }
   setSelected(role: DevReviewFixture): void {
     for (const button of this.buttons) {
@@ -38,6 +59,8 @@ export class DevReviewControls {
   }
   dispose(): void {
     this.element.removeEventListener('pointerdown', this.stopPointer);
+    this.mgTest.removeEventListener('pointerdown', this.stopPointer);
     this.element.remove();
+    this.mgTest.remove();
   }
 }

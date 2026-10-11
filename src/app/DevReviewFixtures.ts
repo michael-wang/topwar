@@ -9,8 +9,9 @@ import { advancePostCapSurvival, postCapOrdinarySettings } from '../simulation/p
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage } from '../simulation/progression';
 import { placeGrenadeSupply } from '../simulation/grenade';
 import { addRifleSoldiers } from '../simulation/squad/composition';
+import { createMachineGunReview, type MachineGunReviewFixture } from './DevMachineGunReview';
 
-export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval';
+export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval' | MachineGunReviewFixture;
 export const DEV_REVIEW_FIXTURES = {
   late: { level: 10, soldiers: 3 }, crate3: { level: 3, soldiers: 1 },
   crate8: { level: 8, soldiers: 1 }, naval: { level: 10, soldiers: 3 },
@@ -19,6 +20,8 @@ export const DEV_REVIEW_FIXTURES = {
 // Human DEV entries only. Historical isolated scenarios live in tests/helpers.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
+  if (role === 'mg6' || role === 'mg7' || role === 'mg8' || role === 'mg9' || role === 'mg10')
+    return createMachineGunReview(options, baseFireRate, role);
   if (role === 'naval') return createNavalReview(options);
   if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);
   const level = maxProgressionLevel(options.catharsis!.balance.progression);
