@@ -99,6 +99,8 @@ This structure may grow gradually. Do not create empty architecture theater. Add
 
 ## 5. Simulation/render separation
 
+An active session has one bounded, versioned browser checkpoint, written on manual Pause and before background suspension (visibility hidden; pagehide/freeze are additional safeguards). It contains the complete plain Simulation snapshot, saved level/configuration/runtime tuning and DEV fixture identity. Storage failures cannot stop gameplay. Recovery validates through `Simulation.restoreState`, preserves historical plans/clocks, and remains paused until an explicit Resume gesture. Sleep time never enters the fixed-step loop. Retry/New Game and Game Over invalidate the previous run. DEV and production use separate origin-local slots; no per-frame serialization or unload dependency. Presentation resources and one-shot cues are reconstructed without replaying the Mission Intro, old acquisitions or upgrades.
+
 ### Simulation
 
 Owns gameplay truth:

@@ -288,6 +288,14 @@ export class GameAudio {
     if(this.weaponBus&&this.context){this.weaponBus.gain.cancelScheduledValues(this.context.currentTime);this.weaponBus.gain.value=1;}
   }
 
+  restoreObservation(defense: number | bigint, enemies: readonly ObservedEnemy[],
+    rewards: readonly ObservedReward[], boss: ObservedBoss | null,
+    projectiles: readonly ObservedProjectile[]): void {
+    this.resetObservation();
+    // Seed prior identities without replaying old shots, kills or acquisitions.
+    this.observer.observe(defense, defense, enemies, rewards, boss, 0, projectiles);
+  }
+
   updateMusic(presentationMs: number, frame: MusicFrame): void {
     this.musicPresentationMs = presentationMs;
     if (!this.unlocked || !this.context || this.context.state !== 'running' || !this.master) return;
@@ -314,6 +322,11 @@ export class GameAudio {
   }
 
   silenceMusic(): void { this.music?.silence(); }
+
+  suspendForBackground(): void {
+    this.silenceMusic(); this.silenceArtillery();
+    if (this.context?.state === 'running') void this.context.suspend().catch(() => {});
+  }
 
   silenceArtillery(): void {
     this.lastLockOnSeconds = -Infinity;

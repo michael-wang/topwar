@@ -36,6 +36,11 @@ export class GrenadeButton {
     this.count.textContent = '0'; this.element.classList.add('grenade-empty');
     this.element.classList.remove('grenade-acquired');
   }
+  restore(inventory: number, acquired: boolean): void {
+    this.reset(); this.previousInventory = inventory; this.count.textContent = String(inventory);
+    this.element.classList.toggle('grenade-empty', inventory === 0);
+    this.update(inventory, acquired, false);
+  }
   getBounds(): DOMRect { return this.element.getBoundingClientRect(); }
   getIconBounds(): DOMRect { return this.icon.getBoundingClientRect(); }
   beginSupplyTransfer():void {this.element.classList.remove('grenade-acquired');this.element.classList.add('grenade-transferring');}

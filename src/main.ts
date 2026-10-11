@@ -14,6 +14,7 @@ import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';
 import { GameAudio } from './audio/GameAudio';
 import { ObserverPortraits } from './ui/ObserverPortraits';
 import { FIELD_OBSERVER_LOCALE } from './ui/observerLocale';
+import { readCheckpoint, type CheckpointRead } from './app/SessionCheckpoint';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
 if (!viewport) {
@@ -30,13 +31,16 @@ async function startGame(): Promise<void> {
   let assets;
   const audio = new GameAudio();
   let portraits: ObserverPortraits | undefined;
+  let saved: CheckpointRead = { status: 'empty' };
   try {
     const data = await Promise.all([
       configStore.load(),
       loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json')),
     ]);
     level = data[1];
+    saved = readCheckpoint();
     const defense = !!configStore.getConfig().catharsis?.defenseMode;
+    if (saved.status === 'valid' && (saved.checkpoint.mode === 'defense') !== defense) saved = { status: 'invalid' };
     if (defense) {
       portraits = new ObserverPortraits();
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'missionIntro');
@@ -51,7 +55,7 @@ async function startGame(): Promise<void> {
   }
 
   const app = new GameApp(gameViewport, configStore, level, assets,
-    perfEnabled(window.location.search), threatReviewEnabled(window.location.search), audio, portraits);
+    perfEnabled(window.location.search), threatReviewEnabled(window.location.search), audio, portraits, saved);
   app.start();
 }
 

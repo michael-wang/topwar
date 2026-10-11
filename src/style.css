@@ -88,6 +88,16 @@ body {
   pointer-events: none;
 }
 
+.session-recovery { position:absolute; inset:0; z-index:30; display:grid; place-items:center;
+  background:#0c1725c9; color:#fff3dc; font:700 17px/1.5 var(--font-utility,sans-serif); }
+.session-recovery > div { display:grid; gap:12px; width:min(270px,80%); padding:20px;
+  border:1px solid #566578; border-radius:12px; background:#14212b; box-sizing:border-box; text-align:center; }
+.session-recovery button { min-height:48px; border:1px solid #8997a4; border-radius:8px;
+  background:#263444; color:#fff3dc; font:700 17px var(--font-utility,sans-serif); touch-action:manipulation; }
+.checkpoint-notice { position:absolute; z-index:20; top:calc(50% + 44px);
+  left:var(--hud-safe-left,12px); right:var(--hud-safe-right,12px); padding:8px; border-radius:6px;
+  background:#14212bef; color:#fff3dc; font:700 13px/1.4 sans-serif; pointer-events:none; }
+
 .control-hint {
   position: absolute;
   z-index: 1;

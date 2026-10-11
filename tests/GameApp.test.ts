@@ -12,6 +12,8 @@ import type { UpgradeGateSimulationState } from '../src/simulation/SimulationSta
 import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
+vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
+vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
@@ -285,6 +287,11 @@ function createConfigStore(startSquad = 3, formationSpacing = 0.45) {
 }
 
 function createRaf() {
+  const saved = new Map<string, string>();
+  vi.stubGlobal('localStorage', { getItem: (key: string) => saved.get(key) ?? null,
+    setItem: (key: string, value: string) => saved.set(key, value), removeItem: (key: string) => saved.delete(key) });
+  vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible',
+    createElement: () => ({ className: '', textContent: '', setAttribute: vi.fn(), remove: vi.fn() }) }));
   vi.spyOn(GameAudio.prototype, 'activate').mockResolvedValue('running');
   const windowTarget = new EventTarget();
   vi.stubGlobal('window', windowTarget);
@@ -326,6 +333,29 @@ async function startGame(app: GameApp): Promise<void> {
   app.start();
   await (app as unknown as { beginGameplay(): Promise<void> }).beginGameplay();
 }
+
+it('suspends and checkpoints hidden/frozen pages without replacing the simulation or resuming on return', async () => {
+  const raf = createRaf(), { store } = createConfigStore();
+  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
+  const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+  await startGame(app); raf.frame(0); raf.frame(1000 / 60);
+  const internals = app as any, sim = internals.simulation, steps = mock.step.mock.calls.length;
+  internals.grenadeRequested = true;
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+  document.dispatchEvent(new Event('visibilitychange'));
+  expect(internals.paused).toBe(true); expect(internals.grenadeRequested).toBe(false);
+  expect(JSON.parse(localStorage.getItem('topwar:session:v1:dev')!).reason).toBe('hidden');
+  raf.frame(500_000); expect(mock.step.mock.calls.length).toBe(steps);
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+  document.dispatchEvent(new Event('visibilitychange')); document.dispatchEvent(new Event('freeze'));
+  document.dispatchEvent(new Event('resume')); window.dispatchEvent(new Event('pageshow'));
+  expect(internals.simulation).toBe(sim); expect(internals.paused).toBe(true);
+  expect(internals.previousFrameTimestampMs).toBeNull();
+  internals.togglePaused(); raf.frame(600_000); expect(mock.step.mock.calls.length).toBe(steps);
+  raf.frame(600_000 + 1000 / 60); expect(mock.step.mock.calls.length).toBeGreaterThan(steps);
+  app.dispose(); localStorage.removeItem('topwar:session:v1:dev');
+  document.dispatchEvent(new Event('freeze')); expect(localStorage.getItem('topwar:session:v1:dev')).toBeNull();
+});
 
 it('starts the mission intro only after activation, rearms Retry, and keeps isolated DEV fixtures unchanged',async()=>{
   const raf=createRaf();

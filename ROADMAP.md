@@ -10,7 +10,7 @@
 
 ## NOW
 
-**P3-B closed playtest validation.** The phone-selected P3 Ink Spear is permanent in Defense; the evaluation selector is removed. DEV retains LATE, CRATE3, CRATE8 and NAVAL, with temporary collapsible MG TEST and SURVIVAL TEST sections. Compare BASELINE, EXPERIMENTAL, STAGED and AHEAD Lv7–10 Survival on a physical phone; STAGED adds distinct Lv9/Lv10 pressure and AHEAD adds the fixed late-Lv8 threshold. The accepted production balance remains unchanged. LATE provides the existing three-MG Lv10 review. English resources remain dormant until international testing. No automatic P3-C work.
+**P3-B closed playtest validation.** Pixel 8 review accepts AHEAD difficulty; comparison controls and production balance remain unchanged during reliability work. Validate durable Pause/background checkpoint recovery after phone sleep/reload and the readable DEV FPS counter. DEV retains LATE, CRATE3, CRATE8 and NAVAL, with collapsible MG TEST and four-mode SURVIVAL TEST sections. The phone-selected P3 Ink Spear remains permanent. LATE provides the existing three-MG Lv10 review. English resources remain dormant until international testing. No automatic P3-C work.
 
 ## NEXT
 

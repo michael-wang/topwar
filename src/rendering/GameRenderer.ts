@@ -1,4 +1,5 @@
 import { ART } from '../art/ArtDirection';
+import { GIANT_REVEAL_MS } from '../presentation/GiantDrama';
 import { IdlePreparation } from '../presentation/IdlePreparation';
 import { GrenadeRenderer } from './GrenadeRenderer';
 import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
@@ -220,6 +221,14 @@ export class GameRenderer {
 
   presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {
     this.squadRenderer.presentLevelUp(event, nowMs);
+  }
+
+  restoreFeedback(state: GameRenderState, nowMs: number): void {
+    this.resetFeedback();
+    // Snapshot entities already exist. Prime identity before the first paused
+    // draw so an existing Giant is readable, without replaying its entrance fade.
+    this.enemyRenderer.update(state.enemies, nowMs - GIANT_REVEAL_MS, !!state.defenseMode,
+      -state.player.x, state.player.z);
   }
 
   resetFeedback(visualSalt=0): void {

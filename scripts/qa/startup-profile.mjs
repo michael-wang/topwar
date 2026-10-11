@@ -2,11 +2,16 @@
 import { build, preview } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 const phase = process.argv[2] ?? 'after', out = resolve(process.env.TOPWAR_STARTUP_OUT ?? `artifacts/p3b3/${phase}`);
+const baseline = process.argv.find(arg => arg.startsWith('--baseline='))?.slice(11);
+const baselineFiles = ['src/main.ts', 'src/app/GameApp.ts', 'src/audio/GameAudio.ts', 'src/ui/GrenadeButton.ts', 'src/rendering/GameRenderer.ts', 'src/style.css'];
 mkdirSync(out, { recursive: true });
 if (!process.env.TOPWAR_STARTUP_REUSE_BUILD) await build({ build: { outDir: `${out}/dist` }, plugins: [{
   name: 'startup-qa-only', enforce: 'pre', transform(source, id) {
+    if (baseline) for (const file of baselineFiles) if (id.replaceAll('\\', '/').endsWith('/' + file))
+      source = execFileSync('git', ['show', `${baseline}:${file}`], { encoding: 'utf8' });
     const mark = name => `performance.mark('qa:${name}');`;
     if (id.endsWith('/src/main.ts')) source = source.replace('const configStore =', `${mark('main')}const configStore =`)
       .replace('app.start();', `window.__testApp=app;app.start();${mark('start-overlay')}`);
@@ -72,6 +77,10 @@ try {
       };requestAnimationFrame(poll);
     });
     for (const cache of ['cold', 'warm']) {
+      if (cache === 'warm') await page.evaluate(() => {
+        // Measure a fresh game with a warm HTTP cache, not session recovery.
+        window.__testApp?.stop(); localStorage.removeItem('topwar:session:v1:release');
+      });
       const errors=[];const listener=e=>errors.push(e.message);page.on('pageerror',listener);
       await page.goto('http://127.0.0.1:5183/topwar/', { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => performance.getEntriesByName('qa:first-render').length > 0);

@@ -38,6 +38,11 @@ import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
 import { progressionStage } from '../simulation/progression';
+import { clearCheckpoint, simulationFromCheckpoint, writeCheckpoint,
+  type CheckpointRead, type SessionCheckpoint } from './SessionCheckpoint';
+import { SessionRecovery } from '../ui/SessionRecovery';
+import { DevFps } from '../ui/DevFps';
+import { DevLifecycle } from './DevLifecycle';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -90,7 +95,7 @@ export class GameApp {
   private fatalPresentationUntilMs = -Infinity;
   private paused = false;
   private running = false;
-  private startup: 'awaiting-start' | 'activating' | 'started' = 'awaiting-start';
+  private startup: 'recovering' | 'awaiting-start' | 'activating' | 'started' = 'awaiting-start';
   private startGeneration = 0;
   private consumeStartClick = false;
   private disposed = false;
@@ -99,10 +104,24 @@ export class GameApp {
   private readonly devReview: DevReviewControls | null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
+  private readonly fps: DevFps | null;
+  private readonly lifecycle: DevLifecycle | null;
+  private recovery: SessionRecovery | null = null;
+  private recoveryPending: SessionCheckpoint | null = null;
+  private restored = false;
+  private sessionLevel: LevelDefinition;
+  private hidden = false;
+  private contextLost = false;
+  private checkpointNotice: HTMLElement | null = null;
+  private clearedFinishedCheckpoint = false;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
-    private readonly reviewThreats = false, audio = new GameAudio(), portraits?: ObserverPortraits) {
+    private readonly reviewThreats = false, audio = new GameAudio(), portraits?: ObserverPortraits,
+    saved: CheckpointRead = { status: 'empty' }) {
+    this.sessionLevel = level;
+    this.lifecycle = import.meta.env.DEV ? new DevLifecycle(saved.status,
+      saved.checkpoint?.paused, saved.checkpoint?.hidden) : null;
     this.viewport.setAttribute?.('data-input-presentation', 'touch');
     this.perf = perfEnabled ? new PerfDiagnostics() : null;
     this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
@@ -174,6 +193,12 @@ export class GameApp {
         return this.simulation.stepLane(direction);
       }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
+    this.fps = import.meta.env.DEV ? new DevFps(viewport, !!this.config.catharsis?.defenseMode) : null;
+    if (saved.status === 'valid' || saved.status === 'invalid') {
+      this.startup = 'recovering';
+      this.recoveryPending = saved.checkpoint ?? null;
+      this.recovery = new SessionRecovery(viewport, saved.status === 'valid', this.chooseRecovery);
+    }
   }
 
   start(): void {
@@ -183,13 +208,22 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
-    if (this.startup !== 'started') this.startOverlay.show();
+    if (this.startup === 'awaiting-start') this.startOverlay.show();
     if (this.startup === 'started') this.startInputs();
     this.viewport.addEventListener?.('pointerdown', this.onStartPointerDown, true);
     this.viewport.addEventListener?.('click', this.onStartClick, true);
     window.addEventListener?.('keydown', this.onStartKeyDown, true);
     window.addEventListener?.('keydown', this.onPauseKeyDown);
     window.addEventListener?.('keydown', this.onActiveItemKeyDown);
+    document.addEventListener?.('visibilitychange', this.onVisibility);
+    document.addEventListener?.('freeze', this.onFreeze);
+    document.addEventListener?.('resume', this.onResumeLifecycle);
+    window.addEventListener?.('pagehide', this.onPageHide);
+    window.addEventListener?.('pageshow', this.onPageShow);
+    const canvas = this.viewport.querySelector?.('canvas');
+    canvas?.addEventListener('webglcontextlost', this.onContextLost);
+    canvas?.addEventListener('webglcontextrestored', this.onContextRestored);
+    this.hidden = document.visibilityState === 'hidden';
     this.frameId = requestAnimationFrame(this.renderFrame);
   }
 
@@ -197,6 +231,14 @@ export class GameApp {
     if (!this.running) return;
 
     this.running = false;
+    document.removeEventListener?.('visibilitychange', this.onVisibility);
+    document.removeEventListener?.('freeze', this.onFreeze);
+    document.removeEventListener?.('resume', this.onResumeLifecycle);
+    window.removeEventListener?.('pagehide', this.onPageHide);
+    window.removeEventListener?.('pageshow', this.onPageShow);
+    const canvas = this.viewport.querySelector?.('canvas');
+    canvas?.removeEventListener('webglcontextlost', this.onContextLost);
+    canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
     this.grenadeRequested = false;
     this.startOverlay.dispose();
     this.startGeneration++;
@@ -245,6 +287,7 @@ export class GameApp {
     this.damageFlash.dispose();
     this.fieldObserver?.dispose();
     this.audio.dispose();
+    this.fps?.dispose(); this.lifecycle?.dispose(); this.recovery?.dispose(); this.checkpointNotice?.remove();
     this.perfHud?.dispose();
     this.renderer.dispose();
     this.disposed = true;
@@ -252,6 +295,10 @@ export class GameApp {
 
   private retry(): void {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
+    clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
+    this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
+    this.restored = false;
+    this.fps?.reset();
     this.keyboardInput.stop();
     this.dragInput.stop();
     this.touchInput?.stop();
@@ -265,15 +312,16 @@ export class GameApp {
     this.previousWeaponFamily = initialState.progression && initialState.catharsis
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.dragStartPlayerX = this.targetX;
-    this.paused = false;
-    this.viewport.classList?.remove('game-paused');
+    this.paused = this.hidden || this.contextLost;
+    if (this.paused) this.viewport.classList?.add('game-paused');
+    else this.viewport.classList?.remove('game-paused');
     this.startInputs();
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.presentationMs = 0;
     this.fatalPresentationUntilMs = -Infinity;
-    this.pauseOverlay.setVisible(false);
-    this.hudActions.setPaused(false);
+    this.pauseOverlay.setVisible(this.paused);
+    this.hudActions.setPaused(this.paused);
     this.gameOverOverlay.setVisible(false);
     this.damageFlash.reset();
     this.fieldObserver?.reset();
@@ -320,7 +368,7 @@ export class GameApp {
   }
 
   private startInputs(): void {
-    if (!this.running || this.startup !== 'started' || this.paused) return;
+    if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost) return;
     if (this.laneInput) {
       if (this.simulation.getFrameState().squad.count > 0) this.laneInput.start();
     } else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput?.start(); }
@@ -360,13 +408,15 @@ export class GameApp {
     this.presentationMs = 0;
     this.audio.resetObservation();
     this.startup = 'started';
-    if (!this.devReviewFixture && !this.reviewThreats) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
+    if (!this.restored && !this.devReviewFixture && !this.reviewThreats) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
     this.startOverlay.finish();
+    if (this.hidden || this.contextLost) this.setPaused(true);
     this.startInputs();
     this.renderer.preparePresentation();
   }
 
   private readonly onStartPointerDown = (event: PointerEvent): void => {
+    if (this.startup === 'recovering') return;
     if (this.startup === 'started') {
       if (this.audio.needsResume) void this.audio.activate();
       return;
@@ -378,6 +428,7 @@ export class GameApp {
   };
 
   private readonly onStartClick = (event: MouseEvent): void => {
+    if (this.startup === 'recovering') return;
     if (this.startup === 'started' && !this.consumeStartClick) return;
     this.consumeStartClick = false;
     event.preventDefault();
@@ -387,6 +438,7 @@ export class GameApp {
   };
 
   private readonly onStartKeyDown = (event: KeyboardEvent): void => {
+    if (this.startup === 'recovering') return;
     if (this.startup === 'started') {
       if (!event.repeat && this.audio.needsResume) void this.audio.activate();
       return;
@@ -421,7 +473,15 @@ export class GameApp {
 
   private togglePaused(): void {
     if (!this.running || this.startup !== 'started') return;
-    this.paused = !this.paused;
+    if (this.paused && (this.hidden || this.contextLost)) return;
+    if (this.paused) void this.audio.activate(); // Called within the Resume gesture.
+    this.setPaused(!this.paused);
+    if (this.paused) this.saveCheckpoint('pause');
+  }
+
+  private setPaused(paused: boolean): void {
+    this.paused = paused;
+    this.fps?.reset(paused ? 'PAUSED' : '—');
     this.viewport.classList?.toggle('game-paused', this.paused);
     this.previousFrameTimestampMs = null;
     this.fixedStepLoop.reset();
@@ -432,13 +492,105 @@ export class GameApp {
       this.dragInput.stop();
       this.touchInput?.stop();
       this.laneInput?.stop();
-      this.targetX = this.simulation.getState().player.x;
+      const s = this.simulation.getState();
+      this.targetX = s.player.x;
+      this.fieldObserver?.update(s.destroyer, s.catharsis?.balance.destroyer, s.elapsedSeconds, s.squad.count > 0, true);
+      this.audio.silenceMusic();
     } else {
       this.startInputs();
     }
     this.pauseOverlay.setVisible(this.paused);
     this.hudActions.setPaused(this.paused);
   }
+
+  private readonly chooseRecovery = (continueGame: boolean): void => {
+    const c = this.recoveryPending;
+    this.recoveryPending = null;
+    if (continueGame && c) {
+      try {
+        this.simulation = simulationFromCheckpoint(c);
+        this.config = c.config; this.sessionLevel = c.level; this.runtimeTuning = { ...c.tuning };
+        if (import.meta.env.DEV) { this.devReviewFixture = c.fixture as DevReviewFixture | null;
+          this.devReview?.setSelected(this.devReviewFixture ?? undefined); this.tuningPanel?.setValues(this.runtimeTuning); }
+        const s = this.simulation.getFrameState();
+        this.targetX = s.player.x; this.dragStartPlayerX = s.player.x; this.lastRunSeed = s.seed;
+        this.previousDefenseValue = squadDefenseValue(s.squad, this.config.tiers.mergeCount);
+        this.previousWeaponFamily = s.progression && s.catharsis
+          ? progressionStage(s.progression.level, s.catharsis.balance.progression).weaponFamily : 'rifle';
+        this.progressionObserver.reset(); if (s.progression) this.progressionObserver.observe(s.progression.level);
+        this.fieldObserver?.reset(); this.audio.restoreObservation(this.previousDefenseValue,
+          s.enemies, s.streamRewards, s.boss, s.projectiles);
+        this.renderer.restoreFeedback(projectRenderState(s, {
+          formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
+          defenseLineOffset: this.config.track.defenseLineOffset, bossVisualScale: this.config.bosses.basic.visualScale,
+          catharsis: s.catharsis,
+        }), 0);
+        this.xpHud?.reset(); this.battleInfo?.reset();
+        this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
+        this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
+        this.restored = true; this.startup = 'started'; this.setPaused(true);
+        // Continue is an activation gesture, but never implicitly advances the restored simulation.
+        void this.audio.activate(); this.renderer.preparePresentation();
+        if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-restored', { tick: s.tick });
+        return;
+      } catch { this.showCheckpointFailure('無法恢復進度，請重新開始'); }
+    }
+    clearCheckpoint(); this.startup = 'awaiting-start'; this.startOverlay.show();
+  };
+
+  private showCheckpointFailure(text: string): void {
+    this.checkpointNotice ??= document.createElement('div');
+    this.checkpointNotice.className = 'checkpoint-notice'; this.checkpointNotice.setAttribute('role', 'status');
+    this.checkpointNotice.textContent = text; this.viewport.append(this.checkpointNotice);
+  }
+
+  private saveCheckpoint(reason: SessionCheckpoint['reason']): void {
+    if (this.startup !== 'started') return;
+    const started = performance.now(), state = this.simulation.getState();
+    if (state.squad.count === 0) { clearCheckpoint(); return; }
+    // Crate fixtures intentionally have no enemy stream; retain that level contract too.
+    const level = state.enemyStream === null && this.sessionLevel.enemyStream
+      ? { ...this.sessionLevel, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } : this.sessionLevel;
+    const result = writeCheckpoint({ version: 1, simulationContract: 1, game: 'topwar',
+      mode: state.catharsis?.balance.defenseMode ? 'defense' : 'legacy', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
+      savedAt: Date.now(), paused: true, hidden: this.hidden, reason,
+      fixture: import.meta.env.DEV ? this.devReviewFixture : null,
+      config: this.config as GameConfig, level, tuning: this.runtimeTuning, state });
+    if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-write', { ...result, totalMilliseconds: performance.now() - started });
+    if (!result.ok) this.showCheckpointFailure('無法儲存進度；請保持此分頁開啟');
+    else { this.checkpointNotice?.remove(); this.checkpointNotice = null; }
+  }
+
+  private suspendSession(reason: SessionCheckpoint['reason']): void {
+    this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
+    if (this.startup === 'started') { this.setPaused(true); this.saveCheckpoint(reason); }
+    if (reason !== 'contextlost') this.audio.suspendForBackground();
+    if (import.meta.env.DEV) this.lifecycle?.record(reason);
+  }
+  private readonly onVisibility = (): void => {
+    this.hidden = document.visibilityState === 'hidden';
+    if (this.hidden) this.suspendSession('hidden');
+    else { this.previousFrameTimestampMs = null; this.fixedStepLoop.reset(); this.fps?.reset(this.paused ? 'PAUSED' : '—');
+      if (import.meta.env.DEV) this.lifecycle?.record('visible'); }
+  };
+  private readonly onPageHide = (event: PageTransitionEvent): void => {
+    this.hidden = true; this.suspendSession('pagehide');
+    if (import.meta.env.DEV) this.lifecycle?.record('pagehide-persisted', event.persisted);
+  };
+  private readonly onPageShow = (event: PageTransitionEvent): void => {
+    this.hidden = document.visibilityState === 'hidden'; this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
+    if (import.meta.env.DEV) this.lifecycle?.record('pageshow', { persisted: event.persisted });
+  };
+  private readonly onFreeze = (): void => { this.hidden = true; this.suspendSession('freeze'); };
+  private readonly onResumeLifecycle = (): void => {
+    this.hidden = document.visibilityState === 'hidden'; this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
+    if (import.meta.env.DEV) this.lifecycle?.record('resume');
+  };
+  private readonly onContextLost = (): void => { this.contextLost = true; this.suspendSession('contextlost'); };
+  private readonly onContextRestored = (): void => {
+    this.contextLost = false; this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
+    if (import.meta.env.DEV) this.lifecycle?.record('contextrestored');
+  };
 
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
@@ -467,7 +619,7 @@ export class GameApp {
         : Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000);
       this.previousFrameTimestampMs = timestampMs;
       let stepCpuMs = 0;
-      if (!this.paused) {
+      if (!this.paused && !this.hidden && !this.contextLost) {
         this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
         const stepStartedMs = perf ? performance.now() : 0;
         const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
@@ -494,7 +646,9 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
-      if (state.squad.count === 0) this.laneInput?.stop();
+      this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
+      if (state.squad.count === 0) { this.laneInput?.stop();
+        if (!this.clearedFinishedCheckpoint) { clearCheckpoint(); this.clearedFinishedCheckpoint = true; } }
       this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused);
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
