@@ -10,13 +10,13 @@ import { admitDefenseGroup } from '../simulation/enemies/defenseGroup';
 import { effectiveSeed } from '../simulation/enemies/effectiveSeed';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage } from '../simulation/progression';
 
-export type SurvivalReviewMode = 'baseline' | 'experimental';
+export type SurvivalReviewMode = 'baseline' | 'experimental' | 'staged' | 'ahead';
 export type SurvivalReviewLevel = 7 | 8 | 9 | 10;
 export type SurvivalReviewFixture = `survival${SurvivalReviewLevel}-${SurvivalReviewMode}`;
 
 // DEV-only authored comparison data; saved snapshots carry the complete config.
 export function survivalReviewConfig(current: CatharsisConfig['postCapSurvival'], mode: SurvivalReviewMode) {
-  const { advancedProfile: _advanced, capProfile: _cap, ...shared } = current;
+  const { advancedProfile: _advanced, capProfile: _cap, levelProfiles: _profiles, xpLookahead: _ahead, ...shared } = current;
   return PostCapSurvivalConfigSchema.parse({ ...shared, ...presets[mode], enabled: true });
 }
 
@@ -27,7 +27,7 @@ export function createSurvivalReview(options: SimulationOptions, baseFireRate: n
   const state = sim.getState(), balance = state.catharsis?.balance;
   if (!balance?.defenseMode || !state.enemyStream || !options.level.enemyStream
     || ![7, 8, 9, 10].includes(level) || level > maxProgressionLevel(balance.progression)
-    || (mode !== 'baseline' && mode !== 'experimental')) throw Error('Invalid SURVIVAL TEST preset');
+    || !Object.hasOwn(presets, mode)) throw Error('Invalid SURVIVAL TEST preset');
   const stage = progressionStage(level, balance.progression);
   if (stage.weaponFamily !== 'machineGun') throw Error('SURVIVAL TEST requires authored MG progression');
   balance.postCapSurvival = survivalReviewConfig(balance.postCapSurvival, mode);

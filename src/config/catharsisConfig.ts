@@ -110,6 +110,11 @@ export const CatharsisConfigSchema = z.strictObject({
     && (!value.postCapSurvival.advancedProfile || value.postCapSurvival.advancedProfile.pressureLaneCount <= value.laneCount)
     && (!value.postCapSurvival.capProfile || value.postCapSurvival.capProfile.pressureLaneCount <= value.laneCount),
     { message: 'Post-cap fronts must fit inside the battlefield' })
+  .refine(value => (!value.postCapSurvival.levelProfiles || value.postCapSurvival.levelProfiles.every(p => p.pressureLaneCount <= value.laneCount
+      && p.startLevel <= value.progression.xpRequirements.length + 1))
+    && (!value.postCapSurvival.xpLookahead || value.postCapSurvival.xpLookahead.pressureLaneCount <= value.laneCount
+      && value.postCapSurvival.xpLookahead.minimumXp < (value.progression.xpRequirements[value.postCapSurvival.xpLookahead.level - 1] ?? 0)),
+    { message: 'Ordered Survival profiles and XP lookahead must fit the battlefield and authored progression thresholds' })
   .refine(value => !value.pressureRamp || [value.pressureRamp.lv4, value.pressureRamp.lv5].every((stage, index) =>
     (stage.heavyCount ?? 0) <= Math.round(value.groupSize * value.pressureMultipliers[Math.min(index + 3, value.pressureMultipliers.length - 1)]))
     && (!value.pressureRamp.lv6 || value.pressureRamp.lv6.heavyCount <= value.pressureRamp.lv6.groupSize),

@@ -21,6 +21,13 @@ export const PostCapSurvivalConfigSchema = z.strictObject({
   // Absent options retain serialized historical groups and their wave clock.
   advancedProfile: ordinaryProfile.optional(),
   capProfile: ordinaryProfile.optional(),
+  // New reviews opt in; older advanced/cap configurations retain their original selection.
+  levelProfiles: z.array(ordinaryProfile).min(1).max(16).optional(),
+  xpLookahead: z.strictObject({
+    level: z.number().int().positive(), minimumXp: z.number().int().positive(),
+    pressureLaneCount: z.number().int().min(1).max(16),
+    ordinarySpeedMultiplier: z.number().finite().positive().max(4),
+  }).optional(),
   waveIntervalSeconds: z.number().finite().positive().optional(),
   firstWaveDelaySeconds: z.number().finite().positive().optional(),
   maxActiveEnemies: z.number().int().min(1).max(180).optional(),
@@ -34,4 +41,12 @@ export const PostCapSurvivalConfigSchema = z.strictObject({
   && (c.maxActiveEnemies === undefined || c.ordinaryGroupSize <= c.maxActiveEnemies
     && (!c.advancedProfile || c.advancedProfile.ordinaryGroupSize <= c.maxActiveEnemies)
     && (!c.capProfile || c.capProfile.ordinaryGroupSize <= c.maxActiveEnemies)),
-  { message: 'Survival profiles must fit their group, level boundary and optional population cap' });
+  { message: 'Survival profiles must fit their group, level boundary and optional population cap' })
+  .refine(c => !c.levelProfiles || !c.advancedProfile && !c.capProfile
+    && c.levelProfiles.every((p, i, profiles) => p.startLevel > (i ? profiles[i - 1].startLevel : c.startLevel)
+      && p.heavyCount <= p.ordinaryGroupSize && p.pressureLaneCount <= p.ordinaryGroupSize
+      && (c.maxActiveEnemies === undefined || p.ordinaryGroupSize <= c.maxActiveEnemies)),
+  { message: 'Ordered Survival profiles must be distinct, increasing and fit their group/cap; do not mix profile formats' })
+  .refine(c => !c.xpLookahead || !!c.levelProfiles?.some(p => p.startLevel === c.xpLookahead!.level
+    && c.xpLookahead!.pressureLaneCount <= p.ordinaryGroupSize),
+  { message: 'XP lookahead requires a matching ordered level profile' });

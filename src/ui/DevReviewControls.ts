@@ -59,14 +59,14 @@ export class DevReviewControls {
     survivalSummary.style.cssText = summary.style.cssText;
     const survivalGrid = document.createElement('div');
     survivalGrid.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:6px';
-    for (const key of ['baseline', 'experimental', '7', '8', '9', '10'] as const) {
+    for (const key of ['baseline', 'experimental', 'staged', 'ahead', '7', '8', '9', '10'] as const) {
       const button = document.createElement('button'); button.type = 'button';
-      button.textContent = key === 'baseline' || key === 'experimental' ? key.toUpperCase() : `LV${key}`;
+      button.textContent = Number.isNaN(Number(key)) ? key.toUpperCase() : `LV${key}`;
       button.dataset.survival = key; button.setAttribute('aria-pressed', 'false');
       button.style.cssText = 'min-height:48px;margin:0;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 11px var(--font-utility, sans-serif);cursor:pointer;touch-action:manipulation';
       button.title = 'Restart deterministic Survival with normal authored weapons and XP progression';
       button.addEventListener('click', () => {
-        if (key === 'baseline' || key === 'experimental') this.survivalMode = key;
+        if (key === 'baseline' || key === 'experimental' || key === 'staged' || key === 'ahead') this.survivalMode = key;
         else this.survivalLevel = Number(key) as SurvivalReviewLevel;
         select(`survival${this.survivalLevel}-${this.survivalMode}` as SurvivalReviewFixture); button.blur();
       });

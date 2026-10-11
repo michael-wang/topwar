@@ -11,7 +11,7 @@ mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
 if (shippingJs.includes('__testApp') || shippingJs.includes('qa:scene-start')) throw Error('QA instrumentation leaked into production');
-if (['SURVIVAL TEST', 'dev-survival-test', 'survival7-baseline', 'survival10-experimental', 'Invalid SURVIVAL TEST preset', 'ordinarySpeedMultiplier:1.4', 'heavyCount:11', 'heavyCount:15'].some(marker => shippingJs.includes(marker)))
+if (['SURVIVAL TEST', 'dev-survival-test', 'survival7-baseline', 'survival10-experimental', 'survival10-staged', 'survival10-ahead', 'Invalid SURVIVAL TEST preset', 'ordinarySpeedMultiplier:1.4', 'ordinarySpeedMultiplier:1.6', 'heavyCount:11', 'heavyCount:15', 'heavyCount:19', 'minimumXp:245'].some(marker => shippingJs.includes(marker)))
   throw Error('Survival comparison controls or fixtures survived production tree-shaking');
 if (['MG TEST', 'dev-mg-test', 'MG6', 'MG9', 'MG10', 'MG TEST requires', 'MG TEST preset must'].some(marker => shippingJs.includes(marker)))
   throw Error('Temporary MG test controls or fixtures survived production tree-shaking');

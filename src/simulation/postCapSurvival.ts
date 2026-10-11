@@ -17,14 +17,17 @@ export const emptyPostCapSurvival = (): PostCapSurvivalState => ({
   startedAtSeconds: null, nextGiantAtSeconds: null, nextGrenadeSupplyAtSeconds: null,
 });
 
-export function postCapOrdinarySettings(balance: CatharsisConfig, state?: PostCapSurvivalState, level = 0):
+export function postCapOrdinarySettings(balance: CatharsisConfig, state?: PostCapSurvivalState, level = 0, xp = 0):
   { groupSize: number; pressureLaneCount: number; heavyCount: number; survivalSpeedMultiplier?: number; waveIntervalSeconds?: number } | undefined {
   const c = balance.postCapSurvival;
   if (!c.enabled || state?.startedAtSeconds == null) return undefined;
-  const profile = c.capProfile && level >= c.capProfile.startLevel ? c.capProfile
+  let profile = c.capProfile && level >= c.capProfile.startLevel ? c.capProfile
     : c.advancedProfile && level >= c.advancedProfile.startLevel ? c.advancedProfile : c;
-  return { groupSize: profile.ordinaryGroupSize, pressureLaneCount: profile.pressureLaneCount, heavyCount: profile.heavyCount,
-    ...('ordinarySpeedMultiplier' in profile ? { survivalSpeedMultiplier: profile.ordinarySpeedMultiplier } : {}),
+  if (c.levelProfiles) for (const candidate of c.levelProfiles) if (level >= candidate.startLevel) profile = candidate;
+  const ahead = c.xpLookahead && level === c.xpLookahead.level && xp >= c.xpLookahead.minimumXp ? c.xpLookahead : undefined;
+  return { groupSize: profile.ordinaryGroupSize, pressureLaneCount: ahead?.pressureLaneCount ?? profile.pressureLaneCount, heavyCount: profile.heavyCount,
+    ...(ahead ? { survivalSpeedMultiplier: ahead.ordinarySpeedMultiplier }
+      : 'ordinarySpeedMultiplier' in profile ? { survivalSpeedMultiplier: profile.ordinarySpeedMultiplier } : {}),
     ...(profile !== c && profile.waveIntervalSeconds !== undefined ? { waveIntervalSeconds: profile.waveIntervalSeconds } : {}) };
 }
 

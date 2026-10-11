@@ -9,5 +9,22 @@
     "waveIntervalSeconds": 6,
     "advancedProfile": { "startLevel": 8, "ordinaryGroupSize": 42, "heavyCount": 11, "pressureLaneCount": 4, "ordinarySpeedMultiplier": 1.4 },
     "capProfile": { "startLevel": 10, "ordinaryGroupSize": 42, "heavyCount": 15, "pressureLaneCount": 4, "ordinarySpeedMultiplier": 1.4, "waveIntervalSeconds": 4.5 }
+  },
+  "staged": {
+    "startLevel": 6, "ordinaryGroupSize": 30, "heavyCount": 4, "pressureLaneCount": 3, "waveIntervalSeconds": 6,
+    "levelProfiles": [
+      { "startLevel": 8, "ordinaryGroupSize": 42, "heavyCount": 11, "pressureLaneCount": 4, "ordinarySpeedMultiplier": 1.4, "waveIntervalSeconds": 6 },
+      { "startLevel": 9, "ordinaryGroupSize": 42, "heavyCount": 15, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6, "waveIntervalSeconds": 5 },
+      { "startLevel": 10, "ordinaryGroupSize": 42, "heavyCount": 19, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6, "waveIntervalSeconds": 4 }
+    ]
+  },
+  "ahead": {
+    "startLevel": 6, "ordinaryGroupSize": 30, "heavyCount": 4, "pressureLaneCount": 3, "waveIntervalSeconds": 6,
+    "levelProfiles": [
+      { "startLevel": 8, "ordinaryGroupSize": 42, "heavyCount": 11, "pressureLaneCount": 4, "ordinarySpeedMultiplier": 1.4, "waveIntervalSeconds": 6 },
+      { "startLevel": 9, "ordinaryGroupSize": 42, "heavyCount": 15, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6, "waveIntervalSeconds": 5 },
+      { "startLevel": 10, "ordinaryGroupSize": 42, "heavyCount": 19, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6, "waveIntervalSeconds": 4 }
+    ],
+    "xpLookahead": { "level": 8, "minimumXp": 245, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6 }
   }
 }
