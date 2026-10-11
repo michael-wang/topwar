@@ -5,25 +5,27 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createDevReviewFixture, type DevReviewFixture } from './helpers/ReviewFixtures';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { effectivePrimaryFireRate } from '../src/simulation/progression';
 
 const config = GameConfigSchema.parse(gameData);
 const options = { seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1, startRocketCount: 0,
   tiers: config.tiers, catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } };
 const make = (role: DevReviewFixture) => createDevReviewFixture(options, config.weapon.rifle.fireRate, role);
-const entries = [['late', 6, 1], ['mg7', 7, 2], ['mg8', 8, 3]] as const;
+const entries = [['late', 6, 1], ['mg7', 7, 1], ['mg8', 8, 1], ['mg9', 9, 2], ['mg10', 10, 3]] as const;
 
 it.each(entries)('%s starts at Lv%i with %i MG members and a valid deterministic playable state', (role, level, count) => {
   const sim = make(role), state = sim.getState();
   expect(state.progression).toEqual({ level, xp: 0 });
   expect(state.squad).toEqual({ count, rifleCounts: [count], rocketCount: 0, rifleRemainder: 0 });
-  expect(state.weapons.rifleMemberCooldowns).toEqual(Array.from({ length: count }, (_, i) => i / (18 * count)));
+  const rate = effectivePrimaryFireRate(3, level, config.catharsis!);
+  expect(state.weapons.rifleMemberCooldowns).toEqual(Array.from({ length: count }, (_, i) => i / (rate * count)));
   expect(state.player.selectedLane).toBe(2);
   expect(state.machineGunReleaseAtSeconds).toBe(0);
   expect(state.giantEncounter).toEqual({ scheduledAtSeconds: 0, spawned: true });
   expect(state.grenade).toMatchObject({ inventory: 3, acquiredAtSeconds: 0, supply: null, flight: null });
   expect(state.postCapSurvival).toEqual({ startedAtSeconds: 0, nextGiantAtSeconds: 24, nextGrenadeSupplyAtSeconds: 30 });
-  expect(state.enemies).toHaveLength(level === 8 ? 42 : 30);
-  expect(state.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(level === 8 ? 6 : 4);
+  expect(state.enemies).toHaveLength(level >= 8 ? 42 : 30);
+  expect(state.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(level >= 8 ? 6 : 4);
   expect(state.enemies.every(e => e.hp === (e.archetype === 'heavy' ? 15 : 1))).toBe(true);
   expect(state.enemyStream!.nextRowIndex).toBeLessThan(100);
   expect(state.reinforcement).toEqual({ startedAtSeconds: null, arrived: false });
@@ -33,7 +35,7 @@ it.each(entries)('%s starts at Lv%i with %i MG members and a valid deterministic
   expect(createDevReviewFixture({ ...options, seed: 42 }, 3, role).getState()).toEqual(state);
 });
 
-it.each(entries)('%s preserves independent 18 Hz firing for its %i level / %i members', (role, _level, count) => {
+it.each(entries)('%s preserves authored independent firing for its %i level / %i members', (role, level, count) => {
   const sim = make(role);
   for (let i = 0; i < 60; i++) sim.step(1 / 60, { targetX: 0 }, pilotTuning);
   let nextId = sim.getFrameState().weapons.nextProjectileId;
@@ -47,7 +49,7 @@ it.each(entries)('%s preserves independent 18 Hz firing for its %i level / %i me
     }
     nextId = state.weapons.nextProjectileId;
   }
-  expect(shots).toEqual(Array(count).fill(180));
+  expect(shots).toEqual(Array(count).fill(10 * effectivePrimaryFireRate(3, level, config.catharsis!)));
 });
 
 it.each(entries)('%s runs normal waves, progression, Giants and recurring Supplies with snapshot replay', (role, initialLevel) => {
@@ -77,8 +79,8 @@ it.each(entries)('%s runs normal waves, progression, Giants and recurring Suppli
       ordinaryGroups++;
       const level = before.progression!.level;
       const giantsAdded = admitted.filter(e => e.archetype === 'giant').length;
-      expect(after.enemyStream!.nextEnemyId - nextEnemyId - giantsAdded).toBe(level === 8 ? 42 : 30); // Includes same-tick kills.
-      expect(ordinary.filter(e => e.archetype === 'heavy')).toHaveLength(level === 8 ? 6 : 4);
+      expect(after.enemyStream!.nextEnemyId - nextEnemyId - giantsAdded).toBe(level >= 8 ? 42 : 30); // Includes same-tick kills.
+      expect(ordinary.filter(e => e.archetype === 'heavy')).toHaveLength(level >= 8 ? 6 : 4);
     }
     giants += admitted.filter(e => e.archetype === 'giant').length;
     if (!supplyWasPresent && after.grenade!.supply) {
@@ -96,9 +98,9 @@ it.each(entries)('%s runs normal waves, progression, Giants and recurring Suppli
     if (tick % 60 === 0) expect(clone.getState()).toEqual(sim.getState());
   }
   expect(sim.getState()).toEqual(clone.getState());
-  expect([...milestones]).toEqual(initialLevel === 6 ? [6, 7, 8] : initialLevel === 7 ? [7, 8] : [8]);
+  expect([...milestones]).toEqual(Array.from({ length: 11 - initialLevel }, (_, i) => initialLevel + i));
   expect(sim.getState().squad.count).toBe(3);
-  expect(sim.getState().progression).toEqual({ level: 8, xp: 0 });
+  expect(sim.getState().progression).toEqual({ level: 10, xp: 0 });
   expect(ordinaryGroups).toBeGreaterThan(20); expect(giants).toBeGreaterThanOrEqual(3);
   expect(supplies).toBeGreaterThanOrEqual(3); expect(acquisitions).toBeGreaterThanOrEqual(3);
   expect(detonations).toBeGreaterThanOrEqual(3);

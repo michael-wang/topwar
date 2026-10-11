@@ -21,7 +21,7 @@ try { for (const production of [false, true]) for (const width of [350, 390]) {
     await route.fulfill({ response, body: body.replace(pattern, m => `(window.__testApp=${m.slice(0, -8)}).start()`) });
   });
   else await page.route(/\/src\/main\.ts(\?.*)?$/, async route => { const r = await route.fetch(); await route.fulfill({ response: r, body: (await r.text()).replace('app.start();', 'window.__testApp=app;app.start();') }); });
-  await page.goto(production ? 'http://127.0.0.1:5186/topwar/' : 'http://127.0.0.1:5173/');
+  await page.goto(production ? 'http://127.0.0.1:5186/topwar/' : (process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/'));
   await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   assert.equal(await page.locator('.dev-projectile-controls,[data-tracer]').count(), 0);
@@ -51,7 +51,7 @@ try { for (const production of [false, true]) for (const width of [350, 390]) {
   await page.waitForTimeout(2800);
   const levels = [first];
   if (!production) {
-    for (const [level, role] of [[3,'grenade'],[6,'machineGun'],[8,'mg8']]) {
+    for (const [level, role] of [[3,'grenade'],[6,'machineGun'],[8,'mg8'],[9,'mg9'],[10,'mg10']]) {
       await selectDevFixture(page, role); await page.waitForTimeout(1200);
       await page.screenshot({ path: `${out}/${mode}-lv${level}-${width}.png` });
       const row = await sample(); assert.equal(row.level, level); assert.equal(row.core, 'fff2ce'); assert.equal(row.edge, '080b10'); levels.push(row);

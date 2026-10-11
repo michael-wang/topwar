@@ -12,8 +12,8 @@ import { addRifleSoldiers } from '../simulation/squad/composition';
 
 export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval';
 export const DEV_REVIEW_FIXTURES = {
-  late: { level: 8, soldiers: 3 }, crate3: { level: 3, soldiers: 1 },
-  crate8: { level: 8, soldiers: 3 }, naval: { level: 8, soldiers: 3 },
+  late: { level: 10, soldiers: 3 }, crate3: { level: 3, soldiers: 1 },
+  crate8: { level: 8, soldiers: 1 }, naval: { level: 10, soldiers: 3 },
 } as const;
 
 // Human DEV entries only. Historical isolated scenarios live in tests/helpers.
@@ -21,7 +21,8 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   role: DevReviewFixture): Simulation {
   if (role === 'naval') return createNavalReview(options);
   if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);
-  const fixture = DEV_REVIEW_FIXTURES.late;
+  const level = maxProgressionLevel(options.catharsis!.balance.progression);
+  const fixture = { level, soldiers: progressionStage(level, options.catharsis!.balance.progression).squadStage };
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
     startSquad: 1, startRocketCount: 0 });
   const state = simulation.getState(), catharsis = state.catharsis;
@@ -68,7 +69,8 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
 
 function createSupplyReview(options: SimulationOptions, baseFireRate: number,
   role: 'crate3' | 'crate8'): Simulation {
-  const fixture = DEV_REVIEW_FIXTURES[role];
+  const level = DEV_REVIEW_FIXTURES[role].level;
+  const fixture = { level, soldiers: progressionStage(level, options.catharsis!.balance.progression).squadStage };
   // An empty level definition removes admission entirely, including after long
   // pauses/restores. No distant wave clock, fake hits or simulation debug mode.
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,

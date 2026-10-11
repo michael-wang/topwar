@@ -11,6 +11,7 @@ import type { KeyboardSteeringCallbacks } from '../src/input/KeyboardSteeringInp
 import type { UpgradeGateSimulationState } from '../src/simulation/SimulationState';
 import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
+import { progressionDefaults } from '../src/config/progressionConfig';
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
@@ -35,6 +36,7 @@ const mock = vi.hoisted(() => ({
   step: vi.fn(),
   stepLane: vi.fn(),
   setRuntimeBalance: vi.fn(),
+  setCatharsisBalance: vi.fn(),
   getState: vi.fn((): any => ({
     player: { x: 2, z: 3 },
     squad: { count: 3, rocketCount: 0, rifleCounts: [3], rifleRemainder: 0 },
@@ -98,6 +100,7 @@ vi.mock('../src/simulation/Simulation', () => ({
     step = mock.step;
     stepLane = mock.stepLane;
     setRuntimeBalance = mock.setRuntimeBalance;
+    setCatharsisBalance = mock.setCatharsisBalance;
     getState = mock.getState;
     getFrameState = mock.getState;
     consumePresentationEvents = mock.consumePresentationEvents;
@@ -1356,4 +1359,22 @@ it('does not flash player damage or play damage audio when three Rifles evolve i
   mock.damageFlash.mockClear();state.progression={level:6,xp:0};state.squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
   raf.frame(200);expect(mock.damageFlash).not.toHaveBeenCalled();expect(observe.mock.lastCall!.slice(0,2)).toEqual([1n,1n]);
  } finally{app.dispose();mock.getState.mockReturnValue(base);}
+});
+
+it('keeps a restored eight-level plan and sequential encounter policy when changing an unrelated DEV value',()=>{
+  createRaf();const base=mock.getState();
+  const config={...gameData,catharsis:CatharsisConfigSchema.parse(gameData.catharsis)} as unknown as GameConfig;
+  const balance=structuredClone(config.catharsis!);balance.progression=structuredClone(progressionDefaults);
+  balance.destroyer!.startPolicy='afterCarnival';
+  mock.getState.mockReturnValue({...base,progression:{level:8,xp:0},catharsis:{balance,trackHalfWidth:config.track.halfWidth}});
+  const store={getConfig:()=>config,subscribe:()=>()=>{}} as unknown as ConfigStore;
+  const viewport=Object.assign(new EventTarget(),{classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
+  try {
+    const app=new GameApp(viewport as unknown as HTMLElement,store,level,{} as CharacterAssets);
+    const [defaults,tune]=mock.panelConstructedWith.mock.lastCall!;tune({...defaults,groupSize:30});
+    const passed=mock.setCatharsisBalance.mock.lastCall![0];
+    expect(passed.progression).toEqual(balance.progression);expect(passed.destroyer.startPolicy).toBe('afterCarnival');
+    expect(passed.postCapSurvival).toEqual(balance.postCapSurvival);expect(passed.groupSize).toBe(30);
+    expect(mock.constructedWith).toHaveBeenCalledOnce();app.dispose();
+  } finally {mock.getState.mockReturnValue(base);}
 });

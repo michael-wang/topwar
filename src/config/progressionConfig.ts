@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+// Compatibility defaults: omitted historical plans keep the eight-level cap.
+// The current ten-level plan is authored explicitly in game.json.
 export const progressionDefaults = {
   xpRequirements: [28, 60, 110, 180, 220, 200, 300],
   levelPlan: [
@@ -33,12 +35,12 @@ export const ProgressionConfigSchema = z.strictObject({
   { message: 'Each non-cap level requires exactly one XP threshold' })
   .refine(v => v.levelPlan[0].weaponFamily === 'rifle' && v.levelPlan[0].fireRateStage === 1
     && v.levelPlan[0].squadStage === 1 && v.levelPlan.every((s, i) => {
-      if (s.weaponFamily === 'machineGun' && s.fireRateStage !== 1) return false;
       if (!i) return true;
       const previous = v.levelPlan[i - 1];
       return s.weaponFamily === previous.weaponFamily
         ? s.fireRateStage >= previous.fireRateStage && s.squadStage >= previous.squadStage
-        : previous.weaponFamily === 'rifle' && s.weaponFamily === 'machineGun' && s.squadStage === 1;
+        : previous.weaponFamily === 'rifle' && s.weaponFamily === 'machineGun'
+          && s.fireRateStage === 1 && s.squadStage === 1;
     }), { message: 'Stages must not regress within a weapon family; MG evolves once at stage one' })
   .refine(v => v.fireRateMultipliers.every((rate, i) => !i || rate >= v.fireRateMultipliers[i - 1]),
-    { message: 'Rifle rate stages must not decrease' });
+    { message: 'Weapon rate stages must not decrease' });

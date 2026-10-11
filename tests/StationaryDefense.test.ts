@@ -22,7 +22,7 @@ it.each([1,42])('keeps Z=0 through six minutes of seeded progression and surviva
     const b=sim.getFrameState();if(tick%12===0){const lane=carnivalPilotLane(b);if(lane!==b.player.selectedLane)sim.stepLane(lane<b.player.selectedLane! ? -1:1);}
     sim.step(1/60,{targetX:0,throwGrenade:carnivalPilotGrenade(sim.getFrameState())},pilotTuning);expect(sim.getFrameState().player.z).toBe(0);sim.consumePresentationEvents();
   }
-  expect(sim.getState().elapsedSeconds).toBeCloseTo(360);expect(sim.getState().progression!.level).toBe(8);
+  expect(sim.getState().elapsedSeconds).toBeCloseTo(360);expect(sim.getState().progression!.level).toBe(10);
   expect(sim.getState().enemyStream!.nextRowIndex).toBeGreaterThan(300);
 });
 

@@ -10,7 +10,7 @@ import { advancePostCapSurvival, postCapOrdinarySettings } from '../../src/simul
 import { addRifleSoldiers } from '../../src/simulation/squad/composition';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage, requiredXp } from '../../src/simulation/progression';
 
-export type DevReviewFixture = 'rifle' | 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'carnival' | 'crate3' | 'crate8' | 'shell' | 'naval';
+export type DevReviewFixture = 'rifle' | 'grenade' | 'curve' | 'evolve' | 'machineGun' | 'late' | 'mg7' | 'mg8' | 'mg9' | 'mg10' | 'carnival' | 'crate3' | 'crate8' | 'crate10' | 'shell' | 'naval';
 export const DEV_REVIEW_FIXTURES = {
   rifle: { level: 1, soldiers: 1 },
   grenade: { level: 3, soldiers: 1 },
@@ -18,13 +18,16 @@ export const DEV_REVIEW_FIXTURES = {
   evolve: { level: 5, soldiers: 3 },
   machineGun: { level: 6, soldiers: 1 },
   late: { level: 6, soldiers: 1 },
-  mg7: { level: 7, soldiers: 2 },
-  mg8: { level: 8, soldiers: 3 },
+  mg7: { level: 7, soldiers: 1 },
+  mg8: { level: 8, soldiers: 1 },
+  mg9: { level: 9, soldiers: 2 },
+  mg10: { level: 10, soldiers: 3 },
   carnival: { level: 6, soldiers: 1 },
   crate3: { level: 3, soldiers: 1 },
-  crate8: { level: 8, soldiers: 3 },
-  shell: { level: 8, soldiers: 3 },
-  naval: { level: 8, soldiers: 3 },
+  crate8: { level: 8, soldiers: 1 },
+  crate10: { level: 10, soldiers: 3 },
+  shell: { level: 10, soldiers: 3 },
+  naval: { level: 10, soldiers: 3 },
 } as const;
 
 // Test-only scenarios, imported by Vitest and browser QA; never by application code.
@@ -33,16 +36,29 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   role: DevReviewFixture): Simulation {
   if (role === 'rifle') return new Simulation({ ...options, seed: 0x21b101 });
   if (role === 'shell') return createShellReview(options);
+  if (role === 'crate10') {
+    const sim = createRuntimeFixture(options, baseFireRate, 'crate8'), state = sim.getState();
+    const balance = state.catharsis!.balance, level = maxProgressionLevel(balance.progression);
+    const count = progressionStage(level, balance.progression).squadStage;
+    state.progression = { level, xp: 0 };
+    state.squad = { count, rifleCounts: [count], rifleRemainder: 0, rocketCount: 0 };
+    const interval = 1 / effectivePrimaryFireRate(baseFireRate, level, balance);
+    state.weapons.rifleMemberCooldowns = Array.from({ length: count }, (_, index) => index * interval / count);
+    sim.restoreState(state); return sim;
+  }
   if (role === 'naval' || role === 'crate3' || role === 'crate8')
     return createRuntimeFixture(options, baseFireRate, role);
-  const fixture = DEV_REVIEW_FIXTURES[role];
+  const entry = DEV_REVIEW_FIXTURES[role];
+  // Historical plans keep their own squad stage when replaying old fixtures.
+  const fixture = { level: entry.level, soldiers: options.catharsis?.balance.defenseMode
+    ? progressionStage(entry.level, options.catharsis.balance.progression).squadStage : entry.soldiers };
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
     startSquad: 1, startRocketCount: 0 });
   const state = simulation.getState(), catharsis = state.catharsis;
   if (!catharsis?.balance.defenseMode || !state.enemyStream || !options.level.enemyStream)
     throw new Error('DEV Review requires the defense enemy stream');
   const balance = catharsis.balance;
-  const playableLate = role === 'late' || role === 'mg7' || role === 'mg8';
+  const playableLate = role === 'late' || role === 'mg7' || role === 'mg8' || role === 'mg9' || role === 'mg10';
   if ((playableLate || role === 'carnival') && (fixture.level > maxProgressionLevel(balance.progression)
     || progressionStage(fixture.level, balance.progression).weaponFamily !== 'machineGun'
     || progressionStage(fixture.level, balance.progression).squadStage !== fixture.soldiers))

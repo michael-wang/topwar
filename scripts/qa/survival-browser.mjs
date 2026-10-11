@@ -4,9 +4,11 @@ import { startGameRecording, inspectRecordingFrames } from './browser-recording.
 const phase=process.argv[2]??'final',url=process.argv[3]??'http://127.0.0.1:5173/';
 const fixed=process.argv.includes('--fixed');
 const durationSeconds=fixed?45:90;
-const out=`artifacts/p3b5/${phase}${fixed?'-fixed':''}-browser`;mkdirSync(out,{recursive:true});
+const root=process.env.TOPWAR_SURVIVAL_ROOT??'artifacts/p3b5';
+const scenario=process.argv.find(a=>a.startsWith('--scenario='))?.split('=')[1]??'lv8';
+const out=`${root}/${phase}${fixed?'-fixed':''}-browser`;mkdirSync(out,{recursive:true});
 const evidenceOnly=process.argv.includes('--evidence-only');
-const saved=JSON.parse(readFileSync(`artifacts/p3b5/${phase}/metrics.json`)).runs.find(r=>r.seed===17&&r.scenario==='lv8'&&r.policy==='competent').entry;
+const saved=JSON.parse(readFileSync(`${root}/${phase}/metrics.json`)).runs.find(r=>r.seed===17&&r.scenario===scenario&&r.policy==='competent').entry;
 const {chromium}=await import('file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const onlyWidth=process.argv.find(a=>a.startsWith('--width='))?.split('=')[1];
@@ -54,7 +56,7 @@ try {
     return {samples,rows,resources,highWater:{...a.perf.highWater},stepP95:a.perf.stepCpu.p95(),renderP95:a.perf.render.p95(),
      elapsed:a.simulation.getFrameState().elapsedSeconds-startAge,soldiers:a.simulation.getFrameState().squad.count};
    },durationSeconds);
-   sample.requests=requests.slice(requestStart);assert.equal(sample.soldiers,3);assert(sample.elapsed>=durationSeconds-5,'Sustained simulation advances normally');
+   sample.requests=requests.slice(requestStart);assert.equal(sample.soldiers,saved.squad.count);assert(sample.elapsed>=durationSeconds-5,'Sustained simulation advances normally');
    results.push({phase,width,...sample,errors});writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));console.log(JSON.stringify({phase,width,...sample,rows:undefined,resources:undefined}));
   }
   if(phase==='final'&&!fixed) {
@@ -62,7 +64,7 @@ try {
    await page.locator('.tuning-panel > summary').click();
    assert.deepEqual(await page.locator('.dev-review-controls button').allTextContents(),['LATE','CRATE3','CRATE8','NAVAL']);
    await page.locator('.dev-review-controls [data-role="late"]').click();
-   await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);const s=a.simulation.getState();if(s.progression.level!==8||s.squad.count!==3||s.enemies.length!==42)throw Error('LATE must be immediate mixed Lv8');});
+   await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);const s=a.simulation.getState();if(s.progression.level!==s.catharsis.balance.progression.levelPlan.length||s.squad.count!==3||s.enemies.length!==42)throw Error('LATE must be immediate mixed cap-level three-MG');});
    const stop=await startGameRecording(page,width);
    await page.evaluate(async()=>{const a=window.__testApp;let start;await new Promise(resolve=>requestAnimationFrame(function frame(ts){start??=ts;window.__pilot();a.renderFrame(ts);cancelAnimationFrame(a.frameId);if(ts-start<30000)requestAnimationFrame(frame);else resolve();}));});
    const recording=await stop();writeFileSync(`${out}/${width}-survival.webm`,recording);
@@ -73,7 +75,7 @@ try {
    const replay=await page.evaluate(()=>{const a=window.__testApp;a.togglePaused();cancelAnimationFrame(a.frameId);const saved=a.simulation.getState(),c=a.config;
     const tuning={...c.player,trackHalfWidth:c.track.halfWidth,defenseLineOffset:c.track.defenseLineOffset,normalEnemyRadius:c.tiers.normalEnemyRadius,bossRadius:c.bosses.basic.radius,rifle:c.weapon.rifle,rocket:c.weapon.rocket};
     const advance=()=>{for(let i=0;i<120;i++)a.simulation.step(1/60,{targetX:0},tuning);return JSON.stringify(a.simulation.getState());};
-    const expected=advance();a.simulation.restoreState(JSON.parse(JSON.stringify(saved)));const actual=advance();a.retry();cancelAnimationFrame(a.frameId);if(a.simulation.getState().progression.level!==8||a.simulation.getState().enemies.length!==42)throw Error('LATE Retry changed');return {expected:JSON.parse(expected),actual:JSON.parse(actual)};});
+    const expected=advance();a.simulation.restoreState(JSON.parse(JSON.stringify(saved)));const actual=advance();a.retry();cancelAnimationFrame(a.frameId);const retry=a.simulation.getState();if(retry.progression.level!==retry.catharsis.balance.progression.levelPlan.length||retry.enemies.length!==42)throw Error('LATE Retry changed');return {expected:JSON.parse(expected),actual:JSON.parse(actual)};});
    assert.deepEqual(replay.actual,replay.expected,'Survival snapshot continuation diverged');
   }
   assert.deepEqual(errors,[]);await page.close();

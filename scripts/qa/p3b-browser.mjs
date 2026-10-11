@@ -9,7 +9,7 @@ try{for(const width of [390,350,1100]){
  const page=await browser.newPage({viewport:{width,height:width<500?844:900},deviceScaleFactor:1,isMobile:width<500,hasTouch:width<500});
  page.on('pageerror',e=>results.errors.push(e.message));
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();','window.__testApp=app;app.start();')});});
- await page.goto('http://127.0.0.1:5173/');await page.getByRole('button',{name:'Start game with audio'}).click();
+ await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/');await page.getByRole('button',{name:'Start game with audio'}).click();
  await page.waitForFunction(()=>window.__testApp.startup==='started');await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));await selectDevFixture(page,'naval');
  if(width===350)await page.locator('.beachhead-defense').evaluate(e=>e.style.setProperty('--hud-inset-bottom','34px'));
  await page.evaluate(()=>{window.__clock=performance.now();window.__events=[];const a=window.__testApp,present=a.renderer.presentArtillery.bind(a.renderer);

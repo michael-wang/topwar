@@ -87,5 +87,5 @@ it.each([1, 17, 42, 99, 2026])('keeps natural progression and five real artiller
   expect(a.destroyerEnd! - a.release!).toBeCloseTo(27, 7);
   expect(a.survivalStart).toBe(a.destroyerEnd);
   expect(a.waves.filter(w => w.carnival && !w.release).every(w => w.heavy === 0 && w.population <= 36)).toBe(true);
-  expect(a.final.level!.level).toBe(8);
+  expect(a.final.level!.level).toBe(10);
 }, 30000);

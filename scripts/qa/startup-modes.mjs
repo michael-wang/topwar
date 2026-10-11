@@ -48,11 +48,11 @@ try{for(const width of [350,390])for(const legacy of [false,true]){
   await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.player.z=20;a.simulation.restoreState(s);window.__advance(1);});
   assert(await page.evaluate(()=>!!window.__testApp.simulation.getState().boss));
  }
- else{for(let i=0;i<48;i++){await page.evaluate(()=>window.__advance(5));const s=await page.evaluate(()=>window.__testApp.simulation.getState());assert(s.squad.count>0,JSON.stringify({time:s.elapsedSeconds,progression:s.progression,destroyer:s.destroyer}));if(s.progression.level===8)break;}
-  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),8);
-  assert.deepEqual(Object.keys(await page.evaluate(()=>window.__milestones)),['1','2','3','4','5','6','7','8']);
+ else{for(let i=0;i<48;i++){await page.evaluate(()=>window.__advance(5));const s=await page.evaluate(()=>window.__testApp.simulation.getState());assert(s.squad.count>0,JSON.stringify({time:s.elapsedSeconds,progression:s.progression,destroyer:s.destroyer}));if(s.progression.level===10)break;}
+  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),10);
+  assert.deepEqual(Object.keys(await page.evaluate(()=>window.__milestones)),['1','2','3','4','5','6','7','8','9','10']);
  }
- await page.screenshot({path:`${out}/${width}-${legacy?'legacy-boss':'lv8'}.png`});
+ await page.screenshot({path:`${out}/${width}-${legacy?'legacy-boss':'lv10'}.png`});
  const snapshot=await page.evaluate(()=>window.__testApp.simulation.getState());
  await page.getByRole('button',{name:'Pause game',exact:true}).tap();await page.evaluate(()=>window.__advance(1));assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),snapshot);
  await page.getByRole('button',{name:'Resume game',exact:true}).tap();

@@ -22,7 +22,7 @@ try {
   const state=()=>page.evaluate(()=>window.__testApp.simulation.getState());
   const screenshot=name=>page.screenshot({path:`${out}/${width}-${name}.png`});
   const runs=[];
-  for(const [role,level,members]of [['rifle',3,1],['late',6,1],['mg8',8,3]]) {
+  for(const [role,level,members]of [['rifle',3,1],['late6',6,1],['mg8',8,1],['mg10',10,3]]) {
    if(role!=='rifle')await selectDevFixture(page,role);else await page.evaluate(()=>window.__testApp.retry());
    const retryInitial=await state();
    await page.locator('.beachhead-defense').evaluate((v,inset)=>{v.style.setProperty('--hud-inset-bottom',`${inset}px`);},role==='mg8'?34:0);
@@ -37,7 +37,7 @@ try {
    await advance(485,false);await advance(1);
    assert.equal((await state()).grenade.supply.destruction.stage,0);await screenshot(`${role}-stage0`);
    await page.evaluate(({members,level})=>{const a=window.__testApp,s=a.simulation.getState();
-    s.weapons.rifleCooldownRemainingSeconds=0;s.weapons.rifleMemberCooldowns=Array.from({length:members},(_,i)=>i/(level===3?4.5:18)/members);a.simulation.restoreState(s);
+    s.weapons.rifleCooldownRemainingSeconds=0;s.weapons.rifleMemberCooldowns=Array.from({length:members},(_,i)=>i/(level===3?4.5:level===6?18:27)/members);a.simulation.restoreState(s);
    },{members,level});
    const times=[];let prior=0;
    for(let ticks=0;ticks<220;ticks++) {

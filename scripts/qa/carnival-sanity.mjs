@@ -10,7 +10,7 @@ try {
     page.on('pageerror',e=>result.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')result.errors.push(m.text());});
     await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const response=await route.fetch();
       await route.fulfill({response,body:(await response.text()).replace('app.start();','window.__testApp=app;app.start();')});});
-    await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/?perf=1');
+    const url=new URL(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/');url.searchParams.set('perf','1');await page.goto(url.href);
     await page.getByRole('button',{name:'Start game with audio'}).tap();
     await page.waitForFunction(()=>window.__testApp.startup==='started');
     await page.addStyleTag({content:'.perf-hud { display:none !important; }'});
@@ -47,7 +47,7 @@ try {
           pips:document.querySelectorAll('.battle-squad-pips .is-filled').length,boxes,stats:a.renderer.getDebugStats()};
       });
       assert(visual.members===s.squad.count && visual.models.every(m=>m==='toy-machine-gun') && visual.fired.every(Number.isFinite),'MG crowd presentation');
-      if(s.squad.count>1)assert(visual.pips===s.progression.level-5,'Squad HUD');
+      if(s.squad.count>1)assert(visual.pips===s.catharsis.balance.progression.levelPlan[s.progression.level-1].squadStage,'Squad HUD');
       for(const b of visual.boxes)assert(b.x>=0&&b.y>=0&&b.right<=width&&b.bottom<=844,'HUD bounds');
       for(const [i,a]of visual.boxes.entries())for(const b of visual.boxes.slice(i+1))assert(a.right<=b.x||b.right<=a.x||a.bottom<=b.y||b.bottom<=a.y,'HUD overlap');
       await page.screenshot({path:`${out}/${width}-${name}.png`});captures.push({name,elapsed:s.carnival.elapsedSeconds,level:s.progression.level,enemies:s.enemies.length,visual});

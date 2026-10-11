@@ -46,7 +46,7 @@ it.each([0,1,2])('restores exact stage %i and recovery through deterministic con
   clone.restoreState(clone.getState());expect(clone.consumeGrenadeEvents()).toEqual([]);
   expect(make(6).getState().grenade!.supply!.destruction).toMatchObject({stage:0,recoverAtSeconds:0});
 });
-it.each([[3,1],[6,1],[8,3]])('opens within 1.4–2 seconds of first impact for Lv%i / %i members', (level,members)=>{
+it.each([[3,1],[6,1],[8,1],[10,3]])('opens within 1.4–2 seconds of first impact for Lv%i / %i members', (level,members)=>{
   const sim=make(level,members),s=sim.getState(),rate=level===3?4.5:18;
   s.weapons.rifleCooldownRemainingSeconds=0;s.weapons.rifleMemberCooldowns=Array.from({length:members},(_,i)=>i/rate/members);sim.restoreState(s);
   const times:number[]=[];let consumed=0;

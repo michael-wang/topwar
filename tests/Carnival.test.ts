@@ -83,7 +83,7 @@ it('continues naturally from Carnival through fallback into Lv8 without legacy r
       if(lane!==s.player.selectedLane)sim.stepLane(lane<s.player.selectedLane! ? -1:1);}
     step(sim);sim.consumePresentationEvents();
   }
-  const s=sim.getState();expect(s.progression).toEqual({level:8,xp:0});expect(s.squad.count).toBe(3);
+  const s=sim.getState();expect(s.progression).toEqual({level:8,xp:6});expect(s.squad.count).toBe(1);
   expect(s.carnival!.status).toBe('complete');expect(s.carnival!.elapsedSeconds).toBe(24);
   expect(s.elapsedSeconds).toBeGreaterThan(24);expect(s.reinforcement!.arrived).toBe(false);
 });

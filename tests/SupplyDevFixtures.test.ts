@@ -17,12 +17,12 @@ const step = (sim: ReturnType<typeof make>, ticks = 1) => {
 };
 
 it.each(['crate3', 'crate8'] as const)('%s starts an intact, aligned real Supply and isolated authoritative loadout', role => {
-  const initial = make(role).getState(), recurring = role === 'crate8', members = recurring ? 3 : 1;
+  const initial = make(role).getState(), recurring = role === 'crate8', members = 1;
   expect(initial.progression).toEqual({ level: recurring ? 8 : 3, xp: 0 });
   expect(initial.squad).toMatchObject({ count: members, rifleCounts: [members], rocketCount: 0 });
   const stage = progressionStage(initial.progression!.level, initial.catharsis!.balance.progression);
   expect(stage.weaponFamily).toBe(recurring ? 'machineGun' : 'rifle');
-  expect(effectivePrimaryFireRate(config.weapon.rifle.fireRate, initial.progression!.level, initial.catharsis!.balance)).toBe(recurring ? 18 : 4.5);
+  expect(effectivePrimaryFireRate(config.weapon.rifle.fireRate, initial.progression!.level, initial.catharsis!.balance)).toBe(recurring ? 27 : 4.5);
   expect(initial.weapons.rifleMemberCooldowns).toHaveLength(members);
   expect(new Set(initial.weapons.rifleMemberCooldowns).size).toBe(members);
   expect(initial.enemies.filter(e => e.archetype === 'grunt')).toHaveLength(36);
@@ -70,9 +70,9 @@ it.each(['crate3', 'crate8'] as const)('%s uses three real damage events with re
   expect(times[2] - times[0]).toBeLessThanOrEqual(2);
   expect(sim.getState().grenade!.inventory).toBe(role === 'crate3' ? 3 : 2);
   const shots = sim.getState().weapons.nextProjectileId - initial.weapons.nextProjectileId;
-  const nominal = (role === 'crate3' ? 4.5 : 54) * 6;
+  const nominal = (role === 'crate3' ? 4.5 : 27) * 6;
   expect(shots).toBeGreaterThanOrEqual(nominal); expect(shots).toBeLessThanOrEqual(nominal + (role === 'crate3' ? 1 : 3));
-  expect(new Set(sim.getState().projectiles.map(p => p.memberIndex)).size).toBe(role === 'crate3' ? 1 : 3);
+  expect(new Set(sim.getState().projectiles.map(p => p.memberIndex)).size).toBe(1);
   const later = sim.getState(); later.elapsedSeconds = 1200; later.tick = 72000;
   sim.restoreState(later); step(sim, 180);
   expect(sim.getState().enemies.map(e => [e.id, e.hp])).toEqual(initial.enemies.map(e => [e.id, e.hp]));
@@ -99,7 +99,7 @@ it.each(['crate3', 'crate8'] as const)('%s opens safely then blasts Grunts while
   expect(event.victims.filter(v => v.killed)).toHaveLength(36);
   expect(sim.getState().enemies.map(e => [e.archetype, e.hp])).toEqual([
     ['heavy', config.catharsis!.heavyHp - 9], ['giant', config.catharsis!.giant.hp - 9]]);
-  expect(sim.getState().progression!.xp).toBe(role === 'crate3' ? 36 : 0);
+  expect(sim.getState().progression!.xp).toBe(36);
   expect(make(role).getState()).toEqual(initial);
   // Running beyond all former schedule horizons never introduces another wave or crate.
   step(sim, 2400);

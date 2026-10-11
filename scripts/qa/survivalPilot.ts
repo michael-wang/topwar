@@ -10,13 +10,19 @@ import { admitDefenseGroup } from '../../src/simulation/enemies/defenseGroup';
 import { postCapOrdinarySettings } from '../../src/simulation/postCapSurvival';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
 import { pilotTuning } from './p15Pilot';
+import { maxProgressionLevel } from '../../src/simulation/progression';
+import type { DevReviewFixture } from '../../tests/helpers/ReviewFixtures';
 
-export function survivalSimulation(seed: number, scenario: 'natural' | 'lv7' | 'lv8') {
+export type SurvivalScenario = 'natural' | 'lv6' | 'lv7' | 'lv8' | 'lv9' | 'lv10';
+export function survivalSimulation(seed: number, scenario: SurvivalScenario) {
   const c = GameConfigSchema.parse(data), options = { seed, level: LevelDefinitionSchema.parse(levelData),
     startSquad: 1, startRocketCount: 0, tiers: c.tiers,
     catharsis: { balance: c.catharsis!, trackHalfWidth: c.track.halfWidth } };
   if (scenario === 'natural') return new Simulation(options);
-  const sim = createDevReviewFixture(options, c.weapon.rifle.fireRate, scenario === 'lv7' ? 'mg7' : 'mg8');
+  // A historical comparison retains its own cap and loadout rather than being migrated.
+  const level = Math.min(Number(scenario.slice(2)), maxProgressionLevel(c.catharsis!.progression));
+  const role = level === 6 ? 'late' : `mg${level}` as DevReviewFixture;
+  const sim = createDevReviewFixture(options, c.weapon.rifle.fireRate, role);
   const s = sim.getState(); s.seed = seed; s.rngState = new SeededRng(seed).getState();
   s.enemies = []; s.enemyStream!.nextEnemyId = 1;
   const row = s.enemyStream!.nextRowIndex - 1, balance = s.catharsis!.balance;
@@ -45,7 +51,7 @@ export function survivalDecision(sim: Simulation, tick: number, policy: 'compete
     || target.z <= 10 && victims.reduce((sum, e) => sum + e.hp, 0) >= 12) };
 }
 
-export function runSurvivalPilot(seed: number, scenario: 'natural' | 'lv7' | 'lv8', policy: 'competent' | 'slower' | 'fixed' = 'competent') {
+export function runSurvivalPilot(seed: number, scenario: SurvivalScenario, policy: 'competent' | 'slower' | 'fixed' = 'competent') {
   const sim = survivalSimulation(seed, scenario), initial = sim.getState();
   let activation = initial.postCapSurvival?.startedAtSeconds ?? null, entry = activation === null ? null : initial;
   const waves: any[] = [], opportunities: any[] = [], samples: any[] = [], levels: Record<number, number> = { [initial.progression!.level]: 0 };

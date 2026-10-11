@@ -14,7 +14,7 @@ try{for(const width of [350,390]){
     window.__speech=[];const start=AudioBufferSourceNode.prototype.start;
     AudioBufferSourceNode.prototype.start=function(...args){if(window.__testApp?.audio.voice?.source===this)window.__speech.push({offset:args[1]??0,emblem:!!document.querySelector('.field-observer .observer-fallback svg')});return start.apply(this,args);};
   });
-  await page.goto('http://127.0.0.1:5173/');await page.getByRole('button',{name:'Start game with audio'}).tap();
+  await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/');await page.getByRole('button',{name:'Start game with audio'}).tap();
   await page.waitForFunction(()=>window.__speech.length>0);assert.deepEqual(await page.evaluate(()=>window.__speech[0]),{offset:0,emblem:true});
   await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);window.__clock=performance.now();window.__advance=n=>{for(let i=0;i<n;i++){a.renderFrame(window.__clock+=1000/60);cancelAnimationFrame(a.frameId);}};});
   await selectDevFixture(page,'naval');

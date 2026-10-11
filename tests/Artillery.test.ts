@@ -104,6 +104,10 @@ it('restores a mid-flight snapshot exactly, suppresses past event replay and res
 
 it.each([6, 8])('accepts historical Lv%i snapshots without artillery fields/configuration', level => {
   const sim = make(), s = sim.getState(); delete s.artillery; delete s.catharsis!.balance.artillery;
+  // A historical three-MG Lv8 carries its original serialized plan.
+  s.catharsis!.balance.progression.levelPlan = s.catharsis!.balance.progression.levelPlan.slice(0, 8)
+    .map((stage, i) => i < 6 ? stage : { ...stage, fireRateStage: 1, squadStage: i - 4 });
+  s.catharsis!.balance.progression.xpRequirements = s.catharsis!.balance.progression.xpRequirements.slice(0, 7);
   s.progression = { level, xp: 0 }; const living = level - 5;
   s.squad = { count: living, rifleCounts: [living], rocketCount: 0, rifleRemainder: 0 };
   s.weapons.rifleMemberCooldowns = Array(living).fill(0);

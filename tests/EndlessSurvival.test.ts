@@ -72,12 +72,12 @@ it.each(oldSaves)('retains historical serialized three-Heavy settings and deadli
   expect(a.getState().defenseWaves!.nextAtSeconds).toBeCloseTo(deadline+12);
 });
 
-it('exposes Lv8 Survival in human LATE while retaining the old Lv6 QA entry',()=>{
+it('exposes Lv10 Survival in human LATE while retaining the old Lv6 QA entry',()=>{
   const c=GameConfigSchema.parse(gameData),options={seed:17,startSquad:1,startRocketCount:0,tiers:c.tiers,
     catharsis:{balance:c.catharsis!,trackHalfWidth:c.track.halfWidth},level:LevelDefinitionSchema.parse(levelData)};
   const a=createDevReviewFixture(options,c.weapon.rifle.fireRate,'late'),s=a.getState();
-  expect(s.progression).toEqual({level:8,xp:0});expect(s.squad.count).toBe(3);
-  expect(s.weapons.rifleMemberCooldowns).toEqual([0,1/54,2/54]);
+  expect(s.progression).toEqual({level:10,xp:0});expect(s.squad.count).toBe(3);
+  expect(s.weapons.rifleMemberCooldowns).toEqual([0,1/81,2/81]);
   expect(s.enemies).toHaveLength(42);expect(s.enemies.filter(e=>e.archetype==='heavy')).toHaveLength(6);
   expect(s.defenseWaves!.nextAtSeconds).toBe(6);
   const b=createDevReviewFixture(options,c.weapon.rifle.fireRate,'late');expect(b.getState()).toEqual(s);

@@ -8,18 +8,18 @@ import { projectRenderState } from '../src/app/projectRenderState';
 const config=GameConfigSchema.parse(data), balance=config.catharsis!;
 const step=(sim:ReturnType<typeof controlledSimulation>, ticks=1)=>{for(let i=0;i<ticks;i++)sim.step(1/60,{targetX:0},pilotTuning);};
 
-it('authors eight explicit stages, unchanged Rifle progression and a 220 XP family boundary',()=>{
-  expect(balance.progression.xpRequirements).toEqual([28,60,110,180,220,200,300]);
+it('authors ten explicit stages, unchanged Rifle progression and a 220 XP family boundary',()=>{
+  expect(balance.progression.xpRequirements).toEqual([28,60,110,180,220,200,300,350,450]);
   expect(balance.progression.levelPlan.map(p=>[p.weaponFamily,p.fireRateStage,p.squadStage])).toEqual([
-    ['rifle',1,1],['rifle',2,1],['rifle',3,1],['rifle',3,2],['rifle',3,3],['machineGun',1,1],['machineGun',1,2],['machineGun',1,3]]);
+    ['rifle',1,1],['rifle',2,1],['rifle',3,1],['rifle',3,2],['rifle',3,3],['machineGun',1,1],['machineGun',2,1],['machineGun',3,1],['machineGun',3,2],['machineGun',3,3]]);
   expect(balance.machineGun).toEqual({fireRate:18,projectileSpeed:60,range:80,damageEnemyHp:1});
   expect(grantXp({level:5,xp:219},1,balance.progression)).toEqual({level:6,xp:0});
-  expect(grantXp({level:1,xp:0},100000,balance.progression)).toEqual({level:8,xp:0});
+  expect(grantXp({level:1,xp:0},100000,balance.progression)).toEqual({level:10,xp:0});
 });
 it('validates relational plan length and family-local stage progression',()=>{
   const source=structuredClone(data);
   source.catharsis.progression.levelPlan.pop();source.catharsis.progression.xpRequirements.pop();
-  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toHaveLength(7);
+  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toHaveLength(9);
   source.catharsis.progression.xpRequirements.pop();expect(()=>GameConfigSchema.parse(source)).toThrow();
   for (const patch of [ {weaponFamily:'rocket'}, {weaponFamily:'rifle',squadStage:1}, {fireRateStage:2} ]) {
     const bad=structuredClone(data);Object.assign(bad.catharsis.progression.levelPlan[5],patch);
@@ -86,7 +86,7 @@ it('keeps reinforcement deferred and isolated no-stream MG measurements free of 
 
 it('evolves coherently if a live XP threshold edit crosses the family boundary',()=>{
  const sim=controlledSimulation(5),s=sim.getState();s.progression!.xp=210;sim.restoreState(s);
- sim.setCatharsisBalance({...balance,progression:{...balance.progression,xpRequirements:[28,60,110,180,200,200,300]}});
+ sim.setCatharsisBalance({...balance,progression:{...balance.progression,xpRequirements:[28,60,110,180,200,200,300,350,450]}});
  expect(sim.getState().progression).toEqual({level:6,xp:10});expect(sim.getState().squad.count).toBe(1);
  expect(sim.getState().weapons.rifleMemberCooldowns).toEqual([1/18]);expect(sim.consumePresentationEvents()).toEqual([]);
  expect(()=>sim.restoreState(JSON.parse(JSON.stringify(sim.getState())))).not.toThrow();

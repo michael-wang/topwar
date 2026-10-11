@@ -9,6 +9,7 @@ import { Simulation } from '../src/simulation/Simulation';
 import { requiredXp, grantXp, effectiveRifleFireRate, progressionStage, maxProgressionLevel } from '../src/simulation/progression';
 import { laneCompositionForRow, attackLanePositions } from '../src/simulation/enemies/laneComposition';
 import { projectRenderState } from '../src/app/projectRenderState';
+import { progressionDefaults } from '../src/config/progressionConfig';
 import { enemyRunFrame, enemyWalkPose } from '../src/rendering/enemies/EnemyRenderer';
 const config = GameConfigSchema.parse(data);
 const balance = config.catharsis!;
@@ -125,16 +126,17 @@ it('uses the tuned base rate in actual level-three scheduling', () => {
   expect(live.rifle.fireRate).toBe(2.5);
 });
 
-it('caps natural XP at eight, including large grants, while debug levels clamp to Stage III', () => {
-  expect(maxProgressionLevel(curve)).toBe(8);
+it('caps natural XP at ten, including large grants, while debug levels clamp to Stage III', () => {
+  expect(maxProgressionLevel(curve)).toBe(10);
   expect(curve.levelPlan).toEqual([
     {weaponFamily:'rifle',fireRateStage:1,squadStage:1}, {weaponFamily:'rifle',fireRateStage:2,squadStage:1},
     {weaponFamily:'rifle',fireRateStage:3,squadStage:1}, {weaponFamily:'rifle',fireRateStage:3,squadStage:2}, {weaponFamily:'rifle',fireRateStage:3,squadStage:3},
     {weaponFamily:'machineGun',fireRateStage:1,squadStage:1},
-    {weaponFamily:'machineGun',fireRateStage:1,squadStage:2}, {weaponFamily:'machineGun',fireRateStage:1,squadStage:3},
+    {weaponFamily:'machineGun',fireRateStage:2,squadStage:1}, {weaponFamily:'machineGun',fireRateStage:3,squadStage:1},
+    {weaponFamily:'machineGun',fireRateStage:3,squadStage:2}, {weaponFamily:'machineGun',fireRateStage:3,squadStage:3},
   ]);
-  expect(grantXp({level:1,xp:0},100000,curve)).toEqual({level:8,xp:0});
-  expect(grantXp({level:5,xp:0},100000,curve)).toEqual({level:8,xp:0});
+  expect(grantXp({level:1,xp:0},100000,curve)).toEqual({level:10,xp:0});
+  expect(grantXp({level:5,xp:0},100000,curve)).toEqual({level:10,xp:0});
   expect([1,2,3,4,5,7,100].map(level=>effectiveRifleFireRate(3,level,curve)))
     .toEqual([3,3.75,4.5,4.5,4.5,4.5,4.5]);
 });
@@ -147,7 +149,7 @@ it('restores explicit stages and rejects obsolete formula snapshots or invalid s
   expect(()=>sim.restoreState(bad)).toThrow();
   const old=sim.getState() as any; old.catharsis.balance.progression.fireRatePerLevel=1;
   expect(()=>sim.restoreState(old)).toThrow();
-  const max=sim.getState();max.progression={level:8,xp:1};expect(()=>sim.restoreState(max)).toThrow(/progression/);
+  const max=sim.getState();max.progression={level:10,xp:1};expect(()=>sim.restoreState(max)).toThrow(/progression/);
 });
 function killForXp(level:number,xp:number,count:number, reward:number) {
   const sim=make(), state=sim.getState(); state.progression={level,xp};
@@ -190,7 +192,9 @@ it('validates plan shape, monotonic stages and snapshot defaults without seriali
     {fireRateMultipliers:[1,.9,1.5]}, {levelPlan:curve.levelPlan.map((p,i)=>({...p,squadStage:i===2?0:p.squadStage}))},
   ]) expect(()=>GameConfigSchema.parse({...data,catharsis:{...data.catharsis,progression:{...data.catharsis.progression,...patch}}})).toThrow();
   const source=structuredClone(data) as any;delete source.catharsis.progression.levelPlan;delete source.catharsis.progression.fireRateMultipliers;
-  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toEqual(curve.levelPlan);
+  expect(()=>GameConfigSchema.parse(source)).toThrow(); // New XP thresholds cannot silently acquire an old default plan.
+  delete source.catharsis.progression.xpRequirements;
+  expect(GameConfigSchema.parse(source).catharsis!.progression.levelPlan).toEqual(progressionDefaults.levelPlan);
   expect(Object.keys(make().getState().progression!)).toEqual(['level','xp']);
 });
 

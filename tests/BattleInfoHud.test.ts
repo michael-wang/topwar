@@ -23,7 +23,7 @@ function make(){
 const filled=(row:Element)=>row.children.filter(p=>p.className.includes('is-filled'));
 const animated=(row:Element)=>row.children.map((p,i)=>p.className.includes('is-upgraded')?i:-1).filter(i=>i>=0);
 afterEach(()=>vi.unstubAllGlobals());
-it.each([[1,1,null],[2,2,null],[3,3,null],[4,3,2],[5,3,3],[6,1,null],[7,1,2],[8,1,3]] as const)(
+it.each([[1,1,null],[2,2,null],[3,3,null],[4,3,2],[5,3,3],[6,1,null],[7,2,null],[8,3,null],[9,3,2],[10,3,3]] as const)(
   'shows Lv%i as %i cartridge pips and optional squad stage %s without visible text', (level,count,squadStage)=>{
     const f=make();f.update(level);
     expect(f.root.style.pointerEvents).toBe('none');expect(f.root.attributes.role).toBe('group');
@@ -67,10 +67,19 @@ it('handles multi-level grants and regressed/restored presentation without stale
   expect(animated(f.bullets)).toEqual([]);
 });
 
-it('reveals MG squad pips at Lv7/8 without another weapon evolution',()=>{
+it('reveals MG squad pips at Lv9/10 without another weapon evolution',()=>{
   const f=make();f.update(6);const model=f.weapon.innerHTML;
-  f.update(7,100);expect(f.squad.hidden).toBe(false);expect(animated(f.squad)).toEqual([1]);
-  expect(filled(f.squad)).toHaveLength(2);expect(filled(f.bullets)).toHaveLength(1);
-  f.update(8,600);expect(animated(f.squad)).toEqual([2]);expect(filled(f.squad)).toHaveLength(3);
+  f.update(9,100);expect(f.squad.hidden).toBe(false);expect(animated(f.squad)).toEqual([1]);
+  expect(filled(f.squad)).toHaveLength(2);expect(filled(f.bullets)).toHaveLength(3);
+  f.update(10,600);expect(animated(f.squad)).toEqual([2]);expect(filled(f.squad)).toHaveLength(3);
   expect(f.weapon.innerHTML).toBe(model);expect(f.weapon.className).not.toContain('weapon-evolution');
+});
+
+it('fills MG cartridges through Lv7/8 without recruiting or replaying the silhouette evolution',()=>{
+  const f=make();f.update(6);const model=f.weapon.innerHTML;
+  f.update(7,100);expect(animated(f.bullets)).toEqual([1]);expect(filled(f.bullets)).toHaveLength(2);
+  expect(f.squad.hidden).toBe(true);expect(animated(f.squad)).toEqual([]);
+  f.update(8,600);expect(animated(f.bullets)).toEqual([2]);expect(filled(f.bullets)).toHaveLength(3);
+  expect(f.squad.hidden).toBe(true);expect(f.weapon.innerHTML).toBe(model);
+  expect(f.weapon.className).not.toContain('weapon-evolution');
 });

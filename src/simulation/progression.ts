@@ -36,6 +36,10 @@ export function effectiveRifleFireRate(base: number, level: number, balance: Pro
   return base * balance.fireRateMultipliers[stage.fireRateStage - 1];
 }
 export function effectivePrimaryFireRate(base: number, level: number, balance: Readonly<CatharsisConfig>): number {
-  return progressionStage(level, balance.progression).weaponFamily === 'machineGun'
-    ? balance.machineGun.fireRate : effectiveRifleFireRate(base, level, balance.progression);
+  const stage = progressionStage(level, balance.progression);
+  return stage.weaponFamily === 'machineGun'
+    // Stage I retains its authored base rate, including historical plans whose
+    // Rifle multipliers were edited independently before MG stages existed.
+    ? balance.machineGun.fireRate * (stage.fireRateStage === 1 ? 1 : balance.progression.fireRateMultipliers[stage.fireRateStage - 1])
+    : effectiveRifleFireRate(base, level, balance.progression);
 }

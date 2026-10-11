@@ -992,7 +992,7 @@ export class Simulation {
       enemyStream: cursor ? { ...cursor, nextRewardBlockIndex: nextRewardBlockIndex! } : null };
   }
 
-  setCatharsisBalance(balance: CatharsisConfig): void {
+  setCatharsisBalance(balance: NonNullable<SimulationFrameState['catharsis']>['balance']): void {
     const previous = this.state.catharsis;
     if (!previous) throw new Error('Lane experiment is not active');
     const next = validateCatharsis({ ...previous, balance });
@@ -1003,12 +1003,13 @@ export class Simulation {
       && progressionStage(progression.level, next.balance.progression).weaponFamily === 'machineGun';
     // Live XP/plan edits must retain the same family/squad invariant as a kill.
     const evolvedCount = progression ? progressionStage(progression.level, next.balance.progression).squadStage : 1;
+    const interval = 1 / effectivePrimaryFireRate(1, progression?.level ?? 1, next.balance);
     const evolved: Partial<SimulationState> = evolves ? {
       squad: { count: evolvedCount, rocketCount: 0, rifleCounts: [evolvedCount], rifleRemainder: 0 }, projectiles: [],
-      weapons: { ...this.state.weapons, rifleCooldownRemainingSeconds: 1 / next.balance.machineGun.fireRate,
-        rocketCooldownRemainingSeconds: 0, rifleMemberCooldowns: [1 / next.balance.machineGun.fireRate] },
+      weapons: { ...this.state.weapons, rifleCooldownRemainingSeconds: interval,
+        rocketCooldownRemainingSeconds: 0, rifleMemberCooldowns: [interval] },
     } : {};
-    if (evolves) appendMemberClocks(evolved.weapons!.rifleMemberCooldowns!, evolvedCount, 1 / next.balance.machineGun.fireRate);
+    if (evolves) appendMemberClocks(evolved.weapons!.rifleMemberCooldowns!, evolvedCount, interval);
     else if (progression && this.state.progression && this.state.squad.count > 0
       && progression.level > this.state.progression.level
       && progressionStage(progression.level, next.balance.progression).weaponFamily === 'machineGun') {
@@ -1016,9 +1017,18 @@ export class Simulation {
       if (delta > 0) {
         evolved.squad = addRifleSoldiers(this.state.squad, delta, 1, this.tiers.mergeCount);
         const clocks = [...(this.state.weapons.rifleMemberCooldowns ?? [this.state.weapons.rifleCooldownRemainingSeconds])];
-        appendMemberClocks(clocks, evolved.squad.count, 1 / next.balance.machineGun.fireRate);
+        clocks.forEach((clock, index) => clocks[index] = Math.min(clock, interval));
+        appendMemberClocks(clocks, evolved.squad.count, interval);
         evolved.weapons = { ...this.state.weapons, rifleMemberCooldowns: clocks };
       }
+    }
+    if (progression && progressionStage(progression.level, next.balance.progression).weaponFamily === 'machineGun'
+      && (progression.level > this.state.progression!.level
+        || effectivePrimaryFireRate(1, progression.level, next.balance)
+          > effectivePrimaryFireRate(1, this.state.progression!.level, previous.balance))) {
+      const weapons = evolved.weapons ?? this.state.weapons;
+      evolved.weapons = { ...weapons, rifleCooldownRemainingSeconds: Math.min(weapons.rifleCooldownRemainingSeconds, interval),
+        ...(weapons.rifleMemberCooldowns ? { rifleMemberCooldowns: weapons.rifleMemberCooldowns.map(clock => Math.min(clock, interval)) } : {}) };
     }
     this.state = { ...this.state, ...evolved, catharsis: next, ...(progression ? { progression } : {}), enemies: this.state.enemies.map((enemy) =>
       enemy.archetype === 'heavy' ? { ...enemy,
@@ -1530,15 +1540,12 @@ export class Simulation {
     }
     // Stream rewards expire harmlessly behind the moving defense line.
     const survivingStreamRewards = streamRewards.filter((reward) => reward.z > defenseLineZ);
-    // A gained level shortens the next scheduled shot without restarting the weapon clock.
+    // Preserve the historical clamp before squad rewards, including restored
+    // pending clocks longer than one period. Later rate stages also clamp below.
     if (progression && this.state.progression && progression.level > this.state.progression.level && catharsis) {
-      nextCooldowns.rifle = Math.min(nextCooldowns.rifle,
-        1 / effectivePrimaryFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance));
-    }
-    if (memberCooldowns && progression && catharsis && this.state.progression
-      && progression.level > this.state.progression.level) {
       const interval = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance);
-      memberCooldowns.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
+      nextCooldowns.rifle = Math.min(nextCooldowns.rifle, interval);
+      memberCooldowns?.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
     }
     // Apply every crossed stage as a reward delta, never a living-squad target.
     if (progression && this.state.progression && catharsis) {
@@ -1554,6 +1561,13 @@ export class Simulation {
           // Discard pending old-family shots, including any stale volley.
           survivingProjectiles.length = 0;
           continue;
+        }
+        if (stage.fireRateStage > previous.fireRateStage) {
+          // Set the new period before placing later squad rewards into unused
+          // phases. Otherwise overflow through Evolution can duplicate clocks.
+          const interval = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, level, catharsis.balance);
+          nextCooldowns.rifle = Math.min(nextCooldowns.rifle, interval);
+          memberCooldowns?.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
         }
         const delta = stage.squadStage - previous.squadStage;
         if (delta > 0 && (stage.weaponFamily === 'rifle' || squad.count > 0)) {

@@ -4,7 +4,7 @@ import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
-import { grantXp } from '../src/simulation/progression';
+import { grantXp, progressionStage, effectivePrimaryFireRate } from '../src/simulation/progression';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 
 const config = GameConfigSchema.parse(data), balance = config.catharsis!;
@@ -14,7 +14,7 @@ const make = (stream = false) => new Simulation({ seed: 17, startSquad: 1, start
 const ticks = (sim: Simulation, count = 1) => {
   for (let i = 0; i < count; i++) sim.step(1 / 60, { targetX: 0 }, pilotTuning);
 };
-function atLevel(level: number, stream = false, living = level < 6 ? 3 : level - 5) {
+function atLevel(level: number, stream = false, living = progressionStage(level, balance.progression).squadStage) {
   const sim = make(stream), state = sim.getState();
   state.progression = { level, xp: 0 };
   state.squad = { count: living, rifleCounts: [living], rocketCount: 0, rifleRemainder: 0 };
@@ -35,7 +35,7 @@ function killReward(sim: Simulation, xp: number) {
   sim.restoreState(state); ticks(sim);
 }
 
-it.each([[5, 220, 6, 1], [6, 200, 7, 2], [7, 300, 8, 3]])(
+it.each([[5, 220, 6, 1], [6, 200, 7, 1], [7, 300, 8, 1], [8, 350, 9, 2], [9, 450, 10, 3]])(
   'earns the exact Lv%i boundary with %i XP into Lv%i / %i MG members', (level, xp, next, count) => {
     const sim = atLevel(level);
     killReward(sim, xp - 1); expect(sim.getState().progression).toEqual({ level, xp: xp - 1 });
@@ -52,8 +52,9 @@ it.each([[5, 220, 6, 1], [6, 200, 7, 2], [7, 300, 8, 3]])(
     expect(sim.getState().landingAssault!.startedAtSeconds).toBeNull();
   });
 
-it.each([6, 7, 8])('fires 18 Hz independently per Lv%i member on the selected lane', level => {
-  const sim = atLevel(level), count = level - 5;
+it.each([6, 7, 8, 9, 10])('fires the authored MG stage independently per Lv%i member on the selected lane', level => {
+  const sim = atLevel(level), count = progressionStage(level, balance.progression).squadStage;
+  const rate = effectivePrimaryFireRate(3, level, balance);
   ticks(sim, 60);
   let nextId = sim.getState().weapons.nextProjectileId;
   const shots = Array.from({ length: count }, () => [] as number[]);
@@ -68,17 +69,19 @@ it.each([6, 7, 8])('fires 18 Hz independently per Lv%i member on the selected la
     }
     nextId = frame.weapons.nextProjectileId;
   }
-  expect(shots.map(member => member.length)).toEqual(Array(count).fill(180));
-  expect(shots.flat()).toHaveLength(count * 180);
+  expect(shots.map(member => member.length)).toEqual(Array(count).fill(rate * 10));
+  expect(shots.flat()).toHaveLength(count * rate * 10);
   if (count > 1) expect(shots[0]).not.toEqual(shots[1]);
 });
 
-it.each([[421, 7, 1, 2], [900, 8, 0, 3]])(
+it.each([[421, 7, 1, 1], [900, 8, 180, 1], [1070, 9, 0, 2], [1520, 10, 0, 3]])(
   'preserves one exact 60-enemy release when %i XP skips Lv6', (xp, level, overflow, count) => {
     const sim = atLevel(5, true); killReward(sim, xp);
     const state = sim.getState();
     expect(state.progression).toEqual({ level, xp: overflow });
     expect(state.squad.count).toBe(count);
+    expect(state.weapons.rifleMemberCooldowns!.every(clock => clock <= 1 / effectivePrimaryFireRate(3, level, balance))).toBe(true);
+    expect(new Set(state.weapons.rifleMemberCooldowns).size).toBe(count);
     expect(state.enemies).toHaveLength(60);
     expect(state.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(1);
     expect(new Set(state.enemies.map(e => e.lane)).size).toBe(3);
@@ -97,16 +100,17 @@ it.each([[421, 7, 1, 2], [900, 8, 0, 3]])(
     expect(sim.getState().landingAssault!.reinforcementActiveAtSeconds).toBeNull();
   });
 
-it('retains XP overflow through Lv7 and discards it only at Lv8', () => {
+it('retains XP overflow through Lv9 and discards it only at Lv10', () => {
   expect(grantXp({ level: 6, xp: 199 }, 10, balance.progression)).toEqual({ level: 7, xp: 9 });
-  expect(grantXp({ level: 7, xp: 299 }, 120, balance.progression)).toEqual({ level: 8, xp: 0 });
-  const sim = atLevel(8); killReward(sim, 120);
-  expect(sim.getState().progression).toEqual({ level: 8, xp: 0 });
+  expect(grantXp({ level: 7, xp: 299 }, 120, balance.progression)).toEqual({ level: 8, xp: 119 });
+  expect(grantXp({ level: 8, xp: 349 }, 120, balance.progression)).toEqual({ level: 9, xp: 119 });
+  const sim = atLevel(10); killReward(sim, 120);
+  expect(sim.getState().progression).toEqual({ level: 10, xp: 0 });
   expect(sim.getState().squad.count).toBe(3);
 });
 
 it('loses MG members without changing their family, restores survivor clocks, and grants only the next reward delta', () => {
-  const sim = atLevel(7), state = sim.getState();
+  const sim = atLevel(9), state = sim.getState();
   state.weapons.rifleCooldownRemainingSeconds = .04;
   state.weapons.rifleMemberCooldowns = [.04, .05];
   state.enemies = [{ id: 1, tier: 1, archetype: 'grunt', lane: 0, x: -2.8, z: -2, hp: 1 }];
@@ -118,8 +122,8 @@ it('loses MG members without changing their family, restores survivor clocks, an
   const clone = make(); clone.restoreState(JSON.parse(JSON.stringify(damaged)));
   ticks(sim, 60); ticks(clone, 60); expect(sim.getState()).toEqual(clone.getState());
   expect(sim.getState().projectiles.every(p => p.kind === 'machineGun')).toBe(true);
-  killReward(sim, 300); expect(sim.getState().squad.count).toBe(2);
-  expect(sim.getState().progression!.level).toBe(8);
+  killReward(sim, 450); expect(sim.getState().squad.count).toBe(2);
+  expect(sim.getState().progression!.level).toBe(10);
   const fatal = sim.getState(); fatal.projectiles = [];
   fatal.enemies = [1, 2].map(id => ({ id, tier: 1, archetype: 'grunt' as const, lane: 0, x: -2.8, z: -2, hp: 1 }));
   sim.restoreState(fatal); ticks(sim);
@@ -132,7 +136,7 @@ it('loses MG members without changing their family, restores survivor clocks, an
   expect(retry.squad.count).toBe(1); expect(retry.machineGunReleaseAtSeconds).toBeNull();
 });
 
-it.each([6, 7, 8])('round-trips Lv%i and rejects excess members, invalid stages and clocks', level => {
+it.each([6, 7, 8, 9, 10])('round-trips Lv%i and rejects excess members, invalid stages and clocks', level => {
   const sim = atLevel(level); ticks(sim, 17);
   const snapshot = sim.getState(), clone = make(); clone.restoreState(JSON.parse(JSON.stringify(snapshot)));
   ticks(sim, 120); ticks(clone, 120); expect(sim.getState()).toEqual(clone.getState());
@@ -159,11 +163,12 @@ it('restores accepted six-level snapshots with their original cap, future stream
 
 it('keeps live threshold edits coherent when they cross MG squad boundaries', () => {
   const sim = atLevel(5), state = sim.getState(); state.progression!.xp = 219; sim.restoreState(state);
-  sim.setCatharsisBalance({ ...balance, progression: { ...balance.progression, xpRequirements: [28, 60, 110, 180, 10, 10, 300] } });
+  sim.setCatharsisBalance({ ...balance, progression: { ...balance.progression, xpRequirements: [28, 60, 110, 180, 10, 10, 300, 350, 450] } });
   expect(sim.getState().progression).toEqual({ level: 7, xp: 199 });
-  expect(sim.getState().squad.count).toBe(2);
-  sim.setCatharsisBalance({ ...balance, progression: { ...balance.progression, xpRequirements: [28, 60, 110, 180, 10, 10, 100] } });
-  expect(sim.getState().squad.count).toBe(3);
+  expect(sim.getState().squad.count).toBe(1);
+  expect(sim.getState().weapons.rifleMemberCooldowns![0]).toBeLessThanOrEqual(1 / 22.5);
+  sim.setCatharsisBalance({ ...balance, progression: { ...balance.progression, xpRequirements: [28, 60, 110, 180, 10, 10, 100, 10, 10] } });
+  expect(sim.getState().progression!.level).toBe(10);expect(sim.getState().squad.count).toBe(3);
   expect(sim.getState().weapons.rifleMemberCooldowns).toHaveLength(3);
   expect(() => sim.restoreState(JSON.parse(JSON.stringify(sim.getState())))).not.toThrow();
 });

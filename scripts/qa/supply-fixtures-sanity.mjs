@@ -20,7 +20,7 @@ try {for(const width of [390,350]) {
  if(width===350)await page.locator('.beachhead-defense').evaluate(v=>v.style.setProperty('--hud-inset-bottom','34px'));
  await page.locator('.tuning-panel > summary').click();
  const menu=await page.locator('.dev-review-controls button').allTextContents();
- assert.deepEqual(menu,['GRENADE','CURVE','EVOLVE','MG','LATE','MG7','MG8','CARNIVAL','CRATE3','CRATE8']);
+ assert.deepEqual(menu,['LATE','CRATE3','CRATE8','NAVAL']);
  for(const role of ['crate3','crate8']) {
   const rect=await page.locator(`[data-role="${role}"]`).boundingBox();assert(rect&&rect.x>=0&&rect.x+rect.width<=width&&rect.y+rect.height<844);
  }

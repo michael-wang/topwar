@@ -6,7 +6,7 @@ const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/
 const out=process.argv[2]??'artifacts/p28/browser';mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={runs:[],errors:[]};
-try{for(const width of [390,350])for(const role of ['crate3','crate8','grenade','giant']){
+try{for(const width of [390,350])for(const role of ['crate3','crate8','crate10','grenade','giant']){
  const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
  page.on('pageerror',e=>results.errors.push(e.message));
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();',`window.__testApp=app;window.__events=[];window.__cues=[];

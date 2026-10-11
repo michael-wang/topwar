@@ -136,8 +136,11 @@ export class GameApp {
         rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,
         bossHpScale: values.bossHpScale });
       this.runtimeTuning = values;
-      if (this.config.catharsis) this.simulation.setCatharsisBalance({ ...this.config.catharsis,
-        groupSize: values.groupSize ?? this.config.catharsis.groupSize,
+      // Tuning an exposed value must not replace a restored historical plan or
+      // encounter policy with the current game's authored configuration.
+      const balance = this.simulation.getFrameState().catharsis?.balance ?? this.config.catharsis;
+      if (balance) this.simulation.setCatharsisBalance({ ...balance,
+        groupSize: values.groupSize ?? balance.groupSize,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
     }, !!this.config.catharsis?.defenseMode) : null;

@@ -3,6 +3,7 @@ import type { SimulationFrameState } from '../../src/simulation/SimulationState'
 import type { ArtilleryLaunch } from '../../src/simulation/artillery';
 import { emptyCarnival } from '../../src/simulation/carnival';
 import { emptyDestroyer } from '../../src/simulation/destroyer';
+import { effectivePrimaryFireRate, maxProgressionLevel } from '../../src/simulation/progression';
 
 // Test-only source/schedule. No encounter pattern lives in the shared artillery engine.
 export const SHELL_REVIEW_SOURCE = { id: 'shell-review-muzzle', type: 'offshore-test',
@@ -20,12 +21,14 @@ export function createShellReview(options: SimulationOptions): Simulation {
   if (!balance?.defenseMode || balance.progression.levelPlan.length < 8)
     throw Error('SHELL review requires Lv8 Defense progression');
   balance.carnival.enabled = false; balance.postCapSurvival.enabled = false;
-  state.carnival = emptyCarnival(true); state.progression = { level: 8, xp: 0 };
+  const level = maxProgressionLevel(balance.progression);
+  state.carnival = emptyCarnival(true); state.progression = { level, xp: 0 };
   state.machineGunReleaseAtSeconds = 0; state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
     inventory: 0, supply: null, flight: null };
   state.artillery = { version: 1, nextId: 1, shells: [] };
   if (balance.destroyer) state.destroyer = emptyDestroyer(true);
-  state.weapons.rifleMemberCooldowns = [0, 1 / (balance.machineGun.fireRate * 3), 2 / (balance.machineGun.fireRate * 3)];
+  const rate = effectivePrimaryFireRate(1, level, balance);
+  state.weapons.rifleMemberCooldowns = [0, 1 / (rate * 3), 2 / (rate * 3)];
   simulation.restoreState(state); return simulation;
 }

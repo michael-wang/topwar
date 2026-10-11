@@ -12,7 +12,8 @@ if(changedPublic && (!balance || changedPublic.split('\n').some(p=>p!=='public/g
  throw Error('Historical source comparison requires unchanged public assets (except opted-in game.json)');
 const oldConfig = balance ? execFileSync('git',['show',`${revision}:public/game-data/game.json`],{encoding:'utf8'}) : null;
 const sources=new Set(execFileSync('git',['ls-tree','-r','--name-only',revision,'src'],{encoding:'utf8'}).trim().split('\n'));
-const server=await createServer({server:{host:'127.0.0.1',port:5174,strictPort:true},plugins:[{
+const server=await createServer({cacheDir:process.env.TOPWAR_QA_VITE_CACHE,
+ server:{host:'127.0.0.1',port:5174,strictPort:true,watch:{ignored:['**/artifacts/**']}},plugins:[{
  name:'historical-ui-source',enforce:'pre',configureServer(server){
   if(oldConfig)server.middlewares.use((req,res,next)=>{
     if(!/^\/game-data\/game(?:\.[a-f0-9]+)?\.json(?:\?.*)?$/.test(req.url??''))return next();
