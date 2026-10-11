@@ -84,6 +84,33 @@ class ElementStub extends EventTarget {
   remove(){this.removed=true;}
 }
 afterEach(()=>vi.unstubAllGlobals());
+it('confirms only presentation events, freezes its 420ms clock and clears on reset/restore',()=>{
+  vi.stubGlobal('document',{createElement:()=>new ElementStub()});
+  const viewport=new ElementStub(),hud=new GrenadeButton(viewport as unknown as HTMLElement,vi.fn()),button=viewport.children[0];
+  hud.update(3,true,true,100);button.classList.add.mockClear();hud.update(2,true,false,110);
+  expect(button.classList.add).not.toHaveBeenCalled();hud.presentThrow(110);
+  expect(button.classList.add).toHaveBeenCalledExactlyOnceWith('grenade-thrown');
+  button.classList.remove.mockClear();hud.update(2,true,false,529);hud.update(2,true,false,529);
+  expect(button.classList.remove).not.toHaveBeenCalled();hud.update(2,true,false,530);
+  expect(button.classList.remove).toHaveBeenCalledExactlyOnceWith('grenade-thrown');
+  hud.presentThrow(600);hud.restore(2,true);expect(button.classList.remove).toHaveBeenLastCalledWith('grenade-acquired');
+  button.classList.add.mockClear();hud.update(2,true,false,900);expect(button.classList.add).not.toHaveBeenCalled();hud.dispose();
+});
+it('keeps a bounded trail behind the original arc, with stable resources and correct disposal',()=>{
+  const scene=new THREE.Scene(),renderer=new GrenadeRenderer(scene),trail=scene.getObjectByName('grenade-gold-trail') as THREE.Mesh;
+  const children=[...scene.children],positions=trail.geometry.getAttribute('position');
+  for(const t of [.01,.25,.5,.9]) {
+    renderer.update({supply:null,originZ:0,elapsedSeconds:.65*t,flight:{startX:0,startZ:0,targetX:2.8,targetZ:40,
+      startedAtSeconds:0,flightSeconds:.65,damageEnemyHp:9,blastRadius:4}},0);
+    const flight=scene.getObjectByName('grenade-flight')!;expect(flight.position.z).toBeCloseTo(40*t);
+    expect(flight.scale.x).toBe(1.75);expect(positions.count).toBe(56);
+    // Each ring center is behind/on the current position, with a tapered, short extent.
+    for(let i=0;i<7;i++){let z=0;for(let side=0;side<8;side++)z+=positions.getZ(i*8+side)/8;expect(z).toBeLessThanOrEqual(flight.position.z+.001);expect(z).toBeGreaterThanOrEqual(Math.max(0,flight.position.z-2.2)-.01);}
+    expect(scene.children).toEqual(children);
+  }
+  const disposed=vi.spyOn(trail.geometry,'dispose');renderer.reset();expect(trail.visible).toBe(false);
+  renderer.dispose();expect(disposed).toHaveBeenCalledOnce();expect(scene.children).toEqual([]);
+});
 it('does not rewrite inventory text, labels or classes on unchanged gameplay frames',()=>{
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   const viewport=new ElementStub(),hud=new GrenadeButton(viewport as unknown as HTMLElement,vi.fn()),button=viewport.children[0];

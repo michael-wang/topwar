@@ -7,6 +7,7 @@ export class SessionRecovery {
   private readonly heldKeys = new Set<string>();
   private releaseTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
+  private ready: boolean;
   get blocking(): boolean { return !this.disposed; }
   private readonly previousFocus = document.activeElement as HTMLElement | null;
 
@@ -26,7 +27,9 @@ export class SessionRecovery {
     document.getElementById('session-recovery-loading')?.remove();
     host.inert = false; host.removeAttribute('data-recovery-pending');
   }
-  constructor(private readonly host: HTMLElement, valid: boolean, choose: (continueGame: boolean) => void) {
+  constructor(private readonly host: HTMLElement, valid: boolean, choose: (continueGame: boolean) => void,
+    waitForInitialization = false) {
+    this.ready = !waitForInitialization;
     this.element = SessionRecovery.loading(host);
     this.element.removeAttribute('style'); this.element.replaceChildren();
     this.element.setAttribute('aria-busy', 'false');
@@ -42,6 +45,7 @@ export class SessionRecovery {
         this.decided = true;
         this.element.setAttribute('aria-busy', 'true');
         for (const b of Array.from(card.querySelectorAll('button'))) b.disabled = true;
+        if (waitForInitialization) this.element.textContent = resume ? '正在恢復遊戲…' : '正在開始遊戲…';
         try { choose(resume); } finally { this.finishWhenQuiet(); }
       }); card.append(button);
     }
@@ -89,9 +93,10 @@ export class SessionRecovery {
     if (this.releaseTimer !== null) clearTimeout(this.releaseTimer);
     this.releaseTimer = null;
     // Keep the inert surface through repeat taps/held inputs; never pass them to Start/Resume.
-    if (!this.heldPointers.size && !this.heldKeys.size && !this.disposed)
+    if (this.ready && !this.heldPointers.size && !this.heldKeys.size && !this.disposed)
       this.releaseTimer = setTimeout(() => this.dispose(), 350);
   }
+  initializationReady(): void { this.ready = true; if (this.decided) this.finishWhenQuiet(); }
   private readonly clearHeld = (): void => {
     this.armed = null; this.armedKey = null;
     this.heldPointers.clear(); this.heldKeys.clear(); if (this.decided) this.finishWhenQuiet();

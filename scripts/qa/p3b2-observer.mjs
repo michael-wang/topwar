@@ -22,7 +22,7 @@ try {
       const response = await route.fetch();
       await route.fulfill({ response, body: (await response.text()).replace('app.start();', 'window.__testApp=app;app.start();') });
     });
-    await page.goto('http://127.0.0.1:5173/');
+    await page.goto(process.env.TOPWAR_QA_URL ?? 'http://127.0.0.1:5173/');
     await page.getByRole('button', { name: 'Start game with audio' }).tap();
     await page.waitForFunction(() => window.__testApp.audio.prepareRadio('zh-TW', 'missionIntro') === 'ready');
     await page.evaluate(inset => {

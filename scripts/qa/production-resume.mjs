@@ -32,9 +32,10 @@ try { for (const width of [350, 390]) for (const legacy of [false, true]) {
   });
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap();
   const text = await page.evaluate(() => localStorage.getItem('topwar:session:v1:release')); assert(text);
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
-  await page.getByRole('button', { name: '繼續上次遊戲' }).tap(); await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor();
+  await page.getByRole('button', { name: '繼續上次遊戲' }).tap();
   await page.locator('.session-recovery').waitFor({ state: 'detached' });
+  await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
   assert.deepEqual(await page.evaluate(() => window.__testApp.simulation.getState()), saved.state);
   assert(await page.evaluate(() => window.__testApp.paused && window.__testApp.lifecycle === null && window.__testApp.fps === null));
   assert.equal(await page.locator('.dev-fps,.tuning-panel,.dev-survival-test').count(), 0);

@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 const phase = process.argv[2] ?? 'after', out = resolve(process.env.TOPWAR_STARTUP_OUT ?? `artifacts/p3b3/${phase}`);
 const baseline = process.argv.find(arg => arg.startsWith('--baseline='))?.slice(11);
-const baselineFiles = ['src/main.ts', 'src/app/GameApp.ts', 'src/app/SessionCheckpoint.ts', 'src/ui/SessionRecovery.ts', 'src/audio/GameAudio.ts', 'src/ui/GrenadeButton.ts', 'src/rendering/GameRenderer.ts', 'src/style.css'];
+const baselineFiles = ['src/main.ts', 'src/app/GameApp.ts', 'src/app/SessionCheckpoint.ts', 'src/ui/SessionRecovery.ts', 'src/audio/GameAudio.ts', 'src/ui/GrenadeButton.ts', 'src/rendering/GameRenderer.ts', 'src/rendering/GrenadeRenderer.ts', 'src/simulation/grenade.ts', 'src/simulation/Simulation.ts', 'src/style.css'];
 mkdirSync(out, { recursive: true });
 if (!process.env.TOPWAR_STARTUP_REUSE_BUILD) await build({ build: { outDir: `${out}/dist` }, plugins: [{
   name: 'startup-qa-only', enforce: 'pre', transform(source, id) {

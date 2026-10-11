@@ -1160,6 +1160,7 @@ export class Simulation {
           targetX: target.x, targetZ: target.z, startedAtSeconds: this.state.elapsedSeconds,
           flightSeconds: grenadeConfig.flightSeconds, damageEnemyHp: grenadeConfig.damageEnemyHp,
           blastRadius: grenadeConfig.blastRadius };
+        this.grenadeEvents.push({ kind: 'grenadeThrown' });
       }
     }
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy,

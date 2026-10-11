@@ -10,7 +10,7 @@
 
 ## NOW
 
-**P3-B closed playtest validation.** Pixel 8 review accepts AHEAD and confirms paused checkpoint recovery. Validate immediate recovery interaction blocking and screen Wake Lock using secure USB localhost/HTTPS development. Comparison controls and production balance remain unchanged. DEV retains readable FPS, LATE, CRATE3, CRATE8 and NAVAL, with collapsible MG TEST and four-mode SURVIVAL TEST sections. The phone-selected P3 Ink Spear remains permanent. LATE provides the existing three-MG Lv10 review. English resources remain dormant until international testing. No automatic P3-C work.
+**P3-B closed playtest validation.** Pixel 8 review accepts AHEAD and confirms paused checkpoint recovery. Validate recovery choice availability before assets, Golden Grenade launch confirmation in dense MG combat, and screen Wake Lock using secure USB localhost/HTTPS development. Comparison controls and production balance remain unchanged. DEV retains readable FPS, LATE, CRATE3, CRATE8 and NAVAL, with collapsible MG TEST and four-mode SURVIVAL TEST sections. The phone-selected P3 Ink Spear remains permanent. LATE provides the existing three-MG Lv10 review. English resources remain dormant until international testing. No automatic P3-C work.
 
 ## NEXT
 

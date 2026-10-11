@@ -1206,12 +1206,12 @@ describe('Q primary active item', () => {
       s.state.progression={level:6,xp:0};
       s.state.squad={count:1,rocketCount:0,rifleCounts:[1],rifleRemainder:0};
       await startGame(s.app);s.raf.frame(0);s.raf.frame(100);
-      expect(mock.grenadeUpdate).toHaveBeenLastCalledWith(1,true,true);
+      expect(mock.grenadeUpdate).toHaveBeenLastCalledWith(1,true,true,expect.any(Number));
       s.button();expect(s.control.takeGrenadeRequest()).toBe(true);
       s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(true);
       expect(s.state.grenade.inventory).toBe(1); // Only simulation consumes.
       s.raf.key('p');s.raf.frame(200);
-      expect(mock.grenadeUpdate).toHaveBeenLastCalledWith(1,true,false);
+      expect(mock.grenadeUpdate).toHaveBeenLastCalledWith(1,true,false,expect.any(Number));
       s.button();s.raf.key('q');expect(s.control.takeGrenadeRequest()).toBe(false);
     } finally {s.dispose();}
   });

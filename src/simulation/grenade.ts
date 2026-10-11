@@ -34,7 +34,7 @@ export const GrenadeStateSchema = z.strictObject({
   if (invalid) ctx.addIssue({ code: 'custom', message: 'Inconsistent Grenade lifecycle' });
 });
 export type GrenadeState = z.infer<typeof GrenadeStateSchema>;
-export type GrenadeEvent = { kind: 'grenadeAcquired' } | { kind: 'grenadeSupplyHit' }
+export type GrenadeEvent = { kind: 'grenadeThrown' } | { kind: 'grenadeAcquired' } | { kind: 'grenadeSupplyHit' }
   | { kind: 'grenadeSupplyDamaged'; stage: 1 | 2 }
   | { kind: 'grenadeSupplyOpened'; x: number; z: number; amount: number } | {
   kind: 'grenadeDetonated'; x: number; z: number; radius: number;

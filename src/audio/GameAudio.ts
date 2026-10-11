@@ -13,7 +13,7 @@ const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 
 export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
   | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
-  | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen' | 'grenadeExplosion'
+  | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen' | 'grenadeLaunch' | 'grenadeExplosion'
   | 'enemyCannon' | 'enemyShellImpact' | 'enemyLockOn' | 'radioOpen' | 'radioClose';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
@@ -138,6 +138,9 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
   grenadeExplosion: {from:165,to:38,seconds:.22,wave:'sine',volume:.25,
     secondary:{from:68,to:27,seconds:1.05,wave:'triangle',volume:.12,attackSeconds:.025},
     tertiary:{from:440,to:90,seconds:.095,wave:'sawtooth',volume:.065}},
+  grenadeLaunch: { from: 2300, to: 450, seconds: .055, wave: 'square', volume: .075,
+    secondary: { from: 360, to: 100, seconds: .10, wave: 'triangle', volume: .13 },
+    tertiary: { from: 2200, to: 3200, seconds: .19, wave: 'sine', volume: .09, delaySeconds: .045, attackSeconds: .006 } },
   levelUp: { from: 660, to: 880, seconds: .16, wave: 'sine', volume: .17,
     secondary: { from: 880, to: 1320, seconds: .24, wave: 'sine', volume: .14, delaySeconds: .13 } },
   rifle: { from: 1050, to: 280, seconds: .038, wave: 'sawtooth', volume: .09 },
@@ -388,6 +391,12 @@ export class GameAudio {
         this.weaponBus.gain.setValueAtTime(.3,context.currentTime+.35);
         this.weaponBus.gain.exponentialRampToValueAtTime(1,context.currentTime+.45);
       }
+      if (cue === 'grenadeLaunch' && this.weaponBus) {
+        // Brief release confirmation, affecting weapons only (never radio/warnings/gameplay).
+        const gain = this.weaponBus.gain, now = context.currentTime;
+        gain.cancelScheduledValues(now); gain.setValueAtTime(.25, now);
+        gain.setValueAtTime(.25, now + .16); gain.exponentialRampToValueAtTime(1, now + .26);
+      }
       const environmental = cue === 'groundArtillery' || cue === 'skyFlak' || cue === 'giantDeath' || cue === 'grenadeExplosion' || artillery;
       const filter = environmental ? context.createBiquadFilter() : null;
       if (filter) {
@@ -397,7 +406,7 @@ export class GameAudio {
         filter.connect(this.master);
       }
       const start = context.currentTime;
-      const volumeScale = cue === 'groundArtillery' ? variation?.volumeScale ?? 1 : 1;
+      const volumeScale = cue === 'groundArtillery' ? variation?.volumeScale ?? 1 : cue === 'grenadeLaunch' && this.radioActive ? .65 : 1;
       const durationScale = cue === 'groundArtillery' ? variation?.durationScale ?? 1 : 1;
       const pitchScale = cue === 'groundArtillery' ? variation?.pitchScale ?? 1 : 1;
       const rumbleBuffer = cue === 'groundArtillery' || cue === 'giantDeath'

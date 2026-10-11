@@ -8,18 +8,22 @@ export class GrenadeButton {
   private readonly icon: SVGElement;
   private transferScale = 1;
   private transferGlow = 0;
+  private thrownUntilMs = -Infinity;
   private readonly stopPointer = (event: PointerEvent): void => event.stopPropagation();
   private readonly click = (): void => { if (!this.element.disabled) this.activate(); };
   constructor(viewport: HTMLElement, private readonly activate: () => void) {
     this.element.type = 'button'; this.element.className = 'grenade-button';
     this.element.title = 'Throw Grenade (Q)';
-    this.element.innerHTML = `${grenadeIcon}<strong>0</strong><span class="combat-keycue" aria-hidden="true">Q</span>`;
+    this.element.innerHTML = `${grenadeIcon}<strong>0</strong><span class="combat-keycue" aria-hidden="true">Q</span><span class="grenade-thrown-label" aria-hidden="true">已投出</span>`;
     this.count = this.element.querySelector('strong')!; this.icon = this.element.querySelector('svg')!;
     this.element.addEventListener('pointerdown', this.stopPointer);
     this.element.addEventListener('click', this.click);
     this.reset(); viewport.append(this.element);
   }
-  update(inventory: number, acquired: boolean, enabled: boolean): void {
+  update(inventory: number, acquired: boolean, enabled: boolean, nowMs = 0): void {
+    if (nowMs >= this.thrownUntilMs && this.thrownUntilMs !== -Infinity) {
+      this.thrownUntilMs = -Infinity; this.element.classList.remove('grenade-thrown');
+    }
     if (this.element.hidden === acquired) this.element.hidden = !acquired;
     const disabled = !enabled || inventory === 0;
     if (this.element.disabled !== disabled) this.element.disabled = disabled;
@@ -32,9 +36,15 @@ export class GrenadeButton {
     this.previousInventory = inventory;
   }
   reset(): void {
+    this.thrownUntilMs = -Infinity; this.element.classList.remove('grenade-thrown');
     this.element.hidden = true; this.element.disabled = true; this.previousInventory = 0;
     this.count.textContent = '0'; this.element.classList.add('grenade-empty');
     this.element.classList.remove('grenade-acquired');
+  }
+  presentThrow(nowMs: number): void {
+    this.thrownUntilMs = nowMs + 420;
+    this.element.classList.remove('grenade-acquired');
+    this.element.classList.add('grenade-thrown');
   }
   restore(inventory: number, acquired: boolean): void {
     this.reset(); this.previousInventory = inventory; this.count.textContent = String(inventory);

@@ -52,7 +52,7 @@ try { for (const width of [350, 390]) {
     return { visible: !document.querySelector('.field-observer').hidden, fpsBottom: fps.bottom, portraitTop: portrait.top };
   }); assert(introSafe.visible && introSafe.fpsBottom < introSafe.portraitTop, JSON.stringify(introSafe));
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap(); await stopFrames();
-  const regular = await snapshot(); await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
+  const regular = await snapshot(); await page.reload(); await page.locator('.session-recovery button').first().waitFor();
   await continueGame(); assert.deepEqual(await snapshot(), regular);
   await page.getByRole('button', { name: 'Resume game', exact: true }).tap(); await stopFrames();
   await ahead(); await advance(1800);
@@ -73,7 +73,7 @@ try { for (const width of [350, 390]) {
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap(); await stopFrames();
   const paused = await snapshot(), diagnostics = await page.evaluate(() => window.__testApp.lifecycle);
   assert.equal(await page.locator('.dev-fps').textContent(), 'PAUSED');
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor();
   await page.screenshot({ path: `${out}/${width}-continue.png` });
   await continueGame(); assert.deepEqual(await snapshot(), paused);
   await page.screenshot({ path: `${out}/${width}-restored-ahead10.png` });
@@ -107,7 +107,7 @@ try { for (const width of [350, 390]) {
     function savedX() { return a.simulation.getFrameState().player.x; }
     return { state: sim.getState(), tuning };
   });
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running); await continueGame();
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor(); await continueGame();
   assert.deepEqual(await snapshot(), savedFlight);
   const actual = await page.evaluate(({ tuning }) => { const a = window.__testApp, x = a.simulation.getFrameState().player.x;
     for (let i = 0; i < 240; i++) a.simulation.step(1 / 60, { targetX: x }, tuning); return a.simulation.getState(); }, expected);
@@ -125,12 +125,12 @@ try { for (const width of [350, 390]) {
     if (a.simulation !== sim || !a.paused || a.previousFrameTimestampMs !== null) throw Error('Same-page lifecycle reset run or timing');
     return { state: sim.getState(), diagnostics: a.lifecycle };
   });
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running); await continueGame(); assert.deepEqual(await snapshot(), lifecycle.state);
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor(); await continueGame(); assert.deepEqual(await snapshot(), lifecycle.state);
   // Running -> hidden -> reload separately, plus real Chromium freeze/active (not Android discard).
   await page.getByRole('button', { name: 'Resume game', exact: true }).tap(); await stopFrames(); await advance(30);
   const hidden = await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
     document.dispatchEvent(new Event('visibilitychange')); return window.__testApp.simulation.getState(); });
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running); await continueGame(); assert.deepEqual(await snapshot(), hidden);
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor(); await continueGame(); assert.deepEqual(await snapshot(), hidden);
   const cdp = await context.newCDPSession(page);
   await cdp.send('Page.setWebLifecycleState', { state: 'frozen' }); await cdp.send('Page.setWebLifecycleState', { state: 'active' });
   assert(await page.evaluate(() => window.__testApp.paused));
@@ -144,13 +144,13 @@ try { for (const width of [350, 390]) {
   assert.equal(await page.evaluate(() => localStorage.getItem('topwar:session:v1:dev')), null);
   assert.equal(await page.evaluate(() => window.__testApp.devReviewFixture), 'survival10-ahead');
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap(); await stopFrames();
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor();
   await page.getByRole('button', { name: '重新開始' }).tap(); assert.equal(await page.evaluate(() => localStorage.getItem('topwar:session:v1:dev')), null);
   await start(); assert.equal((await snapshot()).progression.level, 1);
   // Invalid records offer a fresh game, never a failing Continue.
   for (const bad of ['{', JSON.stringify({ version: 999 })]) {
     await page.evaluate(bad => { window.__testApp.stop(); localStorage.setItem('topwar:session:v1:dev', bad); }, bad);
-    await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
+    await page.reload(); await page.locator('.session-recovery button').first().waitFor();
     assert.equal(await page.getByRole('button', { name: '繼續上次遊戲' }).count(), 0);
     await page.getByRole('button', { name: '重新開始' }).tap(); await start();
   }

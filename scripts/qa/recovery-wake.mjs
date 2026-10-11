@@ -54,7 +54,7 @@ try { for (const width of [350, 390]) {
   await page.keyboard.down(' ');
   const loadingTouch = await context.newCDPSession(page);
   await loadingTouch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: width / 2, y: 405 }] });
-  await navigation; await page.waitForFunction(() => window.__testApp?.running);
+  await navigation; await page.locator('.session-recovery button').first().waitFor();
   await loadingTouch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await page.keyboard.up(' '); assert(await page.getByRole('button', { name: '繼續上次遊戲' }).isVisible());
   // The departing paused page may refresh lifecycle metadata; the saved run must be identical.
@@ -62,20 +62,20 @@ try { for (const width of [350, 390]) {
   assert.deepEqual(JSON.parse(text).state, saved);
   const readyAt = await page.evaluate(() => performance.now());
   const pending = await page.evaluate(() => {
-    const a = window.__testApp, before = JSON.stringify(a.simulation.getState());
-    // Direct dispatched controls bypass browser inert hit-testing; application guards must hold too.
-    document.querySelector('.pause-button').click(); document.querySelector('[data-survival="8"]').click();
-    a.retry(); a.requestGrenade(); a.renderFrame(1e9); cancelAnimationFrame(a.frameId);
-    return { same: before === JSON.stringify(a.simulation.getState()), startup: a.startup,
+    return { appAbsent: !window.__testApp, controlsAbsent: !document.querySelector('.pause-button,.grenade-button,.tuning-panel'),
       checkpoint: localStorage.getItem('topwar:session:v1:dev'), requests: window.__wakeQA.requests,
-      hiddenControls: getComputedStyle(document.querySelector('.pause-button')).visibility === 'hidden' };
-  }); assert(pending.same && pending.hiddenControls && pending.requests === 0 && pending.startup === 'recovering'); assert.equal(pending.checkpoint, text);
+      inert: document.querySelector('#game-viewport').inert };
+  }); assert(pending.appAbsent && pending.controlsAbsent && pending.requests === 0 && pending.inert); assert.equal(pending.checkpoint, text);
   await page.keyboard.press('Tab'); assert(await page.getByRole('button', { name: '重新開始' }).evaluate(e => e === document.activeElement));
   await page.keyboard.press('Tab'); assert(await page.getByRole('button', { name: '繼續上次遊戲' }).evaluate(e => e === document.activeElement));
-  const callbackCount = await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll('.session-recovery button')], a = window.__testApp;
+  await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('.session-recovery button')];
     buttons[0].click(); buttons[1].click(); buttons[0].click();
-    a.renderFrame(performance.now()); cancelAnimationFrame(a.frameId);
+  });
+  await page.touchscreen.tap(width / 2, 405); await page.keyboard.press(' ');
+  await page.waitForFunction(() => window.__testApp?.running);
+  const callbackCount = await page.evaluate(() => {
+    const a = window.__testApp; a.renderFrame(performance.now()); cancelAnimationFrame(a.frameId);
     return { restored: a.restored, startup: a.startup, fixture: a.devReviewFixture, state: a.simulation.getState(), paused: a.paused,
       checkpoint: localStorage.getItem('topwar:session:v1:dev'), requests: window.__wakeQA.requests };
   }); assert.deepEqual(callbackCount.state, saved); assert(callbackCount.paused && callbackCount.restored);
@@ -107,16 +107,17 @@ try { for (const width of [350, 390]) {
   await page.evaluate(() => window.__testApp.dispose()); await status('released'); assert(await page.evaluate(() => window.__wakeQA.live.every(s => s.released)));
   // New Game also has a once-only decision; invalid storage cannot leak through.
   await page.evaluate(text => localStorage.setItem('topwar:session:v1:dev', text), text); delayed = false;
-  await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
+  await page.reload(); await page.locator('.session-recovery button').first().waitFor();
   await page.evaluate(() => { const b = [...document.querySelectorAll('.session-recovery button')]; b[1].click(); b[0].click(); });
   // A real fast repeated touch and key press must not reach the newly displayed Start surface.
   await page.touchscreen.tap(width / 2, 460); await page.keyboard.press(' ');
+  await page.waitForFunction(() => window.__testApp?.running);
   assert.equal(await page.evaluate(() => window.__testApp.startup), 'awaiting-start');
   await page.locator('.session-recovery').waitFor({ state: 'detached' });
   assert.equal(await page.evaluate(() => localStorage.getItem('topwar:session:v1:dev')), null);
   assert.equal(await page.evaluate(() => window.__testApp.startup), 'awaiting-start');
   await page.evaluate(() => { window.__testApp.stop(); localStorage.setItem('topwar:session:v1:dev', '{'); }); await page.reload();
-  await page.waitForFunction(() => window.__testApp?.running); assert.equal(await page.getByRole('button', { name: '繼續上次遊戲' }).count(), 0);
+  await page.locator('.session-recovery button').first().waitFor(); assert.equal(await page.getByRole('button', { name: '繼續上次遊戲' }).count(), 0);
   await page.getByRole('button', { name: '重新開始' }).tap(); await page.locator('.session-recovery').waitFor({ state: 'detached' });
   assert.equal(await page.locator('#session-recovery-loading').count(), 0);
   assert.deepEqual(errors, []); results.push({ width, early, readyAt, pendingBlocked: true, exactRestore: true, races: true, lifecycle: true, gameOverDispose: true, duplicateDecisions: true, errors });

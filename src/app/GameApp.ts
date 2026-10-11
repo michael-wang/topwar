@@ -122,7 +122,8 @@ export class GameApp {
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
     private readonly reviewThreats = false, audio = new GameAudio(), portraits?: ObserverPortraits,
-    saved: CheckpointRead = { status: 'empty' }) {
+    saved: CheckpointRead = { status: 'empty' },
+    earlyRecovery?: { dialog: SessionRecovery; continueGame: boolean }) {
     this.sessionLevel = level;
     this.lifecycle = import.meta.env.DEV ? new DevLifecycle(saved.status,
       saved.checkpoint?.paused, saved.checkpoint?.hidden) : null;
@@ -205,7 +206,8 @@ export class GameApp {
     if (saved.status === 'valid' || saved.status === 'invalid') {
       this.startup = 'recovering';
       this.recoveryPending = saved.checkpoint ?? null;
-      this.recovery = new SessionRecovery(viewport, saved.status === 'valid', this.chooseRecovery);
+      this.recovery = earlyRecovery?.dialog ?? new SessionRecovery(viewport, saved.status === 'valid', this.chooseRecovery);
+      if (earlyRecovery) this.chooseRecovery(earlyRecovery.continueGame);
     }
   }
 
@@ -550,8 +552,8 @@ export class GameApp {
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
         this.restored = true; this.startup = 'started'; this.setPaused(true);
-        // Continue is an activation gesture, but never implicitly advances the restored simulation.
-        void this.audio.activate(); this.renderer.preparePresentation();
+        // Early Continue can precede AudioContext creation. Explicit Resume owns audio activation.
+        this.renderer.preparePresentation();
         if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-restored', { tick: s.tick });
         return;
       } catch { this.showCheckpointFailure('無法恢復進度，請重新開始'); }
@@ -674,12 +676,14 @@ export class GameApp {
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
-          && !!grenadeTarget(state, state.catharsis!.balance.grenade));
+          && !!grenadeTarget(state, state.catharsis!.balance.grenade), this.presentationMs);
       const grenadeEvents = this.simulation.consumeGrenadeEvents();
       this.audio.presentSupply(grenadeEvents,this.presentationMs);
       for (const event of grenadeEvents) {
         if(event.kind==='grenadeSupplyOpened')this.supplyTransfer?.present(event,this.presentationMs);
-        if (event.kind === 'grenadeAcquired') this.audio.play('reward');
+        if (event.kind === 'grenadeThrown') {
+          this.audio.play('grenadeLaunch'); this.grenadeButton?.presentThrow(this.presentationMs);
+        } else if (event.kind === 'grenadeAcquired') this.audio.play('reward');
         else if (event.kind === 'grenadeDetonated') this.audio.play('grenadeExplosion');
       }
       this.renderer.presentGrenade(grenadeEvents, this.presentationMs);

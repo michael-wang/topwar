@@ -25,6 +25,17 @@ function armed() {
   s.giantEncounter = { scheduledAtSeconds: 0, spawned: true }; sim.restoreState(s); return sim;
 }
 function ticks(sim: Simulation, count: number) { for (let i = 0; i < count; i++) sim.step(1/60, { targetX: 0 }, tuning); }
+it('emits one authoritative throw, none for blocked inputs or restored flights, and a separate impact',()=>{
+  const sim=armed();sim.step(1/60,{targetX:0,throwGrenade:true},tuning);
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeThrown'}]);
+  const saved=sim.getState(),clone=make();clone.restoreState(JSON.parse(JSON.stringify(saved)));
+  expect(clone.consumeGrenadeEvents()).toEqual([]);
+  for(let i=0;i<37;i++) for(const s of [sim,clone]) s.step(1/60,{targetX:0,throwGrenade:true},tuning);
+  expect(sim.consumeGrenadeEvents()).toEqual([]);expect(clone.consumeGrenadeEvents()).toEqual([]);
+  ticks(sim,1);ticks(clone,1);expect(sim.getState()).toEqual(clone.getState());
+  expect(sim.consumeGrenadeEvents().map(e=>e.kind)).toEqual(['grenadeDetonated']);
+  sim.step(1/60,{targetX:0,throwGrenade:true},tuning);expect(sim.consumeGrenadeEvents()).toEqual([]);
+});
 it('spends three charges sequentially, blocks overlapping flights, and restores reserves in flight', () => {
   const sim=armed(),s=sim.getState();s.grenade!.inventory=3;sim.restoreState(s);
   for(const reserve of [2,1,0]) {
@@ -61,7 +72,7 @@ it('lands an empty-field throw at the fixed center, with no XP, retargeting or d
   for(let i=0;i<37;i++){sim.step(1/60,{targetX:-2.8,throwGrenade:true},tuning);clone.step(1/60,{targetX:-2.8,throwGrenade:true},tuning);}
   expect(sim.getState().grenade!.inventory).toBe(2);expect(sim.getState().grenade!.flight).toMatchObject({targetX:0,targetZ:14});
   ticks(sim,1);ticks(clone,1);expect(sim.getState()).toEqual(clone.getState());
-  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeDetonated',x:0,z:14,radius:4,victims:[]}]);
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeThrown'},{kind:'grenadeDetonated',x:0,z:14,radius:4,victims:[]}]);
   expect(sim.getState().progression).toEqual(s.progression);ticks(sim,90);expect(sim.consumeGrenadeEvents()).toEqual([]);
 });
 
@@ -144,7 +155,8 @@ it('detonates after 39 ticks: kills Grunt, leaves Heavy at 6 and Giant at 163, a
   const sim=armed();sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(sim,37);
   expect(sim.getState().enemies).toHaveLength(3); ticks(sim,1);
   expect(sim.getState().enemies.map(e=>e.hp)).toEqual([6,163]);expect(sim.getState().progression!.xp).toBe(1);
-  const event=sim.consumeGrenadeEvents()[0];expect(event.kind).toBe('grenadeDetonated');
+  const events=sim.consumeGrenadeEvents(); expect(events.map(e=>e.kind)).toEqual(['grenadeThrown','grenadeDetonated']);
+  const event=events[1];expect(event.kind).toBe('grenadeDetonated');
   if(event.kind==='grenadeDetonated')expect(event.victims.map(v=>v.id)).toEqual([1,2,3]);
   ticks(sim,60);expect(sim.getState().progression!.xp).toBe(1);expect(sim.consumeGrenadeEvents()).toEqual([]);
 });
@@ -202,7 +214,8 @@ it('awards every expanded crowd victim once through ordinary XP overflow', () =>
   sim.restoreState(s);sim.step(1/60,{targetX:0,throwGrenade:true},tuning);ticks(sim,38);
   expect(sim.getState().enemies).toHaveLength(0);
   expect(sim.getState().progression).toEqual({level:4,xp:22});
-  const event=sim.consumeGrenadeEvents()[0];
+  const events=sim.consumeGrenadeEvents(); expect(events.map(e=>e.kind)).toEqual(['grenadeThrown','grenadeDetonated']);
+  const event=events[1];
   expect(event.kind).toBe('grenadeDetonated');
   if(event.kind==='grenadeDetonated') {
     expect(event.victims.map(v=>v.id)).toEqual(Array.from({length:32},(_,i)=>i+1));

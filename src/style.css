@@ -545,6 +545,17 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .grenade-button:focus-visible { outline: 3px solid #ffe4a4; outline-offset: 4px; }
 .grenade-acquired { animation: grenade-acquired .55s ease-out; }
 .game-paused .grenade-acquired { animation-play-state: paused; }
+.grenade-thrown-label { display: none; position: absolute; bottom: calc(100% + 8px); left: 0;
+  padding: 4px 7px; border: 1px solid #ffb12f; border-radius: 6px; white-space: nowrap;
+  background: #14212bf2; color: #fff1bb; font: 900 16px/1.1 var(--font-combat-hud); pointer-events: none; }
+.grenade-button.grenade-thrown { border-color: #fff1bb; color: #fff1bb;
+  background: linear-gradient(145deg, #ffb12f, #a84313 65%); box-shadow: inset 0 0 0 3px #70441f, 0 0 16px #ffb12faa; }
+.grenade-thrown .grenade-thrown-label { display: block; }
+.grenade-thrown::after { content: ''; position: absolute; inset: -3px; border: 3px solid #ffb12f;
+  border-radius: 18px; pointer-events: none; animation: grenade-throw-pulse .42s ease-out both; }
+.game-paused .grenade-thrown::after { animation-play-state: paused; }
+@keyframes grenade-throw-pulse { from { transform: scale(.9); opacity: 1; } to { transform: scale(1.45); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .grenade-thrown::after { animation: none; } }
 .grenade-button.grenade-transferring { transform: scale(var(--supply-reward-scale, 1));
   filter: drop-shadow(0 0 var(--supply-reward-glow, 0px) #ffcf78); }
 .supply-reward-transfer { position: absolute; inset: 0; z-index: 16; pointer-events: none; overflow: hidden; }
