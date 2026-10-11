@@ -59,7 +59,7 @@ export function readCheckpoint(storage = browserSessionStorage()): CheckpointRea
     if (text.length > MAX_CHECKPOINT_CHARACTERS) throw Error('Oversized checkpoint');
     const c = envelope.parse(JSON.parse(text)) as SessionCheckpoint;
     if (c.fixture !== null && (!import.meta.env.DEV
-      || !/^(late|crate3|crate8|naval|mg(6|7|8|9|10)|survival(7|8|9|10)-(baseline|experimental|staged|ahead))$/.test(c.fixture)))
+      || !/^(late|crate3|crate8|naval|mg(6|7|8|9|10)|survival(7|8|9|10)-(baseline|experimental|staged|ahead)|barrage(8|9|10)-(on|off))$/.test(c.fixture)))
       throw Error('Unsupported fixture');
     if (c.level.id !== c.state.levelId || c.mode !== (c.state.catharsis?.balance.defenseMode ? 'defense' : 'legacy')
       || c.mode !== (c.config.catharsis?.defenseMode ? 'defense' : 'legacy') || c.state.squad.count === 0)

@@ -14,7 +14,7 @@ class ElementStub extends EventTarget {
   remove = vi.fn();
   constructor(readonly tagName = 'DIV') { super(); }
   setAttribute(key: string, value: string) { this.attrs[key] = value; }
-  append(child: ElementStub) { this.children.push(child); }
+  append(...children: ElementStub[]) { this.children.push(...children); }
   closest() { return this.interactiveAncestor ? this : null; }
 }
 
@@ -36,6 +36,17 @@ function setup() {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+it('adds independent touch-friendly NAVAL BARRAGE selection and restores its selected state',()=>{
+  const {controls,select}=setup(),section=controls.navalBarrage as unknown as ElementStub;
+  expect(section.tagName).toBe('DETAILS');expect(section.children[0].textContent).toBe('NAVAL BARRAGE');
+  const buttons=section.children[1].children;
+  expect(buttons.map(b=>b.textContent)).toEqual(['BARRAGE ON','BARRAGE OFF','LV8','LV9','LV10']);
+  buttons[1].dispatchEvent(new Event('click'));expect(select.mock.lastCall).toEqual(['barrage10-off']);
+  controls.setSelected('barrage10-off');buttons[2].dispatchEvent(new Event('click'));expect(select.mock.lastCall).toEqual(['barrage8-off']);
+  controls.setSelected('barrage9-on');expect(buttons.filter(b=>b.attrs['aria-pressed']==='true').map(b=>b.textContent)).toEqual(['BARRAGE ON','LV9']);
+  for(const b of buttons)expect(b.style.cssText).toContain('min-height:48px');controls.dispose();expect(section.remove).toHaveBeenCalledOnce();
+});
 
 it('exposes exactly four working mobile fixture buttons, with one selected state', () => {
   const {controls,root,select}=setup();

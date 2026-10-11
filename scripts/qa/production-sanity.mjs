@@ -15,7 +15,7 @@ if (['dev-fps', 'dev-wake-status', 'INSECURE ORIGIN', 'DENIED / ERROR', 'wasDisc
   throw Error('DEV FPS/lifecycle diagnostics or HP audit controls survived production tree-shaking');
 if (['SURVIVAL TEST', 'dev-survival-test', 'survival7-baseline', 'survival10-experimental', 'survival10-staged', 'survival10-ahead', 'Invalid SURVIVAL TEST preset', 'ordinarySpeedMultiplier:1.4', 'ordinarySpeedMultiplier:1.6', 'heavyCount:11', 'heavyCount:15', 'heavyCount:19', 'minimumXp:245'].some(marker => shippingJs.includes(marker)))
   throw Error('Survival comparison controls or fixtures survived production tree-shaking');
-if (['MG TEST', 'dev-mg-test', 'MG6', 'MG9', 'MG10', 'MG TEST requires', 'MG TEST preset must'].some(marker => shippingJs.includes(marker)))
+if (['NAVAL BARRAGE', 'dev-naval-barrage', 'Invalid NAVAL BARRAGE review', 'BARRAGE ON', 'BARRAGE OFF', 'MG TEST', 'dev-mg-test', 'MG6', 'MG9', 'MG10', 'MG TEST requires', 'MG TEST preset must'].some(marker => shippingJs.includes(marker)))
   throw Error('Temporary MG test controls or fixtures survived production tree-shaking');
 if (['TRACER:', 'dev-projectile-controls', 'Ivory dart', 'Red tracer', 'Ink spear', 'LV1 RIFLE', 'EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'CRATE3', 'CRATE8', 'NAVAL', 'createNavalReview', 'SHELL review requires', 'shell-review-muzzle', 'artillery dodge test', 'Supply DEV review requires', 'Late DEV entry requires', 'Restart Lv6 before the Machine Gun release and full Carnival'].some(marker => shippingJs.includes(marker)))
   throw Error('Development review controls/factory survived production tree-shaking');

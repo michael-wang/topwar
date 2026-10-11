@@ -27,7 +27,7 @@ export function diagnosticTransform() {
       source = replace(source, '    if (giantEncounter && catharsis && enemyStream && squad.count > 0', "    qa.frame(progression, squad, nextZ);\n    qa.phase('giant-intro');\n    if (giantEncounter && catharsis && enemyStream && squad.count > 0");
       source = replace(source, '      admitDefenseGroup(enemies, enemyStream, row, this.enemyStreamDefinition.seed,', "      qa.phase('mg-release');\n      admitDefenseGroup(enemies, enemyStream, row, this.enemyStreamDefinition.seed,");
       source = replace(source, '    const carnival = advanceCarnival(', "    qa.phase('carnival');\n    const carnival = advanceCarnival(");
-      source = replace(source, '    const postCapSurvival = carnival.status', "    qa.phase('survival-opportunity');\n    const postCapSurvival = carnival.status");
+      source = replace(source, '    const postCapSurvival = survivalBlocked', "    qa.phase('survival-opportunity');\n    const postCapSurvival = survivalBlocked");
     } else return;
     return { code: prefix + source, map: null };
   }};

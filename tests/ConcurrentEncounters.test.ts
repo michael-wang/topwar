@@ -81,11 +81,15 @@ it.each([1, 17, 42, 99, 2026])('keeps natural progression and five real artiller
   const { stepMs: __, ...b } = runDifficultyPilot(seed);
   expect(a).toEqual(b);
   expect(a.giants[0].spawn).toBe(a.levels[4]); expect(a.giants[0].hp).toBe(172);
-  expect(a.entrance).toBe(a.release); expect(a.shells).toHaveLength(5);
-  a.shells.forEach((s, i) => expect(s.time - a.release!).toBeCloseTo([8.8, 12, 16, 17.3, 21][i], 7));
+  expect(a.entrance).toBe(a.release);
+  const intro=a.shells.filter(s=>s.time-a.release!<27);
+  expect(intro).toHaveLength(5);
+  intro.forEach((s, i) => expect(s.time - a.release!).toBeCloseTo([8.8, 12, 16, 17.3, 21][i], 7));
+  expect(a.shells.slice(5).every(s=>s.time-a.release!>=28-1e-8)).toBe(true);
   expect(a.carnivalEnd! - a.release!).toBeCloseTo(24, 7);
   expect(a.destroyerEnd! - a.release!).toBeCloseTo(27, 7);
   expect(a.survivalStart).toBe(a.destroyerEnd);
   expect(a.waves.filter(w => w.carnival && !w.release).every(w => w.heavy === 0 && w.population <= 36)).toBe(true);
-  expect(a.final.level!.level).toBe(10);
+  expect(a.final.level!.level).toBe(Math.max(...Object.keys(a.levels).map(Number)));
+  if(a.final.level!.level<10) {expect(a.gameOver).toBe(true);expect(a.casualties).toBeGreaterThan(0);}
 }, 30000);

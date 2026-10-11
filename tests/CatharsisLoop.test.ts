@@ -10,7 +10,7 @@ import { projectRenderState } from '../src/app/projectRenderState';
 
 const config = GameConfigSchema.parse(gameData);
 // The first experiment's dormant path is still supported; defense has its own suite.
-const balance = { ...config.catharsis!, levelEncounters: undefined, defenseMode: false, groupSize: 4, waveRows: 12,
+const balance = { ...config.catharsis!, levelEncounters: undefined, navalBarrage: undefined, defenseMode: false, groupSize: 4, waveRows: 12,
   gruntSpeed: .8, heavySpeed: .3, heavyHp: 5 };
 const level = LevelDefinitionSchema.parse(levelData);
 const isolated = { id: 'lane-test', length: 1000, enemyGroups: [], upgradeGates: [] };

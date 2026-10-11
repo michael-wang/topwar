@@ -17,11 +17,12 @@ function storage() {
   return { entries, getItem: (key: string) => entries.get(key) ?? null,
     setItem: (key: string, text: string) => { entries.set(key, text); }, removeItem: (key: string) => { entries.delete(key); } };
 }
-function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'survival10-experimental' | 'survival10-baseline' | 'crate3' | 'naval' = 'survival10-ahead') {
+function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'survival10-experimental' | 'survival10-baseline' | 'crate3' | 'naval' | 'barrage10-on' | 'barrage10-off' = 'survival10-ahead') {
   const sim = createDevReviewFixture({ seed: 17, level, startSquad: 1, startRocketCount: 0,
     tiers: config.tiers, catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } },
   config.weapon.rifle.fireRate, fixture);
   for (let i = 0; i < 110; i++) sim.step(1 / 60, { targetX: 0, ...(i === 90 ? { throwGrenade: true } : {}) }, pilotTuning);
+  sim.consumeArtilleryEvents(); // Already-presented cues are never replayed by recovery.
   const state = sim.getState();
   const c: SessionCheckpoint = { version: 1, simulationContract: 1, game: 'topwar', mode: 'defense',
     savedAt: 1, build: 'baseline', paused: true, hidden: true, reason: 'hidden', fixture,
@@ -55,7 +56,7 @@ describe('durable checkpoint', () => {
       expect(sim.getState().postCapSurvival!.nextGrenadeSupplyAtSeconds).toBe(90);
     }
   });
-  it.each(['survival10-ahead', 'survival10-staged', 'survival10-experimental', 'survival10-baseline', 'crate3', 'naval'] as const)('restores %s and continues every authoritative clock identically', fixture => {
+  it.each(['survival10-ahead', 'survival10-staged', 'survival10-experimental', 'survival10-baseline', 'crate3', 'naval', 'barrage10-on', 'barrage10-off'] as const)('restores %s and continues every authoritative clock identically', fixture => {
     const { sim, c } = checkpoint(fixture), store = storage(), before = JSON.stringify(sim.getState());
     expect(writeCheckpoint(c, store).ok).toBe(true);
     expect(JSON.stringify(sim.getState())).toBe(before);

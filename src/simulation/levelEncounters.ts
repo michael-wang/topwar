@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { EncounterAction, LevelEncounterConfig } from '../config/levelEncounterConfig';
 import type { SimulationState } from './SimulationState';
 import { enterNavalPresence, retreatNavalPresence } from './navalPresence';
+import { setNavalBarrage } from './navalBarrage';
 
 const clock = z.number().finite().nonnegative().nullable();
 const schema = z.strictObject({ version: z.literal(1), ordinaryEnabled: z.boolean(), survivalEnabled: z.boolean(),
@@ -59,6 +60,8 @@ export function applyEncounterAction(frame: SimulationState, action: EncounterAc
   if (!frame.squad.count) return;
   if (action === 'ordinaryOn' || action === 'ordinaryOff') control.ordinaryEnabled = action === 'ordinaryOn';
   else if (action === 'startSurvival') control.survivalEnabled = true;
+  else if ((action === 'barrageOn' || action === 'barrageOff') && frame.navalBarrage && frame.catharsis?.balance.navalBarrage)
+    frame.navalBarrage = setNavalBarrage(frame.navalBarrage,frame.catharsis.balance.navalBarrage,frame.elapsedSeconds,action==='barrageOn');
   else if (action === 'destroyerRetreat' && config && frame.navalPresence)
     frame.navalPresence = retreatNavalPresence(frame.navalPresence, frame.elapsedSeconds, config);
   else if ((action === 'destroyerIntro' || action === 'destroyerEnter') && config?.enabled && frame.navalPresence) {

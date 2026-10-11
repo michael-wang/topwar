@@ -1,6 +1,7 @@
 import type { DevReviewFixture } from '../app/DevReviewFixtures';
 import { MG_TEST_PRESETS, type MachineGunReviewFixture } from '../app/DevMachineGunReview';
 import type { SurvivalReviewFixture, SurvivalReviewLevel, SurvivalReviewMode } from '../app/DevSurvivalReview';
+import type { NavalBarrageReviewFixture, NavalBarrageReviewLevel } from '../app/DevNavalBarrageReview';
 
 // Constructed only behind import.meta.env.DEV. Inline styling stays out of the
 // shipping CSS, along with the controls and fixture factory in production JS.
@@ -8,6 +9,9 @@ export class DevReviewControls {
   readonly element = document.createElement('div');
   readonly mgTest = document.createElement('details');
   readonly survivalTest = document.createElement('details');
+  readonly navalBarrage = document.createElement('details');
+  private barrageLevel: NavalBarrageReviewLevel = 10;
+  private barrageChoice = 'on';
   private survivalMode: SurvivalReviewMode = 'experimental';
   private survivalLevel: SurvivalReviewLevel = 8;
   private readonly buttons: HTMLButtonElement[] = [];
@@ -75,15 +79,29 @@ export class DevReviewControls {
     this.survivalTest.append(survivalSummary); this.survivalTest.append(survivalGrid);
     this.survivalTest.addEventListener('pointerdown', this.stopPointer);
     viewport.append(this.survivalTest);
+    this.navalBarrage.className='dev-naval-barrage';this.navalBarrage.style.cssText=this.mgTest.style.cssText;
+    const navalSummary=document.createElement('summary');navalSummary.textContent='NAVAL BARRAGE';navalSummary.style.cssText=summary.style.cssText;
+    const navalGrid=document.createElement('div');navalGrid.style.cssText=survivalGrid.style.cssText;
+    for(const key of ['on','off','8','9','10']) {
+      const button=document.createElement('button');button.type='button';button.dataset.barrage=key;
+      button.textContent=key==='on'?'BARRAGE ON':key==='off'?'BARRAGE OFF':`LV${key}`;
+      button.style.cssText='min-height:48px;margin:0;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 11px var(--font-utility,sans-serif);cursor:pointer;touch-action:manipulation';
+      button.title='Restart AHEAD Survival with the same enemies and optional real naval barrage';
+      button.addEventListener('click',()=>{if(key==='on'||key==='off')this.barrageChoice=key;else this.barrageLevel=Number(key) as NavalBarrageReviewLevel;
+        select(`barrage${this.barrageLevel}-${this.barrageChoice}` as NavalBarrageReviewFixture);button.blur();});
+      this.buttons.push(button);navalGrid.append(button);
+    }
+    this.navalBarrage.append(navalSummary,navalGrid);this.navalBarrage.addEventListener('pointerdown',this.stopPointer);viewport.append(this.navalBarrage);
     this.setSelected();
   }
   setSelected(role?: DevReviewFixture): void {
+    if(role?.startsWith('barrage')) {const [level,choice]=role.split('-');this.barrageLevel=Number(level.slice(7)) as NavalBarrageReviewLevel;this.barrageChoice=choice;}
     if (role?.startsWith('survival')) {
       const [level, mode] = role.split('-');
       this.survivalLevel = Number(level.slice(8)) as SurvivalReviewLevel; this.survivalMode = mode as SurvivalReviewMode;
     }
     for (const button of this.buttons) {
-      const selected = button.dataset.survival !== undefined
+      const selected = button.dataset.barrage !== undefined ? button.dataset.barrage===this.barrageChoice || button.dataset.barrage===String(this.barrageLevel) : button.dataset.survival !== undefined
         ? button.dataset.survival === this.survivalMode || button.dataset.survival === String(this.survivalLevel)
         : button.dataset.role === role;
       button.setAttribute('aria-pressed', String(selected));
@@ -94,6 +112,7 @@ export class DevReviewControls {
     this.element.removeEventListener('pointerdown', this.stopPointer);
     this.mgTest.removeEventListener('pointerdown', this.stopPointer);
     this.survivalTest.removeEventListener('pointerdown', this.stopPointer);
+    this.navalBarrage.removeEventListener('pointerdown',this.stopPointer);this.navalBarrage.remove();
     this.element.remove();
     this.mgTest.remove();
     this.survivalTest.remove();

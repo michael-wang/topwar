@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const EncounterActionSchema = z.enum(['ordinaryOn', 'ordinaryOff', 'startSurvival',
-  'destroyerIntro', 'destroyerEnter', 'destroyerRetreat']);
+  'destroyerIntro', 'destroyerEnter', 'destroyerRetreat', 'barrageOn', 'barrageOff']);
 export type EncounterAction = z.infer<typeof EncounterActionSchema>;
 export const LevelEncounterConfigSchema = z.strictObject({
   version: z.literal(1), initialOrdinaryEnabled: z.boolean(),

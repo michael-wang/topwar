@@ -21,11 +21,11 @@ export function survivalReviewConfig(current: CatharsisConfig['postCapSurvival']
   return PostCapSurvivalConfigSchema.parse({ ...shared, ...presets[mode], enabled: true });
 }
 
-export function createSurvivalReview(options: SimulationOptions, baseFireRate: number, role: SurvivalReviewFixture): Simulation {
+export function createSurvivalReview(options: SimulationOptions, baseFireRate: number, role: SurvivalReviewFixture, seed = 17): Simulation {
   options = isolatedReviewOptions(options);
   const [levelText, modeText] = role.split('-');
   const level = Number(levelText.slice(8)), mode = modeText as SurvivalReviewMode;
-  const sim = new Simulation({ ...options, seed: 17, startSquad: 1, startRocketCount: 0 });
+  const sim = new Simulation({ ...options, seed, startSquad: 1, startRocketCount: 0 });
   const state = sim.getState(), balance = state.catharsis?.balance;
   if (!balance?.defenseMode || !state.enemyStream || !options.level.enemyStream
     || ![7, 8, 9, 10].includes(level) || level > maxProgressionLevel(balance.progression)
