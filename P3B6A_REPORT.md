@@ -165,3 +165,31 @@ All profiling exposure, test fixtures, timing/recording code live in test/QA fil
 ## Remaining balance/device risks
 
 Rates and thresholds are provisional. Lv7/Lv8 now have fewer living members and less total firepower than the previous 36/54Hz unlocks, increasing crowd pressure and the cost of a single naval hit. Lv10 has 50% more full-squad firepower than old Lv8, reducing sustained clearing pressure. Human phone input, target awareness, graphics drivers and thermal behavior are not reproduced by the automated pilots or desktop SwiftShader. Existing dense/cap-full crowd performance risk remains; no visual quality was reduced and no unrelated renderer work was added. Physical-phone playtesting should decide the next tuning task; this implementation stops here.
+
+## P3-B.6A supplement — Mobile MG Quick Test
+
+Supplement implementation: 2f46d89eaf3260de6b5264a7a4338f8b3705b178. Starting HEAD: bac9a94e4c2b2107a8bb86d31a6a2ce15d253c65. The user requested this temporary human-review tool after the original delivery.
+
+DEV → **MG TEST** expands a separate section beneath the unchanged main LATE / CRATE3 / CRATE8 / NAVAL buttons. Five buttons (MG6–MG10) use the authored level, weapon stage and living squad, highlight the selected preset, close DEV after selection, and preserve it through the existing Retry handler. The section starts collapsed and reuses the existing panel scrolling/safe-area layout. No keyboard shortcuts or production controls were added.
+
+All five start from seed **0x21b600**, center lane and the exact same finite crowd: **60 Grunts + five Heavies** distributed across five lanes at depths 38–46. Existing HP/movement, real simulation firing, selected-lane targeting, damage, XP and ordinary contact casualties apply. There are no fake bullets, invulnerable targets or scripted kills. Teaching encounters are consumed, and recurring Carnival/Destroyer/Survival/admissions are disabled only in these isolated comparison fixtures. Existing human entries and older automated Survival fixtures retain their behavior. All authored production configuration is unchanged by this supplement.
+
+Measured ten-second steady firing after a one-second warm-up, both unit tests and real browser simulation:
+
+| Preset | Stage / squad | Per-member shots | Total shots | Total Hz |
+| --- | --- | --- | --- | --- |
+| MG6 | I / 1 | 180 | 180 | 18 |
+| MG7 | II / 1 | 225 | 225 | 22.5 |
+| MG8 | III / 1 | 270 | 270 | 27 |
+| MG9 | III / 2 | 270 each | 540 | 54 |
+| MG10 | III / 3 | 270 each | 810 | 81 |
+
+Validation: full **154-file / 1,144-test** suite passed, typecheck and production build passed (same existing bundle-size warning). New tests verify identical seed/RNG/enemy placement across presets, real damage/targeting, snapshot continuation, exact rates, factory resets and no mutation of authored data. All original regression tests remain intact.
+
+The actual touch UI passed at **350×844 and 390×844**, including a simulated 34px bottom inset at 350. Buttons are approximately **76.7×48 CSS pixels**, fully inside the viewport; collapse/expand and panel closure work. Every preset was allowed to reach **ordinary contact Game Over**, then the actual Retry button restored its exact initial simulation state. Selecting main LATE clears MG selection and restores its existing 42-enemy Survival group. No page errors. Native screenshots and decoded recording frames were visually inspected.
+
+Production QA passed on the actual shipping build at both mobile sizes, rejecting MG TEST UI and factory strings; existing `/topwar/` content-hashed assets, normal startup/Observer and main DEV exclusion checks remain valid. No rendering, audio or natural simulation code changed, and no new production resource/preparation path was introduced. The original sustained 81Hz and startup measurements above remain the performance evidence for the unchanged production gameplay; they were not rerun solely for this DEV-only supplement. Browser emulation remains distinct from physical-phone verification.
+
+Local evidence: `artifacts/p3b6a/mg-quick-test/results.json`, `{350,390}-{collapsed,expanded}.png`, per-preset screenshots, `{350,390}-mg-test.webm` and decoded-frame PNGs. Production results are under `artifacts/p3b6a/mgquick-production/`; gate logs are `artifacts/p3b6a-mgquick-{tests,typecheck,build,browser,production}.log`.
+
+No deployment, tag modification, Survival tuning or P3-C work. This closes the additional P3-B.6A request.
