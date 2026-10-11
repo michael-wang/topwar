@@ -1,5 +1,9 @@
 {
   "catharsis": {
+    "levelEncounters": { "version": 1, "initialOrdinaryEnabled": true, "triggers": [
+      { "id": "naval-intro", "when": { "kind": "machineGunRelease", "delaySeconds": 0 }, "actions": ["ordinaryOff", "destroyerIntro"] },
+      { "id": "survival-handoff", "when": { "kind": "machineGunRelease", "delaySeconds": 27 }, "actions": ["startSurvival", "ordinaryOn"] }
+    ] },
     "destroyer": { "startPolicy": "withCarnival", "enabled": true, "durationSeconds": 27, "entrySeconds": 3.2, "exitAtSeconds": 23, "radioAtSeconds": 1.3, "radioDurationSeconds": 7.2, "shotTimes": [8.8, 12, 16, 17.3, 21], "startX": -28, "stationX": -4, "exitX": 30, "z": 56 },
     "artillery": { "horizontalSpeed": 24, "gravity": 8, "minimumFlightSeconds": 0.5, "impactLaneFraction": 0.42, "maxActive": 8 },
     "defenseMotionVersion": 2,

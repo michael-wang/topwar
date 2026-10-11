@@ -189,7 +189,8 @@ export class GameRenderer {
     this.gateRenderer.update(state.gates);
     this.pickupRenderer.update(state.pickups);
     this.grenadeRenderer.update(state.grenade, nowMs);
-    if (state.destroyer?.state.status === 'active') this.destroyerRenderer ??= new DestroyerRenderer(this.scene);
+    if (state.destroyer && (state.destroyer.state.status === 'active' || state.destroyer.presence && state.destroyer.presence.status !== 'absent'))
+      this.destroyerRenderer ??= new DestroyerRenderer(this.scene);
     this.destroyerRenderer?.update(state.destroyer);
     if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
     this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera.quaternion);

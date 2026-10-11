@@ -1,4 +1,5 @@
 import presets from '../config/survivalExperiment.json';
+import { isolatedReviewOptions } from './DevReviewPolicy';
 import { PostCapSurvivalConfigSchema } from '../config/postCapSurvivalConfig';
 import type { CatharsisConfig } from '../config/catharsisConfig';
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
@@ -21,6 +22,7 @@ export function survivalReviewConfig(current: CatharsisConfig['postCapSurvival']
 }
 
 export function createSurvivalReview(options: SimulationOptions, baseFireRate: number, role: SurvivalReviewFixture): Simulation {
+  options = isolatedReviewOptions(options);
   const [levelText, modeText] = role.split('-');
   const level = Number(levelText.slice(8)), mode = modeText as SurvivalReviewMode;
   const sim = new Simulation({ ...options, seed: 17, startSquad: 1, startRocketCount: 0 });

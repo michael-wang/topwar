@@ -11,6 +11,7 @@ import { placeGrenadeSupply } from '../simulation/grenade';
 import { addRifleSoldiers } from '../simulation/squad/composition';
 import { createMachineGunReview, type MachineGunReviewFixture } from './DevMachineGunReview';
 import { createSurvivalReview, type SurvivalReviewFixture } from './DevSurvivalReview';
+import { isolatedReviewOptions } from './DevReviewPolicy';
 
 export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval' | MachineGunReviewFixture | SurvivalReviewFixture;
 export const DEV_REVIEW_FIXTURES = {
@@ -21,6 +22,7 @@ export const DEV_REVIEW_FIXTURES = {
 // Human DEV entries only. Historical isolated scenarios live in tests/helpers.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
+  options = isolatedReviewOptions(options);
   if (role.startsWith('survival')) return createSurvivalReview(options, baseFireRate, role as SurvivalReviewFixture);
   if (role === 'mg6' || role === 'mg7' || role === 'mg8' || role === 'mg9' || role === 'mg10')
     return createMachineGunReview(options, baseFireRate, role);

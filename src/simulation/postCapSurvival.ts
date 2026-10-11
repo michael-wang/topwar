@@ -45,7 +45,8 @@ export function advancePostCapSurvival(previous: PostCapSurvivalState | undefine
   if (!balance?.defenseMode || !c?.enabled) return emptyPostCapSurvival();
   const state = { ...(previous ?? emptyPostCapSurvival()) };
   if (!frame.squad.count || !frame.enemyStream || !frame.grenade
-    || (frame.progression?.level ?? 0) < c.startLevel || frame.machineGunReleaseAtSeconds == null) return state;
+    || (frame.progression?.level ?? 0) < c.startLevel
+    || (frame.levelEncounters ? !frame.levelEncounters.survivalEnabled : frame.machineGunReleaseAtSeconds == null)) return state;
   const now = frame.elapsedSeconds;
   if (state.startedAtSeconds === null) {
     // Old capped snapshots may lack the teaching encounter entirely. Give its

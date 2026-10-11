@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LevelEncounterConfigSchema } from './levelEncounterConfig';
 import { ArtilleryConfigSchema } from './artilleryConfig';
 import { DestroyerConfigSchema } from './destroyerConfig';
 import { GrenadeConfigSchema, grenadeDefaults } from './grenadeConfig';
@@ -17,6 +18,7 @@ const pressureRampStage = z.strictObject({
 
 // Temporary lane experiment, separate from the retained tier/Boss balance.
 export const CatharsisConfigSchema = z.strictObject({
+  levelEncounters: LevelEncounterConfigSchema.optional(),
   destroyer: DestroyerConfigSchema.optional(),
   artillery: ArtilleryConfigSchema.optional(),
   defenseMotionVersion: z.literal(2).optional(),
@@ -94,7 +96,11 @@ export const CatharsisConfigSchema = z.strictObject({
   heavyHeightMultiplier: z.number().finite().positive().max(2).default(1),
   heavyDepthMultiplier: z.number().finite().positive().max(2).default(1),
   rewardAimRadius: z.number().finite().positive(),
-}).refine(value => !value.carnival.enabled || value.carnival.laneGroups.every(lanes => lanes.every(lane => lane < value.laneCount)),
+}).refine(value => !value.levelEncounters || value.defenseMode
+  && value.levelEncounters.triggers.every(t => (t.when.kind !== 'level' || t.when.level <= value.progression.levelPlan.length)
+    && (!t.actions.some(a => a.startsWith('destroyer')) || value.destroyer && value.artillery)),
+  { message: 'Modular encounters require Defense and compatible authored components' })
+  .refine(value => !value.carnival.enabled || value.carnival.laneGroups.every(lanes => lanes.every(lane => lane < value.laneCount)),
   { message: 'Carnival lanes must fit inside the battlefield' })
   .refine((value) => value.defenseMode || (value.groupSize - 1) * value.groupRowStride < value.waveRows,
   { message: 'Group must fit inside one wave' })

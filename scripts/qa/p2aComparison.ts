@@ -1,4 +1,4 @@
-import data from '../../public/game-data/game.json';
+import data from '../../tests/fixtures/pre-b6b4-game.json';
 import { GameConfigSchema } from '../../src/config/configSchema';
 import { Simulation } from '../../src/simulation/Simulation';
 import { pilotTuning } from './p15Pilot';

@@ -1,4 +1,5 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
+import { isolatedReviewOptions } from './DevReviewPolicy';
 import { emptyCarnival } from '../simulation/carnival';
 import { emptyDestroyer } from '../simulation/destroyer';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
@@ -16,6 +17,7 @@ export type MachineGunReviewFixture = keyof typeof MG_TEST_PRESETS;
 
 export function createMachineGunReview(options: SimulationOptions, baseFireRate: number,
   role: MachineGunReviewFixture): Simulation {
+  options = isolatedReviewOptions(options);
   const preset = MG_TEST_PRESETS[role];
   const sim = new Simulation({ ...options, seed: 0x21b600, startSquad: 1, startRocketCount: 0,
     level: { ...options.level, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } });

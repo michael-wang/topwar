@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { paintedBlockGeometry } from './art/PaintedGeometry';
 import { illustratedMaterial } from './art/IllustratedMaterial';
 import { DESTROYER_MUZZLE, destroyerPose } from '../simulation/destroyer';
+import { navalPresencePose } from '../simulation/navalPresence';
 import type { GameRenderState } from './RenderState';
 
 export class DestroyerRenderer {
@@ -52,11 +53,15 @@ export class DestroyerRenderer {
     this.scene.add(this.group); this.group.visible = false;
   }
   update(frame: GameRenderState['destroyer']): void {
-    this.group.visible = frame?.state.status === 'active'; if (!frame || !this.group.visible) return;
-    const age = frame.elapsedSeconds - frame.state.startedAtSeconds!, p = destroyerPose(age, frame.config);
+    this.group.visible = !!frame && (frame.presence ? frame.presence.status !== 'absent' : frame.state.status === 'active');
+    if (!frame || !this.group.visible) return;
+    const age = frame.elapsedSeconds - (frame.presence?.enteredAtSeconds ?? frame.state.startedAtSeconds!);
+    const p = frame.presence ? navalPresencePose(frame.presence, frame.elapsedSeconds, frame.config) : destroyerPose(age, frame.config);
     this.group.position.set(-p.x, p.y, p.z);
     this.wake.position.y = .025 - p.y; this.wake.scale.set(1 + Math.sin(age * 2) * .025, 1 + Math.sin(age) * .04, 1);
-    const identifying = age >= frame.config.radioAtSeconds && age < frame.config.radioAtSeconds + frame.config.radioDurationSeconds;
+    const introAge = frame.elapsedSeconds - frame.state.startedAtSeconds!;
+    const identifying = frame.state.status === 'active' && introAge >= frame.config.radioAtSeconds
+      && introAge < frame.config.radioAtSeconds + frame.config.radioDurationSeconds;
     this.hull.emissive.set(identifying ? '#5b4924' : '#000000'); this.hull.emissiveIntensity = identifying ? .12 + .07 * Math.sin(age * 4) ** 2 : 0;
   }
   reset(): void { this.group.visible = false; }

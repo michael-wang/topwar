@@ -1,4 +1,5 @@
 import { Simulation, type SimulationOptions } from '../../src/simulation/Simulation';
+import { isolatedReviewOptions } from '../../src/app/DevReviewPolicy';
 import { createShellReview } from './ShellReview';
 import { createDevReviewFixture as createRuntimeFixture } from '../../src/app/DevReviewFixtures';
 import { emptyCarnival } from '../../src/simulation/carnival';
@@ -35,6 +36,7 @@ export const DEV_REVIEW_FIXTURES = {
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
   if (role === 'rifle') return new Simulation({ ...options, seed: 0x21b101 });
+  options = isolatedReviewOptions(options);
   if (role === 'shell') return createShellReview(options);
   if (role === 'crate10') {
     const sim = createRuntimeFixture(options, baseFireRate, 'crate8'), state = sim.getState();

@@ -1,8 +1,10 @@
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
+import { isolatedReviewOptions } from './DevReviewPolicy';
 import { emptyCarnival } from '../simulation/carnival';
 import { effectivePrimaryFireRate, maxProgressionLevel, progressionStage } from '../simulation/progression';
 
 export function createNavalReview(options: SimulationOptions): Simulation {
+  options = isolatedReviewOptions(options);
   const simulation = new Simulation({ ...options, seed: 0x3a1100, startSquad: 3, startRocketCount: 0,
     level: { ...options.level, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } });
   const state = simulation.getState(), balance = state.catharsis?.balance;
