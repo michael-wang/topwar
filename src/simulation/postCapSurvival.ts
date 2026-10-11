@@ -18,11 +18,14 @@ export const emptyPostCapSurvival = (): PostCapSurvivalState => ({
 });
 
 export function postCapOrdinarySettings(balance: CatharsisConfig, state?: PostCapSurvivalState, level = 0):
-  { groupSize: number; pressureLaneCount: number; heavyCount: number } | undefined {
+  { groupSize: number; pressureLaneCount: number; heavyCount: number; survivalSpeedMultiplier?: number; waveIntervalSeconds?: number } | undefined {
   const c = balance.postCapSurvival;
   if (!c.enabled || state?.startedAtSeconds == null) return undefined;
-  const profile = c.advancedProfile && level >= c.advancedProfile.startLevel ? c.advancedProfile : c;
-  return { groupSize: profile.ordinaryGroupSize, pressureLaneCount: profile.pressureLaneCount, heavyCount: profile.heavyCount };
+  const profile = c.capProfile && level >= c.capProfile.startLevel ? c.capProfile
+    : c.advancedProfile && level >= c.advancedProfile.startLevel ? c.advancedProfile : c;
+  return { groupSize: profile.ordinaryGroupSize, pressureLaneCount: profile.pressureLaneCount, heavyCount: profile.heavyCount,
+    ...('ordinarySpeedMultiplier' in profile ? { survivalSpeedMultiplier: profile.ordinarySpeedMultiplier } : {}),
+    ...(profile !== c && profile.waveIntervalSeconds !== undefined ? { waveIntervalSeconds: profile.waveIntervalSeconds } : {}) };
 }
 
 // Advance fixed opportunities, never a backlog. A late restored/large step can

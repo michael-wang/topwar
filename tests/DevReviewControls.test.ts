@@ -72,3 +72,19 @@ it('adds a separate collapsible MG TEST section with five touch presets and shar
   controls.setSelected('late');expect(buttons.every(b=>b.attrs['aria-pressed']==='false')).toBe(true);
   controls.dispose();expect(section.remove).toHaveBeenCalledOnce();
 });
+
+it('adds collapsible Survival level/mode controls without changing the existing groups',()=>{
+  const {controls,select}=setup(),section=controls.survivalTest as unknown as ElementStub;
+  expect(section.tagName).toBe('DETAILS');expect(section.children[0].textContent).toBe('SURVIVAL TEST');
+  const buttons=section.children[1].children;
+  expect(buttons.map(b=>b.textContent)).toEqual(['BASELINE','EXPERIMENTAL','LV7','LV8','LV9','LV10']);
+  for(const b of buttons)expect(b.style.cssText).toContain('min-height:48px');
+  buttons[0].dispatchEvent(new Event('click'));expect(select.mock.lastCall).toEqual(['survival8-baseline']);
+  controls.setSelected('survival8-baseline');
+  buttons[5].dispatchEvent(new Event('click'));expect(select.mock.lastCall).toEqual(['survival10-baseline']);
+  controls.setSelected('survival10-baseline');
+  buttons[1].dispatchEvent(new Event('click'));expect(select.mock.lastCall).toEqual(['survival10-experimental']);
+  controls.setSelected('survival10-experimental');
+  expect(buttons.filter(b=>b.attrs['aria-pressed']==='true').map(b=>b.textContent)).toEqual(['EXPERIMENTAL','LV10']);
+  controls.dispose();expect(section.remove).toHaveBeenCalledOnce();
+});

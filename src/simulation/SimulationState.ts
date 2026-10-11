@@ -15,6 +15,8 @@ export interface SquadSimulationState {
 }
 
 export interface EnemySimulationState {
+  // Admission-time ordinary Survival speed. Absent in historical/pre-NAVAL enemies.
+  survivalSpeedMultiplier?: number;
   lane?: number;
   archetype?: 'grunt' | 'heavy' | 'giant';
   id: number;

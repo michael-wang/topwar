@@ -26,7 +26,7 @@ export function pressureGroupSize(balance: CatharsisConfig, level: number): numb
 
 export function enemyApproachSpeed(enemy: EnemySimulationState, balance: CatharsisConfig): number {
   return enemy.archetype === 'giant' ? balance.giant.speed
-    : enemy.archetype === 'heavy' ? balance.heavySpeed : balance.gruntSpeed;
+    : (enemy.archetype === 'heavy' ? balance.heavySpeed : balance.gruntSpeed) * (enemy.survivalSpeedMultiplier ?? 1);
 }
 
 export function advanceGiantEncounter(previous: NonNullable<SimulationState['giantEncounter']>,

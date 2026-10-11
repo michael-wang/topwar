@@ -15,7 +15,7 @@ export function advanceDefenseWaves(previous: DefenseWaveState, frame: Simulatio
   const cursor = frame.enemyStream!;
   if (nowSeconds + 1e-9 < previous.nextAtSeconds) return { ...previous };
   const survival = postCapOrdinarySettings(balance, frame.postCapSurvival, frame.progression!.level);
-  const interval = survival ? balance.postCapSurvival.waveIntervalSeconds ?? balance.defenseWaves.intervalSeconds
+  const interval = survival ? survival.waveIntervalSeconds ?? balance.postCapSurvival.waveIntervalSeconds ?? balance.defenseWaves.intervalSeconds
     : balance.defenseWaves.intervalSeconds;
   const slots = Math.floor((nowSeconds - previous.nextAtSeconds + 1e-9) / interval) + 1;
   const row = (Math.ceil(cursor.nextRowIndex / balance.waveRows) + slots - 1) * balance.waveRows;
