@@ -9,16 +9,17 @@ import { survivalDecision } from '../scripts/qa/survivalPilot';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 const c=GameConfigSchema.parse(data), config=c.catharsis!.navalBarrage!;
 const fixture=(role:'barrage8-on'|'barrage9-on'|'barrage10-on'|'barrage10-off'='barrage10-on',seed=17)=>createNavalBarrageReview(carnivalOptions,c.weapon.rifle.fireRate,role,seed);
-it('authors production AHEAD, independent +27 barrage trigger and fixed 1/2 shell bounds',()=>{
-  expect(config).toMatchObject({minimumShells:1,maximumShells:2,minimumIntervalSeconds:1,maximumIntervalSeconds:2,targetLanes:[0,1,2,3,4]});
-  expect(c.catharsis!.levelEncounters!.triggers[1]).toMatchObject({when:{kind:'machineGunRelease',delaySeconds:27},actions:['startSurvival','ordinaryOn','barrageOn']});
+it('authors production AHEAD, post-radio barrage trigger and fixed 1/2 shell bounds',()=>{
+  expect(config).toMatchObject({minimumShells:1,maximumShells:2,minimumIntervalSeconds:2,maximumIntervalSeconds:3,targetLanes:[0,1,2,3,4],overlapPolicy:'waitForImpact'});
+  expect(c.catharsis!.levelEncounters!.triggers[1]).toMatchObject({when:{kind:'machineGunRelease',delaySeconds:8.5},actions:['barrageOn']});
+  expect(c.catharsis!.levelEncounters!.triggers[2]).toMatchObject({when:{kind:'machineGunRelease',delaySeconds:27},actions:['startSurvival','ordinaryOn']});
 });
 it('has an approximately uniform count/interval/lane distribution with different reproducible seeds',()=>{
   const schedules=[];
   for(const seed of [1,17,42,99,2026]) {
     let s=setNavalBarrage(emptyNavalBarrage(seed,config),config,27,true), twos=0,sum=0;
     const lanes=[0,0,0,0,0], first=[];
-    expect(s.nextAtSeconds).toBeGreaterThanOrEqual(28);expect(s.nextAtSeconds).toBeLessThan(29);
+    expect(s.nextAtSeconds).toBeGreaterThanOrEqual(29);expect(s.nextAtSeconds).toBeLessThan(30);
     for(let i=0;i<5000;i++) {
       const at=s.nextAtSeconds!;s=advanceNavalBarrage(s,config,at,8,true,true);const salvo=s.lastSalvo!;
       if(i<10)first.push(salvo);expect(salvo.lanes.length).toBeGreaterThanOrEqual(1);expect(salvo.lanes.length).toBeLessThanOrEqual(2);
@@ -26,7 +27,7 @@ it('has an approximately uniform count/interval/lane distribution with different
       salvo.lanes.forEach(l=>lanes[l]++);sum+=s.nextAtSeconds!-at;
     }
     expect(twos/5000).toBeGreaterThan(.47);expect(twos/5000).toBeLessThan(.53);
-    expect(sum/5000).toBeGreaterThan(1.47);expect(sum/5000).toBeLessThan(1.53);
+    expect(sum/5000).toBeGreaterThan(2.47);expect(sum/5000).toBeLessThan(2.53);
     for(const count of lanes)expect(count/lanes.reduce((a,b)=>a+b)).toBeCloseTo(.2,1);
     schedules.push(first);
   }
@@ -45,7 +46,7 @@ it('supports authored three-shell salvos and rejects invalid profiles',()=>{
   const three=NavalBarrageConfigSchema.parse({...config,minimumShells:3,maximumShells:3});
   const s=setNavalBarrage(emptyNavalBarrage(1,three),three,0,true);
   expect(advanceNavalBarrage(s,three,s.nextAtSeconds!,8,true,true).lastSalvo!.lanes).toHaveLength(3);
-  for(const patch of [{maximumShells:9},{targetLanes:[0,0]},{minimumIntervalSeconds:3},{maximumShells:0},{targetLanes:[0]}])
+  for(const patch of [{maximumShells:9},{targetLanes:[0,0]},{minimumIntervalSeconds:4},{maximumShells:0},{targetLanes:[0]}])
     expect(()=>NavalBarrageConfigSchema.parse({...config,...patch})).toThrow();
 });
 it.each([8,9,10] as const)('uses real Lv%i loadout and does not change enemies between on/off fixtures',level=>{
@@ -83,7 +84,7 @@ it('rejects missing RNG state, duplicated lanes and invalid deadlines atomically
     (v:typeof good)=>delete v.navalBarrage,
     (v:typeof good)=>v.navalBarrage!.rngState=-1,
     (v:typeof good)=>v.navalBarrage!.nextAtSeconds=0,
-    (v:typeof good)=>v.navalBarrage!.nextAtSeconds=v.elapsedSeconds,
+    (v:typeof good)=>v.navalBarrage!.nextAtSeconds=v.elapsedSeconds+10,
     (v:typeof good)=>v.navalBarrage!.lastSalvo!.lanes=[0,0],
     (v:typeof good)=>v.navalBarrage!.opportunities++,
   ]) {const bad=structuredClone(good);change(bad);expect(()=>s.restoreState(bad)).toThrow();expect(s.getState()).toEqual(good);}
@@ -105,5 +106,5 @@ it('enforces real artillery capacity without partial salvos, and launches simult
       expect(launch[0].shell.targetLane).not.toBe(launch[1].shell.targetLane);}
     peak=Math.max(peak,sim.getFrameState().artillery?.shells.length??0);
   }
-  expect(pairs).toBeGreaterThan(0);expect(peak).toBeGreaterThan(2);expect(peak).toBeLessThanOrEqual(8);
+  expect(pairs).toBeGreaterThan(0);expect(peak).toBe(2);
 });

@@ -226,6 +226,7 @@ export class GameRenderer {
 
   restoreFeedback(state: GameRenderState, nowMs: number): void {
     this.resetFeedback();
+    if(state.artillery){this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);this.artilleryRenderer.restore(state.artillery);}
     // Snapshot entities already exist. Prime identity before the first paused
     // draw so an existing Giant is readable, without replaying its entrance fade.
     this.enemyRenderer.update(state.enemies, nowMs - GIANT_REVEAL_MS, !!state.defenseMode,

@@ -13,5 +13,7 @@ export const ArtilleryConfigSchema = ArtilleryFlightSchema.extend({
   // Radius below half a lane leaves a clearly safe adjacent lane. No body-radius inflation.
   impactLaneFraction: z.number().finite().min(.2).max(.49),
   maxActive: z.number().int().min(1).max(ARTILLERY_CAPACITY),
+  // Presentation-only opt-in; historical saves retain ground rings/global alert.
+  warningPresentation: z.literal('overheadLanes').optional(),
 });
 export type ArtilleryFlightParameters = z.infer<typeof ArtilleryFlightSchema>;

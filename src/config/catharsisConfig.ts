@@ -103,6 +103,8 @@ export const CatharsisConfigSchema = z.strictObject({
     && (!t.actions.some(a => a.startsWith('destroyer')) || value.destroyer && value.artillery)
     && (!t.actions.some(a => a.startsWith('barrage')) || value.navalBarrage)),
   { message: 'Modular encounters require Defense and compatible authored components' })
+  .refine(value => value.destroyer?.attackPolicy !== 'barrage' || value.levelEncounters && value.navalBarrage,
+    { message: 'Unified Destroyer attacks require modular barrage configuration' })
   .refine(value => !value.navalBarrage || value.levelEncounters && value.destroyer && value.artillery
     && value.navalBarrage.targetLanes.every(l=>l<value.laneCount),
     { message:'Barrage requires modular naval/artillery components and battlefield lanes' })

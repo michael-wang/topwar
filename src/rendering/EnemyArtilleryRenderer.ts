@@ -5,6 +5,7 @@ import type { GameRenderState } from './RenderState';
 import { GrenadeExplosion } from './GrenadeExplosion';
 import { ART } from '../art/ArtDirection';
 import { LOCK_ON_ALERT_MS, warningInnerRadius } from '../presentation/ArtilleryWarning';
+import { OverheadLaneWarnings } from './OverheadLaneWarnings';
 
 function exclamationGeometry(): THREE.ShapeGeometry {
   const stem = new THREE.Shape(); stem.moveTo(-.12, .18); stem.lineTo(-.18, .78);
@@ -33,8 +34,11 @@ export class EnemyArtilleryRenderer {
   private readonly alert = new THREE.Mesh(this.glyph, this.alertMaterial);
   private alertAtMs = -Infinity;
   private lastSimulationSeconds = -Infinity;
+  private readonly overhead: OverheadLaneWarnings;
+  private readonly restoredShellIds = new Float64Array(ARTILLERY_CAPACITY);
   constructor(private readonly scene: THREE.Scene) {
     this.impacts = new GrenadeExplosion(scene, ARTILLERY_CAPACITY, false);
+    this.overhead = new OverheadLaneWarnings(scene);
     this.alert.name = 'artillery-lock-on'; this.alert.renderOrder = 12; scene.add(this.alert);
     for (let i = 0; i < ARTILLERY_CAPACITY; i++) this.slots.push(this.createSlot(i));
     this.reset();
@@ -75,14 +79,16 @@ export class EnemyArtilleryRenderer {
     this.lastSimulationSeconds = state?.elapsedSeconds ?? -Infinity;
     this.impacts.update(nowMs, 0);
     const alertAge = nowMs - this.alertAtMs;
-    this.alert.visible = !!state?.shells.length && alertAge >= 0 && alertAge < LOCK_ON_ALERT_MS;
+    const overhead = state?.warningPresentation === 'overheadLanes';
+    if(overhead)this.overhead.update(state!.shells,state!.elapsedSeconds,cameraRotation);else this.overhead.reset();
+    this.alert.visible = !overhead && !!state?.shells.length && alertAge >= 0 && alertAge < LOCK_ON_ALERT_MS;
     this.alert.position.set(-player.x, 1.7, player.z);
     if (cameraRotation) this.alert.quaternion.copy(cameraRotation);
     this.alert.scale.setScalar(.7 + .18 * Math.sin(Math.max(0, alertAge) / 45) ** 2);
     this.alertMaterial.opacity = Math.min(1, Math.max(0, (LOCK_ON_ALERT_MS - alertAge) / 110));
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i], shell = state?.shells[i];
-      s.shell.visible = s.warning.visible = !!shell; s.flash.visible = false;
+      s.shell.visible = !!shell; s.warning.visible = !!shell && !overhead; s.flash.visible = false;
       for (const trail of s.trail) trail.visible = false;
       if (!shell || !state) continue;
       const age = Math.max(0, state.elapsedSeconds - shell.launchedAtSeconds), progress = Math.min(1, age / shell.flightSeconds);
@@ -95,12 +101,14 @@ export class EnemyArtilleryRenderer {
       s.shell.quaternion.setFromUnitVectors(this.up, this.direction);
       // Outer edge is fixed at the collision radius. Only the interior closes/pulses.
       s.warning.position.set(-shell.target.x, .035, shell.target.z); s.warning.scale.setScalar(shell.radius);
-      const inner = warningInnerRadius(progress), positions = s.progressGeometry.attributes.position;
-      for (let j = 0; j <= 32; j++) positions.setXY(j, Math.cos(j / 32 * Math.PI * 2) * inner, Math.sin(j / 32 * Math.PI * 2) * inner);
-      positions.needsUpdate = true;
+      if (!overhead) {
+        const inner = warningInnerRadius(progress), positions = s.progressGeometry.attributes.position;
+        for (let j = 0; j <= 32; j++) positions.setXY(j, Math.cos(j / 32 * Math.PI * 2) * inner, Math.sin(j / 32 * Math.PI * 2) * inner);
+        positions.needsUpdate = true;
+      }
       s.redMat.opacity = .72 + .28 * Math.sin(age * (10 + progress * 12)) ** 2;
       s.fillMat.opacity = .22 + progress * .18;
-      s.flash.visible = age < .18;
+      s.flash.visible = age < .18 && !this.restoredShellIds.includes(shell.id);
       s.flash.position.set(-source.x, source.y, source.z); s.flash.scale.setScalar(.25 + .8 * Math.sin(Math.min(1, age / .18) * Math.PI));
       for (let j = 0; j < s.trail.length; j++) {
         const lag = (j + 2) * .035, trail = s.trail[j]; trail.visible = age > lag;
@@ -110,14 +118,19 @@ export class EnemyArtilleryRenderer {
     }
   }
   getDebugStats() { return { capacity: this.slots.length, shells: this.slots.filter(s => s.shell.visible).length,
-    warnings: this.slots.filter(s => s.warning.visible).length, impacts: this.impacts.active }; }
+    warnings: this.overhead.count + this.slots.filter(s => s.warning.visible).length, impacts: this.impacts.active }; }
+  restore(state: GameRenderState['artillery']): void {
+    this.reset();
+    state?.shells.forEach((shell,i)=>this.restoredShellIds[i]=shell.id);
+  }
   reset(): void {
     this.lastSimulationSeconds = -Infinity; this.impacts.reset(); this.alertAtMs = -Infinity; this.alert.visible = false;
+    this.overhead.reset();this.restoredShellIds.fill(0);
     for (const s of this.slots) { s.shell.visible = s.warning.visible = s.flash.visible = false;
       for (const trail of s.trail) trail.visible = false; }
   }
   dispose(): void {
-    this.impacts.dispose(); this.scene.remove(this.alert); this.glyph.dispose(); this.alertMaterial.dispose();
+    this.impacts.dispose(); this.overhead.dispose();this.scene.remove(this.alert); this.glyph.dispose(); this.alertMaterial.dispose();
     for (const s of this.slots) { this.scene.remove(s.shell, s.warning, s.flash, ...s.trail);
       s.progressGeometry.dispose(); for (const material of s.materials) material.dispose(); }
     for (const resource of [this.bodyGeometry, this.noseGeometry, this.sphere, this.ring, this.dark, this.nose, this.hot]) resource.dispose();

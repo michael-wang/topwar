@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import gameData from '../public/game-data/game.json';
+import gameData from './fixtures/pre-b6b5-game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { CatharsisConfigSchema } from '../src/config/catharsisConfig';

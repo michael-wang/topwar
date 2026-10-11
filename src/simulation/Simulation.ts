@@ -1,7 +1,7 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { advanceLevelEncounters, applyEncounterAction, emptyLevelEncounters, validateLevelEncounters } from './levelEncounters';
 import { advanceNavalPresence, emptyNavalPresence, validateNavalPresence } from './navalPresence';
-import { advanceNavalBarrage, emptyNavalBarrage, validateNavalBarrage } from './navalBarrage';
+import { advanceNavalBarrage, emptyNavalBarrage, validateNavalBarrage, hasUnresolvedDestroyerSalvo } from './navalBarrage';
 import { navalPresenceMuzzle } from './navalPresence';
 import type { EncounterAction } from '../config/levelEncounterConfig';
 import { artilleryDefaults } from '../config/artilleryConfig';
@@ -423,8 +423,6 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     navalConfig, isPlainObject(state.squad) && (state.squad.count as number) > 0) : undefined;
   const barrageConfig=catharsis?.balance.navalBarrage;
   if(state.navalBarrage!==undefined && !barrageConfig) throw Error('Barrage state requires its saved configuration');
-  const navalBarrage=barrageConfig ? validateNavalBarrage(state.navalBarrage,barrageConfig,state.elapsedSeconds as number,
-    isPlainObject(state.squad) && (state.squad.count as number)>0) : undefined;
   if (levelEncounters && (!catharsis?.balance.defenseMode || postCapSurvival.startedAtSeconds !== null && !levelEncounters.survivalEnabled))
     throw Error('Invalid modular Survival ownership');
   if (!encounterConfig && destroyer?.status === 'active' && postCapSurvival.startedAtSeconds !== null)
@@ -803,11 +801,14 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     throw new Error('Simulation weapons nextProjectileId must exceed active projectile IDs');
   }
 
+  const artillery = state.artillery !== undefined ? validateArtillery(state.artillery,
+    state.elapsedSeconds as number, attackLanePositions(catharsis!.balance.laneCount,
+      catharsis!.trackHalfWidth, catharsis!.balance.edgeInset), player.z as number, (squad.count as number)>0) : undefined;
+  const navalBarrage=barrageConfig ? validateNavalBarrage(state.navalBarrage,barrageConfig,state.elapsedSeconds as number,
+    (squad.count as number)>0,hasUnresolvedDestroyerSalvo(artillery?.shells ?? [])) : undefined;
   return {
     state: {
-      ...(state.artillery !== undefined ? { artillery: validateArtillery(state.artillery,
-        state.elapsedSeconds as number, attackLanePositions(catharsis!.balance.laneCount,
-          catharsis!.trackHalfWidth, catharsis!.balance.edgeInset), player.z as number, (squad.count as number) > 0) } : {}),
+      ...(artillery ? {artillery} : {}),
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
@@ -1695,7 +1696,7 @@ export class Simulation {
       const previous=this.state.navalBarrage, presence=this.state.navalPresence;
       const next=advanceNavalBarrage(previous,catharsis.balance.navalBarrage,nextElapsedSeconds,
         (catharsis.balance.artillery?.maxActive ?? artilleryDefaults.maxActive)-(this.state.artillery?.shells.length ?? 0),
-        !!presence && presence.status!=='absent',squad.count>0);
+        !!presence && presence.status!=='absent',squad.count>0,hasUnresolvedDestroyerSalvo(this.state.artillery?.shells ?? []));
       this.state.navalBarrage=next;
       if(next.opportunities!==previous.opportunities && next.lastSalvo!.outcome==='launched') {
         const source=navalPresenceMuzzle(presence!,nextElapsedSeconds,catharsis.balance.destroyer!);

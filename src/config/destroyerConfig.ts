@@ -7,14 +7,18 @@ export const DestroyerConfigSchema = z.strictObject({
   // Missing policy belongs to historical sequential snapshots/configs. Keep
   // their clock instead of retroactively replaying an Lv6 entrance.
   startPolicy: z.enum(['afterCarnival', 'withCarnival']).default('afterCarnival'),
+  // Absent means the historical authored five-shot introduction.
+  attackPolicy: z.literal('barrage').optional(),
   enabled: z.boolean(), durationSeconds: z.number().finite().min(10).max(60),
   entrySeconds: z.number().finite().positive(), exitAtSeconds: z.number().finite().positive(),
   radioAtSeconds: z.number().finite().nonnegative(), radioDurationSeconds: z.number().finite().positive(),
-  shotTimes: z.array(z.number().finite().positive()).min(1).max(16),
+  shotTimes: z.array(z.number().finite().positive()).max(16),
   startX: z.number().finite().min(-100).max(100), stationX: z.number().finite().min(-20).max(20),
   exitX: z.number().finite().min(-100).max(100), z: z.number().finite().min(48).max(100),
-}).refine(c => c.entrySeconds < c.shotTimes[0] && c.radioAtSeconds + c.radioDurationSeconds < c.shotTimes[0]
+}).refine(c => (c.attackPolicy === 'barrage' ? c.shotTimes.length === 0
+    : c.shotTimes.length > 0 && c.entrySeconds < c.shotTimes[0] && c.radioAtSeconds + c.radioDurationSeconds < c.shotTimes[0])
   && c.shotTimes.every((t, i) => t < c.exitAtSeconds && (!i || t > c.shotTimes[i - 1]))
+  && c.entrySeconds < c.exitAtSeconds && c.radioAtSeconds + c.radioDurationSeconds < c.exitAtSeconds
   && c.exitAtSeconds < c.durationSeconds && c.startX < c.stationX && c.stationX < c.exitX,
   'Destroyer entry, radio, shots and exit must be ordered');
 export type DestroyerConfig = z.infer<typeof DestroyerConfigSchema>;

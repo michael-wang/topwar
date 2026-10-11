@@ -5,6 +5,8 @@ export const NavalBarrageConfigSchema = z.strictObject({
   minimumShells: z.number().int().min(1).max(ARTILLERY_CAPACITY), maximumShells: z.number().int().min(1).max(ARTILLERY_CAPACITY),
   minimumIntervalSeconds: z.number().finite().min(.1).max(60), maximumIntervalSeconds: z.number().finite().min(.1).max(60),
   targetLanes: z.array(z.number().int().min(0).max(15)).min(1).max(16),
+  // Missing in historical snapshots: their salvos may overlap.
+  overlapPolicy: z.literal('waitForImpact').optional(),
 }).refine(c => c.minimumShells <= c.maximumShells && c.minimumIntervalSeconds <= c.maximumIntervalSeconds
   && c.maximumShells <= c.targetLanes.length && new Set(c.targetLanes).size === c.targetLanes.length,
   'Barrage bounds must be ordered and permit distinct lanes within each salvo');

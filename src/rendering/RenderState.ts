@@ -3,7 +3,7 @@ export interface GameRenderState {
     readonly presence?: Readonly<import('../simulation/navalPresence').NavalPresenceState>;
     readonly config: import('../config/destroyerConfig').DestroyerSettings; readonly elapsedSeconds: number };
   readonly artillery?: { readonly shells: readonly Readonly<import('../simulation/artillery').ArtilleryShell>[];
-    readonly elapsedSeconds: number };
+    readonly elapsedSeconds: number; readonly warningPresentation?: 'overheadLanes' };
   readonly grenade?: {
     readonly supply: Readonly<NonNullable<import('../simulation/grenade').GrenadeState['supply']>> | null;
     readonly flight: Readonly<NonNullable<import('../simulation/grenade').GrenadeState['flight']>> | null;

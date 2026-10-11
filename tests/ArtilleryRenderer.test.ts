@@ -5,6 +5,7 @@ import { makeArtilleryShell, sampleArtillery } from '../src/simulation/artillery
 import { artilleryDefaults } from '../src/config/artilleryConfig';
 import { warningInnerRadius } from '../src/presentation/ArtilleryWarning';
 import { GrenadeExplosion } from '../src/rendering/GrenadeExplosion';
+import { coastalCameraFov } from '../src/rendering/renderSize';
 
 const shell = makeArtilleryShell(1, { source: { id: 'test', type: 'offshore', position: { x: -3, y: 1.2, z: 52 } } },
   2, [-2.8, -1.4, 0, 1.4, 2.8], 0, 0, artilleryDefaults, .588);
@@ -72,4 +73,55 @@ it('omits persistent enemy-shell stains while preserving player Grenade stains',
   const a = new GrenadeExplosion(new THREE.Scene(), 8, false), b = new GrenadeExplosion(new THREE.Scene());
   for (const r of [a, b]) { r.present(0, 0, .588, 0); r.update(1300, 0); }
   expect(a.activeScorches).toBe(0); expect(b.activeScorches).toBe(1); a.dispose(); b.dispose();
+});
+
+it('shows opaque lane-locked overhead warnings for the complete flight without any ground/global warning',()=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),rotation=new THREE.Quaternion();
+  const pair=[makeArtilleryShell(1,{source:shell.source},1,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588),
+    makeArtilleryShell(2,{source:shell.source},3,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588)];
+  const danger=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
+  const matrix=new THREE.Matrix4();
+  for(const time of [0,.45,1,Math.min(...pair.map(s=>s.impactAtSeconds))-.001]){
+    r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000,{x:2.8,z:0},rotation);
+    expect(danger.visible).toBe(true);expect(danger.count).toBe(2);expect(danger.material).toMatchObject({opacity:1,transparent:false});
+    for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);expect(matrix.elements[12]).toBeCloseTo(-pair[i].target.x*.72);
+      expect(matrix.elements[13]).toBeCloseTo(2.05);}
+    expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(false);
+    for(let i=0;i<8;i++)expect(scene.getObjectByName(`enemy-shell-warning-${i}`)!.visible).toBe(false);
+  }
+  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:2.8,z:0},rotation);
+  danger.getMatrixAt(0,matrix);const fixed=matrix.toArray();
+  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},9000,{x:-2.8,z:0},rotation);
+  danger.getMatrixAt(0,matrix);expect(matrix.toArray()).toEqual(fixed); // Paused simulation freezes the pulse too.
+  r.update({shells:[],elapsedSeconds:3,warningPresentation:'overheadLanes'},9001);expect(danger.count).toBe(0);r.dispose();
+  expect(scene.children).toHaveLength(0);
+});
+
+it('coalesces same-lane shells until the final resolution; cancellation/restore neither leaves markers nor replays flashes',()=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
+  const first={...shell},second={...shell,id:2,launchedAtSeconds:.3,impactAtSeconds:shell.impactAtSeconds+.3};
+  const state={shells:[first,second],elapsedSeconds:.31,warningPresentation:'overheadLanes' as const};
+  r.restore(state);r.update(state,0);expect(r.getDebugStats().warnings).toBe(1);
+  expect(scene.getObjectByName('enemy-cannon-flash-1')!.visible).toBe(false);
+  r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000);expect(r.getDebugStats().warnings).toBe(1);
+  r.update({...state,shells:[],elapsedSeconds:first.impactAtSeconds+.1},1000);expect(r.getDebugStats().warnings).toBe(0);
+  r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
+});
+
+it.each([350,390])('fits every overhead lane including its ink edge inside the %ipx mobile frame',width=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=new THREE.PerspectiveCamera(coastalCameraFov(width/844),width/844,.1,180);
+  camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld();
+  const all=Array.from({length:5},(_,lane)=>makeArtilleryShell(lane+1,{source:shell.source},lane,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588));
+  r.update({shells:all,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera.quaternion);
+  const ink=scene.getObjectByName('artillery-lane-outline') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
+  expect(ink.count).toBe(5);
+  for(let i=0;i<ink.count;i++){
+    ink.getMatrixAt(i,matrix);
+    for(let v=0;v<ink.geometry.attributes.position.count;v++){
+      point.fromBufferAttribute(ink.geometry.attributes.position,v).applyMatrix4(matrix).project(camera);
+      expect((point.x*.5+.5)*width).toBeGreaterThan(0);expect((point.x*.5+.5)*width).toBeLessThan(width);
+      expect((.5-point.y*.5)*844).toBeGreaterThan(450);expect((.5-point.y*.5)*844).toBeLessThan(600);
+    }
+  }
+  r.dispose();
 });

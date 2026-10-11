@@ -6,8 +6,7 @@ import { Simulation } from '../../src/simulation/Simulation';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
 import { pilotTuning } from './p15Pilot';
 
-export function runDifficultyPilot(seed: number, retainSnapshots = false) {
-  const c = GameConfigSchema.parse(data);
+export function runDifficultyPilot(seed: number, retainSnapshots = false, c = GameConfigSchema.parse(data)) {
   const sim = new Simulation({ seed, level: LevelDefinitionSchema.parse(levelData), startSquad: 1,
     startRocketCount: 0, tiers: c.tiers, catharsis: { balance: c.catharsis!, trackHalfWidth: c.track.halfWidth } });
   const levels: Record<number, number> = { 1: 0 }, giants: any[] = [], waves: any[] = [], shells: any[] = [];

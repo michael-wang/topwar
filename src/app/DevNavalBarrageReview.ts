@@ -16,7 +16,7 @@ export function createNavalBarrageReview(options: SimulationOptions, rate: numbe
   const sim=createSurvivalReview(options,rate,`survival${level}-ahead`,seed), state=sim.getState(), balance=state.catharsis!.balance;
   balance.levelEncounters={version:1,initialOrdinaryEnabled:true,triggers:[]};
   balance.navalBarrage=structuredClone(options.catharsis.balance.navalBarrage); balance.navalBarrage.enabled=true;
-  balance.destroyer!.enabled=true; state.destroyer=emptyDestroyer(true);
+  balance.destroyer=structuredClone(options.catharsis.balance.destroyer!);balance.destroyer.enabled=true; state.destroyer=emptyDestroyer(true);
   state.levelEncounters=emptyLevelEncounters(balance.levelEncounters);state.levelEncounters.survivalEnabled=true;
   state.navalPresence=emptyNavalPresence();state.navalBarrage=emptyNavalBarrage(seed,balance.navalBarrage);
   sim.restoreState(state);sim.commandEncounter('destroyerEnter');if(choice==='on')sim.commandEncounter('barrageOn');

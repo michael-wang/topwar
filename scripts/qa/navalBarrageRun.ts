@@ -8,8 +8,8 @@ export { survivalDecision } from './survivalPilot';
 export { pilotTuning } from './p15Pilot';
 export { SurvivalDiagnosis } from './survivalDiagnosis';
 export { bindObserver } from './survivalDiagnosisHooks';
-export function makeNavalRun(seed:number, scenario:'natural'|'lv8'|'lv9'|'lv10', barrage:boolean) {
-  const c=GameConfigSchema.parse(data);
+export function makeNavalRun(seed:number, scenario:'natural'|'lv8'|'lv9'|'lv10', barrage:boolean, config:unknown=data) {
+  const c=GameConfigSchema.parse(config);
   const options={seed,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,tiers:c.tiers,
     catharsis:{balance:c.catharsis!,trackHalfWidth:c.track.halfWidth}};
   if(scenario==='natural') {options.catharsis.balance.navalBarrage!.enabled=barrage;return new Simulation(options);}

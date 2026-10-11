@@ -4,6 +4,8 @@ import { carnivalEntry, carnivalOptions, carnivalPilotLane } from '../scripts/qa
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 import { Simulation } from '../src/simulation/Simulation';
 import { runDifficultyPilot } from '../scripts/qa/difficultyPilot';
+import previousData from './fixtures/pre-b6b5-game.json';
+import { GameConfigSchema } from '../src/config/configSchema';
 
 const advance = (s: Simulation, ticks: number) => {
   for (let i = 0; i < ticks; i++) {
@@ -76,9 +78,9 @@ it('rejects a backdated Survival clock even after both authored encounters compl
   expect(() => s.restoreState(bad)).toThrow('Survival clock'); expect(s.getState()).toEqual(good);
 });
 
-it.each([1, 17, 42, 99, 2026])('keeps natural progression and five real artillery opportunities deterministic for seed %i', seed => {
-  const { stepMs: _, ...a } = runDifficultyPilot(seed);
-  const { stepMs: __, ...b } = runDifficultyPilot(seed);
+it.each([1, 17, 42, 99, 2026])('keeps historical B.4 natural progression and five artillery opportunities deterministic for seed %i', seed => {
+  const { stepMs: _, ...a } = runDifficultyPilot(seed,false,GameConfigSchema.parse(previousData));
+  const { stepMs: __, ...b } = runDifficultyPilot(seed,false,GameConfigSchema.parse(previousData));
   expect(a).toEqual(b);
   expect(a.giants[0].spawn).toBe(a.levels[4]); expect(a.giants[0].hp).toBe(172);
   expect(a.entrance).toBe(a.release);

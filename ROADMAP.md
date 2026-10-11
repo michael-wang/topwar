@@ -10,12 +10,12 @@
 
 ## NOW
 
-**P3-B closed playtest validation.** The next release candidate ships phone-approved AHEAD with an independent persistent Destroyer and repeating Survival barrage. Pixel 8 review should assess overlapping warnings, casualties, recovery and sustained rendering; aggressive difficulty is intentionally preserved. DEV retains readable FPS, Wake Lock status, LATE, CRATE3, CRATE8 and NAVAL, with MG TEST, four-mode SURVIVAL TEST and AHEAD NAVAL BARRAGE on/off comparisons. Keep recovery choice available before assets and Golden Grenade/audio feedback intact. The phone-selected P3 Ink Spear remains permanent. English resources remain dormant. No automatic art/Boss/P3-C work or deployment.
+**P3-B closed playtest validation.** Pixel 8 review now targets unified 2–3-second randomized naval salvos, one unresolved Destroyer salvo at a time, and persistent overhead lane warnings with no ground circles. The independent ship remains offshore and AHEAD is unchanged. DEV retains readable FPS, Wake Lock status, LATE, CRATE3, CRATE8 and NAVAL, with MG TEST, four-mode SURVIVAL TEST and AHEAD NAVAL BARRAGE on/off comparisons. Keep recovery choice available before assets and Golden Grenade/audio feedback intact. The phone-selected P3 Ink Spear remains permanent. English resources remain dormant. No automatic art/Boss/P3-C work or deployment.
 
 ## NEXT
 
 1. Review the observer portrait in context and the Mandarin voice mix in combat.
-2. Human-playtest naval warnings, overlapping shots and clean phase handoffs.
+2. Human-playtest persistent lane warnings, revised salvo cadence and clean phase handoffs.
 3. Measure physical-phone performance before authoring further encounters.
 
 ## LATER
