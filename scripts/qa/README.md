@@ -283,3 +283,11 @@ Set `TOPWAR_SURVIVAL_ROOT=artifacts/p3b6a` and run `survival-browser.mjs <phase>
 
 
 `node scripts/qa/mobile-mg-test.mjs artifacts/p3b6a/mg-quick-test` exercises the actual human MG TEST buttons at 350×844 and 390×844 (including a 34px bottom inset). It checks collapsed/expanded layout, 48px targets, identical seed/crowd, exact ten-second shots, authored HUD, real ignored-lane Game Over → Retry, and main LATE behavior. Set `TOPWAR_QA_URL` for the DEV server. Separate test-only MG7–10 Survival fixtures retain their existing semantics; this script never installs those helpers. The temporary human fixtures isolate the same 65-enemy crowd without additional admissions. Recordings and extracted frames are local ignored evidence. `production-sanity.mjs` rejects MG TEST UI/factory strings in the shipping bundle.
+
+## P3-B.6B.0 Survival diagnosis
+
+Run `node scripts/qa/survival-diagnosis.mjs --self-test` for exact admission/kill, grenade, contact/leak, boundary and cap-XP hook checks. Run `node scripts/qa/survival-diagnosis.mjs` for 75 natural/isolated Lv7–10 scenarios across seeds 1/17/42/99/2026 and all three existing pilots. `--quick` uses seed 1 only; `--out=<directory>` selects an ignored evidence directory. The loader requires production source/configuration to match baseline `dc8131e0451fb2c752246614b3e610539963f032`.
+
+The private Vite SSR transform observes exact admissions and lethal removals, including spawn-tick deaths, without editing or importing instrumentation into application code. Each run replays identical inputs in a separate uninstrumented Simulation, compares all transient events every tick, exact full state every second and at the end, and saves state/input SHA-256 digests. Unexpected source-hook drift fails loudly. QA servers use private caches and ignore `artifacts/**`; no running DEV server is stopped.
+
+Run `node scripts/qa/survival-diagnosis-analysis.mjs [evidence-directory]` to regenerate offline workload, theoretical arrival, future-loadout and pilot summaries. Outputs include one JSON per run, `summary.json` and `analysis.json` under ignored `artifacts/p3b6b0/`. Future times beyond Game Over/end are explicitly censored. Workload/speed candidates are arithmetic projections, never applied to combat. See `P3B6B0_REPORT.md` for definitions, findings and the proposal awaiting human review.
