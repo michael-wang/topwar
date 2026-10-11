@@ -1,11 +1,12 @@
 import { expect, it } from 'vitest';
-import { survivalSimulation } from '../scripts/qa/survivalPilot';
+import { survivalSimulation as currentSimulation, type SurvivalScenario } from '../scripts/qa/survivalPilot';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 import { effectivePrimaryFireRate, progressionStage } from '../src/simulation/progression';
 import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import oldSaves from './fixtures/old-survival.json';
-import data from '../public/game-data/game.json';
+import data from './fixtures/pre-b6b4-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
+const survivalSimulation = (seed: number, scenario: SurvivalScenario) => currentSimulation(seed, scenario, GameConfigSchema.parse(data));
 
 it.each([6,7,8,9,10])('preserves a same-tick casualty at MG Lv%i while applying only the earned delta', level => {
   const sim=survivalSimulation(17,'lv10'),s=sim.getState(),balance=s.catharsis!.balance;

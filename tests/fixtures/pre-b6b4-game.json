@@ -1,0 +1,218 @@
+{
+  "catharsis": {
+    "destroyer": { "startPolicy": "withCarnival", "enabled": true, "durationSeconds": 27, "entrySeconds": 3.2, "exitAtSeconds": 23, "radioAtSeconds": 1.3, "radioDurationSeconds": 7.2, "shotTimes": [8.8, 12, 16, 17.3, 21], "startX": -28, "stationX": -4, "exitX": 30, "z": 56 },
+    "artillery": { "horizontalSpeed": 24, "gravity": 8, "minimumFlightSeconds": 0.5, "impactLaneFraction": 0.42, "maxActive": 8 },
+    "defenseMotionVersion": 2,
+    "defenseWaves": { "intervalSeconds": 6, "firstWaveDelaySeconds": 1.6666666666666667 },
+    "carnival": {
+      "enabled": true,
+      "durationSeconds": 24,
+      "firstWaveSeconds": 2,
+      "waveIntervalSeconds": 1.5,
+      "groupSize": 36,
+      "activeEnemyLimit": 80,
+      "laneGroups": [[0, 1], [3, 4], [1, 2], [2, 3]]
+    },
+    "postCapSurvival": {
+      "enabled": true,
+      "startLevel": 6,
+      "ordinaryGroupSize": 30,
+      "pressureLaneCount": 3,
+      "heavyCount": 4,
+      "giantIntervalSeconds": 24,
+      "maxSimultaneousGiants": 1,
+      "grenadeSupplyIntervalSeconds": 30,
+      "grenadeSupplyAmount": 1,
+      "advancedProfile": {
+        "startLevel": 8,
+        "ordinaryGroupSize": 42,
+        "heavyCount": 6,
+        "pressureLaneCount": 4
+      },
+      "waveIntervalSeconds": 6,
+      "firstWaveDelaySeconds": 1,
+      "maxActiveEnemies": 180
+    },
+    "grenade": {
+      "capacity": 3,
+      "damageEnemyHp": 9,
+      "blastRadius": 4,
+      "flightSeconds": 0.65,
+      "emptyFieldDepth": 14,
+      "supplyPressureDepth": 24,
+      "supplyDelaySeconds": 8,
+      "supplyHitsRequired": 10,
+      "supplyDestruction": { "mode": "staged", "recoverySeconds": 0.7 },
+      "supplyDepth": 14,
+      "supplyMinDepth": 6,
+      "supplyFrontClearance": 1.25,
+      "supplyLaneDistancePenalty": 3
+    },
+    "defenseMode": true,
+    "defenseSpawnAheadDistance": 47,
+    "crowdDepthSpan": 9,
+    "laneSwitchSeconds": 0.15,
+    "lateralSpreadFraction": 0.42,
+    "memberDepthSpacing": 0.85,
+    "depthJitter": 0.35,
+    "laneCount": 5,
+    "edgeInset": 0.4,
+    "waveRows": 6,
+    "priorityWaves": 3,
+    "pressureLaneCount": 3,
+    "groupSize": 24,
+    "groupRowStride": 2,
+    "secondLaneChance": 0.4,
+    "heavyChance": 0.25,
+    "pressureRamp": {
+      "lv4": { "xpFraction": 0.35, "pressureLaneCount": 4, "heavyCount": 2 },
+      "lv5": { "xpFraction": 0.25, "pressureLaneCount": 3, "heavyCount": 3 },
+      "lv6": { "groupSize": 60, "pressureLaneCount": 3, "heavyCount": 1 }
+    },
+    "gruntSpeed": 0.85,
+    "heavySpeed": 0.72,
+    "heavyHp": 15,
+    "enemyVisualScale": 1.4,
+    "heavyVisualScale": 1.35,
+    "heavyWidthMultiplier": 1.05,
+    "heavyHeightMultiplier": 1.15,
+    "heavyDepthMultiplier": 1.15,
+    "rewardAimRadius": 0.5,
+    "progression": {
+      "xpRequirements": [28, 60, 110, 180, 220, 200, 300, 350, 450],
+      "levelPlan": [
+        {
+          "fireRateStage": 1,
+          "squadStage": 1,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 2,
+          "squadStage": 1,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 3,
+          "squadStage": 1,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 3,
+          "squadStage": 2,
+          "weaponFamily": "rifle"
+        },
+        {
+          "fireRateStage": 3,
+          "squadStage": 3,
+          "weaponFamily": "rifle"
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 1,
+          "squadStage": 1
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 2,
+          "squadStage": 1
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 3,
+          "squadStage": 1
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 3,
+          "squadStage": 2
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 3,
+          "squadStage": 3
+        }
+      ],
+      "fireRateMultipliers": [1, 1.25, 1.5],
+      "gruntKillXp": 1,
+      "heavyKillXp": 10,
+      "reinforcementLevel": 7,
+      "reinforcementArrivalSeconds": 1.1,
+      "reinforcementSpacing": 0.72,
+      "reinforcementStagger": 0.18
+    },
+    "heavyFrontClearance": 2.5,
+    "pressureMultipliers": [1, 1, 1, 1, 1.25, 1.35, 1.45, 1.55, 1.6, 1.65],
+    "giant": {
+      "enabled": true,
+      "unlockLevel": 4,
+      "introDelaySeconds": 0,
+      "hp": 172,
+      "xp": 120,
+      "speed": 0.68,
+      "visualScale": 1.9,
+      "widthMultiplier": 0.94,
+      "gaitCycleMs": 850
+    },
+    "landingAssault": {
+      "enabled": true,
+      "powerWindowSeconds": 10,
+      "groupSize": 66,
+      "cadenceMultiplier": 0.88,
+      "primaryLaneShare": 0.7,
+      "heavyMultiplier": 2.0,
+      "heavyChanceCap": 0.85,
+      "activeSoftCap": 180,
+      "secondGiantDelaySeconds": 18,
+      "giantFollowupDelaySeconds": 10,
+      "maxSimultaneousGiants": 2
+    },
+    "machineGun": {
+      "fireRate": 18,
+      "projectileSpeed": 60,
+      "range": 80,
+      "damageEnemyHp": 1
+    }
+  },
+  "player": {
+    "startSquad": 1,
+    "startRocketCount": 0,
+    "moveSpeed": 5,
+    "forwardSpeed": 0.6,
+    "formationSpacing": 0.45,
+    "memberRadius": 0.22
+  },
+  "track": {
+    "halfWidth": 3.2,
+    "defenseLineOffset": 1.5
+  },
+  "weapon": {
+    "rifle": {
+      "fireRate": 3,
+      "projectileSpeed": 60,
+      "range": 80,
+      "tierHitRadiusStep": 0.45,
+      "maxHitRadiusBonus": 0.90
+    },
+    "rocket": {
+      "damage": 15,
+      "fireRate": 0.6,
+      "projectileSpeed": 18,
+      "range": 40,
+      "blastRadius": 1.25
+    }
+  },
+  "tiers": {
+    "mergeCount": 10,
+    "tier1Power": 3,
+    "tier2Power": 300,
+    "enemyHigherTierPowerMultiplier": 10,
+    "rifleHigherTierPowerMultiplier": 10,
+    "normalEnemyRadius": 0.3
+  },
+  "bosses": {
+    "basic": {
+      "visualScale": 7,
+      "radius": 2.0
+    }
+  }
+}

@@ -1,11 +1,11 @@
 import { expect, it } from 'vitest';
-import { carnivalEntry, carnivalOptions, carnivalConfig, carnivalPilotLane, runCarnivalPilot } from '../scripts/qa/carnivalPilot';
+import { carnivalEntry, carnivalOptions, carnivalConfig, carnivalPilotLane, runCarnivalPilot } from './helpers/HistoricalPilots';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import { Simulation } from '../src/simulation/Simulation';
 import { advanceCarnival, emptyCarnival } from '../src/simulation/carnival';
 import { GameConfigSchema } from '../src/config/configSchema';
-import data from '../public/game-data/game.json';
+import data from './fixtures/pre-b6b4-game.json';
 
 const step = (sim: Simulation, n = 1) => { for (let i=0;i<n;i++) sim.step(1/60,{targetX:0},pilotTuning); };
 const withoutNaval = (sim: Simulation) => { const balance=sim.getState().catharsis!.balance;

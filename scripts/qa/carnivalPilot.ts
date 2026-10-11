@@ -9,12 +9,13 @@ import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
 import { pilotTuning } from './p15Pilot';
 
 export const carnivalConfig = GameConfigSchema.parse(data);
-export const carnivalOptions = { seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1,
-  startRocketCount: 0, tiers: carnivalConfig.tiers,
-  catharsis: { balance: carnivalConfig.catharsis!, trackHalfWidth: carnivalConfig.track.halfWidth } };
-export function carnivalEntry(seed = 17) {
-  const sim = new Simulation({ ...carnivalOptions, seed });
-  const state = createDevReviewFixture(carnivalOptions, carnivalConfig.weapon.rifle.fireRate, 'carnival').getState();
+export function carnivalOptionsFor(config = carnivalConfig) { return { seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1,
+  startRocketCount: 0, tiers: config.tiers,
+  catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } }; }
+export const carnivalOptions = carnivalOptionsFor();
+export function carnivalEntry(seed = 17, config = carnivalConfig) {
+  const options = carnivalOptionsFor(config), sim = new Simulation({ ...options, seed });
+  const state = createDevReviewFixture(options, config.weapon.rifle.fireRate, 'carnival').getState();
   state.seed = seed; state.rngState = sim.getState().rngState; sim.restoreState(state); return sim;
 }
 // Adjacent step at most every 200ms; nearest threat, with the original teaching
@@ -33,10 +34,10 @@ export function carnivalPilotGrenade(s: SimulationFrameState, distant = false): 
   return !!target && (s.grenade?.inventory??0)>0 && !s.grenade?.flight && (distant || target.z-s.player.z<=14)
     && enemiesInBlast(s.enemies,target.x,target.z,c.blastRadius).length>=6;
 }
-export function runCarnivalPilot(seed: number, natural = false, grenades = false, activeLimit?: number) {
-  const sim = natural ? new Simulation({...carnivalOptions,seed}) : carnivalEntry(seed);
+export function runCarnivalPilot(seed: number, natural = false, grenades = false, activeLimit?: number, config = carnivalConfig) {
+  const sim = natural ? new Simulation({...carnivalOptionsFor(config),seed}) : carnivalEntry(seed, config);
   if(activeLimit!==undefined)sim.setCatharsisBalance({...sim.getState().catharsis!.balance,
-    carnival:{...carnivalConfig.catharsis!.carnival,activeEnemyLimit:activeLimit}});
+    carnival:{...config.catharsis!.carnival,activeEnemyLimit:activeLimit}});
   let start: number|null=null, lv7: number|null=null, available20=0, samples20=0, available=0, samples=0;
   let gap=0,longestGap=0,peakEnemies=0,peakProjectiles=0,casualties=0,grunts=0,heavies=0,kills=0,throws=0;
   const timeline: {seconds:number;survivors:number;grunts:number;heavies:number;level:number;xp:number}[]=[];

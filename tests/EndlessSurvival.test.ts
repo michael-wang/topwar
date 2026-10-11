@@ -1,15 +1,19 @@
 import { expect, it } from 'vitest';
-import { survivalSimulation, survivalDecision, runSurvivalPilot } from '../scripts/qa/survivalPilot';
+import { survivalSimulation as currentSimulation, survivalDecision, runSurvivalPilot as currentPilot, type SurvivalScenario } from '../scripts/qa/survivalPilot';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 import { advanceDefenseWaves } from '../src/simulation/enemies/defenseWaves';
 import { postCapOrdinarySettings, advancePostCapSurvival } from '../src/simulation/postCapSurvival';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { createDevReviewFixture as createQaFixture } from './helpers/ReviewFixtures';
 import oldSaves from './fixtures/old-survival.json';
-import gameData from '../public/game-data/game.json';
+import gameData from './fixtures/pre-b6b4-game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
+
+// Keep the accepted B5/B6A balance regression distinct from newly authored production AHEAD.
+const survivalSimulation = (seed: number, scenario: SurvivalScenario) => currentSimulation(seed, scenario, GameConfigSchema.parse(gameData));
+const runSurvivalPilot = (seed: number, scenario: SurvivalScenario) => currentPilot(seed, scenario, 'competent', GameConfigSchema.parse(gameData));
 
 it.each([6,7,8])('uses progression Lv%i for future composition even after casualties', level => {
   const sim = survivalSimulation(17,'lv8'), s = sim.getState();

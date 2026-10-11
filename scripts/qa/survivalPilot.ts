@@ -14,8 +14,8 @@ import { maxProgressionLevel } from '../../src/simulation/progression';
 import type { DevReviewFixture } from '../../tests/helpers/ReviewFixtures';
 
 export type SurvivalScenario = 'natural' | 'lv6' | 'lv7' | 'lv8' | 'lv9' | 'lv10';
-export function survivalSimulation(seed: number, scenario: SurvivalScenario) {
-  const c = GameConfigSchema.parse(data), options = { seed, level: LevelDefinitionSchema.parse(levelData),
+export function survivalSimulation(seed: number, scenario: SurvivalScenario, c = GameConfigSchema.parse(data)) {
+  const options = { seed, level: LevelDefinitionSchema.parse(levelData),
     startSquad: 1, startRocketCount: 0, tiers: c.tiers,
     catharsis: { balance: c.catharsis!, trackHalfWidth: c.track.halfWidth } };
   if (scenario === 'natural') return new Simulation(options);
@@ -51,8 +51,8 @@ export function survivalDecision(sim: Simulation, tick: number, policy: 'compete
     || target.z <= 10 && victims.reduce((sum, e) => sum + e.hp, 0) >= 12) };
 }
 
-export function runSurvivalPilot(seed: number, scenario: SurvivalScenario, policy: 'competent' | 'slower' | 'fixed' = 'competent') {
-  const sim = survivalSimulation(seed, scenario), initial = sim.getState();
+export function runSurvivalPilot(seed: number, scenario: SurvivalScenario, policy: 'competent' | 'slower' | 'fixed' = 'competent', config = GameConfigSchema.parse(data)) {
+  const sim = survivalSimulation(seed, scenario, config), initial = sim.getState();
   let activation = initial.postCapSurvival?.startedAtSeconds ?? null, entry = activation === null ? null : initial;
   const waves: any[] = [], opportunities: any[] = [], samples: any[] = [], levels: Record<number, number> = { [initial.progression!.level]: 0 };
   let kills = 0, contacts = 0, casualties = 0, longestEmpty = 0, emptySince: number | null = null;

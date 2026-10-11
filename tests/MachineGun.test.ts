@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import data from '../public/game-data/game.json';
+import data from './fixtures/pre-b6b4-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { progressionStage, grantXp } from '../src/simulation/progression';
 import { controlledSimulation, comparePrimary } from '../scripts/qa/p2aComparison';

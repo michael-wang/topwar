@@ -67,7 +67,8 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   const interval = 1 / effectivePrimaryFireRate(baseFireRate, fixture.level, balance);
   state.weapons.rifleMemberCooldowns = Array.from({ length: fixture.soldiers }, (_, index) => index * interval / fixture.soldiers);
   // An immediate complete group is already present in this review entry.
-  state.defenseWaves!.nextAtSeconds = balance.postCapSurvival.waveIntervalSeconds ?? balance.defenseWaves.intervalSeconds;
+  state.defenseWaves!.nextAtSeconds = postCapOrdinarySettings(balance, state.postCapSurvival, fixture.level)?.waveIntervalSeconds
+    ?? balance.postCapSurvival.waveIntervalSeconds ?? balance.defenseWaves.intervalSeconds;
   simulation.restoreState(state);
   return simulation;
 }

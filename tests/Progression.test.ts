@@ -3,7 +3,7 @@ import { createChibiPlayerFamily } from '../src/rendering/squad/ChibiPlayerFamil
 import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { createDefenseSquadFormation } from '../src/simulation/squad/formation';
 import { expect, it } from 'vitest';
-import data from '../public/game-data/game.json';
+import data from './fixtures/pre-b6b4-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { Simulation } from '../src/simulation/Simulation';
 import { requiredXp, grantXp, effectiveRifleFireRate, progressionStage, maxProgressionLevel } from '../src/simulation/progression';

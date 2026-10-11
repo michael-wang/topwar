@@ -23,12 +23,12 @@
       "maxSimultaneousGiants": 1,
       "grenadeSupplyIntervalSeconds": 30,
       "grenadeSupplyAmount": 1,
-      "advancedProfile": {
-        "startLevel": 8,
-        "ordinaryGroupSize": 42,
-        "heavyCount": 6,
-        "pressureLaneCount": 4
-      },
+      "levelProfiles": [
+        { "startLevel": 8, "ordinaryGroupSize": 42, "heavyCount": 11, "pressureLaneCount": 4, "ordinarySpeedMultiplier": 1.4, "waveIntervalSeconds": 6 },
+        { "startLevel": 9, "ordinaryGroupSize": 42, "heavyCount": 15, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6, "waveIntervalSeconds": 5 },
+        { "startLevel": 10, "ordinaryGroupSize": 42, "heavyCount": 19, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6, "waveIntervalSeconds": 4 }
+      ],
+      "xpLookahead": { "level": 8, "minimumXp": 245, "pressureLaneCount": 5, "ordinarySpeedMultiplier": 1.6 },
       "waveIntervalSeconds": 6,
       "firstWaveDelaySeconds": 1,
       "maxActiveEnemies": 180
