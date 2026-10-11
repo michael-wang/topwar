@@ -43,6 +43,8 @@ import { clearCheckpoint, simulationFromCheckpoint, writeCheckpoint,
 import { SessionRecovery } from '../ui/SessionRecovery';
 import { DevFps } from '../ui/DevFps';
 import { DevLifecycle } from './DevLifecycle';
+import { ScreenWakeLock } from './ScreenWakeLock';
+import { DevWakeStatus } from '../ui/DevWakeStatus';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -106,6 +108,8 @@ export class GameApp {
   private devReviewFixture: DevReviewFixture | null = null;
   private readonly fps: DevFps | null;
   private readonly lifecycle: DevLifecycle | null;
+  private readonly wakeLock = new ScreenWakeLock();
+  private readonly wakeStatus: DevWakeStatus | null;
   private recovery: SessionRecovery | null = null;
   private recoveryPending: SessionCheckpoint | null = null;
   private restored = false;
@@ -150,6 +154,7 @@ export class GameApp {
       (x,z,now)=>this.renderer.projectSupplyPosition(x,z,now)) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
     this.tuningPanel = import.meta.env.DEV ? new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
+      if (this.startup === 'recovering' || this.recovery?.blocking) return;
       this.simulation.setRuntimeBalance({ rewardRowsPerReward: values.rewardRowsPerReward,
         enemyHigherTierPowerMultiplier: values.enemyHigherTierPowerMultiplier,
         rifleHigherTierPowerMultiplier: values.rifleHigherTierPowerMultiplier,
@@ -165,6 +170,7 @@ export class GameApp {
     }, !!this.config.catharsis?.defenseMode) : null;
     this.devReview = import.meta.env.DEV && this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
+        if (this.startup === 'recovering' || this.recovery?.blocking) return;
         this.devReviewFixture = role;
         this.devReview?.setSelected(role);
         this.tuningPanel?.close();
@@ -194,6 +200,8 @@ export class GameApp {
       }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
     this.fps = import.meta.env.DEV ? new DevFps(viewport, !!this.config.catharsis?.defenseMode) : null;
+    this.wakeStatus = import.meta.env.DEV && this.tuningPanel
+      ? new DevWakeStatus(this.tuningPanel.reviewControlsHost, this.wakeLock) : null;
     if (saved.status === 'valid' || saved.status === 'invalid') {
       this.startup = 'recovering';
       this.recoveryPending = saved.checkpoint ?? null;
@@ -231,6 +239,7 @@ export class GameApp {
     if (!this.running) return;
 
     this.running = false;
+    this.wakeLock.setActive(false);
     document.removeEventListener?.('visibilitychange', this.onVisibility);
     document.removeEventListener?.('freeze', this.onFreeze);
     document.removeEventListener?.('resume', this.onResumeLifecycle);
@@ -288,6 +297,7 @@ export class GameApp {
     this.fieldObserver?.dispose();
     this.audio.dispose();
     this.fps?.dispose(); this.lifecycle?.dispose(); this.recovery?.dispose(); this.checkpointNotice?.remove();
+    this.wakeStatus?.dispose(); this.wakeLock.dispose();
     this.perfHud?.dispose();
     this.renderer.dispose();
     this.disposed = true;
@@ -295,6 +305,7 @@ export class GameApp {
 
   private retry(): void {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
+    if (this.startup === 'recovering' || this.recovery?.blocking) return;
     clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
     this.restored = false;
@@ -340,6 +351,7 @@ export class GameApp {
     if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance.progression, this.presentationMs);
     this.renderer.resetFeedback(import.meta.env.DEV && this.devReviewFixture ? ++this.devReviewVisualSalt : 0);
     this.tierHud.setTier(1);
+    this.syncWakeLock();
   }
 
   private createSimulation(): Simulation {
@@ -368,7 +380,7 @@ export class GameApp {
   }
 
   private startInputs(): void {
-    if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost) return;
+    if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost || this.recovery?.blocking) return;
     if (this.laneInput) {
       if (this.simulation.getFrameState().squad.count > 0) this.laneInput.start();
     } else { this.dragInput.start(); this.keyboardInput.start(); this.touchInput?.start(); }
@@ -395,7 +407,7 @@ export class GameApp {
   };
 
   private async beginGameplay(presentation: 'desktop' | 'touch' = 'touch'): Promise<void> {
-    if (!this.running || this.startup !== 'awaiting-start') return;
+    if (!this.running || this.startup !== 'awaiting-start' || this.recovery?.blocking) return;
     const generation = this.startGeneration;
     this.startup = 'activating';
     // Initial Start owns session hints only; later input and Retry never change them.
@@ -413,10 +425,11 @@ export class GameApp {
     if (this.hidden || this.contextLost) this.setPaused(true);
     this.startInputs();
     this.renderer.preparePresentation();
+    this.syncWakeLock();
   }
 
   private readonly onStartPointerDown = (event: PointerEvent): void => {
-    if (this.startup === 'recovering') return;
+    if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if (this.startup === 'started') {
       if (this.audio.needsResume) void this.audio.activate();
       return;
@@ -428,7 +441,7 @@ export class GameApp {
   };
 
   private readonly onStartClick = (event: MouseEvent): void => {
-    if (this.startup === 'recovering') return;
+    if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if (this.startup === 'started' && !this.consumeStartClick) return;
     this.consumeStartClick = false;
     event.preventDefault();
@@ -438,7 +451,7 @@ export class GameApp {
   };
 
   private readonly onStartKeyDown = (event: KeyboardEvent): void => {
-    if (this.startup === 'recovering') return;
+    if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if (this.startup === 'started') {
       if (!event.repeat && this.audio.needsResume) void this.audio.activate();
       return;
@@ -450,7 +463,7 @@ export class GameApp {
   };
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
-    if (this.startup !== 'started') return;
+    if (this.startup !== 'started' || this.recovery?.blocking) return;
     const key = event.key.toLowerCase();
     if (key === 'escape') {
       if (!event.repeat) {
@@ -472,7 +485,7 @@ export class GameApp {
   }
 
   private togglePaused(): void {
-    if (!this.running || this.startup !== 'started') return;
+    if (!this.running || this.startup !== 'started' || this.recovery?.blocking) return;
     if (this.paused && (this.hidden || this.contextLost)) return;
     if (this.paused) void this.audio.activate(); // Called within the Resume gesture.
     this.setPaused(!this.paused);
@@ -501,9 +514,17 @@ export class GameApp {
     }
     this.pauseOverlay.setVisible(this.paused);
     this.hudActions.setPaused(this.paused);
+    this.syncWakeLock();
+  }
+
+  private syncWakeLock(): void {
+    this.wakeLock.setActive(this.running && this.startup === 'started' && !this.paused && !this.recovery?.blocking
+      && !this.hidden && !this.contextLost && document.visibilityState === 'visible'
+      && this.simulation.getFrameState().squad.count > 0);
   }
 
   private readonly chooseRecovery = (continueGame: boolean): void => {
+    if (this.startup !== 'recovering') return;
     const c = this.recoveryPending;
     this.recoveryPending = null;
     if (continueGame && c) {
@@ -648,7 +669,7 @@ export class GameApp {
       const state = this.simulation.getFrameState();
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0) { this.laneInput?.stop();
-        if (!this.clearedFinishedCheckpoint) { clearCheckpoint(); this.clearedFinishedCheckpoint = true; } }
+        if (!this.clearedFinishedCheckpoint) { clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
       this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused);
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,

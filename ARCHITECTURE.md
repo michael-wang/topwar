@@ -101,6 +101,8 @@ This structure may grow gradually. Do not create empty architecture theater. Add
 
 An active session has one bounded, versioned browser checkpoint, written on manual Pause and before background suspension (visibility hidden; pagehide/freeze are additional safeguards). It contains the complete plain Simulation snapshot, saved level/configuration/runtime tuning and DEV fixture identity. Storage failures cannot stop gameplay. Recovery validates through `Simulation.restoreState`, preserves historical plans/clocks, and remains paused until an explicit Resume gesture. Sleep time never enters the fixed-step loop. Retry/New Game and Game Over invalidate the previous run. DEV and production use separate origin-local slots; no per-frame serialization or unload dependency. Presentation resources and one-shot cues are reconstructed without replaying the Mission Intro, old acquisitions or upgrades.
 
+Checkpoint presence blocks the viewport at HTML initialization before module/data/model loading; full validation enables a once-only recovery decision. Pending controls are hidden/inert and keyboard focus stays in the dialog. A screen Wake Lock is optional, event-driven and held only during visible, living, unpaused gameplay with a usable WebGL context. Requests/releases are serialized and stale asynchronous grants are released; system revocation never creates a retry loop. DEV status is excluded from production; lock functionality remains available there on secure origins.
+
 ### Simulation
 
 Owns gameplay truth:

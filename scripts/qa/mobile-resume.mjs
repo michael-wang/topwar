@@ -40,6 +40,7 @@ try { for (const width of [350, 390]) {
   }, { ticks, pilot });
   const snapshot = async () => page.evaluate(() => window.__testApp.simulation.getState());
   const continueGame = async () => { await page.getByRole('button', { name: '繼續上次遊戲' }).tap();
+    await page.locator('.session-recovery').waitFor({ state: 'detached' });
     await page.waitForFunction(() => window.__testApp.startup === 'started'); await stopFrames();
     // Paint the restored paused state before capturing HUD/battlefield evidence.
     await page.evaluate(() => { const a = window.__testApp; a.renderFrame(performance.now()); cancelAnimationFrame(a.frameId); });

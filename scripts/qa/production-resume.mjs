@@ -11,9 +11,9 @@ try { for (const width of [350, 390]) for (const legacy of [false, true]) {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.route(/\/topwar\/assets\/index-.*\.js$/, async route => {
     const response = await route.fetch(), body = await response.text();
-    const pattern = /new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)\.start\(\)/g;
+    const pattern = /new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;
     assert.equal([...body.matchAll(pattern)].length, 1);
-    await route.fulfill({ response, body: body.replace(pattern, m => `(window.__testApp=${m.slice(0, -8)}).start()`) });
+    await route.fulfill({ response, body: body.replace(pattern, m => `(window.__testApp=${m})`) });
   });
   if (legacy) await page.route(/\/game-data\/game\.[a-f0-9]+\.json$/, async route => {
     const response = await route.fetch(), data = await response.json(); delete data.catharsis; await route.fulfill({ response, json: data });
@@ -21,7 +21,7 @@ try { for (const width of [350, 390]) for (const legacy of [false, true]) {
   await page.goto('http://127.0.0.1:5186/topwar/'); await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
-  assert.equal(await page.locator('.dev-fps,.tuning-panel,.dev-survival-test').count(), 0);
+  assert.equal(await page.locator('.dev-fps,.dev-wake-status,.tuning-panel,.dev-survival-test').count(), 0);
   const saved = await page.evaluate(() => {
     const a = window.__testApp, c = a.config, r = a.runtimeTuning;
     const tuning = { ...c.player, forwardSpeed: r.forwardSpeed, trackHalfWidth: c.track.halfWidth,
@@ -34,6 +34,7 @@ try { for (const width of [350, 390]) for (const legacy of [false, true]) {
   const text = await page.evaluate(() => localStorage.getItem('topwar:session:v1:release')); assert(text);
   await page.reload(); await page.waitForFunction(() => window.__testApp?.running);
   await page.getByRole('button', { name: '繼續上次遊戲' }).tap(); await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
+  await page.locator('.session-recovery').waitFor({ state: 'detached' });
   assert.deepEqual(await page.evaluate(() => window.__testApp.simulation.getState()), saved.state);
   assert(await page.evaluate(() => window.__testApp.paused && window.__testApp.lifecycle === null && window.__testApp.fps === null));
   assert.equal(await page.locator('.dev-fps,.tuning-panel,.dev-survival-test').count(), 0);

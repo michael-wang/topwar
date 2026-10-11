@@ -35,6 +35,9 @@ export type CheckpointRead = { status: 'empty' | 'unavailable' | 'invalid'; chec
 export function browserSessionStorage(): ConfigStorage | null {
   try { return globalThis.localStorage ?? null; } catch { return null; }
 }
+export function checkpointPresent(storage = browserSessionStorage()): boolean {
+  try { return storage?.getItem(CHECKPOINT_KEY) != null; } catch { return false; }
+}
 export function simulationFromCheckpoint(c: SessionCheckpoint): Simulation {
   const simulation = new Simulation({ seed: c.state.seed, level: c.level,
     startSquad: c.config.player.startSquad, startRocketCount: c.config.player.startRocketCount,

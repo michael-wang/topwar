@@ -12,8 +12,8 @@ try{for(const width of [350,390])for(const legacy of [false,true]){
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().endsWith('.glb'))models.push(r.url());});
  await page.addInitScript(()=>{const native=crypto.getRandomValues.bind(crypto);crypto.getRandomValues=a=>a instanceof Uint32Array&&a.length===1?(a[0]=17,a):native(a);});
  await page.route(/\/topwar\/assets\/index-.*\.js$/,async route=>{
-  const response=await route.fetch(),body=await response.text(),pattern=/new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)\.start\(\)/g;
-  assert.equal([...body.matchAll(pattern)].length,1);await route.fulfill({response,body:body.replace(pattern,m=>`(window.__testApp=${m.slice(0,-8)}).start()`)});
+  const response=await route.fetch(),body=await response.text(),pattern=/new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;
+  assert.equal([...body.matchAll(pattern)].length,1);await route.fulfill({response,body:body.replace(pattern,m=>`(window.__testApp=${m})`)});
  });
  if(legacy)await page.route(/\/game-data\/game\.[a-f0-9]+\.json$/,async route=>{const response=await route.fetch(),data=await response.json();delete data.catharsis;await route.fulfill({response,json:data});});
  await page.goto('http://127.0.0.1:5185/topwar/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');

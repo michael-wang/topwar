@@ -203,5 +203,6 @@ it('uses a separate defense tuning anchor and a monochrome tool, retaining the l
   const legacy = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), false);
   expect(viewport.children[1].className).toBe('tuning-panel');
   expect(viewport.children[1].children[0].textContent).toBe('TUNE');
+  expect(viewport.children[1].children[1].children[0]).toBe(legacy.reviewControlsHost);
   defense.dispose(); legacy.dispose(); vi.unstubAllGlobals();
 });

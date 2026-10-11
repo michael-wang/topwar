@@ -14,13 +14,15 @@ import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';
 import { GameAudio } from './audio/GameAudio';
 import { ObserverPortraits } from './ui/ObserverPortraits';
 import { FIELD_OBSERVER_LOCALE } from './ui/observerLocale';
-import { readCheckpoint, type CheckpointRead } from './app/SessionCheckpoint';
+import { checkpointPresent, readCheckpoint, type CheckpointRead } from './app/SessionCheckpoint';
+import { SessionRecovery } from './ui/SessionRecovery';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
 if (!viewport) {
   throw new Error('Game viewport is missing');
 }
 const gameViewport = viewport;
+if (checkpointPresent()) SessionRecovery.loading(gameViewport);
 applyArtTheme(document.documentElement);
 const buildLabel = mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 if (import.meta.env.DEV) void refreshDevBuildLabel(buildLabel, __TOPWAR_VERSION__, __TOPWAR_SHA__);
@@ -51,11 +53,13 @@ async function startGame(): Promise<void> {
     console.error('Failed to load game assets or data', error);
     gameViewport.classList.add('game-viewport-error');
     gameViewport.textContent = 'Failed to load game assets or data. See console for details.';
+    SessionRecovery.clearLoading(gameViewport);
     return;
   }
 
   const app = new GameApp(gameViewport, configStore, level, assets,
     perfEnabled(window.location.search), threatReviewEnabled(window.location.search), audio, portraits, saved);
+  if (saved.status !== 'valid' && saved.status !== 'invalid') SessionRecovery.clearLoading(gameViewport);
   app.start();
 }
 

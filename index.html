@@ -8,6 +8,20 @@
   </head>
   <body>
     <main id="game-viewport" aria-label="TopWar game viewport"></main>
+    <script>
+      // Presence only: block before module/config/model downloads; validation stays in TypeScript.
+      try {
+        if (localStorage.getItem('topwar:session:v1:' + ('%DEV%' === 'true' ? 'dev' : 'release')) !== null) {
+          const host = document.getElementById('game-viewport');
+          host.inert = true; host.setAttribute('data-recovery-pending', '');
+          const cover = document.createElement('div'); cover.id = 'session-recovery-loading';
+          cover.lang = 'zh-Hant'; cover.setAttribute('role', 'dialog'); cover.setAttribute('aria-modal', 'true');
+          cover.setAttribute('aria-label', '遊戲進度'); cover.setAttribute('aria-busy', 'true');
+          cover.style.cssText = 'position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:#14212b;color:#fff3dc;font:700 20px/1.5 sans-serif;text-align:center';
+          cover.textContent = '正在載入上次進度…'; document.body.append(cover);
+        }
+      } catch { /* Storage may be unavailable; ordinary startup remains usable. */ }
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 const phase = process.argv[2] ?? 'after', out = resolve(process.env.TOPWAR_STARTUP_OUT ?? `artifacts/p3b3/${phase}`);
 const baseline = process.argv.find(arg => arg.startsWith('--baseline='))?.slice(11);
-const baselineFiles = ['src/main.ts', 'src/app/GameApp.ts', 'src/audio/GameAudio.ts', 'src/ui/GrenadeButton.ts', 'src/rendering/GameRenderer.ts', 'src/style.css'];
+const baselineFiles = ['src/main.ts', 'src/app/GameApp.ts', 'src/app/SessionCheckpoint.ts', 'src/ui/SessionRecovery.ts', 'src/audio/GameAudio.ts', 'src/ui/GrenadeButton.ts', 'src/rendering/GameRenderer.ts', 'src/style.css'];
 mkdirSync(out, { recursive: true });
 if (!process.env.TOPWAR_STARTUP_REUSE_BUILD) await build({ build: { outDir: `${out}/dist` }, plugins: [{
   name: 'startup-qa-only', enforce: 'pre', transform(source, id) {
@@ -27,6 +27,7 @@ if (!process.env.TOPWAR_STARTUP_REUSE_BUILD) await build({ build: { outDir: `${o
     if (id.includes('/GLTFLoader.js')) source = source.replace('parse( data, path, onLoad, onError ) {', `parse( data, path, onLoad, onError ) { const qaStart=performance.now(),qaLoad=onLoad;onLoad=(gltf)=>{performance.measure('qa:glb-parse',{start:qaStart,end:performance.now()});qaLoad(gltf);};`);
     return source;
   },
+  transformIndexHtml: { order: 'pre', handler(html) { return baseline ? execFileSync('git', ['show', `${baseline}:index.html`], { encoding: 'utf8' }) : html; } },
 }] });
 const server = await preview({ build: { outDir: `${out}/dist` }, preview: { host: '127.0.0.1', port: 5183, strictPort: true }, plugins: [{
   name: 'representative-static-cache', configurePreviewServer(s) {

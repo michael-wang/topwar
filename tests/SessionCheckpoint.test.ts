@@ -5,7 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { defaultRuntimeTuning } from '../src/app/runtimeTuning';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
-import { CHECKPOINT_KEY, clearCheckpoint, MAX_CHECKPOINT_CHARACTERS, readCheckpoint,
+import { CHECKPOINT_KEY, checkpointPresent, clearCheckpoint, MAX_CHECKPOINT_CHARACTERS, readCheckpoint,
   simulationFromCheckpoint, writeCheckpoint, type SessionCheckpoint } from '../src/app/SessionCheckpoint';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 import historical from './fixtures/old-survival.json';
@@ -30,6 +30,13 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it('detects presence without parsing, mutation or rejecting corrupt pending data', () => {
+    const store = storage(); expect(checkpointPresent(store)).toBe(false);
+    store.setItem(CHECKPOINT_KEY, '{'); expect(checkpointPresent(store)).toBe(true);
+    expect(store.getItem(CHECKPOINT_KEY)).toBe('{');
+    expect(checkpointPresent(null)).toBe(false);
+    expect(checkpointPresent({ ...store, getItem() { throw Error('Denied'); } })).toBe(false);
+  });
   it.each(['survival10-ahead', 'naval'] as const)('preserves %s opportunities/artillery across seventy seconds of real continued combat', fixture => {
     const { sim, c } = checkpoint(fixture), restored = simulationFromCheckpoint(JSON.parse(JSON.stringify(c)));
     const launches: number[] = [];

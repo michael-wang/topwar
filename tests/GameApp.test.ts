@@ -13,6 +13,7 @@ import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
+vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} } }));
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
@@ -528,12 +529,12 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
+    await startGame(app);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [{ id: 673, tier: 2, x: 0.1, z: 81.6, hp: 300 },
         { id: 2524, tier: 3, x: 0, z: 240, hp: 3000 }],
       streamRewards: [{ id: 2, tier: 1, x: -0.8, z: 30, hitProgress: 3, hitsRequired: 10 }],
       gates: [], pickups: [], projectiles: [] });
-    await startGame(app);
     raf.frame(100);
     expect(mock.render.mock.lastCall![0].enemies).toEqual([
       { id: 673, tier: 2, x: 0.1, z: 81.6, hp: 300 },
@@ -548,12 +549,12 @@ describe('GameApp config and frame lifecycle', () => {
   it('passes the active Boss as plain render data with authored visual scale', async () => {
     const raf = createRaf();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+    await startGame(app);
     const state = mock.getState();
     const bossState = { ...state,
       boss: { id: 6441, tier: 1, x: 0, z: 576, hp: 2997, maxHp: 3000,
         engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 } };
     mock.getState.mockReturnValueOnce(bossState);
-    await startGame(app);
     raf.frame(100);
     expect(mock.render.mock.lastCall![0].boss).toEqual({
       id: 6441, tier: 1, x: 0, z: 576, hp: 2997, maxHp: 3000, visualScale: 7,
@@ -569,9 +570,9 @@ describe('GameApp config and frame lifecycle', () => {
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
     expect(mock.constructedWith).toHaveBeenCalledWith({ seed: 1, level, startSquad: 2,
       startRocketCount: 1, rewardRowsPerReward: 7, bossHpScale: 3, tiers: { mergeCount: 10, tier1Power: 10, tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 } });
+    await startGame(app);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 1, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [{ id: 4, kind: 'rocket', tier: 0, x: 0.225, z: 3, hitRadiusBonus: 0 }] });
-    await startGame(app);
     raf.frame(100);
     expect(mock.render).toHaveBeenLastCalledWith({ player: { x: 0, z: 0 },
       squad: { count: 2, rocketCount: 1, rifleCounts: [1], formationSpacing: 0.45 },
@@ -584,12 +585,12 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const config = createConfigStore();
     const app = new GameApp({} as HTMLElement, config.store, level, {} as CharacterAssets);
+    await startGame(app);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], projectiles: [], pickups: [{ id: 4, x: -2.7, zOffset: 2, rewardAmount: 1,
         rewardKind: 'rifle' }], gates: [{ id: 'rifle-generator',
         x: -2.7, zOffset: 8, width: 0.9, hitProgress: 7,
         reward: { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 } }] });
-    await startGame(app);
     raf.frame(100);
     expect(mock.render.mock.lastCall![0]).toMatchObject({ gates: [{ id: 'rifle-generator',
       x: -2.7, z: 11, width: 0.9, hitProgress: 7, hitsRequired: 10,
@@ -601,12 +602,12 @@ describe('GameApp config and frame lifecycle', () => {
   it('passes Tier-2 squad, heavy shot, and pickup identity through the render boundary', async () => {
     const raf = createRaf();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+    await startGame(app);
     mock.getState.mockReturnValueOnce({ player: { x: 0, z: 3 },
       squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [],
       pickups: [{ id: 7, x: 2.7, zOffset: 4, rewardKind: 'tier2Rifle', rewardAmount: 1 }],
       projectiles: [{ id: 8, kind: 'rifle', tier: 2, x: 0, z: 6, hitRadiusBonus: 0.45 }] });
-    await startGame(app);
     raf.frame(100);
     expect(mock.render.mock.lastCall![0]).toMatchObject({
       squad: { count: 2, rocketCount: 0, rifleCounts: [1, 1] },

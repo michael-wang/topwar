@@ -72,7 +72,7 @@ export class TuningPanel {
       content.append(this.reviewControlsHost);
       const tuning = document.createElement('strong'); tuning.className = 'tuning-heading';
       tuning.textContent = 'BALANCE & AUDIO'; content.append(tuning);
-    }
+    } else content.append(this.reviewControlsHost);
     this.element.append(summary, content);
     for (const control of controls) {
       if (defenseMode && ['rewardRowsPerReward', 'enemyHigherTierPowerMultiplier', 'rifleHigherTierPowerMultiplier', 'bossHpScale', 'moveSpeed', 'forwardSpeed'].includes(control.key)) continue;

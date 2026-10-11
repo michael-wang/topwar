@@ -11,7 +11,7 @@ mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
 if (shippingJs.includes('__testApp') || shippingJs.includes('qa:scene-start')) throw Error('QA instrumentation leaked into production');
-if (['dev-fps', 'wasDiscarded', 'vite:beforeFullReload', 'checkpoint-write', '__qaHpMode'].some(marker => shippingJs.includes(marker)))
+if (['dev-fps', 'dev-wake-status', 'INSECURE ORIGIN', 'DENIED / ERROR', 'wasDiscarded', 'vite:beforeFullReload', 'checkpoint-write', '__qaHpMode'].some(marker => shippingJs.includes(marker)))
   throw Error('DEV FPS/lifecycle diagnostics or HP audit controls survived production tree-shaking');
 if (['SURVIVAL TEST', 'dev-survival-test', 'survival7-baseline', 'survival10-experimental', 'survival10-staged', 'survival10-ahead', 'Invalid SURVIVAL TEST preset', 'ordinarySpeedMultiplier:1.4', 'ordinarySpeedMultiplier:1.6', 'heavyCount:11', 'heavyCount:15', 'heavyCount:19', 'minimumXp:245'].some(marker => shippingJs.includes(marker)))
   throw Error('Survival comparison controls or fixtures survived production tree-shaking');
