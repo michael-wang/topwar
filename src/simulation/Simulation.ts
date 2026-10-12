@@ -26,10 +26,10 @@ import { effectiveSeed } from './enemies/effectiveSeed';
 import { EnemyCollisionIndex, type EnemyCandidateSource } from './enemies/EnemyCollisionIndex';
 import { addRifleSoldiers, normalizeRifleSquad, validateSquad } from './squad/composition';
 import { createDefenseSquadFormation } from './squad/formation';
-import { validTier, type TierPower } from './tiers/tierRules';
+import type { GameConfig } from '../config/configSchema';
+const validTier = (tier: number): boolean => tier === 1;
 import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, SimulationFrameState,  } from './SimulationState';
 import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
-import { rifleHitRadiusBonusForTier } from './weapons/rifleHitRadius';
 import { CatharsisConfigSchema, type CatharsisConfig } from '../config/catharsisConfig';
 import { attackLanePositions } from './enemies/laneComposition';
 
@@ -39,7 +39,7 @@ export interface SimulationOptions {
   level: LevelDefinition;
   startSquad: number;
   startRocketCount: number;
-  tiers: TierPower;
+  tiers: GameConfig['tiers'];
   rewardRowsPerReward?: number;
   bossHpScale?: number;
   collisionDiagnostics?: CollisionDiagnostics;
@@ -51,13 +51,6 @@ export interface CollisionDiagnostics {
   enemyCandidateChecks: number;
   projectilePasses: number;
   penetrationPasses: number;
-}
-
-export interface RuntimeBalance {
-  rewardRowsPerReward: number;
-  enemyHigherTierPowerMultiplier: number;
-  rifleHigherTierPowerMultiplier: number;
-  bossHpScale?: number;
 }
 
 export interface SimulationInput {
@@ -598,7 +591,7 @@ export class Simulation {
   private state: SimulationState;
   private enemyStreamDefinition: EnemyStreamDefinition | undefined;
   private readonly authoredEnemyStreamDefinition: EnemyStreamDefinition | undefined;
-  private tiers: TierPower;
+  private tiers: GameConfig['tiers'];
   private presentationEvents: PresentationEvent[] = [];
   private grenadeEvents: GrenadeEvent[] = [];
   private artilleryEvents: ArtilleryEvent[] = [];
@@ -692,17 +685,6 @@ export class Simulation {
       nextPickupId: 1,
       weapons: { rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0, nextProjectileId: 1 },
     };
-  }
-
-  setRuntimeBalance(balance: RuntimeBalance): void {
-    if (!Number.isSafeInteger(balance.rewardRowsPerReward) || balance.rewardRowsPerReward <= 0
-      || !Number.isFinite(balance.enemyHigherTierPowerMultiplier)
-      || balance.enemyHigherTierPowerMultiplier <= 1
-      || !Number.isFinite(balance.rifleHigherTierPowerMultiplier)
-      || balance.rifleHigherTierPowerMultiplier <= 1) {
-      throw new Error('Simulation runtime balance is invalid');
-    }
-    this.state = { ...this.state, catharsis: { ...this.state.catharsis!, rewardRowsPerReward: balance.rewardRowsPerReward } };
   }
 
   setCatharsisBalance(balance: NonNullable<SimulationFrameState['catharsis']>['balance']): void {
@@ -928,15 +910,7 @@ export class Simulation {
         while (cooldown <= 0) {
           for (let index = schedule.start; index < schedule.end; index++) {
             const offset = offsets[index];
-            let tier = 1;
-            if (kind === 'rifle') {
-              let roleIndex = index;
-              for (let tierIndex = 0; tierIndex < this.state.squad.rifleCounts.length; tierIndex++) {
-                roleIndex -= this.state.squad.rifleCounts[tierIndex];
-                if (roleIndex < 0) { tier = tierIndex + 1; break; }
-              }
-            }
-            if (machineGun) tier = 1;
+            const tier = 1;
             const damage = machineGun ? catharsis!.balance.machineGun.damageEnemyHp * this.tiers.tier1Power
               : this.tiers.tier1Power;
             if (!positiveFinite(damage)) throw new Error('Simulation rifle damage exceeds the supported range');
@@ -952,8 +926,7 @@ export class Simulation {
               ...(lane !== undefined ? { lane, slopeX, memberIndex: index } : {}),
               damage, remainingRange: weapon.range,
               blastRadius: 0,
-              hitRadiusBonus: kind === 'rifle' && !machineGun ? rifleHitRadiusBonusForTier(tier,
-                tuning.rifle.tierHitRadiusStep, tuning.rifle.maxHitRadiusBonus) : 0,
+              hitRadiusBonus: 0,
               penetrationRemaining: 0 });
           }
           cooldown += interval;
@@ -1330,3 +1303,4 @@ export class Simulation {
     return { ...authored, seed: effectiveSeed(runSeed, authored.seed) };
   }
 }
+

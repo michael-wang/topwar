@@ -5,9 +5,9 @@ import { findFirstHit, type CollisionDiagnostics } from '../src/simulation/Simul
 import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
 const projectile = (x: number, z: number, hitRadiusBonus = 0,
-  kind: 'rifle' | 'rocket' = 'rifle'): ProjectileSimulationState => ({
-  id: 1, kind, tier: 3, x, z, speed: 30, damage: 10, remainingRange: 40,
-  blastRadius: 0, hitRadiusBonus, penetrationRemaining: 100,
+  kind: 'rifle' | 'machineGun' = 'rifle'): ProjectileSimulationState => ({
+  id: 1, kind, tier: 1, x, z, speed: 30, damage: 10, remainingRange: 40,
+  blastRadius: 0, hitRadiusBonus, penetrationRemaining: 0,
 });
 const enemy = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, tier: 1, x, z, hp: 10 });

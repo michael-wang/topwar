@@ -1,20 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
-import gameData from '../public/game-data/game.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 
 const finiteGroup = { id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
   formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } };
-const testGates = [
-  { id: 'left', x: -2.7, zOffset: 8, width: 0.9,
-    reward: { mode: 'hitPickup', kind: 'rifle', amount: 1, hitsRequired: 10, dropSpeed: 4 } },
-  { id: 'right', x: 2.7, zOffset: 8, width: 0.9,
-    reward: { mode: 'hitPickup', kind: 'tier2Rifle', amount: 1, hitsRequired: 100, dropSpeed: 4 } },
-];
+
 
 function level() {
   return { ...structuredClone(authoredLevel), enemyGroups: [structuredClone(finiteGroup)],
-    upgradeGates: structuredClone(testGates) };
+    upgradeGates: [] };
 }
 
 function twoGroups() {
@@ -24,18 +18,13 @@ function twoGroups() {
 }
 
 describe('LevelDefinitionSchema', () => {
-  it('validates the authored endless stream and inactive side armories', () => {
+  it('validates the authored Defense wave cursor and absent retired armories', () => {
     const parsed = LevelDefinitionSchema.parse(authoredLevel);
     expect(parsed.id).toBe('level-001');
     expect(parsed.length).toBe(112);
     expect(parsed.enemyGroups).toEqual([]);
     expect(parsed.enemyStream).toEqual({ enemy: 'grunt', startZ: 30, spawnAheadDistance: 96,
-      columns: 7, spacing: 0.60, columnSpacing: 0.72, jitter: 0.16, seed: 104729,
-      tierProgression: { firstTransitionStartRow: 48, transitionRows: 96, stableRows: 96,
-        curvePower: 2, bossLeadRows: 8, firstBossHpMultiplier: 4000,
-        laterBossHpMultiplier: 1000 },
-      rewards: { rowsPerReward: 7, spawnAheadDistance: 30,
-        hitsRequired: 10, seed: 271828, sideX: 3.2 } });
+      columns: 7, spacing: .6, columnSpacing: .72, jitter: .16, seed: 104729 });
     expect(parsed.upgradeGates).toEqual([]);
   });
 
@@ -90,129 +79,7 @@ describe('LevelDefinitionSchema', () => {
       enemyStream: { ...authoredLevel.enemyStream, extra: true } })).toThrow(/extra/);
     expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
       enemyStream: { ...authoredLevel.enemyStream, firstBruteRow: 96 } })).toThrow(/firstBruteRow/);
-    const { tierProgression: _ramp, ...withoutRamp } = authoredLevel.enemyStream;
-    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-      enemyStream: withoutRamp })).toThrow(/tierProgression/);
-    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-      enemyStream: { ...authoredLevel.enemyStream,
-        bruteRamp: { startRow: 48, fullRow: 144, curvePower: 2, chance: 0.5 } } })).toThrow(/bruteRamp/);
-    for (const startRow of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
-      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, tierProgression: {
-          ...authoredLevel.enemyStream.tierProgression, firstTransitionStartRow: startRow } } }))
-        .toThrow(/firstTransitionStartRow/);
-    }
-    for (const transitionRows of [-1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
-      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, tierProgression: {
-          ...authoredLevel.enemyStream.tierProgression, transitionRows } } }))
-        .toThrow();
-    }
-    for (const curvePower of [0, -1, Infinity, NaN]) {
-      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel,
-        enemyStream: { ...authoredLevel.enemyStream, tierProgression: {
-          ...authoredLevel.enemyStream.tierProgression, curvePower } } })).toThrow(/curvePower/);
-    }
-  });
 
-  it('validates strict deterministic stream reward authoring', () => {
-    for (const spawnAheadDistance of [undefined, 0, -1, 96.1, Infinity, NaN]) {
-      const candidate = structuredClone(authoredLevel);
-      Object.assign(candidate.enemyStream.rewards, { spawnAheadDistance });
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const rowsPerReward of [undefined, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity]) {
-      const candidate = structuredClone(authoredLevel);
-      Object.assign(candidate.enemyStream.rewards, { rowsPerReward });
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const key of ['baseChancePerRow', 'fullTierChancePerRow']) {
-      expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
-        ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards, [key]: 0.1 },
-      } })).toThrow();
-    }
-    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
-      ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards,
-        chancePerRow: 0.025 },
-    } })).toThrow(/chancePerRow/);
-    for (const hitsRequired of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-      const candidate = structuredClone(authoredLevel);
-      candidate.enemyStream.rewards.hitsRequired = hitsRequired;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const seed of [-1, 1.5, 4294967296, Infinity, NaN]) {
-      const candidate = structuredClone(authoredLevel);
-      candidate.enemyStream.rewards.seed = seed;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const seed of [0, 4294967295]) {
-      const candidate = structuredClone(authoredLevel);
-      candidate.enemyStream.rewards.seed = seed;
-      expect(LevelDefinitionSchema.parse(candidate).enemyStream?.rewards?.seed).toBe(seed);
-    }
-    for (const sideX of [undefined, 0, -1, Infinity, NaN]) {
-      const candidate = structuredClone(authoredLevel);
-      Object.assign(candidate.enemyStream.rewards, { sideX });
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    expect(() => LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: {
-      ...authoredLevel.enemyStream, rewards: { ...authoredLevel.enemyStream.rewards, extra: true },
-    } })).toThrow(/extra/);
-  });
-
-  it('validates gate IDs, positions, width, and strict hit rewards', () => {
-    const duplicate = level();
-    duplicate.upgradeGates[1].id = duplicate.upgradeGates[0].id;
-    expect(() => LevelDefinitionSchema.parse(duplicate)).toThrow(/Duplicate upgrade-gate id/);
-    for (const z of [-1, 0, Infinity, NaN]) {
-      const candidate = level();
-      candidate.upgradeGates[0].zOffset = z;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const value of [0, -1, Infinity]) {
-      const candidate = level();
-      candidate.upgradeGates[0].width = value;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const amount of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-      const candidate = level();
-      candidate.upgradeGates[0].reward.amount = amount;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const hitsRequired of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, Infinity, NaN]) {
-      const candidate = level();
-      candidate.upgradeGates[0].reward.hitsRequired = hitsRequired;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    for (const dropSpeed of [0, -1, Infinity, NaN]) {
-      const candidate = level();
-      candidate.upgradeGates[0].reward.dropSpeed = dropSpeed;
-      expect(() => LevelDefinitionSchema.parse(candidate)).toThrow();
-    }
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], reward: { mode: 'pickup', kind: 'rifle', amount: 1, intervalSeconds: 1 } },
-    ] })).toThrow();
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], reward: { mode: 'laser', kind: 'rifle', amount: 1 } },
-    ] })).toThrow();
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[1], reward: { ...level().upgradeGates[1].reward, intervalSeconds: 1 } },
-    ] })).toThrow(/intervalSeconds/);
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[1], reward: { mode: 'instant', kind: 'rifle', amount: 99 } },
-    ] })).toThrow();
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], reward: { ...level().upgradeGates[0].reward, count: 5 } },
-    ] })).toThrow(/count/);
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], reward: { mode: 'instant', kind: 'rocket', amount: 1 } },
-    ] })).toThrow();
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], surprise: 1 },
-    ] })).toThrow(/surprise/);
-    expect(() => LevelDefinitionSchema.parse({ ...level(), upgradeGates: [
-      { ...level().upgradeGates[0], choiceGroup: 'obsolete' },
-    ] })).toThrow(/choiceGroup/);
   });
 
   it('accepts one- and two-enemy groups without a crowd minimum', () => {

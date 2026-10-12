@@ -64,21 +64,17 @@ describe('presentation-only water and sky activity', () => {
   it('keeps two bounded coastal aircraft and flak pools and disposes their resources', () => {
     const scene = new THREE.Scene();
     const environment = new BridgeEnvironment(scene);
-    const shipLayer = scene.getObjectByName('battlefield-water-traffic') as THREE.Group;
     const skyLayer = scene.getObjectByName('battlefield-sky-activity') as THREE.Group;
     const aircraft = skyLayer.children.filter((child) => child.name === 'battlefield-aircraft');
     const flak = skyLayer.children.filter((child) => child.name === 'battlefield-sky-flak-slot');
-    expect(shipLayer.getObjectByName('battlefield-warship')).toBeUndefined();
     expect(aircraft).toHaveLength(2);
     expect(flak).toHaveLength(2);
-    const shipMaterial = (aircraft[0].children[0] as THREE.Mesh).material as THREE.Material;
-    const shipGeometry = (aircraft[0].children[0] as THREE.Mesh).geometry;
-    const disposeMaterial = vi.spyOn(shipMaterial, 'dispose');
-    const disposeGeometry = vi.spyOn(shipGeometry, 'dispose');
-    let sawShip = false;
+    const aircraftMaterial = (aircraft[0].children[0] as THREE.Mesh).material as THREE.Material;
+    const aircraftGeometry = (aircraft[0].children[0] as THREE.Mesh).geometry;
+    const disposeMaterial = vi.spyOn(aircraftMaterial, 'dispose');
+    const disposeGeometry = vi.spyOn(aircraftGeometry, 'dispose');
     let sawAircraft = false;
     let sawFlak = false;
-    let shipOnScreen = false;
     let aircraftOnScreen = false;
     let flakOnScreen = false;
     const camera = new THREE.PerspectiveCamera(48, 9 / 16, .1, 180);
@@ -92,7 +88,6 @@ describe('presentation-only water and sky activity', () => {
         const point = object.getWorldPosition(new THREE.Vector3()).project(camera);
         return Math.abs(point.x) < 1 && Math.abs(point.y) < 1;
       };
-      expect(shipLayer.children.filter((child) => child.name === 'battlefield-warship')).toHaveLength(0);
       expect(skyLayer.children.filter((child) => child.name === 'battlefield-aircraft')).toHaveLength(2);
       expect(skyLayer.children.filter((child) => child.name === 'battlefield-sky-flak-slot'))
         .toHaveLength(2);

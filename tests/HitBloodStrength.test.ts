@@ -8,11 +8,10 @@ import { hitBloodVariation } from '../src/rendering/enemies/HitBloodVariation';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily,createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import bloodSource from '../src/rendering/enemies/IntegratedDeathBlood.ts?raw';
-import { riflePowerForTier } from '../src/simulation/tiers/tierRules';
-import gameData from '../public/game-data/game.json';
+import gameData from './helpers/ShippingConfig';
 
 it('maps actual damage fraction perceptually, with bounded chip and major-hit sizes',()=>{
- const heavy=gameData.catharsis.heavyHp,giant=gameData.catharsis.giant.hp,damage=riflePowerForTier(1,gameData.tiers)/gameData.tiers.tier1Power;
+ const heavy=gameData.catharsis!.heavyHp,giant=gameData.catharsis!.giant.hp,damage=1;
  expect(hitBloodScale('giant',damage,giant)).toBeLessThan(hitBloodScale('heavy',damage,heavy));
  expect(hitBloodRelativeScale(damage,heavy)).toBeGreaterThan(.16);expect(hitBloodRelativeScale(damage,heavy)).toBeLessThan(.26);
  expect(hitBloodRelativeScale(damage,giant)).toBeGreaterThan(.07);expect(hitBloodRelativeScale(damage,giant)).toBeLessThan(.13);

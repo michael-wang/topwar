@@ -74,18 +74,16 @@ export class OffshoreTransports {
     this.craft.position.set(7, -.15, ART.coastalDefense.shorelineZ + 8); this.craft.rotation.y = -.2;
     this.group.add(this.craft);
   }
-  update(playerZ: number, nowMs: number, defense: boolean, assaultAgeSeconds?: number): void {
+  update(playerZ: number, nowMs: number, defense: boolean): void {
     this.group.visible = defense; this.group.position.z = playerZ;
     this.ships.forEach((ship, index) => {
       ship.position.y = -.2 + Math.sin(nowMs * .00035 + index * 2.3) * .07;
       ship.rotation.z = Math.sin(nowMs * .00022 + index) * .004;
     });
-    // The first landing force is telegraphed by a slow shoreward approach and opening ramp.
-    const arrival = assaultAgeSeconds === undefined ? 0 : Math.min(1, Math.max(0, (assaultAgeSeconds + 4) / 8));
-    this.craft.position.z = ART.coastalDefense.shorelineZ + 8 - arrival * 8;
+    this.craft.position.z = ART.coastalDefense.shorelineZ + 8;
     this.craft.position.y = -.15 + Math.sin(nowMs * .0006) * .045;
     const ramp = this.craft.children.find(child => child.name === 'bow-ramp')!;
-    ramp.rotation.x = arrival * -.8;
+    ramp.rotation.x = 0;
   }
   dispose(): void {
     this.baked.forEach(geometry => geometry.dispose());

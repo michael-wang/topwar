@@ -6,7 +6,7 @@ import { playerCasualtyPose, PLAYER_CASUALTY_MS, PLAYER_STAIN_DIAMETER } from '.
 import type { GameRenderState } from '../src/rendering/RenderState';
 import type { PresentationEvent } from '../src/simulation/PresentationEvent';
 const squad={count:2,rocketCount:0,rifleCounts:[2],rifleRemainder:0};
-const frame:GameRenderState={defenseMode:true,player:{x:0,z:0},squad:{...squad,formationSpacing:.45},track:{halfWidth:3.2,defenseLineZ:-1.5},enemies:[],projectiles:[],boss:null,streamRewards:[],gates:[],pickups:[]};
+const frame:GameRenderState={defenseMode:true,player:{x:0,z:0},squad:{...squad,formationSpacing:.45},track:{halfWidth:3.2,defenseLineZ:-1.5},enemies:[],projectiles:[],};
 const event=(removed:boolean):PresentationEvent=>({kind:'normalEnemyContact',enemyId:1,enemyTier:1,attackerX:0,attackerZ:0,playerX:0,playerZ:0,before:squad,after:removed?{...squad,count:1,rifleCounts:[1]}:{...squad,rifleRemainder:1}});
 it('keeps Player deaths grounded, with modest bias, a hold and bounded late fade',()=>{
  const family=createChibiPlayerFamily(),scene=new THREE.Scene(),renderer=new SquadRenderer(scene,family);

@@ -12,7 +12,7 @@ const level = LevelDefinitionSchema.parse(levelData);
 const create = () => new Simulation({ seed: 71, level, startSquad: 2,
   startRocketCount: 0, tiers: config.tiers, catharsis: { balance: { ...config.catharsis!, gruntSpeed: 0, heavySpeed: 0, defenseWaves: { ...config.catharsis!.defenseWaves, firstWaveDelaySeconds: 1000 } }, trackHalfWidth: 3.2 } });
 const projection = { formationSpacing: .45, trackHalfWidth: 3.2,
-  defenseLineOffset: 1.5, bossVisualScale: 7 };
+  defenseLineOffset: 1.5, };
 
 describe('ephemeral simulation frame state', () => {
   it('matches a defensive snapshot while retaining large internal array identities', () => {

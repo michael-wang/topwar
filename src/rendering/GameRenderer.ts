@@ -63,7 +63,7 @@ export class GameRenderer {
   private preparation: IdlePreparation | null = null;
   private readonly skyFill = new THREE.HemisphereLight('#c8e0e9', '#bda57e', 1.9);
   private readonly sunlight = new THREE.DirectionalLight('#fff0d4', 1.55);
-  private coastalLighting = false;
+  private coastalLighting = true;
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
     this.squadRenderer = new SquadRenderer(this.scene, assets.families.player);
@@ -74,7 +74,7 @@ export class GameRenderer {
     this.environment = new BridgeEnvironment(this.scene);
     this.contactShadows = new ContactShadowRenderer(this.scene, assets.families);
 
-    this.sunlight.position.set(-4, 9, -3);
+    this.configureCoastalLighting();
     this.scene.add(this.skyFill, this.sunlight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -160,7 +160,6 @@ export class GameRenderer {
 
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
-    this.updateCoastalLighting(!!state.defenseMode);
     this.air.update(state.enemies, state.player.z, nowMs, !!state.defenseMode);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs, true);
     this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
@@ -248,21 +247,14 @@ export class GameRenderer {
     this.disposed = true;
   }
 
-  private updateCoastalLighting(defense: boolean): void {
-    if (defense === this.coastalLighting) return;
-    this.coastalLighting = defense;
+  private configureCoastalLighting(): void {
     const light = ART.coastalDefense.lighting;
-    this.skyFill.color.set(defense ? light.sky : '#c8e0e9');
-    this.skyFill.groundColor.set(defense ? light.ground : '#bda57e');
-    this.skyFill.intensity = defense ? light.hemisphereIntensity : 1.9;
-    this.sunlight.color.set(defense ? light.sun : '#fff0d4');
-    this.sunlight.intensity = defense ? light.sunIntensity : 1.55;
-    if (defense) this.sunlight.position.set(...light.sunPosition);
-    else this.sunlight.position.set(-4, 9, -3);
-    // Defense-specific filmic highlight rolloff; legacy bridge retains its previous output.
-    this.renderer.toneMapping = defense ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-    this.renderer.toneMappingExposure = defense ? light.exposure : 1;
-    this.resize();
+    this.skyFill.color.set(light.sky); this.skyFill.groundColor.set(light.ground);
+    this.skyFill.intensity = light.hemisphereIntensity;
+    this.sunlight.color.set(light.sun); this.sunlight.intensity = light.sunIntensity;
+    this.sunlight.position.set(...light.sunPosition);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = light.exposure;
   }
 
   private readonly resize = (): void => {
@@ -270,7 +262,7 @@ export class GameRenderer {
     const size = renderSize(this.viewport.clientWidth, this.viewport.clientHeight);
     this.viewportCssHeight = size.height;
     this.camera.aspect = size.aspect;
-    this.camera.fov = this.coastalLighting ? coastalCameraFov(size.aspect) : 48;
+    this.camera.fov = coastalCameraFov(size.aspect);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(size.width, size.height, false);
   };

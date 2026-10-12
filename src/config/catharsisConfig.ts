@@ -17,7 +17,7 @@ const pressureRampStage = z.strictObject({
 }).refine(stage => (stage.heavyChance === undefined) !== (stage.heavyCount === undefined),
   { message: 'Author exactly one Heavy composition rule' });
 
-// Temporary lane experiment, separate from the retained tier/Boss balance.
+// Defense balance. Inert prototype metadata is accepted only for released saves.
 export const CatharsisConfigSchema = z.strictObject({
   levelEncounters: LevelEncounterConfigSchema.optional(),
   navalBarrage: NavalBarrageConfigSchema.optional(),
@@ -86,7 +86,7 @@ export const CatharsisConfigSchema = z.strictObject({
       heavyCount: z.number().int().min(0).max(100) }).optional(),
   }).optional(),
   groupSize: z.number().int().min(1).max(100),
-  groupRowStride: z.number().int().positive(),
+  groupRowStride: z.number().int().positive().default(2),
   secondLaneChance: z.number().min(0).max(1),
   heavyChance: z.number().min(0).max(1),
   gruntSpeed: z.number().finite().nonnegative(),
@@ -97,7 +97,7 @@ export const CatharsisConfigSchema = z.strictObject({
   heavyWidthMultiplier: z.number().finite().positive().max(2).default(1),
   heavyHeightMultiplier: z.number().finite().positive().max(2).default(1),
   heavyDepthMultiplier: z.number().finite().positive().max(2).default(1),
-  rewardAimRadius: z.number().finite().positive(),
+  rewardAimRadius: z.number().finite().positive().default(.5),
 }).refine(value => !value.levelEncounters || value.defenseMode
   && value.levelEncounters.triggers.every(t => (t.when.kind !== 'level' || t.when.level <= value.progression.levelPlan.length)
     && (!t.actions.some(a => a.startsWith('destroyer')) || value.destroyer && value.artillery)

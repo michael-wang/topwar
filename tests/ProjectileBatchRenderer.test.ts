@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
 import type { ProjectileRenderState } from '../src/rendering/RenderState';
 
-const shot = (id: number, kind: 'rifle' | 'rocket' = 'rifle',
+const shot = (id: number, kind: 'rifle' | 'machineGun' = 'rifle',
   hitRadiusBonus = 0): ProjectileRenderState => ({
-  id, kind, tier: kind === 'rocket' ? 0 : 3, x: id / 10, z: 4 + id,
+  id, kind, tier: 1, x: id / 10, z: 4 + id,
   hitRadiusBonus,
 });
 

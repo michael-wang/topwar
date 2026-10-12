@@ -156,8 +156,7 @@ it('grounds threat feet with family footprints while keeping the existing Grunt 
   const heavy = createChibiHeavyFamily(), giant = createChibiGiantFamily(), scene = new THREE.Scene();
   const shadows = new ContactShadowRenderer(scene, { heavy, giant });
   const frame = { player: { x: 0, z: 0 }, squad: { count: 0, rocketCount: 0, rifleCounts: [], formationSpacing: .45 },
-    track: { halfWidth: 3.2, defenseLineZ: -1.5 }, enemies: [enemy(1, 'heavy'), enemy(2, 'giant'), { ...enemy(3, 'heavy'), archetype: 'grunt' as const }],
-    boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [] };
+    track: { halfWidth: 3.2, defenseLineZ: -1.5 }, enemies: [enemy(1, 'heavy'), enemy(2, 'giant'), { ...enemy(3, 'heavy'), archetype: 'grunt' as const }], projectiles: [] };
   const squad = { forEachVisibleMemberPosition() {}, presentation: { shadow: { width: .64, depth: .46 } } };
   shadows.update(frame, squad as unknown as Parameters<ContactShadowRenderer['update']>[1], 0);
   const mesh = scene.getObjectByName('contact-shadow-enemy') as THREE.InstancedMesh, matrix = new THREE.Matrix4();

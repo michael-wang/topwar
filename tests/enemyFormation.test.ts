@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import gameConfig from '../public/game-data/game.json';
-import { SeededRng } from '../src/core/Rng';
 import { createEnemyFormation } from '../src/simulation/enemies/formation';
-import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
 
 describe('createEnemyFormation', () => {
   it('centers complete and partial rows horizontally and the whole group along Z', () => {
@@ -68,41 +66,3 @@ describe('createEnemyFormation', () => {
   });
 });
 
-describe('createEnemyStreamRow', () => {
-  const stream = authoredLevel.enemyStream;
-  const row = (index: number) => createEnemyStreamRow(index, stream.columns,
-    stream.columnSpacing, stream.jitter, stream.seed);
-
-  it('generates an independent, centered irregular row inside the track envelope', () => {
-    const first = row(0);
-    const second = row(1);
-    expect(first).toHaveLength(7);
-    expect(row(0)).toEqual(first);
-    expect(second).not.toEqual(first);
-    expect(first.reduce((sum, offset) => sum + offset.x, 0) / first.length).toBeCloseTo(0, 0);
-    expect(Math.max(...first.map((offset) => Math.abs(offset.x))) + gameConfig.tiers.normalEnemyRadius)
-      .toBeLessThan(gameConfig.track.halfWidth);
-    expect(first.every((offset) => Math.abs(offset.z) <= stream.jitter)).toBe(true);
-    expect((stream.startZ + 1 * stream.spacing) - (stream.startZ + 0 * stream.spacing))
-      .toBeCloseTo(stream.spacing);
-    const regular = createEnemyStreamRow(0, 7, stream.columnSpacing, 0, stream.seed);
-    expect(regular.map((slot) => slot.x)).toEqual([-2.16, -1.44, -.72, 0, .72, 1.44, 2.16]);
-    const gameplayRng = new SeededRng(17);
-    row(100);
-    expect(gameplayRng.getState()).toBe(17);
-  });
-
-  it('keeps regular centered rows when jitter is zero and rejects invalid input', () => {
-    expect(createEnemyStreamRow(0, 3, 0.6, 0, 0)).toEqual([
-      { x: -0.6, z: 0 }, { x: 0, z: 0 }, { x: 0.6, z: 0 },
-    ]);
-    for (const index of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-      expect(() => row(index)).toThrow();
-    }
-    for (const columns of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-      expect(() => createEnemyStreamRow(0, columns, 0.6, 0.1, 0)).toThrow();
-    }
-    expect(() => createEnemyStreamRow(0, 7, 0.6, 0.3, 0)).toThrow();
-    expect(() => createEnemyStreamRow(0, 7, 0.6, 0.1, -1)).toThrow();
-  });
-});

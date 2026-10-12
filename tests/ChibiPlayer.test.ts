@@ -11,8 +11,7 @@ import type { PresentationEvent } from '../src/simulation/PresentationEvent';
 
 const frame = (): GameRenderState => ({ defenseMode: true, player: { x: 0, z: 0, selectedLane: 2 },
   squad: { count: 1, rocketCount: 0, rifleCounts: [1], formationSpacing: .45 },
-  track: { halfWidth: 3.2, defenseLineZ: -1.5 }, enemies: [], boss: null,
-  streamRewards: [], gates: [], pickups: [], projectiles: [] });
+  track: { halfWidth: 3.2, defenseLineZ: -1.5 }, enemies: [], projectiles: [] });
 const contact = (removed: boolean): PresentationEvent => ({ kind: 'normalEnemyContact', enemyId: 1, enemyTier: 1,
   attackerX: 0, attackerZ: 1, playerX: 0, playerZ: 0,
   before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },

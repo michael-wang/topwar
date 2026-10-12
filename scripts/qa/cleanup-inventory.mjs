@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync } from 'n
 import { execFileSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
 const output = process.argv[2] ?? 'artifacts/p3b6b8/baseline-inventory.json';
-const files = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).trim().split('\n');
+const files = execFileSync('git', ['ls-files','--cached','--others','--exclude-standard'], { encoding: 'utf8' }).trim().split('\n');
 const rows = files.filter(p => { try { return statSync(p).isFile(); } catch { return false; } }).map(path => {
   const bytes = readFileSync(path);
   return { path, bytes: bytes.length, ...(/\.(ts|mjs|css)$/.test(path) ? { lines: bytes.toString().split(/\r?\n/).length } : {}) };

@@ -15,7 +15,7 @@ const store = (storage?: ConfigStorage, source: unknown = data) => new ConfigSto
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-describe('runtime config with generic tiers', () => {
+describe('runtime Defense config', () => {
   it('loads and reloads production config from its content-addressed Pages path', async () => {
     vi.stubEnv('PROD', true); vi.stubEnv('BASE_URL', '/topwar/');
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(data)));
@@ -55,7 +55,7 @@ describe('runtime config with generic tiers', () => {
       hpMultiplier: 5000 } } })).toThrow();
   });
 
-  it('accepts live tier-power overrides and notifies subscribers once', async () => {
+  it('accepts live damage-unit overrides and notifies subscribers once', async () => {
     const config = store();
     await config.load();
     const listener = vi.fn();
@@ -80,15 +80,15 @@ describe('runtime config with generic tiers', () => {
     expect(config.getConfig()).toEqual(base);
   });
 
-  it('persists and reloads generic tier overrides', async () => {
+  it('persists and reloads collision overrides', async () => {
     const storage = memoryStorage();
     const first = store(storage);
     await first.load();
-    first.updateOverrides({ tiers: { tier2Power: 600 } });
+    first.updateOverrides({ tiers: { normalEnemyRadius: .4 } });
     const second = store(storage);
     await second.load();
-    expect(second.getConfig().tiers.tier2Power).toBe(600);
-    expect(second.getOverrides()).toEqual({ tiers: { tier2Power: 600 } });
+    expect(second.getConfig().tiers.normalEnemyRadius).toBe(.4);
+    expect(second.getOverrides()).toEqual({ tiers: { normalEnemyRadius: .4 } });
   });
 
   it('discards malformed persisted overrides safely', async () => {

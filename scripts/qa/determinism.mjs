@@ -3,17 +3,24 @@ import { createServer } from 'vite';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { relative } from 'node:path';
+import { relative, resolve, dirname } from 'node:path';
 const mode = process.argv[2] ?? 'capture';
 const dir = process.argv[3]?.startsWith('--') ? 'artifacts/p3b6b8/traces' : process.argv[3] ?? 'artifacts/p3b6b8/traces';
 mkdirSync(dir, {recursive:true});
 const revision=process.argv.find(a=>a.startsWith('--revision='))?.slice(11);
-const canonical=value=>JSON.stringify(value,(_key,v)=>v && !Array.isArray(v) && typeof v==='object'
+// Inert, retired authored metadata is not combat state. Its removal is logged in the cleanup report.
+const retiredMetadata = new Set(['landingAssault','memberDepthSpacing','depthJitter','groupRowStride','rewardAimRadius']);
+const canonical=value=>JSON.stringify(value,(key,v)=> (retiredMetadata.has(key) && (key!=='landingAssault' || v?.enabled!==undefined)) ? undefined : v && !Array.isArray(v) && typeof v==='object'
   ? Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])) : v);
+const oldPaths=revision ? new Set(execFileSync('git',['ls-tree','-r','--name-only',revision,'src','public/game-data'],{encoding:'utf8'}).trim().split('\n')) : new Set();
 const server = await createServer({configFile:false, cacheDir:'artifacts/p3b6b8/trace-cache', server:{middlewareMode:true}, appType:'custom',
-  plugins:revision ? [{name:'baseline-source',enforce:'pre',load(id){
+  plugins:revision ? [{name:'baseline-source',enforce:'pre',resolveId(source,importer){
+    if(!importer || !source.startsWith('.'))return;
+    const absolute=resolve(dirname(importer),source),path=relative(process.cwd(),absolute).replaceAll('\\','/');
+    for(const suffix of ['', '.ts','.json','/index.ts'])if(oldPaths.has(path+suffix))return absolute+suffix;
+  },load(id){
     const path=relative(process.cwd(),id.split('?')[0]).replaceAll('\\','/');
-    if(path.startsWith('src/'))return execFileSync('git',['show',`${revision}:${path}`],{encoding:'utf8'});
+    if(path.startsWith('src/') || path.startsWith('public/game-data/'))return execFileSync('git',['show',`${revision}:${path}`],{encoding:'utf8'});
   }}] : []});
 try {
   const { makeNavalRun, survivalDecision, pilotTuning } = await server.ssrLoadModule('/scripts/qa/navalBarrageRun.ts');

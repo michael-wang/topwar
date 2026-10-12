@@ -1,3 +1,4 @@
+import { ART } from '../src/art/ArtDirection';
 import { gruntDeathBody } from '../src/presentation/GruntDeathBody';
 import { playerFamily, enemyFamilies } from './characterModel';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +14,7 @@ const state = (tier: number): GameRenderState => ({
   player: { x: 0, z: 0 },
   squad: { count: 1, rocketCount: 0, rifleCounts: [...Array(tier - 1).fill(0), 1], formationSpacing: .45 },
   track: { halfWidth: 2.5, defenseLineZ: -1.5 },
-  enemies: [], boss: null, streamRewards: [], gates: [], pickups: [], projectiles: [],
+  enemies: [], projectiles: [],
 });
 const soldier = (scene: THREE.Scene) => scene.children.find((child) =>
   child instanceof THREE.Group) as THREE.Group;
@@ -52,9 +53,9 @@ describe('Modern Toy Soldier presentation', () => {
     const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(),
       runFrames(), grayBodyModel()));
     const enemies = Array.from({ length: 900 }, (_, index) =>
-      ({ id: index + 1, tier: 5, x: index % 20, z: 10, hp: 3 }));
+      ({ id: index + 1, tier: 1, x: index % 20, z: 10, hp: 3 }));
     renderer.update(enemies, 0);
-    const helmet = scene.getObjectByName('4-toy-soldier-helmet') as THREE.InstancedMesh;
+    const helmet = scene.getObjectByName('0-toy-soldier-helmet') as THREE.InstancedMesh;
     expect(helmet.count).toBe(900);
     expect(helmet.instanceMatrix.count).toBeGreaterThanOrEqual(900);
     const damaged = enemies.map((enemy, index) => index === 0 ? { ...enemy, hp: 2 } : enemy);
@@ -63,7 +64,7 @@ describe('Modern Toy Soldier presentation', () => {
     helmet.getColorAt(0, color);
     expect(color.getHexString()).toBe('fff7e8');
     helmet.getColorAt(1, color);
-    expect(color.getHexString()).toBe('596b61');
+    expect(color.getHexString()).toBe(new THREE.Color(ART.faction.grunt).getHexString());
     renderer.update(damaged.slice(1), 100);
     const death = scene.children.find((child) => child instanceof THREE.Group && child.visible) as THREE.Group;
     expect(death).toBeDefined();

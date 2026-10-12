@@ -58,7 +58,6 @@ export class BridgeEnvironment {
   private readonly mid = new THREE.Group();
   private readonly beachhead = new THREE.Group();
   private readonly inferno = new THREE.Group();
-  private readonly shipLayer = new THREE.Group();
   private readonly skyLayer = new THREE.Group();
   private readonly previousBackground: THREE.Scene['background'];
   private readonly previousFog: THREE.Scene['fog'];
@@ -96,7 +95,6 @@ export class BridgeEnvironment {
     this.beachhead.name = 'distant-artillery-layer';
     this.beachhead.visible = false;
     this.inferno.name = 'battlefield-deep-inferno';
-    this.shipLayer.name = 'battlefield-water-traffic';
     this.skyLayer.name = 'battlefield-sky-activity';
     this.buildBattlefield();
     this.buildInferno();
@@ -124,14 +122,14 @@ export class BridgeEnvironment {
     this.defenseBeach.visible = true;
     this.scene.add(this.defenseBeach, this.transports.group);
     this.scene.add(this.near, this.mid, this.beachhead, this.inferno,
-      this.shipLayer, this.skyLayer);
+      this.skyLayer);
     this.update(0, 3.2, 0);
   }
 
   update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = true): void {
     this.defenseMode = true;
     this.transports.update(playerZ, nowMs, true);
-    this.defenseBeach.visible = defenseMode;
+    this.defenseBeach.visible = true;
     this.defenseBeach.position.z = playerZ;
     this.coastalWater.update(nowMs);
     this.coastalArchitecture.update(trackHalfWidth);
@@ -145,9 +143,8 @@ export class BridgeEnvironment {
     this.mid.position.set(0, 0, playerZ + 76);
     this.beachhead.position.set(Math.sin(playerZ * .003) * .02, 0, playerZ + 125);
     this.inferno.position.set(Math.sin(playerZ * .002) * .01, 0, playerZ + 142);
-    this.shipLayer.position.z = playerZ + 60;
     this.skyLayer.position.z = playerZ + 125;
-    this.updateArtillery(nowMs, defenseMode ? trackHalfWidth : undefined);
+    this.updateArtillery(nowMs, trackHalfWidth);
     this.updateActivity(nowMs, bridgeHalfWidth);
     this.updateInferno(nowMs);
   }
@@ -159,7 +156,7 @@ export class BridgeEnvironment {
     this.transports.dispose();
     this.scene.remove(this.defenseBeach, this.transports.group);
     this.scene.remove(this.near, this.mid, this.beachhead, this.inferno,
-      this.shipLayer, this.skyLayer);
+      this.skyLayer);
     this.scene.background = this.previousBackground;
     this.scene.fog = this.previousFog;
     this.smokeTexture?.dispose();
@@ -461,3 +458,4 @@ export class BridgeEnvironment {
     return mesh;
   }
 }
+

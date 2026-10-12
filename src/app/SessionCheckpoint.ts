@@ -14,15 +14,15 @@ export const RuntimeTuningSchema = z.strictObject({
   groupSize: z.number().int().positive().optional(), enemyVisualScale: positive.optional(),
   gruntSpeed: nonnegative.optional(), heavyHp: positive.optional(),
   heavySpeed: nonnegative.optional(), heavyChance: z.number().min(0).max(1).optional(),
-  bulletSpeed: positive, bulletRange: positive, rewardRowsPerReward: z.number().int().positive(),
-  enemyHigherTierPowerMultiplier: z.number().finite().gt(1),
-  rifleHigherTierPowerMultiplier: z.number().finite().gt(1),
+  bulletSpeed: positive, bulletRange: positive, rewardRowsPerReward: z.number().int().positive().optional(),
+  enemyHigherTierPowerMultiplier: z.number().finite().gt(1).optional(),
+  rifleHigherTierPowerMultiplier: z.number().finite().gt(1).optional(),
   fireRate: positive, moveSpeed: nonnegative, forwardSpeed: nonnegative,
-  bossHpScale: z.number().min(.25).max(100), musicVolume: z.number().min(0).max(.5),
+  bossHpScale: z.number().min(.25).max(100).optional(), musicVolume: z.number().min(0).max(.5),
 });
 const envelope = z.strictObject({
   version: z.literal(1), simulationContract: z.literal(1), game: z.literal('topwar'),
-  mode: z.enum(['defense', 'legacy']), build: z.string().max(80),
+  mode: z.literal('defense'), build: z.string().max(80),
   savedAt: z.number().finite().nonnegative(), paused: z.literal(true), hidden: z.boolean(),
   reason: z.enum(['pause', 'hidden', 'pagehide', 'freeze', 'contextlost']),
   fixture: z.string().max(80).nullable(), config: GameConfigSchema,
@@ -42,9 +42,7 @@ export function checkpointPresent(storage = browserSessionStorage()): boolean {
 export function simulationFromCheckpoint(c: SessionCheckpoint): Simulation {
   const simulation = new Simulation({ seed: c.state.seed, level: c.level,
     startSquad: c.config.player.startSquad, startRocketCount: c.config.player.startRocketCount,
-    tiers: { ...c.config.tiers, enemyHigherTierPowerMultiplier: c.tuning.enemyHigherTierPowerMultiplier,
-      rifleHigherTierPowerMultiplier: c.tuning.rifleHigherTierPowerMultiplier },
-    rewardRowsPerReward: c.tuning.rewardRowsPerReward, bossHpScale: c.tuning.bossHpScale,
+    tiers: c.config.tiers,
     ...(c.config.catharsis ? { catharsis: { balance: c.config.catharsis,
       trackHalfWidth: c.config.track.halfWidth } } : {}),
   });
@@ -62,8 +60,8 @@ export function readCheckpoint(storage = browserSessionStorage()): CheckpointRea
     if (c.fixture !== null && (!import.meta.env.DEV
       || !/^(late|crate3|crate8|naval|mg(6|7|8|9|10)|survival(7|8|9|10)-(baseline|experimental|staged|ahead)|barrage(8|9|10)-(on|off))$/.test(c.fixture)))
       throw Error('Unsupported fixture');
-    if (c.level.id !== c.state.levelId || c.mode !== (c.state.catharsis?.balance.defenseMode ? 'defense' : 'legacy')
-      || c.mode !== (c.config.catharsis?.defenseMode ? 'defense' : 'legacy') || c.state.squad.count === 0)
+    if (c.level.id !== c.state.levelId || !c.state.catharsis?.balance.defenseMode
+      || !c.config.catharsis?.defenseMode || c.state.squad.count === 0)
       throw Error('Incompatible or finished checkpoint');
     simulationFromCheckpoint(c); // Includes the existing strict historical migrations/clock validation.
     if(c.qa && (c.mode!=='defense'||c.fixture!==null||c.state.seed!==42||c.state.progression?.level!==10
@@ -90,3 +88,4 @@ export function writeCheckpoint(c: SessionCheckpoint, storage = browserSessionSt
     return { ok: false, characters, milliseconds: performance.now() - started };
   }
 }
+

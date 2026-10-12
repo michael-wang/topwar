@@ -38,7 +38,7 @@ const EnemyStreamSchema = z.strictObject({
     firstBossHpMultiplier: z.number().finite().positive(),
     laterBossHpMultiplier: z.number().finite().positive(),
   }).refine((rule) => rule.bossLeadRows < rule.transitionRows,
-    { path: ['bossLeadRows'], message: 'Boss lead rows must be shorter than transition' }),
+    { path: ['bossLeadRows'], message: 'Boss lead rows must be shorter than transition' }).optional(),
   rewards: z.strictObject({
     rowsPerReward: positiveSafeInteger,
     spawnAheadDistance: z.number().finite().positive(),
@@ -60,28 +60,12 @@ const EnemyStreamSchema = z.strictObject({
   }
 });
 
-export const UpgradeRewardSchema = z.strictObject({
-  mode: z.literal('hitPickup'),
-  kind: z.enum(['rifle', 'tier2Rifle']),
-  amount: positiveSafeInteger,
-  hitsRequired: positiveSafeInteger,
-  dropSpeed: z.number().finite().positive(),
-});
-
-const UpgradeGateSchema = z.strictObject({
-  id: nonEmptyId,
-  x: z.number().finite(),
-  zOffset: z.number().finite().positive(),
-  width: z.number().finite().positive(),
-  reward: UpgradeRewardSchema,
-});
-
 export const LevelDefinitionSchema = z.strictObject({
   id: nonEmptyId,
   length: z.number().finite().positive(),
   enemyGroups: z.array(EnemyGroupSchema),
   enemyStream: EnemyStreamSchema.optional(),
-  upgradeGates: z.array(UpgradeGateSchema),
+  upgradeGates: z.array(z.never()),
 }).superRefine((level, context) => {
   const ids = new Set<string>();
   let previousZ = -Infinity;
@@ -101,15 +85,8 @@ export const LevelDefinitionSchema = z.strictObject({
       context.addIssue({ code: 'custom', path: ['enemyGroups', index, 'formation', 'columns'], message: 'Formation columns cannot exceed group count' });
     }
   });
-  const gateIds = new Set<string>();
-  level.upgradeGates.forEach((gate, index) => {
-    if (gateIds.has(gate.id)) {
-      context.addIssue({ code: 'custom', path: ['upgradeGates', index, 'id'], message: `Duplicate upgrade-gate id: ${gate.id}` });
-    }
-    gateIds.add(gate.id);
-  });
+
 });
 
 export type LevelDefinition = z.infer<typeof LevelDefinitionSchema>;
 export type EnemyStreamDefinition = z.infer<typeof EnemyStreamSchema>;
-export type UpgradeReward = z.infer<typeof UpgradeRewardSchema>;

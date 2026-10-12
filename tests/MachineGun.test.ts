@@ -43,7 +43,7 @@ it.each([1,2,3])('evolves %i living Rifle soldiers once without casualties, reta
   clone.restoreState(JSON.parse(JSON.stringify(evolved)));step(sim,180);step(clone,180);
   expect(clone.getState()).toEqual(sim.getState());
   expect(projectRenderState(sim.getFrameState(),{catharsis:sim.getFrameState().catharsis,trackHalfWidth:3.2,
-    formationSpacing:.45,defenseLineOffset:1.5,bossVisualScale:7}).squad.weaponFamily).toBe('machineGun');
+    formationSpacing:.45,defenseLineOffset:1.5,}).squad.weaponFamily).toBe('machineGun');
 });
 it('crosses several stages in a burst Grenade kill grant and produces one coherent specialist',()=>{
   const sim=controlledSimulation(5),s=sim.getState();s.progression={level:3,xp:109};

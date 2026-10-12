@@ -20,7 +20,7 @@ import type { EnemyRenderState } from '../RenderState';
 import { BloodSplat, GroundBloodStains, hitBloodAtlas, groundBloodAtlas } from './BloodSplat';
 import { gruntDeathBody } from '../../presentation/GruntDeathBody';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
-import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
+import { ENEMY_PALETTE } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
@@ -339,7 +339,7 @@ export class EnemyRenderer {
     const bodyCounts = [0, 0, 0, 0];
     for (const enemy of enemies) {
       if (enemy.archetype === 'giant' || this.batchFor(enemy) !== batch) continue;
-      counts[paletteIndex(enemy.tier, PALETTES.length)]++;
+      counts[0]++;
       bodyCounts[enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs)]++;
     }
     for (let frame = 0; frame < 4; frame++) {
@@ -356,7 +356,7 @@ export class EnemyRenderer {
     for (let bodyIndex = 0; bodyIndex < enemies.length; bodyIndex++) {
       const enemy = enemies[bodyIndex];
       if (enemy.archetype === 'giant' || this.batchFor(enemy) !== batch) continue;
-      const palette = paletteIndex(enemy.tier, PALETTES.length);
+      const palette = 0;
       const index = indices[palette]++;
       const pose = enemyWalkPose(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const transform = this.transform;
@@ -535,7 +535,7 @@ export class EnemyRenderer {
     visual.group.scale.copy(visual.scale);
     for (const material of visual.materials) material.opacity = 1;
     const color = presentation.gearTint === 'authored' ? this.authoredBodyColor : enemy?.archetype === 'heavy' ? this.heavyColor
-      : this.helmetColors[paletteIndex(tier, PALETTES.length)];
+      : this.helmetColors[0];
     visual.materials[1].color.copy(color);
     visual.materials[2].color.copy(color);
   }
@@ -657,7 +657,7 @@ export class EnemyRenderer {
     visual.bodyMaterial.opacity = 1;
     visual.gearMaterial.opacity = 1;
     visual.gearMaterial.color.copy(presentation.gearTint === 'authored' ? this.authoredBodyColor
-      : visual.heavy ? this.heavyColor : this.helmetColors[paletteIndex(enemy.tier, PALETTES.length)]);
+      : visual.heavy ? this.heavyColor : this.helmetColors[0]);
     visual.group.visible = true;
     // Copy actual GPU instance matrices, including hit compression and delayed
     // helmet/gear weight transfer. Never evaluate a gait or death transform here.

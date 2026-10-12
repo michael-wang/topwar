@@ -25,7 +25,7 @@ it('uses a visual-only 1.9 scale and broader 0.94 width without weakening combat
 
 it.each(['same-depth','review-depth'])('meets projected Heavy/Giant crown and body width targets in %s',mode=>{
   const sim=review(),state=sim.getFrameState(),frame=projectRenderState(state,{catharsis:state.catharsis,
-    formationSpacing:.45,trackHalfWidth:3.2,defenseLineOffset:1.5,bossVisualScale:7});
+    formationSpacing:.45,trackHalfWidth:3.2,defenseLineOffset:1.5,});
   const heavy=createChibiHeavyFamily(),giant=createChibiGiantFamily(),scene=new THREE.Scene();
   const renderer=new EnemyRenderer(scene,{...characterFamilies(),heavy,giant});
   const enemies=frame.enemies.filter(e=>e.archetype!=='grunt').map(e=>({...e,...(mode==='same-depth'?{z:16}:{})}));

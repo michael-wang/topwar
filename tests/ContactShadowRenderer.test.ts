@@ -18,9 +18,7 @@ function state(): GameRenderState {
     squad: { count: 2, rocketCount: 0, rifleCounts: [2], formationSpacing: .45 },
     track: { halfWidth: 3.2, defenseLineZ: 0 },
     enemies: [{ id: 1, tier: 1, x: 1.5, z: 8, hp: 1 }],
-    boss: null,
-    streamRewards: [],
-    projectiles: [], gates: [], pickups: [],
+    projectiles: [],
   };
 }
 

@@ -91,13 +91,13 @@ describe('original amphibious Grunt prototype', () => {
     family.dispose();
   });
 
-  it('bypasses legacy UV hooks and keeps all authored body instance colors white while helmet tiers still vary', () => {
+  it('bypasses legacy UV hooks and keeps all authored body instance colors white with the accepted olive helmet palette', () => {
     const grunt = createChibiGruntFamily(), families = { ...characterFamilies(), grunt }, scene = new THREE.Scene();
     const material = grunt.body.material as THREE.MeshStandardMaterial, hook = material.onBeforeCompile;
     expect(prepareCrowdMaterial(material, grunt.presentation, 'body')).toBe(material);
     expect(material.onBeforeCompile).toBe(hook);
     const renderer = new EnemyRenderer(scene, families);
-    const enemies = Array.from({ length: 200 }, (_, i) => enemy(i, 'grunt', i % 2 + 1));
+    const enemies = Array.from({ length: 200 }, (_, i) => enemy(i, 'grunt'));
     renderer.update(enemies, 1000);
     const bodies = scene.children.filter(c => c instanceof THREE.InstancedMesh && c.material === material) as THREE.InstancedMesh[];
     expect(bodies).toHaveLength(4);

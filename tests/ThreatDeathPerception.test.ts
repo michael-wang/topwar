@@ -26,7 +26,7 @@ it.each(['heavy','giant'] as const)('makes %s collapse clear in the 390×844 def
   const state=new Simulation(options).getState();
   state.enemies=[{id:1,tier:1,archetype:role,lane:2,x:0,z:role==='giant'?14:10,hp:role==='giant'?c.catharsis!.giant.hp:c.catharsis!.heavyHp}];
   const f=projectRenderState(state,{catharsis:state.catharsis,trackHalfWidth:c.track.halfWidth,
-    defenseLineOffset:c.track.defenseLineOffset,formationSpacing:c.player.formationSpacing,bossVisualScale:c.bosses.basic.visualScale});
+    defenseLineOffset:c.track.defenseLineOffset,formationSpacing:c.player.formationSpacing,});
   const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()},scene=new THREE.Scene(),r=new EnemyRenderer(scene,families);
   const camera=new THREE.PerspectiveCamera(coastalCameraFov(390/844),390/844,.1,180);
   camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld(true);

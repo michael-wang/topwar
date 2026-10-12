@@ -7,7 +7,7 @@ import { PlayerLevelUpEffect } from './PlayerLevelUpEffect';
 import * as THREE from 'three';
 import { createSquadFormation, createDefenseSquadFormation } from '../../simulation/squad/formation';
 import type { GameRenderState, ProjectileRenderState } from '../RenderState';
-import { PLAYER_PALETTE, paletteIndex } from '../tierPalettes';
+import { PLAYER_PALETTE } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
 import { BloodSplat, GroundBloodStains, bloodSplatTexture } from '../enemies/BloodSplat';
 import { PLAYER_CASUALTY_MS, PLAYER_CASUALTY_BLOOD, PLAYER_STAIN_DIAMETER, playerCasualtyPose, PlayerCasualtyGround } from './PlayerCasualty';
@@ -25,10 +25,6 @@ export const MAX_PLAYER_CASUALTY_VISUALS = 48;
 
 export function soldierSpawnScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / SPAWN_MS);
-}
-
-export function tierUpScale(ageMs: number): number {
-  return 1 + 0.25 * Math.max(0, 1 - ageMs / TIER_UP_MS);
 }
 
 export function firingRecoil(nowMs: number, firedAtMs: number): number {
@@ -89,7 +85,6 @@ export class SquadRenderer {
   private readonly hitMemberIndices = new Map<number, number>();
   private lastRenderedSquadCount = 0;
   private lastSeenProjectileId = 0;
-  private readonly rifleFiredAtMs = new Map<number, number>();
   private readonly memberFiredAtMs = new Map<number, number>();
   private lastLane: number | undefined;
   private laneMotionAt = -Infinity;
@@ -230,7 +225,7 @@ export class SquadRenderer {
       member.body.material = hit ? this.hitMaterial : levelActive ? member.motion.level
         : Math.abs(moving.stride) > .001 || Math.abs(recoil) > .001 ? member.motion.normal : this.bodyModel.material;
       member.helmet.material = hit ? this.hitMaterial : levelActive ? this.levelGearMaterial
-        : this.tierMaterials[paletteIndex(tier || 1, PLAYER_PALETTE.length)];
+        : this.tierMaterials[0];
       member.vest.material = member.helmet.material;
       member.body.rotation.set(-.025 * recoil, 0, moving.lean);
       member.body.position.z = -.015 * recoil;
@@ -274,7 +269,6 @@ export class SquadRenderer {
     this.levelUpAtMs = -Infinity;
     this.levelEffect.reset();
     this.lastSeenProjectileId = 0;
-    this.rifleFiredAtMs.clear();
     this.memberFiredAtMs.clear();
     this.hitMemberIndices.clear();
     this.lastRenderedSquadCount = 0;
@@ -306,10 +300,8 @@ export class SquadRenderer {
   private observeShots(projectiles: readonly ProjectileRenderState[], nowMs: number): void {
     for (const projectile of projectiles) {
       if (projectile.id > this.lastSeenProjectileId) {
-        if (projectile.kind !== 'rocket') {
-          this.rifleFiredAtMs.set(projectile.tier, nowMs);
-          this.memberFiredAtMs.set(projectile.memberIndex ?? 0, nowMs);
-        }
+              this.memberFiredAtMs.set(projectile.memberIndex ?? 0, nowMs);
+
       }
       this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
     }
@@ -353,7 +345,7 @@ export class SquadRenderer {
     visual.group.position.set(x, 0, z);
     visual.group.rotation.set(0, 0, 0);
     visual.group.scale.setScalar(this.presentation.rootScale);
-    const color = PLAYER_PALETTE[paletteIndex(tier || 1, PLAYER_PALETTE.length)].body;
+    const color = PLAYER_PALETTE[0].body;
     for (const material of visual.materials) material.opacity = 1;
     visual.materials[1].color.set(color);
     visual.materials[2].color.set(color);

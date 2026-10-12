@@ -20,7 +20,7 @@ it('anticipates, steps with independent member phases, and settles by 220ms', ()
 it('keeps player anchors and independent recoil while lane locomotion settles and resets', () => {
   const scene = new THREE.Scene(), renderer = new SquadRenderer(scene, playerFamily(bodyModel(),helmetModel(),vestModel(),rifleModel()));
   const frame = { defenseMode:true, player:{x:0,z:0,selectedLane:2},squad:{count:2,rocketCount:0,rifleCounts:[2],formationSpacing:.45},
-    track:{halfWidth:3.2,defenseLineZ:-1.5},enemies:[],boss:null,streamRewards:[],gates:[],pickups:[],projectiles:[] };
+    track:{halfWidth:3.2,defenseLineZ:-1.5},enemies:[],projectiles:[] };
   renderer.update(frame,0); const initialX = (scene.children.find(child => child instanceof THREE.Group) as THREE.Group).position.x;renderer.update({...frame,player:{x:1.4,z:0,selectedLane:3}},400);
   renderer.update({...frame,player:{x:1.4,z:0,selectedLane:3},projectiles:[{id:1,kind:'rifle' as const,tier:1,memberIndex:0,x:1.4,z:1,hitRadiusBonus:0}]},460);
   const members = scene.children.filter((child): child is THREE.Group => child instanceof THREE.Group);

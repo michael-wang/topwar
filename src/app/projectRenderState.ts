@@ -8,7 +8,6 @@ export interface RenderProjectionConfig {
   readonly formationSpacing: number;
   readonly trackHalfWidth: number;
   readonly defenseLineOffset: number;
-  readonly bossVisualScale: number;
 }
 
 // Entity arrays already have renderer-compatible, readonly fields. Only values that
@@ -57,7 +56,6 @@ export function projectRenderState(state: SimulationFrameState,
         visualScaleY: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyHeightMultiplier,
         visualScaleZ: config.catharsis!.balance.enemyVisualScale * config.catharsis!.balance.heavyVisualScale * config.catharsis!.balance.heavyDepthMultiplier,
       } : {}) })) : state.enemies,
-    boss: null, streamRewards: [], gates: [], pickups: [],
     projectiles: defenseMode ? state.projectiles.map((shot) => ({ ...shot, z: shot.z - originZ })) : state.projectiles,
   };
 }

@@ -10,7 +10,6 @@ export interface GameRenderState {
     readonly elapsedSeconds: number; readonly originZ: number;
   };
   readonly defenseMode?: boolean;
-  readonly landingAssaultAgeSeconds?: number;
   readonly player: {
     readonly selectedLane?: number;
     readonly x: number;
@@ -19,7 +18,6 @@ export interface GameRenderState {
   readonly squad: {
     readonly weaponFamily?: 'rifle' | 'machineGun';
     readonly defenseFormation?: { reinforcementSpacing: number; reinforcementStagger: number };
-    readonly reinforcement?: { progress: number; reinforcementSpacing: number; reinforcementStagger: number };
     readonly count: number;
     readonly rocketCount: number;
     readonly rifleCounts: readonly number[];
@@ -31,59 +29,14 @@ export interface GameRenderState {
     readonly defenseLineZ: number;
   };
   readonly enemies: readonly EnemyRenderState[];
-  readonly boss: BossRenderState | null;
-  readonly streamRewards: readonly StreamRewardRenderState[];
-  readonly gates: readonly UpgradeGateRenderState[];
-  readonly pickups: readonly UpgradePickupRenderState[];
   readonly projectiles: readonly ProjectileRenderState[];
-}
-
-export interface BossRenderState {
-  readonly id: number;
-  readonly tier: number;
-  readonly x: number;
-  readonly z: number;
-  readonly hp: number;
-  readonly maxHp: number;
-  readonly visualScale: number;
-  readonly engaged: boolean;
-  readonly slamCooldownRemainingSeconds: number;
-  readonly slamCount: number;
-}
-
-export interface StreamRewardRenderState {
-  readonly id: number;
-  readonly tier: number;
-  readonly x: number;
-  readonly z: number;
-  readonly hitProgress: number;
-  readonly hitsRequired: number;
-}
-
-export interface UpgradeGateRenderState {
-  readonly id: string;
-  readonly x: number;
-  readonly z: number;
-  readonly width: number;
-  readonly rewardKind: 'rifle' | 'tier2Rifle';
-  readonly rewardAmount: number;
-  readonly hitProgress: number;
-  readonly hitsRequired: number;
-}
-
-export interface UpgradePickupRenderState {
-  readonly id: number;
-  readonly x: number;
-  readonly z: number;
-  readonly rewardAmount: number;
-  readonly rewardKind: 'rifle' | 'tier2Rifle';
 }
 
 export interface ProjectileRenderState {
   readonly memberIndex?: number;
   readonly slopeX?: number;
   readonly id: number;
-  readonly kind: 'rifle' | 'machineGun' | 'rocket';
+  readonly kind: 'rifle' | 'machineGun';
   readonly tier: number;
   readonly x: number;
   readonly z: number;

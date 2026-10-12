@@ -27,8 +27,7 @@ export function laneWave(waveIndex: number, seed: number, config: CatharsisConfi
   }
   const compositionRng = new SeededRng((seed ^ Math.imul(waveIndex + 1, 0x85ebca6b)) >>> 0);
   const heavy = compositionRng.nextFloat() < config.heavyChance;
-  const quiet = Array.from({ length: config.laneCount }, (_, lane) => lane).filter((lane) => !lanes.includes(lane));
-  return { lanes, heavy, rewardLane: quiet.length ? quiet[compositionRng.nextInt(quiet.length)] : lanes[0] };
+  return { lanes, heavy };
 }
 
 export function laneCompositionForRow(row: number, seed: number, config: CatharsisConfig & { heavyCount?: number }, halfWidth: number,
@@ -37,7 +36,7 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
   const wave = laneWave(Math.floor(row / config.waveRows), seed, config);
   if (authoredLanes) wave.lanes = [...authoredLanes];
   const slot = row % config.waveRows;
-  if (config.defenseMode) {
+  {
     if (slot !== 0) return [];
     const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
     const spacing = positions[1] - positions[0];
@@ -72,23 +71,6 @@ export function laneCompositionForRow(row: number, seed: number, config: Cathars
     }
     return members;
   }
-  if (slot % config.groupRowStride !== 0 || slot / config.groupRowStride >= config.groupSize) return [];
-  const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
-  // A two-lane wave splits the same group budget, avoiding twice the pressure.
-  const lane = wave.lanes[(slot / config.groupRowStride) % wave.lanes.length];
-  return [{ x: positions[lane], z: 0, archetype: slot === 0 && wave.heavy ? 'heavy' as const : 'grunt' as const }];
+
 }
 
-export function rewardLaneXForRow(row: number, seed: number, config: CatharsisConfig,
-  halfWidth: number, playerX: number): number {
-  const wave = laneWave(Math.floor(row / config.waveRows), seed, config);
-  const positions = attackLanePositions(config.laneCount, halfWidth, config.edgeInset);
-  const requiresMovement = positions.map((x, lane) => ({ x, lane }))
-    .filter(({ x }) => Math.abs(x - playerX) > config.rewardAimRadius);
-  const quiet = requiresMovement.filter(({ lane }) => !wave.lanes.includes(lane));
-  // With three lanes the only quiet lane can already be defended. In that
-  // case a pressured lane is preferable to an automatic reinforcement.
-  const choices = quiet.length ? quiet : requiresMovement;
-  if (!choices.length) throw new Error('Reward aim radius leaves no intentional lane choice');
-  return (choices.find(({ lane }) => lane === wave.rewardLane) ?? choices[row % choices.length]).x;
-}

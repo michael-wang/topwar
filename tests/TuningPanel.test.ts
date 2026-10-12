@@ -102,7 +102,7 @@ describe('temporary tuning panel', () => {
     const viewport = new ElementStub('div');
     const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn());
     const root = viewport.children[0];
-    const select = root.findAll('select')[0];
+    const select = root.findAll('input')[0];
     root.open = true;
     select.focus();
     root.dispatchEvent(new Event('toggle'));
@@ -144,33 +144,18 @@ describe('temporary tuning panel', () => {
     const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, onChange);
     const root = viewport.children[0];
     const inputs = root.findAll('input');
-    expect(inputs).toHaveLength(9);
-    expect(inputs.every((input) => input.type === 'range')).toBe(true);
-    const bossScale = root.findAll('select')[0];
-    expect(bossScale.findAll('option').map((option) => option.value))
-      .toEqual(['0.25', '0.5', '1', '2', '3', '5', '10', '20', '50', '100']);
-    bossScale.value = '20';
-    bossScale.dispatchEvent(new Event('input'));
-    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, bossHpScale: 20 });
-    expect(root.findAll('output')[2].textContent).toContain('1 / 7 rows (≈14.3%)');
-    const density = inputs[2];
-    density.value = '4';
-    density.dispatchEvent(new Event('input'));
-    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4,
-      bossHpScale: 20 });
-    expect(root.findAll('output')[2].textContent).toContain('1 / 4 rows (≈25%)');
-    const music = inputs[8];
+    expect(inputs).toHaveLength(4);
+    expect(root.findAll('select')).toHaveLength(0);
+    expect(inputs.every(input=>input.type==='range')).toBe(true);
+    const music = inputs[3];
     expect(music.dataset.key).toBe('musicVolume');
     expect([music.min, music.max, music.step]).toEqual(['0', '0.5', '0.01']);
     expect(root.findAll('output').at(-1)?.textContent).toBe('0.50');
     music.value = '0.24';
     music.dispatchEvent(new Event('input'));
-    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, rewardRowsPerReward: 4,
-      bossHpScale: 20, musicVolume: .24 });
+    expect(onChange).toHaveBeenLastCalledWith({ ...defaults, musicVolume: .24 });
     root.querySelector('button')!.dispatchEvent(new Event('click'));
     expect(onChange).toHaveBeenLastCalledWith(defaults);
-    expect(density.value).toBe('7');
-    expect(bossScale.value).toBe('3');
     expect(music.value).toBe('0.5');
     panel.toggle();
     expect(root.open).toBe(true);
@@ -186,7 +171,7 @@ describe('temporary tuning panel', () => {
 });
 
 
-it('uses a separate defense tuning anchor and a monochrome tool, retaining the legacy anchor', () => {
+it('uses the coastal testing hatch without a retired TUNE entry', () => {
   vi.stubGlobal('document', {createElement: (tag: string) => new ElementStub(tag)});
   const viewport = new ElementStub('div');
   const defense = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
@@ -200,9 +185,5 @@ it('uses a separate defense tuning anchor and a monochrome tool, retaining the l
   expect(viewport.children[0].children[1].children[1]).toBe(defense.reviewControlsHost);
   defense.toggle(); expect(viewport.children[0].open).toBe(true);
   defense.close(); expect(viewport.children[0].open).toBe(false);
-  const legacy = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), false);
-  expect(viewport.children[1].className).toBe('tuning-panel');
-  expect(viewport.children[1].children[0].textContent).toBe('TUNE');
-  expect(viewport.children[1].children[1].children[0]).toBe(legacy.reviewControlsHost);
-  defense.dispose(); legacy.dispose(); vi.unstubAllGlobals();
+  defense.dispose(); vi.unstubAllGlobals();
 });

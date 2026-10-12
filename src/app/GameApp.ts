@@ -344,11 +344,7 @@ export class GameApp {
       collisionDiagnostics: this.perf?.counters,
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
-      tiers: { ...this.config.tiers,
-        enemyHigherTierPowerMultiplier: this.runtimeTuning.enemyHigherTierPowerMultiplier,
-        rifleHigherTierPowerMultiplier: this.runtimeTuning.rifleHigherTierPowerMultiplier },
-      rewardRowsPerReward: this.runtimeTuning.rewardRowsPerReward,
-      bossHpScale: this.runtimeTuning.bossHpScale };
+      tiers: this.config.tiers };
     if (import.meta.env.DEV && this.devReviewFixture)
       return createDevReviewFixture(options, this.runtimeTuning.fireRate, this.devReviewFixture);
     return new Simulation(options);
@@ -511,7 +507,7 @@ export class GameApp {
           s.enemies, s.projectiles);
         this.renderer.restoreFeedback(projectRenderState(s, {
           formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
-          defenseLineOffset: this.config.track.defenseLineOffset, bossVisualScale: this.config.bosses.basic.visualScale,
+          defenseLineOffset: this.config.track.defenseLineOffset,
           catharsis: s.catharsis,
         }), 0);
         this.xpHud?.reset(); this.battleInfo?.reset();
@@ -544,7 +540,7 @@ export class GameApp {
     const level = state.enemyStream === null && this.sessionLevel.enemyStream
       ? { ...this.sessionLevel, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } : this.sessionLevel;
     const result = writeCheckpoint({ version: 1, simulationContract: 1, game: 'topwar',
-      mode: state.catharsis?.balance.defenseMode ? 'defense' : 'legacy', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
+      mode: 'defense', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
       savedAt: Date.now(), paused: true, hidden: this.hidden, reason,
       fixture: import.meta.env.DEV ? this.devReviewFixture : null,
       ...(this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
@@ -622,8 +618,7 @@ export class GameApp {
       this.previousDefenseValue=squadDefenseValue(s.squad,this.config.tiers.mergeCount);this.previousWeaponFamily='machineGun';
       this.audio.restoreObservation(this.previousDefenseValue,s.enemies,s.projectiles);
       this.renderer.restoreFeedback(projectRenderState(s,{formationSpacing:this.config.player.formationSpacing,
-        trackHalfWidth:this.config.track.halfWidth,defenseLineOffset:this.config.track.defenseLineOffset,
-        bossVisualScale:this.config.bosses.basic.visualScale,catharsis:s.catharsis}),this.presentationMs);
+        trackHalfWidth:this.config.track.halfWidth,defenseLineOffset:this.config.track.defenseLineOffset,catharsis:s.catharsis}),this.presentationMs);
       this.renderer.preparePresentation();
       // Real visible frames upload the actual crowd, HP bars, projectile and shell batches.
       for(let i=0;i<3;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
@@ -666,7 +661,6 @@ export class GameApp {
           formationSpacing: this.config.player.formationSpacing,
           trackHalfWidth: this.config.track.halfWidth,
           defenseLineOffset: this.config.track.defenseLineOffset,
-          bossVisualScale: this.config.bosses.basic.visualScale,
           catharsis: state.catharsis,
         }), 0);
         this.frameId = requestAnimationFrame(this.renderFrame);
@@ -775,7 +769,6 @@ export class GameApp {
         formationSpacing: this.config.player.formationSpacing,
         trackHalfWidth: this.config.track.halfWidth,
         defenseLineOffset: this.config.track.defenseLineOffset,
-        bossVisualScale: this.config.bosses.basic.visualScale,
         catharsis: state.catharsis,
       });
       const mapFinishedMs = perf ? performance.now() : 0;
@@ -819,3 +812,4 @@ export class GameApp {
     }
   };
 }
+

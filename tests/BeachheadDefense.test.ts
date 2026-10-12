@@ -46,7 +46,7 @@ it('projects Heavy proportions while leaving Grunts and all simulation outcomes 
     catharsis: { balance: { ...balance, heavyWidthMultiplier: 1, heavyHeightMultiplier: 1, heavyDepthMultiplier: 1 }, trackHalfWidth: 3.2 } });
   const current = make(true);
   const view = projectRenderState(current.getFrameState(), { catharsis: current.getFrameState().catharsis,
-    trackHalfWidth: 3.2, defenseLineOffset: 1.5, formationSpacing: .45, bossVisualScale: 7 });
+    trackHalfWidth: 3.2, defenseLineOffset: 1.5, formationSpacing: .45, });
   const heavy = view.enemies.find(enemy => enemy.archetype === 'heavy')!;
   const grunt = view.enemies.find(enemy => enemy.archetype === 'grunt')!;
   expect(heavy.hp).toBe(15);
@@ -330,7 +330,7 @@ it('projects standing defenders and relative enemy/projectile positions while si
   const state = simulation.getFrameState();
   expect(state.player.z).toBe(0);
   const view = projectRenderState(state, { catharsis: state.catharsis, trackHalfWidth: 3.2,
-    formationSpacing: .45, defenseLineOffset: 1.5, bossVisualScale: 7 });
+    formationSpacing: .45, defenseLineOffset: 1.5, });
   expect(view.player.z).toBe(0);
   expect(view.enemies[0].z).toBeCloseTo(state.enemies[0].z - state.player.z);
   expect(view.projectiles[0].z).toBeCloseTo(state.projectiles[0].z - state.player.z);

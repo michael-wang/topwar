@@ -96,7 +96,7 @@ it('projects current Heavy max HP and keeps slower gait entirely outside gamepla
   state.enemies = [{ id: 1, tier: 1, archetype: 'heavy', lane: 2, x: 0, z: 20, hp: 15 }]; sim.restoreState(state);
   sim.setCatharsisBalance({ ...balance, heavyHp: 30 });
   const view = projectRenderState(sim.getFrameState(), { catharsis: sim.getFrameState().catharsis,
-    trackHalfWidth: 3.2, defenseLineOffset: 1.5, formationSpacing: .45, bossVisualScale: 7 });
+    trackHalfWidth: 3.2, defenseLineOffset: 1.5, formationSpacing: .45, });
   expect(view.enemies[0].maxHp).toBe(30);
   expect(enemyRunFrame(1, 0, 650)).toBe(enemyRunFrame(1, 650, 650));
   expect(enemyWalkPose(1, 0, 650).leftArm).toBeCloseTo(enemyWalkPose(1, 650, 650).leftArm);
@@ -186,7 +186,7 @@ it('validates plan shape, monotonic stages and snapshot defaults without seriali
 it.each([1,2,3])('keeps %i rendered defense anchors consistent with authoritative Rifle origins',count=>{
   const sim=make(),s=sim.getState();s.squad={count,rocketCount:0,rifleCounts:[count],rifleRemainder:0};
   sim.restoreState(s);sim.step(1/60,{targetX:0},tuning);
-  const state=sim.getFrameState(),frame=projectRenderState(state,{catharsis:state.catharsis,formationSpacing:.45,trackHalfWidth:3.2,defenseLineOffset:1.5,bossVisualScale:7});
+  const state=sim.getFrameState(),frame=projectRenderState(state,{catharsis:state.catharsis,formationSpacing:.45,trackHalfWidth:3.2,defenseLineOffset:1.5,});
   const family=createChibiPlayerFamily(),scene=new THREE.Scene(),renderer=new SquadRenderer(scene,family),positions:THREE.Vector3[]=[];
   renderer.update(frame,0);renderer.update(frame,3000);renderer.forEachVisibleMemberPosition(p=>positions.push(p.clone()));
   const offsets=createDefenseSquadFormation(count,.45,curve);

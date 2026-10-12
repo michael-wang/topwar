@@ -2,8 +2,7 @@ import type { RuntimeTuning } from '../app/runtimeTuning';
 import { testingHatch } from './TestingHatch';
 
 type Key = keyof RuntimeTuning;
-type Control = { key: Key; label: string; min: number; max: number; step: number }
-  | { key: 'bossHpScale'; label: string; choices: readonly number[] };
+type Control = { key: Key; label: string; min: number; max: number; step: number };
 const controls: readonly Control[] = [
   { key: 'groupSize', label: 'Enemies / wave (future groups; Retry refills)', min: 10, max: 60, step: 2 },
   { key: 'enemyVisualScale', label: 'Enemy visual size', min: 1, max: 2, step: 0.05 },
@@ -13,13 +12,7 @@ const controls: readonly Control[] = [
   { key: 'heavyChance', label: 'Heavy chance / wave', min: 0, max: 1, step: 0.05 },
   { key: 'bulletSpeed', label: 'Bullet speed', min: 10, max: 60, step: 1 },
   { key: 'bulletRange', label: 'Bullet range', min: 10, max: 80, step: 1 },
-  { key: 'rewardRowsPerReward', label: 'Reward density', min: 2, max: 20, step: 1 },
-  { key: 'enemyHigherTierPowerMultiplier', label: 'Enemy HP / tier', min: 2, max: 20, step: 0.5 },
-  { key: 'rifleHigherTierPowerMultiplier', label: 'Rifle power / tier', min: 2, max: 20, step: 0.5 },
   { key: 'fireRate', label: 'Fire rate', min: 1, max: 15, step: 0.5 },
-  { key: 'moveSpeed', label: 'Move speed', min: 1, max: 10, step: 0.5 },
-  { key: 'forwardSpeed', label: 'Forward speed', min: 0.5, max: 3, step: 0.1 },
-  { key: 'bossHpScale', label: 'Boss HP scale', choices: [.25, .5, 1, 2, 3, 5, 10, 20, 50, 100] },
   { key: 'musicVolume', label: 'Music volume', min: 0, max: 0.50, step: 0.01 },
 ];
 
@@ -49,47 +42,30 @@ export class TuningPanel {
   };
 
   constructor(viewport: HTMLElement, private readonly defaults: RuntimeTuning,
-    private readonly onChange: (values: RuntimeTuning) => void, defenseMode = false) {
+    private readonly onChange: (values: RuntimeTuning) => void, defenseMode = true) {
     this.values = { ...defaults };
     this.element = document.createElement('details');
-    this.element.className = defenseMode ? 'tuning-panel tuning-panel--coastal-anchor' : 'tuning-panel';
+    this.element.className = 'tuning-panel tuning-panel--coastal-anchor';
     const summary = document.createElement('summary');
-    if (defenseMode) {
-      testingHatch(summary);
-    } else summary.textContent = 'TUNE';
+    testingHatch(summary);
     const content = document.createElement('div');
     content.className = 'tuning-panel-content';
-    if (defenseMode) {
+    {
       const heading = document.createElement('strong'); heading.className = 'tuning-heading';
       heading.textContent = 'DEV TOOLS'; content.append(heading);
       this.reviewControlsHost.className = 'dev-review-host';
       content.append(this.reviewControlsHost);
       const tuning = document.createElement('strong'); tuning.className = 'tuning-heading';
       tuning.textContent = 'BALANCE & AUDIO'; content.append(tuning);
-    } else content.append(this.reviewControlsHost);
+    }
     this.element.append(summary, content);
     for (const control of controls) {
-      if (defenseMode && ['rewardRowsPerReward', 'enemyHigherTierPowerMultiplier', 'rifleHigherTierPowerMultiplier', 'bossHpScale', 'moveSpeed', 'forwardSpeed'].includes(control.key)) continue;
       if (defaults[control.key] === undefined) continue;
       const label = document.createElement('label');
-      label.textContent = control.key === 'enemyHigherTierPowerMultiplier' && defaults.enemyVisualScale !== undefined
-        ? 'Boss base HP / tier' : defenseMode && control.key === 'fireRate' ? 'Base fire rate' : control.label;
-      const input = control.key === 'bossHpScale'
-        ? document.createElement('select') : document.createElement('input');
-      if ('choices' in control) {
-        for (const value of control.choices) {
-          const option = document.createElement('option');
-          option.value = String(value);
-          option.textContent = `${value}×`;
-          input.append(option);
-        }
-      } else {
-        const slider = input as HTMLInputElement;
-        slider.type = 'range';
-        slider.min = String(control.min);
-        slider.max = String(control.max);
-        slider.step = String(control.step);
-      }
+      label.textContent = control.key === 'fireRate' ? 'Base fire rate' : control.label;
+      const input = document.createElement('input');
+      input.type = 'range'; input.min = String(control.min);
+      input.max = String(control.max); input.step = String(control.step);
       input.dataset.key = control.key;
       const output = document.createElement('output');
       label.append(input, output);
@@ -134,10 +110,7 @@ export class TuningPanel {
   private updateDisplay(): void {
     for (const [key, output] of this.outputs) {
       const value = this.values[key]!;
-      output.textContent = key === 'rewardRowsPerReward'
-        ? `1 / ${value} rows (≈${Number((100 / value).toFixed(1))}%)`
-        : key === 'bossHpScale' ? `${value}×`
-          : key === 'musicVolume' ? value.toFixed(2) : String(value);
+      output.textContent = key === 'musicVolume' ? value.toFixed(2) : String(value);
     }
   }
 }

@@ -4,14 +4,13 @@ export interface PlayerSimulationState {
   z: number;
 }
 
-import type { ExactValue } from './tiers/exactValue';
 import type { CatharsisConfig } from '../config/catharsisConfig';
 
 export interface SquadSimulationState {
   count: number;
   rocketCount: number;
   rifleCounts: number[];
-  rifleRemainder: ExactValue;
+  rifleRemainder: number;
 }
 
 export interface EnemySimulationState {
@@ -34,54 +33,12 @@ export interface EnemyStreamSimulationState {
   nextBossTier: number;
 }
 
-export interface BossSimulationState {
-  id: number;
-  tier: number;
-  x: number;
-  z: number;
-  hp: number;
-  maxHp: number;
-  engaged: boolean;
-  slamCooldownRemainingSeconds: number;
-  slamCount: number;
-}
-
-export interface StreamRewardSimulationState {
-  id: number;
-  tier: number;
-  x: number;
-  z: number;
-  hitProgress: number;
-  hitsRequired: number;
-}
-
-export interface UpgradeGateSimulationState {
-  id: string;
-  x: number;
-  zOffset: number;
-  width: number;
-  reward: { mode: 'hitPickup'; kind: 'rifle' | 'tier2Rifle'; amount: number;
-    hitsRequired: number; dropSpeed: number };
-  hitProgress: number;
-}
-
-export interface UpgradePickupSimulationState {
-  id: number;
-  sourceGateId: string;
-  x: number;
-  zOffset: number;
-  width: number;
-  rewardKind: 'rifle' | 'tier2Rifle';
-  rewardAmount: number;
-  dropSpeed: number;
-}
-
 export interface ProjectileSimulationState {
   memberIndex?: number;
   lane?: number;
   slopeX?: number;
   id: number;
-  kind: 'rifle' | 'machineGun' | 'rocket';
+  kind: 'rifle' | 'machineGun';
   tier: number;
   x: number;
   z: number;
@@ -90,7 +47,7 @@ export interface ProjectileSimulationState {
   remainingRange: number;
   blastRadius: number;
   hitRadiusBonus: number;
-  penetrationRemaining: ExactValue;
+  penetrationRemaining: number;
 }
 
 export interface WeaponSimulationState {
@@ -133,11 +90,11 @@ export interface SimulationState {
   player: PlayerSimulationState;
   squad: SquadSimulationState;
   enemies: EnemySimulationState[];
-  boss: BossSimulationState | null;
+  boss: null;
   enemyStream: EnemyStreamSimulationState | null;
-  streamRewards: StreamRewardSimulationState[];
-  gates: UpgradeGateSimulationState[];
-  pickups: UpgradePickupSimulationState[];
+  streamRewards: never[];
+  gates: never[];
+  pickups: never[];
   nextPickupId: number;
   projectiles: ProjectileSimulationState[];
   weapons: WeaponSimulationState;

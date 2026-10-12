@@ -2,17 +2,17 @@ import { expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { OffshoreTransports, NAVAL_PALETTE } from '../src/rendering/environment/OffshoreTransports';
 import { ART } from '../src/art/ArtDirection';
-it('keeps three asymmetric background carriers and a shoreward visual craft outside gameplay', () => {
+it('keeps three asymmetric background carriers and a stationary offshore craft outside gameplay', () => {
   const transports = new OffshoreTransports();
   const ships = transports.group.children.filter(child => child.name.startsWith('troop-carrier'));
   expect(ships).toHaveLength(3);
   expect(new Set(ships.map(ship => ship.position.z)).size).toBe(3);
   expect(new Set(ships.map(ship => ship.scale.x)).size).toBe(3);
   expect(ships.every(ship => ship.position.z > 53 && ship.children.length === 4)).toBe(true);
-  transports.update(100, 1000, true, -4);
+  transports.update(100, 1000, true);
   expect(transports.group.position.z).toBe(100);
   const craft = transports.group.children.at(-1)!; expect(craft.position.z).toBe(ART.coastalDefense.shorelineZ + 8);
-  transports.update(100, 2000, true, 4); expect(craft.position.z).toBe(ART.coastalDefense.shorelineZ);
+  transports.update(100, 2000, true); expect(craft.position.z).toBe(ART.coastalDefense.shorelineZ + 8);
   transports.update(100, 2000, false); expect(transports.group.visible).toBe(false);
   transports.dispose();
 });
