@@ -1,7 +1,3 @@
 # Local QA output
 
-Generate visual captures, animations and performance JSON here locally.
-Contents are intentionally ignored by Git; only this README is tracked.
-Current automated correctness lives in `tests/`, with reusable browser checks
-in `scripts/qa/`. Historical phase images and capture scripts can be recovered
-from their Git commits (R5 baseline: `07facfc4c9f6f18800bdb359ea52335c85a609ab`).
+Generated metrics, screenshots, recordings, traces and development certificates live here and are ignored by Git. Only this README is tracked. Current regression tools are documented in scripts/qa/README.md. Historical captures remain in their original commits; do not restore retired assets into the shipping build.

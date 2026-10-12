@@ -1,34 +1,37 @@
 # TopWar
 
-TopWar is a fully static TypeScript/Vite game. It requires no backend.
+A mobile-first, five-lane Beachhead Defense playtest. TypeScript, Vite, Three.js and Vitest; no backend.
 
-## Development
+## Develop and verify
 
-```bash
-npm install
-npm run dev
+Use the Node version in `.node-version`.
+
+```powershell
+npm ci
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
 npm test
 npm run typecheck
 npm run build
 ```
 
-Development `/` starts normal Level 1 with the accepted P3 Ink Spear projectile, identical to production. The top-left DEV menu contains exactly LATE (playable Lv6 / one MG), CRATE3 (Lv3 teaching Supply / three Grenade transfers), CRATE8 (Lv8 recurring Supply / one transfer), and NAVAL (Destroyer / Observer encounter). The existing balance/audio controls remain. Selection or Retry restores the deterministic fixture and clears presentation feedback; a development-only visual salt varies splashes without affecting simulation. Reload to return to normal play. The projectile selector and 4/5/6 shortcuts are removed. Historical Rifle, Grenade, evolution, MG, Carnival and artillery scenarios remain available through test-only helpers; see `scripts/qa/README.md`. Production excludes DEV controls and fixture code.
+Tap to Start activates audio. Hold the bottom arrows or use A/D/arrow keys to move between adjacent lanes; Q throws a Grenade. Pause suspends gameplay. Retry starts the selected scenario again.
 
-## Publishing
+The quiet tool hatch opens local DEV controls: LATE (Lv10), CRATE3, CRATE8, NAVAL; collapsible MG TEST, SURVIVAL TEST and NAVAL BARRAGE comparisons; authored tuning and audio controls. The small FPS label measures actual rendered RAF intervals. Production ships only the restricted recovery/screen-sleep QA panel, never the full tuning tools or test-only fixtures.
 
-With Pages Source set to GitHub Actions, deployment is **manual only**. Pushing to `main` or pushing a tag does not publish the game. Friends continue to see the last manually published build until another manual deployment succeeds.
+## Current game
 
-Before the first publication, set **Repository → Settings → Pages → Build and deployment → Source: GitHub Actions**. A branch-based Pages source would publish on push and violate the manual-only rule.
+Rifle levels 1–5 lead to MG levels 6–10. Lv4 introduces the Giant. Lv6 starts the 24-second Carnival and persistent Destroyer entrance. Naval attacks and enemy admissions have independent clocks. Phone-approved AHEAD endless Survival starts at +27 seconds. The Destroyer uses one unresolved salvo and continuous 2–5-second post-impact quiet gaps. Golden Grenades accumulate without a gameplay inventory cap.
 
-To publish, open **GitHub → Actions → Deploy TopWar to GitHub Pages → Run workflow**, enter the Git ref to publish, and run it. Use `main` to publish the current main branch.
+See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](ARCHITECTURE.md) for contracts and [ART_DIRECTION.md](ART_DIRECTION.md) for current art. Historical prototype gameplay is retired; Git history is its archive.
 
-For a frozen playtest checkpoint, create and push a tag first:
+## Saves and phone testing
 
-```bash
-git tag playtest-2026-09-25
-git push origin playtest-2026-09-25
-```
+Manual Pause and page hiding save a bounded full-state checkpoint. After reload, Continue/New Game is available before asset initialization. Continue restores paused and explicit Resume activates audio and requests Screen Wake Lock. Returning to a surviving hidden page also remains paused.
 
-Then manually run the deployment workflow with `ref` set to `playtest-2026-09-25`.
+Released Beachhead Defense eight- and ten-level saves keep their serialized progression, movement and encounter policies. Ancient forward-running/Tier/Boss saves are unsupported and offer a safe fresh-start path. See [Pixel 8 testing](docs/PIXEL8_DEV_TESTING.md) and [current QA tools](scripts/qa/README.md).
 
-Published site: [https://michael-wang.github.io/topwar/](https://michael-wang.github.io/topwar/)
+## Manual deployment only
+
+Production paths use `/topwar/` and content-addressed public assets. Run the quality gates above, then deliberately dispatch the existing **Deploy TopWar to GitHub Pages** workflow with the reviewed branch/tag/commit. It has no push trigger. No coding task deploys automatically.
+
+The frozen `playtest-2026-10-08` tag must not be moved, deleted or recreated. Historical reports and experiments remain available in Git history.
