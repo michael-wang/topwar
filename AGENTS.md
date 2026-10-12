@@ -1,231 +1,87 @@
 # AGENTS.md — TopWar
 
-This file contains project rules for coding agents. Treat these as constraints, not suggestions.
+These are binding instructions for coding agents working on TopWar. The user owns product direction and playtest acceptance. Implement only the task actually requested.
 
-## Role
+## Product north star: Fun First
 
-You are an implementation engineer.
+TopWar is a mobile-web-first, portrait Beachhead Defense game. Optimize for **fun, clear feedback, satisfying combat, and fast iteration**—not maximum engineering ceremony.
 
-The product architecture, scope, and acceptance criteria are defined by the task you are given and by the project documentation. Do not redesign the project unless the task explicitly asks you to.
+Priorities, in order:
 
-When requirements are ambiguous, prefer the smallest implementation that satisfies the acceptance criteria and preserves the architecture below.
+1. Make the requested player-visible improvement work and feel good.
+2. Get feedback from real play, especially the user's physical Pixel 8.
+3. Iterate quickly on that feedback.
+4. Keep the active codebase small, understandable, and healthy.
 
-## Product priorities
+Treat automated pilots, survival rates, screenshots, and benchmarks as diagnostic tools, **not substitutes for player experience**. Do not silently rebalance difficulty to make automated tests survive.
 
-TopWar is a gameplay-first, mobile-web-first prototype.
+Do not invent player-protection rules, arbitrary inventory limits, automatic difficulty mitigation, or other gameplay restrictions. Preserve already accepted mechanics; change game design only when explicitly asked. In particular, Grenades accumulate without an artificial inventory cap (ordinary numeric safety still applies).
 
-The development loop matters as much as the game itself:
+Do not build speculative features, future-proof unused systems, or keep retired gameplay "just in case." The current game is Defense, not the retired runner / Tier Merge / old Boss prototype. Preserve released **Defense** save compatibility, not obsolete prototype gameplay.
 
-1. A gameplay value should be testable in seconds.
-2. Balance data must be adjustable at runtime.
-3. The current gameplay state must be easy to save and restore.
-4. Gameplay simulation must remain independent from rendering.
-5. The project must stay easy to reason about and easy to delete/refactor.
+## Work on small, explicit tasks
 
-Do not optimize for production backend, monetization, accounts, analytics, stores, or app packaging unless a task explicitly requests it.
+1. Read the task and inspect only the relevant code and current project contracts.
+2. Make the smallest coherent change; avoid unrelated refactors and abstractions.
+3. Keep balance in authored configuration and supported runtime overrides, not scattered magic constants.
+4. Validate in proportion to the actual risk (see below).
+5. Report what changed, what was checked, and remaining limitations **briefly**.
 
-## Technical baseline
+Do not expand a short work order into a broad research, QA, optimization, or redesign project without a concrete reason. Prefer a small experiment players can try over an elaborate speculative system. Do not create temporary feature flags without a real need; remove them once they are obsolete.
 
-- TypeScript
-- Vite
-- Three.js
-- Vitest
-- Mobile web first
-- Portrait gameplay, approximately 9:16
-- Desktop mouse support for development
-- No backend required for gameplay
+The coding agent owns routine development setup: dependencies, Node/tooling alignment, builds, relevant tests, and ordinary Git work. Ask the user for intervention only when credentials, elevated privileges, or genuinely risky machine-wide actions are necessary.
 
-Do not replace this stack without an explicit task.
+## Practical quality gates
 
-## Development environment ownership
-
-The coding agent owns routine environment setup and maintenance needed for its assigned task. Install project dependencies with npm; add, remove, or update npm packages when the task requires it; approve only legitimate required dependency install scripts; run npm scripts, tests, typechecks, builds, and development servers; and inspect or repair package and tooling configuration. Use the project's Node version manager when available, install or switch to the declared Node version with existing tooling, and create or update `.node-version` when the agreed environment requires it. Initialize Git if needed, inspect status and diffs, and make task checkpoint commits when appropriate.
-
-Do not ask the user to run routine setup commands. If Node, npm, or another expected tool is unavailable, inspect the environment and attempt the smallest safe project-compatible fix. System-wide installations are allowed only when clearly required for TopWar development and low-risk and reversible; prefer existing tooling and project-local dependencies. Never install unrelated utilities, broadly reconfigure the operating system, or weaken security settings.
-
-Ask for human intervention only when genuinely required, such as administrator/UAC confirmation, credentials, third-party authentication, destructive or broad machine-level changes, or ambiguous system-wide configuration with meaningful risk. Include environment setup in verification before declaring the task complete. The user primarily tests the game and provides product feedback.
-
-## Architecture boundaries
-
-The intended dependency direction is:
-
-```text
-game-data
-   ↓
-ConfigStore
-   ↓
-Simulation ← DevTools / SnapshotSystem
-   ↓
-RenderState
-   ↓
-Three.js Renderer
-```
-
-Rules:
-
-- `simulation/` MUST NOT import Three.js.
-- `simulation/` MUST NOT access DOM APIs.
-- `simulation/` MUST NOT read localStorage directly.
-- `simulation/` MUST NOT call `Math.random()`.
-- Rendering may depend on simulation-facing interfaces or render snapshots.
-- Dev tools may command the simulation through explicit APIs.
-- Persistence must serialize plain data, not Three.js objects.
-- Game balance values must come from configuration, not hard-coded gameplay constants.
-- Renderer state is disposable. Loading a snapshot must not require serializing GPU/Three.js objects.
-
-## Determinism
-
-Gameplay randomness must come through the project RNG abstraction.
-
-A simulation state should be reproducible from:
-
-- config
-- level definition
-- seed
-- player input sequence
-
-Do not use `Math.random()` in gameplay code.
-
-The simulation should use a fixed timestep. Rendering may run at variable framerate.
-
-## Data-driven gameplay
-
-Do not scatter balance constants through implementation code.
-
-Examples of data that belong in configuration:
-
-- starting squad size
-- squad movement speed
-- formation spacing
-- weapon damage
-- fire rate
-- projectile speed
-- enemy HP
-- enemy movement speed
-- enemy count/density
-- boss HP
-- gate rewards
-- level section positions
-
-Configuration must be loadable at runtime.
-
-During development, runtime overrides should be possible without rebuilding the project.
-
-## Snapshot requirements
-
-Gameplay state should be serializable when practical.
-
-Snapshot data should eventually include:
-
-- schema/version number
-- simulation time/tick
-- RNG state
-- active level id
-- player/squad state
-- enemy state
-- projectile state
-- boss state
-- level progression state
-- runtime config overrides that affect the restored scene
-
-Do not place DOM nodes, functions, class prototypes, Meshes, Materials, Textures, or other renderer resources into snapshots.
-
-## Dev tools
-
-Development tooling is a first-class feature.
-
-The intended Dev Panel will eventually support:
-
-- pause/resume
-- time scale
-- runtime config editing
-- squad count changes
-- enemy spawning
-- jump to boss / checkpoints
-- snapshot save/load
-- snapshot export/import
-- seed display/replay
-- basic performance counters
-
-Do not ship unfinished fake controls. A visible control must work.
-
-Production builds must be able to disable development-only write/persistence endpoints.
-
-## Performance philosophy
-
-First make behavior correct and measurable. Then optimize proven bottlenecks.
-
-For large visible crowds:
-
-- prefer batched/instanced rendering
-- do not create one heavyweight physics body per crowd member
-- avoid one independent animation loop per entity
-- use pooling where object churn becomes meaningful
-- keep simulation data lighter than visual representation
-
-Do not prematurely introduce a generic ECS/framework unless a task explicitly calls for it.
-
-## Scope discipline
-
-For every task:
-
-1. Read the task and relevant project docs.
-2. Inspect existing code before editing.
-3. Make the smallest coherent change.
-4. Do not perform unrelated refactors.
-5. Do not rename public interfaces without need.
-6. Add or update tests for logic introduced by the task.
-7. Run the required checks.
-8. Report exactly what changed and any known limitation.
-
-If an acceptance criterion cannot be met, stop and explain the blocker instead of inventing a workaround that violates architecture.
-
-## Documentation hygiene
-
-- `ROADMAP.md` is the current product plan, not a milestone history: keep exactly one NOW area, at most three concrete NEXT items, and broad LATER items only.
-- Delete superseded requirements instead of accumulating contradictory text; Git history preserves old decisions.
-- When a pivot makes documentation false, update or remove it in the same task when practical.
-- `ARCHITECTURE.md` describes stable engineering contracts, not product sequencing.
-- `GAME_SPEC.md` describes accepted gameplay and selected near-term design rules. Do not specify distant speculative features in detail.
-
-## Quality gates
-
-Before declaring a task complete, run the checks requested by that task.
-
-Unless the task says otherwise, the expected baseline is:
+For **code changes**, ensure the project typechecks and a production build succeeds before reporting completion. The default is:
 
 ```bash
-npm test
 npm run typecheck
 npm run build
 ```
 
-Do not claim success if a required command fails.
+Run **focused tests** for logic or contracts actually affected by the change. Add or update tests when they protect meaningful behavior or a regression, not merely to inflate the test count. Full `npm test` is appropriate for broad changes, central simulation logic, persistence/restore changes, cleanup that removes working code, or when explicitly requested; it is **not an automatic ritual** for every small visual/audio/balance tweak.
 
-## Coding style
+For documentation-only changes, no build or test run is required unless there is a concrete reason. For visual, audio, readability, difficulty, and performance judgments, phone playtesting is the acceptance signal; desktop captures and scripts help diagnose issues but cannot replace physical-device feedback. Never claim a Pixel 8 test unless the user actually performed it.
 
-- Prefer small modules with explicit responsibilities.
-- Prefer plain data and functions in simulation code.
-- Avoid clever abstractions until there are at least two real use cases.
-- Avoid global mutable state.
-- Keep interfaces narrow.
-- Name units when ambiguity is possible (`seconds`, `unitsPerSecond`, etc.).
-- Add comments for invariants and non-obvious decisions, not line-by-line narration.
-- Fail loudly on invalid development configuration rather than silently substituting nonsense.
+Avoid new large simulation batches, benchmark suites, golden traces, one-off QA scripts, and lengthy evidence reports unless a real risk or a specific request justifies them. Preserve existing useful tests; delete obsolete tests and tools when safe. Never report a check as passed if it was not run or failed.
 
-## Forbidden shortcuts
+## Engineering contracts worth protecting
 
-Do not:
+- Stack: TypeScript, Vite, Three.js, Vitest; portrait mobile web first, desktop controls for development. No backend, accounts, monetization, database, or generic ECS unless explicitly requested.
+- Simulation is authoritative and fixed-step. Gameplay RNG uses the project RNG abstraction, never `Math.random()`; determinism must not depend on rendering.
+- `simulation/` must not import Three.js, use DOM/storage APIs, or serialize renderer objects. The renderer consumes plain simulation-facing state and owns disposable GPU resources.
+- Existing active Defense checkpoints must continue to save/restore correctly, including their RNG and gameplay state. Do not preserve old prototype gameplay that has been intentionally retired.
+- Keep production DEV/debug exposure narrow; no fake or broken controls.
+- Be sensible about mobile CPU, GPU, memory, per-frame allocations, and cleanup/disposal. Optimize demonstrated problems rather than guessing; do not reduce accepted VFX simply to satisfy a synthetic metric.
+- Do not silently break accepted gameplay or change public interfaces without a task-driven reason.
 
-- hard-code balance values in gameplay systems
-- import Three.js into simulation
-- use `Math.random()` for gameplay
-- make snapshot files depend on renderer objects
-- add a backend because it is "more scalable"
-- add authentication
-- add monetization
-- add a database
-- add a generic ECS framework
-- do broad cleanup outside the requested task
-- silently change game design
-- declare a task complete without running its acceptance checks
+The current accepted contracts are in `GAME_SPEC.md` and `ARCHITECTURE.md`. When a new instruction intentionally changes one of them, update the affected contract rather than retaining contradictory text.
+
+## End-of-day lightweight cleanup
+
+When the user asks to wrap up the day's work, **check for and perform a small, safe cleanup** around what changed that day:
+
+- Unused code, imports, assets, tests, and QA scripts.
+- Stale comments, temporary debug paths, and obsolete feature flags.
+- Outdated or duplicate documents and instructions.
+
+Keep it lightweight: remove clearly dead material, preserve active functionality and Defense saves, and use only checks proportionate to the cleanup. Do not turn a nightly tidy-up into hours of auditing, mass deletion, or architectural refactoring. If a larger cleanup is truly warranted, report it separately for the user to prioritize; **do not start it automatically**.
+
+Daily cleanup is triggered by the user's wrap-up request, not an unattended background task. A short summary of removals, checks, and anything deferred is enough.
+
+## Documentation and delivery discipline
+
+- `ROADMAP.md` records the **current** NOW, at most three concrete NEXT items, and broad LATER possibilities—no historical milestone accumulation.
+- `GAME_SPEC.md` records accepted gameplay, not imagined future mechanics.
+- `ARCHITECTURE.md` records durable engineering constraints, not a project diary.
+- Remove superseded instructions instead of stacking contradictory documents; Git history retains the past.
+- Keep Codex handoffs concise. No large cleanup reports or machine-readable inventories unless requested.
+- Commit and push only the requested, checked changes as appropriate. State the commit and any relevant limitations.
+
+## Release protection — non-negotiable
+
+- **Never deploy automatically.** GitHub Pages publishing requires the user's explicit manual authorization/action.
+- **Never alter or move the frozen tag `playtest-2026-10-08`.**
+- A push to `main` is **not** permission to publish.
+- Do not start unrequested gameplay features, even if they are mentioned as possible future directions.
