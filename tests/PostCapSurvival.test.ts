@@ -6,7 +6,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { emptyGrenade } from '../src/simulation/grenade';
 import { advancePostCapSurvival, emptyPostCapSurvival } from '../src/simulation/postCapSurvival';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { createDevReviewFixture } from './helpers/ReviewFixtures';
 
 const config=GameConfigSchema.parse(data),balance=config.catharsis!;

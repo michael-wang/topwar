@@ -6,7 +6,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createShellReview, shellReviewLaunches, SHELL_REVIEW_SOURCE } from './helpers/ShellReview';
 import { sampleArtillery, artilleryHits, effectiveArtilleryLane } from '../src/simulation/artillery';
 import { attackLanePositions } from '../src/simulation/enemies/laneComposition';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import type { Simulation } from '../src/simulation/Simulation';
 
 const config = GameConfigSchema.parse(data);

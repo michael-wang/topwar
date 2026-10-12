@@ -22,18 +22,6 @@ export type PresentationEvent = {
   before: SquadSimulationState;
   after: SquadSimulationState;
   affectedMembers?: CasualtyMember[];
-} | {
-  kind: 'bossSlam';
-  bossId: number;
-  bossTier: number;
-  slamCount: number;
-  attackerX: number;
-  attackerZ: number;
-  playerX: number;
-  playerZ: number;
-  before: SquadSimulationState;
-  after: SquadSimulationState;
-  affectedMembers?: CasualtyMember[];
 };
 
 export function copySquadForPresentation(squad: SquadSimulationState): SquadSimulationState {

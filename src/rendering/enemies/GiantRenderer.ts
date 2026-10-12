@@ -5,7 +5,6 @@ import { deathVariant } from './DeathAssembly';
 import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
-import { prepareCrowdMaterial } from './CrowdPresentation';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
 import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
 import { giantMaulSettle, giantMaulSwing, THREAT_DEATH_COLLAPSE } from '../../presentation/ThreatDeathCollapse';
@@ -62,7 +61,7 @@ export class GiantRenderer {
     this.reactionWeaponMatrices = this.reactionMatrices.map((matrix, index) => new THREE.Matrix4().makeTranslation(0, (index + 1) * .025, 0).multiply(matrix)) as unknown as readonly [THREE.Matrix4, THREE.Matrix4];
     const material = (source: THREE.Material, surface: 'body' | 'gear') => {
       if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Giant requires standard family materials');
-      const result = prepareCrowdMaterial(source.clone(), family.contactPresentation, surface);
+      const result = (source.clone());
       result.color.set('white'); result.emissive.set(ART.fx.core); result.emissiveIntensity = 0; return result;
     };
     const bodyMaterial = material(family.body.material, 'body'), gearMaterial = material(family.helmet.material, 'gear');

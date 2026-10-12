@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { Simulation } from '../src/simulation/Simulation';
 import { carnivalOptions, carnivalPilotLane, carnivalPilotGrenade } from './helpers/HistoricalPilots';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import { CatharsisConfigSchema } from '../src/config/catharsisConfig';
 import { DefenseWaveConfigSchema } from '../src/config/defenseConfig';

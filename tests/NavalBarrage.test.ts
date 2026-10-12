@@ -6,7 +6,7 @@ import { advanceNavalBarrage, emptyNavalBarrage, setNavalBarrage, validateNavalB
 import { createNavalBarrageReview } from '../src/app/DevNavalBarrageReview';
 import { carnivalOptionsFor } from '../scripts/qa/carnivalPilot';
 import { survivalDecision } from '../scripts/qa/survivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 const c=GameConfigSchema.parse(data), config=c.catharsis!.navalBarrage!;
 const carnivalOptions=carnivalOptionsFor(c);
 const fixture=(role:'barrage8-on'|'barrage9-on'|'barrage10-on'|'barrage10-off'='barrage10-on',seed=17)=>createNavalBarrageReview(carnivalOptionsFor(c),c.weapon.rifle.fireRate,role,seed);

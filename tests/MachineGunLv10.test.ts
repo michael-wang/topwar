@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { survivalSimulation as currentSimulation, type SurvivalScenario } from '../scripts/qa/survivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { effectivePrimaryFireRate, progressionStage } from '../src/simulation/progression';
 import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import oldSaves from './fixtures/old-survival.json';

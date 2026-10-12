@@ -28,7 +28,7 @@ const authoredConfig=JSON.parse(readFileSync('public/game-data/game.json','utf8'
 const authoredLevel=JSON.parse(readFileSync('public/game-data/levels/level-001.json','utf8'));
 try {
 for(const width of [390,350]){
-for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
+for(const [query,level]of [['',1],['?review=threats',1]]){
  const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'en-US'});const errors=[];
  const runtimeRequests=[];let configResponse,levelResponse;
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
@@ -62,7 +62,7 @@ for(const [query,level]of [['',1],['?review=threats',5],['?review=normal',1]]){
  if(JSON.stringify(config.catharsis.navalBarrage.postImpactCooldown)!=='{"initialDelaySeconds":2,"minimumGapSeconds":2,"maximumGapSeconds":5}')throw Error('Stale Stage 1 continuous naval cooldown');
  if(!await page.locator('#game-viewport.beachhead-defense').count()||await page.getByText(/ENEMY LV/).isVisible())throw Error('Production loaded legacy bridge/HUD');
  for(const url of runtimeRequests){const u=new URL(url);if(u.search||!Object.values(manifest).some(path=>u.pathname===`/topwar/${path}`))throw Error(`Unversioned or mismatched runtime asset: ${url}`);}
- if(runtimeRequests.filter(url=>new URL(url).pathname.endsWith('.glb')).length!==1)throw Error('Defense must request exactly the bullet');
+ if(runtimeRequests.filter(url=>new URL(url).pathname.endsWith('.glb')).length!==0)throw Error('Defense must not download retired GLBs');
  if(new Set(runtimeRequests).size!==runtimeRequests.length)throw Error('Duplicate runtime resource request');
  const jsonFetches=await page.evaluate(()=>window.__qaJsonFetches);
  for(const path of ['game-data/game.json','game-data/levels/level-001.json'])if(!jsonFetches.some(r=>r.url===`/topwar/${manifest[path]}`&&r.cache===undefined))throw Error(`Missing content-addressed fetch: ${path}`);

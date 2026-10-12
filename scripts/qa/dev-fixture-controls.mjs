@@ -23,9 +23,7 @@ export async function selectDevFixture(page, role) {
           catharsis: { trackHalfWidth: c.track.halfWidth, balance: { ...c.catharsis,
             enemyVisualScale: t.enemyVisualScale, groupSize: t.groupSize ?? c.catharsis.groupSize,
             gruntSpeed: t.gruntSpeed, heavyHp: t.heavyHp, heavySpeed: t.heavySpeed, heavyChance: t.heavyChance } },
-          tiers: { ...c.tiers, enemyHigherTierPowerMultiplier: t.enemyHigherTierPowerMultiplier,
-            rifleHigherTierPowerMultiplier: t.rifleHigherTierPowerMultiplier },
-          rewardRowsPerReward: t.rewardRowsPerReward, bossHpScale: t.bossHpScale };
+          tiers: c.tiers };
         const simulation = createDevReviewFixture(options, t.fireRate, role === 'late6' ? 'late' : role);
         if (role === 'shell') {
           const step = simulation.step.bind(simulation);

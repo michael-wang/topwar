@@ -1,3 +1,4 @@
+import { exposeProductionApp } from './production-app-hook.mjs';
 // Shipping high-count accounting, HUD and recovery checks; private access is test-response-only.
 import assert from 'node:assert/strict';
 import {createServer,preview} from 'vite';
@@ -11,7 +12,7 @@ const browser=await chromium.launch({headless:true,executablePath:'C:/Program Fi
 try{for(const width of [350,390]){
  const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true}),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});page.on('request',r=>requests.push(r.url()));
- await page.route(/\/topwar\/assets\/index-.*\.js$/,async route=>{const r=await route.fetch(),body=await r.text(),pattern=/new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;assert.equal([...body.matchAll(pattern)].length,1);await route.fulfill({response:r,body:body.replace(pattern,m=>`(window.__testApp=${m})`)});});
+ await exposeProductionApp(page);
  await page.goto('http://127.0.0.1:5197/topwar/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
  await page.evaluate(initial=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.setPaused(true);a.pauseOverlay.setVisible(false);a.simulation.restoreState(initial);a.restored=true;a.fieldObserver?.reset();a.progressionObserver.reset();a.progressionObserver.observe(10);a.renderer.resetFeedback();a.previousFrameTimestampMs=null;a.fixedStepLoop.reset();a.presentationMs=0;window.__rewards=[];window.__cues=[];const supply=a.audio.presentSupply.bind(a.audio),play=a.audio.play.bind(a.audio);a.audio.presentSupply=(events,...args)=>{window.__rewards.push(...events);supply(events,...args);};a.audio.play=(cue,...args)=>{window.__cues.push(cue);play(cue,...args);};},initial);
  const counts=[];

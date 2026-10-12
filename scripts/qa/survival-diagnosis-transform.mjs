@@ -20,7 +20,6 @@ export function diagnosticTransform() {
       source = replace(source, 'const damageEnemy = (enemy: EnemySimulationState, damageEnemyHp: number): number => {', "const damageEnemy = (enemy: EnemySimulationState, damageEnemyHp: number, qaCause = 'projectile'): number => {");
       source = replace(source, '      enemy.hp -= damageEnemyHp;', '      qa.hit(enemy, damageEnemyHp, qaCause);\n      enemy.hp -= damageEnemyHp;');
       source = replace(source, '        return awardKill(enemy);', '        const qaXp = awardKill(enemy);\n        qa.removed(enemy, qaCause);\n        return qaXp;');
-      source = replace(source, 'damageEnemy(enemy, projectile.damage);', "damageEnemy(enemy, projectile.damage, 'rocket');");
       source = replace(source, 'damageEnemy(enemy, flight.damageEnemyHp);', "damageEnemy(enemy, flight.damageEnemyHp, 'grenade');");
       source = replace(source, '      if (contact) {\n        enemies.splice', "      if (contact) {\n        qa.removed(enemy, 'contact');\n        enemies.splice");
       source = replace(source, '      if (enemy.z <= defenseLineZ) {\n        enemies.splice', "      if (enemy.z <= defenseLineZ) {\n        qa.removed(enemy, 'leak');\n        enemies.splice");

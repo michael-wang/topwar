@@ -6,7 +6,7 @@ import { Simulation } from '../../src/simulation/Simulation';
 import type { SimulationFrameState } from '../../src/simulation/SimulationState';
 import { createDevReviewFixture } from '../../tests/helpers/ReviewFixtures';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
-import { pilotTuning } from './p15Pilot';
+import { pilotTuning } from './DefensePilot';
 
 export const carnivalConfig = GameConfigSchema.parse(data);
 export function carnivalOptionsFor(config = carnivalConfig) { return { seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1,

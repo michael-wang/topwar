@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { createChibiGruntFamily, GRUNT_CLOTHING } from '../src/rendering/enemies/ChibiGruntFamily';
-import { prepareCrowdMaterial, type CrowdPresentation } from '../src/rendering/enemies/CrowdPresentation';
+import { type CrowdPresentation } from '../src/rendering/enemies/CrowdPresentation';
 import { canShareCrowdBatch } from '../src/rendering/CharacterVisualFamilies';
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
 import { ART } from '../src/art/ArtDirection';
@@ -91,10 +91,9 @@ describe('original amphibious Grunt prototype', () => {
     family.dispose();
   });
 
-  it('bypasses legacy UV hooks and keeps all authored body instance colors white with the accepted olive helmet palette', () => {
+  it('keeps procedural material hooks and keeps all authored body instance colors white with the accepted olive helmet palette', () => {
     const grunt = createChibiGruntFamily(), families = { ...characterFamilies(), grunt }, scene = new THREE.Scene();
     const material = grunt.body.material as THREE.MeshStandardMaterial, hook = material.onBeforeCompile;
-    expect(prepareCrowdMaterial(material, grunt.presentation, 'body')).toBe(material);
     expect(material.onBeforeCompile).toBe(hook);
     const renderer = new EnemyRenderer(scene, families);
     const enemies = Array.from({ length: 200 }, (_, i) => enemy(i, 'grunt'));
@@ -129,7 +128,7 @@ describe('original amphibious Grunt prototype', () => {
     renderer.dispose(); grunt.dispose();
   });
 
-  it('rebinds pooled contact and death parts between procedural Grunt and explicit legacy Heavy/Giant dependencies', () => {
+  it('rebinds pooled contact and death parts between distinct Grunt and Heavy/Giant families', () => {
     const legacy = characterFamilies(), grunt = createChibiGruntFamily(), scene = new THREE.Scene();
     const renderer = new EnemyRenderer(scene, { ...legacy, grunt });
     const g = enemy(0, 'grunt'), h = enemy(1, 'heavy'), giant = enemy(2, 'giant');

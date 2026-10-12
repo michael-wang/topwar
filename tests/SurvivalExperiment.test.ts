@@ -9,7 +9,7 @@ import { postCapOrdinarySettings } from '../src/simulation/postCapSurvival';
 import { advanceDefenseWaves } from '../src/simulation/enemies/defenseWaves';
 import { enemyApproachSpeed } from '../src/simulation/enemies/latePressure';
 import { effectivePrimaryFireRate } from '../src/simulation/progression';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 
 const c=GameConfigSchema.parse(data), options={seed:17,level:LevelDefinitionSchema.parse(levelData),
   startSquad:1,startRocketCount:0,tiers:c.tiers,catharsis:{balance:c.catharsis!,trackHalfWidth:c.track.halfWidth}};

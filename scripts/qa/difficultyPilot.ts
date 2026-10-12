@@ -4,7 +4,7 @@ import { GameConfigSchema } from '../../src/config/configSchema';
 import { LevelDefinitionSchema } from '../../src/level/LevelDefinition';
 import { Simulation } from '../../src/simulation/Simulation';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
-import { pilotTuning } from './p15Pilot';
+import { pilotTuning } from './DefensePilot';
 
 export function runDifficultyPilot(seed: number, retainSnapshots = false, c = GameConfigSchema.parse(data)) {
   const sim = new Simulation({ seed, level: LevelDefinitionSchema.parse(levelData), startSquad: 1,

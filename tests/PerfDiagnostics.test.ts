@@ -104,7 +104,7 @@ describe('opt-in performance diagnostics', () => {
 
   it('does not serialize or change gameplay when collision counting is enabled', () => {
     const counters = { findFirstHitCalls: 0, enemyCandidateChecks: 0,
-      projectilePasses: 0, penetrationPasses: 0 };
+      projectilePasses: 0 };
     const make = (enabled: boolean) => new Simulation({ seed: 7, level,
       startSquad: 1, startRocketCount: 0, tiers: config.tiers,
       catharsis: { balance: { ...config.catharsis!, gruntSpeed: 0, heavySpeed: 0, defenseWaves: { ...config.catharsis!.defenseWaves, firstWaveDelaySeconds: 1000 } }, trackHalfWidth: 3.2 },

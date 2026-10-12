@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { runPilot } from '../scripts/qa/p15Pilot';
+import { runPilot } from '../scripts/qa/DefensePilot';
 
 it('replays the seeded hesitation pilot and logs authoritative blast XP, lane debt and clocks',()=>{
   const first=runPilot(17,true,true),second=runPilot(17,true,true);

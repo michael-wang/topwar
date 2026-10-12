@@ -1,14 +1,8 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { createServer } from 'vite';
-import { execFileSync } from 'node:child_process';
-const phase = process.argv[2] ?? 'after', out = `artifacts/p3b6b3c/recovery-${phase}`;
+const phase='after',out=process.argv[2]??'artifacts/qa/instant-recovery';
 mkdirSync(out, { recursive: true });
-const baseline='ea6994470b6c8d6ab8e0eb6e9739362ddd17e047';
-const files=['src/main.ts','src/app/GameApp.ts','src/ui/SessionRecovery.ts','src/ui/GrenadeButton.ts','src/audio/GameAudio.ts','src/rendering/GrenadeRenderer.ts','src/simulation/grenade.ts','src/simulation/Simulation.ts','src/style.css'];
-const server=phase==='before'?await createServer({cacheDir:`${out}/cache`,server:{host:'127.0.0.1',port:5189,strictPort:true,watch:{ignored:['**/artifacts/**']}},plugins:[{
-  name:'instant-recovery-baseline',enforce:'pre',transform(source,id){const file=files.find(f=>id.replaceAll('\\','/').endsWith('/'+f));return file?execFileSync('git',['show',`${baseline}:${file}`],{encoding:'utf8'}):source;}
-}]}):null;if(server)await server.listen();const url=`http://127.0.0.1:${server?5189:5175}/`;
+const url=process.env.TOPWAR_QA_URL??'http://127.0.0.1:5175/';
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ?? 'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const results = [];
@@ -29,7 +23,7 @@ try { for (const width of [350, 390]) {
   await page.route(/\/src\/main\.ts(\?.*)?$/, async route => {
     const r = await route.fetch(); let body = await r.text();
     body = body.replace('readCheckpoint()', '(window.__marks.validationStart=performance.now(),window.__saved=readCheckpoint(),window.__marks.validationEnd=performance.now(),window.__saved)')
-      .replace('assets = await loadCharacterAssets(!defense);', 'assets = await loadCharacterAssets(!defense);window.__marks.assets=performance.now();')
+      .replace('assets = await loadCharacterAssets();', 'assets = await loadCharacterAssets();window.__marks.assets=performance.now();')
       .replace('app.start();', 'window.__testApp=app;app.start();window.__marks.app=performance.now();');
     await route.fulfill({ response: r, body });
   });
@@ -60,9 +54,9 @@ try { for (const width of [350, 390]) {
     await page.locator('.session-recovery').waitFor({ state: 'detached' });
     const restored = await page.evaluate(() => { const a=window.__testApp; cancelAnimationFrame(a.frameId); a.renderFrame(performance.now()); cancelAnimationFrame(a.frameId); return { state:a.simulation.getState(), paused:a.paused, ...window.__marks, restored:performance.now(), resources:performance.getEntriesByType('resource').map(e=>e.name) }; });
     assert(restored.paused); assert.deepEqual(restored.state, saved); delete restored.state;
-    assert.equal(restored.resources.filter(u=>u.includes('.glb')).length,1);assert.equal(await page.locator('canvas').count(),1);
+    assert.equal(restored.resources.filter(u=>u.includes('.glb')).length,0);assert.equal(await page.locator('canvas').count(),1);
     if (!repeat) await page.screenshot({ path: `${out}/${width}-restored.png` });
     results.push({ width, repeat, phase, ...restored, chosen, continueToPaused:restored.restored-restored.decision, before });
   }
   assert.deepEqual(errors, []); await context.close();
-} } finally { writeFileSync(`${out}/results.json`, JSON.stringify(results,null,2)); await browser.close();await server?.close(); }
+} } finally { writeFileSync(`${out}/results.json`, JSON.stringify(results,null,2)); await browser.close(); }

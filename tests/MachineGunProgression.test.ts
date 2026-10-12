@@ -5,7 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { grantXp, progressionStage, effectivePrimaryFireRate } from '../src/simulation/progression';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 
 const config = GameConfigSchema.parse(data), balance = config.catharsis!;
 const make = (stream = false) => new Simulation({ seed: 17, startSquad: 1, startRocketCount: 0,

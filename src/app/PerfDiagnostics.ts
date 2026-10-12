@@ -55,12 +55,11 @@ export class PerfDiagnostics {
   readonly collision = new RollingMetric();
   readonly collisionCalls = new RollingMetric();
   readonly projectilePasses = new RollingMetric();
-  readonly penetrationPasses = new RollingMetric();
   readonly steps = new RollingMetric();
   currentSteps = 0;
   maxSteps = 0;
   readonly counters: CollisionDiagnostics = {
-    findFirstHitCalls: 0, enemyCandidateChecks: 0, projectilePasses: 0, penetrationPasses: 0,
+    findFirstHitCalls: 0, enemyCandidateChecks: 0, projectilePasses: 0,
   };
   readonly highWater: HighWater = {
     enemies: 0, projectiles: 0, drawCalls: 0, triangles: 0, projectilePool: 0,
@@ -71,7 +70,6 @@ export class PerfDiagnostics {
     this.counters.findFirstHitCalls = 0;
     this.counters.enemyCandidateChecks = 0;
     this.counters.projectilePasses = 0;
-    this.counters.penetrationPasses = 0;
   }
 
   recordSteps(steps: number): void {
@@ -96,7 +94,6 @@ export class PerfDiagnostics {
     this.collision.add(this.counters.enemyCandidateChecks);
     this.collisionCalls.add(this.counters.findFirstHitCalls);
     this.projectilePasses.add(this.counters.projectilePasses);
-    this.penetrationPasses.add(this.counters.penetrationPasses);
     for (const key of Object.keys(this.highWater) as (keyof HighWater)[]) {
       this.highWater[key] = Math.max(this.highWater[key], counts[key]);
     }
@@ -104,7 +101,7 @@ export class PerfDiagnostics {
 
   reset(): void {
     for (const metric of [this.frame, this.sim, this.render, this.audio, this.collision,
-      this.collisionCalls, this.projectilePasses, this.penetrationPasses]) metric.reset();
+      this.collisionCalls, this.projectilePasses]) metric.reset();
     this.steps.reset();
     this.stepCpu.reset();
     this.stateCpu.reset();

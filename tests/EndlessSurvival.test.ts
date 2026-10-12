@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { survivalSimulation as currentSimulation, survivalDecision, runSurvivalPilot as currentPilot, type SurvivalScenario } from '../scripts/qa/survivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { advanceDefenseWaves } from '../src/simulation/enemies/defenseWaves';
 import { postCapOrdinarySettings, advancePostCapSurvival } from '../src/simulation/postCapSurvival';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';

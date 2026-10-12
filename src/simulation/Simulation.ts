@@ -21,7 +21,6 @@ import { pressureGroupSize, pressureWaveSettings, enemyApproachSpeed, advanceGia
 import { grantXp, requiredXp, effectivePrimaryFireRate, progressionStage, maxProgressionLevel } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
-import { createEnemyFormation } from './enemies/formation';
 import { effectiveSeed } from './enemies/effectiveSeed';
 import { EnemyCollisionIndex, type EnemyCandidateSource } from './enemies/EnemyCollisionIndex';
 import { addRifleSoldiers, normalizeRifleSquad, validateSquad } from './squad/composition';
@@ -40,8 +39,6 @@ export interface SimulationOptions {
   startSquad: number;
   startRocketCount: number;
   tiers: GameConfig['tiers'];
-  rewardRowsPerReward?: number;
-  bossHpScale?: number;
   collisionDiagnostics?: CollisionDiagnostics;
 }
 
@@ -50,7 +47,6 @@ export interface CollisionDiagnostics {
   findFirstHitCalls: number;
   enemyCandidateChecks: number;
   projectilePasses: number;
-  penetrationPasses: number;
 }
 
 export interface SimulationInput {
@@ -115,18 +111,16 @@ type ProjectileHit = { kind: 'enemy'; enemy: EnemySimulationState; fraction: num
 export function findFirstHit(projectile: ProjectileSimulationState, endZ: number,
   enemyCandidates: EnemyCandidateSource,
   normalEnemyRadius: number,
-  currentPlayerZ: number, nextPlayerZ: number, minimumFraction = 0,
-  piercedEnemyIds?: ReadonlySet<number>, diagnostics?: CollisionDiagnostics,
+  currentPlayerZ: number, nextPlayerZ: number, diagnostics?: CollisionDiagnostics,
   grenadeSupply?: GrenadeState['supply']): ProjectileHit | undefined {
   if (diagnostics) diagnostics.findFirstHitCalls++;
   let first: ProjectileHit | undefined;
   const travel = endZ - projectile.z;
-  const minimumZ = projectile.z + travel * minimumFraction;
+  const minimumZ = projectile.z;
   const radius = normalEnemyRadius + (projectile.kind === 'rifle' ? projectile.hitRadiusBonus : 0);
   const laneShot = projectile.lane !== undefined;
   enemyCandidates.forEachCandidate(laneShot ? -Infinity : projectile.x - radius, laneShot ? Infinity : projectile.x + radius,
     minimumZ - radius, endZ + radius, (enemy) => {
-      if (piercedEnemyIds?.has(enemy.id)) return;
       if (laneShot && enemy.lane !== projectile.lane) return;
       if (diagnostics) diagnostics.enemyCandidateChecks++;
       const dx = projectile.x - enemy.x;
@@ -146,7 +140,7 @@ export function findFirstHit(projectile: ProjectileSimulationState, endZ: number
     const relativeTravel = travel - (nextPlayerZ - currentPlayerZ);
     const supplyZ = currentPlayerZ + grenadeSupply.depth;
     const fraction = (supplyZ - projectile.z) / relativeTravel;
-    if (relativeTravel > 0 && fraction >= minimumFraction && fraction <= 1
+    if (relativeTravel > 0 && fraction >= 0 && fraction <= 1
       && (!first || fraction <= first.fraction)) first = { kind: 'grenadeSupply', fraction, z: supplyZ };
   }
   return first;
@@ -465,9 +459,9 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const projectiles: ProjectileSimulationState[] = state.projectiles.map((value: unknown, index: number) => {
     if (!isPlainObject(value)) throw new Error(`Simulation projectile ${index} must be a plain object`);
     if (Object.keys(value).length !== 11 + (value.lane === undefined ? 0 : 2) + (value.memberIndex === undefined ? 0 : 1)
-      || (value.memberIndex !== undefined && (value.kind === 'rocket' || value.lane === undefined
+      || (value.memberIndex !== undefined && (value.lane === undefined
         || !Number.isSafeInteger(value.memberIndex) || (value.memberIndex as number) < 0))
-      || (value.lane !== undefined && (!laneIsValid(value.lane) || value.kind === 'rocket'
+      || (value.lane !== undefined && (!laneIsValid(value.lane)
         || typeof value.slopeX !== 'number' || !Number.isFinite(value.slopeX)))
       || ['id', 'kind', 'tier', 'x', 'z', 'speed', 'damage', 'remainingRange', 'blastRadius', 'hitRadiusBonus', 'penetrationRemaining']
       .some((field) => !Object.hasOwn(value, field))) {
@@ -571,7 +565,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       enemies,
       boss,
       enemyStream,
-      streamRewards,
+      streamRewards: [],
       gates,
       pickups,
       nextPickupId: state.nextPickupId as number,
@@ -599,7 +593,7 @@ export class Simulation {
 
   constructor(options: SimulationOptions) {
     const catharsis = options.catharsis ? validateCatharsis({ ...options.catharsis,
-      rewardRowsPerReward: options.rewardRowsPerReward ?? options.catharsis.balance.waveRows }) : undefined;
+      rewardRowsPerReward: options.catharsis.balance.waveRows }) : undefined;
     if (!catharsis) throw Error('Beachhead Defense configuration is required');
     this.collisionDiagnostics = options.collisionDiagnostics;
     this.rng = new SeededRng(options.seed);
@@ -617,33 +611,10 @@ export class Simulation {
       || !Number.isFinite(options.tiers.rifleHigherTierPowerMultiplier)
       || options.tiers.rifleHigherTierPowerMultiplier <= 1
       || !positiveFinite(options.tiers.normalEnemyRadius)) throw new Error('Simulation tiers are invalid');
-    if (options.rewardRowsPerReward !== undefined
-      && (!Number.isSafeInteger(options.rewardRowsPerReward) || options.rewardRowsPerReward <= 0)) {
-      throw new Error('Simulation reward rows per reward must be a positive safe integer');
-    }
     this.authoredEnemyStreamDefinition = level.enemyStream;
-    this.enemyStreamDefinition = this.effectiveStreamDefinition(options.seed,
-      options.rewardRowsPerReward ?? catharsis?.balance.waveRows);
+    this.enemyStreamDefinition = this.effectiveStreamDefinition(options.seed);
     this.tiers = { ...options.tiers };
     const enemies: EnemySimulationState[] = [];
-    for (const group of level.enemyGroups) {
-      for (const offset of createEnemyFormation(group.count, group.formation.columns,
-        group.formation.spacing, group.formation.jitter, group.formation.seed)) {
-        const z = group.z + offset.z;
-        if (!Number.isFinite(offset.x) || !Number.isFinite(z)) {
-          throw new Error(`Enemy group ${group.id} produces a non-finite position`);
-        }
-        enemies.push({
-          id: enemies.length + 1,
-          tier: 1,
-          x: offset.x,
-          z,
-          hp: 1,
-          ...(catharsis ? { archetype: 'grunt' as const } : {}),
-        });
-      }
-    }
-    const streamRewards: never[] = [];
     const enemyStream = level.enemyStream
       ? { nextRowIndex: 0, nextEnemyId: enemies.length + 1, nextRewardBlockIndex: 0,
         nextRewardId: 1, nextBossTier: 1 }
@@ -678,7 +649,7 @@ export class Simulation {
       enemies,
       boss,
       enemyStream,
-      streamRewards,
+      streamRewards: [],
       gates: [],
       projectiles: [],
       pickups: [],
@@ -944,12 +915,10 @@ export class Simulation {
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
       if (!Number.isFinite(travel) || !Number.isFinite(endZ)) throw new Error('Simulation projectile movement exceeds the supported range');
-      let minimumFraction = 0;
       let consumed = false;
-      while (true) {
-        const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, tuning.normalEnemyRadius,
-          this.state.player.z, nextZ, minimumFraction, undefined, this.collisionDiagnostics, grenade?.supply);
-        if (!hit) break;
+      const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, tuning.normalEnemyRadius,
+          this.state.player.z, nextZ, this.collisionDiagnostics, grenade?.supply);
+      if (hit) {
         if (hit.kind === 'grenadeSupply') {
           const supply = grenade!.supply!;
           const destruction = supply.destruction;
@@ -977,7 +946,6 @@ export class Simulation {
           damageEnemy(hit.enemy, projectile.damage / this.tiers.tier1Power);
         }
         consumed = true;
-        break;
       }
       const remainingRange = projectile.remainingRange - travel;
       if (!consumed && remainingRange > 0) {
@@ -1291,16 +1259,15 @@ export class Simulation {
     this.grenadeEvents = [];
     this.artilleryEvents = [];
     this.rng = candidate.rng;
-    this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed,
-      candidate.state.catharsis?.rewardRowsPerReward ?? this.enemyStreamDefinition?.rewards?.rowsPerReward);
+    this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed);
     this.presentationEvents = [];
   }
 
-  private effectiveStreamDefinition(runSeed: number,
-    rowsPerReward?: number): EnemyStreamDefinition | undefined {
+  private effectiveStreamDefinition(runSeed: number): EnemyStreamDefinition | undefined {
     const authored = this.authoredEnemyStreamDefinition;
     if (!authored) return undefined;
     return { ...authored, seed: effectiveSeed(runSeed, authored.seed) };
   }
 }
+
 

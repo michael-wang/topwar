@@ -44,15 +44,14 @@ type InfernoVisual = {
 export class BridgeEnvironment {
   getDebugStats(): { smoke: number; infernoSources: number; impactSlots: number;
     activeImpacts: number; flakSlots: number; activeFlak: number;
-    aircraft: number; activeAircraft: number; shipSections: number } {
+    aircraft: number; activeAircraft: number } {
     return { smoke: 0, infernoSources: this.infernoSources.length,
       impactSlots: this.impactSlots.length,
       activeImpacts: this.impactSlots.filter((slot) => slot.group.visible).length,
       flakSlots: this.flakSlots.length,
       activeFlak: this.flakSlots.filter((slot) => slot.group.visible).length,
       aircraft: this.aircraft.length,
-      activeAircraft: this.aircraft.filter((plane) => plane.visible).length,
-      shipSections: 0 };
+      activeAircraft: this.aircraft.filter((plane) => plane.visible).length };
   }
   private readonly near = new THREE.Group();
   private readonly mid = new THREE.Group();

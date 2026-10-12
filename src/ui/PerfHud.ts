@@ -35,8 +35,8 @@ export class PerfHud {
       `S ${r.visibleSquad} RW ${game.rewards} B ${game.boss ? 'Y' : 'N'}`,
       `HIT calls ${compact(c.findFirstHitCalls)} checks ${compact(c.enemyCandidateChecks)}`,
       `H avg calls ${compact(Math.round(metrics.collisionCalls.average()))} chk ${compact(Math.round(metrics.collision.average()))}`,
-      `PASS ${compact(c.projectilePasses)} pen ${compact(c.penetrationPasses)}`,
-      `P avg ${compact(Math.round(metrics.projectilePasses.average()))} pen ${compact(Math.round(metrics.penetrationPasses.average()))}`,
+      `PASS ${compact(c.projectilePasses)}`,
+      `P avg ${compact(Math.round(metrics.projectilePasses.average()))}`,
       `DRAW ${r.drawCalls}/${h.drawCalls} TRI ${compact(r.triangles)}/${compact(h.triangles)}`,
       `GEO ${r.geometries} TEX ${r.textures}`,
       `DPR ${r.devicePixelRatio.toFixed(1)}→${r.rendererPixelRatio.toFixed(1)} ${r.bufferWidth}x${r.bufferHeight}`,
@@ -47,7 +47,7 @@ export class PerfHud {
       `SH P${r.shadows.player.active}/${r.shadows.player.capacity} E${r.shadows.enemy.active}/${r.shadows.enemy.capacity}`,
       `ENV sm${r.environment.smoke} in${r.environment.infernoSources}`,
       `ENV imp${r.environment.activeImpacts}/${r.environment.impactSlots} fl${r.environment.activeFlak}/${r.environment.flakSlots}`,
-      `ENV air${r.environment.activeAircraft}/${r.environment.aircraft} ship${r.environment.shipSections}`,
+      `ENV air${r.environment.activeAircraft}/${r.environment.aircraft}`,
       `AUD music ${a.musicVoices} sfx ${a.sfxSources}`,
     ].join('\n');
   }

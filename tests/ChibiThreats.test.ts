@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { expect, expectTypeOf, it, vi } from 'vitest';
 import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
-import { prepareCrowdMaterial, type CrowdPresentation } from '../src/rendering/enemies/CrowdPresentation';
+import { type CrowdPresentation } from '../src/rendering/enemies/CrowdPresentation';
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
@@ -12,7 +12,7 @@ import { characterFamilies } from './characterModel';
 import type { EnemyRenderState } from '../src/rendering/RenderState';
 const enemy = (id: number, archetype: 'heavy' | 'giant'): EnemyRenderState =>
   ({ id, archetype, tier: 1, x: 0, z: 10, hp: 15, maxHp: 15, visualScale: 1 });
-it('keeps role presentation scale independent even when legacy resources share an instanced batch', () => {
+it('keeps role presentation scale independent even when synthetic resources share an instanced batch', () => {
   const legacy = characterFamilies(), heavy = { ...legacy.heavy, presentation: { ...legacy.heavy.presentation, scaleY: .8 } };
   expect(canShareCrowdBatch(legacy.grunt, heavy)).toBe(true);
   const scene = new THREE.Scene(), renderer = new EnemyRenderer(scene, { ...legacy, heavy });
@@ -40,12 +40,12 @@ it('owns deterministic independent static threat meshes with four poses and matt
       expect(material.map).toBeNull(); expect(material.vertexColors).toBe(true);
       expect(material.roughness).toBe(1); expect(material.metalness).toBe(0);
       const policy = 'contactPresentation' in a ? a.contactPresentation : a.presentation;
-      expect(prepareCrowdMaterial(material, policy, 'body').onBeforeCompile).toBe(hook);
+      expect((material).onBeforeCompile).toBe(hook);
     }
     a.dispose(); b.dispose();
   }
 });
-it('keeps Heavy independent of Grunt and legacy normal resources at 650 ms with moderate height and strong width', () => {
+it('keeps Heavy independent of Grunt and synthetic resources at 650 ms with moderate height and strong width', () => {
   const heavy = createChibiHeavyFamily(), grunt = createChibiGruntFamily(), legacy = characterFamilies();
   expect(heavy.body.geometry).not.toBe(grunt.body.geometry);
   expect(heavy.body.geometry).not.toBe(legacy.heavy.body.geometry);

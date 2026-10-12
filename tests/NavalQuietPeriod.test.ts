@@ -9,7 +9,7 @@ import { artilleryDefaults } from '../src/config/artilleryConfig';
 import { createNavalBarrageReview } from '../src/app/DevNavalBarrageReview';
 import { carnivalOptionsFor } from '../scripts/qa/carnivalPilot';
 import { survivalDecision } from '../scripts/qa/survivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 const c=GameConfigSchema.parse(data),cfg=c.catharsis!.navalBarrage!;
 it.each([1,17,42,99,2026])('draws one of all four actual post-impact gaps exactly once for seed %i',seed=>{
   let s=setNavalBarrage(emptyNavalBarrage(seed,cfg),cfg,8.5,true),nextId=1;

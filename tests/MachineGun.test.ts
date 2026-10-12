@@ -2,8 +2,8 @@ import { expect, it } from 'vitest';
 import data from './fixtures/pre-b6b4-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { progressionStage, grantXp } from '../src/simulation/progression';
-import { controlledSimulation, comparePrimary } from '../scripts/qa/p2aComparison';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { controlledSimulation, comparePrimary } from './helpers/WeaponComparison';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { projectRenderState } from '../src/app/projectRenderState';
 const config=GameConfigSchema.parse(data), balance=config.catharsis!;
 const step=(sim:ReturnType<typeof controlledSimulation>, ticks=1)=>{for(let i=0;i<ticks;i++)sim.step(1/60,{targetX:0},pilotTuning);};
@@ -86,7 +86,7 @@ it('keeps reinforcement deferred and isolated no-stream MG measurements free of 
 
 it('evolves coherently if a live XP threshold edit crosses the family boundary',()=>{
  const sim=controlledSimulation(5),s=sim.getState();s.progression!.xp=210;sim.restoreState(s);
- sim.setCatharsisBalance({...balance,progression:{...balance.progression,xpRequirements:[28,60,110,180,200,200,300,350,450]}});
+ sim.setCatharsisBalance({...s.catharsis!.balance,progression:{...s.catharsis!.balance.progression,xpRequirements:[28,60,110,180,200,200,300,350,450]}});
  expect(sim.getState().progression).toEqual({level:6,xp:10});expect(sim.getState().squad.count).toBe(1);
  expect(sim.getState().weapons.rifleMemberCooldowns).toEqual([1/18]);expect(sim.consumePresentationEvents()).toEqual([]);
  expect(()=>sim.restoreState(JSON.parse(JSON.stringify(sim.getState())))).not.toThrow();
@@ -112,3 +112,4 @@ it('MG projectile kills share ordinary one-time XP even with concurrent Rifle da
  sim.restoreState(s);step(sim);expect(sim.getState().enemies).toHaveLength(0);expect(sim.getState().progression!.xp).toBe(1);
  step(sim,120);expect(sim.getState().progression!.xp).toBe(1);
 });
+

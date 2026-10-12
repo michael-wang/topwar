@@ -5,7 +5,7 @@ import { LevelDefinitionSchema } from '../../src/level/LevelDefinition';
 import { Simulation } from '../../src/simulation/Simulation';
 import { createNavalBarrageReview } from '../../src/app/DevNavalBarrageReview';
 export { survivalDecision } from './survivalPilot';
-export { pilotTuning } from './p15Pilot';
+export { pilotTuning } from './DefensePilot';
 export { SurvivalDiagnosis } from './survivalDiagnosis';
 export { bindObserver } from './survivalDiagnosisHooks';
 export function makeNavalRun(seed:number, scenario:'natural'|'lv8'|'lv9'|'lv10', barrage:boolean, config:unknown=data) {

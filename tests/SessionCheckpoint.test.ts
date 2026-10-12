@@ -7,7 +7,7 @@ import { defaultRuntimeTuning } from '../src/app/runtimeTuning';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { CHECKPOINT_KEY, checkpointPresent, clearCheckpoint, MAX_CHECKPOINT_CHARACTERS, readCheckpoint,
   simulationFromCheckpoint, writeCheckpoint, type SessionCheckpoint } from '../src/app/SessionCheckpoint';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import historical from './fixtures/old-survival.json';
 import { survivalDecision } from '../scripts/qa/survivalPilot';
 import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from '../src/app/QaStressFixture';

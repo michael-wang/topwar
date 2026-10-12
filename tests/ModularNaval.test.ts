@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { modularIntro } from './helpers/ModularNaval';
 import { Simulation } from '../src/simulation/Simulation';
 import { carnivalOptions, carnivalPilotLane } from '../scripts/qa/carnivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { navalPresencePose } from '../src/simulation/navalPresence';
 import { GameConfigSchema } from '../src/config/configSchema';
 import data from '../public/game-data/game.json';

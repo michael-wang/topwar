@@ -2,7 +2,7 @@ import type { EnemySimulationState, SimulationState } from '../../src/simulation
 import { enemyApproachSpeed } from '../../src/simulation/enemies/latePressure';
 import { effectivePrimaryFireRate, progressionStage, type ProgressionState } from '../../src/simulation/progression';
 import type { DiagnosticObserver } from './survivalDiagnosisHooks';
-import { pilotTuning } from './p15Pilot';
+import { pilotTuning } from './DefensePilot';
 
 const boundaries = [30, 20, 10] as const;
 export type Loadout = { at: number; level: number; xp: number; weapon: string; stage: number; soldiers: number; hz: number };

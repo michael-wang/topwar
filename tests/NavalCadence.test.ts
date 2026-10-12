@@ -9,7 +9,7 @@ import { modularIntro } from './helpers/ModularNaval';
 import { createNavalBarrageReview } from '../src/app/DevNavalBarrageReview';
 import { carnivalOptionsFor } from '../scripts/qa/carnivalPilot';
 import { survivalDecision } from '../scripts/qa/survivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 const c=GameConfigSchema.parse(data),cfg=c.catharsis!.navalBarrage!;
 
 it('holds a due opportunity without draws/backlog; fires immediately when legal, not one new interval after impact',()=>{

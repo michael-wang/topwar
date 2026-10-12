@@ -2,7 +2,7 @@ import {expect,it,vi} from 'vitest';
 import {Simulation} from '../src/simulation/Simulation';
 import {emptyGrenade,placeGrenadeSupply} from '../src/simulation/grenade';
 import {carnivalOptions} from '../scripts/qa/carnivalPilot';
-import {pilotTuning} from '../scripts/qa/p15Pilot';
+import {pilotTuning} from '../scripts/qa/DefensePilot';
 import {GameAudio} from '../src/audio/GameAudio';
 const make=(level=3,members=1,inventory=0,recurring=false)=>{
   const sim=new Simulation({...carnivalOptions,startSquad:members,level:{id:'supply',length:100,enemyGroups:[],upgradeGates:[]}});

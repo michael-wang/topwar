@@ -81,7 +81,7 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
   vest.visible = false;
   return { deathAssembly: { body: death, helmet: deathHelmet, pieceCount: 10 }, role: 'heavy', id: 'topwar-heavy', body, helmet, vest,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)), gaitCycleMs: HEAVY_GAIT_CYCLE_MS,
-    presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored', scaleY: .80, hitCompression: .025,
+    presentation: {  gearTint: 'authored', scaleY: .80, hitCompression: .025,
       stepWeight: { shift: .045, roll: .04, compression: .018 },
       hpAnchor: { top: 1.025, width: .78 }, shadow: { width: .84, depth: .44 } },
     lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .11, tilt: .09, compression: THREAT_DEATH_COLLAPSE.heavy.compression },
@@ -152,7 +152,7 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
   return { deathAssembly: { body: death, helmet: deathHelmet, weapon: deathWeapon, pieceCount: 11 }, lethalReaction: { transition: new THREE.Mesh(transition, bodyMaterial), final: new THREE.Mesh(death, bodyMaterial), sink: .12, tilt: .09, compression: THREAT_DEATH_COLLAPSE.giant.compression },
     role: 'giant', id: 'topwar-colossus', body, helmet, vest, weapon, weaponGrip: GIANT_WEAPON_GRIP,
     runFrames: runs.map(g => new THREE.Mesh(g, bodyMaterial)),
-    contactPresentation: { materialStyle: 'vertex-colors', bodyTint: 'authored', gearTint: 'authored' },
+    contactPresentation: {  gearTint: 'authored' },
     presentation: { width: 1.60, height: 1.43, depth: .96, healthBar: { width: 1.20, height: .20 }, shadow: { width: 1.02, depth: .48 } },
     contact: { body: new THREE.Mesh(contactGeometry, bodyMaterial), helmet, vest },
     dispose(): void {

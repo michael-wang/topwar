@@ -25,7 +25,7 @@ try { for (const secure of [true, false]) {
   const data = await page.evaluate(() => ({ secure: isSecureContext, supported: !!navigator.wakeLock, status: window.__testApp.wakeLock.status,
     realSentinel: !!window.__testApp.wakeLock.sentinel && !window.__testApp.wakeLock.sentinel.released }));
   assert.equal(data.secure, secure); assert.equal(data.status, secure ? 'active' : 'insecure'); assert.equal(data.realSentinel, secure);
-  assert.equal(assets.filter(url => url.includes('.glb')).length, 1); assert.equal(assets.filter(url => url.includes('.webp')).length, 2);
+  assert.equal(assets.filter(url => url.includes('.glb')).length, 0); assert.equal(assets.filter(url => url.includes('.webp')).length, 2);
   if (secure) assert(hmrConnected, 'Native localhost Vite HMR WebSocket must connect');
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap();
   await page.waitForFunction(() => window.__testApp.wakeLock.status !== 'active');

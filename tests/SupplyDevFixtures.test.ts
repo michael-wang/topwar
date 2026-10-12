@@ -5,7 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { effectivePrimaryFireRate, progressionStage } from '../src/simulation/progression';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 
 const config = GameConfigSchema.parse(gameData);
 const options = { seed: 19, level: LevelDefinitionSchema.parse(levelData),

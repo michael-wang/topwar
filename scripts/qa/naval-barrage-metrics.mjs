@@ -6,6 +6,9 @@ import { diagnosticTransform } from './survival-diagnosis-transform.mjs';
 const out=process.argv[2]??'artifacts/p3b6b4/combat';mkdirSync(out,{recursive:true});
 const configPath=process.argv.find(a=>a.startsWith('--config='))?.slice(9);
 const config=configPath?JSON.parse(readFileSync(configPath,'utf8')):undefined;
+const seeds=process.argv.find(a=>a.startsWith('--seeds='))?.slice(8).split(',').map(Number)??[1,17,42,99,2026];
+const scenarios=process.argv.find(a=>a.startsWith('--scenario='))?.slice(11).split(',')??['natural','lv8','lv9','lv10'];
+const seconds=Number(process.argv.find(a=>a.startsWith('--seconds='))?.slice(10)??180);
 const servers=[];
 async function load(observed) {
   const server=await createServer({configFile:false,cacheDir:`${out}/${observed?'observed':'plain'}-cache`,
@@ -17,8 +20,8 @@ const events=s=>({presentation:s.consumePresentationEvents(),grenade:s.consumeGr
 const summary=[];
 try {
   const observed=await load(true),plain=await load(false);
-  for(const barrage of [false,true]) for(const scenario of ['natural','lv8','lv9','lv10'])
-    for(const policy of ['competent','slower','fixed']) for(const seed of [1,17,42,99,2026]) {
+  for(const barrage of [false,true]) for(const scenario of scenarios)
+    for(const policy of ['competent','slower','fixed']) for(const seed of seeds) {
       const sim=observed.makeNavalRun(seed,scenario,barrage,config),control=plain.makeNavalRun(seed,scenario,barrage,config);
       assert.deepEqual(sim.getState(),control.getState());
       const collector=new observed.SurvivalDiagnosis(sim.getState());observed.bindObserver(collector);
@@ -55,7 +58,7 @@ try {
           next:after.defenseWaves.nextAtSeconds,admitted:after.enemyStream.nextEnemyId-before.enemyStream.nextEnemyId,
           naval:after.navalPresence.status,barrage:after.navalBarrage.enabled});
         peakShells=Math.max(peakShells,after.artillery?.shells.length??0);
-        if(after.postCapSurvival.startedAtSeconds!==null && after.elapsedSeconds-after.postCapSurvival.startedAtSeconds>=180-1e-9)break;
+        if(after.postCapSurvival.startedAtSeconds!==null && after.elapsedSeconds-after.postCapSurvival.startedAtSeconds>=seconds-1e-9)break;
       }}finally{observed.bindObserver();}
       const final=sim.getState();assert.deepEqual(final,control.getState());costs.sort((a,b)=>a-b);
       const result={barrage,scenario,policy,seed,...collector.finish(final),salvos,intro,impacts,waveClocks,peakShells,heldSeconds:heldTicks/60,inFlightWaitSeconds:flightTicks/60,

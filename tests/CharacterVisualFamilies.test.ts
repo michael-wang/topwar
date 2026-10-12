@@ -43,7 +43,7 @@ describe('named character visual families', () => {
     expectTypeOf<Family>().not.toHaveProperty('lane');
   });
 
-  it('retains one live batch for matching legacy Grunt/Heavy resources', () => {
+  it('retains one live batch for matching synthetic Grunt/Heavy resources', () => {
     const families = characterFamilies(), scene = new THREE.Scene();
     expect(canShareCrowdBatch(families.grunt, families.heavy)).toBe(true);
     const renderer = new EnemyRenderer(scene, families);

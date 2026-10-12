@@ -1,6 +1,6 @@
 // Presentation palette only. No combat values or faction gameplay live here.
 export const ART = {
-  // Defense-only coastal diorama. Keep faction colors and the legacy bridge palette independent.
+  // Coastal diorama and accepted faction colors.
   coastalDefense: {
     plaster: '#f1efe6', plasterShade: '#c5cdd0', sand: '#d8c49b', sandShade: '#b69d78',
     shallowAqua: '#58c8c1', deepSea: '#247e9c', waterLight: '#c4efdf', foam: '#e5f6ee',
@@ -13,9 +13,7 @@ export const ART = {
     lighting: { sky: '#c5e5f2', ground: '#405a6d', sun: '#fff0d5',
       hemisphereIntensity: 1.65, sunIntensity: 2.2, exposure: 1.35, sunPosition: [-8, 12, -6] },
   },
-  world: { sand: '#e0c79b', sandShade: '#9c805e', foam: '#e6dcbc', sea: '#638c99',
-    fog: '#96aeb9', near: '#465e6d', nearAccent: '#768793', mid: '#718893',
-    midAccent: '#9aa9ad', far: '#8da4ae', concrete: '#a29a85', steel: '#455c6a', rust: '#9c705a' },
+  world: { fog: '#96aeb9', near: '#465e6d', steel: '#455c6a' },
   faction: { player: '#287fc6', playerLight: '#67b9e3', grunt: '#6f7c5a', gruntLight: '#94a081',
     heavy: '#6f7c5a', heavyBody: '#61704f', equipment: '#243b4a', weapon: '#263a43',
     giant: '#6f7c5a', gold: '#edb64f', skin: '#e4ad8a', leather: '#65534f', shoes: '#a7b6bd' },
@@ -24,7 +22,6 @@ export const ART = {
     shorts: '#62727a', stone: '#c6b68c', rim: '#4c5945', hardware: '#49555c' },
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
     ash: '#e9dfc2', dust: '#cfb994', gray: '#a2b2b8' },
-  projectile: { core: '#fff4e5', accent: '#d84c4b', accentOpacity: .60 },
   defenseTracer: { core: '#fff2ce', outline: '#080b10', coreLengthRatio: .68,
     corePixels: 1.8, outlinePixels: 4, lengthPixels: 17,
     maxCoreWidth: .16, maxOutlineWidth: .35, maxLength: 1.5 },

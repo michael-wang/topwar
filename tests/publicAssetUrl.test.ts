@@ -14,10 +14,10 @@ describe('public asset URLs', () => {
       .toBe('/topwar/game-data/game.json');
   });
 
-  it('versions production data and models using their content manifest', () => {
+  it('versions production data and portraits using their content manifest', () => {
     vi.stubEnv('PROD', true);
     vi.stubEnv('BASE_URL', '/topwar/');
-    for (const path of ['game-data/game.json', 'game-data/levels/level-001.json', 'models/toy-soldier-bullet.glb']) {
+    for (const path of ['game-data/game.json', 'game-data/levels/level-001.json', 'art/observer/neutral.webp']) {
       expect(publicAssetUrl(path)).toBe(`/topwar/${__TOPWAR_PUBLIC_ASSETS__[path]}`);
     }
   });
@@ -32,8 +32,8 @@ describe('public asset URLs', () => {
 
   it('preserves query values and fragments while replacing duplicate versions', () => {
     vi.stubEnv('PROD', true);
-    expect(publicAssetUrl('models/toy-soldier-bullet.glb?quality=high&v=old&v=older#mesh', '/topwar/'))
-      .toBe(`/topwar/${__TOPWAR_PUBLIC_ASSETS__['models/toy-soldier-bullet.glb']}?quality=high#mesh`);
+    expect(publicAssetUrl('art/observer/neutral.webp?quality=high&v=old&v=older#mesh', '/topwar/'))
+      .toBe(`/topwar/${__TOPWAR_PUBLIC_ASSETS__['art/observer/neutral.webp']}?quality=high#mesh`);
     expect(publicAssetUrl('game-data/game.json?name=warm%20coast#v=fragment', '/topwar/'))
       .toBe(`/topwar/${__TOPWAR_PUBLIC_ASSETS__['game-data/game.json']}?name=warm+coast#v=fragment`);
     expect(publicAssetUrl('game-data/game.json?', '/topwar/'))

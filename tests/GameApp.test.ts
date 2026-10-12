@@ -638,8 +638,7 @@ describe('GameApp config and frame lifecycle', () => {
     const zero = { player: { x: 0, z: 0 },
       squad: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
-    mock.consumePresentationEvents.mockReturnValueOnce([{ kind: 'bossSlam', bossId: 1,
-      bossTier: 1, slamCount: 1, attackerX: 0, attackerZ: 2,
+    mock.consumePresentationEvents.mockReturnValueOnce([{ kind: 'artilleryContact', shellId: 1, attackerX: 0, attackerZ: 2,
       playerX: 0, playerZ: 0,
       before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       after: zero.squad }]);

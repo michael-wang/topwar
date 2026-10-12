@@ -1,11 +1,11 @@
-import data from '../../tests/fixtures/pre-b6b4-game.json';
+import data from '../../public/game-data/game.json';
 import { GameConfigSchema } from '../../src/config/configSchema';
 import { Simulation } from '../../src/simulation/Simulation';
-import { pilotTuning } from './p15Pilot';
+import { pilotTuning } from '../../scripts/qa/DefensePilot';
 
 const c = GameConfigSchema.parse(data);
 export function controlledSimulation(level: 5 | 6) {
-  const sim = new Simulation({ seed: 17, level: { id: 'p2a-controlled', length: 1000, enemyGroups: [], upgradeGates: [] },
+  const sim = new Simulation({ seed: 17, level: { id: 'weapon-comparison', length: 1000, enemyGroups: [], upgradeGates: [] },
     startSquad: 1, startRocketCount: 0, tiers: c.tiers,
     catharsis: { balance: c.catharsis!, trackHalfWidth: c.track.halfWidth } });
   const state = sim.getState(), count = level === 5 ? 3 : 1, rate = level === 5 ? 4.5 : 18;

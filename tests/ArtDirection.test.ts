@@ -45,7 +45,7 @@ it('shares soft daub edges and rounded brass/ink bar structure without per-unit 
   daub.dispose(); frame.dispose(); fill.dispose();
 });
 
-it('shares centralized legacy and coastal tokens with the DOM HUD', () => {
+it('shares centralized combat and coastal tokens with the DOM HUD', () => {
   const setProperty = vi.fn();
   applyArtTheme({ style: { setProperty } } as unknown as HTMLElement);
   expect(setProperty).toHaveBeenCalledWith('--art-frame', ART.bar.frame);
@@ -60,7 +60,7 @@ it('shares centralized legacy and coastal tokens with the DOM HUD', () => {
 });
 
 
-it('gives enemy health a cool navy frame and red-family semantic fills, leaving legacy frames intact', () => {
+it('gives enemy health a cool navy frame and red-family semantic fills, leaving HUD frames intact', () => {
   const enemyFrame = framedBarTexture(false, ART.enemyHealth);
   const legacyFrame = framedBarTexture();
   const at = (128 + 5 * 256) * 4;

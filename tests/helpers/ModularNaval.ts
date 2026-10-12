@@ -1,7 +1,7 @@
 import { carnivalEntry } from '../../scripts/qa/carnivalPilot';
 import { emptyLevelEncounters } from '../../src/simulation/levelEncounters';
 import { enterNavalPresence, emptyNavalPresence } from '../../src/simulation/navalPresence';
-import { pilotTuning } from '../../scripts/qa/p15Pilot';
+import { pilotTuning } from '../../scripts/qa/DefensePilot';
 import { emptyNavalBarrage } from '../../src/simulation/navalBarrage';
 import historicalData from '../fixtures/pre-b6b5-game.json';
 import { GameConfigSchema } from '../../src/config/configSchema';

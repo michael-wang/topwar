@@ -1,3 +1,4 @@
+import { exposeProductionApp } from './production-app-hook.mjs';
 // Production browser QA. App access and recording instrumentation are injected
 // only into the browser response; none is bundled into the game.
 import assert from 'node:assert/strict';
@@ -26,8 +27,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
   const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
-  await page.route(/\/topwar\/assets\/index-.*\.js$/,async route=>{const r=await route.fetch(),body=await r.text(),pattern=/new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;
-    assert.equal([...body.matchAll(pattern)].length,1);await route.fulfill({response:r,body:body.replace(pattern,m=>`(window.__testApp=${m})`)});});
+  await exposeProductionApp(page);
   await page.goto('http://127.0.0.1:5194/topwar/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
   await page.evaluate(state=>{
     const a=window.__testApp;cancelAnimationFrame(a.frameId);a.simulation.restoreState(state);a.restored=true;a.fieldObserver?.reset();a.progressionObserver.reset();a.progressionObserver.observe(state.progression.level);

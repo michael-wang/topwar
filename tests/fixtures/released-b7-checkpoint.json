@@ -1,0 +1,6246 @@
+{
+  "checkpoint": {
+    "version": 1,
+    "simulationContract": 1,
+    "game": "topwar",
+    "mode": "defense",
+    "build": "cbccb8c8a3cef762ba4e6aa8813d94ea93ca13d0",
+    "savedAt": 1,
+    "paused": true,
+    "hidden": true,
+    "reason": "hidden",
+    "fixture": null,
+    "config": {
+      "catharsis": {
+        "levelEncounters": {
+          "version": 1,
+          "initialOrdinaryEnabled": true,
+          "triggers": [
+            {
+              "id": "naval-intro",
+              "when": {
+                "kind": "machineGunRelease",
+                "delaySeconds": 0
+              },
+              "actions": [
+                "ordinaryOff",
+                "destroyerIntro"
+              ]
+            },
+            {
+              "id": "naval-barrage",
+              "when": {
+                "kind": "machineGunRelease",
+                "delaySeconds": 8.5
+              },
+              "actions": [
+                "barrageOn"
+              ]
+            },
+            {
+              "id": "survival-handoff",
+              "when": {
+                "kind": "machineGunRelease",
+                "delaySeconds": 27
+              },
+              "actions": [
+                "startSurvival",
+                "ordinaryOn"
+              ]
+            }
+          ]
+        },
+        "destroyer": {
+          "startPolicy": "withCarnival",
+          "attackPolicy": "barrage",
+          "enabled": true,
+          "durationSeconds": 27,
+          "entrySeconds": 3.2,
+          "exitAtSeconds": 23,
+          "radioAtSeconds": 1.3,
+          "radioDurationSeconds": 7.2,
+          "shotTimes": [],
+          "startX": -28,
+          "stationX": -4,
+          "exitX": 30,
+          "z": 56
+        },
+        "artillery": {
+          "horizontalSpeed": 24,
+          "gravity": 8,
+          "minimumFlightSeconds": 0.5,
+          "impactLaneFraction": 0.42,
+          "maxActive": 8,
+          "warningPresentation": "overheadLanes"
+        },
+        "defenseMotionVersion": 2,
+        "defenseWaves": {
+          "intervalSeconds": 6,
+          "firstWaveDelaySeconds": 1.6666666666666667
+        },
+        "carnival": {
+          "enabled": true,
+          "durationSeconds": 24,
+          "firstWaveSeconds": 2,
+          "waveIntervalSeconds": 1.5,
+          "groupSize": 36,
+          "activeEnemyLimit": 80,
+          "laneGroups": [
+            [
+              0,
+              1
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        },
+        "postCapSurvival": {
+          "enabled": true,
+          "startLevel": 6,
+          "ordinaryGroupSize": 30,
+          "pressureLaneCount": 3,
+          "heavyCount": 4,
+          "giantIntervalSeconds": 24,
+          "maxSimultaneousGiants": 1,
+          "grenadeSupplyIntervalSeconds": 30,
+          "grenadeSupplyAmount": 1,
+          "levelProfiles": [
+            {
+              "startLevel": 8,
+              "ordinaryGroupSize": 42,
+              "heavyCount": 11,
+              "pressureLaneCount": 4,
+              "ordinarySpeedMultiplier": 1.4,
+              "waveIntervalSeconds": 6
+            },
+            {
+              "startLevel": 9,
+              "ordinaryGroupSize": 42,
+              "heavyCount": 15,
+              "pressureLaneCount": 5,
+              "ordinarySpeedMultiplier": 1.6,
+              "waveIntervalSeconds": 5
+            },
+            {
+              "startLevel": 10,
+              "ordinaryGroupSize": 42,
+              "heavyCount": 19,
+              "pressureLaneCount": 5,
+              "ordinarySpeedMultiplier": 1.6,
+              "waveIntervalSeconds": 4
+            }
+          ],
+          "xpLookahead": {
+            "level": 8,
+            "minimumXp": 245,
+            "pressureLaneCount": 5,
+            "ordinarySpeedMultiplier": 1.6
+          },
+          "waveIntervalSeconds": 6,
+          "firstWaveDelaySeconds": 1,
+          "maxActiveEnemies": 180
+        },
+        "grenade": {
+          "teachingGrantAmount": 3,
+          "damageEnemyHp": 9,
+          "blastRadius": 4,
+          "flightSeconds": 0.65,
+          "emptyFieldDepth": 14,
+          "supplyPressureDepth": 24,
+          "supplyDelaySeconds": 8,
+          "supplyHitsRequired": 10,
+          "supplyDestruction": {
+            "mode": "staged",
+            "recoverySeconds": 0.7
+          },
+          "supplyDepth": 14,
+          "supplyMinDepth": 6,
+          "supplyFrontClearance": 1.25,
+          "supplyLaneDistancePenalty": 3
+        },
+        "defenseMode": true,
+        "defenseSpawnAheadDistance": 47,
+        "crowdDepthSpan": 9,
+        "laneSwitchSeconds": 0.15,
+        "lateralSpreadFraction": 0.42,
+        "memberDepthSpacing": 0.85,
+        "depthJitter": 0.35,
+        "laneCount": 5,
+        "edgeInset": 0.4,
+        "waveRows": 6,
+        "priorityWaves": 3,
+        "pressureLaneCount": 3,
+        "groupSize": 24,
+        "groupRowStride": 2,
+        "secondLaneChance": 0.4,
+        "heavyChance": 0.25,
+        "pressureRamp": {
+          "lv4": {
+            "xpFraction": 0.35,
+            "pressureLaneCount": 4,
+            "heavyCount": 2
+          },
+          "lv5": {
+            "xpFraction": 0.25,
+            "pressureLaneCount": 3,
+            "heavyCount": 3
+          },
+          "lv6": {
+            "groupSize": 60,
+            "pressureLaneCount": 3,
+            "heavyCount": 1
+          }
+        },
+        "gruntSpeed": 0.85,
+        "heavySpeed": 0.72,
+        "heavyHp": 15,
+        "enemyVisualScale": 1.4,
+        "heavyVisualScale": 1.35,
+        "heavyWidthMultiplier": 1.05,
+        "heavyHeightMultiplier": 1.15,
+        "heavyDepthMultiplier": 1.15,
+        "rewardAimRadius": 0.5,
+        "progression": {
+          "xpRequirements": [
+            28,
+            60,
+            110,
+            180,
+            220,
+            200,
+            300,
+            350,
+            450
+          ],
+          "levelPlan": [
+            {
+              "fireRateStage": 1,
+              "squadStage": 1,
+              "weaponFamily": "rifle"
+            },
+            {
+              "fireRateStage": 2,
+              "squadStage": 1,
+              "weaponFamily": "rifle"
+            },
+            {
+              "fireRateStage": 3,
+              "squadStage": 1,
+              "weaponFamily": "rifle"
+            },
+            {
+              "fireRateStage": 3,
+              "squadStage": 2,
+              "weaponFamily": "rifle"
+            },
+            {
+              "fireRateStage": 3,
+              "squadStage": 3,
+              "weaponFamily": "rifle"
+            },
+            {
+              "weaponFamily": "machineGun",
+              "fireRateStage": 1,
+              "squadStage": 1
+            },
+            {
+              "weaponFamily": "machineGun",
+              "fireRateStage": 2,
+              "squadStage": 1
+            },
+            {
+              "weaponFamily": "machineGun",
+              "fireRateStage": 3,
+              "squadStage": 1
+            },
+            {
+              "weaponFamily": "machineGun",
+              "fireRateStage": 3,
+              "squadStage": 2
+            },
+            {
+              "weaponFamily": "machineGun",
+              "fireRateStage": 3,
+              "squadStage": 3
+            }
+          ],
+          "fireRateMultipliers": [
+            1,
+            1.25,
+            1.5
+          ],
+          "gruntKillXp": 1,
+          "heavyKillXp": 10,
+          "reinforcementLevel": 7,
+          "reinforcementArrivalSeconds": 1.1,
+          "reinforcementSpacing": 0.72,
+          "reinforcementStagger": 0.18
+        },
+        "heavyFrontClearance": 2.5,
+        "pressureMultipliers": [
+          1,
+          1,
+          1,
+          1,
+          1.25,
+          1.35,
+          1.45,
+          1.55,
+          1.6,
+          1.65
+        ],
+        "giant": {
+          "enabled": true,
+          "unlockLevel": 4,
+          "introDelaySeconds": 0,
+          "hp": 172,
+          "xp": 120,
+          "speed": 0.68,
+          "visualScale": 1.9,
+          "widthMultiplier": 0.94,
+          "gaitCycleMs": 850
+        },
+        "landingAssault": {
+          "enabled": true,
+          "powerWindowSeconds": 10,
+          "groupSize": 66,
+          "cadenceMultiplier": 0.88,
+          "primaryLaneShare": 0.7,
+          "heavyMultiplier": 2,
+          "heavyChanceCap": 0.85,
+          "activeSoftCap": 180,
+          "secondGiantDelaySeconds": 18,
+          "giantFollowupDelaySeconds": 10,
+          "maxSimultaneousGiants": 2
+        },
+        "navalBarrage": {
+          "version": 1,
+          "enabled": true,
+          "streamSeed": 1312904780,
+          "minimumShells": 1,
+          "maximumShells": 2,
+          "minimumIntervalSeconds": 2,
+          "maximumIntervalSeconds": 3,
+          "overlapPolicy": "waitForImpact",
+          "postImpactCooldown": {
+            "initialDelaySeconds": 2,
+            "minimumGapSeconds": 2,
+            "maximumGapSeconds": 5
+          },
+          "targetLanes": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "machineGun": {
+          "fireRate": 18,
+          "projectileSpeed": 60,
+          "range": 80,
+          "damageEnemyHp": 1
+        }
+      },
+      "player": {
+        "startSquad": 1,
+        "startRocketCount": 0,
+        "moveSpeed": 5,
+        "forwardSpeed": 0.6,
+        "formationSpacing": 0.45,
+        "memberRadius": 0.22
+      },
+      "track": {
+        "halfWidth": 3.2,
+        "defenseLineOffset": 1.5
+      },
+      "weapon": {
+        "rifle": {
+          "fireRate": 3,
+          "projectileSpeed": 60,
+          "range": 80,
+          "tierHitRadiusStep": 0.45,
+          "maxHitRadiusBonus": 0.9
+        },
+        "rocket": {
+          "damage": 15,
+          "fireRate": 0.6,
+          "projectileSpeed": 18,
+          "range": 40,
+          "blastRadius": 1.25
+        }
+      },
+      "tiers": {
+        "mergeCount": 10,
+        "tier1Power": 3,
+        "tier2Power": 300,
+        "enemyHigherTierPowerMultiplier": 10,
+        "rifleHigherTierPowerMultiplier": 10,
+        "normalEnemyRadius": 0.3
+      },
+      "bosses": {
+        "basic": {
+          "visualScale": 7,
+          "radius": 2
+        }
+      }
+    },
+    "level": {
+      "id": "level-001",
+      "length": 112,
+      "upgradeGates": [],
+      "enemyGroups": [],
+      "enemyStream": {
+        "enemy": "grunt",
+        "startZ": 30,
+        "spawnAheadDistance": 96,
+        "columns": 7,
+        "spacing": 0.6,
+        "columnSpacing": 0.72,
+        "jitter": 0.16,
+        "seed": 104729,
+        "tierProgression": {
+          "firstTransitionStartRow": 48,
+          "transitionRows": 96,
+          "stableRows": 96,
+          "curvePower": 2,
+          "bossLeadRows": 8,
+          "firstBossHpMultiplier": 4000,
+          "laterBossHpMultiplier": 1000
+        },
+        "rewards": {
+          "rowsPerReward": 7,
+          "spawnAheadDistance": 30,
+          "hitsRequired": 10,
+          "seed": 271828,
+          "sideX": 3.2
+        }
+      }
+    },
+    "tuning": {
+      "groupSize": 24,
+      "enemyVisualScale": 1.4,
+      "gruntSpeed": 0.85,
+      "heavyHp": 15,
+      "heavySpeed": 0.72,
+      "heavyChance": 0.25,
+      "bulletSpeed": 60,
+      "bulletRange": 80,
+      "rewardRowsPerReward": 6,
+      "enemyHigherTierPowerMultiplier": 10,
+      "rifleHigherTierPowerMultiplier": 10,
+      "fireRate": 3,
+      "moveSpeed": 5,
+      "forwardSpeed": 0.6,
+      "bossHpScale": 1,
+      "musicVolume": 0.12
+    },
+    "state": {
+      "catharsis": {
+        "balance": {
+          "levelEncounters": {
+            "version": 1,
+            "initialOrdinaryEnabled": true,
+            "triggers": []
+          },
+          "navalBarrage": {
+            "version": 1,
+            "enabled": true,
+            "streamSeed": 1312904780,
+            "minimumShells": 1,
+            "maximumShells": 2,
+            "minimumIntervalSeconds": 2,
+            "maximumIntervalSeconds": 3,
+            "targetLanes": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "overlapPolicy": "waitForImpact",
+            "postImpactCooldown": {
+              "initialDelaySeconds": 2,
+              "minimumGapSeconds": 2,
+              "maximumGapSeconds": 5
+            }
+          },
+          "destroyer": {
+            "startPolicy": "withCarnival",
+            "attackPolicy": "barrage",
+            "enabled": true,
+            "durationSeconds": 27,
+            "entrySeconds": 3.2,
+            "exitAtSeconds": 23,
+            "radioAtSeconds": 1.3,
+            "radioDurationSeconds": 7.2,
+            "shotTimes": [],
+            "startX": -28,
+            "stationX": -4,
+            "exitX": 30,
+            "z": 56
+          },
+          "artillery": {
+            "horizontalSpeed": 24,
+            "gravity": 8,
+            "minimumFlightSeconds": 0.5,
+            "impactLaneFraction": 0.42,
+            "maxActive": 8,
+            "warningPresentation": "overheadLanes"
+          },
+          "defenseMotionVersion": 2,
+          "defenseWaves": {
+            "intervalSeconds": 6,
+            "firstWaveDelaySeconds": 1.6666666666666667
+          },
+          "carnival": {
+            "enabled": false,
+            "durationSeconds": 24,
+            "firstWaveSeconds": 2,
+            "waveIntervalSeconds": 1.5,
+            "groupSize": 36,
+            "activeEnemyLimit": 80,
+            "laneGroups": [
+              [
+                0,
+                1
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                1,
+                2
+              ],
+              [
+                2,
+                3
+              ]
+            ]
+          },
+          "postCapSurvival": {
+            "enabled": true,
+            "startLevel": 6,
+            "ordinaryGroupSize": 30,
+            "pressureLaneCount": 3,
+            "heavyCount": 4,
+            "giantIntervalSeconds": 24,
+            "maxSimultaneousGiants": 1,
+            "grenadeSupplyIntervalSeconds": 30,
+            "grenadeSupplyAmount": 1,
+            "levelProfiles": [
+              {
+                "startLevel": 8,
+                "ordinaryGroupSize": 42,
+                "pressureLaneCount": 4,
+                "heavyCount": 11,
+                "ordinarySpeedMultiplier": 1.4,
+                "waveIntervalSeconds": 6
+              },
+              {
+                "startLevel": 9,
+                "ordinaryGroupSize": 42,
+                "pressureLaneCount": 5,
+                "heavyCount": 15,
+                "ordinarySpeedMultiplier": 1.6,
+                "waveIntervalSeconds": 5
+              },
+              {
+                "startLevel": 10,
+                "ordinaryGroupSize": 42,
+                "pressureLaneCount": 5,
+                "heavyCount": 19,
+                "ordinarySpeedMultiplier": 1.6,
+                "waveIntervalSeconds": 4
+              }
+            ],
+            "xpLookahead": {
+              "level": 8,
+              "minimumXp": 245,
+              "pressureLaneCount": 5,
+              "ordinarySpeedMultiplier": 1.6
+            },
+            "waveIntervalSeconds": 6,
+            "firstWaveDelaySeconds": 1,
+            "maxActiveEnemies": 180
+          },
+          "grenade": {
+            "teachingGrantAmount": 3,
+            "damageEnemyHp": 9,
+            "blastRadius": 4,
+            "flightSeconds": 0.65,
+            "emptyFieldDepth": 14,
+            "supplyPressureDepth": 24,
+            "supplyDelaySeconds": 8,
+            "supplyHitsRequired": 10,
+            "supplyDepth": 14,
+            "supplyDestruction": {
+              "mode": "staged",
+              "recoverySeconds": 0.7
+            },
+            "supplyMinDepth": 6,
+            "supplyFrontClearance": 1.25,
+            "supplyLaneDistancePenalty": 3
+          },
+          "machineGun": {
+            "fireRate": 18,
+            "projectileSpeed": 60,
+            "range": 80,
+            "damageEnemyHp": 1
+          },
+          "progression": {
+            "xpRequirements": [
+              28,
+              60,
+              110,
+              180,
+              220,
+              200,
+              300,
+              350,
+              450
+            ],
+            "levelPlan": [
+              {
+                "weaponFamily": "rifle",
+                "fireRateStage": 1,
+                "squadStage": 1
+              },
+              {
+                "weaponFamily": "rifle",
+                "fireRateStage": 2,
+                "squadStage": 1
+              },
+              {
+                "weaponFamily": "rifle",
+                "fireRateStage": 3,
+                "squadStage": 1
+              },
+              {
+                "weaponFamily": "rifle",
+                "fireRateStage": 3,
+                "squadStage": 2
+              },
+              {
+                "weaponFamily": "rifle",
+                "fireRateStage": 3,
+                "squadStage": 3
+              },
+              {
+                "weaponFamily": "machineGun",
+                "fireRateStage": 1,
+                "squadStage": 1
+              },
+              {
+                "weaponFamily": "machineGun",
+                "fireRateStage": 2,
+                "squadStage": 1
+              },
+              {
+                "weaponFamily": "machineGun",
+                "fireRateStage": 3,
+                "squadStage": 1
+              },
+              {
+                "weaponFamily": "machineGun",
+                "fireRateStage": 3,
+                "squadStage": 2
+              },
+              {
+                "weaponFamily": "machineGun",
+                "fireRateStage": 3,
+                "squadStage": 3
+              }
+            ],
+            "fireRateMultipliers": [
+              1,
+              1.25,
+              1.5
+            ],
+            "gruntKillXp": 1,
+            "heavyKillXp": 10,
+            "reinforcementLevel": 7,
+            "reinforcementArrivalSeconds": 1.1,
+            "reinforcementSpacing": 0.72,
+            "reinforcementStagger": 0.18
+          },
+          "landingAssault": {
+            "enabled": true,
+            "powerWindowSeconds": 10,
+            "groupSize": 66,
+            "cadenceMultiplier": 0.88,
+            "primaryLaneShare": 0.7,
+            "heavyMultiplier": 2,
+            "heavyChanceCap": 0.85,
+            "activeSoftCap": 180,
+            "secondGiantDelaySeconds": 18,
+            "giantFollowupDelaySeconds": 10,
+            "maxSimultaneousGiants": 2
+          },
+          "pressureMultipliers": [
+            1,
+            1,
+            1,
+            1,
+            1.25,
+            1.35,
+            1.45,
+            1.55,
+            1.6,
+            1.65
+          ],
+          "giant": {
+            "enabled": true,
+            "unlockLevel": 4,
+            "introDelaySeconds": 0,
+            "hp": 172,
+            "xp": 120,
+            "speed": 0.68,
+            "visualScale": 1.9,
+            "widthMultiplier": 0.94,
+            "gaitCycleMs": 850
+          },
+          "heavyFrontClearance": 2.5,
+          "defenseMode": true,
+          "defenseSpawnAheadDistance": 47,
+          "crowdDepthSpan": 9,
+          "laneSwitchSeconds": 0.15,
+          "lateralSpreadFraction": 0.42,
+          "memberDepthSpacing": 0.85,
+          "depthJitter": 0.35,
+          "laneCount": 5,
+          "edgeInset": 0.4,
+          "waveRows": 6,
+          "priorityWaves": 3,
+          "pressureLaneCount": 3,
+          "pressureRamp": {
+            "lv4": {
+              "xpFraction": 0.35,
+              "pressureLaneCount": 4,
+              "heavyCount": 2
+            },
+            "lv5": {
+              "xpFraction": 0.25,
+              "pressureLaneCount": 3,
+              "heavyCount": 3
+            },
+            "lv6": {
+              "groupSize": 60,
+              "pressureLaneCount": 3,
+              "heavyCount": 1
+            }
+          },
+          "groupSize": 24,
+          "groupRowStride": 2,
+          "secondLaneChance": 0.4,
+          "heavyChance": 0.25,
+          "gruntSpeed": 0.85,
+          "heavySpeed": 0.72,
+          "heavyHp": 15,
+          "enemyVisualScale": 1.4,
+          "heavyVisualScale": 1.35,
+          "heavyWidthMultiplier": 1.05,
+          "heavyHeightMultiplier": 1.15,
+          "heavyDepthMultiplier": 1.15,
+          "rewardAimRadius": 0.5
+        },
+        "trackHalfWidth": 3.2,
+        "rewardRowsPerReward": 6
+      },
+      "grenade": {
+        "lv3EnteredAtSeconds": 0,
+        "supplySpawnedAtSeconds": 0,
+        "acquiredAtSeconds": 0,
+        "inventory": 3,
+        "supply": null,
+        "flight": null
+      },
+      "postCapSurvival": {
+        "startedAtSeconds": 0,
+        "nextGiantAtSeconds": 24,
+        "nextGrenadeSupplyAtSeconds": 30
+      },
+      "carnival": {
+        "status": "skipped",
+        "startedAtSeconds": null,
+        "elapsedSeconds": 0,
+        "nextWaveIndex": 0
+      },
+      "destroyer": {
+        "status": "skipped",
+        "startedAtSeconds": null,
+        "nextShotIndex": 0
+      },
+      "levelEncounters": {
+        "version": 1,
+        "ordinaryEnabled": true,
+        "survivalEnabled": true,
+        "triggers": []
+      },
+      "navalPresence": {
+        "version": 1,
+        "status": "stationed",
+        "enteredAtSeconds": 0,
+        "retreatAtSeconds": null,
+        "retreatFromX": null
+      },
+      "navalBarrage": {
+        "version": 1,
+        "enabled": true,
+        "enabledAtSeconds": 0,
+        "nextAtSeconds": 12.487726565074425,
+        "rngState": 1266319253,
+        "opportunities": 2,
+        "launchedSalvos": 2,
+        "capacitySkipped": 0,
+        "absentSkipped": 0,
+        "lastSalvo": {
+          "atSeconds": 7.483333333333312,
+          "lanes": [
+            4,
+            3
+          ],
+          "outcome": "launched"
+        },
+        "cooldown": {
+          "resolvedAtSeconds": 9.603212784832593,
+          "gapSeconds": 2.884513780241832
+        }
+      },
+      "defenseWaves": {
+        "nextAtSeconds": 12
+      },
+      "machineGunReleaseAtSeconds": 0,
+      "landingAssault": {
+        "reinforcementActiveAtSeconds": null,
+        "startedAtSeconds": null,
+        "nextWaveAtSeconds": null,
+        "waveIndex": 0,
+        "secondGiantSpawned": false,
+        "nextGiantAtSeconds": null
+      },
+      "reinforcement": {
+        "startedAtSeconds": null,
+        "arrived": false
+      },
+      "giantEncounter": {
+        "scheduledAtSeconds": 0,
+        "spawned": true
+      },
+      "progression": {
+        "level": 10,
+        "xp": 0
+      },
+      "tick": 601,
+      "elapsedSeconds": 10.016666666666744,
+      "levelId": "level-001",
+      "seed": 1,
+      "rngState": 1,
+      "player": {
+        "x": 1.5555555555555554,
+        "z": 0,
+        "selectedLane": 4
+      },
+      "squad": {
+        "count": 2,
+        "rifleCounts": [
+          2
+        ],
+        "rocketCount": 0,
+        "rifleRemainder": 0
+      },
+      "enemies": [
+        {
+          "id": 45,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 14
+        },
+        {
+          "id": 50,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 52,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 3,
+          "x": 1.4,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 8
+        },
+        {
+          "id": 55,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 57,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 3,
+          "x": 1.4,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 58,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 1,
+          "x": -1.4000000000000001,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 7
+        },
+        {
+          "id": 60,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 31.06880000000059,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 62,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.8900134753193707,
+          "z": 33.01585167986305,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 63,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -1.8462133194338533,
+          "z": 33.201215593516466,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 65,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.386630453740247,
+          "z": 35.823575360606995,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 66,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": -0.49319729107059546,
+          "z": 37.73014945038558,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 67,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 0.9544237066823987,
+          "z": 35.44583718981558,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 68,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -1.3271366414148362,
+          "z": 35.96769737279938,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 70,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.406323611374013,
+          "z": 36.60611406122298,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 72,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.4592087199818342,
+          "z": 35.61020404580013,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 73,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -1.5516545248832556,
+          "z": 38.56537744021007,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 75,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.380677742839791,
+          "z": 36.355421069450315,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 77,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.5864884385708717,
+          "z": 33.700086089688924,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 78,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -0.9924401086959989,
+          "z": 38.38793134656699,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 80,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.224418998054229,
+          "z": 37.230535390926164,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 81,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": 0.20435759974457324,
+          "z": 38.688379237334814,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 82,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.870596155172214,
+          "z": 36.36986243599058,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 83,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -1.4398317176382989,
+          "z": 36.03264685105496,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 85,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": 0.14055000707320875,
+          "z": 38.01081416076927,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 86,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 87,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 1,
+          "x": -1.4000000000000001,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 88,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 0,
+          "x": -2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 89,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 3,
+          "x": 1.4,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 91,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 92,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 1,
+          "x": -1.4000000000000001,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 93,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 0,
+          "x": -2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 94,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 3,
+          "x": 1.4,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 96,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 97,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 1,
+          "x": -1.4000000000000001,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 98,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 0,
+          "x": -2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 99,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 3,
+          "x": 1.4,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 101,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 4,
+          "x": 2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 102,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 1,
+          "x": -1.4000000000000001,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 103,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 0,
+          "x": -2.8000000000000003,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 104,
+          "tier": 1,
+          "archetype": "heavy",
+          "lane": 3,
+          "x": 1.4,
+          "z": 35.676800000000256,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 15
+        },
+        {
+          "id": 105,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": -0.5664595340956003,
+          "z": 38.54426745670794,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 106,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.5297671271460134,
+          "z": 42.24409446349314,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 107,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -0.8184656996969135,
+          "z": 40.328437454262215,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 108,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 0,
+          "x": -2.2619752216031777,
+          "z": 43.361163089014056,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 109,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.0490757224541156,
+          "z": 43.23737570150702,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 110,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": 0.3187064326051623,
+          "z": 39.203538873660776,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 111,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.6875950643522666,
+          "z": 40.661341821969884,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 112,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -1.3900683699976653,
+          "z": 43.68225151389784,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 113,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 0,
+          "x": -2.4291133158588782,
+          "z": 41.19826565097033,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 114,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.5661646841261536,
+          "z": 42.353424624036464,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 115,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": 0.16803852063976232,
+          "z": 40.718902264916736,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 116,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.4389316440382975,
+          "z": 37.96072568740642,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 117,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -1.558076389702037,
+          "z": 41.32212372935324,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 118,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 0,
+          "x": -2.2300464492468164,
+          "z": 38.41092147627792,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 119,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 1.8488352591898292,
+          "z": 39.48503506575658,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 120,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": -0.5322250032853336,
+          "z": 38.67472644053346,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 121,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.508051638252102,
+          "z": 40.587601937082994,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 122,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 1,
+          "x": -0.9591292577590793,
+          "z": 39.980131565089735,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 123,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 0,
+          "x": -2.591239406985231,
+          "z": 38.36647755206509,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 124,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 3,
+          "x": 0.9483721239585428,
+          "z": 44.04040119606948,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 125,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 2,
+          "x": -0.13565230900235475,
+          "z": 39.22771628825872,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        },
+        {
+          "id": 126,
+          "tier": 1,
+          "archetype": "grunt",
+          "lane": 4,
+          "x": 2.4694892518343408,
+          "z": 42.93392533572337,
+          "survivalSpeedMultiplier": 1.6,
+          "hp": 1
+        }
+      ],
+      "boss": null,
+      "enemyStream": {
+        "nextRowIndex": 37,
+        "nextEnemyId": 127,
+        "nextRewardBlockIndex": 0,
+        "nextRewardId": 1,
+        "nextBossTier": 1
+      },
+      "streamRewards": [],
+      "gates": [],
+      "pickups": [],
+      "nextPickupId": 1,
+      "projectiles": [
+        {
+          "id": 621,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.002569527949078814,
+          "z": 36.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.009928624223636695,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 44,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 622,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.004335159225882044,
+          "z": 35.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009879578910392168,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 44,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 623,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.022068889355171893,
+          "z": 34.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.009939150313083185,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 46,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 624,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.03345771992128008,
+          "z": 32.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009895220608446068,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 47,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 625,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.04160964015256374,
+          "z": 32.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.009949698745232384,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 48,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 626,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.052924045478060844,
+          "z": 30.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009905675952320626,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 49,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 627,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.06119191226109356,
+          "z": 30.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.009960269591296885,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 50,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 628,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.07243155099657497,
+          "z": 28.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009916153413911206,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 51,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 629,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.09064346283877522,
+          "z": 27.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.009976168043008314,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 53,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 630,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.09198036728616465,
+          "z": 26.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009926653063475375,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 53,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 631,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.11033011906479367,
+          "z": 25.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.00998679523740826,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 55,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 632,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.12138133692734432,
+          "z": 23.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009942444294693991,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 56,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 633,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.13005876276062928,
+          "z": 23.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.00999744509736395,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 57,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 634,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.14103400608239028,
+          "z": 21.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009952999723527726,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 58,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 635,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.14982952839525507,
+          "z": 21.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.01000811769546404,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 59,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 636,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.1607284482281451,
+          "z": 19.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.00996357758859275,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 60,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 637,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.16964255101245765,
+          "z": 19.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.01001881310460748,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 61,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 638,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.18046479669300683,
+          "z": 17.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.009974177961499612,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 62,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 639,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.19944161361178436,
+          "z": 16.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.010034899149263489,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 64,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 640,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.20024318537337715,
+          "z": 15.91,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": -0.00998480091416393,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 64,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 641,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": -0.2193608733020067,
+          "z": 14.09,
+          "speed": 60,
+          "lane": 2,
+          "slopeX": 0.010045651906999523,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 66,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 642,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.8818528099544425,
+          "z": 12.91,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.028176711876837488,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 67,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 643,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.5085547362046132,
+          "z": 12.09,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.0464536354244585,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 68,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 644,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.0278311239266589,
+          "z": 10.91,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.01828767793272651,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 69,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 645,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.6274611755272712,
+          "z": 10.09,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.036523895330504874,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 70,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 646,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.2131472799558263,
+          "z": 8.91,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.008374389130894378,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 71,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 647,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 0.8799719845915225,
+          "z": 7.09,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.0215832993860905,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 73,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 648,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.4379461817768397,
+          "z": 6.91,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": -0.0015632438731498384,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 73,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 649,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.0979605610582301,
+          "z": 5.09,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.011592112211645982,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 75,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 650,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.7138704014556456,
+          "z": 3.91,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": -0.0115323996360885,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 76,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 651,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.0748193905317045,
+          "z": 3.09,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": 0.011606463510568104,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 77,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 652,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.7369067932516522,
+          "z": 1.9100000000000001,
+          "speed": 60,
+          "lane": 3,
+          "slopeX": -0.011546603374173875,
+          "memberIndex": 1,
+          "damage": 3,
+          "remainingRange": 78,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        },
+        {
+          "id": 653,
+          "kind": "machineGun",
+          "tier": 1,
+          "x": 1.2473472467909943,
+          "z": 1.09,
+          "speed": 60,
+          "lane": 4,
+          "slopeX": 0.05179169123543889,
+          "memberIndex": 0,
+          "damage": 3,
+          "remainingRange": 79,
+          "blastRadius": 0,
+          "hitRadiusBonus": 0,
+          "penetrationRemaining": 0
+        }
+      ],
+      "weapons": {
+        "rifleMemberCooldowns": [
+          0.032716049382715634,
+          0.00802469135802427
+        ],
+        "rifleCooldownRemainingSeconds": 0.032716049382715634,
+        "rocketCooldownRemainingSeconds": 0,
+        "nextProjectileId": 654
+      },
+      "artillery": {
+        "version": 1,
+        "nextId": 5,
+        "shells": []
+      }
+    }
+  },
+  "inputs": [
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 0,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 4,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 3,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 2,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    },
+    {
+      "lane": 1,
+      "input": {
+        "targetX": 0,
+        "throwGrenade": false
+      }
+    }
+  ],
+  "expectedStateHash": "e98f6baf3349e41637f35a8ab1667cfa31365f3eb4560b0f024be1609a5e34bc"
+}

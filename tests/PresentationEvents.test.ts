@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import configData from '../public/game-data/game.json';
-import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
@@ -9,8 +8,6 @@ import { rifleDefenseValue } from '../src/simulation/squad/composition';
 const config = GameConfigSchema.parse(configData);
 const isolated = LevelDefinitionSchema.parse({ id: 'contact-events', length: 1000,
   enemyGroups: [], upgradeGates: [] });
-const bossLevel = LevelDefinitionSchema.parse({ ...levelData,
-  enemyStream: { ...levelData.enemyStream, spawnAheadDistance: 116 } });
 const tuning: SimulationTuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 3,
   defenseLineOffset: 1.5, formationSpacing: .45, memberRadius: .22,
   normalEnemyRadius: .3, bossRadius: 2,

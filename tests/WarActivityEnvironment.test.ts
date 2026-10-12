@@ -1,32 +1,30 @@
+import acceptedAmbient from './fixtures/accepted-ambient.json';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { BridgeEnvironment, BATTLEFIELD_FOG_FAR } from '../src/rendering/environment/BridgeEnvironment';
-import { WarActivityScheduler, SHIP_STARTED, AIRCRAFT_STARTED, SKY_FLAK_STARTED, AIRCRAFT_PASS_MS } from '../src/rendering/environment/WarActivityScheduler';
+import { WarActivityScheduler, AIRCRAFT_STARTED, SKY_FLAK_STARTED, AIRCRAFT_PASS_MS } from '../src/rendering/environment/WarActivityScheduler';
 
 describe('presentation-only water and sky activity', () => {
-  it('schedules repeatable ship, aircraft, and flak activity without gameplay RNG', () => {
+  it('schedules repeatable aircraft and flak activity without gameplay RNG', () => {
     const random = vi.spyOn(Math, 'random').mockImplementation(() => {
       throw new Error('Visual scheduling must not use Math.random');
     });
     try {
       const sequence = (seed: number) => {
         const scheduler = new WarActivityScheduler(seed);
-        const events: { at: number; kind: number; shipX: number; flakY: number }[] = [];
+        const events: { at: number; kind: number; flakY: number }[] = [];
         for (let index = 0; index < 20; index++) {
           const at = scheduler.nextEventMs;
           const kind = scheduler.update(at);
-          events.push({ at, kind, shipX: scheduler.shipX, flakY: scheduler.flakY });
+          events.push({ at, kind, flakY: scheduler.flakY });
         }
         return events;
       };
       const first = sequence(17);
       expect(sequence(17)).toEqual(first);
       expect(sequence(18)).not.toEqual(first);
-      expect(first.some((event) => event.kind & SHIP_STARTED)).toBe(true);
       expect(first.some((event) => event.kind & AIRCRAFT_STARTED)).toBe(true);
       expect(first.some((event) => event.kind & SKY_FLAK_STARTED)).toBe(true);
-      expect(first.filter((event) => event.kind & SHIP_STARTED)
-        .every((event) => event.shipX >= 27 && event.shipX <= 30)).toBe(true);
       expect(first.filter((event) => event.kind & SKY_FLAK_STARTED)
         .every((event) => event.flakY >= 14 && event.flakY <= 19)).toBe(true);
     } finally {
@@ -140,4 +138,12 @@ describe('presentation-only water and sky activity', () => {
     expect(slot.visible).toBe(false);
     environment.dispose();
   });
+});
+
+it('preserves the accepted coastal aircraft/flak sequence after retiring the ship actor', () => {
+  const scheduler=new WarActivityScheduler(17),samples=[];
+  for(let ms=0;ms<=120000;ms+=100){const mask=scheduler.update(ms)&6;
+    if(mask)samples.push({ms,mask,aircraft:structuredClone(scheduler.aircraftPasses),flakAt:scheduler.flakStartedAtMs,flakX:scheduler.flakX,flakY:scheduler.flakY});}
+  // JSON fixtures encode not-yet-started (-Infinity) presentation clocks as null.
+  expect(JSON.parse(JSON.stringify(samples))).toEqual(acceptedAmbient);
 });

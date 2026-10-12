@@ -1,321 +1,56 @@
-# Stage 1 P1 MG progression
+# Current QA tools
 
-P3-B.6B.3C: `node scripts/qa/instant-recovery.mjs before` / `after` measures first-contentful paint of the recovery surface, independent strict validation, choice availability, 3D readiness and actual Continue-click-to-paused restoration at both mobile widths under delayed config/GLB responses. It reconstructs baseline source in a private Vite context; current uses QA port 5175. Checks include exact state, a single canvas/model load and no GameApp before selection. `node scripts/qa/golden-grenade.mjs before` / `after` reconstructs the accepted baseline in an isolated Vite server, tests real Rifle/AHEAD Lv8/Lv10 throws (button and Q), acquisition, blocked requests, separate impact, and exact in-flight recovery (including Vite full reload). Current captures include composited video with actual procedural audio and extracted frames. `verify-grenade-recordings.mjs` decodes those recorded mixes to WAV and verifies nonempty audio. Use `after --no-record` for frame timing without capture overhead, or `before --gl` / `after --gl` for QA-only timing of Three's existing shader operations (no added GPU queries). `golden-grenade-performance.mjs` measures warmed matched dense idle/in-flight presentation in separate contexts, checks identical full Simulation snapshots against baseline, and retains resource/pool/frame statistics. All evidence is ignored under `artifacts/p3b6b3c/`; no shipping QA instrumentation or quality reductions are involved.
+Run from the repository root after npm ci. Generated JSON, screenshots, traces and recordings belong under ignored artifacts/. QA is not imported by the shipping game.
 
-P3-B.6B.3B: `node scripts/qa/recovery-wake.mjs` uses private port 5175 at both mobile sizes. It delays the main module, configuration and GLB, verifies the HTML-time blocker before app creation, inert/hidden controls, pending checkpoint preservation, stale held keys, once-only decisions and exact paused restore. Controllable Wake Lock sentinels cover active/Pause/Resume, stale grants, lifecycle, context loss, Game Over/dispose, denial/insecure/unsupported cases; a separate native localhost sample records actual desktop support/grant. No phone timeout claim is made. Unit `ScreenWakeLock.test.ts` covers deferred request/release races and revocation. See [secure Pixel 8 testing](../../docs/PIXEL8_DEV_TESTING.md) for USB ADB and optional trusted HTTPS. The normal dev server is unchanged.
+## Browser prerequisites
 
-`node scripts/qa/wake-origins.mjs` checks native Chrome localhost grant/release, model/portrait loading and the Vite HMR connected message, plus a real non-secure named HTTP origin served through QA response forwarding. It never overrides secure context or enables unsafe-origin flags. USB forwarding and trusted phone certificates still need physical verification. `node scripts/qa/recovery-wake-performance.mjs` runs serial baseline/current CPU-4×, DPR-1, three five-second blocks at both sizes with separate renderer contexts. A real deterministic 171-enemy/100-projectile snapshot is frozen by a QA-only step override so deaths/XP do not confound presentation costs; the current sample keeps a real native Wake Lock active. This measures warmed presentation overhead, not an advancing 81Hz combat/GPU-phone benchmark. Run separately from other work. Raw evidence goes under ignored `artifacts/p3b6b3b/`.
+Browser scripts use Playwright and Chrome from the existing QA runtime. Set TOPWAR_PLAYWRIGHT_MODULE to an importable Playwright module if its default runtime path is unavailable. Some tools also accept TOPWAR_CHROME_PATH. Do not add a production browser-automation dependency.
 
-With Vite running, `node scripts/qa/mg-progression-sanity.mjs` checks real kill-driven Lv6/7/8 upgrades at 390×844 and 350×844, one/two/three rendered MG members, individual firing feedback, squad pips, XP cap, HUD bounds/overlap, Pause, touch, deterministic snapshot continuation and normal Retry. It uses a test-side app hook only; no new shipping fixture. PNGs and JSON go to ignored `artifacts/stage1-p1`. Existing browser runtime overrides below apply. Six-level cap expectations in historical reports/scripts are historical; use this check for P1 progression.
+DEV checks require a separate Vite server; use `npm run dev -- --host 127.0.0.1 --port 5175 --strictPort` and `$env:TOPWAR_QA_URL='http://127.0.0.1:5175/'`. Do not stop another developer's server. Production checks start/close their own strict-port Vite preview and require a fresh npm run build. Run performance tools alone, without another Chrome/test load.
 
-# Browser sanity
+## Regression commands
 
-## Start presentation / control glyphs
+| Tool | Current purpose |
+|---|---|
+| production-sanity.mjs | Shipping /topwar/ assets, startup, current AHEAD policy, restricted QA and DEV exclusion; both widths |
+| production-resume.mjs | Real production Pause → reload → Continue, identical state/continuation, Retry |
+| instant-recovery.mjs | DEV delayed-config recovery choice before assets, blocked inputs, repeated reloads |
+| recovery-wake.mjs | Wake Lock grant/denial/deferred races, Pause/hidden/recovery and disposal |
+| wake-origins.mjs | Genuine trustworthy localhost vs insecure proxied HTTP, HMR/asset checks |
+| naval-mobile-sleep.mjs | Shipping confirmed stress fixture, valid recovery, sleep suppression, lifecycle and WebGL context restore, warning recording |
+| grenade-inventory.mjs | Exact +1 accumulation through large counts/MAX_SAFE_INTEGER, count bounds, one real throw and reload |
+| golden-grenade.mjs | Normal/dense launch, explosion, HUD/trail/audio and in-flight restoration |
+| mobile-mg-test.mjs | Touch entry/Retry for MG6–10, authored actual firing rates and mobile bounds |
+| survival-pressure-browser.mjs | All four comparison modes, Lv7–10, Retry/continuation and optional recordings/performance |
+| supply-fixtures-sanity.mjs | CRATE3/CRATE8 three-stage destruction, reward transfer, Pause/restore and destination alignment |
+| naval-lane-warnings.mjs | Dense Lv8–10 authoritative lane warnings, full flight, pause/restoration and no ground circles |
+| naval-barrage-performance.mjs | Production barrage on/off fresh/warm contexts, resource/frame statistics |
+| hp-bar-audit.mjs | QA-only body/bar/pulse rendering attribution without changing accepted visuals |
 
-`node scripts/qa/start-presentation-sanity.mjs` covers ten real/synthetic Start cases: mouse desktop and coarse, Enter/Space on coarse, touch at 390/350, pen, unknown/empty pointer and assistive click on fine-pointer. It asserts conservative default and mode before audio resolves, unboxed overlays, enlarged arrows, later A/D/Q/touch functionality, Pause and both normal/fixture Retry persistence. Captures/JSON default to `artifacts/start-glyph`. `START_GLYPH_REPORT.md` records current results.
+Examples:
 
-## Final pre-release checks
-
-`node scripts/qa/release-hud-sanity.mjs` checks 390×844 / 350×844 coarse-pointer and 1100×844 fine-pointer layouts: Start-derived A/D/Q overlays (actual mouse versus touch Start), no defense hint, settled acquisition pulse, charges 3→2→1→0 via the shared Q/button path, concurrent-flight blocking, snapshot with two reserves plus flight, flight Pause, invalid target preservation, normal Retry, only four review menu actions and QA-only CURVE/EVOLVE/MG selection. Captures/JSON default to `artifacts/pre-release/browser`.
-
-`node scripts/qa/grenade-capacity-metrics.mjs` compares capacity 1 versus 3 with all other current values identical: seeds 1–50, normal and 1.8-second hesitation pilots, one adjacent lane step per 200ms and the existing crowd/emergency throw policy. It records every valid launch/detonation, per-throw kills/ordinary XP and pressure, Lv3/acquisition/Lv4 clocks, overflow, failures and unfinished flights through two seconds after Lv6. Duration averages exclude runs that fail before Lv4; those failures remain in the report. Outputs default to `artifacts/pre-release/capacity-metrics.json`. These are diagnostic policies, not human-play certification. See `PRE_RELEASE_REPORT.md` for results and mixed evidence.
-
-## Combat HUD layout
-
-`node scripts/qa/bottom-strip-sanity.mjs` checks visible movement / central XP / movement
-layout at 390×844 and 350×844. Real Chrome CDP touch streams hold each arrow for 1.3 seconds,
-reach the lane edge with the existing 180/120 ms repeat timing, retain held feedback,
-release outside capture, and verify no duplicate tap, selection or scroll. It checks
-touch cancellation, lost capture, blur, Pause, death and Retry cleanup, pre-start guards,
-keyboard button activation, removal of invisible steering DOM/viewport taps, native
-context/selection/drag default prevention, exact XP fill, real Lv5→Lv6 emphasis and
-reduced-motion behavior. Captures/results default to `artifacts/bottom-strip`.
-Chrome emulation does not certify physical iOS/Safari long-press or thumb comfort.
-
-`node scripts/qa/combat-hud-sanity.mjs` checks the top-left DEV disclosure and all
-four deterministic fixture resets, menu close/Escape/focus ownership, Pause,
-lower-left icon/charge Grenade via Q/tap, lower-right transparent weapon telemetry,
-all six authored pip stages, casualty-independent unlocks, real kill-driven Lv1→5
-new-pip feedback, real Lv5→Lv6 silhouette pulse, QA-only CURVE/EVOLVE/MG selection, and synthetic safe-area
-insets. It captures 390×844 and 350×844 ready/unavailable/empty/paused/menu/Rifle/MG states in
-`artifacts/combat-hud`. Pair with `p15-browser.mjs` for actual supply acquisition
-and burst XP, `audio-start-sanity.mjs` for real startup gestures, and
-`production-sanity.mjs` for shipping DOM/bundle exclusion of the whole DEV menu.
-`HUD_UI_REPORT.md` records the compact layout; `PRE_RELEASE_REPORT.md` records the final input/typography/three-charge pass.
-
-## P1.5 Grenade and pressure
-
-`node scripts/qa/grenade-review-sanity.mjs` uses the test-only **GRENADE** helper, deterministic 45-Grunt/3-Heavy fixture and actual Q/button input paths at 390×844 and 350×844. It checks fresh charge/reset determinism, focus release, Pause/TUNE guards, radius-four blast/XP/Heavy results and fixed resources over five three-throw cycles, recording first-use warm-up separately, capturing before/blast/+1-second views. Outputs default to `artifacts/p15-radius4`; `P15_GRENADE_REVIEW.md` records historical one-charge measurements. No fixture damage or balance overrides.
-
-`node scripts/qa/p15-metrics.mjs` runs 200 deterministic comparisons: seeds 1–50, normal/1.8-second Lv3 hesitation, each with/without Grenade use. It loads the actual TypeScript simulation through Vite, needs no browser/server and writes `artifacts/p15/metrics.json` plus detailed seed-1/17/42 timelines. These runs use the current authored capacity. The controls acquire the supply but never throw, isolating use from acquisition cost. The pilot is a diagnostic, not a human-survival guarantee. `P15_REPORT.md` records policy, results and mixed evidence.
-
-With Vite running, `node scripts/qa/p15-browser.mjs` verifies 350/390 portrait, safe-area/touch targets, historical one-hit fixture acquisition, no-target charge preservation, input isolation, Pause/Retry, ten-kill XP, Heavy/Giant damage, repeated resource reuse and a warmed 200-enemy frame-time sample. Outputs use the same browser environment overrides below. Software Chrome timings are not physical-phone GPU measurements. Unit tests cover pending/spawned/held/in-flight snapshot continuation and exact kill ordering.
-
-## Intentional web audio start
-
-Web builds require one real user activation before audible gameplay because of
-browser audio policy. TopWar holds simulation and presentation at time zero until
-a viewport tap/click or Enter/Space activates audio. Gameplay then starts even if
-audio is unavailable or denied; a pending browser resume is bounded to one second.
-Retry in the same page session restarts immediately without another start gesture.
-After backgrounding, a suspended context is resumed on the next real gesture;
-this does not reset gameplay/music clocks. Browser permission to resume remains
-outside the app's control. A page reload requires a new start gesture.
-
-Run from the repository root with the existing Playwright/Chrome QA runtime:
-
-```sh
-node scripts/qa/live-sanity.mjs
-node scripts/qa/production-sanity.mjs
-node scripts/qa/audio-start-sanity.mjs
+```powershell
+node scripts/qa/production-sanity.mjs artifacts/qa/production
+node scripts/qa/production-resume.mjs artifacts/qa/resume
+node scripts/qa/naval-mobile-sleep.mjs artifacts/qa/sleep
+node scripts/qa/grenade-inventory.mjs artifacts/qa/grenades
+node scripts/qa/mobile-mg-test.mjs artifacts/qa/mg
+node scripts/qa/survival-pressure-browser.mjs artifacts/qa/survival --ui-only
+node scripts/qa/naval-barrage-performance.mjs artifacts/qa/perf --only=350-on-warm
 ```
 
-The first script requires the Vite development server and checks review/normal
-starts, firing, keyboard/touch input, pause and Retry. The second requires a
-current `npm run build` and opens a temporary local preview for production start
-guards. It verifies actual config/level/model requests under `/topwar/` carry
-content-addressed filenames, Defense loads only the bullet GLB, fetched data matches authored
-data, and defense mode / three Grenades / current progression replace the legacy
-bridge HUD. Neither deploys or changes shipping code. Both fail on browser errors.
+Golden Grenade accepts --no-record. Survival browser checks accept --profile=ahead, --seconds=90, --measure-only, --record-only and --trace. Performance variants must use matched conditions; SwiftShader and CPU throttling do not measure phone GPU performance. Media recording uses bounded canvas/video/audio hooks in the test response.
 
-## P3-B.3 startup and readiness
+## Deterministic and repository diagnostics
 
-`node scripts/qa/startup-profile.mjs before` / `after` builds an instrumented production
-copy under `artifacts/p3b3/<phase>/dist` and measures three cold/fresh-context and warm/same-context
-navigations at each of 350×844 and 390×844. Run `before` on the baseline before editing
-shipping source. No request interception disables the HTTP cache. The local preview uses a
-600-second static cache lifetime, CDP 1.6 Mbps / 150 ms latency and 4× CPU throttling;
-the browser is desktop Chrome/SwiftShader with DPR 2. Run performance captures alone.
-JSON includes resource timing/bytes, config/level marks, GLB parse spans, renderer/first
-scene timing, decode completion, first voice offset and blank-portrait frames.
+- `determinism.mjs capture <output> [--revision=<SHA>]` captures fixed-input seeds 1/17/42/99/2026, natural and isolated Lv8/9/10. `compare <output>` verifies full combat state/events at each tick. It explicitly excludes only documented inert retired authored metadata. Historical source is read from Git, not copied into production.
+- `naval-barrage-metrics.mjs <output> [--seeds=1,17] [--scenario=natural,lv10] [--seconds=180] [--config=<JSON>]` runs competent/slower/fixed-lane policies with barrage on/off. Each instrumented state/event is checked against uninstrumented control outcomes. Cohorts include same-tick admissions/kills, XP, distance crossings, future-level observations, casualties and real quiet gaps. Defaults cover five seeds/four scenarios/three policies for 180 Survival seconds or Game Over.
+- `cleanup-inventory.mjs <output>` records source/test/QA/assets/workflow and production JS/CSS/gzip inventory. Build first.
 
-`startup-readiness.mjs before` reuses that saved baseline build; `startup-readiness.mjs after`
-uses the current production `dist`. Both record 350/390 introductions with audio. The after
-run also covers delayed/hung image decode, partial/total image failure, Pause/Resume and Retry
-reuse. `startup-modes.mjs` checks production natural Lv1–8, retained legacy Boss startup,
-Pause/Retry and deterministic snapshot continuation at both widths. Only test-side responses
-expose the app or select legacy config; no shipping debug API is added. Run `p3b-browser.mjs`
-and `p3b2-observer.mjs after` against Vite for NAVAL and expression/composition checks.
-These captures do not establish physical-phone rendering or speaker latency.
+Active shared helpers: DefensePilot.ts (adjacent movement, threat and Grenade decisions), difficultyPilot.ts, carnivalPilot.ts, survivalPilot.ts, navalBarrageRun.ts. survivalDiagnosis.ts/Hooks and survival-diagnosis-transform.mjs provide observation outside production code. browser-recording.mjs records/inspects bounded media. dev-fixture-controls.mjs uses retained human buttons or test-only fixtures; production-app-hook.mjs is the single shared response interceptor for private production app access. Historical weapon-comparison/retired-menu scenarios needed by regression tests live under tests/helpers/; no corresponding shipping menu is exposed.
 
-An optional first argument sets the output directory (default `artifacts/sanity`).
-`TOPWAR_QA_URL` overrides the development URL. `TOPWAR_PLAYWRIGHT_MODULE` may
-point to another installed Playwright module URL, and `TOPWAR_CHROME_PATH` to
-another Chrome executable; defaults use the existing local QA runtime.
-Historical phase-specific capture/baseline scripts remain in Git history.
+## Save and physical-device limits
 
-The audio-start check waits five seconds without input, then uses real touch,
-mouse and keyboard activation. It checks zero pre-start clocks/cues, running
-audio before the first volley, Retry, Pause and post-start review access. It saves
-timestamped browser-screen frames and native master-bus audio for local recording
-QA. The original speaker connection is preserved; no autoplay exemption is used.
-Audio capture measures the browser signal, not physical device/speaker latency.
+Released B7 checkpoints have a checked-in replay fixture and strict validation regression. DEV/release and HTTP/HTTPS/localhost origins have separate storage slots. Corrupt/unsupported prototype saves offer New Game. Pixel instructions are in docs/PIXEL8_DEV_TESTING.md.
 
-## DEV Review and test-only scenarios
-
-The human DEV menu contains exactly **LATE, CRATE3, CRATE8, NAVAL**, above the
-existing balance/audio controls. Selection closes the menu and retains ordinary
-Retry behavior. Buttons are at least 44px tall. The obsolete 4/5/6 shortcuts and
-projectile selector are removed; production contains none of these controls.
-
-Browser scripts use `selectDevFixture(page, role)` from `dev-fixture-controls.mjs`.
-For retained roles it clicks the actual menu. For removed roles it imports
-`tests/helpers/ReviewFixtures.ts` into the QA browser and installs a test-side
-simulation factory on the existing test-side app exposure. Application code does
-not import or expose these helpers. Retry continues the QA scenario; clearing
-`app.devReviewFixture` restores the ordinary application factory. SHELL's tick
-schedule is injected by the helper into simulation input, outside GameApp.
-
-The migrated scenarios preserve the baseline state and behavior:
-
-- RIFLE: seeded ordinary Lv1, normal progression.
-- GRENADE: Lv3 with three charges, 45 Grunts and three Heavies.
-- CURVE: Lv4 / 150 XP / two Rifles, natural progression and Giant introduction.
-- EVOLVE: Lv5 / 210 XP / three Rifles; ten ordinary kills earn Lv6.
-- MG: isolated Lv6 crowd of 60 Grunts and five Heavies.
-- MG7/MG8: playable two/three-MG late states with ordinary scheduling.
-- CARNIVAL: pending Lv6 release and the full accepted 24-second gameplay phase.
-- SHELL: independent artillery singles and overlapping flights.
-
-`ReviewFixtureMigration.test.ts` compares all thirteen initial state hashes
-against baseline 2081abe, including the four retained runtime entries. Existing
-combat, snapshot and deterministic continuation tests still exercise each scenario.
-
-The migrated browser checks retain their scenario assertions:
-
-- `evolution-fixture-sanity.mjs`: ten real kills into Lv6, first MG fire, inert removed keys, Pause/Retry, focus guards and six bounded-resource reset cycles.
-- `late-dev-sanity.mjs`: four menu buttons fit both mobile widths, then LATE/MG7/MG8 progression, Grenades, snapshots and 150 seconds of ordinary combat per entry.
-- `carnival-sanity.mjs`: full 24-second Carnival concurrent with Destroyer, snapshot replay and Pause, then the 27-second naval completion before temporary Survival; exact Retry.
-- `p3a-browser.mjs`: test-only SHELL launches, overlapping flights, dodge/impact, Pause/Retry and snapshot continuation.
-
-## Permanent Ink Spear validation
-
-`node scripts/qa/projectile-finalization.mjs` checks normal DEV and actual shipping
-production bundles at 350×844 / 390×844, including exact selected P3 colors/geometry,
-no selector, four working DEV entries, inert 4/5/6, stable Level Up appearance,
-Pause, Retry and snapshot presentation. PNGs and decoded WebM recordings are
-written to `artifacts/p3b34/visual`. Shipping observation is injected by the browser;
-it does not alter the renderer or add a shipping app hook.
-
-`node scripts/qa/projectile-performance.mjs before` replays the exact selected
-P3 renderer from 2081abe; `after` uses the current implementation. Both use the
-same migrated MG8 scenario at DPR2 / 4× CPU, three measured six-second runs at
-each mobile size. Use `TOPWAR_PROJECTILE_OUT` to select the output directory.
-The older `projectile-readability.mjs` remains a historical comparison to P3B32.
-
-
-## P2A Machine Gun
-
-`node scripts/qa/p2a-metrics.mjs` extends the P1.5 normal/hesitation pilot through Lv6 for seeds 1–50 (100 runs), with unchanged Grenade policy. It reports Lv2–6 times, Lv5 duration, evolution counts/pressure, casualties and controlled three-Rifle vs one-MG cadence, 30-Grunt pack clear and Heavy TTK. `node scripts/qa/machine-gun-sanity.mjs` checks the test-only MG fixture and real gameplay controls, 390/350 portrait, HUD/firing, lane changes, Pause/Retry, casualty-state evolution, snapshot family restore, repeated resources and warmed real-RAF audio/frame diagnostics against the same Lv5 crowd. Results/captures default to ignored `artifacts/p2a`; durable evidence is in `P2A_REPORT.md`. SwiftShader measurements are not physical-phone certification.
-
-## P2B Pressure Comeback
-
-The P2B composition below is historical; P2C replaces its late Heavy chances and Lv5 fronts.
-
-`node scripts/qa/p2b-metrics.mjs` uses the saved pre-change
-`artifacts/p2b/baseline/metrics.json` (generated with `p2a-metrics.mjs` at the
-starting commit), when present, alongside 300 current runs: seeds 1–50, normal/hesitation,
-historical multi-step lane pilot and adjacent-step pilots with/without the ramp.
-Both adjacent controls use the same global emergency Grenade behavior. Results
-include level times, phase pressure/debt/Heavy peaks, first ramp thresholds,
-future group populations/fronts/Heavies and the battlefield at Lv6.
-
-`node scripts/qa/p2b-pressure-sanity.mjs` checks global Q/button activation in
-390/350 portrait with an empty selected lane, a small near cluster and a much
-denser distant crowd. It checks centroid capture, three ordinary Grunt kills/XP,
-Heavy survival, flight snapshot continuation, Pause/Retry and repeated resources.
-Captures/results default to ignored `artifacts/p2b`; it accepts the browser
-environment overrides above. `grenade-lab-sanity.mjs` now measures emergency
-targeting without asserting the superseded maximum-crowd target. A no-enemy or
-out-of-range state preserves the charge. `P2B_REPORT.md` records mixed pressure
-evidence; software renderer results are not physical-phone certification.
-
-## P2C Threat Ladder
-
-`node scripts/qa/p2c-metrics.mjs artifacts/p2c/current` runs seeds 1–50 with
-normal and 1.8-second Lv3 hesitation pilots, both nearest-threat and proactive
-Giant-priority policies (200 runs). It follows ten seconds beyond Lv6 and records
-level times, phase active/near-defense/hit-debt/Heavy peaks, threshold crossings,
-ordinary versus release admissions, Giant scheduling/first hit/death/XP and
-release composition plus 2/5/10-second MG counts. Baseline measurements were
-captured before editing at `53bed55`; the refined pressure counters were also
-run with that commit's JSON through the compatible legacy chance/no-Lv6-override
-path, reproducing the original timing/cohort results. To repeat that comparison,
-save its game JSON then pass `--baseline --baseline-config=path/to/game.json`.
-
-`node scripts/qa/threat-ladder-sanity.mjs` exercises the test-only CURVE fixture at
-390×844 and 350×844, natural XP/Giant/evolution, Pause/Retry, deterministic
-continuation, repeated release resources and a warmed native-RAF sample of the
-natural MG release state. Captures/results default to `artifacts/p2c/browser`.
-Use `TOPWAR_QA_URL`, `TOPWAR_PLAYWRIGHT_MODULE` and `TOPWAR_CHROME_PATH` as with
-other browser scripts. `ThreatLadder.test.ts` checks exact composition/debt,
-Heavy rotation/clearance, backward compatibility, one-time shoreline release,
-consumed rows, ordinary cadence, snapshot clocks and Giant lifecycle across Lv6.
-Run the existing evolution, MG, emergency Grenade, audio-start and production
-sanity scripts too. Durable results and unresolved human questions are in
-`P2C_REPORT.md`; software frame timings are not physical-phone certification.
-
-## Temporary post-cap survival
-
-`node scripts/qa/postcap-metrics.mjs` runs natural progression and 150 post-cap
-seconds for seeds 1–10, 17, 42, plus 360 seconds for seed 1. It records fixed
-Giant/Supply opportunities and skip reasons, admissions, acquisitions, reserves,
-throws, pressure/debt, casualties and empty periods. A separate 180-second
-seed-42 policy spends recurring charges to verify continued pickup/use cycles;
-three disabled runs verify identical natural progression timing before cap.
-`node scripts/qa/postcap-sanity.mjs` reviews the production `/topwar/` build at
-390×844 and 350×844 through 150+ post-cap seconds, Q/touch, Pause/Retry,
-pending/active Supply snapshots, bounded repeat effects and a software-rendered
-native-RAF sample. It exposes the app only through a test-side response hook,
-never a shipping debug export. Use the existing browser runtime environment
-variables documented above. `PostCapSurvival.test.ts` covers disabled behavior,
-exact Heavy groups, skip/no-catch-up scheduling and MG +1 acquisition.
-
-## P2.5 Stationary Defense
-
-`node scripts/qa/stationary-metrics.mjs <output-directory>` runs the same adjacent-lane/Grenade pilot for seeds 1, 17, 42, 99 and 2026 through 240 seconds, plus natural Carnival availability runs. Save baseline output before changing gameplay, or set `TOPWAR_QA_ROOT` to an isolated checkout of the baseline. Controlled no-fire cases also measure enemy arrival at the defense line from 20 units. It records Lv2–8 times, admissions/composition, active-enemy samples, release/phase clocks, casualties/failures, and snapshots at Lv5, airborne Grenade, release, active Carnival and handoff. Availability means at least six living Grunts ahead of the squad within the 47-unit horizon, in any reachable lane; it does not promise selected-lane hits.
-
-`node scripts/qa/stationary-compat.mjs <baseline-output-directory>` rebases those actual baseline snapshots, checks preserved lifecycle/cooldown state and repeats 600 fixed ticks after a JSON round trip. `node scripts/qa/stationary-sanity.mjs` checks CURVE, EVOLVE, CARNIVAL, LATE, MG7 and MG8 at 390×844 and 350×844: Z=0, real touch lane movement/Grenades, Pause, deterministic snapshot continuation and exact selected-entry Retry. Browser runtime overrides match the scripts above. Captures default to ignored `artifacts/stage1-p25`. Run `late-dev-sanity.mjs`, `carnival-sanity.mjs` and `production-sanity.mjs` alongside it for HUD, recurring gameplay, crowd rendering and production DEV exclusion. Software WebGL observations do not certify physical-phone performance.
-
-## P2.6 Supply and button polish
-
-`node scripts/qa/p26-sanity.mjs` captures lower button edges at 390×844 and 350×844 with simulated bottom safe-area insets 0/20/34px (the 34px case also includes top/side insets). It exercises normal, held left/right, focus-visible and paused/disabled states, checks layout, and captures ten-hit teaching Supply feedback/acquisition. It also checks partial-progress Pause/restore, recurring MG acquisition and selected-entry Retry. Inspect the generated `*-edges.png` images visually; bounds alone do not verify the border. Runtime overrides match the other browser scripts; output defaults to ignored `artifacts/p26/browser`. These are desktop browser checks, not physical-device certification.
-
-
-## P2.7 staged Supply destruction
-
-`node scripts/qa/p27-sanity.mjs` checks Lv3 Rifle, Lv6 single MG and Lv8 three-MG acquisition at 390×844 and 350×844 (including a 34px simulated bottom inset). It captures each crate stage, three teaching reward items and one recurring reward item; verifies real HUD inventory during immediate throws, sequential arrivals, cue order, Pause during recovery/flight, snapshot restoration and Retry during flight. Test-side response interception exposes the app only to QA; no production debug API is added. Output defaults to ignored `artifacts/p27/browser`. Browser runtime overrides match the scripts above. Inspect stage and flight captures visually. `SupplyDestruction.test.ts`, `SupplyTransfer.test.ts` and the retained `GrenadeSupplyHits.test.ts` cover staged behavior, presentation and historical one-/ten-hit compatibility. Desktop emulation does not certify physical-phone performance or speaker balance.
-
-`node scripts/qa/p27-record.mjs` records the complete composited 390px Rifle sequence with game audio to `artifacts/p27/recording/rifle-supply-390.webm`, using Chrome screencast frames and its built-in MediaRecorder. The accompanying performance sample compares CPU frame cost outside/during the transfer within that recorded scene; it is not a dense-battle benchmark or a baseline-build comparison.
-
-`node scripts/qa/supply-fixtures-sanity.mjs` selects CRATE3/CRATE8 through the existing menu at both portrait widths, including a simulated 34px bottom inset at 350px. It checks real projectile damage, cue order, exact transfer counts/destinations, partial restoration, Pause and Retry. Captures and results go to `artifacts/p27/fixtures`. Record the actual entries with `node scripts/qa/p27-record.mjs artifacts/p27/fixtures crate3 390` and `node scripts/qa/p27-record.mjs artifacts/p27/fixtures crate8 350`; neither command injects fake hits or changes fixture state. `SupplyDevFixtures.test.ts` also verifies independent firing and absence of unrelated admissions after 20 minutes.
-
-
-## P2.8 Grenade gameplay and presentation
-
-Run `node scripts/qa/p28-perf.mjs artifacts/p28/before` on the baseline, then the same command with `artifacts/p28/after` on the implementation. Each portrait size uses the same seeded GRENADE fixture, real throw and 12 reset/replay cycles (first two warm the pools). It records CPU submission cost, draw calls, triangles, resource plateaus and final authoritative state. Run without concurrent browser captures; these synchronous desktop/software-WebGL measurements do not establish physical-device FPS.
-
-`node scripts/qa/p28-browser.mjs` checks CRATE3, CRATE8, GRENADE and the existing threat review at 390×844 and 350×844. For the threat-only blast it positions the existing Heavy/Giant together and supplies inventory through a validated QA snapshot. It checks three-stage destruction, transfers, button/Q throws, empty-field zero XP, Pause, in-flight restore, casualties and Heavy/Giant HP, then captures uninterrupted repeats with audio. WebM files and frames extracted from those recordings are under `artifacts/p28/browser`; visually inspect the video frames as well as assertions. `browser-recording.mjs` is a QA-only CDP/MediaRecorder helper, not a shipping endpoint.
-
-## Supply readability and Grenade testbeds
-
-`node scripts/qa/p29-browser.mjs` validates both updated testbeds at 390×844 and 350×844, including a 34px bottom inset: left-side crate acquisition, exact transfers, right-side Grunt multi-kills and surviving Heavy/Giant reactions, partial/in-flight snapshots, Pause and deterministic Retry. It records complete fixture flows with audio, extracts review frames, and captures debris/scorch aftermath. Separate validated QA snapshots put 40 Grunts around the crate for readability and clear surviving targets before an empty-field throw for an unobstructed scorch capture. The shipped fixtures retain their authored right-side formation (now 36 Grunts, one Heavy and one Giant). Output defaults to ignored `artifacts/p29/browser`.
-
-Use `p28-perf.mjs` before and after changes with identical seeded scenes, without simultaneous recording. `GrenadeAftermath.test.ts` verifies fixed debris storage, eight-mark recycling, 12-second hold/6-second fade, Pause/reset/disposal and unchanged input state. The retained `p28-browser.mjs` explicitly clears the revised testbed targets only for its older empty-field regression check. Desktop/software-WebGL QA does not certify physical-phone performance.
-
-## Golden Grenade presentation
-
-`node scripts/qa/p210-browser.mjs` records both 36-Grunt testbeds at 390×844 and 350×844, including a simulated 34px bottom inset. It checks each pooled reward's peak size, full silhouette bounds, final size/position against the real HUD icon, Pause during flight, rewards, partial/in-flight snapshots and exact Retry. Captures include Stage 1/2 and each sequential golden reward at peak, plus real 36-Grunt blasts with surviving Heavy/Giant reactions. Inspect the recordings and extracted frames at native portrait size. Outputs default to ignored `artifacts/p210/browser`. Use the unchanged seeded `p28-perf.mjs` for before/after rendering costs; the crowd increase is restricted to CRATE3/CRATE8, so its ordinary GRENADE benchmark remains comparable.
-
-## P3-B.4 difficulty overlap
-
-`node scripts/qa/difficulty-metrics.mjs artifacts/p3b4/final` runs natural Lv1–8 for seeds 1, 17, 42, 99 and 2026 at 60Hz with an adjacent, artillery-aware 200ms pilot. It records level times, Giant combat, Heavy admissions, release/phase/shell clocks, casualties and peaks; seed 17 includes plain snapshots. `node scripts/qa/difficulty-browser.mjs final` replays its natural Carnival entry at both portrait sizes with three 28-second CPU-4x/DPR-1 samples and separate recordings. It does not add shipping hooks. Historical comparisons may use `revision-server.mjs <revision> --balance` to serve exact historical source and game.json; other public asset changes remain forbidden. Use matched samples without simultaneous browser workloads. SwiftShader does not measure physical-phone GPU performance.
-
-## P3-B.5 post-NAVAL Survival
-
-`node scripts/qa/survival-metrics.mjs artifacts/p3b5/final` measures 180 seconds of natural, isolated Lv7 and three-MG Lv8 Survival for seeds 1,17,42,99,2026. Additional Lv8 pilots react every 600ms or hold one lane without Grenades. Allocated group counts include same-tick projectile kills; sample rows contain lane pressure, HP debt, populations and fixed opportunities. Add a third argument with a Git revision to run exactly that historical source/config with the same QA policies.
-
-`node scripts/qa/survival-browser.mjs final` measures one continuous 90-second Lv8 session per mobile size (three 30-second windows, CPU4×, DPR1) and six-second resource samples, then separately records human LATE and checks its four-button menu, Pause, restore and Retry. For baseline, serve `revision-server.mjs <revision> --balance` and pass `baseline http://127.0.0.1:5174/`. Do not run other Chrome profiles concurrently. Resource counts and SwiftShader timing are browser evidence, not physical-phone GPU certification. LATE in the human menu now starts Lv10; the test-only factory retains its original Lv6 scenario (`selectDevFixture(page, 'late6')` for browser QA).
-
-Add `--fixed` for a separate 45-second lane-2/no-Grenade stress profile (30s + 15s windows, no recording), saved under `artifacts/p3b5/<phase>-fixed-browser`. This exposes neglected-lane buildup before casualties. `--width=350` or `--width=390` selects one viewport without discarding the other saved result; `--evidence-only` recaptures human LATE without replacing timing results.
-
-## P3-B.6A MG progression
-
-Run `node scripts/qa/mg-progression-metrics.mjs artifacts/p3b6a/baseline f1d843a25b7644bfa2ee1062398bdf31b24e3ada` and the same command with `artifacts/p3b6a/final` and no revision. Each version measures five seeds through natural and isolated Lv6–10 Survival, with 200ms, 600ms and fixed-lane policies. Historical isolated requests above the saved cap clamp to that original cap; they never migrate an old Lv8 three-MG plan. Add `--encounters-only` (after the optional revision argument) to collect the existing artillery-aware 240-second natural timeline separately.
-
-Set `TOPWAR_SURVIVAL_ROOT=artifacts/p3b6a` and run `survival-browser.mjs <phase> <server-url> --scenario=lv10` for continuous 90s three-MG timing and separate final recordings. Serve the exact baseline with `revision-server.mjs <revision> --balance`; `TOPWAR_QA_VITE_CACHE` can isolate its dependency cache. Run browser profiles serially without source edits or other browser captures. The baseline retains 54Hz at old Lv8; final is 81Hz at Lv10, with identical Survival settings and pilot policy.
-
-`mg-progression-browser.mjs` captures each MG stage, counts ten seconds of real selected-lane shots, checks live HUD pips and historical Lv8 HUD restoration at both mobile sizes, and verifies CRATE8 / test-only CRATE10. Set `TOPWAR_QA_URL` for an isolated final server. Test-only MG9/MG10 and CRATE10 add no human-facing controls. SHELL and NAVAL use the saved plan's three-MG cap; old fixture goldens retain their embedded eight-level plan.
-
-
-`node scripts/qa/mobile-mg-test.mjs artifacts/p3b6a/mg-quick-test` exercises the actual human MG TEST buttons at 350×844 and 390×844 (including a 34px bottom inset). It checks collapsed/expanded layout, 48px targets, identical seed/crowd, exact ten-second shots, authored HUD, real ignored-lane Game Over → Retry, and main LATE behavior. Set `TOPWAR_QA_URL` for the DEV server. Separate test-only MG7–10 Survival fixtures retain their existing semantics; this script never installs those helpers. The temporary human fixtures isolate the same 65-enemy crowd without additional admissions. Recordings and extracted frames are local ignored evidence. `production-sanity.mjs` rejects MG TEST UI/factory strings in the shipping bundle.
-
-## P3-B.6B.0 Survival diagnosis
-
-Run `node scripts/qa/survival-diagnosis.mjs --self-test` for exact admission/kill, grenade, contact/leak, boundary and cap-XP hook checks. Run `node scripts/qa/survival-diagnosis.mjs` for 75 natural/isolated Lv7–10 scenarios across seeds 1/17/42/99/2026 and all three existing pilots. `--quick` uses seed 1 only; `--out=<directory>` selects an ignored evidence directory. The loader requires production source/configuration to match baseline `dc8131e0451fb2c752246614b3e610539963f032`.
-
-The private Vite SSR transform observes exact admissions and lethal removals, including spawn-tick deaths, without editing or importing instrumentation into application code. Each run replays identical inputs in a separate uninstrumented Simulation, compares all transient events every tick, exact full state every second and at the end, and saves state/input SHA-256 digests. Unexpected source-hook drift fails loudly. QA servers use private caches and ignore `artifacts/**`; no running DEV server is stopped.
-
-Run `node scripts/qa/survival-diagnosis-analysis.mjs [evidence-directory]` to regenerate offline workload, theoretical arrival, future-loadout and pilot summaries. Outputs include one JSON per run, `summary.json` and `analysis.json` under ignored `artifacts/p3b6b0/`. Future times beyond Game Over/end are explicitly censored. Workload/speed candidates are arithmetic projections, never applied to combat. See `P3B6B0_REPORT.md` for definitions, findings and the proposal awaiting human review.
-
-## P3-B.6B.1 Survival experiment
-
-`node scripts/qa/survival-experiment.mjs` runs 375 matched baseline / Heavy-only / speed-only / combined-at-6s / full-combined scenarios. Each uses the unchanged B6B0 pilots, five seeds, natural and isolated Lv7–10 starts, and a 180-second Survival window or Game Over. The extra six-second combined case isolates the Lv10 cadence change. Baseline inputs and final historical-engine hashes must match retained `artifacts/p3b6b0` files; current baseline states/events are checked against that historical engine. Every candidate checks observer/plain event and full-state parity. Every natural pre-Survival tick is hashed across candidates, excluding only the intentionally different saved balance configuration. `--quick --out=artifacts/p3b6b1/quick` runs seed 1.
-
-`node scripts/qa/survival-experiment-analysis.mjs` writes per-candidate cohort/future-loadout analyses and `comparison.json`. B6B0 artifacts are never overwritten. The comparison candidates are QA/DEV data under `src/config/survivalExperiment.json`; production does not import the DEV preset factory. New ordinary admissions carry their selected speed in snapshot data; inherited and historical unstamped enemies keep original movement. Giant and Supply clocks are unchanged.
-
-`node scripts/qa/survival-review-server.mjs` starts a private current-source server on 5175. `node scripts/qa/survival-experiment-browser.mjs` checks touch controls, saved configuration, Pause/Retry/Snapshot at both portrait sizes, then records matched 90-second CPU-4x/DPR-1 profiles beginning at Lv8, with normal XP growth. Each profile has a fresh page/renderer context and identical UI preparation. Recordings are captured separately from timing. Use `--ui-only` for controls without performance work, or `--profile=baseline` / `--profile=experimental --measure-only` with a separate output directory to repeat one profile without recordings. Run full browser timings serially after computational QA; SwiftShader results do not certify physical-phone GPU performance. Production sanity checks reject the Survival/MG test UI and fixtures. Historical saved artifacts are checked when present; fresh checkouts still compare against the historical engine directly.
-
-## P3-B.6B.2 late-level pressure comparisons
-
-`node scripts/qa/survival-pressure.mjs` runs BASELINE, EXPERIMENTAL, STAGED and AHEAD across natural/Lv8/Lv9/Lv10, the same three pilots and five seeds. Both controls compare directly with baseline `56a4f1647b7badd94b33bb77bb1d1e71fcbed87b`; retained B6B1 hashes are checked when available. All modes check observed/unobserved events and state, and natural pre-Survival input/state hashes. `--quick`, `--self-test` and `--out=<directory>` are supported. Raw cohort/engagement records and actual before/+5/+10/+20s upgrade windows are ignored under `artifacts/p3b6b2/`; `node scripts/qa/survival-pressure-analysis.mjs` summarizes them. Missing upgrade windows remain censored. First-hit loadout is sampled at fixed-tick resolution, not future knowledge.
-
-Start `node scripts/qa/survival-review-server.mjs artifacts/p3b6b2/dev-cache` on private port 5175. Run `node scripts/qa/survival-pressure-browser.mjs artifacts/p3b6b2/ui --ui-only` for all sixteen touch fixtures at both sizes. Use `artifacts/p3b6b2/performance --measure-only` for serial 90-wall-second EXPERIMENTAL/STAGED/AHEAD samples: a new page/WebGL context for each mode, followed by warm Retry in that context. Performance samples skip the fixture smoke loop so it cannot prewarm the fresh context. `--profile=<mode>`, `--seconds=<duration>` and `--fresh-only` limit runs; `--trace` writes separate Chrome timeline traces (profiling overhead must not be mixed into the primary timing comparison). Record separately using `artifacts/p3b6b2/recordings --record-only`; this captures 45s of genuine growing-XP combat and extracts 3/25/40s frames. Do not run other browser/compute workloads during timing. Software-rendering results cannot certify phone GPU performance. All candidates remain DEV-only; accepted production balance stays unchanged.
-
-## P3-B.6B.3A mobile recovery and HP-bar audit
-
-Start `node scripts/qa/survival-review-server.mjs artifacts/p3b6b3a/dev-cache`. Run `node scripts/qa/mobile-resume.mjs` for both mobile sizes: AHEAD Lv10 and regular play, real reload/Continue, in-flight Grenade/partial damage deterministic continuation, synthetic visibility/pagehide/pageshow events, Chromium freeze/active, WebGL loss/restoration, Retry/New Game/Game Over and corrupt/quota storage. Synthetic events and desktop Chrome do not reproduce Android tab discard. Recovery remains paused; Resume is a real gesture. DEV lifecycle evidence lives on the app's bounded `lifecycle` object in QA-instrumented browser runs, without a shipping inspection endpoint.
-
-Run `node scripts/qa/hp-bar-audit.mjs` serially without other compute/browser workloads. Its response transform and temporary mesh visibility changes exist only in the QA browser, never in renderer source. Three counterbalanced repeated five-second blocks compare one frozen real dense AHEAD Lv10 crowd: normal, no Heavy bar backing/fill, no bar flash/pulse and no ordinary body/gear batches (bars retained). A fixed half-strength Heavy bar flash isolates its worst-case update cost. No-bar/no-body variants retain setup CPU and isolate drawing, not total removal cost; Giant and contact shadows are retained. Record camera-center-visible population, draw calls/triangles, RAF and submission CPU, resource plateaus and bounded checkpoint costs. SwiftShader is not Pixel 8 performance evidence; warmed/frozen costs do not measure first-use compilation.
-
-`node scripts/qa/production-resume.mjs` validates shipping Defense/Legacy checkpoint recovery and absence of DEV diagnostics at both sizes. For matched fresh-game cold/warm startup, `TOPWAR_STARTUP_OUT=artifacts/p3b6b3a/startup-before` with `node scripts/qa/startup-profile.mjs before --baseline=94d0fe38bb839e39480511fd2b539530b4071d25` reconstructs the changed runtime files from Git in the QA-only transform (public assets unchanged); run `after` with a separate output directory for current source. Warm navigations stop the old app and clear its checkpoint so they measure HTTP caching rather than the recovery dialog. No deploy or production instrumentation is involved.
+Desktop automation validates lifecycle signals and controllable Wake Lock sentinels, not Android's physical 15-second timeout or real tab discard. No script deploys, changes frozen tags or tunes difficulty based on pilot deaths.

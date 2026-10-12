@@ -9,7 +9,7 @@ import { effectiveSeed } from '../../src/simulation/enemies/effectiveSeed';
 import { admitDefenseGroup } from '../../src/simulation/enemies/defenseGroup';
 import { postCapOrdinarySettings } from '../../src/simulation/postCapSurvival';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
-import { pilotTuning } from './p15Pilot';
+import { pilotTuning } from './DefensePilot';
 import { maxProgressionLevel } from '../../src/simulation/progression';
 import type { DevReviewFixture } from '../../tests/helpers/ReviewFixtures';
 

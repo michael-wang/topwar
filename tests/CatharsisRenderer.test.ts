@@ -22,7 +22,7 @@ it('renders configured corridor positions and grows beyond the initial experimen
   expect(scene.children).toHaveLength(0);
 });
 
-it('renders a larger amber Heavy and preserves configured scale through death', () => {
+it('renders a larger Heavy and preserves configured scale through death', () => {
   const scene = new THREE.Scene();
   const renderer = new EnemyRenderer(scene, enemyFamilies(bodyModel(), helmetModel(), vestModel(), runFrames(), grayBodyModel()));
   renderer.update([{ id: 1, tier: 1, archetype: 'grunt', x: 0, z: 4, hp: 1, visualScale: 1.4 },
@@ -40,7 +40,7 @@ it('renders a larger amber Heavy and preserves configured scale through death', 
   const tunics = bodies.flatMap(mesh => Array.from({ length: mesh.count }, (_, index) => {
     mesh.getColorAt(index, color); return color.getHexString();
   }));
-  expect(tunics.sort()).toEqual([ART.faction.grunt.slice(1), ART.faction.heavyBody.slice(1)].sort());
+  expect(tunics.sort()).toEqual(['ffffff','ffffff']);
   renderer.update([], 100);
   const deaths = scene.children.filter((child) => child instanceof THREE.Group);
   expect(deaths.some((death) => Math.abs(death.scale.x - 1.89) < .001)).toBe(true);

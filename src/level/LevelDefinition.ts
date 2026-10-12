@@ -6,20 +6,6 @@ const positiveSafeInteger = z.number().finite().int().positive()
 const nonnegativeSafeInteger = z.number().finite().int().nonnegative()
   .refine(Number.isSafeInteger, 'Must be a safe integer');
 
-const EnemyGroupSchema = z.strictObject({
-  id: nonEmptyId,
-  z: z.number().finite().nonnegative(),
-  enemy: z.literal('grunt'),
-  count: positiveSafeInteger,
-  formation: z.strictObject({
-    columns: positiveSafeInteger,
-    spacing: z.number().finite().positive(),
-    jitter: z.number().finite().nonnegative(),
-    seed: z.number().int().min(0).max(0xffffffff),
-  }).refine((formation) => formation.jitter < formation.spacing / 2,
-    { path: ['jitter'], message: 'Jitter must be less than half of spacing' }),
-});
-
 const EnemyStreamSchema = z.strictObject({
   enemy: z.literal('grunt'),
   startZ: z.number().finite().nonnegative(),
@@ -63,29 +49,9 @@ const EnemyStreamSchema = z.strictObject({
 export const LevelDefinitionSchema = z.strictObject({
   id: nonEmptyId,
   length: z.number().finite().positive(),
-  enemyGroups: z.array(EnemyGroupSchema),
+  enemyGroups: z.array(z.never()),
   enemyStream: EnemyStreamSchema.optional(),
   upgradeGates: z.array(z.never()),
-}).superRefine((level, context) => {
-  const ids = new Set<string>();
-  let previousZ = -Infinity;
-  level.enemyGroups.forEach((group, index) => {
-    if (ids.has(group.id)) {
-      context.addIssue({ code: 'custom', path: ['enemyGroups', index, 'id'], message: `Duplicate enemy-group id: ${group.id}` });
-    }
-    ids.add(group.id);
-    if (group.z <= previousZ) {
-      context.addIssue({ code: 'custom', path: ['enemyGroups', index, 'z'], message: 'Enemy groups must be in strictly increasing Z order' });
-    }
-    previousZ = group.z;
-    if (group.z >= level.length) {
-      context.addIssue({ code: 'custom', path: ['enemyGroups', index, 'z'], message: 'Enemy-group Z must be less than level length' });
-    }
-    if (group.formation.columns > group.count) {
-      context.addIssue({ code: 'custom', path: ['enemyGroups', index, 'formation', 'columns'], message: 'Formation columns cannot exceed group count' });
-    }
-  });
-
 });
 
 export type LevelDefinition = z.infer<typeof LevelDefinitionSchema>;

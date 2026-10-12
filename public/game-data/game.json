@@ -265,8 +265,6 @@
       ],
       "gruntKillXp": 1,
       "heavyKillXp": 10,
-      "reinforcementLevel": 7,
-      "reinforcementArrivalSeconds": 1.1,
       "reinforcementSpacing": 0.72,
       "reinforcementStagger": 0.18
     },

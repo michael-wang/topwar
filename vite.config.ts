@@ -26,7 +26,7 @@ export default defineConfig(({ command, isPreview }) => ({
     __TOPWAR_PUBLIC_ASSETS__: JSON.stringify(assets.manifest),
   },
   plugins: [assets.plugin, {
-    name: 'art-showcase-dev-route',
+    name: 'dev-build-info',
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         const url = request.url ?? '';
@@ -36,9 +36,7 @@ export default defineConfig(({ command, isPreview }) => ({
           response.end(JSON.stringify({ shortSha: readShortSha() }));
           return;
         }
-        if (url.split('?')[0] !== '/art-showcase') return next();
-        response.writeHead(302, { Location: `/art-showcase/${url.includes('?') ? url.slice(url.indexOf('?')) : ''}` });
-        response.end();
+        next();
       });
     },
   }],

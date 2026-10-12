@@ -7,7 +7,7 @@ import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import { Simulation } from '../src/simulation/Simulation';
 import { laneCompositionForRow, laneWave } from '../src/simulation/enemies/laneComposition';
 import { pressureGroupSize, pressureWaveSettings } from '../src/simulation/enemies/latePressure';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 
 const config = GameConfigSchema.parse(data), balance = config.catharsis!;
 const options = { seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1,

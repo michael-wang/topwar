@@ -1,30 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import configData from '../public/game-data/game.json';
-import levelData from '../public/game-data/levels/level-001.json';
+
 import { GameConfigSchema } from '../src/config/configSchema';
-import { LevelDefinitionSchema, type LevelDefinition } from '../src/level/LevelDefinition';
+import { type LevelDefinition } from '../src/level/LevelDefinition';
 import { Simulation, type SimulationTuning } from '../src/simulation/Simulation';
 import { createDefenseSquadFormation } from '../src/simulation/squad/formation';
 
 const config = GameConfigSchema.parse(configData);
 const isolated: LevelDefinition = { id: 'formation-step', length: 1000, enemyGroups: [], upgradeGates: [] };
-const bossLevel = LevelDefinitionSchema.parse({ ...levelData,
-  enemyStream: { ...levelData.enemyStream, spawnAheadDistance: 116 } });
 const baseTuning: SimulationTuning = {
   moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 3, defenseLineOffset: 1.5,
   formationSpacing: 0.8, memberRadius: 0.01, normalEnemyRadius: 0.01,
-  // Keep the recorded legacy formation fixture at its original cadence.
+  // Isolate current same-tick casualty formation updates.
   bossRadius: 0.01, rifle: { ...config.weapon.rifle, fireRate: 10 }, rocket: { ...config.weapon.rocket },
 };
-
-function fingerprint(value: unknown): string {
-  // Values below were recorded from origin/main before the formation reuse change.
-  let hash = 0xcbf29ce484222325n;
-  for (const char of JSON.stringify(value)) {
-    hash = BigInt.asUintN(64, (hash ^ BigInt(char.charCodeAt(0))) * 0x100000001b3n);
-  }
-  return hash.toString(16).padStart(16, '0');
-}
 
 describe('step-local formation reuse', () => {
 

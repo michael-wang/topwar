@@ -5,7 +5,7 @@ import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
 import { type MachineGunReviewFixture } from '../src/app/DevMachineGunReview';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 
 const config = GameConfigSchema.parse(gameData);
 const options = { seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1, startRocketCount: 0,

@@ -12,7 +12,7 @@ const projectile = (x: number, z: number, hitRadiusBonus = 0,
 const enemy = (id: number, x: number, z: number): EnemySimulationState =>
   ({ id, tier: 1, x, z, hp: 10 });
 const counters = (): CollisionDiagnostics => ({ findFirstHitCalls: 0,
-  enemyCandidateChecks: 0, projectilePasses: 0, penetrationPasses: 0 });
+  enemyCandidateChecks: 0, projectilePasses: 0 });
 
 // Reference source deliberately ignores query bounds and visits every active enemy.
 function fullScan(enemies: EnemySimulationState[]): EnemyCandidateSource {
@@ -22,10 +22,9 @@ function fullScan(enemies: EnemySimulationState[]): EnemyCandidateSource {
 }
 
 function hit(shot: ProjectileSimulationState, endZ: number, source: EnemyCandidateSource,
-  options: { minimumFraction?: number;
-    pierced?: ReadonlySet<number>; diagnostics?: CollisionDiagnostics } = {}) {
+  options: { diagnostics?: CollisionDiagnostics } = {}) {
   const result = findFirstHit(shot, endZ, source, .3, 0, 0,
-    options.minimumFraction ?? 0, options.pierced, options.diagnostics);
+    options.diagnostics);
   if (!result) return null;
   return { kind: result.kind, id: result.kind === 'enemy' ? result.enemy.id
     : 0,
@@ -63,7 +62,7 @@ describe('projectile enemy broad phase', () => {
     expect(hit(shot,10,indexed)?.id).toBe(2);
   });
 
-  it('matches repeated penetration cursors and excludes enemies removed earlier in the step', () => {
+  it('matches consecutive independent shots and excludes enemies removed earlier in the step', () => {
     const original = [enemy(4, 0, 2), enemy(2, 0, 2), enemy(6, 0, 4),
       enemy(8, 0, 6), enemy(10, 3, 3)];
     const run = (useIndex: boolean) => {
@@ -71,18 +70,11 @@ describe('projectile enemy broad phase', () => {
       const index = new EnemyCollisionIndex(enemies);
       const source = useIndex ? index : fullScan(enemies);
       const sequence: (string | number)[] = [];
-      for (const shot of [projectile(0, 0), projectile(0, 0)]) {
-        let minimumFraction = 0;
-        const pierced = new Set<number>();
-        for (let pass = 0; pass < 5; pass++) {
-          const result = findFirstHit(shot, 8, source, .3, 0, 0, minimumFraction, pierced);
-          if (!result || result.kind !== 'enemy') break;
-          sequence.push(result.enemy.id, result.fraction);
-          pierced.add(result.enemy.id);
-          minimumFraction = result.fraction;
-          enemies.splice(enemies.indexOf(result.enemy), 1);
-          index.remove(result.enemy);
-        }
+      for (let shotIndex = 0; shotIndex < 10; shotIndex++) {
+        const result = findFirstHit(projectile(0, 0), 8, source, .3, 0, 0);
+        if (!result || result.kind !== 'enemy') break;
+        sequence.push(result.enemy.id, result.fraction);
+        enemies.splice(enemies.indexOf(result.enemy), 1); index.remove(result.enemy);
       }
       return { sequence, survivors: enemies.map((entry) => entry.id) };
     };

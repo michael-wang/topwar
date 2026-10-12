@@ -1,3 +1,4 @@
+import { exposeProductionApp } from './production-app-hook.mjs';
 // Shipping QA UI/recovery checks. Private app access and Wake Lock mocks exist
 // only in intercepted test responses; no debug endpoint is shipped.
 import assert from 'node:assert/strict';
@@ -13,10 +14,7 @@ const button=(page,name)=>page.getByRole('button',{name,exact:true});
 const state=page=>page.evaluate(()=>window.__testApp.simulation.getState());
 const key='topwar:session:v1:release';
 async function install(page,platform='mock'){
-  await page.route(/\/topwar\/assets\/index-.*\.js$/,async route=>{
-    const response=await route.fetch(),body=await response.text(),pattern=/new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;
-    assert.equal([...body.matchAll(pattern)].length,1);await route.fulfill({response,body:body.replace(pattern,m=>`(window.__testApp=${m})`)});
-  });
+  await exposeProductionApp(page);
   await page.addInitScript(platform=>{
     window.__wake={requests:0,releases:0,held:[],mode:platform};
     if(platform==='insecure')Object.defineProperty(window,'isSecureContext',{configurable:true,value:false});

@@ -1,3 +1,4 @@
+import { exposeProductionApp } from './production-app-hook.mjs';
 import { preview } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
@@ -6,18 +7,10 @@ const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ?? 'file:
 const server = await preview({ preview: { host: '127.0.0.1', port: 5186, strictPort: true } });
 const browser = await chromium.launch({ headless: true, executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const results = [];
-try { for (const width of [350, 390]) for (const legacy of [false, true]) {
+try { for (const width of [350, 390]) {
   const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.route(/\/topwar\/assets\/index-.*\.js$/, async route => {
-    const response = await route.fetch(), body = await response.text();
-    const pattern = /new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;
-    assert.equal([...body.matchAll(pattern)].length, 1);
-    await route.fulfill({ response, body: body.replace(pattern, m => `(window.__testApp=${m})`) });
-  });
-  if (legacy) await page.route(/\/game-data\/game\.[a-f0-9]+\.json$/, async route => {
-    const response = await route.fetch(), data = await response.json(); delete data.catharsis; await route.fulfill({ response, json: data });
-  });
+  await exposeProductionApp(page);
   await page.goto('http://127.0.0.1:5186/topwar/'); await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
@@ -47,6 +40,6 @@ try { for (const width of [350, 390]) for (const legacy of [false, true]) {
     return first === canonical(sim.getState());
   }, saved); assert(identical);
   await page.evaluate(() => window.__testApp.retry()); assert.equal(await page.evaluate(() => localStorage.getItem('topwar:session:v1:release')), null);
-  assert.deepEqual(errors, []); results.push({ width, legacy, restored: true, paused: true, identical, devExcluded: true, characters: text.length, errors });
+  assert.deepEqual(errors, []); results.push({ width, restored: true, paused: true, identical, devExcluded: true, characters: text.length, errors });
   await page.close();
 } } finally { writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2)); await browser.close(); await new Promise(r => server.httpServer.close(r)); }

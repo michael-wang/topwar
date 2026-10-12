@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { Simulation } from '../src/simulation/Simulation';
 import { emptyGrenade, placeGrenadeSupply } from '../src/simulation/grenade';
 import { carnivalOptions } from './helpers/HistoricalPilots';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { GrenadeConfigSchema } from '../src/config/grenadeConfig';
 import { CatharsisConfigSchema } from '../src/config/catharsisConfig';
 

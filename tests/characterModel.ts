@@ -14,7 +14,7 @@ const playerPresentation: PlayerPresentation = {
   prepareMaterial: material => material, weaponPosition: [.13,0,0], muzzleAnchor: [.25,.46,.93],
   shadow: {width:.72,depth:.43}, levelUp: {radius:.49,height:1.1}, tracer: {height:.64,offsetX:0},
 };
-const crowdPresentation: CrowdPresentation = {materialStyle:'legacy-atlas',bodyTint:'legacy-tunic'};
+const crowdPresentation: CrowdPresentation = {};
 export function characterFamilies(overrides: Partial<TestResources> = {}): CharacterVisualFamilies {
   const r = {normalIdle:bodyModel(),normalRuns:runFrames(),grayIdle:grayBodyModel(),playerBody:bodyModel(),
     helmet:helmetModel(),vest:vestModel(),rifle:rifleModel(),...overrides};

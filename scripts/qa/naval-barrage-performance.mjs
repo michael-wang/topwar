@@ -1,3 +1,4 @@
+import { exposeProductionApp } from './production-app-hook.mjs';
 import assert from 'node:assert/strict';
 import { createServer,preview } from 'vite';
 import { mkdirSync,writeFileSync } from 'node:fs';
@@ -19,8 +20,7 @@ try{for(const width of [350,390])for(const mode of ['off','on'])for(const phase 
   if(only&&only!==`${width}-${mode}-${phase}`)continue;
   const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
-  await page.route(/\/topwar\/assets\/index-.*\.js$/,async route=>{const r=await route.fetch(),body=await r.text(),pattern=/new [\w$]+\([\w$]+,[\w$]+,[\w$]+,[\w$]+,[\w$]+\(window\.location\.search\),[\w$]+\(window\.location\.search\)(?:,[\w$]+)*\)/g;
-    assert.equal([...body.matchAll(pattern)].length,1);await route.fulfill({response:r,body:body.replace(pattern,m=>`(window.__testApp=${m})`)});});
+  await exposeProductionApp(page);
   const start=performance.now();await page.goto('http://127.0.0.1:5191/topwar/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');const startupMs=performance.now()-start;
   assert.equal(await page.locator('.dev-naval-barrage,.dev-fps,.tuning-panel').count(),0);
   if(phase==='warm')await page.waitForTimeout(3500);

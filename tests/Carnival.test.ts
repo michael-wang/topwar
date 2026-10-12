@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { carnivalEntry, carnivalOptions, carnivalConfig, carnivalPilotLane, runCarnivalPilot } from './helpers/HistoricalPilots';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { createDevReviewFixture } from './helpers/ReviewFixtures';
 import { Simulation } from '../src/simulation/Simulation';
 import { advanceCarnival, emptyCarnival } from '../src/simulation/carnival';

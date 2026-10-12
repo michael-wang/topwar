@@ -73,8 +73,6 @@ export const HEAVY_GAIT_CYCLE_MS = 650;
 // feedback remain per role even when these live instancing resources coincide.
 export function canShareCrowdBatch(a: CrowdVisualFamily, b: CrowdVisualFamily): boolean {
   return a.body.material === b.body.material
-    && a.presentation.materialStyle === b.presentation.materialStyle
-    && a.presentation.bodyTint === b.presentation.bodyTint
     && a.presentation.gearTint === b.presentation.gearTint
     && a.helmet.material === b.helmet.material
     && a.helmet.geometry === b.helmet.geometry && a.vest.geometry === b.vest.geometry

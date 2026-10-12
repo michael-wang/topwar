@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { carnivalOptions, carnivalEntry, carnivalPilotLane, carnivalPilotGrenade } from './helpers/HistoricalPilots';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { createNavalReview } from '../src/app/NavalReview';
 import { advanceDestroyer, destroyerMuzzle, destroyerPose, emptyDestroyer } from '../src/simulation/destroyer';
 import { DestroyerRenderer } from '../src/rendering/DestroyerRenderer';

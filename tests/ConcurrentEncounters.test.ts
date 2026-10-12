@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import historical from './fixtures/sequential-encounters.json';
 import { carnivalEntry, carnivalOptions, carnivalPilotLane } from '../scripts/qa/carnivalPilot';
-import { pilotTuning } from '../scripts/qa/p15Pilot';
+import { pilotTuning } from '../scripts/qa/DefensePilot';
 import { Simulation } from '../src/simulation/Simulation';
 import { runDifficultyPilot } from '../scripts/qa/difficultyPilot';
 import previousData from './fixtures/pre-b6b5-game.json';

@@ -1,14 +1,9 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { startGameRecording, inspectRecordingFrames } from './browser-recording.mjs';
-const phase=process.argv[2]??'after',glInspect=process.argv.includes('--gl'),record=phase==='after'&&!process.argv.includes('--no-record')&&!glInspect,out=process.argv.find(a=>a.startsWith('--out='))?.slice(6)??`artifacts/p3b6b3c/grenade-${phase}${glInspect?'-gl':phase==='after'&&!record?'-timing':''}`;mkdirSync(out,{recursive:true});
-const baseline='ea6994470b6c8d6ab8e0eb6e9739362ddd17e047';
-const files=['src/main.ts','src/app/GameApp.ts','src/ui/SessionRecovery.ts','src/ui/GrenadeButton.ts','src/audio/GameAudio.ts','src/rendering/GrenadeRenderer.ts','src/simulation/grenade.ts','src/simulation/Simulation.ts','src/style.css'];
-const server=await createServer({cacheDir:`${out}/cache`,server:{host:'127.0.0.1',port:5187,strictPort:true,watch:{ignored:['**/artifacts/**']}},plugins:[{
- name:'golden-grenade-baseline',enforce:'pre',transform(source,id){const file=files.find(f=>id.replaceAll('\\','/').endsWith('/'+f));return phase==='before'&&file?execFileSync('git',['show',`${baseline}:${file}`],{encoding:'utf8'}):source;}
-}]});await server.listen();
+const phase='after',glInspect=process.argv.includes('--gl'),record=phase==='after'&&!process.argv.includes('--no-record')&&!glInspect,out=process.argv.find(a=>a.startsWith('--out='))?.slice(6)??`artifacts/p3b6b3c/grenade-${phase}${glInspect?'-gl':phase==='after'&&!record?'-timing':''}`;mkdirSync(out,{recursive:true});
+const server=await createServer({cacheDir:`${out}/cache`,server:{host:'127.0.0.1',port:5187,strictPort:true,watch:{ignored:['**/artifacts/**']}}});await server.listen();
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});const results=[];
 try{for(const width of [350,390])for(const role of glInspect?['survival10-ahead']:['crate3','survival8-ahead','survival10-ahead']){

@@ -83,7 +83,7 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
   vest.visible = false;
   return {
     role: 'grunt', id: 'topwar-grunt', body, helmet, vest,
-    presentation: { materialStyle: 'vertex-colors', bodyTint: 'authored',
+    presentation: { 
       stepWeight: { shift: .028, roll: .028, compression: .012 } },
     runFrames: runs.map(geometry => new THREE.Mesh(geometry, bodyMaterial)), gaitCycleMs: ENEMY_GAIT_CYCLE_MS,
     contact: { body, helmet, vest }, death: { body: new THREE.Mesh(idle, deathMaterial), helmet, vest },
