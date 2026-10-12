@@ -55,3 +55,19 @@ it('round-trips pending shells/cooldowns, cancellation, restart and large steps 
   const due=setNavalBarrage(emptyNavalBarrage(4,cfg),cfg,0,true),late=advanceNavalBarrage(due,cfg,100,0,true,true);
   expect(late.opportunities).toBe(1);expect(late.capacitySkipped).toBe(1);expect(late.nextAtSeconds).toBeGreaterThanOrEqual(100);
 });
+it('updates the final deadline on partial cancellation and draws only once on the last cancellation',()=>{
+  const options=carnivalOptionsFor(c),sim=createNavalBarrageReview(options,3,'barrage10-on',17);
+  for(let tick=0;tick<180;tick++)sim.step(1/60,survivalDecision(sim,tick,'competent'),pilotTuning);
+  const before=sim.getState(),shells=before.artillery!.shells;expect(shells).toHaveLength(2);
+  const later=[...shells].sort((a,b)=>b.impactAtSeconds-a.impactAtSeconds)[0];sim.cancelArtillery(later.id);
+  const partial=sim.getState();expect(partial.navalBarrage!.pendingImpact!.finalImpactAtSeconds).toBe(partial.artillery!.shells[0].impactAtSeconds);
+  expect(partial.navalBarrage!.rngState).toBe(before.navalBarrage!.rngState);
+  sim.restoreState(partial);expect(sim.getState()).toEqual(partial);
+  sim.cancelArtillery();const final=sim.getState();expect(final.navalBarrage!.cooldown!.resolvedAtSeconds).toBe(final.elapsedSeconds);
+  const rng=final.navalBarrage!.rngState;sim.cancelArtillery();expect(sim.getState().navalBarrage!.rngState).toBe(rng);
+  sim.restoreState(final);expect(sim.getState()).toEqual(final);
+  sim.restoreState(before);sim.commandEncounter('barrageOff');sim.commandEncounter('barrageOn');
+  const restarted=sim.getState();expect(restarted.artillery).toEqual(before.artillery);
+  expect(restarted.navalBarrage!.nextAtSeconds).toBeCloseTo(restarted.elapsedSeconds+2);
+  sim.restoreState(restarted);expect(sim.getState()).toEqual(restarted);
+});
