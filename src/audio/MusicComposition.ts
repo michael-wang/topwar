@@ -89,6 +89,7 @@ export function musicStepAt(presentationMs: number, state: MusicState = 'NORMAL'
 }
 
 export function musicHarmonyForBar(bar: number, state: MusicState): Harmony {
+  if (state === 'VICTORY') return [BOSS_HARMONY.F, HARMONY.Bb, HARMONY.C, BOSS_HARMONY.F][((bar % 4) + 4) % 4];
   if (isBossMusic(state)) return BOSS_HARMONY[BOSS_FORM[((bar % 4) + 4) % 4]];
   const form = NORMAL_FORM;
   return HARMONY[form[((bar % form.length) + form.length) % form.length] as keyof typeof HARMONY];
@@ -104,7 +105,16 @@ export function musicMotifVariant(seed: number, phrase: number): number {
 }
 
 export function musicEventsForStep(seed: number, step: number, state: MusicState): MusicEvent[] {
-  if (state === 'GAME_OVER' || state === 'VICTORY') return [];
+  if (state === 'GAME_OVER') return [];
+  if (state === 'VICTORY') {
+    const inBar = step % MUSIC_STEPS_PER_BAR, harmony = musicHarmonyForBar(Math.floor(step / MUSIC_STEPS_PER_BAR), state);
+    const events: MusicEvent[] = inBar === 0 ? harmony.padHz.map(frequencyHz => ({
+      instrument: 'pad', frequencyHz, durationSeconds: MUSIC_BAR_SECONDS + .32, peakGain: .08, chord: harmony.name })) : [];
+    // A quiet major-key salute; no battle drums beneath the Commander.
+    if (inBar % 2 === 0) events.push({ instrument: 'motif',
+      frequencyHz: [349.23, 440, 523.25, 440][inBar / 2], durationSeconds: .6, peakGain: .1, chord: harmony.name });
+    return events;
+  }
   if (isBossMusic(state)) return bossEventsForStep(step, state);
   const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
   const inBar = ((step % MUSIC_STEPS_PER_BAR) + MUSIC_STEPS_PER_BAR) % MUSIC_STEPS_PER_BAR;

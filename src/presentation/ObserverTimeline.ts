@@ -1,9 +1,11 @@
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 
-// Presentation only: a short lead-in for the beep/preload, then three readable phrases.
-export const missionIntroTiming = { atSeconds: .2, durationSeconds: 6.2,
-  readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 1.5, 3.7] } as const;
+// Subtitle-only defaults; decoded Commander recordings determine their complete window.
+export const missionIntroTiming = { atSeconds: .2, durationSeconds: 12,
+  readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 2, 6, 9.3] } as const;
+export const victoryTiming = { atSeconds: 0, durationSeconds: 10,
+  readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 3.5, 5.5, 7.5] } as const;
 // The approved 4.6-second clip outlasts landing; this never gates Tank combat.
 export const tankIntroTiming = { atSeconds: .3, durationSeconds: 5 } as const;
 
@@ -13,33 +15,40 @@ export class MissionObserverTimeline {
   private previous = 0;
   private started: number | null = null;
   private voiced = false;
+  private duration = 0;
+  constructor(private readonly timing: { atSeconds: number; durationSeconds: number; readinessWaitSeconds: number }
+    = missionIntroTiming) {}
   get active(): boolean { return this.attempt !== null; }
-  reset(): void { this.attempt = null; this.started = null; this.voiced = false; }
-  start(now: number): void { this.reset(); if (now === 0) { this.attempt = now; this.previous = now; } }
-  update(now: number, alive: boolean, paused: boolean, readiness: 'pending' | 'ready' | 'unavailable', portraitsPending = false) {
+  reset(): void { this.attempt = null; this.started = null; this.voiced = false; this.duration = 0; }
+  start(now: number): void { this.reset(); this.attempt = now; this.previous = now; }
+  update(now: number, alive: boolean, paused: boolean, readiness: 'pending' | 'ready' | 'unavailable', portraitsPending = false,
+    voiceDurationSeconds: number | null = null) {
     const hidden = { owns: false, visible: false, begin: false, end: false,
-      offset: 0, duration: missionIntroTiming.durationSeconds, audible: false };
+      offset: 0, duration: this.timing.durationSeconds, audible: false };
     if (this.attempt === null || !alive) { this.reset(); return hidden; }
     const discontinuity = now < this.previous - 1e-8 || now - this.previous > .3;
     this.previous = now;
     if (discontinuity) {
       // A restore may show remaining subtitles, but never starts/replays speech.
-      this.started ??= this.attempt + missionIntroTiming.atSeconds;
+      this.started ??= this.attempt + this.timing.atSeconds;
+      this.duration ||= this.timing.durationSeconds;
       this.voiced = false;
     }
     let begin = false;
     if (this.started === null) {
-      const cue = this.attempt + missionIntroTiming.atSeconds;
-      if (paused || now < cue || ((readiness === 'pending' || portraitsPending) && now < cue + missionIntroTiming.readinessWaitSeconds))
+      const cue = this.attempt + this.timing.atSeconds;
+      if (paused || now < cue || ((readiness === 'pending' || portraitsPending) && now < cue + this.timing.readinessWaitSeconds))
         return { ...hidden, owns: true };
       this.started = now; this.voiced = readiness === 'ready'; begin = true;
+      this.duration = this.voiced && voiceDurationSeconds !== null ? voiceDurationSeconds + .35 : this.timing.durationSeconds;
     }
     const offset = now - this.started;
-    const visible = offset >= 0 && offset < missionIntroTiming.durationSeconds;
-    const end = offset >= missionIntroTiming.durationSeconds && !discontinuity;
+    const visible = offset >= 0 && offset < this.duration;
+    const end = offset >= this.duration && !discontinuity;
     const audible = visible && this.voiced;
-    if (offset >= missionIntroTiming.durationSeconds) this.reset();
-    return { owns: true, visible, begin, end, offset, duration: missionIntroTiming.durationSeconds, audible };
+    const duration = this.duration;
+    if (offset >= duration) this.reset();
+    return { owns: true, visible, begin, end, offset, duration, audible };
   }
 }
 

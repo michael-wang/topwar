@@ -17,6 +17,7 @@ vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
 vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} } }));
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
+  updateVictory(now: number, paused: boolean) { return mock.victory(now, paused); }
   update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
@@ -32,6 +33,7 @@ vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...arg
 
 const mock = vi.hoisted(() => ({
   missionIntro: vi.fn(),
+  victory: vi.fn((_now: number, _paused: boolean) => false),
   constructedWith: vi.fn(),
   reviewConstructed: vi.fn(),
   reviewFixture: vi.fn(),
@@ -1067,7 +1069,11 @@ vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
 } }));
 
 it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset the same app', async () => {
-  const raf = createRaf(), base = mock.getState(), app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+  const raf = createRaf(), base = mock.getState();
+  const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
+  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
+  const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+  const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
   await startGame(app); raf.frame(0);
   const tank = startDefenseTank(0, 17, gameData.catharsis!.defenseTank!);
   Object.assign(tank, { status: 'defeated', hp: 0, phase: 3, defeatedAtSeconds: 90 });
@@ -1078,6 +1084,11 @@ it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset 
   raf.key('p'); raf.frame(10000); expect(tankUi.show).not.toHaveBeenCalled();
   raf.key('p'); raf.frame(10250);
   for (let i = 1; i <= 14; i++) raf.frame(10250 + i * 250);
+  expect(mock.victory).toHaveBeenCalled(); expect(tankUi.show).not.toHaveBeenCalled();
+  raf.key('p'); expect(mock.victory).toHaveBeenLastCalledWith(expect.any(Number), true);
+  raf.frame(20000); expect(tankUi.show).not.toHaveBeenCalled();
+  raf.key('p'); raf.frame(20250);
+  mock.victory.mockReturnValueOnce(true); raf.frame(20500);
   expect(tankUi.show).toHaveBeenCalledWith(stats, 90); expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
   mock.getState.mockReturnValue(base); tankUi.replay!(); expect(tankUi.reset).toHaveBeenCalled();
   expect(mock.constructedWith).toHaveBeenCalledTimes(2); app.dispose();

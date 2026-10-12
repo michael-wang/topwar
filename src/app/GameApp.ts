@@ -488,7 +488,10 @@ export class GameApp {
       this.laneInput?.stop();
       const s = this.simulation.getState();
       this.targetX = s.player.x;
-      this.fieldObserver?.update(s.destroyer, s.catharsis?.balance.destroyer, s.elapsedSeconds, s.squad.count > 0, true, s.defenseTank);
+      if (s.defenseTank?.status === 'defeated' && this.tankDeathAtMs !== null
+        && this.presentationMs - this.tankDeathAtMs >= TANK_DEATH_MS)
+        this.fieldObserver?.updateVictory(this.presentationMs / 1000, true);
+      else this.fieldObserver?.update(s.destroyer, s.catharsis?.balance.destroyer, s.elapsedSeconds, s.squad.count > 0, true, s.defenseTank);
       this.audio.silenceMusic();
     } else {
       this.startInputs();
@@ -726,7 +729,8 @@ export class GameApp {
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
         if (!this.clearedFinishedCheckpoint) { clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
-      this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank);
+      if (!cleared || this.tankDeathAtMs === null || this.presentationMs - this.tankDeathAtMs < TANK_DEATH_MS)
+        this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank);
       const tankEntranceEvents = this.simulation.consumeTankEntranceEvents();
       this.renderer.presentTankEntrance(tankEntranceEvents, this.presentationMs);
       if (tankEntranceEvents.length) this.audio.play('supplyImpact');
@@ -758,7 +762,8 @@ export class GameApp {
         for (let i = this.tankDeathCue + 1; i < times.length && age >= times[i]; i++) {
           this.audio.play(i === times.length - 1 ? 'giantDeath' : 'grenadeExplosion'); this.tankDeathCue = i;
         }
-        if (age >= TANK_DEATH_MS && state.combatStats)
+        if (age >= TANK_DEATH_MS && (this.fieldObserver?.updateVictory(this.presentationMs / 1000, this.paused) ?? true)
+          && state.combatStats)
           this.stageClearOverlay.show(state.combatStats, state.defenseTank!.defeatedAtSeconds!);
       }
       if (state.progression && state.catharsis) {
@@ -797,7 +802,8 @@ export class GameApp {
         paused: this.paused,
         musicVolume: this.runtimeTuning.musicVolume,
         tank: state.defenseTank ? { status: state.defenseTank.status, phase: state.defenseTank.phase,
-          elapsedSeconds: state.elapsedSeconds - state.defenseTank.startedAtSeconds,
+          elapsedSeconds: cleared ? (this.presentationMs - this.tankDeathAtMs!) / 1000
+            : state.elapsedSeconds - state.defenseTank.startedAtSeconds,
           entrySeconds: state.defenseTank.activeAtSeconds - state.defenseTank.startedAtSeconds } : undefined,
       });
       const audioFinishedMs = perf ? performance.now() : 0;

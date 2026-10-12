@@ -1,4 +1,4 @@
-import { publicAssetUrl } from '../core/publicAssetUrl';
+import { publicAssetUrl, hasPublicAsset } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 
 // User-approved provisional Mandarin recording; English awaits an approved asset.
@@ -6,14 +6,19 @@ export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>
   'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null,
 };
 export const observerMissionVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
-  'zh-TW': 'audio/observer_mission_intro_zh-TW.mp3', en: null,
+  'zh-TW': 'audio/commander_stage1_intro_zh-TW.mp3', en: null,
+};
+export const observerVictoryVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
+  'zh-TW': 'audio/commander_stage1_victory_zh-TW.mp3', en: null,
 };
 export const observerTankVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
   'zh-TW': 'audio/observer_stage1_boss_intro_zh-TW.mp3', en: null,
 };
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
-  return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
+  const asset = (message === 'victory' ? observerVictoryVoiceAssets : message === 'tankBoss' ? observerTankVoiceAssets
+    : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
+  return asset && (message === 'missionIntro' || message === 'victory') && !hasPublicAsset(asset) ? null : asset;
 }
 export type VoiceLoader = (url: string, context: AudioContext) => Promise<AudioBuffer | null>;
 /** Fetching bytes needs no audio permission. Context creation/playback still belongs to the Start gesture. */
@@ -47,7 +52,7 @@ const loadVoice: VoiceLoader = async (url, context) => {
   } catch { return null; }
 };
 
-/** One local recording at a time. The offset always follows the presentation's simulation clock. */
+/** One local recording at a time, following the pause-aware presentation offset. */
 export class ObserverVoice {
   private readonly cache = new Map<string, Promise<AudioBuffer | null>>();
   private readonly decoded = new Map<string, AudioBuffer | null>();
@@ -67,6 +72,8 @@ export class ObserverVoice {
     private readonly missionAssets = observerMissionVoiceAssets) {}
 
   private asset(locale: ObserverLocale, message: ObserverMessage): string | null {
+    if (message === 'victory' || message === 'missionIntro' && this.missionAssets === observerMissionVoiceAssets)
+      return observerVoiceAsset(locale, message);
     return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
   }
 
@@ -87,6 +94,10 @@ export class ObserverVoice {
     this.load(locale, message);
     return this.decoded.has(asset) ? this.decoded.get(asset) ? 'ready' : 'unavailable' : 'pending';
   }
+  durationSeconds(locale: ObserverLocale, message: ObserverMessage): number | null {
+    const asset = this.asset(locale, message);
+    return asset ? this.decoded.get(asset)?.duration ?? null : null;
+  }
 
   sync(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity,
     message: ObserverMessage = 'destroyer'): void {
@@ -100,9 +111,9 @@ export class ObserverVoice {
     if (changed) { this.stop(); this.generation++; this.started = false; }
     this.locale = locale; this.paused = paused; this.message = message;
     if (paused || this.started || !pending) return;
-    // The mission presentation owns its bounded readiness wait. Never attach a
+    // The Commander presentation owns its bounded readiness wait. Never attach a
     // late-start callback that jumps into the middle of this introduction.
-    if (message === 'missionIntro' && this.prepare(locale, message) !== 'ready') return;
+    if ((message === 'missionIntro' || message === 'victory') && this.prepare(locale, message) !== 'ready') return;
     this.started = true;
     const generation = this.generation;
     void pending.then(buffer => {

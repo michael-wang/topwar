@@ -48,13 +48,13 @@ export class ProceduralMusic {
     const changed = this.lastState !== state;
     if (changed && this.lastState !== null) this.releaseVoices(this.context.currentTime);
     this.lastState = state;
-    const musicMs = isBossMusic(state) && frame.tank
+    const musicMs = state === 'VICTORY' && frame.tank ? frame.tank.elapsedSeconds * 1000 : isBossMusic(state) && frame.tank
       ? Math.max(0, frame.tank.elapsedSeconds - (state === 'BOSS_INTRO' ? 0 : frame.tank.entrySeconds)) * 1000 : presentationMs;
     const stepMs = musicStepMs(state);
     const volume = Math.max(0, Math.min(MUSIC_MAX_VOLUME, frame.musicVolume));
     const now = this.context.currentTime;
-    const silent = frame.paused || state === 'GAME_OVER' || state === 'VICTORY' || volume === 0;
-    const target = silent ? 0 : volume * (state === 'BOSS_INTRO' ? .55 : 1);
+    const silent = frame.paused || state === 'GAME_OVER' || volume === 0;
+    const target = silent ? 0 : volume * (state === 'BOSS_INTRO' ? .55 : state === 'VICTORY' ? .65 : 1);
     if (volume === 0) {
       this.bus.gain.cancelScheduledValues(now);
       this.bus.gain.setValueAtTime(0, now);

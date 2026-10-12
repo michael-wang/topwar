@@ -1,7 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { ObserverPortraits } from '../src/ui/ObserverPortraits';
+import * as publicAssets from '../src/core/publicAssetUrl';
 
-afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); vi.restoreAllMocks(); });
 function harness() {
   const images: ImageStub[] = [];
   class ImageStub {
@@ -26,7 +27,17 @@ it('starts both images immediately and exposes only decoded elements for reuse',
   images[1].resolve(); await Promise.resolve();
   expect(portraits.readiness).toBe('ready');
   expect(portraits.get('neutral')).toBe(images[0]); expect(portraits.get('alert')).toBe(images[1]);
+  expect(portraits.get('victory')).toBe(images[0]);
   expect(images.every(i => i.decode.mock.calls.length === 1)).toBe(true); portraits.dispose();
+});
+it('prepares a supplied Victory portrait once and falls back to neutral if its decode fails', async () => {
+  vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(true);
+  const { portraits, images } = harness();
+  expect(images[2].src).toBe('/art/observer/victory.webp');
+  images[0].resolve(); images[2].reject(); await Promise.resolve();
+  expect(portraits.get('victory')).toBe(images[0]); portraits.dispose();
+  const ready = harness(); ready.images[2].resolve(); await Promise.resolve();
+  expect(ready.portraits.get('victory')).toBe(ready.images[2]); ready.portraits.dispose();
 });
 it('uses the surviving decoded expression when one fails and bounds hung images', async () => {
   vi.useFakeTimers();

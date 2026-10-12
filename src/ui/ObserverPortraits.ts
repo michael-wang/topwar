@@ -1,6 +1,6 @@
-import { publicAssetUrl } from '../core/publicAssetUrl';
+import { publicAssetUrl, hasPublicAsset } from '../core/publicAssetUrl';
 
-export type ObserverExpression = 'neutral' | 'alert';
+export type ObserverExpression = 'neutral' | 'alert' | 'victory';
 export interface PreparedObserverPortraits {
   readonly readiness: 'pending' | 'ready' | 'unavailable';
   get(expression: ObserverExpression): HTMLImageElement | null;
@@ -9,11 +9,13 @@ export interface PreparedObserverPortraits {
 /** Decode once, then insert the actual prepared element; never swap a visible src. */
 export class ObserverPortraits implements PreparedObserverPortraits {
   private readonly images = new Map<ObserverExpression, HTMLImageElement>();
-  private pending = 2;
+  private pending = 0;
   private disposed = false;
   private readonly cancel = new Set<() => void>();
   constructor() {
-    for (const expression of ['neutral', 'alert'] as const) {
+    for (const expression of ['neutral', 'alert', 'victory'] as const) {
+      if (expression === 'victory' && !hasPublicAsset('art/observer/victory.webp')) continue;
+      this.pending++;
       const image = new Image(110, 110);
       image.alt = ''; image.decoding = 'async';
       let settled = false;

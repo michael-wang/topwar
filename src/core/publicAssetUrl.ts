@@ -1,3 +1,8 @@
+/** Optional forthcoming media must never request a missing file. */
+export function hasPublicAsset(path: string): boolean {
+  return typeof __TOPWAR_PUBLIC_ASSETS__ !== 'undefined' && !!__TOPWAR_PUBLIC_ASSETS__[path];
+}
+
 export function publicAssetUrl(path: string, baseUrl = import.meta.env.BASE_URL): string {
   const url = `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
   if (!import.meta.env.PROD) return url;

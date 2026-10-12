@@ -192,6 +192,10 @@ export class GameAudio {
     return ready === 'ready' && this.unlocked && this.context?.state === 'running' ? 'ready' : 'pending';
   }
 
+  radioDurationSeconds(locale: ObserverLocale, message: ObserverMessage): number | null {
+    return this.voice?.durationSeconds(locale, message) ?? null;
+  }
+
   // Called directly within a real app-owned gesture, never from the frame loop.
   activate(): Promise<AudioActivationResult> {
     if (this.disposed) return Promise.resolve('unavailable');

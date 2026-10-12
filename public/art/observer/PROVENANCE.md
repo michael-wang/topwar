@@ -25,18 +25,10 @@ Mission-intro bytes prefetch before Start without creating an AudioContext or pl
 
 The new fixed radio window is 1.3–8.5 seconds, first shot 8.8 seconds. All later attacks and departure shift by three seconds, preserving their spacing; no combat timing depends on playback callbacks.
 
-### Mission introduction
+### Commander introduction and victory
 
-`public/audio/observer_mission_intro_zh-TW.mp3` was supplied by the project owner for provisional P3-B use on 2026-10-10 and copied unchanged. No generated replacement, trimming or re-encoding. Performer/service and separate license details were not supplied.
+The officer is now presented as 海防指揮官, retaining her existing identity, uniform and art style. Command uses neutral; Victory uses neutral until the owner supplies art/observer/victory.webp. No new portrait has been generated.
 
-- Bytes: 107217.
-- SHA-256: `8d681e6d96786f1ede9eccca1e455a74f92211f1c0e45ab685c67da2eca6ff84`.
-- Supplied duration: approximately 5.64 seconds; Chrome decoded duration: 5.64244898 seconds.
-- Intended Chinese transcript supplied by the owner: 「這裡是觀測官。」「敵軍正朝港口逼近！」「請守住防線。完畢！」
-- Provisional approved English subtitles: “Field Observer here.” / “Enemy forces are approaching the harbor!” / “Hold the line. Over.” No English speech asset.
-
-The existing radio panel shows one phrase at a time. At mission time 0.2 seconds, the presentation can wait up to 2.5 simulation seconds for voice readiness while gameplay continues. It then begins from offset zero or uses subtitles only. Phrase offsets are 0 / 1.5 / 3.7 seconds in a 6.2-second presentation window. Timing is approximate, not a transcription derived from audio. The supplied script and actual recording need human listening confirmation; no claim is made that they were independently matched by an automated transcript.
-
-Gameplay continues during the introduction. The same voice player, filters, radio beeps and ducking are reused. Fresh missions and Retry arm this presentation; loading snapshots does not arm a new introduction. Isolated DEV scenarios retain their encounter-specific dialogue.
+Forthcoming recordings: public/audio/commander_stage1_intro_zh-TW.mp3 and public/audio/commander_stage1_victory_zh-TW.mp3. They are not yet supplied. The superseded mission recording is retired; no mismatched voice is played. Only build-present files prefetch before Start, and decoded duration controls the complete subtitle/voice window. Missing or failed recordings use subtitles only. The opening never gates gameplay; Victory starts after the Tank explosions and can be skipped to results. Current scripts are in GAME_SPEC.md.
 
 Tank-intro asset: `public/audio/observer_stage1_boss_intro_zh-TW.mp3`, supplied by the project owner in the P3-B.9B.5 handoff on 2026-10-13 and copied unchanged. 90,498 bytes; SHA-256 `51e007a7e927e6eb54903524f9c13ef027597ee0747dc9d92892aa91618aebb6`. Supplied duration approximately 4.6 seconds, 44.1 kHz mono. Subtitle: 警告！發現敵軍超重型坦克！正朝我方防線推進！ Speech begins at Tank entrance +0.3s in a five-second window; the 2.5-second landing and combat schedule remain independent. Existing radio filters, music/weapon ducking and Pause/Resume are reused; restoring an already-triggered message keeps remaining subtitles without replaying speech. No English recording.

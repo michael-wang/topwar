@@ -61,9 +61,9 @@ describe('original procedural battlefield composition', () => {
     expect(phrase('BOSS_INTRO').every(e => e.instrument === 'pad' || e.instrument === 'bass')).toBe(true);
     expect(['BOSS_1', 'BOSS_2', 'BOSS_3'].map(state => phrase(state as MusicState).filter(e => e.instrument === 'drum').length)).toEqual([2, 4, 8]);
     expect(['BOSS_1', 'BOSS_2', 'BOSS_3'].map(state => phrase(state as MusicState).filter(e => e.instrument === 'motif').length)).toEqual([6, 8, 10]);
-    expect(musicEventsForStep(17, 0, 'VICTORY')).toEqual([]);
+    expect(musicEventsForStep(17, 0, 'VICTORY').map(e => e.instrument)).toEqual(['pad', 'pad', 'pad', 'motif']);
   });
-  it('follows the saved Tank clock and phase, freezes on Pause, resumes and stops at victory with bounded voices', () => {
+  it('follows the saved Tank clock and phase, freezes on Pause, resumes and changes to a quiet victory salute with bounded voices', () => {
     const { context, gains, filters, advance } = audioHarness();
     const music = new ProceduralMusic(context as unknown as AudioContext, context.createGain() as unknown as GainNode, 17);
     const boss: MusicFrame = { ...normal, tank: { status: 'entering', phase: 1, elapsedSeconds: 0, entrySeconds: 2.5 } };
@@ -92,8 +92,8 @@ describe('original procedural battlefield composition', () => {
     expect(music.activeVoiceCount).toBeGreaterThan(0);
     boss.tank!.status = 'defeated'; advance(music, 0, boss, 21.1);
     expect(musicStateFor(boss)).toBe('VICTORY');
-    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(0, 21.1, .05);
-    advance(music, 0, boss, 21.3); expect(music.activeVoiceCount).toBe(0);
+    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22 * .65, 21.1, .05);
+    advance(music, 0, boss, 21.3); expect(music.activeVoiceCount).toBeGreaterThan(0);
     boss.tank!.status = 'breached'; expect(musicStateFor(boss)).toBe('GAME_OVER');
     music.dispose(); expect(filters.every(filter => filter.disconnect.mock.calls.length === 1)).toBe(true);
   });

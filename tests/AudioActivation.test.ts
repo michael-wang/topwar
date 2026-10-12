@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AUDIO_ACTIVATION_TIMEOUT_MS, GameAudio } from '../src/audio/GameAudio';
+import * as publicAssets from '../src/core/publicAssetUrl';
 
-afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function harness(resume: () => Promise<void>) {
   const master = { gain: { value: 0 }, connect: vi.fn(), disconnect: vi.fn() };
@@ -14,6 +15,21 @@ function harness(resume: () => Promise<void>) {
 }
 
 describe('explicit optional audio activation', () => {
+  it('does not request missing Commander media and preloads supplied media before activation without playback', async () => {
+    const fetcher = vi.fn(async (_url: string) => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) }));
+    vi.stubGlobal('fetch', fetcher);
+    const h = harness(async () => { h.context.state = 'running'; });
+    const audio = new GameAudio();
+    for (const message of ['missionIntro', 'victory'] as const) expect(audio.prepareRadio('zh-TW', message)).toBe('unavailable');
+    expect(fetcher).not.toHaveBeenCalled(); expect(h.construct).not.toHaveBeenCalled();
+    vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(true);
+    for (const message of ['missionIntro', 'victory'] as const) expect(audio.prepareRadio('zh-TW', message)).toBe('pending');
+    expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/audio/commander_stage1_intro_zh-TW.mp3', '/audio/commander_stage1_victory_zh-TW.mp3']);
+    expect(h.construct).not.toHaveBeenCalled(); await audio.activate();
+    await vi.waitFor(() => expect(audio.prepareRadio('zh-TW', 'victory')).toBe('ready'));
+    expect(audio.radioDurationSeconds('zh-TW', 'victory')).toBe(5.64);
+    expect(fetcher).toHaveBeenCalledTimes(2); audio.dispose();
+  });
   it('prefetches Boss voice before Start, decodes once on activation and preserves readiness on Retry', async () => {
     const fetcher = vi.fn(async (_url: string) => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) }));
     vi.stubGlobal('fetch', fetcher);
@@ -31,21 +47,21 @@ describe('explicit optional audio activation', () => {
   it.each([500,1000,2000])('separates ready MP3 decoding from a %ims resume without extending the activation deadline',async delay=>{
     vi.useFakeTimers();vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)})));
     const h=harness(()=>new Promise<void>(resolve=>setTimeout(()=>{h.context.state='running';resolve();},delay)));
-    const audio=new GameAudio();expect(audio.prepareRadio('zh-TW','missionIntro')).toBe('pending');
+    const audio=new GameAudio();expect(audio.prepareRadio('zh-TW','tankBoss')).toBe('pending');
     expect(h.construct).not.toHaveBeenCalled();
     const activation=audio.activate();await vi.advanceTimersByTimeAsync(0);
-    expect(h.context.decodeAudioData).toHaveBeenCalledOnce();expect(audio.prepareRadio('zh-TW','missionIntro')).toBe('pending');
+    expect(h.context.decodeAudioData).toHaveBeenCalledOnce();expect(audio.prepareRadio('zh-TW','tankBoss')).toBe('pending');
     await vi.advanceTimersByTimeAsync(1000);
     expect(await activation).toBe(delay>1000?'denied':'running');
-    expect(audio.prepareRadio('zh-TW','missionIntro')).toBe(delay>1000?'pending':'ready');
-    if(delay>1000){await vi.advanceTimersByTimeAsync(delay-1000);expect(audio.prepareRadio('zh-TW','missionIntro')).toBe('ready');}
+    expect(audio.prepareRadio('zh-TW','tankBoss')).toBe(delay>1000?'pending':'ready');
+    if(delay>1000){await vi.advanceTimersByTimeAsync(delay-1000);expect(audio.prepareRadio('zh-TW','tankBoss')).toBe('ready');}
     expect(AUDIO_ACTIVATION_TIMEOUT_MS).toBe(1000);audio.dispose();
   });
   it('reports denied activation separately from pending preparation and never requires another Start gesture',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)})));
     harness(async()=>{throw Error('NotAllowedError');});const audio=new GameAudio();
-    audio.prepareRadio('zh-TW','missionIntro');expect(await audio.activate()).toBe('denied');
-    expect(audio.prepareRadio('zh-TW','missionIntro')).toBe('unavailable');audio.dispose();
+    audio.prepareRadio('zh-TW','tankBoss');expect(await audio.activate()).toBe('denied');
+    expect(audio.prepareRadio('zh-TW','tankBoss')).toBe('unavailable');audio.dispose();
   });
   it('is lazy, awaits resume, coalesces activation and reuses the context on Retry', async () => {
     let resume!: () => void;
