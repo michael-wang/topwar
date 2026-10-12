@@ -722,7 +722,7 @@ export class GameApp {
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
       const cleared = state.defenseTank?.status === 'defeated';
-      this.tankBossHud.update(state);
+      this.tankBossHud.update(state, this.presentationMs);
       this.tankEntranceHud.update(state, this.paused);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
@@ -736,6 +736,7 @@ export class GameApp {
         !cleared && !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
           && !!grenadeTarget(state, state.catharsis!.balance.grenade), this.presentationMs);
       const grenadeEvents = this.simulation.consumeGrenadeEvents();
+      this.tankBossHud.presentGrenade(grenadeEvents, this.presentationMs);
       this.audio.presentSupply(grenadeEvents,this.presentationMs);
       for (const event of grenadeEvents) {
         if(event.kind==='grenadeSupplyOpened')this.supplyTransfer?.present(event,this.presentationMs);

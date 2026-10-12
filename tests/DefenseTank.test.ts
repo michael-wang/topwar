@@ -125,6 +125,24 @@ describe('Stage 1 Defense tank', () => {
     expect(sim.getState().grenade!.inventory).toBe(19); expect(sim.getState().combatStats!.grenadesUsed).toBe(1);
     step(sim, 40); expect(sim.getState().defenseTank!.hp).toBe(6491); expect(sim.getState().combatStats!.shotsHit).toBe(0);
   });
+  it.each([1, 2, 3] as const)('phase %i takes one Grenade hit anywhere the blast overlaps its armor, preserving ordinary enemy damage', phase => {
+    for (const [x, dz, expectedDamage] of [[0, 0, 9], [tankConfig.halfWidth + 3.9, 0, 9],
+      [tankConfig.halfWidth + 2, tankConfig.halfDepth + 2, 9], [tankConfig.halfWidth + 4.1, 0, 0]]) {
+      const sim = active(phase); suppressFire(sim); const s = sim.getState(), hp = s.defenseTank!.hp;
+      const z = s.defenseTank!.z + dz;
+      s.grenade!.flight = { startX: 0, startZ: 0, targetX: x, targetZ: z, startedAtSeconds: s.elapsedSeconds,
+        flightSeconds: 1 / 60, damageEnemyHp: config.catharsis!.grenade.damageEnemyHp, blastRadius: config.catharsis!.grenade.blastRadius };
+      s.enemies = [{ id: 1, tier: 1, archetype: 'heavy', lane: 4, x, z, hp: 15 }]; s.enemyStream!.nextEnemyId = 2;
+      sim.restoreState(s); step(sim);
+      expect(sim.getState().defenseTank!.hp).toBe(hp - expectedDamage);
+      expect(sim.getState().enemies.find(e => e.id === 1)!.hp).toBe(6);
+      expect(sim.getState().combatStats!.shotsHit).toBe(s.combatStats!.shotsHit);
+      const blast = sim.consumeGrenadeEvents().find(e => e.kind === 'grenadeDetonated');
+      expect(blast?.kind === 'grenadeDetonated' ? blast.tankDamage ?? 0 : undefined).toBe(expectedDamage);
+      step(sim, 10); expect(sim.getState().defenseTank!.hp).toBe(hp - expectedDamage);
+      expect(sim.consumeGrenadeEvents()).toEqual([]);
+    }
+  });
   it('owns flank waves and 12-second Giants while preserving Supply and normal XP to Lv10', () => {
     const sim = active(2); suppressFire(sim); step(sim);
     let s = sim.getState(); expect(s.enemies.every(e => e.lane === 0 || e.lane === 4)).toBe(true);

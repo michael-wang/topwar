@@ -1001,8 +1001,10 @@ export class Simulation {
     }
     if (grenade?.flight && defenseTank?.hp !== 0 && nextElapsedSeconds + 1e-9 >= grenade.flight.startedAtSeconds + grenade.flight.flightSeconds) {
       const flight = grenade.flight;
+      let tankDamage = 0;
       if (defenseTank && tankConfig && tankInBlast(defenseTank, tankConfig, flight.targetX, flight.targetZ, flight.blastRadius)) {
-        defenseTank.hp = Math.max(0, defenseTank.hp - flight.damageEnemyHp);
+        tankDamage = Math.min(defenseTank.hp, flight.damageEnemyHp);
+        defenseTank.hp -= tankDamage;
         defenseTank.lastHitAtSeconds = nextElapsedSeconds;
       }
       const victims = enemiesInBlast(enemies, flight.targetX, flight.targetZ, flight.blastRadius).map(enemy => {
@@ -1010,7 +1012,8 @@ export class Simulation {
         const killXp = damageEnemy(enemy, flight.damageEnemyHp);
         return { id: enemy.id, x: enemy.x, z: enemy.z, archetype: enemy.archetype!, damage, killed: enemy.hp <= 0, killXp };
       });
-      this.grenadeEvents.push({ kind: 'grenadeDetonated', x: flight.targetX, z: flight.targetZ, radius: flight.blastRadius, victims });
+      this.grenadeEvents.push({ kind: 'grenadeDetonated', x: flight.targetX, z: flight.targetZ, radius: flight.blastRadius, victims,
+        ...(tankDamage > 0 ? { tankDamage } : {}) });
       grenade.flight = null;
     }
     const tankDefeated = !!defenseTank && defenseTank.hp === 0;

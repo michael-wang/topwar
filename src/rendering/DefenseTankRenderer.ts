@@ -5,6 +5,7 @@ import { illustratedMaterial } from './art/IllustratedMaterial';
 import { GrenadeExplosion } from './GrenadeExplosion';
 import type { GameRenderState } from './RenderState';
 import { TANK_ENTRANCE_CLEAR_FRACTION, type TankEntranceEvent } from '../simulation/defenseTank';
+import type { GrenadeEvent } from '../simulation/grenade';
 
 export const TANK_DEATH_MS = 3200;
 export const TANK_EXPLOSION_TIMES_MS = [0, 350, 700, 1050, 1400, 1800, 2200] as const;
@@ -16,11 +17,20 @@ export class DefenseTankRenderer {
   private readonly turret = new THREE.Group();
   private readonly block = paintedBlockGeometry();
   private readonly wheelGeometry = new THREE.CylinderGeometry(.47, .47, .25, 10);
-  private readonly barrelGeometry = new THREE.CylinderGeometry(.13, .22, 2.7, 10);
+  private readonly barrelGeometry = new THREE.CylinderGeometry(.18, .27, 2.7, 10);
   private readonly smokeGeometry = new THREE.SphereGeometry(1, 8, 6);
-  private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#687049', roughness: .85 }));
-  private readonly steel = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#b4b295', roughness: .7 }));
-  private readonly dark = new THREE.MeshStandardMaterial({ color: '#202a24', roughness: .85 });
+  private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#8056ad', roughness: .85 }));
+  private readonly steel = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#ded1b3', roughness: .7 }));
+  private readonly dark = new THREE.MeshStandardMaterial({ color: '#212631', roughness: .85 });
+  private readonly accent = new THREE.MeshStandardMaterial({ color: '#e8a342', roughness: .75 });
+  private readonly landingArmor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#687049', roughness: .85 }));
+  private readonly hitFlash = new THREE.MeshBasicMaterial({ color: '#fff4c4', transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  private readonly hitMeshes: THREE.Mesh[] = [];
+  private observedHit: number | null = null;
+  private hitAtMs = -Infinity;
+  private hitDurationMs = 90;
+  private hitStrength = .6;
   private readonly damage = new THREE.MeshBasicMaterial({ color: '#2e241e' });
   private readonly smokeMaterial = new THREE.MeshBasicMaterial({ color: '#454137', transparent: true, opacity: .3, depthWrite: false });
   private readonly shock = new THREE.Mesh(new THREE.RingGeometry(.9, 1, 32, 1, 0, Math.PI),
@@ -50,26 +60,31 @@ export class DefenseTankRenderer {
       root.add(mesh); return mesh;
     };
     part(this.group, [0, .92, 0], [3.6, 1.15, 4.7], this.armor);
-    part(this.group, [0, 1.48, -.65], [3.45, .55, 3.4], this.armor).rotation.x = -.12;
+    part(this.group, [0, 1.75, -.65], [3.45, 1, 3.4], this.armor).rotation.x = -.12;
     part(this.group, [0, 1.16, -2.3], [3.5, .35, .3], this.steel);
-    part(this.group, [0, 1.57, 1.65], [2.5, .12, 1], this.dark);
+    part(this.group, [0, 2.02, 1.65], [2.5, .12, 1], this.dark);
     for (const x of [-1.35, 1.35]) {
-      part(this.group, [x, 1.85, 1.95], [.24, .65, .3], this.dark);
+      part(this.group, [x, 2.2, 1.95], [.24, .65, .3], this.dark);
       part(this.group, [x, 1.5, -2.05], [.32, .18, .14], this.steel);
+      part(this.group, [x, 1.78, -2.12], [.24, .8, .12], this.accent);
     }
-    part(this.turret, [0, .18, 0], [2.5, .72, 2.3], this.armor);
-    part(this.turret, [0, .55, .12], [2.1, .28, 1.9], this.steel);
-    part(this.turret, [0, .83, .55], [.9, .22, .8], this.dark);
-    part(this.turret, [0, .16, -1.1], [.65, .6, .6], this.steel);
+    part(this.turret, [0, .3, 0], [2.5, 1.1, 2.3], this.armor);
+    part(this.turret, [0, .9, .12], [2.1, .28, 1.9], this.steel);
+    part(this.turret, [0, 1.18, .55], [.9, .22, .8], this.dark);
+    part(this.turret, [0, .35, -1.1], [.75, .82, .75], this.steel);
     const barrel = new THREE.Mesh(this.barrelGeometry, this.dark); barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, .28, -2.25); this.turret.add(barrel);
-    this.turret.position.y = 1.85;
-    for (const root of [this.group, this.turret]) for (const material of [this.armor, this.steel, this.dark]) {
+    barrel.position.set(0, .35, -2.25); this.turret.add(barrel);
+    this.turret.position.y = 2.4;
+    for (const root of [this.group, this.turret]) for (const material of [this.armor, this.steel, this.dark, this.accent]) {
       const parts = root.children.filter(o => o instanceof THREE.Mesh && o.geometry === this.block && o.material === material) as THREE.Mesh[];
       if (!parts.length) continue;
       const copies = parts.map(p => { p.updateMatrix(); return p.geometry.clone().applyMatrix4(p.matrix); });
       const geometry = mergeGeometries(copies)!; copies.forEach(g => g.dispose()); this.merged.push(geometry);
       parts.forEach(p => root.remove(p)); root.add(new THREE.Mesh(geometry, material));
+      if (material === this.armor || material === this.steel) {
+        const flash = new THREE.Mesh(geometry, this.hitFlash); flash.name = 'tank-hit-flash'; flash.visible = false;
+        root.add(flash); this.hitMeshes.push(flash);
+      }
     }
     this.group.add(this.turret, this.tracks, this.wheels, this.smoke, this.scars);
     for (const batch of [this.tracks, this.wheels, this.smoke, this.scars]) {
@@ -81,14 +96,14 @@ export class DefenseTankRenderer {
       this.wheels.setMatrixAt(i, this.transform.matrix);
     }
     for (let i = 0; i < 6; i++) {
-      this.transform.position.set((i % 3 - 1) * .95, 1.78, -.9 + Math.floor(i / 3) * 2);
+      this.transform.position.set((i % 3 - 1) * .95, 2.22, -.9 + Math.floor(i / 3) * 2);
       this.transform.rotation.set(0, i * .71, 0); this.transform.scale.set(.48, .025, .35); this.transform.updateMatrix();
       this.scars.setMatrixAt(i, this.transform.matrix);
     }
     this.ramp = part(this.landing, [0, .7, 47], [4.5, .18, 14], this.dark);
     this.ramp.rotation.x = -.1;
-    this.leftDoor = part(this.landing, [-1.15, 2, 54], [2.2, 2.4, .18], this.armor);
-    this.rightDoor = part(this.landing, [1.15, 2, 54], [2.2, 2.4, .18], this.armor);
+    this.leftDoor = part(this.landing, [-1.15, 2, 54], [2.2, 2.4, .18], this.landingArmor);
+    this.rightDoor = part(this.landing, [1.15, 2, 54], [2.2, 2.4, .18], this.landingArmor);
     this.explosions = new GrenadeExplosion(scene, 4, false);
     this.shock.name = 'tank-entrance-shockwave'; this.shock.rotation.x = -Math.PI / 2;
     scene.add(this.group, this.landing, this.shock); this.reset();
@@ -97,6 +112,12 @@ export class DefenseTankRenderer {
     this.entranceAtMs = nowMs;
     this.shock.position.set(0, .09, event.z);
     this.shockDepth = event.z - event.victims.reduce((z, v) => Math.min(z, v.z), event.z - 8) + 3;
+  }
+  presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
+    for (const event of events) if (event.kind === 'grenadeDetonated' && (event.tankDamage ?? 0) > 0) {
+      this.hitAtMs = nowMs; this.hitDurationMs = 230; this.hitStrength = .9;
+      break;
+    }
   }
   update(frame: GameRenderState['defenseTank'], nowMs: number): void {
     this.group.visible = !!frame; this.landing.visible = !!frame;
@@ -118,8 +139,16 @@ export class DefenseTankRenderer {
     this.group.scale.set(c.halfWidth / 2.1, 1, c.halfDepth / 2.7);
     const speed = c.phases[s.phase - 1].speedUnitsPerSecond, age = frame.elapsedSeconds - s.startedAtSeconds;
     const hitAge = frame.elapsedSeconds - (s.lastHitAtSeconds ?? -Infinity);
-    this.armor.emissive.set(hitAge < .09 ? '#d9813a' : '#000000'); this.armor.emissiveIntensity = hitAge < .09 ? .5 : 0;
-    this.armor.color.set(s.phase === 1 ? '#687049' : s.phase === 2 ? '#575a3c' : '#484834');
+    if (s.lastHitAtSeconds !== this.observedHit) {
+      this.observedHit = s.lastHitAtSeconds;
+      // Let the base armor show between MG hits; do not sustain a whole-body recolor.
+      if (hitAge >= 0 && hitAge < .09 && nowMs - this.hitAtMs >= this.hitDurationMs + 50) {
+        this.hitAtMs = nowMs; this.hitDurationMs = 90; this.hitStrength = .6;
+      }
+    }
+    const flashAge = nowMs - this.hitAtMs;
+    this.hitFlash.opacity = this.hitStrength * Math.max(0, 1 - flashAge / this.hitDurationMs);
+    for (const mesh of this.hitMeshes) mesh.visible = s.status === 'active' && flashAge >= 0 && flashAge < this.hitDurationMs;
     this.scars.visible = s.phase > 1;
     this.turret.position.z = 0;
     this.turret.rotation.x = Math.sin(age * (s.phase === 3 ? 25 : 12)) * (s.phase === 3 ? .018 : .004);
@@ -139,7 +168,7 @@ export class DefenseTankRenderer {
     this.smoke.visible = s.status === 'active' || s.status === 'defeated';
     for (let i = 0; i < 8; i++) {
       const t = (age * (s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
-      this.transform.position.set(i % 2 ? -1.35 : 1.35, 2 + t * .8, 2 + t * .6);
+      this.transform.position.set(i % 2 ? -1.35 : 1.35, 2.4 + t * .8, 2 + t * .6);
       this.transform.rotation.set(0, i, 0); this.transform.scale.setScalar((.12 + t * .2) * (s.phase === 3 ? 1.6 : 1));
       this.transform.updateMatrix(); this.smoke.setMatrixAt(i, this.transform.matrix);
     }
@@ -165,16 +194,20 @@ export class DefenseTankRenderer {
   }
   restore(frame: GameRenderState['defenseTank'], nowMs: number): void {
     this.reset();
+    this.observedHit = frame?.state.lastHitAtSeconds ?? null;
     if (frame?.state.status === 'defeated') { this.defeated = true; this.deathAtMs = nowMs - TANK_DEATH_MS; this.lastBurst = TANK_EXPLOSION_TIMES_MS.length - 1; }
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
+    this.armor.color.set('#8056ad');
     this.shock.visible = false; this.entranceAtMs = -Infinity;
+    this.hitAtMs = -Infinity; this.observedHit = null; this.hitFlash.opacity = 0;
+    for (const mesh of this.hitMeshes) mesh.visible = false;
     this.deathAtMs = -Infinity; this.lastBurst = -1; this.defeated = false; this.explosions.reset(); }
   dispose(): void {
     this.scene.remove(this.group, this.landing, this.shock); this.explosions.dispose();
     this.shock.geometry.dispose(); this.shock.material.dispose();
     for (const batch of [this.tracks, this.wheels, this.smoke, this.scars]) batch.dispose();
     for (const g of [this.block, this.wheelGeometry, this.barrelGeometry, this.smokeGeometry, ...this.merged]) g.dispose();
-    for (const m of [this.armor, this.steel, this.dark, this.damage, this.smokeMaterial]) m.dispose();
+    for (const m of [this.armor, this.steel, this.dark, this.accent, this.landingArmor, this.hitFlash, this.damage, this.smokeMaterial]) m.dispose();
   }
 }

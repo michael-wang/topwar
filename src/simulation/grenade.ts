@@ -38,6 +38,7 @@ export type GrenadeEvent = { kind: 'grenadeThrown' } | { kind: 'grenadeAcquired'
   | { kind: 'grenadeSupplyDamaged'; stage: 1 | 2 }
   | { kind: 'grenadeSupplyOpened'; x: number; z: number; amount: number } | {
   kind: 'grenadeDetonated'; x: number; z: number; radius: number;
+  tankDamage?: number;
   victims: { id: number; x: number; z: number; archetype: 'grunt' | 'heavy' | 'giant'; damage: number; killed: boolean; killXp: number }[];
 };
 export const emptyGrenade = (): GrenadeState => ({ lv3EnteredAtSeconds: null,

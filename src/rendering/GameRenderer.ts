@@ -200,6 +200,7 @@ export class GameRenderer {
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
     this.grenadeRenderer.present(events, nowMs);
     this.enemyRenderer.presentGrenade(events, nowMs);
+    this.tankRenderer?.presentGrenade(events, nowMs);
   }
 
   projectSupplyPosition(x: number, z: number, nowMs: number): { x: number; y: number } {

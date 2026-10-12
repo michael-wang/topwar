@@ -165,6 +165,9 @@
   letter-spacing:.12em; text-shadow:1px 2px #54221c; }
 .tank-boss-bar { height: 13px; overflow: hidden; background: #142332; border: 2px solid #fff3dc; box-shadow: 0 2px #142332; }
 .tank-boss-fill { height: 100%; background: #f3532f; transform-origin: left; }
+.tank-boss-damage { position:absolute; top:39px; left:0; width:100%; color:#fff4c4;
+  font:800 14px var(--font-utility, sans-serif); text-shadow:1px 2px #142332; }
+.tank-boss-damage[hidden] { display:none; }
 .tank-boss-hud[data-phase="3"] .tank-boss-fill { background: #ff2518; }
 .stage-clear-overlay { position: absolute; inset: 0; z-index: 35; display: flex; flex-direction: column;
   justify-content: center; align-items: center; gap: 20px; padding: 24px 18px;

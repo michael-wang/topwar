@@ -68,7 +68,7 @@ At zero HP, stop admissions and attacks immediately, cancel all airborne shells/
 
 The Lv3 teaching Supply appears after eight seconds and grants three Grenades; recurring Supplies grant one. Three is a teaching reward, never an inventory cap. Inventory is a nonnegative safe integer with checked addition up to Number.MAX_SAFE_INTEGER. The reward event reports only the actual award; numerical overflow cannot produce false acquisition feedback. Holding 20 or 1000 does not block recurring Supplies or allocate proportional resources.
 
-A successful throw consumes one Grenade and creates one authoritative flight. One flight at a time; Q and the HUD use the same input path. Existing global threat selection, 0.65-second flight, 9-HP damage and radius 4 remain unchanged. Launch sound and gold HUD pulse occur only for an actual throw. Acquisition transfer, launch and explosion feedback remain distinct. Staged crate destruction retains its three stages and 0.7-second recovery windows.
+A successful throw consumes one Grenade and creates one authoritative flight. One flight at a time; Q and the HUD use the same input path. Existing global threat selection, 0.65-second flight, 9-HP damage and radius 4 remain unchanged. A blast overlapping active Tank armor applies the same 9 HP once, with a stronger local armor flash and actual damage text beside Boss HP; nearer flank enemies may still be selected as the throw's target. Launch sound and gold HUD pulse occur only for an actual throw. Acquisition transfer, launch and explosion feedback remain distinct. Staged crate destruction retains its three stages and 0.7-second recovery windows.
 
 ## Presentation, lifecycle and QA
 
