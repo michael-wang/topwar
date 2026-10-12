@@ -321,6 +321,11 @@
       "damageEnemyHp": 1
     },
     "defenseTank": {
+      "flight": {
+        "horizontalSpeed": 24,
+        "gravity": 8,
+        "minimumFlightSeconds": 2.4
+      },
       "triggerLevel": 9,
       "hp": 6500,
       "entrySeconds": 2.5,

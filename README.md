@@ -16,7 +16,7 @@ npm run build
 
 Tap to Start activates audio. Hold the bottom arrows or use A/D/arrow keys to move between adjacent lanes; Q throws a Grenade. Pause suspends gameplay. Retry starts the selected scenario again.
 
-The quiet tool hatch opens local DEV controls: LATE (Lv10), CRATE3, CRATE8, NAVAL; collapsible MG TEST, SURVIVAL TEST and NAVAL BARRAGE comparisons; authored tuning and audio controls. The small FPS label measures actual rendered RAF intervals. Production ships only the restricted recovery/screen-sleep QA panel, never the full tuning tools or test-only fixtures.
+The quiet tool hatch opens local DEV controls: LATE (Lv10), CRATE3, CRATE8, NAVAL; collapsible MG TEST, SURVIVAL TEST, NAVAL BARRAGE and BOSS TEST; authored tuning and audio controls. BOSS TEST offers INTRO (Lv9 landing with a remaining Lv8 crowd), PHASE 1/2/3 (100%/65%/30% HP) and FINISH (2% HP), all playable and recoverable. The small FPS label measures actual rendered RAF intervals. Production ships only the restricted recovery/screen-sleep QA panel, never the full tuning tools or test-only fixtures.
 
 ## Current game
 

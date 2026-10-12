@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { DevReviewControls } from '../src/ui/DevReviewControls';
+import type { TankReviewFixture } from '../src/app/DevTankReview';
 
 class ElementStub extends EventTarget {
   children: ElementStub[] = [];
@@ -36,6 +37,19 @@ function setup() {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+it('offers the five BOSS TEST entries with restored selection and battlefield focus', () => {
+  const { controls, select } = setup(), section = controls.bossTest as unknown as ElementStub;
+  expect(section.children[0].textContent).toBe('BOSS TEST');
+  const buttons = section.children[1].children;
+  expect(buttons.map(b => b.textContent)).toEqual(['INTRO', 'PHASE 1', 'PHASE 2', 'PHASE 3', 'FINISH']);
+  for (const button of buttons) {
+    button.dispatchEvent(new Event('click')); expect(select.mock.lastCall).toEqual([button.dataset.role]);
+    controls.setSelected(button.dataset.role as TankReviewFixture); expect(button.attrs['aria-pressed']).toBe('true');
+    expect(button.blur).toHaveBeenCalledOnce(); expect(button.style.cssText).toContain('min-height:48px');
+  }
+  controls.dispose(); expect(section.remove).toHaveBeenCalledOnce();
+});
 
 it('adds independent touch-friendly NAVAL BARRAGE selection and restores its selected state',()=>{
   const {controls,select}=setup(),section=controls.navalBarrage as unknown as ElementStub;

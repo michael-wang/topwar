@@ -2,6 +2,7 @@ import type { DevReviewFixture } from '../app/DevReviewFixtures';
 import { MG_TEST_PRESETS, type MachineGunReviewFixture } from '../app/DevMachineGunReview';
 import type { SurvivalReviewFixture, SurvivalReviewLevel, SurvivalReviewMode } from '../app/DevSurvivalReview';
 import type { NavalBarrageReviewFixture, NavalBarrageReviewLevel } from '../app/DevNavalBarrageReview';
+import { BOSS_TEST_PRESETS, type TankReviewFixture } from '../app/DevTankReview';
 
 // Constructed only behind import.meta.env.DEV. Inline styling stays out of the
 // shipping CSS, along with the controls and fixture factory in production JS.
@@ -10,6 +11,7 @@ export class DevReviewControls {
   readonly mgTest = document.createElement('details');
   readonly survivalTest = document.createElement('details');
   readonly navalBarrage = document.createElement('details');
+  readonly bossTest = document.createElement('details');
   private barrageLevel: NavalBarrageReviewLevel = 10;
   private barrageChoice = 'on';
   private survivalMode: SurvivalReviewMode = 'experimental';
@@ -92,6 +94,18 @@ export class DevReviewControls {
       this.buttons.push(button);navalGrid.append(button);
     }
     this.navalBarrage.append(navalSummary,navalGrid);this.navalBarrage.addEventListener('pointerdown',this.stopPointer);viewport.append(this.navalBarrage);
+    this.bossTest.className = 'dev-boss-test'; this.bossTest.style.cssText = this.mgTest.style.cssText;
+    const bossSummary = document.createElement('summary'); bossSummary.textContent = 'BOSS TEST'; bossSummary.style.cssText = summary.style.cssText;
+    const bossGrid = document.createElement('div'); bossGrid.style.cssText = survivalGrid.style.cssText;
+    for (const role of Object.keys(BOSS_TEST_PRESETS) as TankReviewFixture[]) {
+      const preset = BOSS_TEST_PRESETS[role], button = document.createElement('button');
+      button.type = 'button'; button.textContent = preset.label; button.dataset.role = role;
+      button.title = role === 'boss-intro' ? 'Lv9 landing with an advancing Lv8 crowd' : `Real Tank Boss battle at ${preset.hpFraction * 100}% HP`;
+      button.style.cssText = 'min-height:48px;margin:0;border:1px solid #566578;border-radius:6px;background:#263444;color:#f5f5f0;font:700 12px var(--font-utility,sans-serif);cursor:pointer;touch-action:manipulation';
+      button.addEventListener('click', () => { select(role); button.blur(); });
+      this.buttons.push(button); bossGrid.append(button);
+    }
+    this.bossTest.append(bossSummary, bossGrid); this.bossTest.addEventListener('pointerdown', this.stopPointer); viewport.append(this.bossTest);
     this.setSelected();
   }
   setSelected(role?: DevReviewFixture): void {
@@ -113,6 +127,7 @@ export class DevReviewControls {
     this.mgTest.removeEventListener('pointerdown', this.stopPointer);
     this.survivalTest.removeEventListener('pointerdown', this.stopPointer);
     this.navalBarrage.removeEventListener('pointerdown',this.stopPointer);this.navalBarrage.remove();
+    this.bossTest.removeEventListener('pointerdown', this.stopPointer); this.bossTest.remove();
     this.element.remove();
     this.mgTest.remove();
     this.survivalTest.remove();
