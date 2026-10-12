@@ -1,4 +1,4 @@
-import { carnivalEntry, carnivalConfig } from '../../scripts/qa/carnivalPilot';
+import { carnivalEntry } from '../../scripts/qa/carnivalPilot';
 import { emptyLevelEncounters } from '../../src/simulation/levelEncounters';
 import { enterNavalPresence, emptyNavalPresence } from '../../src/simulation/navalPresence';
 import { pilotTuning } from '../../scripts/qa/p15Pilot';

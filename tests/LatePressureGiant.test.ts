@@ -125,7 +125,7 @@ it('projects Giant maximum, proportions and gait without persisting renderer sta
 it.each([[1, 44], [17, 38], [42, 30]])('takes 37–39 seconds of retained Rifle Stage III focused fire to kill the fixed Giant (seed %i)', (seed, distance) => {
   const sim = new Simulation({ seed, level: { id: 'focus', length: 1000, enemyGroups: [], upgradeGates: [] },
     startSquad: 1, startRocketCount: 0, tiers: config.tiers, catharsis: { balance: { ...balance, progression: { ...balance.progression, levelPlan: balance.progression.levelPlan.slice(0,5), xpRequirements: balance.progression.xpRequirements.slice(0,4) } }, trackHalfWidth: 3.2 } });
-  const initial = sim.getState(); initial.progression = { level: 6, xp: 0 };
+  const initial = sim.getState(); initial.progression = { level: 5, xp: 0 };
   initial.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   initial.enemies = [{ id: 1, tier: 1, archetype: 'giant', lane: 2, x: 0, z: distance, hp: balance.giant.hp }];
   sim.restoreState(initial);
@@ -139,7 +139,7 @@ it.each([[1, 44], [17, 38], [42, 30]])('takes 37–39 seconds of retained Rifle 
   expect(balance.giant.hp).toBe(172);
   expect(result.enemies).toHaveLength(0);
   expect(result.squad.count).toBe(1);
-  expect(result.progression).toEqual({ level: 6, xp: 0 });
+  expect(result.progression).toEqual({ level: 5, xp: 0 });
   expect(firstHit).toBeDefined();
   expect(result.elapsedSeconds - firstHit!).toBeGreaterThanOrEqual(37);
   expect(result.elapsedSeconds - firstHit!).toBeLessThanOrEqual(39);

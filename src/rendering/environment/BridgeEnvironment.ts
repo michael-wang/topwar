@@ -11,13 +11,9 @@ import { sandWashTexture } from '../art/PaintedTextures';
 import * as THREE from 'three';
 import { unfoggedBasicMaterial } from '../art/unfoggedBasicMaterial';
 import { ARTILLERY_SITES, ArtilleryScheduler, type ArtilleryLayer } from './ArtilleryScheduler';
-import { WarActivityScheduler, SKY_FLAK_STARTED, SHIP_PASS_MS,
-  AIRCRAFT_PASS_MS } from './WarActivityScheduler';
+import { WarActivityScheduler, SKY_FLAK_STARTED, AIRCRAFT_PASS_MS } from './WarActivityScheduler';
 import { InfernoSurgeScheduler } from './InfernoSurgeScheduler';
 
-const SPAN_LENGTH = 300;
-const JOINT_SPACING = 12;
-const JOINT_COUNT = 18;
 export const BATTLEFIELD_FOG_NEAR = 76;
 export const BATTLEFIELD_FOG_FAR = 108;
 export const BATTLEFIELD_FOG_COLOR = ART.world.fog;
@@ -49,19 +45,17 @@ export class BridgeEnvironment {
   getDebugStats(): { smoke: number; infernoSources: number; impactSlots: number;
     activeImpacts: number; flakSlots: number; activeFlak: number;
     aircraft: number; activeAircraft: number; shipSections: number } {
-    return { smoke: this.smoke.length, infernoSources: this.infernoSources.length,
+    return { smoke: 0, infernoSources: this.infernoSources.length,
       impactSlots: this.impactSlots.length,
       activeImpacts: this.impactSlots.filter((slot) => slot.group.visible).length,
       flakSlots: this.flakSlots.length,
       activeFlak: this.flakSlots.filter((slot) => slot.group.visible).length,
       aircraft: this.aircraft.length,
       activeAircraft: this.aircraft.filter((plane) => plane.visible).length,
-      shipSections: this.shipSections.length };
+      shipSections: 0 };
   }
-  private readonly group = new THREE.Group();
   private readonly near = new THREE.Group();
   private readonly mid = new THREE.Group();
-  private readonly far = new THREE.Group();
   private readonly beachhead = new THREE.Group();
   private readonly inferno = new THREE.Group();
   private readonly shipLayer = new THREE.Group();
@@ -70,27 +64,16 @@ export class BridgeEnvironment {
   private readonly previousFog: THREE.Scene['fog'];
   private readonly geometries: THREE.BufferGeometry[] = [];
   private readonly materials: THREE.Material[] = [];
-  private readonly joints: THREE.Mesh[] = [];
-  private readonly smoke: { sprite: THREE.Sprite; x: number }[] = [];
   private readonly artillery = new ArtilleryScheduler();
   private readonly activity = new WarActivityScheduler();
   private readonly infernoSurges = new InfernoSurgeScheduler();
   private readonly infernoSources: InfernoVisual[] = [];
   private readonly impactSlots: ImpactSlot[] = [];
   private readonly flakSlots: ImpactSlot[] = [];
-  private readonly burningCores: { mesh: THREE.Mesh; scale: number }[] = [];
-  private readonly burningSites: THREE.Group[] = [];
-  private readonly shipMaterials: THREE.MeshStandardMaterial[] = [];
-  private readonly shipSections: { group: THREE.Group; x: number; halfWidth: number }[] = [];
   private readonly aircraftMaterials: THREE.MeshBasicMaterial[] = [];
-  private readonly ship = new THREE.Group();
   private readonly aircraft: THREE.Group[] = [];
   private smokeTexture: THREE.DataTexture | null = null;
   private sandTexture: THREE.DataTexture | null = null;
-  private readonly deck: THREE.Mesh;
-  private readonly shoulders: THREE.Mesh[] = [];
-  private readonly barriers: THREE.Mesh[] = [];
-  private readonly water: THREE.Mesh;
   private readonly transports = new OffshoreTransports();
   private readonly defenseBeach = new THREE.Group();
   private readonly coastalWater = new CoastalWater();
@@ -99,9 +82,7 @@ export class BridgeEnvironment {
   private readonly coastalCloth = new CoastalCloth();
   private readonly coastalForeground = new CoastalForeground();
   private defenseMode = false;
-  private readonly legacyBackground = new THREE.Color(BATTLEFIELD_FOG_COLOR);
   private readonly coastalBackground = new THREE.Color(ART.coastalDefense.sky);
-  private readonly legacyFog = new THREE.Fog(BATTLEFIELD_FOG_COLOR, BATTLEFIELD_FOG_NEAR, BATTLEFIELD_FOG_FAR);
   private readonly coastalFog = new THREE.Fog(ART.coastalDefense.horizon, ART.coastalDefense.fogNear, ART.coastalDefense.fogFar);
 
   constructor(private readonly scene: THREE.Scene) {
@@ -112,60 +93,12 @@ export class BridgeEnvironment {
       BATTLEFIELD_FOG_NEAR, BATTLEFIELD_FOG_FAR);
     this.near.name = 'battlefield-near';
     this.mid.name = 'battlefield-mid';
-    this.far.name = 'battlefield-far';
-    this.beachhead.name = 'enemy-beachhead-horizon';
+    this.beachhead.name = 'distant-artillery-layer';
+    this.beachhead.visible = false;
     this.inferno.name = 'battlefield-deep-inferno';
     this.shipLayer.name = 'battlefield-water-traffic';
     this.skyLayer.name = 'battlefield-sky-activity';
-    const deckMaterial = this.material('#8b9291');
-    const shoulderMaterial = this.material('#707b7d');
-    const parapetMaterial = this.material('#59676b');
-    const seamMaterial = this.material('#667073');
-    const waterMaterial = this.material('#54747d');
-    this.water = this.mesh(new THREE.PlaneGeometry(240, SPAN_LENGTH), waterMaterial,
-      'bridge-ocean');
-    this.water.rotation.x = -Math.PI / 2;
-    this.water.position.y = -.5;
-    this.group.add(this.water);
-    this.deck = this.mesh(new THREE.PlaneGeometry(1, SPAN_LENGTH), deckMaterial,
-      'bridge-deck');
-    this.deck.rotation.x = -Math.PI / 2;
-    this.group.add(this.deck);
-    for (const side of [-1, 1]) {
-      const shoulder = this.mesh(new THREE.PlaneGeometry(1, SPAN_LENGTH),
-        shoulderMaterial, `bridge-shoulder-${side}`);
-      shoulder.rotation.x = -Math.PI / 2;
-      shoulder.position.y = .012;
-      this.shoulders.push(shoulder);
-      this.group.add(shoulder);
-      const barrier = this.mesh(new THREE.BoxGeometry(.24, .3, SPAN_LENGTH),
-        parapetMaterial, `bridge-barrier-${side}`);
-      barrier.position.y = .13;
-      this.barriers.push(barrier);
-      this.group.add(barrier);
-    }
-    const jointGeometry = new THREE.PlaneGeometry(1, .055);
-    this.geometries.push(jointGeometry);
-    for (let i = 0; i < JOINT_COUNT; i++) {
-      const joint = new THREE.Mesh(jointGeometry, seamMaterial);
-      joint.name = 'bridge-expansion-joint';
-      joint.rotation.x = -Math.PI / 2;
-      joint.position.y = .018;
-      this.joints.push(joint);
-      this.scene.add(joint);
-    }
-    const highlight = this.material('#729098', true, .2);
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        const band = this.mesh(new THREE.PlaneGeometry(15 + i * 8, .13), highlight,
-          'ocean-highlight');
-        band.rotation.x = -Math.PI / 2;
-        band.position.set(side * (13 + i * 21), -.48, 8 + i * 24);
-        this.group.add(band);
-      }
-    }
     this.buildBattlefield();
-    this.buildBeachhead();
     this.buildInferno();
     this.buildArtillery();
     this.buildActivity();
@@ -188,15 +121,16 @@ export class BridgeEnvironment {
         this.defenseBeach.add(dune);
     }
     this.defenseBeach.name = 'stationary-defense-beach';
-    this.defenseBeach.visible = false;
+    this.defenseBeach.visible = true;
     this.scene.add(this.defenseBeach, this.transports.group);
-    this.scene.add(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
+    this.scene.add(this.near, this.mid, this.beachhead, this.inferno,
       this.shipLayer, this.skyLayer);
     this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = false, assaultAgeSeconds?: number): void {
-    this.transports.update(playerZ, nowMs, defenseMode, assaultAgeSeconds);
+  update(playerZ: number, trackHalfWidth: number, nowMs: number, defenseMode = true): void {
+    this.defenseMode = true;
+    this.transports.update(playerZ, nowMs, true);
     this.defenseBeach.visible = defenseMode;
     this.defenseBeach.position.z = playerZ;
     this.coastalWater.update(nowMs);
@@ -204,70 +138,15 @@ export class BridgeEnvironment {
     this.coastalVegetation.update(trackHalfWidth, nowMs);
     this.coastalCloth.update(trackHalfWidth, nowMs);
     this.coastalForeground.update(trackHalfWidth);
-    this.burningSites.forEach(site => {
-      // Hide the entire legacy actor, including glow/flames/smoke, on the beach.
-      site.visible = !defenseMode;
-      site.position.copy(site.userData.legacyPosition);
-    });
-    if (this.defenseMode !== defenseMode) {
-      this.defenseMode = defenseMode;
-      this.scene.background = defenseMode ? this.coastalBackground : this.legacyBackground;
-      this.scene.fog = defenseMode ? this.coastalFog : this.legacyFog;
-      // Legacy ruins/cranes and blanket haze are retained but hidden in the coastal experiment.
-      for (const layer of [this.near, this.mid, this.far]) for (const child of layer.children)
-        if (child.name === 'battlefield-ruin' || child.name === 'battlefield-crane'
-          || child.name === 'battlefield-low-haze' || child.name === 'battlefield-smoke') child.visible = !defenseMode;
-      this.beachhead.visible = !defenseMode;
-      for (const core of this.burningCores) {
-        const material = core.mesh.material as THREE.MeshBasicMaterial;
-        material.color.set(defenseMode ? ART.coastalDefense.fire : '#bd7947');
-        material.toneMapped = !defenseMode; material.needsUpdate = true;
-      }
-    }
-    this.group.visible = !defenseMode;
-    for (const joint of this.joints) joint.visible = !defenseMode;
+    this.scene.background = this.coastalBackground;
+    this.scene.fog = this.coastalFog;
     const bridgeHalfWidth = Math.max(trackHalfWidth + 1, 4);
-    this.group.position.z = playerZ + 55;
-    this.deck.scale.x = bridgeHalfWidth * 2;
-    for (let i = 0; i < 2; i++) {
-      const side = i === 0 ? -1 : 1;
-      this.shoulders[i].position.x = side * (bridgeHalfWidth - .44);
-      this.barriers[i].position.x = side * (bridgeHalfWidth - .12);
-    }
-    const firstJoint = Math.floor(playerZ / JOINT_SPACING) * JOINT_SPACING - 48;
-    for (let i = 0; i < this.joints.length; i++) {
-      const joint = this.joints[i];
-      joint.position.z = firstJoint + i * JOINT_SPACING;
-      joint.scale.x = bridgeHalfWidth * 2 - .5;
-    }
-    // Bounded progress offsets keep the vista ahead while nearby wreckage shifts most.
-    this.near.position.set(Math.sin(playerZ * .018) * 1.4, 0,
-      playerZ + 52 + Math.sin(playerZ * .025) * 3);
-    this.mid.position.set(Math.sin(playerZ * .013) * .55, 0,
-      playerZ + 76 + Math.sin(playerZ * .014));
-    this.far.position.set(Math.sin(playerZ * .008) * .1, 0,
-      playerZ + 100 + Math.sin(playerZ * .009) * .25);
+    this.near.position.set(0, 0, playerZ + 52);
+    this.mid.position.set(0, 0, playerZ + 76);
     this.beachhead.position.set(Math.sin(playerZ * .003) * .02, 0, playerZ + 125);
     this.inferno.position.set(Math.sin(playerZ * .002) * .01, 0, playerZ + 142);
-    this.shipLayer.position.z = playerZ;
+    this.shipLayer.position.z = playerZ + 60;
     this.skyLayer.position.z = playerZ + 125;
-    if (defenseMode) {
-      // Scenery is fixed relative to the defense line; internal progression never
-      // scrolls tracks, barricades or the horizon past the standing defenders.
-      this.near.position.set(0, 0, playerZ + 52);
-      this.mid.position.set(0, 0, playerZ + 76);
-      this.far.position.set(0, 0, playerZ + 100);
-      this.shipLayer.position.z = playerZ + 60;
-    }
-    for (let i = 0; i < this.smoke.length; i++) {
-      this.smoke[i].sprite.position.x = this.smoke[i].x
-        + Math.sin(nowMs * .00015 + i * 1.7) * .16;
-    }
-    for (let index = 0; index < this.burningCores.length; index++) {
-      const core = this.burningCores[index];
-      core.mesh.position.y = .95;
-      core.mesh.scale.y = core.scale * (1 + Math.sin(nowMs * .006 + index * 2) * .1);
-    }
     this.updateArtillery(nowMs, defenseMode ? trackHalfWidth : undefined);
     this.updateActivity(nowMs, bridgeHalfWidth);
     this.updateInferno(nowMs);
@@ -279,8 +158,8 @@ export class BridgeEnvironment {
     this.coastalForeground.dispose();
     this.transports.dispose();
     this.scene.remove(this.defenseBeach, this.transports.group);
-    this.scene.remove(this.group, this.near, this.mid, this.far, this.beachhead, this.inferno,
-      this.shipLayer, this.skyLayer, ...this.joints);
+    this.scene.remove(this.near, this.mid, this.beachhead, this.inferno,
+      this.shipLayer, this.skyLayer);
     this.scene.background = this.previousBackground;
     this.scene.fog = this.previousFog;
     this.smokeTexture?.dispose();
@@ -289,210 +168,7 @@ export class BridgeEnvironment {
     for (const material of this.materials) material.dispose();
   }
 
-  private buildBattlefield(): void {
-    const blockGeometry = paintedBlockGeometry();
-    const glowGeometry = new THREE.SphereGeometry(1, 8, 6);
-    const flameGeometry = new THREE.ConeGeometry(.42, 1.15, 5);
-    this.geometries.push(blockGeometry, glowGeometry, flameGeometry);
-    const nearMaterial = this.material(ART.world.near);
-    const nearAccent = this.material(ART.world.nearAccent);
-    const midMaterial = this.material(ART.world.mid);
-    const midAccent = this.material(ART.world.midAccent);
-    const farMaterial = this.material(ART.world.far);
-    this.smokeTexture = this.createSmokeTexture();
-    const nearSmoke = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: ART.world.near, transparent: true, opacity: .47, depthWrite: false });
-    const midSmoke = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: ART.world.mid, transparent: true, opacity: .42, depthWrite: false });
-    const farSmoke = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: '#a4b9bb', transparent: true, opacity: .22, depthWrite: false });
-    const lowHaze = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: BATTLEFIELD_FOG_COLOR, transparent: true, opacity: .34, depthWrite: false });
-    this.materials.push(nearSmoke, midSmoke, farSmoke, lowHaze);
-    const wreckMaterial = this.material(ART.world.steel);
-    const glowMaterial = new THREE.MeshBasicMaterial({ color: '#a46239',
-      transparent: true, opacity: .2, depthWrite: false });
-    const flameMaterial = new THREE.MeshBasicMaterial({ color: '#bd7947',
-      transparent: true, opacity: .66, depthWrite: false });
-    const fireSmokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-      color: ART.world.steel, transparent: true, opacity: .55, depthWrite: false });
-    this.materials.push(glowMaterial, flameMaterial, fireSmokeMaterial);
-
-    const ruin = (layer: THREE.Group, x: number, z: number, width: number,
-      height: number, material: THREE.Material, tilt = 0): void => {
-      const mesh = new THREE.Mesh(blockGeometry, material);
-      mesh.name = 'battlefield-ruin';
-      mesh.scale.set(width, height, 1.6);
-      mesh.position.set(x, height / 2 - .45, z);
-      mesh.rotation.z = tilt;
-      layer.add(mesh);
-    };
-    const smoke = (layer: THREE.Group, material: THREE.SpriteMaterial,
-      x: number, y: number, z: number, width: number, height: number,
-      name = 'battlefield-smoke'): void => {
-      const sprite = new THREE.Sprite(material);
-      sprite.name = name;
-      sprite.position.set(x, y, z);
-      sprite.scale.set(width, height, 1);
-      this.smoke.push({ sprite, x });
-      layer.add(sprite);
-    };
-    const fire = (layer: THREE.Group, x: number, z: number, options: {
-      wreckWidth: number; flameScale: number; smokeWidth: number;
-      smokeHeight: number; smokeLean: number; slabTilt: number;
-    }): void => {
-      const site = new THREE.Group();
-      site.name = 'battlefield-burning-site';
-      site.position.set(x, 0, z);
-      site.userData.legacyPosition = site.position.clone(); this.burningSites.push(site);
-      const wreck = new THREE.Mesh(blockGeometry, wreckMaterial);
-      wreck.name = 'burning-wreck-base';
-      wreck.position.set(0, .22, 0);
-      wreck.scale.set(options.wreckWidth, .45, 1.3);
-      wreck.rotation.y = options.slabTilt * -.7;
-      const slab = new THREE.Mesh(blockGeometry, wreckMaterial);
-      slab.name = 'burning-wreck-slab';
-      slab.position.set(-.55, .66, .2);
-      slab.scale.set(.85, 1.1, .3);
-      slab.rotation.z = options.slabTilt;
-      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-      glow.name = 'battlefield-fire-glow';
-      glow.position.set(.25, .45, 0);
-      glow.scale.set(.68 * options.flameScale, .28, .48);
-      const core = new THREE.Mesh(flameGeometry, flameMaterial);
-      core.name = 'burning-fire-core';
-      core.position.set(.3, .95, 0);
-      core.scale.setScalar(options.flameScale);
-      this.burningCores.push({ mesh: core, scale: options.flameScale });
-      site.add(wreck, slab, glow, core);
-      for (let index = 0; index < 2; index++) {
-        const puff = new THREE.Sprite(fireSmokeMaterial);
-        puff.name = 'burning-black-smoke';
-        puff.position.set(index * options.smokeLean, 2 + index * options.smokeHeight * .42, 0);
-        puff.scale.set(options.smokeWidth * (1 + index * .15),
-          options.smokeHeight * (1 + index * .1), 1);
-        site.add(puff);
-      }
-      layer.add(site);
-    };
-
-    // Large low wreckage frames the bridge without entering the combat lane.
-    ruin(this.near, -15.1, -7, 7.8, 3.7, nearMaterial, -.12);
-    ruin(this.near, -12.8, 2, 2.5, 5.1, nearAccent, .16);
-    ruin(this.near, 15.4, -6, 6.4, 2.7, nearMaterial, .09);
-    ruin(this.near, 12.9, 3, .9, 4.7, nearAccent, -.34);
-    smoke(this.near, nearSmoke, 15.8, 3.1, -5.8, 5.9, 6.7);
-    smoke(this.near, nearSmoke, 16.5, 5.3, -5.6, 7.3, 8);
-
-    // The active destruction sits deeper, with fire anchored to ruined structures.
-    ruin(this.mid, -11.1, -4, 4.5, 5.4, midMaterial, -.09);
-    ruin(this.mid, -15.8, 3, 2.2, 6.5, midAccent, .13);
-    ruin(this.mid, 12.3, -2, 4.2, 3.4, midMaterial, .08);
-    ruin(this.mid, 18.6, 4, 4.8, 5.2, midAccent, -.12);
-    fire(this.mid, -14, -7, { wreckWidth: 3.2, flameScale: .72,
-      smokeWidth: 2.3, smokeHeight: 5.1, smokeLean: -.5, slabTilt: -.43 });
-    fire(this.mid, 8.8, 3.2, { wreckWidth: 1.65, flameScale: 1.04,
-      smokeWidth: 4.1, smokeHeight: 2.7, smokeLean: .75, slabTilt: .2 });
-    smoke(this.mid, midSmoke, -11.2, 3.2, -4, 4.3, 5.2);
-    smoke(this.mid, midSmoke, -10.6, 5.4, -4.1, 6.1, 7.2);
-    smoke(this.mid, midSmoke, -12.1, 7.8, -4, 7.4, 8.3);
-    smoke(this.mid, midSmoke, 12.4, 4.2, -2, 4.7, 5.9);
-    smoke(this.mid, midSmoke, 13.3, 6.5, -1.9, 6.3, 7.6);
-
-    // Small skyline blocks and a broken crane nearly merge into the far haze.
-    ruin(this.far, -22, -5, 2.7, 2.1, farMaterial, .04);
-    ruin(this.far, -16.8, -3, 1.9, 2.8, farMaterial, -.06);
-    ruin(this.far, -12.6, -4, 2.3, 1.7, farMaterial, .03);
-    ruin(this.far, 13.4, -4, 1.8, 2.5, farMaterial, -.04);
-    ruin(this.far, 18.1, -3, 2.6, 1.9, farMaterial, .07);
-    ruin(this.far, 24.3, -5, 2.4, 2.8, farMaterial, -.06);
-    ruin(this.far, 22.1, -4, .28, 4.2, farMaterial);
-    const craneArm = new THREE.Mesh(blockGeometry, farMaterial);
-    craneArm.name = 'battlefield-crane';
-    craneArm.scale.set(3.8, .18, .35);
-    craneArm.position.set(20.4, 3.7, -4);
-    craneArm.rotation.z = -.08;
-    this.far.add(craneArm);
-    smoke(this.far, farSmoke, 24.7, 4.4, -5, 5.1, 6.3);
-    smoke(this.far, farSmoke, 25.3, 6.4, -5, 6.5, 7.2);
-    smoke(this.far, lowHaze, -1.8, 2.4, -12, 20, 8, 'battlefield-low-haze');
-    smoke(this.far, lowHaze, 2.8, 2.8, -9, 18, 9, 'battlefield-low-haze');
-  }
-
-  private buildBeachhead(): void {
-    const block = paintedBlockGeometry();
-    this.geometries.push(block);
-    const steel = new THREE.MeshBasicMaterial({ color: ART.world.mid, transparent: true,
-      opacity: .34, depthWrite: false, fog: false });
-    const distance = new THREE.MeshBasicMaterial({ color: ART.world.far, transparent: true,
-      opacity: .25, depthWrite: false, fog: false });
-    this.materials.push(steel, distance);
-    const part = (parent: THREE.Group, name: string, x: number, y: number,
-      z: number, width: number, height: number, depth: number,
-      material: THREE.Material = steel, tilt = 0): void => {
-      const mesh = new THREE.Mesh(block, material);
-      mesh.name = name;
-      mesh.position.set(x, y, z);
-      mesh.scale.set(width, height, depth);
-      mesh.rotation.z = tilt;
-      parent.add(mesh);
-    };
-    const crane = (x: number, z: number, height: number, arm: number,
-      tilt: number): void => {
-      const group = new THREE.Group();
-      group.name = 'beachhead-crane';
-      part(group, 'crane-leg', -2.1, height / 2, z, .6, height, .6, steel, tilt);
-      part(group, 'crane-leg', 2.1, height / 2, z, .6, height, .6, steel, tilt);
-      part(group, 'crane-crossbeam', 0, height - 2, z, 5.2, .42, .6);
-      part(group, 'crane-boom', arm * .21, height + 1, z, arm, .5, .7, steel, tilt);
-      part(group, 'crane-cable', arm * .38, height - 2.5, z, .13, 6, .12, distance);
-      group.position.x = x;
-      this.beachhead.add(group);
-    };
-    crane(-18.5, -2.8, 22, 13, -.075);
-    crane(16, -3.6, 19, 11, .065);
-    crane(28, -5, 15, 8, -.1);
-    const tower = new THREE.Group();
-    tower.name = 'beachhead-control-tower';
-    part(tower, 'tower-shaft', 0, 8, -4, 2.1, 16, 2, distance, -.04);
-    part(tower, 'tower-cab', 0, 17, -4, 5.5, 2.6, 2.3);
-    part(tower, 'tower-broken-roof', -.6, 18.8, -4, 4.4, .3, 2.3, steel, -.19);
-    tower.position.x = 7.5;
-    this.beachhead.add(tower);
-    part(this.beachhead, 'beachhead-broken-mast', -8.5, 11, -4,
-      .22, 20, .24, steel, .17);
-    part(this.beachhead, 'beachhead-terminal', -13.5, 2.1, -5,
-      7.5, 4.2, 3, distance);
-    part(this.beachhead, 'beachhead-terminal', 13.2, 1.6, -6,
-      5.8, 3.2, 3, distance);
-    const transport = (x: number, z: number, width: number): void => {
-      const group = new THREE.Group();
-      group.name = 'beachhead-transport';
-      part(group, 'ship-hull', 0, 1.4, z, width, 2.8, 3, distance);
-      part(group, 'ship-superstructure', -width * .16, 4.8, z,
-        width * .38, 4.2, 2.4);
-      part(group, 'ship-stack', -width * .22, 8.2, z,
-        1.2, 3.4, 1.1, steel);
-      part(group, 'ship-mast', width * .16, 7.2, z,
-        .18, 8, .18, distance, -.08);
-      group.position.x = x;
-      this.beachhead.add(group);
-    };
-    transport(-32, -7, 15);
-    transport(34, -8, 12);
-    if (this.smokeTexture) {
-      const smokeMaterial = new THREE.SpriteMaterial({ map: this.smokeTexture,
-        color: '#72868a', transparent: true, opacity: .2, depthWrite: false, fog: false });
-      this.materials.push(smokeMaterial);
-      for (const [x, y, z, scale] of [[-20, 18, -9, 14], [22, 15, -10, 12]]) {
-        const smoke = new THREE.Sprite(smokeMaterial);
-        smoke.name = 'beachhead-smoke';
-        smoke.position.set(x, y, z);
-        smoke.scale.set(scale, scale * 1.4, 1);
-        this.beachhead.add(smoke);
-      }
-    }
-  }
+  private buildBattlefield(): void { this.smokeTexture = this.createSmokeTexture(); }
 
   private buildInferno(): void {
     const sourcePositions = [
@@ -615,9 +291,7 @@ export class BridgeEnvironment {
   private buildActivity(): void {
     const block = paintedBlockGeometry();
     this.geometries.push(block);
-    const hull = this.material('#303b40', true, 0);
-    const fittings = this.material('#39474b', true, 0);
-    this.shipMaterials.push(hull, fittings);
+
     const part = (parent: THREE.Group, name: string, x: number, y: number,
       z: number, width: number, height: number, depth: number,
       material: THREE.Material): void => {
@@ -627,29 +301,7 @@ export class BridgeEnvironment {
       mesh.scale.set(width, height, depth);
       parent.add(mesh);
     };
-    this.ship.name = 'battlefield-warship';
-    for (let index = 0; index < 5; index++) {
-      const localX = (index - 2) * 1.1;
-      const section = new THREE.Group();
-      section.name = `warship-section-${index}`;
-      section.position.x = localX;
-      part(section, 'warship-hull', 0, 0, 0, 1.12, .56, 1.6, hull);
-      if (index >= 1 && index <= 3) {
-        part(section, 'warship-deck', 0, .4, 0, 1.08, .32, 1.3, fittings);
-      }
-      if (index === 1) {
-        part(section, 'warship-superstructure', .4, .86, 0,
-          1.4, .82, 1, hull);
-        part(section, 'warship-mast', 0, 1.65, 0, .12, 1, .12, fittings);
-      }
-      if (index === 3) part(section, 'warship-gun', .3, .58, 0,
-        1.4, .15, .22, hull);
-      this.ship.add(section);
-      this.shipSections.push({ group: section, x: localX,
-        halfWidth: index === 1 ? 1.12 : index === 3 ? 1 : .56 });
-    }
-    this.ship.visible = false;
-    this.shipLayer.add(this.ship);
+
 
     for (let index = 0; index < 2; index++) {
       const planeMaterial = unfoggedBasicMaterial({ color: ART.world.steel,
@@ -696,23 +348,6 @@ export class BridgeEnvironment {
 
   private updateActivity(nowMs: number, bridgeHalfWidth: number): void {
     const events = this.activity.update(nowMs);
-    const shipAge = nowMs - this.activity.shipStartedAtMs;
-    // Coastal invasion already belongs to OffshoreTransports. This dark bridge
-    // activity actor survives only in legacy mode, including after mode switches.
-    this.ship.visible = !this.defenseMode && shipAge >= 0 && shipAge < SHIP_PASS_MS;
-    if (this.ship.visible) {
-      const progress = shipAge / SHIP_PASS_MS;
-      const x = this.activity.shipSide * this.activity.shipX * (2 * progress - 1);
-      this.ship.position.set(x, -.15, 38);
-      this.ship.rotation.y = this.activity.shipSide === 1 ? 0 : Math.PI;
-      const edgeFade = Math.max(0, Math.min(1, progress / .08, (1 - progress) / .08));
-      this.shipMaterials[0].opacity = edgeFade;
-      this.shipMaterials[1].opacity = edgeFade;
-      for (const section of this.shipSections) {
-        const sectionX = x + (this.activity.shipSide === 1 ? section.x : -section.x);
-        section.group.visible = Math.abs(sectionX) > bridgeHalfWidth + section.halfWidth;
-      }
-    }
     for (let index = 0; index < this.aircraft.length; index++) {
       const pass = this.activity.aircraftPasses[index];
       const plane = this.aircraft[index];

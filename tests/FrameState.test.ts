@@ -10,7 +10,7 @@ import { GameAudio } from '../src/audio/GameAudio';
 const config = GameConfigSchema.parse(configData);
 const level = LevelDefinitionSchema.parse(levelData);
 const create = () => new Simulation({ seed: 71, level, startSquad: 2,
-  startRocketCount: 0, tiers: config.tiers });
+  startRocketCount: 0, tiers: config.tiers, catharsis: { balance: { ...config.catharsis!, gruntSpeed: 0, heavySpeed: 0, defenseWaves: { ...config.catharsis!.defenseWaves, firstWaveDelaySeconds: 1000 } }, trackHalfWidth: 3.2 } });
 const projection = { formationSpacing: .45, trackHalfWidth: 3.2,
   defenseLineOffset: 1.5, bossVisualScale: 7 };
 
@@ -29,9 +29,9 @@ describe('ephemeral simulation frame state', () => {
     expect(snapshot.streamRewards).not.toBe(frame.streamRewards);
     expect(snapshot.squad.rifleCounts).not.toBe(frame.squad.rifleCounts);
     snapshot.player.x = 100;
-    snapshot.enemies[0].x = 100;
+    snapshot.enemies.push({id:1,tier:1,archetype:'grunt',x:100,z:10,hp:1});
     snapshot.squad.rifleCounts[0] = 0;
-    snapshot.projectiles.push({ id: 1, kind: 'rifle', tier: 1, x: 0, z: 0,
+    snapshot.projectiles.push({ id: 1, kind: 'rifle', tier: 1, lane: 2, x: 0, z: 0,
       speed: 1, damage: 1, remainingRange: 1, blastRadius: 0,
       hitRadiusBonus: 0, penetrationRemaining: 0 });
     expect(simulation.getState()).toEqual(frame);
@@ -55,28 +55,14 @@ describe('ephemeral simulation frame state', () => {
 });
 
 describe('render frame projection', () => {
-  it('shares compatible arrays and preserves Boss and relative-Z conversions', () => {
-    const state = create().getState();
-    state.player.z = 20;
-    state.boss = { id: 9, tier: 2, x: 0, z: 30, hp: 50, maxHp: 100,
-      engaged: true, slamCooldownRemainingSeconds: .5, slamCount: 1 };
-    state.gates = [{ id: 'gate', x: 1, zOffset: 6, width: 2, hitProgress: 2,
-      reward: { mode: 'hitPickup', kind: 'rifle', amount: 3,
-        hitsRequired: 5, dropSpeed: 2 } }];
-    state.pickups = [{ id: 4, sourceGateId: 'gate', x: -1, zOffset: 3,
-      width: 2, rewardKind: 'tier2Rifle', rewardAmount: 1, dropSpeed: 2 }];
-    const before = structuredClone(state);
+  it('shares compatible combat arrays and computes the stationary defense line without mutating state', () => {
+    const state = create().getState(), before = structuredClone(state);
     const render = projectRenderState(state, projection);
     expect(render.enemies).toBe(state.enemies);
     expect(render.projectiles).toBe(state.projectiles);
-    expect(render.streamRewards).toBe(state.streamRewards);
     expect(render.squad.rifleCounts).toBe(state.squad.rifleCounts);
     expect(render.player).toBe(state.player);
-    expect(render.boss).toEqual({ ...state.boss, visualScale: 7 });
-    expect(render.boss).not.toBe(state.boss);
-    expect(render.track.defenseLineZ).toBe(18.5);
-    expect(render.gates[0]).toMatchObject({ z: 26, rewardAmount: 3, hitProgress: 2 });
-    expect(render.pickups[0]).toMatchObject({ z: 23, rewardKind: 'tier2Rifle' });
+    expect(render.track.defenseLineZ).toBe(-1.5);
     expect(state).toEqual(before);
   });
 
@@ -90,7 +76,7 @@ describe('render frame projection', () => {
     const render = projectRenderState(state, projection);
     const viewport = new EventTarget() as HTMLElement;
     const audio = new GameAudio();
-    audio.observe(2, 2, state.enemies, state.streamRewards, state.boss, 0, state.projectiles);
+    audio.observe(2, 2, state.enemies, 0, state.projectiles);
     expect(render.enemies).toBe(state.enemies);
     expect(state).toEqual(before);
     audio.dispose();

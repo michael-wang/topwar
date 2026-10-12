@@ -123,11 +123,12 @@ describe('distant artillery presentation', () => {
       const at = scheduler.nextImpactAtMs;
       const site = ARTILLERY_SITES[scheduler.update(at)];
       environment.update(0, 3.2, at);
-      const parentName = site.layer === 'far' ? 'enemy-beachhead-horizon'
+      const parentName = site.layer === 'far' ? 'distant-artillery-layer'
         : `battlefield-${site.layer}`;
       const group = (scene.getObjectByName(parentName) as THREE.Group).children.find(
         (child) => child.name === 'battlefield-artillery-slot'
-          && child.visible && child.position.x === site.x && child.position.z === site.z);
+          && child.visible && child.position.x === Math.sign(site.x) * (3.2 + 2.6)
+          && child.position.z === (site.layer === 'far' ? site.z : site.layer === 'near' ? -15 : -26));
       expect(group).toBeDefined();
       scales.set(site.layer, group!.scale.x);
       const smoke = group!.getObjectByName('battlefield-artillery-smoke') as THREE.Sprite;

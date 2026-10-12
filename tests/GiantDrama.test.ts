@@ -31,9 +31,9 @@ it('renders two independent Giants, delays both HP bars, and preserves the other
 });
 it('emits one heavy death/crash cue on a kill, excludes a leaked Giant and resets on Retry', () => {
   const observer=new AudioCueObserver(), giant={id:1,hp:1,archetype:'giant' as const};
-  observer.observe(2,2,[giant],[],null,0);
-  expect(observer.observe(2,2,[],[],null,100)).toContain('giantDeath');
-  expect(observer.observe(2,2,[],[],null,200)).not.toContain('giantDeath');
-  observer.reset(); observer.observe(2,2,[giant],[],null,0);
-  expect(observer.observe(2,1,[],[],null,100)).not.toContain('giantDeath');
+  observer.observe(2,2,[giant],0);
+  expect(observer.observe(2,2,[],100)).toContain('giantDeath');
+  expect(observer.observe(2,2,[],200)).not.toContain('giantDeath');
+  observer.reset(); observer.observe(2,2,[giant],0);
+  expect(observer.observe(2,1,[],100)).not.toContain('giantDeath');
 });

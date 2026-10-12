@@ -3,7 +3,6 @@ import { publicAssetUrl } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { EnvironmentAudioScheduler, type GroundArtilleryAudioEvent } from './EnvironmentAudioScheduler';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
-import { BOSS_DEATH_IMPACT_MS } from '../presentation/BossDeathTiming';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { LOCK_ON_AUDIO_GAP_SECONDS } from '../presentation/ArtilleryWarning';
 import { IdlePreparation } from '../presentation/IdlePreparation';
@@ -11,14 +10,12 @@ import { IdlePreparation } from '../presentation/IdlePreparation';
 // Existing audio cue delay is independent of the removed visual crash system.
 const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 
-export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'heavyRifle' | 'rocket' | 'damage' | 'fatal'
-  | 'reward' | 'rewardHit' | 'bossHit' | 'bossDeath' | 'enemyHit' | 'enemyDeath'
+export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'damage' | 'fatal'
+  | 'reward' | 'enemyHit' | 'enemyDeath'
   | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen' | 'grenadeLaunch' | 'grenadeExplosion'
   | 'enemyCannon' | 'enemyShellImpact' | 'enemyLockOn' | 'radioOpen' | 'radioClose';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
-interface ObservedReward { id: number; hitProgress: number }
-interface ObservedBoss { id: number; hp: number }
 interface ObservedProjectile { id: number; kind: 'rifle' | 'machineGun' | 'rocket'; tier: number }
 export const MACHINE_GUN_CUE_GAP_MS = 1000 / 9;
 
@@ -34,18 +31,14 @@ export function shotCueGapMs(index: number): number {
 export class AudioCueObserver {
   private previousGiantIds: number[] = [];
   private previousEnemyHp = new Map<number, number>();
-  private previousRewards = new Map<number, number>();
-  private previousBoss: ObservedBoss | null = null;
   private lastSeenProjectileId = 0;
   private nextShotCueMs = -Infinity;
   private nextMachineGunCueMs = -Infinity;
   private shotCueIndex = 0;
   private nextEnemyCueMs = -Infinity;
-  private nextBossHitCueMs = -Infinity;
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
-    enemies: readonly ObservedEnemy[], rewards: readonly ObservedReward[],
-    boss: ObservedBoss | null, nowMs = performance.now(),
+    enemies: readonly ObservedEnemy[], nowMs = performance.now(),
     projectiles: readonly ObservedProjectile[] = []): AudioCue[] {
     const cues = new Set<AudioCue>();
     let highestNewRifleTier = 0;
@@ -53,14 +46,13 @@ export class AudioCueObserver {
     const previousProjectileId = this.lastSeenProjectileId;
     for (const projectile of projectiles) {
       if (projectile.id > previousProjectileId) {
-        if (projectile.kind === 'rocket') cues.add('rocket');
-        else if (projectile.kind === 'machineGun') newMachineGun = true;
+        if (projectile.kind === 'machineGun') newMachineGun = true;
         else highestNewRifleTier = Math.max(highestNewRifleTier, projectile.tier);
       }
       this.lastSeenProjectileId = Math.max(this.lastSeenProjectileId, projectile.id);
     }
     if (highestNewRifleTier > 0 && nowMs >= this.nextShotCueMs) {
-      cues.add(highestNewRifleTier > 1 ? 'heavyRifle' : 'rifle');
+      cues.add('rifle');
       this.nextShotCueMs = nowMs + shotCueGapMs(this.shotCueIndex++);
     }
     if (newMachineGun && nowMs >= this.nextMachineGunCueMs) {
@@ -68,22 +60,6 @@ export class AudioCueObserver {
     }
     if (currentDefense > previousDefense) cues.add('reward');
     if (currentDefense < previousDefense) cues.add(currentDefense === 0n || currentDefense === 0 ? 'fatal' : 'damage');
-    for (const reward of rewards) {
-      const previous = this.previousRewards.get(reward.id);
-      if (previous !== undefined && reward.hitProgress > previous) cues.add('rewardHit');
-    }
-    if (currentDefense > previousDefense
-      && [...this.previousRewards.keys()].some((id) => !rewards.some((reward) => reward.id === id))) {
-      cues.add('rewardHit');
-    }
-    this.previousRewards = new Map(rewards.map((reward) => [reward.id, reward.hitProgress]));
-    if (boss && this.previousBoss?.id === boss.id && boss.hp < this.previousBoss.hp
-      && nowMs >= this.nextBossHitCueMs) {
-      cues.add('bossHit');
-      this.nextBossHitCueMs = nowMs + 130;
-    }
-    if (!boss && this.previousBoss) cues.add('bossDeath');
-    this.previousBoss = boss ? { ...boss } : null;
     const currentEnemyHp = new Map(enemies.map((enemy) => [enemy.id, enemy.hp]));
     if (currentDefense >= previousDefense && this.previousGiantIds.some(id => !currentEnemyHp.has(id))) cues.add('giantDeath');
     this.previousGiantIds = enemies.filter(enemy => enemy.archetype === 'giant').map(enemy => enemy.id);
@@ -103,14 +79,11 @@ export class AudioCueObserver {
   reset(): void {
     this.previousGiantIds = [];
     this.previousEnemyHp.clear();
-    this.previousRewards.clear();
-    this.previousBoss = null;
     this.lastSeenProjectileId = 0;
     this.nextShotCueMs = -Infinity;
     this.nextMachineGunCueMs = -Infinity;
     this.shotCueIndex = 0;
     this.nextEnemyCueMs = -Infinity;
-    this.nextBossHitCueMs = -Infinity;
   }
 }
 
@@ -145,14 +118,10 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
     secondary: { from: 880, to: 1320, seconds: .24, wave: 'sine', volume: .14, delaySeconds: .13 } },
   rifle: { from: 1050, to: 280, seconds: .038, wave: 'sawtooth', volume: .09 },
   machineGun: { from: 780, to: 180, seconds: .105, wave: 'sawtooth', volume: .09 },
-  heavyRifle: { from: 850, to: 210, seconds: .055, wave: 'sawtooth', volume: .12,
-    secondary: { from: 170, to: 75, seconds: .075, wave: 'triangle', volume: .04 } },
-  rocket: { from: 160, to: 65, seconds: 0.16, wave: 'sawtooth', volume: 0.08 },
   reward: rewardTone,
   damage: { from: 360, to: 125, seconds: .16, wave: 'triangle', volume: .18,
     secondary: { from: 145, to: 60, seconds: .14, wave: 'sine', volume: .065 } },
   fatal: { from: 300, to: 55, seconds: 0.29, wave: 'sine', volume: .22 },
-  rewardHit: { from: 760, to: 950, seconds: 0.06, wave: 'sine', volume: 0.05 },
   enemyHit: { from: 510, to: 255, seconds: .095, wave: 'triangle', volume: .043,
     attackSeconds: .011,
     secondary: { from: 790, to: 380, seconds: .08, wave: 'sine', volume: .015,
@@ -161,19 +130,11 @@ const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?:
     attackSeconds: .018,
     secondary: { from: 930, to: 285, seconds: .145, wave: 'sine', volume: .019,
       attackSeconds: .023 } },
-  bossHit: { from: 125, to: 52, seconds: .13, wave: 'triangle', volume: .11,
-    secondary: { from: 460, to: 180, seconds: .075, wave: 'sine', volume: .027 } },
   giantDeath: { from: 180, to: 60, seconds: .14, wave: 'triangle', volume: .15,
     secondary: { from: 95, to: 26, seconds: .6, wave: 'triangle', volume: .22,
       delaySeconds: GIANT_DEATH_RUMBLE_DELAY_MS / 1000, attackSeconds: .012 },
     tertiary: { from: 480, to: 95, seconds: .35, wave: 'sawtooth', volume: .065,
       delaySeconds: GIANT_DEATH_RUMBLE_DELAY_MS / 1000 + .04 } },
-  bossDeath: { from: 285, to: 90, seconds: 1.08, wave: 'triangle', volume: .23,
-    attackSeconds: .04,
-    secondary: { from: 440, to: 135, seconds: .88, wave: 'sine', volume: .075,
-      attackSeconds: .05 },
-    tertiary: { from: 105, to: 33, seconds: .46, wave: 'sine', volume: .095,
-      delaySeconds: BOSS_DEATH_IMPACT_MS / 1000 } },
   groundArtillery: { from: 120, to: 44, seconds: .22, wave: 'triangle', volume: .14,
     secondary: { from: 74, to: 32, seconds: 1, wave: 'sine', volume: .065,
       delaySeconds: .05, attackSeconds: .1 } },
@@ -267,12 +228,11 @@ export class GameAudio {
   }
 
   observe(previousDefense: number | bigint, currentDefense: number | bigint,
-    enemies: readonly ObservedEnemy[], rewards: readonly ObservedReward[],
-    boss: ObservedBoss | null, nowMs = performance.now(),
+    enemies: readonly ObservedEnemy[], nowMs = performance.now(),
     projectiles: readonly ObservedProjectile[] = []): void {
     this.musicPresentationMs = nowMs;
     for (const cue of this.observer.observe(previousDefense, currentDefense, enemies,
-      rewards, boss, nowMs, projectiles)) this.play(cue);
+      nowMs, projectiles)) this.play(cue);
   }
 
   resetObservation(): void {
@@ -292,11 +252,10 @@ export class GameAudio {
   }
 
   restoreObservation(defense: number | bigint, enemies: readonly ObservedEnemy[],
-    rewards: readonly ObservedReward[], boss: ObservedBoss | null,
     projectiles: readonly ObservedProjectile[]): void {
     this.resetObservation();
     // Seed prior identities without replaying old shots, kills or acquisitions.
-    this.observer.observe(defense, defense, enemies, rewards, boss, 0, projectiles);
+    this.observer.observe(defense, defense, enemies, 0, projectiles);
   }
 
   updateMusic(presentationMs: number, frame: MusicFrame): void {
@@ -357,7 +316,6 @@ export class GameAudio {
   }
 
   play(cue: AudioCue, variation?: GroundArtilleryAudioEvent): void {
-    if (cue === 'bossDeath') this.music?.duck(this.musicPresentationMs);
     const context = this.context;
     if (!this.unlocked || !context || context.state !== 'running' || !this.master) return;
     try {
@@ -381,7 +339,7 @@ export class GameAudio {
         }
       }
       const shape = cueShape[cue];
-      const weapon = cue==='rifle'||cue==='machineGun'||cue==='heavyRifle';
+      const weapon = cue==='rifle'||cue==='machineGun';
       if(weapon&&!this.weaponBus){this.weaponBus=context.createGain();this.weaponBus.gain.value=1;this.radioDuckBus=context.createGain();this.radioDuckBus.gain.value=this.radioActive ? .6 : 1;this.weaponBus.connect(this.radioDuckBus);this.radioDuckBus.connect(this.master);}
       if(cue==='supplyOpen'&&this.weaponBus){
         // Briefly clear space for opening and the unchanged reward chime,

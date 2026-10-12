@@ -5,7 +5,6 @@ import { ENEMY_PALETTE, PLAYER_PALETTE } from '../src/rendering/tierPalettes';
 import { createChibiPlayerFamily } from '../src/rendering/squad/ChibiPlayerFamily';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
-import { prepareBossFootwear } from '../src/rendering/boss/BossFootwear';
 
 it('keeps enemy costumes muted olive/slate/stone, Player blue and health independently coral', () => {
   for (const value of [ART.raider.helmet, ART.raider.body, ART.raider.bodyDeep, ...ENEMY_PALETTE.map(p => p.body)]) {
@@ -35,15 +34,4 @@ it('authors role footwear colors on every procedural reference and locomotion bo
     }
     family.dispose();
   }
-});
-
-it('limits the retained Boss footwear correction to the lower atlas region and composes without extra resources', () => {
-  const source = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
-  expect(prepareBossFootwear(source)).toBe(source);
-  const hook = source.onBeforeCompile; prepareBossFootwear(source); expect(source.onBeforeCompile).toBe(hook);
-  const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>', fragmentShader: '#include <common>\n#include <color_fragment>' };
-  hook(shader as unknown as Parameters<typeof hook>[0], {} as THREE.WebGLRenderer);
-  expect(shader.vertexShader).toContain('abs(uv.x - .09375)'); expect(shader.vertexShader).toContain('step(.32, position.y)');
-  expect(shader.fragmentShader).toContain(new THREE.Color(ART.faction.shoes).r.toFixed(6));
-  expect(source.map).not.toBeNull(); source.map!.dispose(); source.dispose();
 });

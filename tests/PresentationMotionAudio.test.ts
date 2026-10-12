@@ -1,14 +1,13 @@
 import { playerFamily } from './characterModel';
-import { bodyModel, helmetModel, vestModel, rifleModel, bulletModel } from './characterModel';
+import { bodyModel, helmetModel, vestModel, rifleModel } from './characterModel';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
-import { ProjectilePulseTracker, ProjectileRenderer, projectilePulseScale } from '../src/rendering/projectiles/ProjectileRenderer';
+import { ProjectilePulseTracker, projectilePulseScale } from '../src/rendering/projectiles/ProjectileRenderer';
 import { AudioCueObserver, GameAudio, shotCueGapMs } from '../src/audio/GameAudio';
 import { EnvironmentAudioScheduler, type EnvironmentAudioEvent,
   type GroundArtilleryAudioEvent } from '../src/audio/EnvironmentAudioScheduler';
 import { ArtilleryScheduler } from '../src/rendering/environment/ArtilleryScheduler';
-import { BOSS_DEATH_IMPACT_MS } from '../src/presentation/BossDeathTiming';
 
 describe('presentation-only motion', () => {
   it('keeps gameplay X/Z while firing the rifle and showing its muzzle flash', () => {
@@ -57,85 +56,33 @@ describe('presentation-only motion', () => {
     tracker.reset();
     expect(tracker.size).toBe(0);
 
-    const scene = new THREE.Scene();
-    const renderer = new ProjectileRenderer(scene, bulletModel());
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 1, hitRadiusBonus: 0 },
-      { id: 2, kind: 'rifle', tier: 2, x: 0, z: 1, hitRadiusBonus: 0.45 },
-      { id: 3, kind: 'rocket', tier: 0, x: 0, z: 1, hitRadiusBonus: 0 }], 100);
-    const body = scene.children[0] as THREE.InstancedMesh;
-    const matrix = new THREE.Matrix4();
-    const scale = new THREE.Vector3();
-    const position = new THREE.Vector3();
-    const rotation = new THREE.Quaternion();
-    body.getMatrixAt(0, matrix);
-    matrix.decompose(position, rotation, scale);
-    expect(scale.x).toBe(1);
-    expect(scale.z).toBeCloseTo(1.35);
-    body.getMatrixAt(1, matrix);
-    matrix.decompose(position, rotation, scale);
-    expect(scale.x).toBeGreaterThan(1);
-    expect(scale.z).toBeCloseTo(1.35 * 1.025);
-    body.getMatrixAt(2, matrix);
-    matrix.decompose(position, rotation, scale);
-    expect(scale.x).toBeCloseTo(2.43);
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2, hitRadiusBonus: 0 }], 200);
-    body.getMatrixAt(0, matrix);
-    matrix.decompose(position, rotation, scale);
-    expect(scale.x).toBe(1);
-    renderer.reset();
-    expect(body.count).toBe(0);
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 2, hitRadiusBonus: 0 }], 210);
-    body.getMatrixAt(0, matrix);
-    matrix.decompose(position, rotation, scale);
-    expect(scale.z).toBeCloseTo(1.35);
-    renderer.dispose();
-    expect(scene.children).toHaveLength(0);
   });
 });
 
 describe('audio cue observation and safety', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it('aggregates reward hits and throttles Boss hits without confusing acquisition', () => {
-    const observer = new AudioCueObserver();
-    const rewards = [{ id: 1, hitProgress: 0 }, { id: 2, hitProgress: 1 }];
-    const boss = { id: 9, hp: 100 };
-    expect(observer.observe(1, 1, [{ id: 9, hp: 10 }], rewards, boss, 0)).toEqual([]);
-    expect(observer.observe(1, 1, [{ id: 9, hp: 10 }], rewards, boss, 1)).toEqual([]);
-    expect(observer.observe(1, 1, [{ id: 9, hp: 10 }], [{ id: 1, hitProgress: 1 },
-      { id: 2, hitProgress: 3 }], { id: 9, hp: 90 }, 10)).toEqual(['rewardHit', 'bossHit']);
-    expect(observer.observe(1, 1, [{ id: 9, hp: 10 }], [{ id: 1, hitProgress: 1 }],
-      { id: 9, hp: 80 }, 50)).toEqual([]);
-    expect(observer.observe(1, 1, [{ id: 9, hp: 10 }], [{ id: 1, hitProgress: 2 }],
-      { id: 9, hp: 70 }, 141)).toEqual(['rewardHit', 'bossHit']);
-    expect(observer.observe(1, 2, [], [], null, 220))
-      .toEqual(['reward', 'rewardHit', 'bossDeath', 'enemyDeath']);
-    observer.reset();
-    expect(observer.observe(1, 1, [], [{ id: 1, hitProgress: 5 }], boss, 0)).toEqual([]);
-  });
   it('restores throttled firing and defense-loss cues without replaying old projectiles', () => {
     const observer = new AudioCueObserver();
-    expect(observer.observe(1, 1, [], [], null)).toEqual([]);
+    expect(observer.observe(1, 1, [])).toEqual([]);
     const rifle = [{ id: 1, kind: 'rifle' as const, tier: 1 }];
-    expect(observer.observe(1, 1, [], [], null, 0, rifle)).toEqual(['rifle']);
-    expect(observer.observe(1, 1, [], [], null, 10, rifle)).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 100,
+    expect(observer.observe(1, 1, [], 0, rifle)).toEqual(['rifle']);
+    expect(observer.observe(1, 1, [], 10, rifle)).toEqual([]);
+    expect(observer.observe(1, 1, [], 100,
       [{ id: 2, kind: 'rifle', tier: 1 }])).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 250,
-      [{ id: 3, kind: 'rifle', tier: 2 }])).toEqual(['heavyRifle']);
-    expect(observer.observe(1, 1, [], [], null, 251,
-      [{ id: 4, kind: 'rocket', tier: 1 }])).toEqual(['rocket']);
-    expect(observer.observe(9, 10, [], [], null)).toEqual(['reward']);
-    expect(observer.observe(10, 9, [], [], null)).toEqual(['damage']);
-    expect(observer.observe(9, 0n, [], [], null)).toEqual(['fatal']);
+    expect(observer.observe(1, 1, [], 250,
+      [{ id: 3, kind: 'rifle', tier: 1 }])).toEqual(['rifle']);
+    expect(observer.observe(9, 10, [])).toEqual(['reward']);
+    expect(observer.observe(10, 9, [])).toEqual(['damage']);
+    expect(observer.observe(9, 0n, [])).toEqual(['fatal']);
     observer.reset();
-    expect(observer.observe(1, 1, [], [], null, 0, rifle)).toEqual(['rifle']);
+    expect(observer.observe(1, 1, [], 0, rifle)).toEqual(['rifle']);
   });
   it('uses a deterministic varying 150–260 ms rifle-audio gate', () => {
     const gaps = Array.from({ length: 24 }, (_, index) => shotCueGapMs(index));
     expect(gaps.every((gap) => gap >= 150 && gap <= 260)).toBe(true);
     expect(new Set(gaps).size).toBeGreaterThan(12);
     const observer = new AudioCueObserver();
-    const shot = (id: number, at: number) => observer.observe(1, 1, [], [], null,
+    const shot = (id: number, at: number) => observer.observe(1, 1, [],
       at, [{ id, kind: 'rifle', tier: 1 }]);
     expect(shot(1, 0)).toEqual(['rifle']);
     expect(shot(2, gaps[0] - 1)).toEqual([]);
@@ -145,55 +92,30 @@ describe('audio cue observation and safety', () => {
     expect(shot(1, 0)).toEqual(['rifle']);
     expect(shot(2, gaps[0] - 1)).toEqual([]);
   });
-  it('does not tick when an ignored reward expires without squad growth', () => {
-    const observer = new AudioCueObserver();
-    expect(observer.observe(1, 1, [], [{ id: 4, hitProgress: 2 }], null, 0)).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 50)).toEqual([]);
-  });
 
   it('distinguishes surviving hits and deaths, then resets across Retry', () => {
     const observer = new AudioCueObserver();
     const alive = [{ id: 1, hp: 10 }, { id: 2, hp: 10 }, { id: 3, hp: 10 }];
-    expect(observer.observe(1, 1, alive, [], null, 0)).toEqual([]);
-    expect(observer.observe(1, 1, [{ id: 3, hp: 8 }], [], null, 10)).toEqual(['enemyDeath']);
-    expect(observer.observe(1, 1, [], [], null, 50)).toEqual([]);
-    expect(observer.observe(1, 1, [{ id: 4, hp: 10 }], [], null, 100)).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 131)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, alive, 0)).toEqual([]);
+    expect(observer.observe(1, 1, [{ id: 3, hp: 8 }], 10)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, [], 50)).toEqual([]);
+    expect(observer.observe(1, 1, [{ id: 4, hp: 10 }], 100)).toEqual([]);
+    expect(observer.observe(1, 1, [], 131)).toEqual(['enemyDeath']);
     observer.reset();
-    expect(observer.observe(1, 1, alive, [], null, 0)).toEqual([]);
-    expect(observer.observe(1, 1, alive.map((enemy) => ({ ...enemy, hp: 9 })),
-      [], null, 1)).toEqual(['enemyHit']);
-    expect(observer.observe(1, 1, [], [], null, 2)).toEqual([]);
+    expect(observer.observe(1, 1, alive, 0)).toEqual([]);
+    expect(observer.observe(1, 1, alive.map((enemy) => ({ ...enemy, hp: 9 })), 1)).toEqual(['enemyHit']);
+    expect(observer.observe(1, 1, [], 2)).toEqual([]);
     observer.reset();
-    expect(observer.observe(1, 1, [], [], null, 0)).toEqual([]);
+    expect(observer.observe(1, 1, [], 0)).toEqual([]);
   });
 
   it('collapses many same-frame removals to one cue and throttles consecutive mass removals', () => {
     const observer = new AudioCueObserver();
     const crowd = Array.from({ length: 50 }, (_, index) => ({ id: index + 1, hp: 10 }));
-    expect(observer.observe(1, 1, crowd, [], null, 0)).toEqual([]);
-    expect(observer.observe(1, 1, crowd.slice(25), [], null, 10)).toEqual(['enemyDeath']);
-    expect(observer.observe(1, 1, crowd.slice(40), [], null, 20)).toEqual([]);
-    expect(observer.observe(1, 1, [], [], null, 130)).toEqual(['enemyDeath']);
-  });
-
-  it('observes Boss hits and one death solely on the Boss channel', () => {
-    const observer = new AudioCueObserver();
-    expect(observer.observe(10, 10, [], [], { id: 7, hp: 100 }, 0)).toEqual([]);
-    expect(observer.observe(10, 10, [], [], { id: 7, hp: 90 }, 10)).toEqual(['bossHit']);
-    expect(observer.observe(10, 10, [], [], { id: 7, hp: 80 }, 80)).toEqual([]);
-    expect(observer.observe(10, 10, [], [], { id: 7, hp: 70 }, 141)).toEqual(['bossHit']);
-    expect(observer.observe(10, 10, [], [], null, 150)).toEqual(['bossDeath']);
-    expect(observer.observe(10, 10, [], [], null, 160)).toEqual([]);
-    observer.reset();
-    expect(observer.observe(10, 10, [], [], null, 0)).toEqual([]);
-  });
-
-  it('uses defense loss for both normal contact and Boss slam, with fatal priority', () => {
-    const observer = new AudioCueObserver();
-    expect(observer.observe(10, 9, [], [], null)).toEqual(['damage']);
-    expect(observer.observe(9, 8, [], [], { id: 1, hp: 100 })).toEqual(['damage']);
-    expect(observer.observe(8, 0, [], [], { id: 1, hp: 100 })).toEqual(['fatal']);
+    expect(observer.observe(1, 1, crowd, 0)).toEqual([]);
+    expect(observer.observe(1, 1, crowd.slice(25), 10)).toEqual(['enemyDeath']);
+    expect(observer.observe(1, 1, crowd.slice(40), 20)).toEqual([]);
+    expect(observer.observe(1, 1, [], 130)).toEqual(['enemyDeath']);
   });
 
   it('safely ignores playback without an unlocked AudioContext', () => {
@@ -204,7 +126,7 @@ describe('audio cue observation and safety', () => {
     expect(addViewport).not.toHaveBeenCalled();
     expect(() => audio.play('reward')).not.toThrow();
     expect(() => viewport.dispatchEvent(new Event('pointerdown'))).not.toThrow();
-    expect(() => audio.observe(1, 0, [], [], null)).not.toThrow();
+    expect(() => audio.observe(1, 0, [])).not.toThrow();
     const removeViewport = vi.spyOn(viewport, 'removeEventListener');
     const removeKeys = vi.spyOn(keys, 'removeEventListener');
     audio.dispose();
@@ -349,15 +271,15 @@ describe('audio cue observation and safety', () => {
     audio.play('reward');
     expect(starts).toHaveBeenCalledOnce();
     audio.resetObservation();
-    audio.observe(1, 1, [{ id: 1, hp: 10 }], [], null, 0);
-    audio.observe(1, 0, [{ id: 1, hp: 10 }], [], null, 10);
+    audio.observe(1, 1, [{ id: 1, hp: 10 }], 0);
+    audio.observe(1, 0, [{ id: 1, hp: 10 }], 10);
     expect(starts).toHaveBeenCalledTimes(2);
-    audio.observe(0, 1, [{ id: 1, hp: 10 }], [], null, 20);
+    audio.observe(0, 1, [{ id: 1, hp: 10 }], 20);
     expect(starts).toHaveBeenCalledTimes(3);
-    audio.observe(1, 1, [], [], null, 30);
+    audio.observe(1, 1, [], 30);
     expect(starts).toHaveBeenCalledTimes(5);
-    audio.observe(1, 1, [{ id: 2, hp: 10 }], [], null, 40);
-    audio.observe(1, 1, [], [], null, 50);
+    audio.observe(1, 1, [{ id: 2, hp: 10 }], 40);
+    audio.observe(1, 1, [], 50);
     expect(starts).toHaveBeenCalledTimes(5);
     expect(constructor).toHaveBeenCalledTimes(1);
     const renderCue = (cue: Parameters<GameAudio['play']>[0],
@@ -384,39 +306,19 @@ describe('audio cue observation and safety', () => {
       };
     };
     const rifle = renderCue('rifle');
-    const heavy = renderCue('heavyRifle');
     const enemyHit = renderCue('enemyHit');
     const enemyDeath = renderCue('enemyDeath');
-    const bossHit = renderCue('bossHit');
-    const bossDeath = renderCue('bossDeath');
     const damage = renderCue('damage');
     const fatal = renderCue('fatal');
     const ground = renderCue('groundArtillery');
     const flak = renderCue('skyFlak');
     expect(rifle.waves).toEqual(['sawtooth']);
     expect(rifle.ends[0]).toBeLessThan(.06);
-    expect(heavy.count).toBe(2);
-    expect(heavy.ends.every((at) => at < .09)).toBe(true);
     expect(enemyHit.waves).toEqual(['triangle', 'sine']);
     expect(enemyDeath.waves).toEqual(['triangle', 'sine']);
     expect(enemyHit.attacks).toEqual([true, true]);
     expect(enemyDeath.attacks).toEqual([true, true]);
-    expect(enemyHit.pitches[0]).toBeGreaterThan(bossHit.pitches[0]);
     expect(enemyDeath.ends[0]).toBeGreaterThan(enemyHit.ends[0]);
-    expect(enemyDeath.volumes[0]).toBeLessThan(bossDeath.volumes[0]);
-    expect(bossHit.pitches[0]).toBe(125); // Approved armored hit profile.
-    expect(bossHit.ends[0]).toBeCloseTo(.13);
-    expect(bossDeath.count).toBe(3);
-    expect(bossDeath.waves).toEqual(['triangle', 'sine', 'sine']);
-    expect(bossDeath.pitches[0]).toBe(285);
-    expect(bossDeath.ends[0]).toBeCloseTo(1.08);
-    expect(bossDeath.ends[0]).toBeGreaterThan(bossHit.ends[0]);
-    expect(bossDeath.volumes[0]).toBeCloseTo(.23);
-    expect(bossDeath.volumes[0]).toBeGreaterThan(bossHit.volumes[0]);
-    expect(bossDeath.pitches[2]).toBe(105);
-    expect(bossDeath.volumes[2]).toBeCloseTo(.095);
-    expect(bossDeath.starts[2]).toBeCloseTo(BOSS_DEATH_IMPACT_MS / 1000);
-    expect(bossDeath.ends[2]).toBeCloseTo(BOSS_DEATH_IMPACT_MS / 1000 + .46);
     expect(damage.volumes[0]).toBeCloseTo(.18); // Approved injury profile.
     expect(fatal.volumes[0]).toBeCloseTo(.22);
     expect(ground.count).toBe(2);
@@ -457,9 +359,11 @@ describe('audio cue observation and safety', () => {
 it('bounds MG shot cues to nine short voices per second without Rifle cues',()=>{
  const observer=new AudioCueObserver();let cues=0;
  for(let i=0;i<180;i++){
-  const result=observer.observe(1,1,[],[],null,i*1000/18,[{id:i+1,kind:'machineGun',tier:1}]);
+  const result=observer.observe(1,1,[],i*1000/18,[{id:i+1,kind:'machineGun',tier:1}]);
   expect(result).not.toContain('rifle');if(result.includes('machineGun'))cues++;
  }
  expect(cues).toBeLessThanOrEqual(90);expect(cues).toBeGreaterThanOrEqual(60);
- observer.reset();expect(observer.observe(1,1,[],[],null,0,[{id:1,kind:'machineGun',tier:1}])).toContain('machineGun');
+ observer.reset();expect(observer.observe(1,1,[],0,[{id:1,kind:'machineGun',tier:1}])).toContain('machineGun');
 });
+
+const projectileTestCamera = new THREE.PerspectiveCamera(48, 350/844, .1, 180);

@@ -4,7 +4,7 @@ import data from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { createThreatReview } from '../src/app/ThreatReview';
+import { createThreatReview } from './helpers/ThreatArtFixture';
 import { projectRenderState } from '../src/app/projectRenderState';
 import { createChibiGiantFamily, createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';

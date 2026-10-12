@@ -36,24 +36,24 @@ describe('simulation with indexed projectile collision', () => {
       rocket: { ...config.weapon.rocket, fireRate: .01 } };
     for (const seed of [3, 97, 4103]) {
       const options = { seed, level, startSquad: 1, startRocketCount: 0,
-        tiers: config.tiers };
+        tiers: config.tiers, catharsis: { balance: { ...config.catharsis!, gruntSpeed: 0, heavySpeed: 0, defenseWaves: { ...config.catharsis!.defenseWaves, firstWaveDelaySeconds: 1000 } }, trackHalfWidth: 3.2 } };
       const indexed = new IndexedSimulation(options);
       const fullScan = new FullScanSimulation(options);
       const rng = new SeededRng(seed);
       const initial = indexed.getState();
       initial.enemies = Array.from({ length: 120 }, (_, index): EnemySimulationState => ({
-        id: index + 1, tier: index % 5 === 0 ? 2 : 1,
+        id: index + 1, tier: 1, lane: 2, archetype: index % 5 === 0 ? 'heavy' : 'grunt',
         x: (rng.nextFloat() - .5) * 5,
         z: 2 + rng.nextFloat() * 22,
-        hp: index % 5 === 0 ? 300 : 10,
+        hp: index % 5 === 0 ? 15 : 1,
       }));
       initial.projectiles = Array.from({ length: 8 }, (_, index): ProjectileSimulationState => ({
-        id: index + 1, kind: index === 7 ? 'rocket' : 'rifle',
-        tier: index === 7 ? 0 : index % 2 ? 3 : 2, x: (rng.nextFloat() - .5) * 4,
-        z: 0, speed: 30, damage: 300, remainingRange: 35,
-        blastRadius: index === 7 ? 1.25 : 0,
-        hitRadiusBonus: index === 7 ? 0 : index % 2 ? .9 : .45,
-        penetrationRemaining: index === 7 ? 0 : index % 2 ? 100 : 10,
+        id: index + 1, kind: index % 2 ? 'machineGun' : 'rifle',
+        tier: 1, lane: 2, slopeX: 0, x: (rng.nextFloat() - .5) * 4,
+        z: 0, speed: 30, damage: 3, remainingRange: 35,
+        blastRadius: 0,
+        hitRadiusBonus: 0,
+        penetrationRemaining: 0,
       }));
       initial.weapons.nextProjectileId = 9;
       initial.weapons.rifleCooldownRemainingSeconds = 100;
@@ -68,19 +68,19 @@ describe('simulation with indexed projectile collision', () => {
     }
 
     const options = { seed: 19, level, startSquad: 1, startRocketCount: 0,
-      tiers: config.tiers };
+      tiers: config.tiers, catharsis: { balance: { ...config.catharsis!, gruntSpeed: 0, heavySpeed: 0, defenseWaves: { ...config.catharsis!.defenseWaves, firstWaveDelaySeconds: 1000 } }, trackHalfWidth: 3.2 } };
     const indexed = new IndexedSimulation(options);
     const fullScan = new FullScanSimulation(options);
     const initial = indexed.getState();
-    initial.enemies = [{ id: 1, tier: 1, x: 0, z: 2, hp: 10 },
-      { id: 2, tier: 1, x: .5, z: 2, hp: 10 }];
+    initial.enemies = [{ id: 1, tier: 1, lane: 2, archetype: 'grunt', x: 0, z: 2, hp: 1 },
+      { id: 2, tier: 1, lane: 2, archetype: 'grunt', x: 0, z: 2, hp: 1 }];
     initial.projectiles = [
-      { id: 1, kind: 'rocket', tier: 0, x: 0, z: 0, speed: 30,
-        damage: 20, remainingRange: 30, blastRadius: 1.25,
+      { id: 1, kind: 'machineGun', tier: 1, lane: 2, slopeX: 0, x: 0, z: 0, speed: 30,
+        damage: 20, remainingRange: 30, blastRadius: 0,
         hitRadiusBonus: 0, penetrationRemaining: 0 },
-      { id: 2, kind: 'rifle', tier: 2, x: 0, z: 0, speed: 30,
+      { id: 2, kind: 'rifle', tier: 1, lane: 2, slopeX: 0, x: 0, z: 0, speed: 30,
         damage: 10, remainingRange: 30, blastRadius: 0,
-        hitRadiusBonus: .45, penetrationRemaining: 10 },
+        hitRadiusBonus: 0, penetrationRemaining: 0 },
     ];
     initial.weapons.nextProjectileId = 3;
     initial.weapons.rifleCooldownRemainingSeconds = 100;
@@ -91,6 +91,6 @@ describe('simulation with indexed projectile collision', () => {
     fullScan.step(.1, { targetX: 0 }, tuning);
     expect(indexed.getState()).toEqual(fullScan.getState());
     expect(indexed.getState().enemies).toEqual([]);
-    expect(indexed.getState().projectiles.map((shot) => shot.id)).toEqual([2]);
+    expect(indexed.getState().projectiles).toEqual([]);
   });
 });

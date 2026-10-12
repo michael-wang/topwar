@@ -15,11 +15,6 @@ import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
 import { coastalCameraFov, renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
-import { UpgradeGateRenderer } from './gates/UpgradeGateRenderer';
-import { UpgradePickupRenderer } from './gates/UpgradePickupRenderer';
-import { StreamRewardRenderer } from './rewards/StreamRewardRenderer';
-import { BossRenderer } from './boss/BossRenderer';
-import { BossCameraFraming } from './boss/BossCameraFraming';
 import { BridgeEnvironment } from './environment/BridgeEnvironment';
 import { ContactShadowRenderer } from './ContactShadowRenderer';
 import type { CharacterAssets } from './CharacterAssets';
@@ -59,12 +54,7 @@ export class GameRenderer {
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
   private readonly enemyRenderer: EnemyRenderer;
-  private readonly bossRenderer: BossRenderer | null;
-  private readonly bossCameraFraming = new BossCameraFraming();
   private readonly projectileRenderer: ProjectileRenderer;
-  private readonly gateRenderer = new UpgradeGateRenderer(this.scene);
-  private readonly pickupRenderer = new UpgradePickupRenderer(this.scene);
-  private readonly streamRewardRenderer: StreamRewardRenderer | null;
   private readonly environment: BridgeEnvironment;
   private readonly contactShadows: ContactShadowRenderer;
   private readonly air = new BattlefieldAir(this.scene);
@@ -78,9 +68,7 @@ export class GameRenderer {
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
     this.squadRenderer = new SquadRenderer(this.scene, assets.families.player);
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.families);
-    this.bossRenderer = assets.families.boss ? new BossRenderer(this.scene, assets.families.boss) : null;
-    this.streamRewardRenderer = assets.rewardHelmet ? new StreamRewardRenderer(this.scene, assets.rewardHelmet) : null;
-    this.projectileRenderer = new ProjectileRenderer(this.scene, assets.bullet, assets.families.player.presentation.tracer);
+    this.projectileRenderer = new ProjectileRenderer(this.scene, assets.families.player.presentation.tracer);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.viewport.append(this.renderer.domElement);
     this.environment = new BridgeEnvironment(this.scene);
@@ -173,21 +161,14 @@ export class GameRenderer {
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     this.updateCoastalLighting(!!state.defenseMode);
-    this.bossCameraFraming.update(this.camera, state.boss, state.player.z, nowMs);
     this.air.update(state.enemies, state.player.z, nowMs, !!state.defenseMode);
-    this.environment.update(state.player.z, state.track.halfWidth, nowMs, state.defenseMode, state.landingAssaultAgeSeconds);
+    this.environment.update(state.player.z, state.track.halfWidth, nowMs, true);
     this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs, !!state.defenseMode, -state.player.x, state.player.z);
-    if (state.boss && !this.bossRenderer) throw new Error('Legacy Boss requires legacy character assets');
-    this.bossRenderer?.update(state.boss, nowMs, state.player.z);
-    if (state.streamRewards.length && !this.streamRewardRenderer) throw new Error('Recruitment stream requires legacy character assets');
-    this.streamRewardRenderer?.update(state.streamRewards, nowMs);
     this.contactShadows.update(state, this.squadRenderer, nowMs);
-    this.projectileRenderer.update(state.projectiles, nowMs, state.defenseMode ? this.camera : undefined,
+    this.projectileRenderer.update(state.projectiles, nowMs, this.camera,
       this.viewportCssHeight);
-    this.gateRenderer.update(state.gates);
-    this.pickupRenderer.update(state.pickups);
     this.grenadeRenderer.update(state.grenade, nowMs);
     if (state.destroyer && (state.destroyer.state.status === 'active' || state.destroyer.presence && state.destroyer.presence.status !== 'absent'))
       this.destroyerRenderer ??= new DestroyerRenderer(this.scene);
@@ -240,9 +221,6 @@ export class GameRenderer {
     this.destroyerRenderer?.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset(visualSalt);
-    this.bossRenderer?.reset();
-    this.bossCameraFraming.reset();
-    this.streamRewardRenderer?.reset();
     this.contactShadows.reset();
     this.projectileRenderer.reset();
   }
@@ -262,12 +240,7 @@ export class GameRenderer {
     this.contactShadows.dispose();
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();
-    this.bossRenderer?.dispose();
-    this.bossCameraFraming.reset();
     this.projectileRenderer.dispose();
-    this.gateRenderer.dispose();
-    this.pickupRenderer.dispose();
-    this.streamRewardRenderer?.dispose();
     this.assets.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();

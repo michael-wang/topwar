@@ -1,7 +1,7 @@
-import { Simulation, type SimulationOptions } from '../simulation/Simulation';
-import { attackLanePositions } from '../simulation/enemies/laneComposition';
-import { addRifleSoldiers } from '../simulation/squad/composition';
-import { effectiveRifleFireRate } from '../simulation/progression';
+import { Simulation, type SimulationOptions } from '../../src/simulation/Simulation';
+import { attackLanePositions } from '../../src/simulation/enemies/laneComposition';
+import { addRifleSoldiers } from '../../src/simulation/squad/composition';
+import { effectiveRifleFireRate } from '../../src/simulation/progression';
 
 export const THREAT_REVIEW_SEED = 0x4a070;
 export function threatReviewEnabled(search: string): boolean {

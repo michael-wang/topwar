@@ -2,20 +2,17 @@ import { ART } from '../art/ArtDirection';
 import * as THREE from 'three';
 import type { GameRenderState } from './RenderState';
 import type { SquadRenderer } from './squad/SquadRenderer';
-import { BOSS_DEATH_MS } from '../presentation/BossDeathTiming';
 import type { CharacterVisualFamilies } from './CharacterVisualFamilies';
 
-type ShadowKind = 'player' | 'enemy' | 'boss' | 'reward';
+type ShadowKind = 'player' | 'enemy';
 type ShadowBatch = { mesh: THREE.InstancedMesh; capacity: number };
 
-// A single soft alpha stamp shared by four bounded instanced batches; no shadow maps or lights.
+// A single soft alpha stamp shared by two bounded instanced batches; no shadow maps or lights.
 export class ContactShadowRenderer {
   getDebugStats(): Record<ShadowKind, { active: number; capacity: number }> {
     return {
       player: { active: this.batches.player.mesh.count, capacity: this.batches.player.capacity },
       enemy: { active: this.batches.enemy.mesh.count, capacity: this.batches.enemy.capacity },
-      boss: { active: this.batches.boss.mesh.count, capacity: this.batches.boss.capacity },
-      reward: { active: this.batches.reward.mesh.count, capacity: this.batches.reward.capacity },
     };
   }
   private readonly geometry = new THREE.PlaneGeometry(1, 1);
@@ -27,8 +24,6 @@ export class ContactShadowRenderer {
   private readonly transform = new THREE.Object3D();
   private readonly batches: Record<ShadowKind, ShadowBatch>;
   private playerIndex = 0;
-  private lastBoss: { x: number; z: number; visualScale: number } | null = null;
-  private bossDeathStartedAtMs = -Infinity;
 
   constructor(private readonly scene: THREE.Scene,
     private readonly threats?: Pick<CharacterVisualFamilies, 'heavy' | 'giant'>) {
@@ -36,15 +31,12 @@ export class ContactShadowRenderer {
     this.batches = {
       player: this.createBatch('player', 8),
       enemy: this.createBatch('enemy', 32),
-      boss: this.createBatch('boss', 1),
-      reward: this.createBatch('reward', 8),
     };
   }
 
   update(state: GameRenderState, squad: SquadRenderer, nowMs: number): void {
     this.ensureCapacity('player', state.squad.count);
     this.ensureCapacity('enemy', state.enemies.length);
-    this.ensureCapacity('reward', state.streamRewards.length);
     this.playerIndex = 0;
     squad.forEachVisibleMemberPosition(position => this.placePlayer(position, squad.presentation.shadow));
     this.batches.player.mesh.count = this.playerIndex;
@@ -61,34 +53,10 @@ export class ContactShadowRenderer {
     }
     this.batches.enemy.mesh.count = state.enemies.length;
     this.batches.enemy.mesh.instanceMatrix.needsUpdate = true;
-    if (state.boss) {
-      this.lastBoss ??= { x: 0, z: 0, visualScale: 1 };
-      this.lastBoss.x = state.boss.x;
-      this.lastBoss.z = state.boss.z;
-      this.lastBoss.visualScale = state.boss.visualScale;
-      this.bossDeathStartedAtMs = -Infinity;
-    } else if (this.lastBoss && this.bossDeathStartedAtMs === -Infinity) {
-      this.bossDeathStartedAtMs = nowMs;
-    }
-    const bossShadow = state.boss ?? (nowMs - this.bossDeathStartedAtMs < BOSS_DEATH_MS
-      ? this.lastBoss : null);
-    if (bossShadow) this.place('boss', 0, -bossShadow.x, bossShadow.z,
-      .78 * bossShadow.visualScale, .46 * bossShadow.visualScale);
-    this.batches.boss.mesh.count = bossShadow ? 1 : 0;
-    this.batches.boss.mesh.instanceMatrix.needsUpdate = true;
-    for (let index = 0; index < state.streamRewards.length; index++) {
-      const reward = state.streamRewards[index];
-      const scale = reward.tier === 1 ? 1 : 1.16;
-      this.place('reward', index, -reward.x, reward.z, .92 * scale, .54 * scale);
-    }
-    this.batches.reward.mesh.count = state.streamRewards.length;
-    this.batches.reward.mesh.instanceMatrix.needsUpdate = true;
   }
 
   reset(): void {
     for (const batch of Object.values(this.batches)) batch.mesh.count = 0;
-    this.lastBoss = null;
-    this.bossDeathStartedAtMs = -Infinity;
   }
 
   dispose(): void {

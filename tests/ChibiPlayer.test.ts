@@ -8,7 +8,6 @@ import { ContactShadowRenderer } from '../src/rendering/ContactShadowRenderer';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
 import type { GameRenderState } from '../src/rendering/RenderState';
 import type { PresentationEvent } from '../src/simulation/PresentationEvent';
-import { bulletModel, characterFamilies } from './characterModel';
 
 const frame = (): GameRenderState => ({ defenseMode: true, player: { x: 0, z: 0, selectedLane: 2 },
   squad: { count: 1, rocketCount: 0, rifleCounts: [1], formationSpacing: .45 },
@@ -91,7 +90,7 @@ describe('original two-head Player prototype', () => {
     first.dispose(); second.dispose(); family.dispose();
   });
 
-  it('keeps four primary draws per member and attaches the muzzle to the actual weapon through recoil and lowering', () => {
+  it('keeps four primary draws per member and attaches the muzzle to the actual weapon through recoil', () => {
     const family = createChibiPlayerFamily(), scene = new THREE.Scene();
     const renderer = new SquadRenderer(scene, { ...family, id: 'id-does-not-select-motion' });
     const state = frame(); renderer.update(state, 0); renderer.update(state, 500);
@@ -106,14 +105,6 @@ describe('original two-head Player prototype', () => {
     expect(muzzle.getWorldPosition(new THREE.Vector3()).distanceTo(expected)).toBeLessThan(1e-7);
     expect(expected.distanceTo(resting)).toBeGreaterThan(.02);
     expect(muzzle.visible).toBe(true);
-    renderer.update({ ...state, squad: { ...state.squad,
-      reinforcement: { progress: .5, reinforcementSpacing: .72, reinforcementStagger: .18 } } }, 700);
-    const recruit = scene.children.filter(c => c.getObjectByName('toy-soldier-body'))[1];
-    const lowered = recruit.getObjectByName('toy-rifle')!;
-    const flash = recruit.getObjectByName('muzzle-flash')!;
-    expect(lowered.rotation.x).toBeGreaterThan(.5);
-    expect(flash.getWorldPosition(new THREE.Vector3()).distanceTo(
-      lowered.localToWorld(new THREE.Vector3().fromArray(family.presentation.muzzleAnchor)))).toBeLessThan(1e-7);
     renderer.dispose(); family.dispose();
   });
 
@@ -126,10 +117,9 @@ describe('original two-head Player prototype', () => {
     const scale = new THREE.Vector3().setFromMatrixScale(matrix);
     expect(scale.x).toBeCloseTo(family.presentation.shadow.width);
     expect(scale.z).toBeCloseTo(family.presentation.shadow.depth);
-    const projectiles = new ProjectileRenderer(scene, bulletModel(), family.presentation.tracer);
-    const shots = [{ id: 1, kind: 'rifle' as const, tier: 1, x: 0, z: .7, hitRadiusBonus: 0 },
-      { id: 2, kind: 'rocket' as const, tier: 0, x: 0, z: .7, hitRadiusBonus: 0 }];
-    const before = JSON.stringify(shots); projectiles.update(shots, 0);
+    const projectiles = new ProjectileRenderer(scene, family.presentation.tracer);
+    const shots = [{ id: 1, kind: 'rifle' as const, tier: 1, x: 0, z: .7, hitRadiusBonus: 0 } ];
+    const before = JSON.stringify(shots); projectiles.update(shots, 0, projectileTestCamera, 844);
     const tracer = scene.getObjectByName('rifle-tracers') as THREE.InstancedMesh;
     tracer.getMatrixAt(0, matrix); const origin = new THREE.Vector3().setFromMatrixPosition(matrix);
     const { muzzleAnchor: m, weaponPosition: w, weaponRotation: r, rootScale } = family.presentation;
@@ -138,7 +128,6 @@ describe('original two-head Player prototype', () => {
     expect(origin.y).toBeCloseTo(muzzleRest.y);
     expect(origin.x).toBeCloseTo(muzzleRest.x);
     expect(origin.z).toBeCloseTo(shots[0].z);
-    tracer.getMatrixAt(1, matrix); expect(new THREE.Vector3().setFromMatrixPosition(matrix).y).toBeCloseTo(.66);
     expect(JSON.stringify(shots)).toBe(before);
     projectiles.dispose(); shadows.dispose(); renderer.dispose(); family.dispose();
   });
@@ -166,7 +155,7 @@ describe('original two-head Player prototype', () => {
     renderer.dispose(); family.dispose();
   });
 
-  it('envelops the new crown in Level-Up and retains timing, tier color and dormant rocket fallback', () => {
+  it('envelops the new crown in Level-Up and retains the accepted timing', () => {
     const family = createChibiPlayerFamily(), scene = new THREE.Scene(), renderer = new SquadRenderer(scene, family);
     const state = frame(); renderer.update(state, 0); renderer.update(state, 500);
     renderer.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 }, 600);
@@ -174,12 +163,6 @@ describe('original two-head Player prototype', () => {
     const burst = scene.getObjectByName('player-level-up-burst')!;
     expect(burst.children.slice(1).some(c => c.position.y > 1.025 * family.presentation.rootScale)).toBe(true);
     renderer.update(state, 1400); expect(burst.visible).toBe(false);
-    const tier = { ...state, squad: { ...state.squad, rifleCounts: [0, 1] } };
-    renderer.update(tier, 1500); renderer.update(tier, 1900);
-    expect((scene.getObjectByName('toy-soldier-helmet') as THREE.Mesh).material).toHaveProperty('color', new THREE.Color('#10429b'));
-    renderer.update({ ...state, squad: { ...state.squad, rocketCount: 1, rifleCounts: [] } }, 2000);
-    expect(scene.getObjectByName('toy-rifle')!.scale.x).toBe(1.15);
-    expect(scene.getObjectByName('muzzle-flash')!.visible).toBe(false);
     renderer.dispose(); family.dispose();
   });
 
@@ -241,3 +224,5 @@ it('swaps only the held weapon for a wider reusable MG with the same body, grips
  renderer.update(state,1000);expect(member.getObjectByName('toy-rifle')).toBe(mg);expect(mg.geometry).toBe(family.weapon.geometry);
  renderer.dispose();family.dispose();
 });
+
+const projectileTestCamera = new THREE.PerspectiveCamera(48, 350/844, .1, 180);

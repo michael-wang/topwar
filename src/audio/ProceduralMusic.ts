@@ -3,7 +3,7 @@ import { MUSIC_BAR_SECONDS, MUSIC_MAX_VOLUME, MUSIC_STEP_MS,
   type MusicEvent, type MusicFrame, type MusicInstrument, type MusicState,
 } from './MusicComposition';
 
-export { MUSIC_BPM, MUSIC_STEP_MS, MUSIC_APPROACH_DISTANCE, MUSIC_MAX_VOLUME,
+export { MUSIC_BPM, MUSIC_STEP_MS, MUSIC_MAX_VOLUME,
   musicStateFor, musicStepAt } from './MusicComposition';
 export type { MusicFrame, MusicState, MusicEvent } from './MusicComposition';
 
@@ -16,7 +16,6 @@ export class ProceduralMusic {
   private readonly active = new Map<OscillatorNode, GainNode>();
   private nextStep = -1;
   private clockOffsetSeconds = 0;
-  private duckStartedAtMs = -Infinity;
   private lastBusTarget = NaN;
   private wasPaused = false;
   private wasSilent = true;
@@ -35,7 +34,7 @@ export class ProceduralMusic {
       return node;
     };
     this.filters = { pad: filter(1200), bass: filter(700),
-      motif: filter(1900), tension: filter(1300) };
+      motif: filter(1900) };
   }
 
   get activeVoiceCount(): number { return this.active.size; }
@@ -47,7 +46,7 @@ export class ProceduralMusic {
     const volume = Math.max(0, Math.min(MUSIC_MAX_VOLUME, frame.musicVolume));
     const now = this.context.currentTime;
     const silent = frame.paused || state === 'GAME_OVER' || volume === 0;
-    const target = silent ? 0 : volume * this.duckFactor(presentationMs);
+    const target = silent ? 0 : volume;
     if (volume === 0) {
       this.bus.gain.cancelScheduledValues(now);
       this.bus.gain.setValueAtTime(0, now);
@@ -90,13 +89,11 @@ export class ProceduralMusic {
     }
   }
 
-  duck(presentationMs: number): void { this.duckStartedAtMs = presentationMs; }
 
   reset(): void {
     this.stopVoices();
     this.nextStep = -1;
     this.clockOffsetSeconds = 0;
-    this.duckStartedAtMs = -Infinity;
     this.lastBusTarget = NaN;
     this.wasPaused = false;
     this.wasSilent = true;
@@ -128,14 +125,6 @@ export class ProceduralMusic {
     for (const event of musicEventsForStep(this.seed, barStartStep, state)) {
       if (event.instrument === 'pad') this.schedule({ ...event, durationSeconds: remaining }, startSeconds);
     }
-  }
-
-  private duckFactor(presentationMs: number): number {
-    const elapsed = presentationMs - this.duckStartedAtMs;
-    if (elapsed < 0 || elapsed >= 2400) return 1;
-    if (elapsed <= 1000) return .28;
-    const progress = (elapsed - 1000) / 1400;
-    return .28 + .72 * progress * progress * (3 - 2 * progress);
   }
 
   private schedule(event: MusicEvent, start: number): void {

@@ -9,7 +9,6 @@ import { loadCharacterAssets } from './rendering/CharacterAssets';
 import './style.css';
 import './ui/arcade.css';
 import { perfEnabled } from './app/PerfDiagnostics';
-import { threatReviewEnabled } from './app/ThreatReview';
 import { mountBuildLabel, refreshDevBuildLabel } from './ui/BuildLabel';
 import { GameAudio } from './audio/GameAudio';
 import { ObserverPortraits } from './ui/ObserverPortraits';
@@ -63,7 +62,7 @@ async function startGame(): Promise<void> {
       portraits = new ObserverPortraits();
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'missionIntro');
     }
-    assets = await loadCharacterAssets(!defense);
+    assets = await loadCharacterAssets();
   } catch (error) {
     recovery.dialog?.dispose();
     portraits?.dispose(); audio.dispose();
@@ -77,7 +76,7 @@ async function startGame(): Promise<void> {
   const continueGame = recovery.decision ? await recovery.decision : false;
   const chosenRecovery = recovery.dialog ? { dialog: recovery.dialog, continueGame } : undefined;
   const app = new GameApp(gameViewport, configStore, level, assets,
-    perfEnabled(window.location.search), threatReviewEnabled(window.location.search), audio, portraits, saved,
+    perfEnabled(window.location.search), audio, portraits, saved,
     chosenRecovery);
   if (saved.status !== 'valid' && saved.status !== 'invalid') SessionRecovery.clearLoading(gameViewport);
   app.start();

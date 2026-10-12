@@ -38,7 +38,7 @@ try { for (const phase of ['before', 'after']) {
       }
       a.simulation.restoreState(dense);
       if(flight){for(let i=0;i<12;i++)a.simulation.step(1/60,{targetX:dense.player.x,...(i===0?{throwGrenade:true}:{})},tuning);dense=a.simulation.getState();}
-      a.audio.restoreObservation(a.previousDefenseValue, dense.enemies, dense.streamRewards, dense.boss, dense.projectiles);
+      a.audio.restoreObservation(a.previousDefenseValue, dense.enemies, dense.projectiles);
       a.simulation.consumePresentationEvents(); a.simulation.consumeArtilleryEvents(); a.simulation.consumeGrenadeEvents();
       // Hold an identical real crowd so frame cost is not confounded by different deaths/XP/timing.
       a.simulation.step = () => {}; a.presentationMs = dense.elapsedSeconds * 1000;

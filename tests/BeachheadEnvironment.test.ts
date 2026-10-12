@@ -3,14 +3,14 @@ import * as THREE from 'three';
 import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
 import { AttackLaneRenderer } from '../src/rendering/AttackLaneRenderer';
 
-it('hides bridge road/rails/joints and presents sand, shore and fixed corridor openings', () => {
+it('does not allocate retired bridge scenery and presents sand, shore and fixed corridor openings', () => {
   const scene = new THREE.Scene();
   const environment = new BridgeEnvironment(scene);
   const lanes = new AttackLaneRenderer(scene);
   environment.update(0, 3.2, 0, true);
   lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0, 0, true);
-  expect(scene.getObjectByName('bridge-deck')!.parent!.visible).toBe(false);
-  expect(scene.getObjectByName('bridge-expansion-joint')!.visible).toBe(false);
+  expect(scene.getObjectByName('bridge-deck')).toBeUndefined();
+  expect(scene.getObjectByName('bridge-expansion-joint')).toBeUndefined();
   expect(scene.getObjectByName('stationary-defense-beach')!.visible).toBe(true);
   expect(scene.getObjectByName('defense-sand')).toBeDefined();
   expect(scene.getObjectByName('defense-sea')).toBeDefined();
@@ -40,20 +40,4 @@ it('hides bridge road/rails/joints and presents sand, shore and fixed corridor o
   lanes.dispose();
   environment.dispose();
   expect(scene.children).toHaveLength(0);
-});
-
-it('hides complete legacy burning actors in defense and restores them in legacy mode', () => {
-  const scene=new THREE.Scene(), environment=new BridgeEnvironment(scene);
-  environment.update(0,3.2,0,true);
-  expect(scene.getObjectByName('coastal-steel-forms')).toBeUndefined();
-  expect(scene.getObjectByName('coastal-rust-forms')).toBeUndefined();
-  for(const site of scene.getObjectsByProperty('name','battlefield-burning-site')) expect(site.visible).toBe(false);
-  for (const time of [500, 3000, 15000, 60000]) {
-    environment.update(0, 3.2, time, true);
-    expect(scene.getObjectsByProperty('name', 'battlefield-burning-site').every(site => !site.visible)).toBe(true);
-  }
-  environment.update(0,3.2,0,false);
-  for(const name of ['burning-wreck-base','burning-wreck-slab']) expect(scene.getObjectByName(name)!.visible).toBe(true);
-  for(const site of scene.getObjectsByProperty('name','battlefield-burning-site')) expect(site.visible).toBe(true);
-  environment.dispose();
 });

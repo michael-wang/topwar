@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vitest';
 import authoredLevel from '../public/game-data/levels/level-001.json';
 import gameData from '../public/game-data/game.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { Simulation } from '../src/simulation/Simulation';
-import { createEnemyStreamRow } from '../src/simulation/enemies/streamRow';
-import { effectiveSeed } from '../src/simulation/enemies/effectiveSeed';
 
 const finiteGroup = { id: 'opening-stream', z: 60, enemy: 'grunt', count: 840,
   formation: { columns: 7, spacing: 0.60, jitter: 0.16, seed: 104729 } };
@@ -40,25 +37,6 @@ describe('LevelDefinitionSchema', () => {
       rewards: { rowsPerReward: 7, spawnAheadDistance: 30,
         hitsRequired: 10, seed: 271828, sideX: 3.2 } });
     expect(parsed.upgradeGates).toEqual([]);
-  });
-
-  it('keeps row Z spacing and falls back to spacing for legacy column positions', () => {
-    const legacyStream = structuredClone(authoredLevel.enemyStream) as Partial<typeof authoredLevel.enemyStream>;
-    delete legacyStream.columnSpacing;
-    const legacyLevel = LevelDefinitionSchema.parse({ ...authoredLevel, enemyStream: legacyStream });
-    const legacy = new Simulation({ seed: 1, level: legacyLevel, startSquad: 1,
-      startRocketCount: 0, tiers: gameData.tiers }).getState();
-    const first = legacy.enemies.slice(0, 7);
-    const second = legacy.enemies.slice(7, 14);
-    const streamSeed = effectiveSeed(1, legacyStream.seed!);
-    const expected = createEnemyStreamRow(0, 7, .6, .16, streamSeed);
-    first.forEach((enemy, index) => {
-      expect(enemy.x).toBe(expected[index].x);
-      expect(enemy.z - legacyStream.startZ!).toBeCloseTo(expected[index].z);
-    });
-    expect(second[0].z - first[0].z).toBeCloseTo(.6
-      + createEnemyStreamRow(1, 7, .6, .16, streamSeed)[0].z
-      - createEnemyStreamRow(0, 7, .6, .16, streamSeed)[0].z);
   });
 
   it('accepts finite levels without a stream and validates stream fields strictly', () => {

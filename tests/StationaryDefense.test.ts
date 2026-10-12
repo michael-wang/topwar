@@ -126,11 +126,3 @@ it('validates explicit wave timing and converts old approach speeds only once',(
   expect(migrated.giant.speed).toBeCloseTo(.68);
   expect(CatharsisConfigSchema.parse(migrated)).toEqual(migrated);
 });
-
-it('keeps legacy non-defense player travel and old enemy speed configuration',()=>{
-  const legacy=CatharsisConfigSchema.parse({...carnivalOptions.catharsis.balance,defenseMode:false,defenseMotionVersion:undefined,
-    gruntSpeed:.25,heavySpeed:.12,groupSize:1,pressureRamp:undefined});
-  expect(legacy.gruntSpeed).toBe(.25);expect(legacy.heavySpeed).toBe(.12);
-  const sim=new Simulation({...carnivalOptions,catharsis:undefined,level:{id:'legacy',length:100,enemyGroups:[],upgradeGates:[]}});
-  sim.step(1,{targetX:0},{...pilotTuning,forwardSpeed:.6});expect(sim.getState().player.z).toBe(.6);expect(sim.getState().defenseWaves).toBeUndefined();
-});

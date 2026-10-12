@@ -45,7 +45,6 @@ export class PerfHud {
       `E helm/vest ${caps(r.enemies.tierCapacities)}`,
       `E death ${r.enemies.deathVisuals} contact ${r.enemies.contactVisuals}`,
       `SH P${r.shadows.player.active}/${r.shadows.player.capacity} E${r.shadows.enemy.active}/${r.shadows.enemy.capacity}`,
-      `SH B${r.shadows.boss.active}/${r.shadows.boss.capacity} R${r.shadows.reward.active}/${r.shadows.reward.capacity}`,
       `ENV sm${r.environment.smoke} in${r.environment.infernoSources}`,
       `ENV imp${r.environment.activeImpacts}/${r.environment.impactSlots} fl${r.environment.activeFlak}/${r.environment.flakSlots}`,
       `ENV air${r.environment.activeAircraft}/${r.environment.aircraft} ship${r.environment.shipSections}`,

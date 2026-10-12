@@ -36,7 +36,7 @@ try { for (const phase of ['before', 'after']) {
         if (s.squad.count && s.enemies.length > dense.enemies.length) dense = a.simulation.getState();
         a.simulation.step(1 / 60, { targetX: s.player.x }, tuning); if (!a.simulation.getFrameState().squad.count) break;
       }
-      a.simulation.restoreState(dense); a.audio.restoreObservation(a.previousDefenseValue, dense.enemies, dense.streamRewards, dense.boss, dense.projectiles);
+      a.simulation.restoreState(dense); a.audio.restoreObservation(a.previousDefenseValue, dense.enemies, dense.projectiles);
       a.simulation.consumePresentationEvents(); a.simulation.consumeArtilleryEvents(); a.simulation.consumeGrenadeEvents();
       // Hold an identical real crowd so frame cost is not confounded by different deaths/XP/timing.
       a.simulation.step = () => {}; a.presentationMs = dense.elapsedSeconds * 1000;

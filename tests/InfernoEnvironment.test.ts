@@ -68,7 +68,7 @@ describe('deep battlefield inferno', () => {
     const scene = new THREE.Scene();
     const environment = new BridgeEnvironment(scene);
     const inferno = scene.getObjectByName('battlefield-deep-inferno') as THREE.Group;
-    const beachhead = scene.getObjectByName('enemy-beachhead-horizon') as THREE.Group;
+    const beachhead = scene.getObjectByName('distant-artillery-layer') as THREE.Group;
     const sources = inferno.children.filter((child) => child.name === 'inferno-source');
     expect(sources).toHaveLength(3);
     expect(inferno.position.z - beachhead.position.z).toBeGreaterThan(12);

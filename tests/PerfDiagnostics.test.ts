@@ -91,8 +91,8 @@ describe('opt-in performance diagnostics', () => {
   it('keeps renderer getters read-only', () => {
     const scene = new THREE.Scene();
     const bullet = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
-    const renderer = new ProjectileRenderer(scene, bullet);
-    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 0, hitRadiusBonus: 0 }], 0);
+    const renderer = new ProjectileRenderer(scene);
+    renderer.update([{ id: 1, kind: 'rifle', tier: 1, x: 0, z: 0, hitRadiusBonus: 0 }], 0, projectileTestCamera, 844);
     const children = scene.children.length;
     expect(renderer.getDebugStats()).toEqual({ live: 1, pool: 8, pulseTrackers: 1 });
     expect(renderer.getDebugStats()).toEqual({ live: 1, pool: 8, pulseTrackers: 1 });
@@ -107,11 +107,12 @@ describe('opt-in performance diagnostics', () => {
       projectilePasses: 0, penetrationPasses: 0 };
     const make = (enabled: boolean) => new Simulation({ seed: 7, level,
       startSquad: 1, startRocketCount: 0, tiers: config.tiers,
+      catharsis: { balance: { ...config.catharsis!, gruntSpeed: 0, heavySpeed: 0, defenseWaves: { ...config.catharsis!.defenseWaves, firstWaveDelaySeconds: 1000 } }, trackHalfWidth: 3.2 },
       collisionDiagnostics: enabled ? counters : undefined });
     const normal = make(false);
     const measured = make(true);
     const state = normal.getState();
-    state.enemies.push({ id: 1, tier: 1, x: 0, z: 3, hp: 10 });
+    state.enemies.push({ id: 1, tier: 1, lane: 2, archetype: 'grunt', x: 0, z: 3, hp: 1 });
     normal.restoreState(state);
     measured.restoreState(state);
     const tuning = { moveSpeed: 0, forwardSpeed: 0, trackHalfWidth: 3,
@@ -128,3 +129,5 @@ describe('opt-in performance diagnostics', () => {
     expect(JSON.stringify(measured.getState())).not.toContain('enemyCandidateChecks');
   });
 });
+
+const projectileTestCamera = new THREE.PerspectiveCamera(48, 350/844, .1, 180);

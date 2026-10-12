@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SeededRng } from '../src/core/Rng';
 import { EnemyCollisionIndex, type EnemyCandidateSource } from '../src/simulation/enemies/EnemyCollisionIndex';
 import { findFirstHit, type CollisionDiagnostics } from '../src/simulation/Simulation';
-import type { EnemySimulationState, ProjectileSimulationState,
-  BossSimulationState, StreamRewardSimulationState, UpgradeGateSimulationState } from '../src/simulation/SimulationState';
+import type { EnemySimulationState, ProjectileSimulationState } from '../src/simulation/SimulationState';
 
 const projectile = (x: number, z: number, hitRadiusBonus = 0,
   kind: 'rifle' | 'rocket' = 'rifle'): ProjectileSimulationState => ({
@@ -23,16 +22,13 @@ function fullScan(enemies: EnemySimulationState[]): EnemyCandidateSource {
 }
 
 function hit(shot: ProjectileSimulationState, endZ: number, source: EnemyCandidateSource,
-  options: { boss?: BossSimulationState | null; rewards?: StreamRewardSimulationState[];
-    gates?: UpgradeGateSimulationState[]; minimumFraction?: number;
+  options: { minimumFraction?: number;
     pierced?: ReadonlySet<number>; diagnostics?: CollisionDiagnostics } = {}) {
-  const result = findFirstHit(shot, endZ, source, options.boss ?? null,
-    options.rewards ?? [], options.gates ?? [], .3, 1.5, 0, 0,
+  const result = findFirstHit(shot, endZ, source, .3, 0, 0,
     options.minimumFraction ?? 0, options.pierced, options.diagnostics);
   if (!result) return null;
   return { kind: result.kind, id: result.kind === 'enemy' ? result.enemy.id
-    : result.kind === 'boss' ? result.boss.id
-      : result.kind === 'streamReward' ? result.reward.id : result.kind === 'gate' ? result.gate.id : 0,
+    : 0,
   fraction: result.fraction, z: result.z };
 }
 
@@ -60,24 +56,11 @@ describe('projectile enemy broad phase', () => {
       .toEqual(hit(projectile(0, 0, .9), 5, fullScan(boundary)));
   });
 
-  it('preserves exact and near ties with enemies, Boss, rewards, and gates', () => {
-    const enemies = [enemy(9, 0, 5), enemy(2, 0, 5), enemy(4, 0, 5 + 1e-10)];
-    const indexed = new EnemyCollisionIndex(enemies);
-    const reference = fullScan(enemies);
-    const boss: BossSimulationState = { id: 12, tier: 1, x: 0, z: 5,
-      hp: 100, maxHp: 100, engaged: true, slamCooldownRemainingSeconds: 1, slamCount: 0 };
-    const rewards: StreamRewardSimulationState[] = [{ id: 7, tier: 1,
-      x: 0, z: 5, hitProgress: 0, hitsRequired: 3 }];
-    const gates: UpgradeGateSimulationState[] = [{ id: 'gate', x: 0, zOffset: 4.7,
-      width: 1, hitProgress: 0, reward: { mode: 'hitPickup', kind: 'rifle',
-        amount: 1, hitsRequired: 3, dropSpeed: 1 } }];
-    const shot = projectile(0, 0);
-    for (const options of [{}, { boss }, { rewards }, { gates }, { boss, rewards, gates }]) {
-      expect(hit(shot, 10, indexed, options)).toEqual(hit(shot, 10, reference, options));
-    }
-    expect(hit(shot, 10, indexed)?.id).toBe(2);
-    expect(hit(shot, 10, indexed, { rewards })?.kind).toBe('streamReward');
-    expect(hit(shot, 10, indexed, { gates })?.kind).toBe('gate');
+  it('preserves deterministic enemy ID ordering for exact and near ties', () => {
+    const enemies = [enemy(9,0,5),enemy(2,0,5),enemy(4,0,5+1e-10)];
+    const shot = projectile(0,0), indexed = new EnemyCollisionIndex(enemies);
+    expect(hit(shot,10,indexed)).toEqual(hit(shot,10,fullScan(enemies)));
+    expect(hit(shot,10,indexed)?.id).toBe(2);
   });
 
   it('matches repeated penetration cursors and excludes enemies removed earlier in the step', () => {
@@ -92,8 +75,7 @@ describe('projectile enemy broad phase', () => {
         let minimumFraction = 0;
         const pierced = new Set<number>();
         for (let pass = 0; pass < 5; pass++) {
-          const result = findFirstHit(shot, 8, source, null, [], [], .3,
-            undefined, 0, 0, minimumFraction, pierced);
+          const result = findFirstHit(shot, 8, source, .3, 0, 0, minimumFraction, pierced);
           if (!result || result.kind !== 'enemy') break;
           sequence.push(result.enemy.id, result.fraction);
           pierced.add(result.enemy.id);

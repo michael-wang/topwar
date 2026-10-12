@@ -8,7 +8,7 @@ import acceptedMatrices from './fixtures/accepted-p3-matrices.json';
 function setup(width = 350, height = 844) {
   const scene = new THREE.Scene();
   const bullet = new THREE.Mesh(new THREE.BoxGeometry(.052, .052, .52), new THREE.MeshBasicMaterial());
-  const renderer = new ProjectileRenderer(scene, bullet, { height: .37145, offsetX: 0 });
+  const renderer = new ProjectileRenderer(scene, { height: .37145, offsetX: 0 });
   const camera = new THREE.PerspectiveCamera(coastalCameraFov(width / height), width / height, .1, 180);
   camera.position.set(0, 6.5, -10); camera.lookAt(0, 0, 12.5); camera.updateMatrixWorld();
   const shot = { id: 1, kind: 'rifle' as const, tier: 1, x: 0, z: 30, hitRadiusBonus: 0, slopeX: 0 };
@@ -90,7 +90,7 @@ describe('Permanent Defense Ink Spear', () => {
     s.renderer.dispose();
   });
 
-  it('retains stable colors/blending, resets for Retry, and restores Legacy materials/geometry', () => {
+  it('retains stable colors/blending, resets for Retry, and keeps the accepted materials/geometry', () => {
     const s = setup(); s.update(0); s.update(); const ordinary = s.pixels(s.edge()).width;
     s.update(200);
     expect(s.pixels(s.core()).width).toBeGreaterThanOrEqual(1.8);
@@ -98,11 +98,6 @@ describe('Permanent Defense Ink Spear', () => {
     expect((s.edge().material as THREE.MeshBasicMaterial).blending).toBe(THREE.NormalBlending);
     s.renderer.reset(); s.update(300);
     expect((s.edge().material as THREE.MeshBasicMaterial).color.getHexString()).toBe('080b10');
-    s.renderer.update([s.shot], 400);
-    expect(s.core().geometry).toBe(s.bullet.geometry); expect(s.edge().geometry).toBe(s.bullet.geometry);
-    expect((s.core().material as THREE.MeshBasicMaterial).transparent).toBe(false);
-    expect((s.edge().material as THREE.MeshBasicMaterial).opacity).toBe(.6);
-    expect(s.core().renderOrder).toBe(0); expect(s.edge().renderOrder).toBe(0);
     s.renderer.dispose();
   });
 

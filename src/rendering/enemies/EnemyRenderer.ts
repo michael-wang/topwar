@@ -22,7 +22,7 @@ import { gruntDeathBody } from '../../presentation/GruntDeathBody';
 import { CrowdDeathBatches } from './CrowdDeathBatches';
 import { ENEMY_PALETTE, paletteIndex } from '../tierPalettes';
 import type { PresentationEvent } from '../../simulation/PresentationEvent';
-import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening, type EnemyDeathRole } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
 import type { GrenadeEvent } from '../../simulation/grenade';

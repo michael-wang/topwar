@@ -28,7 +28,7 @@ try{for(const width of [350,390])for(const mode of ['off','on'])for(const phase 
   await page.evaluate(state=>{
     const a=window.__testApp;cancelAnimationFrame(a.frameId);a.simulation.restoreState(state);a.simulation.consumePresentationEvents();a.simulation.consumeGrenadeEvents();a.simulation.consumeArtilleryEvents();
     a.renderer.resetFeedback();a.presentationMs=state.elapsedSeconds*1000;a.previousFrameTimestampMs=null;a.fixedStepLoop.reset();
-    a.audio.restoreObservation(a.previousDefenseValue,state.enemies,state.streamRewards,state.boss,state.projectiles);
+    a.audio.restoreObservation(a.previousDefenseValue,state.enemies,state.projectiles);
     window.__bench={stamps:[],cpu:[],samples:[],shader:[],slowFrames:[],start:performance.now(),lastSample:-Infinity,peakEnemies:0,peakProjectiles:0,peakShells:0};
     const gl=a.renderer.renderer.getContext();for(const method of ['compileShader','linkProgram']){const native=gl[method].bind(gl);gl[method]=(...args)=>{const at=performance.now(),value=native(...args);window.__bench.shader.push({method,at:at-window.__bench.start,ms:performance.now()-at});return value;};}
     const step=a.simulation.step.bind(a.simulation);a.simulation.step=(dt,input,tuning)=>{

@@ -103,21 +103,6 @@ it('projects current Heavy max HP and keeps slower gait entirely outside gamepla
   for (let tick = 0; tick < 60; tick++) { enemyRunFrame(1, tick * 16, 650); sim.step(1 / 60, { targetX: 0 }, tuning); }
   expect(sim.getState().enemies[0].z).toBeCloseTo(19.28);
 });
-
-it('awards each penetrating kill and retained rocket kill through the same kill boundary', () => {
-  for (const kind of ['rifle', 'rocket'] as const) {
-    const sim = make(); const state = sim.getState();
-    state.enemies = [1, 2].map(id => ({ id, tier: 1, archetype: 'grunt' as const, lane: 2, x: 0, z: 3 + id * .2, hp: 1 }));
-    state.weapons.rifleCooldownRemainingSeconds = 10;
-    state.projectiles = [{ id: 1, tier: kind === 'rifle' ? 2 : 0, kind, ...(kind === 'rifle' ? { lane: 2, slopeX: 0 } : {}), x: 0, z: 2, speed: 60,
-      damage: 100, remainingRange: 30, blastRadius: kind === 'rocket' ? 2 : 0,
-      hitRadiusBonus: 0, penetrationRemaining: kind === 'rifle' ? config.tiers.mergeCount : 0 }];
-    state.weapons.nextProjectileId = 2;
-    sim.restoreState(state); sim.step(.06, { targetX: 0 }, tuning);
-    expect(sim.getState().enemies).toHaveLength(0);
-    expect(sim.getState().progression!.xp).toBe(2);
-  }
-});
 it('uses the tuned base rate in actual level-three scheduling', () => {
   const sim = make(); const state = sim.getState(); state.progression = { level: 3, xp: 0 }; sim.restoreState(state);
   const live = { ...tuning, rifle: { ...tuning.rifle, fireRate: 2.5 } };

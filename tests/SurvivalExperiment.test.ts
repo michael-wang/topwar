@@ -94,9 +94,7 @@ it('rejects invalid optional profiles, enemy speed fields and Giant/legacy speed
   const s=make('survival8-experimental').getState(),sim=new Simulation(options);
   for(const speed of [0,-1,Infinity,NaN,4.1]){const bad=structuredClone(s);bad.enemies[0].survivalSpeedMultiplier=speed;expect(()=>sim.restoreState(bad)).toThrow();}
   const bad=structuredClone(s);bad.enemies[0].archetype='giant';expect(()=>sim.restoreState(bad)).toThrow();
-  const legacy=new Simulation({...options,catharsis:undefined}),old=legacy.getState();
-  old.enemies=[{id:1,tier:1,x:0,z:40,hp:1,survivalSpeedMultiplier:1.4}];
-  expect(()=>legacy.restoreState(old)).toThrow();
+  expect(()=>new Simulation({...options,catharsis:undefined})).toThrow('Beachhead Defense configuration is required');
   for(const patch of [{ordinarySpeedMultiplier:0},{ordinarySpeedMultiplier:5},{waveIntervalSeconds:0},{startLevel:8},{pressureLaneCount:6}]){
     const d:any=structuredClone(data);d.catharsis.postCapSurvival=survivalReviewConfig(c.catharsis!.postCapSurvival,'experimental');
     Object.assign(d.catharsis.postCapSurvival.capProfile,patch);expect(()=>GameConfigSchema.parse(d)).toThrow();

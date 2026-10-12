@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameAudio } from '../src/audio/GameAudio';
 import { MAX_MUSIC_VOICES, MUSIC_LOOKAHEAD_SECONDS, ProceduralMusic } from '../src/audio/ProceduralMusic';
-import { MUSIC_BAR_SECONDS, MUSIC_BPM, MUSIC_MAX_VOLUME, MUSIC_STEP_MS,
-  MUSIC_STEPS_PER_BAR, musicEventsForStep, musicHarmonyForBar, musicMotifVariant,
-  musicPhraseIntensity, musicStateFor, musicStepAt, type MusicFrame,
-  type MusicState } from '../src/audio/MusicComposition';
+import { MUSIC_BAR_SECONDS, MUSIC_BPM, MUSIC_STEP_MS, MUSIC_STEPS_PER_BAR, musicEventsForStep, musicHarmonyForBar, musicMotifVariant, musicPhraseIntensity, musicStateFor, musicStepAt, type MusicFrame, type MusicState } from '../src/audio/MusicComposition';
 
-const normal: MusicFrame = { playerZ: 0, squadCount: 4, boss: null,
+const normal: MusicFrame = { squadCount: 3,
   paused: false, musicVolume: .22 };
 
 function audioHarness() {
@@ -107,8 +104,6 @@ describe('original procedural battlefield composition', () => {
       expect(notes[0].frequencyHz).toBe(musicHarmonyForBar(bar, 'NORMAL').rootHz);
       expect(new Set(notes.map((note) => note.frequencyHz)).size).toBeGreaterThan(1);
       expect(notes).toHaveLength(3);
-      expect(bass(bar, 'BOSS_APPROACH')).toHaveLength(4);
-      expect(bass(bar, 'BOSS_SHOWDOWN')).toHaveLength(5);
     }
     expect(musicEventsForStep(17, 1, 'NORMAL').some((event) => event.instrument === 'bass'))
       .toBe(false);
@@ -119,37 +114,13 @@ describe('original procedural battlefield composition', () => {
         .find((event) => event.instrument === 'pad')!.peakGain);
   });
 
-  it('keeps one clock while approach adds Eb and showdown changes related harmony', () => {
-    const random = vi.spyOn(Math, 'random').mockImplementation(() => {
-      throw new Error('Music must not consume Math.random');
-    });
-    try {
-      expect(musicStateFor(normal)).toBe('NORMAL');
-      expect(musicStateFor({ ...normal, boss: { z: 96, engaged: false } })).toBe('NORMAL');
-      expect(musicStateFor({ ...normal, boss: { z: 42, engaged: false } })).toBe('BOSS_APPROACH');
-      expect(musicStateFor({ ...normal, boss: { z: 96, engaged: true } })).toBe('BOSS_SHOWDOWN');
-      expect(musicStateFor({ ...normal, squadCount: 0 })).toBe('GAME_OVER');
-      expect(musicHarmonyForBar(0, 'BOSS_SHOWDOWN').name).toBe('Dm');
-      expect(musicHarmonyForBar(1, 'BOSS_SHOWDOWN').name).toBe('Eb');
-      expect(musicHarmonyForBar(2, 'BOSS_SHOWDOWN').name).toBe('C');
-      const normalPad = musicEventsForStep(17, 0, 'NORMAL').find((event) =>
-        event.instrument === 'pad')!;
-      const approachPad = musicEventsForStep(17, 0, 'BOSS_APPROACH').find((event) =>
-        event.instrument === 'pad')!;
-      expect(approachPad.chord).toBe(normalPad.chord);
-      expect(approachPad.frequencyHz).toBeCloseTo(normalPad.frequencyHz * 2);
-      expect(musicEventsForStep(17, 8 + 5, 'BOSS_APPROACH')
-        .some((event) => event.instrument === 'tension' && event.frequencyHz === 311.13))
-        .toBe(true);
-      const count = (state: MusicState) => Array.from({ length: 64 }, (_, step) =>
-        musicEventsForStep(17, step, state).length).reduce((sum, n) => sum + n, 0);
-      expect(count('NORMAL')).toBeLessThan(count('BOSS_APPROACH'));
-      expect(count('BOSS_APPROACH')).toBeLessThan(count('BOSS_SHOWDOWN'));
-      expect(musicEventsForStep(17, 0, 'GAME_OVER')).toEqual([]);
-    } finally { random.mockRestore(); }
+  it('selects silence only after actual Game Over without consuming gameplay randomness', () => {
+    expect(musicStateFor(normal)).toBe('NORMAL');
+    expect(musicStateFor({ squadCount: 0 })).toBe('GAME_OVER');
+    expect(musicEventsForStep(17, 0, 'GAME_OVER')).toEqual([]);
   });
 
-  it('schedules ahead on one AudioContext clock, pauses/resumes, ducks, and bounds nodes', () => {
+  it('schedules ahead on one AudioContext clock, pauses/resumes and bounds nodes', () => {
     const { context, gains, oscillators, filters, advance } = audioHarness();
     const master = context.createGain();
     const music = new ProceduralMusic(context as unknown as AudioContext,
@@ -157,7 +128,7 @@ describe('original procedural battlefield composition', () => {
     expect(context.createOscillator).not.toHaveBeenCalled();
     expect(music.bus).toBe(gains[1]);
     expect(gains[1].connect).toHaveBeenCalledWith(master);
-    expect(filters.map((filter) => filter.frequency.value)).toEqual([1200, 700, 1900, 1300]);
+    expect(filters.map((filter) => filter.frequency.value)).toEqual([1200, 700, 1900]);
     advance(music, 0);
     expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22, 0, .07);
     expect(oscillators).toHaveLength(6); // Three pad tones, two oscillators each.
@@ -168,7 +139,7 @@ describe('original procedural battlefield composition', () => {
     expect(oscillators.length).toBeGreaterThan(6);
     expect(oscillators.at(-1)!.start.mock.lastCall![0]).toBeGreaterThan(context.currentTime);
     const stepBefore = music.currentStepIndex;
-    advance(music, MUSIC_STEP_MS - 100, { ...normal, boss: { z: 35, engaged: false } });
+    advance(music, MUSIC_STEP_MS - 100, normal);
     expect(music.currentStepIndex).toBe(stepBefore);
     advance(music, MUSIC_STEP_MS * 2, { ...normal, paused: true });
     expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(0,
@@ -179,11 +150,8 @@ describe('original procedural battlefield composition', () => {
     advance(music, MUSIC_STEP_MS * 2, normal, 4);
     expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22, 4, .07);
     expect(music.currentStepIndex).toBe(2);
-    music.duck(MUSIC_STEP_MS * 2);
-    advance(music, MUSIC_STEP_MS * 2 + 10, normal, 4.01);
-    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22 * .28, 4.01, .035);
     advance(music, MUSIC_STEP_MS * 2 + 2500, normal, 6.5);
-    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22, 6.5, .07);
+    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22, 4, .07);
     advance(music, MUSIC_STEP_MS * 2 + 2600, { ...normal, musicVolume: 0 }, 6.6);
     expect(gains[1].gain.setValueAtTime).toHaveBeenLastCalledWith(0, 6.6);
     advance(music, MUSIC_STEP_MS * 2 + 2650, normal, 6.65);
@@ -193,7 +161,7 @@ describe('original procedural battlefield composition', () => {
     advance(music, 0);
     expect(music.currentStepIndex).toBe(0);
     for (let ms = 100; ms < 8 * MUSIC_BAR_SECONDS * 1000; ms += 50) {
-      advance(music, ms, { ...normal, boss: { z: 8, engaged: true } });
+      advance(music, ms, normal);
       expect(music.activeVoiceCount).toBeLessThanOrEqual(MAX_MUSIC_VOICES);
     }
     expect(context.createOscillator.mock.calls.length).toBeLessThan(300);
@@ -222,12 +190,6 @@ describe('original procedural battlefield composition', () => {
       context.currentTime = (MUSIC_STEP_MS - 100) / 1000;
       audio.updateMusic(MUSIC_STEP_MS - 100, normal);
       expect(oscillators.length).toBeGreaterThan(6);
-      audio.observe(1, 1, [], [], { id: 1, hp: 10 }, 1000);
-      audio.observe(1, 1, [], [], null, 1020);
-      context.currentTime = 1.02;
-      audio.updateMusic(1020, normal);
-      expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22 * .28,
-        1.02, .035);
       audio.resetObservation();
       context.currentTime = 2;
       audio.updateMusic(0, { ...normal, musicVolume: .24 });

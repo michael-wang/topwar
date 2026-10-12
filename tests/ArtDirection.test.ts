@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { XP_FILL_GRADIENT } from '../src/ui/xpPalette';
 import { ART } from '../src/art/ArtDirection';
 import { UI_ART } from '../src/art/UiArt';
-import { illustratedMaterial } from '../src/rendering/art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../src/rendering/art/PaintedGeometry';
 import { paintDaubTexture, sandWashTexture } from '../src/rendering/art/PaintedTextures';
 import { framedBarTexture } from '../src/rendering/art/FramedBarTextures';

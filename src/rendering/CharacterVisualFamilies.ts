@@ -3,7 +3,7 @@ import type { PlayerPresentation } from './squad/PlayerPresentation';
 import type { CrowdPresentation } from './enemies/CrowdPresentation';
 
 export type CharacterModel = THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-export type CharacterRole = 'player' | 'grunt' | 'heavy' | 'giant' | 'boss';
+export type CharacterRole = 'player' | 'grunt' | 'heavy' | 'giant';
 
 export interface CharacterParts {
   readonly body: CharacterModel;
@@ -58,19 +58,12 @@ export interface GiantVisualFamily extends CharacterVisualFamily<'giant'> {
     readonly shadow: { readonly width: number; readonly depth: number } };
 }
 
-export interface BossVisualFamily extends CharacterVisualFamily<'boss'> {
-  readonly runFrames: readonly CharacterModel[];
-  readonly slamFrames: readonly CharacterModel[];
-  // Boss death retains its active pose and borrows only this material.
-  readonly grayBody: CharacterModel;
-}
 
 export interface CharacterVisualFamilies {
   readonly player: PlayerVisualFamily;
   readonly grunt: CrowdVisualFamily<'grunt'>;
   readonly heavy: CrowdVisualFamily<'heavy'>;
   readonly giant: GiantVisualFamily;
-  readonly boss: BossVisualFamily;
 }
 
 export const ENEMY_GAIT_CYCLE_MS = 360;

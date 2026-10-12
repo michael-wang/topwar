@@ -32,14 +32,13 @@ export class ProjectileRenderer {
   private capacity = 8;
   private body: THREE.InstancedMesh;
   private glow: THREE.InstancedMesh;
-  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.projectile.core,
+  private readonly tracerMaterial = new THREE.MeshBasicMaterial({ color: ART.defenseTracer.core, transparent: true,
     toneMapped: false });
-  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: ART.projectile.accent,
-    transparent: true, opacity: ART.projectile.accentOpacity, depthWrite: false,
+  private readonly glowMaterial = new THREE.MeshBasicMaterial({ color: ART.defenseTracer.outline,
+    transparent: true, opacity: 1, depthWrite: false,
     blending: THREE.NormalBlending, toneMapped: false });
 
   constructor(private readonly scene: THREE.Scene,
-    private readonly bullet: THREE.Mesh<THREE.BufferGeometry, THREE.Material>,
     private readonly rifleOrigin = { height: .64, offsetX: 0 }) {
     this.defenseGeometry = defenseTracerGeometry();
     this.body = this.createBatch('rifle-tracers', this.tracerMaterial, this.capacity);
@@ -47,23 +46,10 @@ export class ProjectileRenderer {
   }
 
   update(projectiles: readonly ProjectileRenderState[], nowMs = performance.now(),
-    defenseCamera?: THREE.PerspectiveCamera, cssHeight = 1): void {
+    defenseCamera: THREE.PerspectiveCamera, cssHeight: number): void {
     this.ensureCapacity(projectiles.length);
-    const defense = !!defenseCamera;
-    if (defenseCamera) defenseCamera.updateMatrixWorld();
-    this.body.geometry = this.glow.geometry = defense ? this.defenseGeometry : this.bullet.geometry;
-    // Draw the ink silhouette, then an unattenuated ivory core. Keep both in the
-    // transparent queue so the outline cannot cover the core.
-    if (this.tracerMaterial.transparent !== defense) {
-      this.tracerMaterial.transparent = defense;
-      this.tracerMaterial.needsUpdate = true;
-    }
-    this.glow.renderOrder = defense ? 1 : 0;
-    this.body.renderOrder = defense ? 2 : 0;
-    this.glowMaterial.color.set(defense ? ART.defenseTracer.outline : ART.projectile.accent);
-    this.tracerMaterial.color.set(defense ? ART.defenseTracer.core : ART.projectile.core);
-    // Normal ink (or the retained Legacy red edge) darkens pale sand.
-    this.glowMaterial.opacity = defense ? 1 : ART.projectile.accentOpacity;
+    defenseCamera.updateMatrixWorld();
+    this.glow.renderOrder = 1; this.body.renderOrder = 2;
     const activeIds = this.activeIds;
     activeIds.clear();
     for (let index = 0; index < projectiles.length; index++) {
@@ -72,9 +58,8 @@ export class ProjectileRenderer {
       const length = Math.min(1.35, 1 + 0.025 * (projectile.tier - 1));
       const pulse = this.pulse.scaleFor(projectile.id, nowMs);
       const transform = this.transform;
-      transform.position.set(-projectile.x + (projectile.kind !== 'rocket' ? this.rifleOrigin.offsetX : 0),
-        projectile.kind === 'rocket' ? .66 : this.rifleOrigin.height, projectile.z);
-      if (defenseCamera) {
+      transform.position.set(-projectile.x + this.rifleOrigin.offsetX, this.rifleOrigin.height, projectile.z);
+      {
         const edge = this.defenseTransform.apply(transform, defenseCamera, cssHeight,
           projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus);
         const fullLength = transform.scale.z;
@@ -87,20 +72,6 @@ export class ProjectileRenderer {
         this.glow.setMatrixAt(index, transform.matrix);
         continue;
       }
-      transform.rotation.set(0, -Math.atan(projectile.slopeX ?? 0), 0);
-      if (projectile.kind === 'rocket') {
-        transform.scale.setScalar(1.8 * pulse);
-      } else {
-        transform.scale.set(1 + 0.45 * projectile.hitRadiusBonus,
-          1 + 0.45 * projectile.hitRadiusBonus, length * pulse);
-      }
-      transform.updateMatrix();
-      this.body.setMatrixAt(index, transform.matrix);
-      const glowWidth = projectile.kind === 'rocket' ? 2.4 : 2.4 + 1.7 * projectile.hitRadiusBonus;
-      transform.scale.set(transform.scale.x * glowWidth, transform.scale.y * glowWidth,
-        transform.scale.z * 1.12);
-      transform.updateMatrix();
-      this.glow.setMatrixAt(index, transform.matrix);
     }
     this.body.count = projectiles.length;
     this.glow.count = projectiles.length;
@@ -130,7 +101,7 @@ export class ProjectileRenderer {
   }
 
   private createBatch(name: string, material: THREE.Material, capacity: number): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(this.bullet.geometry, material, capacity);
+    const mesh = new THREE.InstancedMesh(this.defenseGeometry, material, capacity);
     mesh.name = name;
     mesh.count = 0;
     mesh.visible = false;

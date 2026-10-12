@@ -41,31 +41,6 @@ it('uses five configurable corridors and a 3 Hz baseline without changing archet
   for (const enemy of enemies) expect(enemy.hp).toBe(enemy.archetype === 'grunt' ? 1 : 15);
 });
 
-it('uses a defense shoreline horizon while leaving the legacy stream horizon unchanged', () => {
-  expect(balance.defenseSpawnAheadDistance).toBe(47);
-  expect(balance.crowdDepthSpan).toBe(9);
-  const defense = make(true);
-  expect(defense.getState().enemies.every(enemy => enemy.z <= balance.defenseSpawnAheadDistance)).toBe(true);
-  const custom = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0,
-    tiers: config.tiers, catharsis: { balance: { ...balance, defenseSpawnAheadDistance: 42 }, trackHalfWidth: 3.2 } });
-  expect(custom.getState().enemies.every(enemy => enemy.z <= 42)).toBe(true);
-  expect(custom.getState().enemies.length).toBeLessThan(defense.getState().enemies.length);
-  const legacy = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0, tiers: config.tiers });
-  expect(legacy.getState().enemyStream!.nextRowIndex).toBe(111);
-  expect(Math.max(...legacy.getState().enemies.map(enemy => enemy.z))).toBeGreaterThan(90);
-  // A due deadline admits at the fixed shoreline, independent of player position.
-  const state = defense.getState();
-  const nextId = state.enemyStream!.nextEnemyId;
-  state.defenseWaves = { nextAtSeconds: 0 };
-  defense.restoreState(state);
-  defense.step(1 / 60, { targetX: 0 }, tuning);
-  const advanced = defense.getState();
-  const newEnemies = advanced.enemies.filter(enemy => enemy.id >= nextId);
-  expect(newEnemies).toHaveLength(24);
-  expect(newEnemies.every(enemy => enemy.z - advanced.player.z <= balance.defenseSpawnAheadDistance)).toBe(true);
-  expect(newEnemies.every(enemy => enemy.z >= balance.defenseSpawnAheadDistance - balance.crowdDepthSpan)).toBe(true);
-});
-
 it('projects Heavy proportions while leaving Grunts and all simulation outcomes unchanged', () => {
   const old = new Simulation({ seed: 17, level, startSquad: 1, startRocketCount: 0, tiers: config.tiers,
     catharsis: { balance: { ...balance, heavyWidthMultiplier: 1, heavyHeightMultiplier: 1, heavyDepthMultiplier: 1 }, trackHalfWidth: 3.2 } });
@@ -135,13 +110,6 @@ it('chooses three distinct seeded fronts per priority block and distributes 24 m
   }
   expect(() => CatharsisConfigSchema.parse({ ...balance, pressureLaneCount: 6 })).toThrow();
   expect(make(true).getState().enemies).toHaveLength(120);
-});
-
-it('preserves legacy one/two-front selection outside defense mode', () => {
-  const legacy = { ...balance, defenseMode: false };
-  for (let wave = 0; wave < 30; wave++) {
-    expect(laneWave(wave, 17, legacy)).toEqual(laneWave(wave, 17, { ...legacy, pressureLaneCount: undefined }));
-  }
 });
 
 it.each([1, 17, 42, 99])('holds a continuously defended Grunt front while unattended fronts overwhelm seed %i', seed => {

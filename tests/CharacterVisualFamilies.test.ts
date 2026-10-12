@@ -1,12 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { LEGACY_MODEL_FILES, loadCharacterAssets } from '../src/rendering/CharacterAssets';
+import { loadCharacterAssets } from '../src/rendering/CharacterAssets';
 import { canShareCrowdBatch,
   type CharacterVisualFamilies } from '../src/rendering/CharacterVisualFamilies';
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
-import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
-import { BossRenderer } from '../src/rendering/boss/BossRenderer';
 import type { EnemyRenderState } from '../src/rendering/RenderState';
 import type { PresentationEvent } from '../src/simulation/PresentationEvent';
 import { characterFamilies } from './characterModel';
@@ -19,98 +16,21 @@ const contact = (id: number): PresentationEvent => ({ kind: 'normalEnemyContact'
   after: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 } });
 
 describe('named character visual families', () => {
-  it('loads each named resource once and preserves explicit sharing and disposal ownership', async () => {
-    const models = new Map<string, THREE.Mesh>();
-    const load = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async url => {
-      // Resource completion order must not define semantic ownership.
-      if (url.includes('run')) await new Promise(resolve => setTimeout(resolve, 1));
-      const model = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: new THREE.Texture() }));
-      models.set(url, model);
-      return { scene: new THREE.Group().add(model) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>;
-    });
-    try {
-      const assets = await loadCharacterAssets();
-      const model = (name: string) => models.get(`/models/toy-soldier-${name}.glb`)!;
-      const { player, grunt, heavy, giant, boss } = assets.families;
-      if (!boss) throw new Error('Legacy load must include Boss');
-      expect(load).toHaveBeenCalledTimes(13);
-      expect(models.size).toBe(13);
-      expect([...models.keys()].sort()).toEqual(Object.values(LEGACY_MODEL_FILES)
-        .map(name => `/models/toy-soldier-${name}.glb`).sort());
-      expect([player.role, grunt.role, heavy.role, giant.role, boss.role])
-        .toEqual(['player', 'grunt', 'heavy', 'giant', 'boss']);
-      expect(player.body.geometry.getAttribute('playerPart')).toBeDefined();
-      expect([...models.values()]).not.toContain(player.body);
-      expect([...models.values()]).not.toContain(player.weapon);
-      expect(player.helmet).not.toBe(model('helmet'));
-      expect([...models.values()]).not.toContain(grunt.body);
-      expect(grunt.presentation.bodyTint).toBe('authored');
-      expect(grunt.runFrames).toHaveLength(4);
-      expect(grunt.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
-      expect(grunt.death.body).not.toBe(model('gray-body'));
-      expect(heavy).not.toBe(grunt);
-      expect([...models.values()]).not.toContain(heavy.body);
-      expect(heavy.body).not.toBe(grunt.body);
-      expect(heavy.runFrames.every(frame => ![...models.values()].includes(frame))).toBe(true);
-      expect(heavy.runFrames).not.toBe(grunt.runFrames);
-      expect(heavy.contact).not.toBe(grunt.contact);
-      expect([...models.values()]).not.toContain(giant.body);
-      expect([...models.values()]).not.toContain(giant.contact.body);
-      expect(giant.weapon).toBeDefined();
-      expect(boss.body).toBe(model('boss-body'));
-      expect(boss.vest).toBe(model('boss-vest'));
-      expect(boss.runFrames).toEqual([0, 1, 2, 3].map(i => model(`boss-run-${i}`)));
-      expect(boss.slamFrames).toEqual([0, 1, 2, 3].map(i => model(`boss-slam-${i}`)));
-      expect(boss.grayBody).toBe(model('gray-body'));
-      expect(assets.rewardHelmet).toBe(model('helmet'));
-      expect(assets.bullet).toBe(model('bullet'));
-      const disposals = [...models.values()].flatMap(mesh => [vi.spyOn(mesh.geometry, 'dispose'),
-        vi.spyOn(mesh.material as THREE.Material, 'dispose'),
-        vi.spyOn((mesh.material as THREE.MeshStandardMaterial).map!, 'dispose')]);
-      disposals.push(...[player.body, player.helmet, player.vest, player.weapon].map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
-      disposals.push(...[...new Set([player.body, player.helmet, player.vest, player.weapon].map(mesh => mesh.material))]
-        .map(material => vi.spyOn(material, 'dispose')));
-      const gruntModels = [grunt.body, ...grunt.runFrames, grunt.helmet, grunt.vest, grunt.death.body];
-      disposals.push(...gruntModels.map(mesh => vi.spyOn(mesh.geometry, 'dispose')));
-      disposals.push(...[...new Set(gruntModels.map(mesh => mesh.material))].map(material => vi.spyOn(material, 'dispose')));
-      const threatModels = [heavy.body, ...heavy.runFrames, heavy.helmet, heavy.vest, heavy.death.body,
-        giant.body, ...giant.runFrames, giant.helmet, giant.vest, giant.weapon!, giant.contact.body];
-      disposals.push(...[...new Set(threatModels.map(mesh => mesh.geometry))].map(g => vi.spyOn(g, 'dispose')));
-      disposals.push(...[...new Set(threatModels.map(mesh => mesh.material))].map(m => vi.spyOn(m, 'dispose')));
-      assets.dispose();
-      for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
-    } finally { load.mockRestore(); }
-  });
-
-  it('loads only the bullet for Defense and disposes once', async () => {
-    const models: THREE.Mesh[] = [];
-    const load = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async () => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
-      models.push(mesh); return { scene: new THREE.Group().add(mesh) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>;
-    });
-    try {
-      const assets = await loadCharacterAssets(false);
-      expect(load.mock.calls.map(([url]) => url)).toEqual(['/models/toy-soldier-bullet.glb']);
-      expect(assets.families.boss).toBeUndefined();
-      expect(assets.rewardHelmet).toBeUndefined();
-      const dispose = models.map(m => vi.spyOn(m.geometry, 'dispose'));
-      assets.dispose(); assets.dispose();
-      for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
-    } finally { load.mockRestore(); }
-  });
-
-  it('cleans up even resources that complete after another model fails validation', async () => {
-    const models = [new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()),
-      new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial())];
-    const dispose = models.map(m => vi.spyOn(m.geometry, 'dispose'));
-    const load = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockImplementation(async url => {
-      if (url.includes('bullet')) { await new Promise(r => setTimeout(r, 5)); return { scene: new THREE.Group().add(models[1]) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>; }
-      return { scene: new THREE.Group().add(models[0], new THREE.Mesh()) } as Awaited<ReturnType<GLTFLoader['loadAsync']>>;
-    });
-    try {
-      await expect(loadCharacterAssets()).rejects.toThrow('must have one mesh');
-      for (const spy of dispose) expect(spy).toHaveBeenCalledOnce();
-    } finally { load.mockRestore(); }
+  it('creates the four active authored families without downloads and disposes owned resources once', async () => {
+    const assets = await loadCharacterAssets();
+    expect(Object.keys(assets.families)).toEqual(['player','grunt','heavy','giant']);
+    const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
+    for (const family of Object.values(assets.families)) {
+      expect(family.body.geometry.getAttribute('position').count).toBeGreaterThan(0);
+      for (const value of Object.values(family)) {
+        for (const mesh of Array.isArray(value) ? value : [value]) if (mesh instanceof THREE.Mesh) {
+          geometries.add(mesh.geometry); for(const material of Array.isArray(mesh.material)?mesh.material:[mesh.material]) materials.add(material);
+        }
+      }
+    }
+    const spies = [...geometries].map(g=>vi.spyOn(g,'dispose')).concat([...materials].map(m=>vi.spyOn(m,'dispose')));
+    assets.dispose(); assets.dispose();
+    for(const spy of spies) expect(spy).toHaveBeenCalledOnce();
   });
 
   it('keeps the contract free of combat fields', () => {
@@ -187,27 +107,5 @@ describe('named character visual families', () => {
     expect(renderer.getDebugStats().deathVisuals).toBe(1);
     renderer.dispose();
     expect(scene.children).toHaveLength(0);
-  });
-
-  it('keeps Player and Boss selection independent of a Grunt replacement', () => {
-    const legacy = characterFamilies(), families = { ...legacy, grunt: characterFamilies().grunt };
-    const playerScene = new THREE.Scene(), bossScene = new THREE.Scene();
-    const player = new SquadRenderer(playerScene, families.player);
-    player.update({ player: { x: 0, z: 0 }, squad: { count: 1, rocketCount: 0, rifleCounts: [1], formationSpacing: .45 },
-      track: { halfWidth: 2.5, defenseLineZ: -1.5 }, enemies: [], boss: null,
-      streamRewards: [], gates: [], pickups: [], projectiles: [] }, 1000);
-    expect((playerScene.getObjectByName('toy-soldier-body') as THREE.Mesh).material).toBe(legacy.player.body.material);
-    expect((playerScene.getObjectByName('toy-rifle') as THREE.Mesh).geometry).toBe(legacy.player.weapon.geometry);
-    const boss = new BossRenderer(bossScene, families.boss);
-    const state = { id: 1, tier: 1, x: 0, z: 10, hp: 100, maxHp: 100, visualScale: 7,
-      engaged: false, slamCooldownRemainingSeconds: 0, slamCount: 0 };
-    boss.update(state, 1000);
-    const body = (bossScene.children[0].children[0].children[0] as THREE.Mesh);
-    expect(legacy.boss.runFrames.map(model => model.geometry)).toContain(body.geometry);
-    const activeGeometry = body.geometry;
-    boss.update(null, 1100);
-    const gray = bossScene.getObjectByName('boss-death-body-gray') as THREE.Mesh;
-    expect(gray.geometry).toBe(activeGeometry);
-    player.dispose(); boss.dispose();
   });
 });

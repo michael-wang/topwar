@@ -6,22 +6,16 @@ import { CoastalWater } from '../src/rendering/environment/CoastalWater';
 import { CoastalCloth, coastalCanvasGeometry } from '../src/rendering/environment/CoastalCloth';
 import { CoastalVegetation } from '../src/rendering/environment/CoastalVegetation';
 import { foliageMassTexture, flowerSpeckTexture } from '../src/rendering/art/FoliageTexture';
-import { BridgeEnvironment, BATTLEFIELD_FOG_COLOR, BATTLEFIELD_FOG_NEAR } from '../src/rendering/environment/BridgeEnvironment';
+import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
 
-it('switches coastal sky/fog/scenery independently and restores the legacy vista', () => {
+it('updates the coastal scene and restores its owner background on disposal', () => {
   const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene);
   environment.update(80, 3.2, 500, true);
   expect((scene.fog as THREE.Fog).near).toBe(ART.coastalDefense.fogNear);
   expect((scene.background as THREE.Color).getHexString()).toBe('78bde0');
-  expect(scene.getObjectByName('enemy-beachhead-horizon')!.visible).toBe(false);
-  expect(scene.getObjectByName('battlefield-low-haze')!.visible).toBe(false);
+  expect(scene.getObjectByName('distant-artillery-layer')!.visible).toBe(false);
+  expect(scene.getObjectByName('battlefield-low-haze')).toBeUndefined();
   expect(scene.getObjectByName('stationary-defense-beach')!.position.z).toBe(80);
-  environment.update(100, 3.2, 1000, false);
-  expect((scene.fog as THREE.Fog).near).toBe(BATTLEFIELD_FOG_NEAR);
-  expect((scene.background as THREE.Color).getHexString()).toBe(new THREE.Color(BATTLEFIELD_FOG_COLOR).getHexString());
-  expect(scene.getObjectByName('enemy-beachhead-horizon')!.visible).toBe(true);
-  expect(scene.getObjectByName('battlefield-low-haze')!.visible).toBe(true);
-  expect(scene.getObjectByName('stationary-defense-beach')!.visible).toBe(false);
   environment.dispose(); expect(scene.fog).toBeNull(); expect(scene.background).toBeNull(); expect(scene.children).toHaveLength(0);
 });
 
