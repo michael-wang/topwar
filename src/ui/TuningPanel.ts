@@ -1,4 +1,5 @@
 import type { RuntimeTuning } from '../app/runtimeTuning';
+import { testingHatch } from './TestingHatch';
 
 type Key = keyof RuntimeTuning;
 type Control = { key: Key; label: string; min: number; max: number; step: number }
@@ -54,14 +55,7 @@ export class TuningPanel {
     this.element.className = defenseMode ? 'tuning-panel tuning-panel--coastal-anchor' : 'tuning-panel';
     const summary = document.createElement('summary');
     if (defenseMode) {
-      const icon = document.createElement('span');
-      icon.className = 'tune-tool'; icon.ariaHidden = 'true';
-      // Authored monochrome screwdriver, independent of platform emoji fonts.
-      icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 19 9-9M3 21l2-5 3 3-5 2Z"/><path d="m12 8 4 4 4-4a2.8 2.8 0 0 0-4-4l-4 4Z"/></svg>';
-      summary.ariaLabel = 'DEV tools'; summary.title = 'DEV tools (Escape)';
-      summary.append(icon);
-      const badge = document.createElement('span'); badge.className = 'dev-tool-label'; badge.textContent = 'DEV';
-      summary.append(badge);
+      testingHatch(summary);
     } else summary.textContent = 'TUNE';
     const content = document.createElement('div');
     content.className = 'tuning-panel-content';

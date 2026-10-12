@@ -10,7 +10,7 @@
 
 ## NOW
 
-**P3-B closed playtest validation.** Pixel 8 review now targets unified 2–3-second randomized naval salvos, one unresolved Destroyer salvo at a time, and persistent overhead lane warnings with no ground circles. The independent ship remains offshore and AHEAD is unchanged. DEV retains readable FPS, Wake Lock status, LATE, CRATE3, CRATE8 and NAVAL, with MG TEST, four-mode SURVIVAL TEST and AHEAD NAVAL BARRAGE on/off comparisons. Keep recovery choice available before assets and Golden Grenade/audio feedback intact. The phone-selected P3 Ink Spear remains permanent. English resources remain dormant. No automatic art/Boss/P3-C work or deployment.
+**P3-B closed playtest validation.** Pixel 8 review now targets 0/1/2/3-second post-impact quiet gaps, one unresolved Destroyer salvo, and independent warning color progression with a final 150ms punch. Shipping retains a subtle confirmed high-load sleep/recovery QA hatch; local DEV remains complete. Ground circles remain absent. The independent ship remains offshore and AHEAD is unchanged. DEV retains readable FPS, Wake Lock status, LATE, CRATE3, CRATE8 and NAVAL, with MG TEST, four-mode SURVIVAL TEST and AHEAD NAVAL BARRAGE on/off comparisons. Keep recovery choice available before assets and Golden Grenade/audio feedback intact. The phone-selected P3 Ink Spear remains permanent. English resources remain dormant. No automatic art/Boss/P3-C work or deployment.
 
 ## NEXT
 

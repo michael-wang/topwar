@@ -192,10 +192,10 @@ it('uses a separate defense tuning anchor and a monochrome tool, retaining the l
   const defense = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
   expect(viewport.children[0].className).toBe('tuning-panel tuning-panel--coastal-anchor');
   const summary = viewport.children[0].children[0];
-  expect(summary.children[0].className).toBe('tune-tool');
-  expect(summary.children).toHaveLength(2);
-  expect((summary as unknown as HTMLElement).ariaLabel).toBe('DEV tools');
-  expect((summary as unknown as HTMLElement).title).toBe('DEV tools (Escape)');
+  expect((summary as unknown as HTMLElement).innerHTML).toContain('<svg');
+  expect((summary as unknown as HTMLElement).innerHTML).not.toContain('DEV');
+  expect((summary as unknown as HTMLElement).ariaLabel).toBe('開發測試工具');
+  expect((summary as unknown as HTMLElement).title).toBe('開發測試工具');
   expect(viewport.children[0].children[1].children[0].textContent).toBe('DEV TOOLS');
   expect(viewport.children[0].children[1].children[1]).toBe(defense.reviewControlsHost);
   defense.toggle(); expect(viewport.children[0].open).toBe(true);

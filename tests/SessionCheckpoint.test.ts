@@ -10,6 +10,7 @@ import { CHECKPOINT_KEY, checkpointPresent, clearCheckpoint, MAX_CHECKPOINT_CHAR
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 import historical from './fixtures/old-survival.json';
 import { survivalDecision } from '../scripts/qa/survivalPilot';
+import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from '../src/app/QaStressFixture';
 
 const config = GameConfigSchema.parse(game), level = LevelDefinitionSchema.parse(levelData);
 function storage() {
@@ -31,6 +32,22 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it('accepts only narrowly scoped QA metadata after full authoritative validation', () => {
+    const tuning=qaSimulationTuning(config), sim=createQaStressFixture({seed:42,level,startSquad:1,startRocketCount:0,
+      tiers:config.tiers,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},tuning);
+    for(let i=0;i<3600;i++)if(advanceQaPreparation(sim,tuning,i))break;
+    const {c}=checkpoint(),store=storage(),save:SessionCheckpoint={...c,fixture:null,state:sim.getState(),
+      qa:{version:1,kind:'sleep-lv10',armed:true}};
+    expect(writeCheckpoint(save,store).ok).toBe(true);const found=readCheckpoint(store);
+    expect(found.status).toBe('valid');if(found.status!=='valid')throw Error(found.status);
+    const restored=simulationFromCheckpoint(found.checkpoint);expect(restored.getState()).toEqual(sim.getState());
+    expect(restored.consumeArtilleryEvents()).toEqual([]);
+    for(let i=0;i<120;i++){const input={targetX:0};sim.step(1/60,input,tuning);restored.step(1/60,input,tuning);}
+    expect(restored.getState()).toEqual(sim.getState());
+    for(const bad of [{...save,qa:{...save.qa,version:2}},{...save,qa:{...save.qa,kind:'arbitrary'}},
+      {...save,fixture:'late'},{...save,state:{...save.state,rngState:-1}},{...c,qa:save.qa}]){
+      store.setItem(CHECKPOINT_KEY,JSON.stringify(bad));expect(readCheckpoint(store).status).toBe('invalid');}
+  });
   it('detects presence without parsing, mutation or rejecting corrupt pending data', () => {
     const store = storage(); expect(checkpointPresent(store)).toBe(false);
     store.setItem(CHECKPOINT_KEY, '{'); expect(checkpointPresent(store)).toBe(true);

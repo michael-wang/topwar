@@ -16,6 +16,14 @@ class Sentinel extends EventTarget {
 }
 const settle = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
 describe('event-driven screen Wake Lock', () => {
+  it('sleep-test release waits for the actual stale acquisition and sentinel cleanup',async()=>{
+    const pending=deferred<Sentinel>(),sentinel=new Sentinel(),request=vi.fn(()=>pending.promise);
+    const lock=new ScreenWakeLock({secure:true,request});lock.setActive(true);
+    const released=lock.releaseForTest();let finished=false;void released.then(()=>finished=true);
+    await settle();expect(finished).toBe(false);pending.resolve(sentinel);
+    expect(await released).toBe(true);expect(sentinel.released).toBe(true);expect(lock.status).toBe('released');
+    lock.setActive(false);await settle();expect(request).toHaveBeenCalledTimes(1);
+  });
   it('acquires once, pauses/releases, and resumes with a new real sentinel', async () => {
     const sentinels = [new Sentinel(), new Sentinel()], request = vi.fn(async () => sentinels.shift()!);
     const lock = new ScreenWakeLock({ secure: true, request }), states = vi.fn(); lock.observe(states);

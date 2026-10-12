@@ -26,6 +26,7 @@ const envelope = z.strictObject({
   savedAt: z.number().finite().nonnegative(), paused: z.literal(true), hidden: z.boolean(),
   reason: z.enum(['pause', 'hidden', 'pagehide', 'freeze', 'contextlost']),
   fixture: z.string().max(80).nullable(), config: GameConfigSchema,
+  qa: z.strictObject({ version:z.literal(1),kind:z.literal('sleep-lv10'),armed:z.boolean() }).optional(),
   level: LevelDefinitionSchema, tuning: RuntimeTuningSchema, state: z.unknown(),
 });
 export type SessionCheckpoint = Omit<z.infer<typeof envelope>, 'state'> & { state: SimulationState };
@@ -65,6 +66,9 @@ export function readCheckpoint(storage = browserSessionStorage()): CheckpointRea
       || c.mode !== (c.config.catharsis?.defenseMode ? 'defense' : 'legacy') || c.state.squad.count === 0)
       throw Error('Incompatible or finished checkpoint');
     simulationFromCheckpoint(c); // Includes the existing strict historical migrations/clock validation.
+    if(c.qa && (c.mode!=='defense'||c.fixture!==null||c.state.seed!==42||c.state.progression?.level!==10
+      ||!c.state.postCapSurvival?.startedAtSeconds && c.state.postCapSurvival?.startedAtSeconds!==0))
+      throw Error('Incompatible QA checkpoint');
     return { status: 'valid', checkpoint: c };
   } catch { return { status: 'invalid' }; }
 }

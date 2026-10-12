@@ -363,6 +363,22 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .beachhead-defense .tuning-panel label { padding-bottom: 8px; border-bottom: 1px solid #ffffff15; }
 .beachhead-defense .tuning-panel input { accent-color: var(--combat-hot); }
 .beachhead-defense .tuning-panel output { color: var(--combat-gold); }
+.beachhead-defense .tuning-panel > summary.qa-hatch, .qa-panel > summary.qa-hatch {
+  display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;
+  box-sizing:border-box;padding:0;border:1px solid #fff3dc77;border-radius:8px;
+  background:#ffffff04;color:#fff3dcaa;box-shadow:none;list-style:none;cursor:pointer;
+}
+.qa-hatch svg { width:26px;height:26px;opacity:.75;pointer-events:none; }
+.qa-hatch::-webkit-details-marker { display:none; }
+.qa-hatch:focus-visible { outline:2px solid #fff3dc;outline-offset:3px; }
+.qa-panel { position:absolute;z-index:18;top:var(--hud-safe-top);left:var(--hud-safe-left); }
+.qa-panel-content { width:min(288px,calc(100vw - 40px));max-height:calc(100dvh - 150px);overflow:auto;
+  box-sizing:border-box;padding:12px;border:1px solid #ffffff66;border-radius:10px;
+  background:#152535f2;color:#fff3dc;font:13px/1.5 var(--font-utility); }
+.qa-panel-content p { margin:8px 0; }
+.qa-panel-content button { min-height:44px;width:100%;margin:4px 0;padding:6px;border:1px solid #fff3dc88;
+  border-radius:6px;background:#ffffff0c;color:#fff3dc;font:inherit;touch-action:manipulation; }
+.qa-panel-content button:disabled { opacity:.65; }
 .beachhead-defense .tuning-panel select, .beachhead-defense .tuning-panel button { color: #fff3dc; background: #263444; border-color: #566578; }
 .beachhead-defense .pause-overlay:not([hidden]), .beachhead-defense .game-over-overlay:not([hidden]) {
   background: color-mix(in srgb, var(--coast-shadow) 46%, transparent); color: var(--coast-paper);

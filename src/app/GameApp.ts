@@ -38,13 +38,15 @@ import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
 import { progressionStage } from '../simulation/progression';
-import { clearCheckpoint, simulationFromCheckpoint, writeCheckpoint,
+import { clearCheckpoint, readCheckpoint, simulationFromCheckpoint, writeCheckpoint,
   type CheckpointRead, type SessionCheckpoint } from './SessionCheckpoint';
 import { SessionRecovery } from '../ui/SessionRecovery';
 import { DevFps } from '../ui/DevFps';
 import { DevLifecycle } from './DevLifecycle';
 import { ScreenWakeLock } from './ScreenWakeLock';
 import { DevWakeStatus } from '../ui/DevWakeStatus';
+import { QaPanel } from '../ui/QaPanel';
+import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from './QaStressFixture';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -118,6 +120,13 @@ export class GameApp {
   private contextLost = false;
   private checkpointNotice: HTMLElement | null = null;
   private clearedFinishedCheckpoint = false;
+  private readonly qaPanel:QaPanel|null;
+  private readonly authoredConfig:Readonly<GameConfig>;
+  private qaSession=false;
+  private qaSleepActive=false;
+  private qaPreparing=false;
+  private qaGeneration=0;
+  private qaHidden=false;
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
@@ -131,6 +140,7 @@ export class GameApp {
     this.perf = perfEnabled ? new PerfDiagnostics() : null;
     this.perfHud = perfEnabled ? new PerfHud(viewport) : null;
     this.config = configStore.getConfig();
+    this.authoredConfig=structuredClone(this.config);
     if (this.config.catharsis?.defenseMode) this.viewport.classList.add('beachhead-defense');
     this.runtimeDefaults = defaultRuntimeTuning(this.config, level);
     this.runtimeTuning = { ...this.runtimeDefaults };
@@ -203,6 +213,10 @@ export class GameApp {
     this.fps = import.meta.env.DEV ? new DevFps(viewport, !!this.config.catharsis?.defenseMode) : null;
     this.wakeStatus = import.meta.env.DEV && this.tuningPanel
       ? new DevWakeStatus(this.tuningPanel.reviewControlsHost, this.wakeLock) : null;
+    this.qaPanel=!import.meta.env.DEV && this.config.catharsis?.defenseMode ? new QaPanel(viewport,{
+      sleep:()=>{void this.beginSleepTest();},reload:()=>this.reloadTest(),exit:()=>this.exitSleepTest(),
+    }):null;
+    if(this.qaPanel)this.wakeLock.observe(status=>this.qaPanel?.setWake(status));
     if (saved.status === 'valid' || saved.status === 'invalid') {
       this.startup = 'recovering';
       this.recoveryPending = saved.checkpoint ?? null;
@@ -238,6 +252,7 @@ export class GameApp {
   }
 
   stop(): void {
+    this.qaGeneration++;this.qaPreparing=false;
     if (!this.running) return;
 
     this.running = false;
@@ -300,6 +315,7 @@ export class GameApp {
     this.audio.dispose();
     this.fps?.dispose(); this.lifecycle?.dispose(); this.recovery?.dispose(); this.checkpointNotice?.remove();
     this.wakeStatus?.dispose(); this.wakeLock.dispose();
+    this.qaGeneration++;this.qaPanel?.dispose();
     this.perfHud?.dispose();
     this.renderer.dispose();
     this.disposed = true;
@@ -308,6 +324,8 @@ export class GameApp {
   private retry(): void {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
+    if(this.qaSleepActive||this.qaPreparing)return;
+    this.qaSession=false;
     clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
     this.restored = false;
@@ -488,6 +506,7 @@ export class GameApp {
 
   private togglePaused(): void {
     if (!this.running || this.startup !== 'started' || this.recovery?.blocking) return;
+    if(this.qaSleepActive||this.qaPreparing)return;
     if (this.paused && (this.hidden || this.contextLost)) return;
     if (this.paused) void this.audio.activate(); // Called within the Resume gesture.
     this.setPaused(!this.paused);
@@ -520,7 +539,7 @@ export class GameApp {
   }
 
   private syncWakeLock(): void {
-    this.wakeLock.setActive(this.running && this.startup === 'started' && !this.paused && !this.recovery?.blocking
+    this.wakeLock.setActive(this.running && this.startup === 'started' && (!this.paused||this.qaPreparing) && !this.qaSleepActive && !this.recovery?.blocking
       && !this.hidden && !this.contextLost && document.visibilityState === 'visible'
       && this.simulation.getFrameState().squad.count > 0);
   }
@@ -552,6 +571,9 @@ export class GameApp {
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
         this.restored = true; this.startup = 'started'; this.setPaused(true);
+        this.qaSession=!!c.qa;this.qaSleepActive=c.qa?.armed??false;
+        if(c.qa){this.syncWakeLock();if(this.qaSleepActive)this.pauseOverlay.setVisible(false);
+          this.qaPanel?.open();this.qaPanel?.setStatus('已重新載入並恢復測試場景・保持暫停。導覽／Discard 指標僅供參考。');}
         // Early Continue can precede AudioContext creation. Explicit Resume owns audio activation.
         this.renderer.preparePresentation();
         if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-restored', { tick: s.tick });
@@ -578,10 +600,12 @@ export class GameApp {
       mode: state.catharsis?.balance.defenseMode ? 'defense' : 'legacy', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
       savedAt: Date.now(), paused: true, hidden: this.hidden, reason,
       fixture: import.meta.env.DEV ? this.devReviewFixture : null,
+      ...(this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
       config: this.config as GameConfig, level, tuning: this.runtimeTuning, state });
     if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-write', { ...result, totalMilliseconds: performance.now() - started });
     if (!result.ok) this.showCheckpointFailure('無法儲存進度；請保持此分頁開啟');
     else { this.checkpointNotice?.remove(); this.checkpointNotice = null; }
+    this.qaPanel?.refreshCheckpoint();
   }
 
   private suspendSession(reason: SessionCheckpoint['reason']): void {
@@ -592,28 +616,95 @@ export class GameApp {
   }
   private readonly onVisibility = (): void => {
     this.hidden = document.visibilityState === 'hidden';
+    if(this.qaSession&&this.hidden)this.qaHidden=true;
     if (this.hidden) this.suspendSession('hidden');
     else { this.previousFrameTimestampMs = null; this.fixedStepLoop.reset(); this.fps?.reset(this.paused ? 'PAUSED' : '—');
       if (import.meta.env.DEV) this.lifecycle?.record('visible'); }
+    if(this.qaSession&&!this.hidden&&this.qaHidden)this.qaPanel?.setStatus('同一頁面返回・未重新載入・保持暫停。Android 熄屏／Tab discard 未由網頁判定。');
   };
   private readonly onPageHide = (event: PageTransitionEvent): void => {
+    if(this.qaSession)this.qaHidden=true;
     this.hidden = true; this.suspendSession('pagehide');
     if (import.meta.env.DEV) this.lifecycle?.record('pagehide-persisted', event.persisted);
   };
   private readonly onPageShow = (event: PageTransitionEvent): void => {
     this.hidden = document.visibilityState === 'hidden'; this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
     if (import.meta.env.DEV) this.lifecycle?.record('pageshow', { persisted: event.persisted });
+    if(this.qaSession&&this.qaHidden)this.qaPanel?.setStatus(`同一頁面 pageshow・${event.persisted?'BFCache':'未觀察到重新載入'}・保持暫停`);
   };
-  private readonly onFreeze = (): void => { this.hidden = true; this.suspendSession('freeze'); };
+  private readonly onFreeze = (): void => { if(this.qaSession)this.qaHidden=true;this.hidden = true; this.suspendSession('freeze'); };
   private readonly onResumeLifecycle = (): void => {
     this.hidden = document.visibilityState === 'hidden'; this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
     if (import.meta.env.DEV) this.lifecycle?.record('resume');
+    if(this.qaSession&&this.qaHidden)this.qaPanel?.setStatus('同一頁面 freeze/resume・保持暫停（未證明程序終止）');
   };
   private readonly onContextLost = (): void => { this.contextLost = true; this.suspendSession('contextlost'); };
   private readonly onContextRestored = (): void => {
     this.contextLost = false; this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
     if (import.meta.env.DEV) this.lifecycle?.record('contextrestored');
+    if(this.qaSession)this.qaPanel?.setStatus('WebGL context 已恢復・保持暫停（不代表 Tab discard）');
   };
+
+  private async beginSleepTest():Promise<void> {
+    if(this.disposed||this.qaPreparing||this.recovery?.blocking||this.startup==='recovering')return;
+    if(this.hidden||this.contextLost){this.qaPanel?.setStatus('請在可見且可用的遊戲畫面開始測試');return;}
+    const generation=++this.qaGeneration;
+    try {
+      await this.audio.activate();
+      if(this.disposed||generation!==this.qaGeneration)return;
+      this.qaPreparing=true;this.qaSleepActive=false;this.qaSession=true;
+      clearCheckpoint();this.devReviewFixture=null;this.config=this.authoredConfig;this.sessionLevel=this.level;
+      this.runtimeTuning=defaultRuntimeTuning(this.config,this.level);
+      const tuning=qaSimulationTuning(this.config);
+      this.simulation=createQaStressFixture({seed:42,level:this.level,startSquad:1,startRocketCount:0,
+        tiers:this.config.tiers,catharsis:{balance:this.config.catharsis!,trackHalfWidth:this.config.track.halfWidth}},tuning);
+      this.startOverlay.finish();this.startup='started';this.restored=true;this.fieldObserver?.reset();
+      this.progressionObserver.reset();this.progressionObserver.observe(10);this.renderer.resetFeedback();
+      this.gameOverOverlay.setVisible(false);this.clearedFinishedCheckpoint=false;
+      this.setPaused(true);this.pauseOverlay.setVisible(false);
+      let ready=false;
+      for(let tick=0;tick<3600&&!ready;){
+        if(this.disposed||generation!==this.qaGeneration) return;
+        if(this.hidden||this.contextLost)throw Error('Preparation interrupted; resume and restart testing');
+        for(let n=0;n<30&&!ready;n++,tick++)ready=advanceQaPreparation(this.simulation,tuning,tick);
+        if(!this.simulation.getFrameState().squad.count)throw Error('QA preparation lost all soldiers');
+        await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+      }
+      if(!ready)throw Error('Bounded QA preparation did not reach its resource target');
+      const s=this.simulation.getFrameState();this.targetX=s.player.x;this.presentationMs=s.elapsedSeconds*1000;
+      this.previousDefenseValue=squadDefenseValue(s.squad,this.config.tiers.mergeCount);this.previousWeaponFamily='machineGun';
+      this.audio.restoreObservation(this.previousDefenseValue,s.enemies,s.streamRewards,s.boss,s.projectiles);
+      this.renderer.restoreFeedback(projectRenderState(s,{formationSpacing:this.config.player.formationSpacing,
+        trackHalfWidth:this.config.track.halfWidth,defenseLineOffset:this.config.track.defenseLineOffset,
+        bossVisualScale:this.config.bosses.basic.visualScale,catharsis:s.catharsis}),this.presentationMs);
+      this.renderer.preparePresentation();
+      // Real visible frames upload the actual crowd, HP bars, projectile and shell batches.
+      for(let i=0;i<3;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+      if(this.disposed||generation!==this.qaGeneration)return;
+      this.qaPreparing=false;this.qaSleepActive=true;this.setPaused(true);this.pauseOverlay.setVisible(false);
+      this.saveCheckpoint('pause');
+      if(readCheckpoint().status!=='valid')throw Error('Checkpoint storage unavailable or invalid');
+      let timer:ReturnType<typeof setTimeout>|undefined;
+      const released=await Promise.race([this.wakeLock.releaseForTest(),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),4000);})]);
+      if(timer)clearTimeout(timer);
+      if(generation!==this.qaGeneration||this.disposed)return;
+      if(!released){this.qaPanel?.setStatus('尚未確認 Wake Lock 釋放。保持暫停，請稍候或結束測試。');return;}
+      this.qaPanel?.setStatus('請勿觸碰螢幕，等待 Android 自動熄屏（建議設定 15 秒）');
+    }catch(error){if(this.disposed||generation!==this.qaGeneration)return;
+      this.qaPreparing=false;this.qaSleepActive=true;this.setPaused(true);
+      this.qaPanel?.setStatus(`測試未完成：${error instanceof Error?error.message:'unknown'}`);}
+  }
+  private exitSleepTest():void {
+    if(!this.qaSession)return;
+    this.qaGeneration++;this.qaPreparing=false;this.qaSleepActive=false;this.qaSession=false;
+    this.setPaused(true);this.saveCheckpoint('pause');this.qaPanel?.setStatus('已結束測試・保持暫停，請按 Resume 繼續');
+  }
+  private reloadTest():void {
+    if(this.startup!=='started'||!this.simulation.getFrameState().squad.count)return;
+    this.setPaused(true);this.saveCheckpoint('pause');
+    if(readCheckpoint().status==='valid')window.location.reload();
+    else this.qaPanel?.setStatus('無有效儲存進度，未重新載入');
+  }
 
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;

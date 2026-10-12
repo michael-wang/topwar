@@ -13,6 +13,9 @@ import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
+vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
+  open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}
+} }));
 vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} } }));
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {

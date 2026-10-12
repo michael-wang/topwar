@@ -65,4 +65,9 @@ export class ScreenWakeLock {
   dispose(): void {
     this.wanted = false; this.disposed = true; this.epoch++; this.listener = null; this.reconcile();
   }
+  async releaseForTest():Promise<boolean> {
+    this.setActive(false);
+    await this.operation;
+    return this.sentinel===null && this.current!=='requesting' && this.current!=='releasing';
+  }
 }
