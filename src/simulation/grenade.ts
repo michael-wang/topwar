@@ -7,7 +7,7 @@ const finite = z.number().finite();
 const clock = finite.nonnegative();
 export const GrenadeStateSchema = z.strictObject({
   lv3EnteredAtSeconds: clock.nullable(), supplySpawnedAtSeconds: clock.nullable(),
-  acquiredAtSeconds: clock.nullable(), inventory: z.number().int().min(0).max(3),
+  acquiredAtSeconds: clock.nullable(), inventory: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   supply: z.strictObject({ lane: z.number().int().nonnegative(), x: finite, depth: finite.positive(),
     rewardAmount: z.literal(1).optional(),
     // With no destruction record, absent hit fields mean a historical one-hit
@@ -34,7 +34,7 @@ export const GrenadeStateSchema = z.strictObject({
   if (invalid) ctx.addIssue({ code: 'custom', message: 'Inconsistent Grenade lifecycle' });
 });
 export type GrenadeState = z.infer<typeof GrenadeStateSchema>;
-export type GrenadeEvent = { kind: 'grenadeThrown' } | { kind: 'grenadeAcquired' } | { kind: 'grenadeSupplyHit' }
+export type GrenadeEvent = { kind: 'grenadeThrown' } | { kind: 'grenadeAcquired'; amount: number } | { kind: 'grenadeSupplyHit' }
   | { kind: 'grenadeSupplyDamaged'; stage: 1 | 2 }
   | { kind: 'grenadeSupplyOpened'; x: number; z: number; amount: number } | {
   kind: 'grenadeDetonated'; x: number; z: number; radius: number;
@@ -42,6 +42,13 @@ export type GrenadeEvent = { kind: 'grenadeThrown' } | { kind: 'grenadeAcquired'
 };
 export const emptyGrenade = (): GrenadeState => ({ lv3EnteredAtSeconds: null,
   supplySpawnedAtSeconds: null, acquiredAtSeconds: null, inventory: 0, supply: null, flight: null });
+
+// Refuse an entire unrepresentable reward. No precision loss or false acquisition.
+export function awardGrenades(inventory: number, amount: number): number {
+  if (!Number.isSafeInteger(inventory) || inventory < 0 || !Number.isSafeInteger(amount) || amount < 0)
+    throw Error('Grenade accounting requires nonnegative safe integers');
+  return amount <= Number.MAX_SAFE_INTEGER - inventory ? inventory + amount : inventory;
+}
 
 type Enemy = SimulationFrameState['enemies'][number];
 export function enemiesInBlast<T extends Enemy>(enemies: readonly T[], x: number, z: number, radius: number): T[] {

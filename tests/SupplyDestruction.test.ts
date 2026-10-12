@@ -33,9 +33,9 @@ it('requires three stages, consumes recovery hits without banking damage, and op
   expect(sim.getState().projectiles).toHaveLength(2);expect(sim.getState().progression!.xp).toBe(0);
   step(sim,120);expect(sim.consumeGrenadeEvents()).toEqual([]);expect(sim.getState().grenade!.inventory).toBe(3);
 });
-it.each([0,1,2,3])('recurring supply grants +1 immediately and clamps inventory %i',inventory=>{
+it.each([0,1,2,3,4,19,20,1000])('recurring supply grants +1 immediately and accumulates inventory %i',inventory=>{
   const sim=make(6,1,inventory,true);hit(sim);step(sim,41);hit(sim);step(sim,41);hit(sim);
-  expect(sim.getState().grenade!.inventory).toBe(Math.min(3,inventory+1));
+  expect(sim.getState().grenade!.inventory).toBe(inventory+1);
   expect(sim.consumeGrenadeEvents().at(-1)).toEqual({kind:'grenadeSupplyOpened',x:0,z:14,amount:1});
 });
 it.each([0,1,2])('restores exact stage %i and recovery through deterministic continuation without reward replay',stage=>{

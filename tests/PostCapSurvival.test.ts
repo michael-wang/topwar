@@ -103,12 +103,12 @@ it('counts a surviving Lv5 Giant toward the recurring cap',()=>{
   advance(s,start+24);expect(s.enemies).toHaveLength(1);expect(s.enemies[0].hp).toBe(80);
 });
 
-it('skips full-inventory and uncollected Supply slots; spending does not bank a missed crate',()=>{
-  const s=frame(),start=s.postCapSurvival!.startedAtSeconds!;s.grenade!.inventory=3;
-  advance(s,start+30);expect(s.grenade!.supply).toBeNull();expect(s.postCapSurvival!.nextGrenadeSupplyAtSeconds).toBeCloseTo(start+60);
-  s.grenade!.inventory=2;advance(s,start+31);expect(s.grenade!.supply).toBeNull();
+it('admits Supply at high inventory, skips occupied slots and never banks them',()=>{
+  const s=frame(),start=s.postCapSurvival!.startedAtSeconds!;s.grenade!.inventory=20;
+  advance(s,start+30);expect(s.grenade!.supply).not.toBeNull();expect(s.postCapSurvival!.nextGrenadeSupplyAtSeconds).toBeCloseTo(start+60);
+  s.grenade!.inventory=19;advance(s,start+31);expect(s.grenade!.supply).not.toBeNull();
   advance(s,start+60);const supply=structuredClone(s.grenade!.supply);
-  expect(supply!.rewardAmount).toBe(1);expect(s.grenade!.inventory).toBe(2);
+  expect(supply!.rewardAmount).toBe(1);expect(s.grenade!.inventory).toBe(19);
   expect(supply).toMatchObject({destruction:{mode:'staged',stage:0,recoverySeconds:.7,recoverAtSeconds:0}});
   advance(s,start+90);expect(s.grenade!.supply).toEqual(supply);
   s.grenade!.supply=null;advance(s,start+91);expect(s.grenade!.supply).toBeNull();
@@ -122,16 +122,16 @@ it('never overwrites the uncollected teaching Supply',()=>{
   advance(s,start+30);expect(s.grenade.supply).toEqual({lane:2,x:0,depth:8});
 });
 
-it.each([0,1,2,3])('historical one-hit MG supply collects +1 from inventory %s, clamped at three',inventory=>{
+it.each([0,1,2,3,4,19,20,1000])('historical one-hit MG supply accumulates +1 from inventory %s',inventory=>{
   const sim=capped(),s=sim.getState();s.enemies=[];s.enemyStream!.nextRowIndex=10000;s.defenseWaves!.nextAtSeconds=10000;
   s.grenade={...held(inventory),supply:{lane:2,x:0,depth:8,rewardAmount:1}};
   s.projectiles=[{id:1,kind:'machineGun',tier:1,lane:2,x:0,z:s.player.z+7.5,slopeX:0,speed:60,
     damage:config.tiers.tier1Power,remainingRange:80,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
   s.weapons.nextProjectileId=2;sim.restoreState(s);ticks(sim,1);
-  expect(sim.getState().grenade!.inventory).toBe(Math.min(3,inventory+1));
+  expect(sim.getState().grenade!.inventory).toBe(inventory+1);
   expect(sim.getState().grenade!.supply).toBeNull();expect(sim.getState().progression).toEqual({level:6,xp:0});
-  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired'}]);
-  ticks(sim,1);expect(sim.getState().grenade!.inventory).toBe(Math.min(3,inventory+1));
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired',amount:1}]);
+  ticks(sim,1);expect(sim.getState().grenade!.inventory).toBe(inventory+1);
 });
 
 it('allows Supply acquisition to fill reserves while one Grenade is in flight',()=>{

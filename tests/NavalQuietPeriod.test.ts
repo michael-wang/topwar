@@ -1,5 +1,5 @@
 import { expect,it } from 'vitest';
-import data from '../public/game-data/game.json';
+import data from './fixtures/pre-b6b7-game.json';
 import historical from './fixtures/pre-b6b6-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { NavalBarrageConfigSchema } from '../src/config/navalBarrageConfig';

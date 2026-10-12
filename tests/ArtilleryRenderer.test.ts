@@ -75,7 +75,7 @@ it('omits persistent enemy-shell stains while preserving player Grenade stains',
   expect(a.activeScorches).toBe(0); expect(b.activeScorches).toBe(1); a.dispose(); b.dispose();
 });
 
-it('shows opaque lane-locked overhead warnings for the complete flight without any ground/global warning',()=>{
+it('shows continuously visible lane-locked overhead warnings for the complete flight without any ground/global warning',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),rotation=new THREE.Quaternion();
   const pair=[makeArtilleryShell(1,{source:shell.source},1,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588),
     makeArtilleryShell(2,{source:shell.source},3,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588)];
@@ -83,7 +83,13 @@ it('shows opaque lane-locked overhead warnings for the complete flight without a
   const matrix=new THREE.Matrix4();
   for(const time of [0,.45,1,Math.min(...pair.map(s=>s.impactAtSeconds))-.001]){
     r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000,{x:2.8,z:0},rotation);
-    expect(danger.visible).toBe(true);expect(danger.count).toBe(2);expect(danger.material).toMatchObject({opacity:1,transparent:false});
+    expect(danger.visible).toBe(true);expect(danger.count).toBe(2);expect(danger.material).toMatchObject({opacity:1,transparent:true});
+    const alpha=danger.geometry.getAttribute('warningOpacity');
+    expect(alpha.getX(0)).toBeGreaterThanOrEqual(.149);
+    expect(alpha.getX(0)).toBeLessThanOrEqual(1);
+    if(time===0)expect(alpha.getX(0)).toBeCloseTo(.15);
+    expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
+    expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
     for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);expect(matrix.elements[12]).toBeCloseTo(-pair[i].target.x*.72);
       expect(matrix.elements[13]).toBeCloseTo(2.05);}
     expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(false);
@@ -108,12 +114,12 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
 
-it.each([350,390])('fits every overhead lane including its ink edge inside the %ipx mobile frame',width=>{
+it.each([350,390])('fits every overhead lane including its glyph edge inside the %ipx mobile frame',width=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=new THREE.PerspectiveCamera(coastalCameraFov(width/844),width/844,.1,180);
   camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld();
   const all=Array.from({length:5},(_,lane)=>makeArtilleryShell(lane+1,{source:shell.source},lane,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588));
   r.update({shells:all,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera.quaternion);
-  const ink=scene.getObjectByName('artillery-lane-outline') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
+  const ink=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
   expect(ink.count).toBe(5);
   for(let i=0;i<ink.count;i++){
     ink.getMatrixAt(i,matrix);
@@ -126,7 +132,7 @@ it.each([350,390])('fits every overhead lane including its ink edge inside the %
   r.dispose();
 });
 
-it('uses independent opaque per-lane colors and a final-150ms punch without moving anchors',()=>{
+it('uses independent per-lane colors and a final-150ms punch without moving anchors',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const pair=[{...shell,targetLane:0,target:{...shell.target,x:-2.8},launchedAtSeconds:0,impactAtSeconds:2},
     {...shell,id:2,targetLane:1,target:{...shell.target,x:-1.4},launchedAtSeconds:1,impactAtSeconds:3}];
@@ -135,8 +141,30 @@ it('uses independent opaque per-lane colors and a final-150ms punch without movi
   const a=new THREE.Color(),b=new THREE.Color(),matrix=new THREE.Matrix4();
   r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},1900);
   mesh.getColorAt(0,a);mesh.getColorAt(1,b);expect(a.getHex()).toBe(new THREE.Color('#ff2518').getHex());expect(a.equals(b)).toBe(false);
+  expect(mesh.geometry.getAttribute('warningOpacity').getX(0)).toBe(1);
+  expect(mesh.geometry.getAttribute('warningOpacity').getX(1)).toBeLessThan(.6);
   mesh.getMatrixAt(0,matrix);const punch=new THREE.Vector3().setFromMatrixScale(matrix).x;
   r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000);mesh.getMatrixAt(0,matrix);
   expect(punch).toBeGreaterThan(new THREE.Vector3().setFromMatrixScale(matrix).x);
-  expect(mesh.material).toMatchObject({opacity:1,transparent:false});r.dispose();
+  expect(mesh.material).toMatchObject({opacity:1,transparent:true});r.dispose();
+});
+
+it('preallocates one stable glyph/alpha shader layout and never blinks off near impact',()=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
+  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
+  const attribute=mesh.geometry.getAttribute('warningOpacity'),color=mesh.instanceColor,material=mesh.material as THREE.MeshBasicMaterial;
+  expect(attribute.count).toBe(8);expect(color!.count).toBe(8);
+  const shader={vertexShader:'#include <common>\n#include <begin_vertex>',fragmentShader:'#include <common>\n#include <color_fragment>'};
+  material.onBeforeCompile(shader as any,{} as any);
+  expect(shader.vertexShader).toContain('vWarningOpacity = warningOpacity');
+  expect(shader.fragmentShader).toContain('diffuseColor.a *= vWarningOpacity');
+  let previous=0;
+  for(let i=0;i<=100;i++){
+    const time=shell.launchedAtSeconds+(shell.impactAtSeconds-shell.launchedAtSeconds)*i/100;
+    r.update({shells:[shell],elapsedSeconds:time,warningPresentation:'overheadLanes'},0);
+    expect(attribute.getX(0)).toBeGreaterThanOrEqual(previous);previous=attribute.getX(0);
+    expect(mesh.geometry.getAttribute('warningOpacity')).toBe(attribute);expect(mesh.instanceColor).toBe(color);
+    if(shell.impactAtSeconds-time<=.15)expect(attribute.getX(0)).toBe(1);
+  }
+  r.dispose();
 });

@@ -33,7 +33,7 @@ it.each(['rifle','machineGun'] as const)('%s counts ten successful hits regardle
     expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeSupplyHit'}]);
   }
   hit(sim,kind);expect(sim.getState().grenade!.inventory).toBe(3);expect(sim.getState().grenade!.supply).toBeNull();
-  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired'}]);
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired',amount:3}]);
   hit(sim,kind);expect(sim.consumeGrenadeEvents()).toEqual([]);expect(sim.getState().progression).toEqual(progression);
 });
 
@@ -50,12 +50,12 @@ it('restores partial progress and its frozen requirement, and Retry starts fresh
   expect(make().getState().grenade).toEqual(emptyGrenade());
 });
 
-it.each([0,1,2,3])('recurring supply takes ten hits and adds one to inventory %i without exceeding capacity',inventory=>{
+it.each([0,1,2,3,4,19,20,1000])('recurring supply takes ten hits and adds one to inventory %i without an inventory cap',inventory=>{
   const sim=supplyRun('machineGun',inventory,true);hit(sim,'machineGun',3,2,9);
   expect(sim.getState().grenade!.inventory).toBe(inventory);expect(sim.getState().grenade!.supply!.hitProgress).toBe(9);
   sim.consumeGrenadeEvents();hit(sim,'machineGun',3,2,3);
-  expect(sim.getState().grenade!.inventory).toBe(Math.min(3,inventory+1));
-  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired'}]);
+  expect(sim.getState().grenade!.inventory).toBe(inventory+1);
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired',amount:1}]);
   expect(sim.getState().projectiles).toHaveLength(2);
 });
 
@@ -65,7 +65,7 @@ it.each([6,8])('preserves one-hit configurations and old %i-level snapshots with
   s.catharsis!.balance.progression.levelPlan=s.catharsis!.balance.progression.levelPlan.slice(0,max);
   s.catharsis!.balance.progression.xpRequirements=s.catharsis!.balance.progression.xpRequirements.slice(0,max-1);
   sim.restoreState(JSON.parse(JSON.stringify(s)));hit(sim);expect(sim.getState().grenade!.inventory).toBe(3);
-  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired'}]);
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired',amount:3}]);
   expect(CatharsisConfigSchema.parse({...s.catharsis!.balance,grenade:undefined}).grenade.supplyHitsRequired).toBe(1);
 });
 

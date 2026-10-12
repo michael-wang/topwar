@@ -11,7 +11,7 @@ const tuning = { ...config.player, trackHalfWidth: 3.2, defenseLineOffset: 1.5, 
 const held = () => ({ ...emptyGrenade(), lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0, inventory: 1 as const });
 it('authors the four-unit blast without changing single-target damage or supply/flight values', () => {
   expect(balance.grenade).not.toHaveProperty('throwRange');
-  expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, capacity: 3,
+  expect(balance.grenade).toMatchObject({ blastRadius: 4, damageEnemyHp: 9, teachingGrantAmount: 3,
     flightSeconds: .65, supplyPressureDepth: 24, supplyDelaySeconds: 8, supplyHitsRequired: 10 });
 });
 function armed() {
@@ -128,7 +128,7 @@ it('preserves an historical one-hit supply, consumes its Rifle hit, and fills th
   s.grenade = {...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,supply:{lane:2,x:0,depth:8}};
   sim.restoreState(s); ticks(sim,20);
   expect(sim.getState().grenade!.inventory).toBe(3); expect(sim.getState().grenade!.supply).toBeNull();
-  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired'}]); ticks(sim,600);
+  expect(sim.consumeGrenadeEvents()).toEqual([{kind:'grenadeAcquired',amount:3}]); ticks(sim,600);
   expect(sim.consumeGrenadeEvents()).toEqual([]); expect(sim.getState().squad.count).toBe(1);
   expect(sim.getState().streamRewards).toEqual([]);
 });
@@ -181,7 +181,7 @@ it.each(['pending','spawned','held','flight'] as const)('restores %s identically
 });
 it('rejects corrupt lifecycle/config and future snapshot clocks',()=>{
   const sim=armed();
-  for(const patch of [{inventory:4},{inventory:1,acquiredAtSeconds:null},{acquiredAtSeconds:10},{supplySpawnedAtSeconds:null}]) {
+  for(const patch of [{inventory:Number.MAX_SAFE_INTEGER+1},{inventory:1,acquiredAtSeconds:null},{acquiredAtSeconds:10},{supplySpawnedAtSeconds:null}]) {
     const s=sim.getState();Object.assign(s.grenade!,patch);expect(()=>sim.restoreState(s)).toThrow();
   }
   for(const patch of [{capacity:4},{damageEnemyHp:0},{flightSeconds:0},{blastRadius:-1},{supplyHitsRequired:0},{supplyHitsRequired:1.5}])

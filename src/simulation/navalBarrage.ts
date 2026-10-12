@@ -25,6 +25,11 @@ export function emptyNavalBarrage(seed: number, c: NavalBarrageConfig): NavalBar
     opportunities:0, launchedSalvos:0, capacitySkipped:0, absentSkipped:0, lastSalvo:null };
 }
 const interval = (rng: SeededRng, c: NavalBarrageConfig) => c.minimumIntervalSeconds + rng.nextFloat() * (c.maximumIntervalSeconds - c.minimumIntervalSeconds);
+const quietGap = (rng: SeededRng, c: NonNullable<NavalBarrageConfig['postImpactCooldown']>) =>
+  c.gapsSeconds ? c.gapsSeconds[rng.nextInt(c.gapsSeconds.length)]
+    : c.minimumGapSeconds! + rng.nextFloat() * (c.maximumGapSeconds! - c.minimumGapSeconds!);
+const validGap = (gap: number, c: NonNullable<NavalBarrageConfig['postImpactCooldown']>) =>
+  c.gapsSeconds ? c.gapsSeconds.includes(gap) : gap >= c.minimumGapSeconds! && gap <= c.maximumGapSeconds!;
 export function setNavalBarrage(previous: NavalBarrageState, c: NavalBarrageConfig, now: number, enabled: boolean): NavalBarrageState {
   enabled &&= c.enabled;
   if (previous.enabled === enabled) return previous;
@@ -35,7 +40,7 @@ export function setNavalBarrage(previous: NavalBarrageState, c: NavalBarrageConf
 }
 export function resolveNavalSalvo(previous:NavalBarrageState,c:NavalBarrageConfig,atSeconds:number):NavalBarrageState {
   if(!previous.pendingImpact || !c.postImpactCooldown)return previous;
-  const rng=new SeededRng(previous.rngState),gaps=c.postImpactCooldown.gapsSeconds,gap=gaps[rng.nextInt(gaps.length)];
+  const rng=new SeededRng(previous.rngState),gap=quietGap(rng,c.postImpactCooldown);
   const {pendingImpact:_flight,heldAtSeconds:_held,...state}=previous;
   return {...state,nextAtSeconds:atSeconds+gap,rngState:rng.getState(),cooldown:{resolvedAtSeconds:atSeconds,gapSeconds:gap}};
 }
@@ -72,7 +77,7 @@ export function advanceNavalBarrage(previous: NavalBarrageState, c: NavalBarrage
   const outcome = !present ? 'absent' : available < count ? 'capacity' : 'launched';
   const {heldAtSeconds: _held,cooldown:_cooldown,...state}=previous;
   const skippedGap=c.postImpactCooldown && outcome!=='launched'
-    ? c.postImpactCooldown.gapsSeconds[rng.nextInt(c.postImpactCooldown.gapsSeconds.length)] : undefined;
+    ? quietGap(rng,c.postImpactCooldown) : undefined;
   return { ...state, nextAtSeconds:c.postImpactCooldown ? skippedGap===undefined ? null : now+skippedGap : now+interval(rng,c),
     ...(skippedGap===undefined?{}:{cooldown:{resolvedAtSeconds:now,gapSeconds:skippedGap}}),rngState:rng.getState(),
     opportunities:previous.opportunities+1, launchedSalvos:previous.launchedSalvos+(outcome==='launched'?1:0),
@@ -95,7 +100,7 @@ export function validateNavalBarrage(value: unknown, c: NavalBarrageConfig, now:
     }else if(s.enabled){
       if(s.nextAtSeconds===null || s.enabledAtSeconds===null)throw Error('Invalid cooldown deadline');
       if(s.cooldown){const g=s.cooldown;
-        if(g.resolvedAtSeconds>now || !c.postImpactCooldown.gapsSeconds.includes(g.gapSeconds)
+        if(g.resolvedAtSeconds>now || !validGap(g.gapSeconds,c.postImpactCooldown)
           || !last || g.resolvedAtSeconds<last.atSeconds || Math.abs(s.nextAtSeconds-g.resolvedAtSeconds-g.gapSeconds)>1e-8)
           throw Error('Invalid naval cooldown');
       }else if(Math.abs(s.nextAtSeconds-s.enabledAtSeconds-c.postImpactCooldown.initialDelaySeconds)>1e-8)

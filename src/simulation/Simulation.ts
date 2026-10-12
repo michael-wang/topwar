@@ -16,7 +16,8 @@ import { advanceDefenseWaves, DefenseWaveStateSchema } from './enemies/defenseWa
 import { LEGACY_DEFENSE_FORWARD_SPEED } from '../config/defenseConfig';
 import { advancePostCapSurvival, emptyPostCapSurvival, postCapOrdinarySettings,
   PostCapSurvivalStateSchema, type PostCapSurvivalState } from './postCapSurvival';
-import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast,
+import { teachingGrenadeGrant } from '../config/grenadeConfig';
+import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast, awardGrenades,
   type GrenadeState, type GrenadeEvent } from './grenade';
 import { pressureGroupSize, pressureWaveSettings, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
 import { grantXp, requiredXp, effectiveRifleFireRate, effectivePrimaryFireRate, progressionStage, maxProgressionLevel, type ProgressionState } from './progression';
@@ -370,7 +371,6 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     > (state.elapsedSeconds as number) + grenade.supply.destruction.recoverySeconds + 1e-9)
     throw new Error('Invalid supply recovery clock');
   if (grenade && (!catharsis?.balance.defenseMode
-    || grenade.inventory > catharsis.balance.grenade.capacity
     || [grenade.lv3EnteredAtSeconds, grenade.supplySpawnedAtSeconds, grenade.acquiredAtSeconds,
       grenade.flight?.startedAtSeconds].some(t => t != null && t > (state.elapsedSeconds as number))
     || (grenade.supply && (grenade.supply.lane >= catharsis.balance.laneCount
@@ -1366,11 +1366,12 @@ export class Simulation {
           const opened = eligible && (destruction ? destruction.stage === 2 : progress >= (supply.hitsRequired ?? 1));
           if (opened) {
             grenade!.supply = null;
-            grenade!.inventory = supply.rewardAmount === undefined ? grenadeConfig!.capacity
-              : Math.min(grenadeConfig!.capacity, grenade!.inventory + supply.rewardAmount);
+            const beforeInventory = grenade!.inventory;
+            grenade!.inventory = awardGrenades(beforeInventory, supply.rewardAmount ?? teachingGrenadeGrant(grenadeConfig!));
+            const actualAward = grenade!.inventory - beforeInventory;
             grenade!.acquiredAtSeconds ??= nextElapsedSeconds;
-            this.grenadeEvents.push(destruction ? { kind: 'grenadeSupplyOpened', x: supply.x,
-              z: nextZ + supply.depth, amount: supply.rewardAmount ?? grenadeConfig!.capacity } : { kind: 'grenadeAcquired' });
+            if (actualAward > 0) this.grenadeEvents.push(destruction ? { kind: 'grenadeSupplyOpened', x: supply.x,
+              z: nextZ + supply.depth, amount: actualAward } : { kind: 'grenadeAcquired', amount: actualAward });
           } else if (destruction && eligible) {
             destruction.stage = (destruction.stage + 1) as 1 | 2;
             destruction.recoverAtSeconds = nextElapsedSeconds + destruction.recoverySeconds;

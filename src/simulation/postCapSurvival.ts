@@ -65,7 +65,7 @@ export function advancePostCapSurvival(previous: PostCapSurvivalState | undefine
     // The original teaching crate owns the first Supply encounter, even in a
     // migrated snapshot whose Lv3 entry clock was previously absent.
     if (frame.grenade.supplySpawnedAtSeconds !== null
-      && frame.grenade.inventory < balance.grenade.capacity && !frame.grenade.supply)
+      && !frame.grenade.supply)
       frame.grenade.supply = { ...placeGrenadeSupply(frame, balance.grenade), rewardAmount: c.grenadeSupplyAmount };
     state.nextGrenadeSupplyAtSeconds = nextSlot(state.nextGrenadeSupplyAtSeconds!, now, c.grenadeSupplyIntervalSeconds);
   }

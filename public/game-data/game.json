@@ -39,7 +39,7 @@
       "maxActiveEnemies": 180
     },
     "grenade": {
-      "capacity": 3,
+      "teachingGrantAmount": 3,
       "damageEnemyHp": 9,
       "blastRadius": 4,
       "flightSeconds": 0.65,
@@ -175,7 +175,7 @@
       "version": 1, "enabled": true, "streamSeed": 1312904780,
       "minimumShells": 1, "maximumShells": 2,
       "minimumIntervalSeconds": 2, "maximumIntervalSeconds": 3, "overlapPolicy": "waitForImpact",
-      "postImpactCooldown": { "initialDelaySeconds": 2, "gapsSeconds": [0, 1, 2, 3] },
+      "postImpactCooldown": { "initialDelaySeconds": 2, "minimumGapSeconds": 2, "maximumGapSeconds": 5 },
       "targetLanes": [0, 1, 2, 3, 4]
     },
     "machineGun": {

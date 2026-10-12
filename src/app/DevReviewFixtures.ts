@@ -1,3 +1,4 @@
+import { teachingGrenadeGrant } from '../config/grenadeConfig';
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
 import { createNavalReview } from './NavalReview';
 import { emptyCarnival } from '../simulation/carnival';
@@ -54,7 +55,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
   state.machineGunReleaseAtSeconds = 0;
   state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-    inventory: balance.grenade.capacity, supply: null, flight: null };
+    inventory: teachingGrenadeGrant(balance.grenade), supply: null, flight: null };
   state.postCapSurvival = advancePostCapSurvival(state.postCapSurvival, state);
   state.enemies = [];
   state.enemyStream.nextEnemyId = 1;

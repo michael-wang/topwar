@@ -32,10 +32,19 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it.each([4,20,50,100,1000,Number.MAX_SAFE_INTEGER])('recovers exact inventory %i and deterministic in-flight continuation',inventory=>{
+    const {sim,c}=checkpoint(),state=sim.getState();state.grenade!.inventory=inventory;sim.restoreState(state);
+    const store=storage(),saved={...c,state:sim.getState()};expect(writeCheckpoint(saved,store).ok).toBe(true);
+    const found=readCheckpoint(store);expect(found.status).toBe('valid');if(found.status!=='valid')throw Error(found.status);
+    const restored=simulationFromCheckpoint(found.checkpoint);expect(restored.getState()).toEqual(sim.getState());
+    expect(restored.consumeGrenadeEvents()).toEqual([]);
+    for(let i=0;i<120;i++){const input={targetX:0};sim.step(1/60,input,pilotTuning);restored.step(1/60,input,pilotTuning);}
+    expect(restored.getState()).toEqual(sim.getState());
+  });
   it('accepts only narrowly scoped QA metadata after full authoritative validation', () => {
     const tuning=qaSimulationTuning(config), sim=createQaStressFixture({seed:42,level,startSquad:1,startRocketCount:0,
       tiers:config.tiers,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},tuning);
-    for(let i=0;i<3600;i++)if(advanceQaPreparation(sim,tuning,i))break;
+    for(let i=0;i<5400;i++)if(advanceQaPreparation(sim,tuning,i))break;
     const {c}=checkpoint(),store=storage(),save:SessionCheckpoint={...c,fixture:null,state:sim.getState(),
       qa:{version:1,kind:'sleep-lv10',armed:true}};
     expect(writeCheckpoint(save,store).ok).toBe(true);const found=readCheckpoint(store);

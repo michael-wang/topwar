@@ -1,3 +1,4 @@
+import { teachingGrenadeGrant } from '../config/grenadeConfig';
 import { Simulation, type SimulationOptions, type SimulationTuning } from '../simulation/Simulation';
 import { progressionStage, effectivePrimaryFireRate } from '../simulation/progression';
 import { emptyCarnival } from '../simulation/carnival';
@@ -28,7 +29,7 @@ export function createQaStressFixture(options:SimulationOptions,tuning:Simulatio
   s.carnival=emptyCarnival(true);s.destroyer=emptyDestroyer(true);
   s.giantEncounter={scheduledAtSeconds:0,spawned:true};
   s.grenade={lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,acquiredAtSeconds:0,
-    inventory:balance.grenade.capacity,supply:null,flight:null};
+    inventory:teachingGrenadeGrant(balance.grenade),supply:null,flight:null};
   s.postCapSurvival=advancePostCapSurvival(s.postCapSurvival,s);
   s.enemies=[];s.projectiles=[];s.streamRewards=[];s.pickups=[];s.gates=[];
   const interval=1/effectivePrimaryFireRate(tuning.rifle.fireRate,10,balance);

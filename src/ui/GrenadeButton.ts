@@ -1,5 +1,14 @@
 export const grenadeIcon = '<svg viewBox="0 0 32 32" aria-hidden="true" fill="currentColor"><path d="M13 3h8v5h-8zM12 10h10l4 8-2 10H10L7 19z"/><path d="m22 4 5 2 2 8-3 1-2-7-3-1z"/></svg>';
 
+// Exact small counts; bounded display width even at the safe-integer boundary.
+export function grenadeCountLabel(inventory: number): string {
+  if (inventory < 10000) return String(inventory);
+  const units = [[1e15, 'Q'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']] as const;
+  for (const [divisor, suffix] of units) if (inventory >= divisor)
+    return `${Math.floor(inventory / divisor * 10) / 10}${suffix}`;
+  return String(inventory);
+}
+
 export class GrenadeButton {
   private readonly element = document.createElement('button');
   private previousInventory = 0;
@@ -29,7 +38,7 @@ export class GrenadeButton {
     if (this.element.disabled !== disabled) this.element.disabled = disabled;
     const label = `Throw Grenade (${inventory} available, Q${inventory > 0 && !enabled ? ', temporarily unavailable' : ''})`;
     if (label !== this.previousLabel) { this.element.setAttribute('aria-label', label); this.previousLabel = label; }
-    if (inventory !== this.previousInventory) this.count.textContent = String(inventory);
+    if (inventory !== this.previousInventory) this.count.textContent = grenadeCountLabel(inventory);
     if (inventory !== this.previousInventory) this.element.classList.toggle('grenade-empty', inventory === 0);
     if (inventory > this.previousInventory) this.element.classList.add('grenade-acquired');
     if (inventory === 0 && this.previousInventory !== 0) this.element.classList.remove('grenade-acquired');
@@ -47,7 +56,7 @@ export class GrenadeButton {
     this.element.classList.add('grenade-thrown');
   }
   restore(inventory: number, acquired: boolean): void {
-    this.reset(); this.previousInventory = inventory; this.count.textContent = String(inventory);
+    this.reset(); this.previousInventory = inventory; this.count.textContent = grenadeCountLabel(inventory);
     this.element.classList.toggle('grenade-empty', inventory === 0);
     this.update(inventory, acquired, false);
   }

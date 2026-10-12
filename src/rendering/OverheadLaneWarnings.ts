@@ -2,20 +2,18 @@ import * as THREE from 'three';
 import { ARTILLERY_CAPACITY } from '../config/artilleryConfig';
 import type { ArtilleryShell } from '../simulation/artillery';
 
-// Fixed battlefield band, independent of player X. Three pooled batches cover
-// at most eight distinct active lanes, including same-lane overlapping shells.
+// One bounded billboard batch; each lane uses its earliest authoritative impact.
 export class OverheadLaneWarnings {
-  private readonly badgeGeometry: THREE.ShapeGeometry;
-  private readonly glyphGeometry: THREE.ShapeGeometry;
-  private readonly ink = new THREE.MeshBasicMaterial({color:'#111b28',depthTest:false,depthWrite:false,toneMapped:false});
-  private readonly coral = new THREE.MeshBasicMaterial({color:'#ffffff',depthTest:false,depthWrite:false,toneMapped:false});
-  private readonly ivory = new THREE.MeshBasicMaterial({color:'#fff3c9',depthTest:false,depthWrite:false,toneMapped:false});
-  private readonly batches: readonly THREE.InstancedMesh[];
+  private readonly geometry: THREE.ShapeGeometry;
+  private readonly material = new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,
+    depthTest:false,depthWrite:false,toneMapped:false});
+  private readonly batch: THREE.InstancedMesh;
+  private readonly opacity = new THREE.InstancedBufferAttribute(new Float32Array(ARTILLERY_CAPACITY),1);
   private readonly transform = new THREE.Object3D();
   private readonly deadlines = new Float64Array(16);
   private readonly starts = new Float64Array(16);
-  private readonly early = new THREE.Color('#b96e57');
-  private readonly middle = new THREE.Color('#ef633a');
+  private readonly early = new THREE.Color('#a75b58');
+  private readonly middle = new THREE.Color('#df4132');
   private readonly late = new THREE.Color('#ff2518');
   private readonly tint = new THREE.Color();
   private readonly xs = new Float64Array(16);
@@ -23,18 +21,27 @@ export class OverheadLaneWarnings {
   count = 0;
 
   constructor(private readonly scene: THREE.Scene) {
-    const badge=new THREE.Shape();badge.moveTo(-.47,.36);badge.lineTo(.47,.36);badge.lineTo(0,-.48);badge.closePath();
     const stem=new THREE.Shape();stem.moveTo(-.075,.06);stem.lineTo(-.10,.29);stem.lineTo(.10,.29);stem.lineTo(.075,.06);stem.closePath();
     const dot=new THREE.Shape();dot.absarc(0,-.11,.075,0,Math.PI*2,false);
-    this.badgeGeometry=new THREE.ShapeGeometry(badge);this.glyphGeometry=new THREE.ShapeGeometry([stem,dot]);
-    this.batches=[new THREE.InstancedMesh(this.badgeGeometry,this.ink,ARTILLERY_CAPACITY),
-      new THREE.InstancedMesh(this.badgeGeometry,this.coral,ARTILLERY_CAPACITY),
-      new THREE.InstancedMesh(this.glyphGeometry,this.ivory,ARTILLERY_CAPACITY)];
-    this.batches.forEach((mesh,i)=>{mesh.name=['artillery-lane-outline','artillery-lane-danger','artillery-lane-glyph'][i];
-      mesh.frustumCulled=false;mesh.renderOrder=12+i;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(mesh);});
-    // Allocate instance colors before bounded shader preparation, not on first launch.
-    for(let i=0;i<ARTILLERY_CAPACITY;i++)this.batches[1].setColorAt(i,this.early);
-    this.batches[1].instanceColor!.setUsage(THREE.DynamicDrawUsage);
+    this.geometry=new THREE.ShapeGeometry([stem,dot]);
+    this.opacity.setUsage(THREE.DynamicDrawUsage);
+    this.geometry.setAttribute('warningOpacity',this.opacity);
+    // Fixed shader layout is allocated before idle presentation preparation.
+    // Instance alpha avoids separate meshes/materials for independent lane clocks.
+    this.material.onBeforeCompile=shader=>{
+      shader.vertexShader=shader.vertexShader.replace('#include <common>',
+        '#include <common>\nattribute float warningOpacity;\nvarying float vWarningOpacity;')
+        .replace('#include <begin_vertex>','#include <begin_vertex>\nvWarningOpacity = warningOpacity;');
+      shader.fragmentShader=shader.fragmentShader.replace('#include <common>',
+        '#include <common>\nvarying float vWarningOpacity;')
+        .replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.a *= vWarningOpacity;');
+    };
+    this.material.customProgramCacheKey=()=> 'overhead-warning-opacity-v1';
+    this.batch=new THREE.InstancedMesh(this.geometry,this.material,ARTILLERY_CAPACITY);
+    this.batch.name='artillery-lane-danger';this.batch.frustumCulled=false;this.batch.renderOrder=14;
+    this.batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(this.batch);
+    for(let i=0;i<ARTILLERY_CAPACITY;i++)this.batch.setColorAt(i,this.early);
+    this.batch.instanceColor!.setUsage(THREE.DynamicDrawUsage);
     this.reset();
   }
 
@@ -57,23 +64,17 @@ export class OverheadLaneWarnings {
       this.tint.copy(progress<.5?this.early:this.middle).lerp(progress<.5?this.middle:this.late,
         progress<.5?progress*2:(progress-.5)*2);
       if(final)this.tint.copy(this.late);
-      this.batches[1].setColorAt(count,this.tint);
-      const scale=final ? 1.05+.12*Math.sin(Math.max(0,.15-remaining)*Math.PI*24)**2
-        : .94+.08*Math.sin(progress*Math.PI*4)**2;
-      // Raising a billboard above the squad expands its projected X spacing.
-      // Fit the five lane columns inside the portrait frame, including ink edges.
+      this.batch.setColorAt(count,this.tint);
+      this.opacity.setX(count,final?1:.15+.85*(progress*progress*(3-2*progress)));
+      const scale=final ? 1.10+.28*Math.sin(Math.max(0,.15-remaining)*Math.PI*24)**2 : 1;
+      // Preserve the accepted lane anchors and vertical band; no player-following offset.
       this.transform.position.set(this.xs[lane]*.72,2.05,this.zs[lane]);
-      for(let i=0;i<this.batches.length;i++) {
-        this.transform.scale.setScalar(scale*(i===1?.82:1));this.transform.updateMatrix();
-        this.batches[i].setMatrixAt(count,this.transform.matrix);
-      }
-      count++;
+      this.transform.scale.setScalar(scale);this.transform.updateMatrix();
+      this.batch.setMatrixAt(count++,this.transform.matrix);
     }
-    this.count=count;
-    this.batches[1].instanceColor!.needsUpdate=true;
-    for(const mesh of this.batches){mesh.count=count;mesh.visible=count>0;mesh.instanceMatrix.needsUpdate=true;}
+    this.count=count;this.batch.count=count;this.batch.visible=count>0;
+    this.batch.instanceColor!.needsUpdate=true;this.batch.instanceMatrix.needsUpdate=true;this.opacity.needsUpdate=true;
   }
-  reset(): void {this.count=0;for(const mesh of this.batches){mesh.count=0;mesh.visible=false;}}
-  dispose(): void {for(const mesh of this.batches){this.scene.remove(mesh);mesh.dispose();}
-    this.badgeGeometry.dispose();this.glyphGeometry.dispose();this.ink.dispose();this.coral.dispose();this.ivory.dispose();}
+  reset(): void {this.count=0;this.batch.count=0;this.batch.visible=false;}
+  dispose(): void {this.scene.remove(this.batch);this.batch.dispose();this.geometry.dispose();this.material.dispose();}
 }

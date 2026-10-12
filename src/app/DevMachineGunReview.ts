@@ -1,3 +1,4 @@
+import { teachingGrenadeGrant } from '../config/grenadeConfig';
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
 import { isolatedReviewOptions } from './DevReviewPolicy';
 import { emptyCarnival } from '../simulation/carnival';
@@ -47,7 +48,7 @@ export function createMachineGunReview(options: SimulationOptions, baseFireRate:
   for (const [lane, x] of lanes.entries()) state.enemies.push({ id: 61 + lane, tier: 1,
     archetype: 'heavy', lane, x, z: 42 + lane * .8, hp: balance.heavyHp });
   state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-    inventory: balance.grenade.capacity, supply: null, flight: null };
+    inventory: teachingGrenadeGrant(balance.grenade), supply: null, flight: null };
   const interval = 1 / effectivePrimaryFireRate(baseFireRate, preset.level, balance);
   state.weapons.rifleCooldownRemainingSeconds = 0;
   state.weapons.rifleMemberCooldowns = Array.from({ length: stage.squadStage }, (_, i) => i * interval / stage.squadStage);

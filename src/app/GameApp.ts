@@ -663,7 +663,7 @@ export class GameApp {
       this.gameOverOverlay.setVisible(false);this.clearedFinishedCheckpoint=false;
       this.setPaused(true);this.pauseOverlay.setVisible(false);
       let ready=false;
-      for(let tick=0;tick<3600&&!ready;){
+      for(let tick=0;tick<5400&&!ready;){
         if(this.disposed||generation!==this.qaGeneration) return;
         if(this.hidden||this.contextLost)throw Error('Preparation interrupted; resume and restart testing');
         for(let n=0;n<30&&!ready;n++,tick++)ready=advanceQaPreparation(this.simulation,tuning,tick);

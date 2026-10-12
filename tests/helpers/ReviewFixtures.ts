@@ -1,3 +1,4 @@
+import { teachingGrenadeGrant } from '../../src/config/grenadeConfig';
 import { Simulation, type SimulationOptions } from '../../src/simulation/Simulation';
 import { isolatedReviewOptions } from '../../src/app/DevReviewPolicy';
 import { createShellReview } from './ShellReview';
@@ -88,7 +89,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
     state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
     state.machineGunReleaseAtSeconds = 0;
     state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-      inventory: balance.grenade.capacity, supply: null, flight: null };
+      inventory: teachingGrenadeGrant(balance.grenade), supply: null, flight: null };
     if (playableLate) state.postCapSurvival = advancePostCapSurvival(state.postCapSurvival, state);
     state.enemies = [];
     state.enemyStream.nextEnemyId = 1;
@@ -137,7 +138,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
       state.enemies.push({ id: gruntCount + 1 + index, tier: 1, archetype: 'heavy', lane: enemyLane,
         x: lanes[enemyLane], z: role === 'machineGun' ? 10.8 + index * 2.8 : 13.3 + index * 1.7, hp: balance.heavyHp });
     if (role === 'grenade') state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-      inventory: balance.grenade.capacity, supply: null, flight: null };
+      inventory: teachingGrenadeGrant(balance.grenade), supply: null, flight: null };
   }
   state.projectiles = []; state.streamRewards = []; state.gates = []; state.pickups = [];
   const isolatedGiant = role === 'evolve' || role === 'machineGun' || playableLate || role === 'carnival';

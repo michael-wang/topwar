@@ -1,3 +1,4 @@
+import { teachingGrenadeGrant } from '../config/grenadeConfig';
 import presets from '../config/survivalExperiment.json';
 import { isolatedReviewOptions } from './DevReviewPolicy';
 import { PostCapSurvivalConfigSchema } from '../config/postCapSurvivalConfig';
@@ -43,7 +44,7 @@ export function createSurvivalReview(options: SimulationOptions, baseFireRate: n
   const lane = Math.floor(lanes.length / 2);
   state.player = { x: lanes[lane], z: 0, selectedLane: lane };
   state.grenade = { lv3EnteredAtSeconds: 0, supplySpawnedAtSeconds: 0, acquiredAtSeconds: 0,
-    inventory: balance.grenade.capacity, supply: null, flight: null };
+    inventory: teachingGrenadeGrant(balance.grenade), supply: null, flight: null };
   state.postCapSurvival = advancePostCapSurvival(state.postCapSurvival, state);
   state.enemies = []; state.enemyStream.nextEnemyId = 1;
   const stream = options.level.enemyStream;
