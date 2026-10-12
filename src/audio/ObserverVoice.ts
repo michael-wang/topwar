@@ -10,6 +10,7 @@ export const observerMissionVoiceAssets: Readonly<Record<ObserverLocale, string 
 };
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
+  if (message === 'tankBoss') return null;
   return (message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
 }
 export type VoiceLoader = (url: string, context: AudioContext) => Promise<AudioBuffer | null>;
@@ -64,6 +65,7 @@ export class ObserverVoice {
     private readonly missionAssets = observerMissionVoiceAssets) {}
 
   private load(locale: ObserverLocale, message: ObserverMessage): Promise<AudioBuffer | null> | null {
+    if (message === 'tankBoss') return null;
     const asset = (message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
     if (!asset) return null;
     let pending = this.cache.get(asset);
@@ -75,6 +77,7 @@ export class ObserverVoice {
     return pending;
   }
   prepare(locale: ObserverLocale, message: ObserverMessage): ObserverAudioReadiness {
+    if (message === 'tankBoss') return 'unavailable';
     const asset = (message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
     if (!asset || this.disposed) return 'unavailable';
     this.load(locale, message);

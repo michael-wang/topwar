@@ -1,7 +1,11 @@
 export type ObserverLocale = 'zh-TW' | 'en';
 // Closed playtest policy. Keep the bilingual resources/helpers for later testing.
 export const FIELD_OBSERVER_LOCALE: ObserverLocale = 'zh-TW';
-export type ObserverMessage = 'destroyer' | 'missionIntro';
+export type ObserverMessage = 'destroyer' | 'missionIntro' | 'tankBoss';
+export const observerTankDialogue: Record<ObserverLocale, string> = {
+  'zh-TW': '警告！發現敵軍超重型坦克！正朝我方防線推進！',
+  en: 'Warning! Enemy super-heavy tank spotted! Advancing toward our defense line!',
+};
 export const observerMissionDialogue: Record<ObserverLocale, readonly string[]> = {
   'zh-TW': ['這裡是觀測官。', '敵軍正朝港口逼近！', '請守住防線。完畢！'],
   en: ['Field Observer here.', 'Enemy forces are approaching the harbor!', 'Hold the line. Over.'],

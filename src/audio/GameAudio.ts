@@ -13,7 +13,7 @@ const GIANT_DEATH_RUMBLE_DELAY_MS = 520;
 export type AudioCue = 'levelUp' | 'rifle' | 'machineGun' | 'damage' | 'fatal'
   | 'reward' | 'enemyHit' | 'enemyDeath'
   | 'giantDeath' | 'groundArtillery' | 'skyFlak' | 'supplyImpact' | 'supplyCrack' | 'supplyOpen' | 'grenadeLaunch' | 'grenadeExplosion'
-  | 'enemyCannon' | 'enemyShellImpact' | 'enemyLockOn' | 'radioOpen' | 'radioClose';
+  | 'enemyCannon' | 'enemyShellImpact' | 'enemyLockOn' | 'bossAlarm' | 'radioOpen' | 'radioClose';
 
 interface ObservedEnemy { id: number; hp: number; archetype?: 'grunt' | 'heavy' | 'giant' }
 interface ObservedProjectile { id: number; kind: 'rifle' | 'machineGun' | 'rocket'; tier: number }
@@ -91,6 +91,8 @@ type ToneShape = { from: number; to: number; seconds: number;
   wave: OscillatorType; volume: number; attackSeconds?: number; delaySeconds?: number };
 const rewardTone: ToneShape = { from: 630, to: 980, seconds: .14, wave: 'sine', volume: .11 };
 const cueShape: Record<AudioCue, ToneShape & { secondary?: ToneShape; tertiary?: ToneShape }> = {
+  bossAlarm: { from: 480, to: 980, seconds: .24, wave: 'square', volume: .11,
+    secondary: { from: 980, to: 480, seconds: .24, wave: 'triangle', volume: .16, delaySeconds: .26 } },
   radioOpen: { from: 920, to: 920, seconds: .085, wave: 'sine', volume: .10,
     secondary: { from: 1280, to: 1280, seconds: .075, wave: 'sine', volume: .07, delaySeconds: .09 } },
   radioClose: { from: 1100, to: 760, seconds: .12, wave: 'sine', volume: .09 },
@@ -405,7 +407,7 @@ export class GameAudio {
         };
         this.active.add(oscillator);
         if (cue === 'grenadeExplosion') this.grenadeSources.add(oscillator);
-        if (artillery || cue === 'enemyLockOn') this.artillerySources.add(oscillator);
+        if (artillery || cue === 'enemyLockOn' || cue === 'bossAlarm') this.artillerySources.add(oscillator);
         if (cue === 'radioOpen' || cue === 'radioClose') this.radioSources.add(oscillator);
         oscillator.start(toneStart);
         oscillator.stop(toneEnd);

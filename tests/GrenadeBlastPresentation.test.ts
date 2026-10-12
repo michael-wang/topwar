@@ -8,6 +8,23 @@ import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering
 import type { GrenadeEvent } from '../src/simulation/grenade';
 import type { EnemyRenderState } from '../src/rendering/RenderState';
 
+it('reuses bounded airborne deaths and dust for the Tank clearing, including Heavies, without moving flank troops', () => {
+  const families = { grunt: createChibiGruntFamily(), heavy: createChibiHeavyFamily(), giant: createChibiGiantFamily() };
+  const scene = new THREE.Scene(), r = new EnemyRenderer(scene, families);
+  const victims: EnemyRenderState[] = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, archetype: 'heavy',
+    tier: 1, hp: 15, x: (i % 3 - 1) * 1.4, z: 30 + i * .25, visualScale: 1.8 }));
+  const flank: EnemyRenderState = { ...victims[0], id: 20, x: 2.8 };
+  r.update([...victims, flank], 0, true); r.update([...victims, flank], 2000, true);
+  r.presentTankEntrance({ z: 51.2, victims }, 2100); r.update([flank], 2100, true);
+  r.update([flank], 2350, true);
+  expect(r.getDebugStats().airborneDeaths).toBe(8); expect(r.getDebugStats().deathVisuals).toBe(12);
+  expect(r.getDebugStats().blastReactions).toBe(0);
+  const children = [...scene.children]; r.update([flank], 2350, true);
+  expect(scene.children).toEqual(children);
+  r.update([flank], 3500, true); expect(r.getDebugStats().airborneDeaths).toBe(0);
+  r.dispose(); Object.values(families).forEach(f => f.dispose()); expect(scene.children).toEqual([]);
+});
+
 it('keeps crate panels attached until opening, then rotates and falls every fragment to the ground',()=>{
   const scene=new THREE.Scene(),r=new GrenadeRenderer(scene),group=scene.getObjectByName('grenade-supply')!;
   const base={originZ:0,elapsedSeconds:0,flight:null};

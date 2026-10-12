@@ -4,6 +4,7 @@ import { paintedBlockGeometry } from './art/PaintedGeometry';
 import { illustratedMaterial } from './art/IllustratedMaterial';
 import { GrenadeExplosion } from './GrenadeExplosion';
 import type { GameRenderState } from './RenderState';
+import { TANK_ENTRANCE_CLEAR_FRACTION, type TankEntranceEvent } from '../simulation/defenseTank';
 
 export const TANK_DEATH_MS = 3200;
 export const TANK_EXPLOSION_TIMES_MS = [0, 350, 700, 1050, 1400, 1800, 2200] as const;
@@ -22,6 +23,10 @@ export class DefenseTankRenderer {
   private readonly dark = new THREE.MeshStandardMaterial({ color: '#202a24', roughness: .85 });
   private readonly damage = new THREE.MeshBasicMaterial({ color: '#2e241e' });
   private readonly smokeMaterial = new THREE.MeshBasicMaterial({ color: '#454137', transparent: true, opacity: .3, depthWrite: false });
+  private readonly shock = new THREE.Mesh(new THREE.RingGeometry(.9, 1, 32, 1, 0, Math.PI),
+    new THREE.MeshBasicMaterial({ color: '#ffe0b4', transparent: true, opacity: .45, depthWrite: false, side: THREE.DoubleSide }));
+  private entranceAtMs = -Infinity;
+  private shockDepth = 1;
   private readonly tracks = new THREE.InstancedMesh(this.block, this.dark, 64);
   private readonly wheels = new THREE.InstancedMesh(this.wheelGeometry, this.steel, 12);
   private readonly smoke = new THREE.InstancedMesh(this.smokeGeometry, this.smokeMaterial, 8);
@@ -85,14 +90,28 @@ export class DefenseTankRenderer {
     this.leftDoor = part(this.landing, [-1.15, 2, 54], [2.2, 2.4, .18], this.armor);
     this.rightDoor = part(this.landing, [1.15, 2, 54], [2.2, 2.4, .18], this.armor);
     this.explosions = new GrenadeExplosion(scene, 4, false);
-    scene.add(this.group, this.landing); this.reset();
+    this.shock.name = 'tank-entrance-shockwave'; this.shock.rotation.x = -Math.PI / 2;
+    scene.add(this.group, this.landing, this.shock); this.reset();
+  }
+  presentEntrance(event: TankEntranceEvent, nowMs: number): void {
+    this.entranceAtMs = nowMs;
+    this.shock.position.set(0, .09, event.z);
+    this.shockDepth = event.z - event.victims.reduce((z, v) => Math.min(z, v.z), event.z - 8) + 3;
   }
   update(frame: GameRenderState['defenseTank'], nowMs: number): void {
     this.group.visible = !!frame; this.landing.visible = !!frame;
+    const shockProgress = (nowMs - this.entranceAtMs) / 700;
+    this.shock.visible = !!frame && shockProgress >= 0 && shockProgress < 1;
+    if (this.shock.visible) {
+      this.shock.scale.set(2.1 + shockProgress, 1 + this.shockDepth * shockProgress, 1);
+      this.shock.material.opacity = .45 * (1 - shockProgress);
+    }
     if (!frame) { this.explosions.update(nowMs, 0); return; }
     const s = frame.state, c = frame.config, entry = Math.min(1, Math.max(0, (frame.elapsedSeconds - s.startedAtSeconds) / c.entrySeconds));
-    this.leftDoor.position.x = -1.15 - Math.min(1, entry * 4) * 2.1;
-    this.rightDoor.position.x = 1.15 + Math.min(1, entry * 4) * 2.1;
+    this.group.visible = s.status !== 'entering' || entry >= TANK_ENTRANCE_CLEAR_FRACTION;
+    const door = Math.min(1, Math.max(0, entry - TANK_ENTRANCE_CLEAR_FRACTION) * 8);
+    this.leftDoor.position.x = -1.15 - door * 2.1;
+    this.rightDoor.position.x = 1.15 + door * 2.1;
     this.ramp.position.z = (c.startZ + c.battleZ) / 2; this.ramp.scale.z = c.startZ - c.battleZ;
     this.leftDoor.position.z = this.rightDoor.position.z = c.startZ;
     this.group.position.set(0, s.status === 'entering' ? (1 - entry) * 1.25 : 0, s.z);
@@ -149,9 +168,11 @@ export class DefenseTankRenderer {
     if (frame?.state.status === 'defeated') { this.defeated = true; this.deathAtMs = nowMs - TANK_DEATH_MS; this.lastBurst = TANK_EXPLOSION_TIMES_MS.length - 1; }
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
+    this.shock.visible = false; this.entranceAtMs = -Infinity;
     this.deathAtMs = -Infinity; this.lastBurst = -1; this.defeated = false; this.explosions.reset(); }
   dispose(): void {
-    this.scene.remove(this.group, this.landing); this.explosions.dispose();
+    this.scene.remove(this.group, this.landing, this.shock); this.explosions.dispose();
+    this.shock.geometry.dispose(); this.shock.material.dispose();
     for (const batch of [this.tracks, this.wheels, this.smoke, this.scars]) batch.dispose();
     for (const g of [this.block, this.wheelGeometry, this.barrelGeometry, this.smokeGeometry, ...this.merged]) g.dispose();
     for (const m of [this.armor, this.steel, this.dark, this.damage, this.smokeMaterial]) m.dispose();

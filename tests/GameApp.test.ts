@@ -96,6 +96,7 @@ const mock = vi.hoisted(() => ({
 const stripDom = vi.hoisted(() => ({ progressionHost: {} as HTMLElement }));
 const tankUi = vi.hoisted(() => ({ update: vi.fn(), show: vi.fn(), reset: vi.fn(), replay: null as (() => void) | null }));
 vi.mock('../src/ui/TankBossHud', () => ({ TankBossHud: class { update = tankUi.update; reset = vi.fn(); dispose = vi.fn(); } }));
+vi.mock('../src/ui/TankEntranceHud', () => ({ TankEntranceHud: class { update = vi.fn(); restore = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
 vi.mock('../src/ui/StageClearOverlay', () => ({ StageClearOverlay: class {
   constructor(_viewport: unknown, replay: () => void) { tankUi.replay = replay; }
   show = tankUi.show; reset = tankUi.reset; dispose = vi.fn();
@@ -112,6 +113,7 @@ vi.mock('../src/simulation/Simulation', () => ({
     consumePresentationEvents = mock.consumePresentationEvents;
     consumeGrenadeEvents = vi.fn(() => []);
     consumeArtilleryEvents = vi.fn(() => []);
+    consumeTankEntranceEvents = vi.fn(() => []);
   },
 }));
 
@@ -121,6 +123,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
     present = mock.present;
     presentGrenade = vi.fn();
     presentArtillery = vi.fn();
+    presentTankEntrance = vi.fn();
     presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;
     preparePresentation = vi.fn();

@@ -32,7 +32,7 @@ import { copySquadForPresentation, type PresentationEvent } from './Presentation
 import { CatharsisConfigSchema, type CatharsisConfig } from '../config/catharsisConfig';
 import { attackLanePositions } from './enemies/laneComposition';
 import { startDefenseTank, advanceTankPosition, tankPhase, tankHitZ, tankInBlast, admitTankFlanks,
-  tankSalvo, validateDefenseTank } from './defenseTank';
+  tankSalvo, validateDefenseTank, clearTankEntrance, type TankEntranceEvent } from './defenseTank';
 import { CombatStatsSchema, emptyCombatStats } from './combatStats';
 
 export interface SimulationOptions {
@@ -603,6 +603,7 @@ export class Simulation {
   private presentationEvents: PresentationEvent[] = [];
   private grenadeEvents: GrenadeEvent[] = [];
   private artilleryEvents: ArtilleryEvent[] = [];
+  private tankEntranceEvents: TankEntranceEvent[] = [];
   private static readonly MAX_PRESENTATION_EVENTS = 256;
 
   constructor(options: SimulationOptions) {
@@ -820,7 +821,6 @@ export class Simulation {
     let defenseTank = this.state.defenseTank ? { ...this.state.defenseTank } : undefined;
     if (!defenseTank && tankConfig && this.state.progression!.level >= tankConfig.triggerLevel)
       defenseTank = startDefenseTank(this.state.elapsedSeconds, this.state.seed, tankConfig);
-    if (defenseTank && tankConfig) advanceTankPosition(defenseTank, tankConfig, nextElapsedSeconds, dtSeconds);
     const grenade = this.state.grenade ? structuredClone(this.state.grenade) : undefined;
     const grenadeConfig = catharsis?.balance.grenade;
     if (input.throwGrenade && grenade && grenade.inventory > 0 && !grenade.flight && grenadeConfig) {
@@ -838,6 +838,11 @@ export class Simulation {
     const enemies = this.state.enemies.map((enemy) => ({ ...enemy,
       z: enemy.z - (catharsis && enemy.archetype
         ? enemyApproachSpeed(enemy, catharsis.balance) * dtSeconds : 0) }));
+    if (defenseTank && tankConfig) {
+      const entrance = clearTankEntrance(defenseTank, enemies, nextElapsedSeconds);
+      if (entrance) this.tankEntranceEvents.push(entrance);
+      advanceTankPosition(defenseTank, tankConfig, nextElapsedSeconds, dtSeconds);
+    }
     let progression = this.state.progression;
     const awardKill = (enemy: EnemySimulationState): number => {
       if (enemy.archetype === 'giant') combatStats.giantKills++;
@@ -1264,6 +1269,9 @@ export class Simulation {
   consumeArtilleryEvents(): ArtilleryEvent[] {
     const events = this.artilleryEvents; this.artilleryEvents = []; return events;
   }
+  consumeTankEntranceEvents(): TankEntranceEvent[] {
+    const events = this.tankEntranceEvents; this.tankEntranceEvents = []; return events;
+  }
 
   consumeGrenadeEvents(): GrenadeEvent[] {
     const events = this.grenadeEvents;
@@ -1344,6 +1352,7 @@ export class Simulation {
     this.state = candidate.state;
     this.grenadeEvents = [];
     this.artilleryEvents = [];
+    this.tankEntranceEvents = [];
     this.rng = candidate.rng;
     this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed);
     this.presentationEvents = [];

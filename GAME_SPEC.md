@@ -52,7 +52,7 @@ At Lv8 XP≥245/350, future waves retain 31/11 and six seconds but use five lane
 
 ## Stage 1 Tank Boss — initial phone playtest
 
-Reaching Lv9 stops new Destroyer launches and ordinary/Carnival/periodic Giant admissions. Existing enemies and airborne shells remain authoritative. The ship opens its doors and a giant armored tank rolls down its ramp in 2.5 seconds, then immediately attacks. Central Lane 2/3/4 share one 6500-HP armor rectangle; bullets use their existing damage and stop at the nearest enemy, Supply or armor. Grenades retain their existing targeting, 9-HP damage and radius, and can target/hit armor. The Boss is vulnerable once landed; Lv10 is not required to defeat it.
+Reaching Lv9 stops new Destroyer launches and ordinary/Carnival/periodic Giant admissions. Airborne shells land normally; Lane 1/5 troops remain. A short edge-only red alarm and the alerted FieldObserver announce the tank, with Traditional Chinese subtitles and Radio Open/Close, without new speech audio. At about 0.5 seconds the ship doors open and the tank's shockwave clears existing Lane 2/3/4 troops once, with reused knockback/dust and no XP or direct-kill credit. The giant armored tank lands in 2.5 seconds, then immediately attacks. Central Lane 2/3/4 share one 6500-HP armor rectangle; bullets use their existing damage and stop at the nearest enemy, Supply or armor. Grenades retain their existing targeting, 9-HP damage and radius, and can target/hit armor. The Boss is vulnerable once landed; Lv10 is not required to defeat it.
 
 | Phase | HP | Distinct-lane shells | Post-impact cooldown | Advance units/s | Flanks per Lane 1/5 | Flank interval | Giant |
 |---|---|---:|---:|---:|---|---:|---|

@@ -10,6 +10,15 @@ it('shows the landing ramp, doors and articulated tank, and freezes movement and
   r.update({ state: tank, config: c, elapsedSeconds: 0 }, 0);
   const landing = scene.getObjectByName('tank-landing-ramp')!;
   expect(landing.visible).toBe(true); expect(r.group.position.y).toBeGreaterThan(0);
+  expect(r.group.visible).toBe(false);
+  r.presentEntrance({ z: 51.2, victims: [{ id: 1, x: 0, z: 32, archetype: 'heavy' }] }, 500);
+  r.update({ state: tank, config: c, elapsedSeconds: .5 }, 500);
+  expect(r.group.visible).toBe(true);
+  const shock = scene.getObjectByName('tank-entrance-shockwave')!;
+  r.update({ state: tank, config: c, elapsedSeconds: .7 }, 700);
+  expect(shock.visible).toBe(true); const scale = shock.scale.clone();
+  r.update({ state: tank, config: c, elapsedSeconds: .7 }, 700);
+  expect(shock.scale).toEqual(scale);
   expect(scene.getObjectByName('tank-tracks')).toBeInstanceOf(THREE.InstancedMesh);
   const tracks = scene.getObjectByName('tank-tracks') as THREE.InstancedMesh;
   const first = Array.from(tracks.instanceMatrix.array);

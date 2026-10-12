@@ -9,6 +9,10 @@ import { ObserverVoice, ObserverVoiceFiles, observerVoiceAssets, observerMission
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
 import { FieldObserver } from '../src/ui/FieldObserver';
 import type { PreparedObserverPortraits } from '../src/ui/ObserverPortraits';
+import { startDefenseTank } from '../src/simulation/defenseTank';
+import shipping from './helpers/ShippingConfig';
+import { TankEntranceHud } from '../src/ui/TankEntranceHud';
+import type { SimulationFrameState } from '../src/simulation/SimulationState';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
 afterEach(() => vi.unstubAllGlobals());
 it('selects Traditional Chinese browser locales, English fallback and persisted overrides safely', () => {
@@ -148,6 +152,13 @@ it('never requests missing recordings; caches failed approved-asset requests wit
   for(let i=0;i<5;i++){failed.sync('en',0,false);await Promise.resolve();failed.reset();}
   expect(loader).toHaveBeenCalledOnce();expect(nodes).toHaveLength(0);failed.dispose();
 });
+it('keeps the subtitle-only Tank message out of mission and Destroyer voice loading', () => {
+  const { context, nodes } = audioHarness(), loader = vi.fn();
+  const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
+  expect(voice.prepare('zh-TW', 'tankBoss')).toBe('unavailable');
+  voice.sync('zh-TW', 0, false, 2.2, 'tankBoss');
+  expect(loader).not.toHaveBeenCalled(); expect(nodes).toHaveLength(0); voice.dispose();
+});
 it('resumes at exact presentation offset and cancels stale asynchronous loads on language switch, Retry and disposal', async () => {
   const {context,nodes} = audioHarness();let resolve!: (v:AudioBuffer) => void;
   const loader=vi.fn((url:string) => url.includes('english') ? new Promise<AudioBuffer>(r=>resolve=r) : Promise.resolve({duration:5} as AudioBuffer));
@@ -161,6 +172,7 @@ it('resumes at exact presentation offset and cancels stale asynchronous loads on
   voice.sync('en',1,false);voice.dispose();await Promise.resolve();expect(nodes).toHaveLength(2);
 });
 class ElementStub extends EventTarget {
+  classList = { toggle: vi.fn() };
   children: ElementStub[] = []; style: Record<string,string>={}; attrs:Record<string,string>={};
   hidden=false; lang=''; textContent=''; src=''; remove=vi.fn(); blur=vi.fn();
   append(...children:ElementStub[]){this.children.push(...children);}
@@ -175,6 +187,34 @@ function missionUi(portraits = readyPortraits()) {
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio,portraits);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
+it('presents the Tank alert portrait and exact subtitle with radio cues once, without a voice file or restore replay', () => {
+  const portraits = readyPortraits(), get = vi.spyOn(portraits, 'get');
+  const { ui, audio, text } = missionUi(portraits), tank = startDefenseTank(0, 17, shipping.catharsis!.defenseTank!);
+  for (let tick = 0; tick < 30; tick++) ui.update(undefined, undefined, tick / 60, true, false, tank);
+  expect(text()).toBe('警告！發現敵軍超重型坦克！正朝我方防線推進！');
+  expect(ui.element.hidden).toBe(false); expect(get).toHaveBeenCalledWith('alert');
+  for (let n = 0; n < 20; n++) ui.update(undefined, undefined, 29 / 60, true, true, tank);
+  expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', null, true, 2.2, 'tankBoss']);
+  for (let tick = 30; tick <= 151; tick++) ui.update(undefined, undefined, tick / 60, true, false, tank);
+  expect(audio.play.mock.calls).toEqual([['radioOpen'], ['radioClose']]);
+  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 1, true, true, tank);
+  ui.update(undefined, undefined, 1, true, false, tank);
+  expect(ui.element.hidden).toBe(false); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
+});
+it('freezes edge/alarm pulses on Pause and restores remaining visuals without replaying alarm sounds', () => {
+  missionUi(); const alarm = vi.fn(), hud = new TankEntranceHud(new ElementStub() as unknown as HTMLElement, alarm);
+  const tank = startDefenseTank(0, 17, shipping.catharsis!.defenseTank!);
+  const frame = { elapsedSeconds: 0, squad: { count: 2 }, defenseTank: tank } as { elapsedSeconds: number } & SimulationFrameState;
+  hud.update(frame, false); expect(alarm).toHaveBeenCalledOnce();
+  const opacity = hud.element.style.opacity;
+  for (let n = 0; n < 20; n++) hud.update(frame, true);
+  expect(hud.element.style.opacity).toBe(opacity); hud.update(frame, false); expect(alarm).toHaveBeenCalledOnce();
+  frame.elapsedSeconds = .75; hud.update(frame, false); expect(alarm).toHaveBeenCalledTimes(2);
+  hud.restore(frame); frame.elapsedSeconds = 1.5; hud.update(frame, false);
+  expect(hud.element.hidden).toBe(false); expect(alarm).toHaveBeenCalledTimes(2);
+  tank.status = 'active'; hud.update(frame, false); expect(hud.element.hidden).toBe(true); hud.dispose();
+});
 it('waits for decoded portraits before starting all parts of the mission at offset zero', () => {
   let ready = false;
   const prepared = readyPortraits();

@@ -1,12 +1,18 @@
 import { z } from 'zod';
 import { SeededRng } from '../core/Rng';
 import type { DefenseTankConfig } from '../config/defenseTankConfig';
-import type { SimulationState } from './SimulationState';
+import type { SimulationState, EnemySimulationState } from './SimulationState';
 import type { ArtilleryShell } from './artillery';
 import { attackLanePositions } from './enemies/laneComposition';
 
 const clock = z.number().finite().nonnegative();
+export const TANK_ENTRANCE_CLEAR_FRACTION = .2;
+export interface TankEntranceEvent {
+  z: number;
+  victims: Pick<EnemySimulationState, 'id' | 'x' | 'z' | 'archetype'>[];
+}
 const schema = z.strictObject({ version: z.literal(1), status: z.enum(['entering', 'active', 'defeated', 'breached']),
+  entranceCleared: z.boolean().optional(),
   hp: z.number().finite().nonnegative(), phase: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   z: z.number().finite(), startedAtSeconds: clock, activeAtSeconds: clock,
   nextAttackAtSeconds: clock.nullable(), pendingImpactAtSeconds: clock.nullable(),
@@ -19,10 +25,24 @@ export const tankPhase = (hp: number, c: DefenseTankConfig): 1 | 2 | 3 =>
   hp / c.hp > c.phase2HpFraction ? 1 : hp / c.hp > c.phase3HpFraction ? 2 : 3;
 export function startDefenseTank(now: number, seed: number, c: DefenseTankConfig): DefenseTankState {
   const active = now + c.entrySeconds;
-  return { version: 1, status: 'entering', hp: c.hp, phase: 1, z: c.startZ,
+  return { version: 1, status: 'entering', entranceCleared: false, hp: c.hp, phase: 1, z: c.startZ,
     startedAtSeconds: now, activeAtSeconds: active, nextAttackAtSeconds: active,
     pendingImpactAtSeconds: null, nextFlankAtSeconds: active, nextGiantAtSeconds: null,
     giantLane: 0, rngState: (seed ^ c.streamSeed) >>> 0, defeatedAtSeconds: null, lastHitAtSeconds: null };
+}
+export function clearTankEntrance(tank: DefenseTankState, enemies: EnemySimulationState[], now: number): TankEntranceEvent | null {
+  if (tank.entranceCleared || tank.status !== 'entering'
+    || now + 1e-9 < tank.startedAtSeconds + (tank.activeAtSeconds - tank.startedAtSeconds) * TANK_ENTRANCE_CLEAR_FRACTION) return null;
+  tank.entranceCleared = true;
+  const victims: TankEntranceEvent['victims'] = [];
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    if (enemy.lane !== undefined && enemy.lane >= 1 && enemy.lane <= 3) {
+      victims.push({ id: enemy.id, x: enemy.x, z: enemy.z, archetype: enemy.archetype });
+      enemies.splice(i, 1); // Tank impact is not a player kill; no XP or combat-stat award.
+    }
+  }
+  return { z: tank.z, victims };
 }
 export function advanceTankPosition(tank: DefenseTankState, c: DefenseTankConfig, now: number, dt: number): void {
   if (tank.status === 'defeated' || tank.status === 'breached') return;
@@ -93,6 +113,7 @@ export function tankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: num
 }
 export function validateDefenseTank(value: unknown, c: DefenseTankConfig, now: number, shells: readonly ArtilleryShell[]): DefenseTankState {
   const tank = schema.parse(value), active = shells.filter(s => s.source.type === 'defenseTank');
+  tank.entranceCleared ??= tank.status !== 'entering';
   if (tank.hp > c.hp || tank.phase !== tankPhase(tank.hp, c) || tank.startedAtSeconds > now
     || Math.abs(tank.activeAtSeconds - tank.startedAtSeconds - c.entrySeconds) > 1e-8
     || (tank.status === 'defeated') !== (tank.hp === 0) || (tank.status === 'defeated') !== (tank.defeatedAtSeconds !== null)

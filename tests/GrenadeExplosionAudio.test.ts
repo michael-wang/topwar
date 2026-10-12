@@ -41,6 +41,10 @@ it('uses dedicated artillery reports with bounded overlap and cancels tails on P
   for(let i=0;i<20;i++)audio.play('enemyLockOn');expect(sources).toHaveLength(warned);
   context.currentTime=.4;audio.play('enemyLockOn');expect(sources).toHaveLength(warned+2);
   audio.silenceArtillery();expect(audio.getDebugStats().sfxSources).toBe(0);
+  audio.play('bossAlarm'); const alarm = sources.slice(-2);
+  expect(audio.getDebugStats().sfxSources).toBe(2);
+  audio.silenceArtillery(); expect(audio.getDebugStats().sfxSources).toBe(0);
+  expect(alarm.every(s => s.stop.mock.calls.length === 2)).toBe(true);
   audio.play('radioOpen');expect(audio.getDebugStats().sfxSources).toBe(2);
   audio.syncRadio('en', .02, true);expect(audio.getDebugStats().sfxSources).toBe(0);
   audio.play('radioClose');expect(audio.getDebugStats().sfxSources).toBe(1);

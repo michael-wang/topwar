@@ -3,7 +3,8 @@ import { observerEmblem } from './observerEmblem';
 import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
-import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue,
+import type { DefenseTankState } from '../simulation/defenseTank';
+import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue, observerTankDialogue,
   type ObserverLocale, type ObserverMessage } from './observerLocale';
 
 export interface ObserverAudio {
@@ -21,6 +22,7 @@ export class FieldObserver {
   private readonly text = document.createElement('p');
   private readonly lamp = document.createElement('span');
   private readonly timeline = new ObserverTimeline();
+  private readonly tankTimeline = new ObserverTimeline();
   private readonly missionTimeline = new MissionObserverTimeline();
   private message: ObserverMessage = 'destroyer';
   private phrase = 0;
@@ -40,7 +42,8 @@ export class FieldObserver {
   }
   private updateText(): void {
     this.text.textContent = this.message === 'missionIntro'
-      ? observerMissionDialogue[this.locale][this.phrase] : observerDialogue[this.locale];
+      ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'tankBoss'
+        ? observerTankDialogue[this.locale] : observerDialogue[this.locale];
     this.text.lang = this.locale;
   }
   startMission(now: number): void {
@@ -49,7 +52,8 @@ export class FieldObserver {
     // never a new mission, and a completed intro stays retired after rewinds.
     this.missionTimeline.start(now);
   }
-  update(state: DestroyerState | undefined, config: DestroyerSettings | undefined, now: number, alive: boolean, paused: boolean): void {
+  update(state: DestroyerState | undefined, config: DestroyerSettings | undefined, now: number, alive: boolean, paused: boolean,
+    tank?: Readonly<DefenseTankState>): void {
     if (state?.status === 'active') this.audio.prepareRadio(this.locale, 'destroyer');
     const navalFrame = this.timeline.update(state, config, now, alive);
     let frame = navalFrame;
@@ -63,6 +67,9 @@ export class FieldObserver {
         if (intro.owns) { frame = intro; message = 'missionIntro'; }
       }
     }
+    const tankFrame = this.tankTimeline.updateWindow(tank?.startedAtSeconds ?? null, .3,
+      tank ? tank.activeAtSeconds - tank.startedAtSeconds - .3 : 0, now, alive && !!tank && tank.status !== 'defeated');
+    if (tankFrame.visible || tankFrame.end) { frame = tankFrame; message = 'tankBoss'; }
     const phrase = message === 'missionIntro'
       ? missionIntroTiming.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at ? i : index, 0) : 0;
     if (message !== this.message) this.presented = false;
@@ -76,8 +83,10 @@ export class FieldObserver {
       this.presented = true;
     }
     this.element.hidden = !frame.visible;
+    this.element.classList.toggle('field-observer--tank', message === 'tankBoss');
     if (frame.visible) {
-      const expression = message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
+      const expression = message === 'tankBoss' ? 'alert'
+        : message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
       const prepared = this.attemptPortraits[expression] ?? this.fallback;
       if (prepared !== this.portrait) { this.portrait.replaceWith(prepared); this.portrait = prepared; }
       this.expression = expression;
@@ -85,14 +94,14 @@ export class FieldObserver {
       this.element.style.transform = `translateX(${(1 - fade) * -12}px)`;
       this.lamp.style.transform = `scale(${.8 + .2 * Math.sin(frame.offset * 12) ** 2})`;
     }
-    if (frame.begin) this.audio.play('radioOpen');
-    if (frame.end) this.audio.play('radioClose');
-    this.frame = { offset: frame.audible ? frame.offset : null, paused, duration: frame.duration };
+    if (frame.begin && !paused) this.audio.play('radioOpen');
+    if (frame.end && !paused) this.audio.play('radioClose');
+    this.frame = { offset: frame.audible && message !== 'tankBoss' ? frame.offset : null, paused, duration: frame.duration };
     this.audio.syncRadio(this.locale, this.frame.offset, paused, this.frame.duration, message);
     if (!frame.visible) this.presented = false;
   }
   reset(): void {
-    this.timeline.reset(); this.missionTimeline.reset();
+    this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
     this.presented = false;
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
   }

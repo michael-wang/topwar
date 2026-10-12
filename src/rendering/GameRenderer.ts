@@ -5,6 +5,7 @@ import { GrenadeRenderer } from './GrenadeRenderer';
 import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
 import { DestroyerRenderer } from './DestroyerRenderer';
 import { DefenseTankRenderer } from './DefenseTankRenderer';
+import type { TankEntranceEvent } from '../simulation/defenseTank';
 import type { ArtilleryEvent } from '../simulation/artillery';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { BattlefieldAir } from './environment/BattlefieldAir';
@@ -205,6 +206,14 @@ export class GameRenderer {
     this.supplyProjection.set(-x,.9+.07*Math.sin(nowMs/220),z).project(this.camera);
     return {x:(this.supplyProjection.x+1)*this.viewport.clientWidth/2,
       y:(1-this.supplyProjection.y)*this.viewport.clientHeight/2};
+  }
+  presentTankEntrance(events: readonly TankEntranceEvent[], nowMs: number): void {
+    if (!events.length) return;
+    this.tankRenderer ??= new DefenseTankRenderer(this.scene);
+    for (const event of events) {
+      this.tankRenderer.presentEntrance(event, nowMs);
+      this.enemyRenderer.presentTankEntrance(event, nowMs);
+    }
   }
 
   presentLevelUp(event: ProgressionLevelUpEvent, nowMs: number): void {

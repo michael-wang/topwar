@@ -41,6 +41,29 @@ function suppressFire(sim: Simulation) {
 }
 
 describe('Stage 1 Defense tank', () => {
+  it('clears the middle lanes once at 0.5s without XP or direct kills, including across entry checkpoints', () => {
+    const sim = fixture(); suppressFire(sim);
+    const initial = sim.getState();
+    initial.enemies = Array.from({ length: 5 }, (_, lane) => ({ id: lane + 1, tier: 1,
+      archetype: 'heavy' as const, lane, x: (lane - 2) * 1.4, z: 32, hp: 15 }));
+    initial.enemyStream!.nextEnemyId = 6; sim.restoreState(initial); step(sim, 16);
+    expect(sim.getState().enemies).toHaveLength(5);
+    const before = sim.getState(), replay = fixture(); replay.restoreState(before);
+    step(sim, 16); step(replay, 16);
+    expect(replay.getState()).toEqual(sim.getState());
+    const cleared = sim.getState(), event = sim.consumeTankEntranceEvents();
+    expect(event).toHaveLength(1); expect(event[0].victims.map(e => e.id).sort()).toEqual([2, 3, 4]);
+    expect(cleared.enemies.map(e => e.lane)).toEqual([0, 4]);
+    expect(cleared.progression).toEqual(before.progression); expect(cleared.combatStats).toEqual(before.combatStats);
+    expect(cleared.defenseTank!.entranceCleared).toBe(true);
+    expect(replay.consumeTankEntranceEvents()).toEqual(event);
+    cleared.enemies.push({ id: 6, tier: 1, archetype: 'heavy', lane: 2, x: 0, z: 32, hp: 15 });
+    cleared.enemyStream!.nextEnemyId = 7; sim.restoreState(cleared);
+    expect(sim.consumeTankEntranceEvents()).toEqual([]); step(sim, 120);
+    expect(sim.consumeTankEntranceEvents()).toEqual([]); expect(sim.getState().enemies.some(e => e.id === 6)).toBe(true);
+    const old = active().getState(); delete old.defenseTank!.entranceCleared;
+    sim.restoreState(old); expect(sim.getState().defenseTank!.entranceCleared).toBe(true);
+  });
   it('starts exactly on earned Lv9, stops new naval fire and preserves incoming shells', () => {
     const sim = fixture(8), s = sim.getState(); s.progression!.xp = 349;
     s.enemies = [{ id: 1, tier: 1, archetype: 'grunt', lane: 2, x: 0, z: .6, hp: 1 }]; s.enemyStream!.nextEnemyId = 2;

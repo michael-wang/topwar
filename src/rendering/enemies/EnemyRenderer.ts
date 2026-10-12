@@ -25,6 +25,7 @@ import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpenin
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
 import type { GrenadeEvent } from '../../simulation/grenade';
+import type { TankEntranceEvent } from '../../simulation/defenseTank';
 import { GRENADE_FX, radialBlastDirection, airborneGrenadePose, survivingBlastStrength } from '../../presentation/GrenadeMotion';
 
 export { ENEMY_GAIT_CYCLE_MS, HEAVY_GAIT_CYCLE_MS } from '../CharacterVisualFamilies';
@@ -218,6 +219,15 @@ export class EnemyRenderer {
     }
   }
 
+  presentTankEntrance(event: TankEntranceEvent, nowMs: number): void {
+    const available = Math.max(0, GRENADE_FX.airborneLimit - this.deathVisuals.filter(v => v.group.visible && v.blast).length - this.blastDeaths.size);
+    const launched = event.victims.filter(v => v.archetype !== 'giant')
+      .sort((a, b) => a.z - b.z || a.id - b.id).slice(0, available);
+    for (const victim of launched) this.blastDeaths.set(victim.id,
+      { x: victim.x === 0 ? (victim.id % 2 ? 1 : -1) : -Math.sign(victim.x), z: -.2 });
+    const front = event.victims.reduce((z, v) => Math.min(z, v.z), event.z);
+    for (const x of [-1.4, 0, 1.4]) this.giantImpactDust.spawn(x, front, nowMs);
+  }
   update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean, attackerX?: number, attackerZ?: number): void {
     this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     if (sceneMode !== undefined) {
