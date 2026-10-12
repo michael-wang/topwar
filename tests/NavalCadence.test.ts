@@ -1,5 +1,6 @@
 import { expect,it } from 'vitest';
-import data from '../public/game-data/game.json';
+// Historical launch-based B.5 policy remains supported unchanged.
+import data from './fixtures/pre-b6b6-game.json';
 import previousData from './fixtures/pre-b6b5-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { DestroyerConfigSchema } from '../src/config/destroyerConfig';

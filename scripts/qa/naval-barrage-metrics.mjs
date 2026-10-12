@@ -40,7 +40,11 @@ try {
         }
         if(after.navalBarrage?.opportunities!==before.navalBarrage?.opportunities){
           if(wait)assert(!unresolved);
-          salvos.push({...after.navalBarrage.lastSalvo,nominalAtSeconds:before.navalBarrage.nextAtSeconds});
+          const previousFinalImpact=before.navalBarrage.pendingImpact?.finalImpactAtSeconds;
+          const cooldown=before.navalBarrage.cooldown;
+          const resolution=previousFinalImpact??cooldown?.resolvedAtSeconds;
+          salvos.push({...after.navalBarrage.lastSalvo,nominalAtSeconds:before.navalBarrage.nextAtSeconds,
+            resolvedAtSeconds:resolution??null,actualQuietSeconds:resolution===undefined?null:after.elapsedSeconds-resolution});
         }
         for(const event of e.artillery) {
           if(event.kind==='artilleryLaunch' && after.postCapSurvival.startedAtSeconds===null)intro.push(event.shell);

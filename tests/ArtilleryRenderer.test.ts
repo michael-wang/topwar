@@ -125,3 +125,18 @@ it.each([350,390])('fits every overhead lane including its ink edge inside the %
   }
   r.dispose();
 });
+
+it('uses independent opaque per-lane colors and a final-150ms punch without moving anchors',()=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
+  const pair=[{...shell,targetLane:0,target:{...shell.target,x:-2.8},launchedAtSeconds:0,impactAtSeconds:2},
+    {...shell,id:2,targetLane:1,target:{...shell.target,x:-1.4},launchedAtSeconds:1,impactAtSeconds:3}];
+  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
+  expect(mesh.instanceColor).not.toBeNull();
+  const a=new THREE.Color(),b=new THREE.Color(),matrix=new THREE.Matrix4();
+  r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},1900);
+  mesh.getColorAt(0,a);mesh.getColorAt(1,b);expect(a.getHex()).toBe(new THREE.Color('#ff2518').getHex());expect(a.equals(b)).toBe(false);
+  mesh.getMatrixAt(0,matrix);const punch=new THREE.Vector3().setFromMatrixScale(matrix).x;
+  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000);mesh.getMatrixAt(0,matrix);
+  expect(punch).toBeGreaterThan(new THREE.Vector3().setFromMatrixScale(matrix).x);
+  expect(mesh.material).toMatchObject({opacity:1,transparent:false});r.dispose();
+});

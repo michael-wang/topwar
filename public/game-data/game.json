@@ -175,6 +175,7 @@
       "version": 1, "enabled": true, "streamSeed": 1312904780,
       "minimumShells": 1, "maximumShells": 2,
       "minimumIntervalSeconds": 2, "maximumIntervalSeconds": 3, "overlapPolicy": "waitForImpact",
+      "postImpactCooldown": { "initialDelaySeconds": 2, "gapsSeconds": [0, 1, 2, 3] },
       "targetLanes": [0, 1, 2, 3, 4]
     },
     "machineGun": {

@@ -1,7 +1,8 @@
 import { advanceLandingAssault, emptyLandingAssault } from './enemies/landingAssault';
 import { advanceLevelEncounters, applyEncounterAction, emptyLevelEncounters, validateLevelEncounters } from './levelEncounters';
 import { advanceNavalPresence, emptyNavalPresence, validateNavalPresence } from './navalPresence';
-import { advanceNavalBarrage, emptyNavalBarrage, validateNavalBarrage, hasUnresolvedDestroyerSalvo } from './navalBarrage';
+import { advanceNavalBarrage, emptyNavalBarrage, validateNavalBarrage, hasUnresolvedDestroyerSalvo,
+  recordNavalSalvo, cancelNavalSalvo } from './navalBarrage';
 import { navalPresenceMuzzle } from './navalPresence';
 import type { EncounterAction } from '../config/levelEncounterConfig';
 import { artilleryDefaults } from '../config/artilleryConfig';
@@ -805,7 +806,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     state.elapsedSeconds as number, attackLanePositions(catharsis!.balance.laneCount,
       catharsis!.trackHalfWidth, catharsis!.balance.edgeInset), player.z as number, (squad.count as number)>0) : undefined;
   const navalBarrage=barrageConfig ? validateNavalBarrage(state.navalBarrage,barrageConfig,state.elapsedSeconds as number,
-    (squad.count as number)>0,hasUnresolvedDestroyerSalvo(artillery?.shells ?? [])) : undefined;
+    (squad.count as number)>0,hasUnresolvedDestroyerSalvo(artillery?.shells ?? []),artillery?.shells ?? []) : undefined;
   return {
     state: {
       ...(artillery ? {artillery} : {}),
@@ -1102,6 +1103,9 @@ export class Simulation {
   cancelArtillery(id?: number): void {
     if (this.state.artillery) this.state = { ...this.state, artillery: { ...this.state.artillery,
       shells: id === undefined ? [] : this.state.artillery.shells.filter(shell => shell.id !== id) } };
+    const c=this.state.catharsis?.balance.navalBarrage;
+    if(c&&this.state.navalBarrage)this.state.navalBarrage=cancelNavalSalvo(this.state.navalBarrage,c,
+      this.state.artillery?.shells??[],this.state.elapsedSeconds);
   }
 
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
@@ -1700,7 +1704,9 @@ export class Simulation {
       this.state.navalBarrage=next;
       if(next.opportunities!==previous.opportunities && next.lastSalvo!.outcome==='launched') {
         const source=navalPresenceMuzzle(presence!,nextElapsedSeconds,catharsis.balance.destroyer!);
-        for(const lane of next.lastSalvo!.lanes) this.launchArtillery({source,targetLane:lane});
+        const ids=next.lastSalvo!.lanes.map(lane=>this.launchArtillery({source,targetLane:lane}));
+        this.state.navalBarrage=recordNavalSalvo(next,catharsis.balance.navalBarrage,
+          this.state.artillery!.shells.filter(shell=>ids.includes(shell.id)));
       }
     }
     if (stepEvents.length > 0) {

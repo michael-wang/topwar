@@ -1,14 +1,15 @@
 import { expect, it } from 'vitest';
-import data from '../public/game-data/game.json';
+import data from './fixtures/pre-b6b6-game.json';
 import { GameConfigSchema } from '../src/config/configSchema';
 import { NavalBarrageConfigSchema } from '../src/config/navalBarrageConfig';
 import { advanceNavalBarrage, emptyNavalBarrage, setNavalBarrage, validateNavalBarrage } from '../src/simulation/navalBarrage';
 import { createNavalBarrageReview } from '../src/app/DevNavalBarrageReview';
-import { carnivalOptions } from '../scripts/qa/carnivalPilot';
+import { carnivalOptionsFor } from '../scripts/qa/carnivalPilot';
 import { survivalDecision } from '../scripts/qa/survivalPilot';
 import { pilotTuning } from '../scripts/qa/p15Pilot';
 const c=GameConfigSchema.parse(data), config=c.catharsis!.navalBarrage!;
-const fixture=(role:'barrage8-on'|'barrage9-on'|'barrage10-on'|'barrage10-off'='barrage10-on',seed=17)=>createNavalBarrageReview(carnivalOptions,c.weapon.rifle.fireRate,role,seed);
+const carnivalOptions=carnivalOptionsFor(c);
+const fixture=(role:'barrage8-on'|'barrage9-on'|'barrage10-on'|'barrage10-off'='barrage10-on',seed=17)=>createNavalBarrageReview(carnivalOptionsFor(c),c.weapon.rifle.fireRate,role,seed);
 it('authors production AHEAD, post-radio barrage trigger and fixed 1/2 shell bounds',()=>{
   expect(config).toMatchObject({minimumShells:1,maximumShells:2,minimumIntervalSeconds:2,maximumIntervalSeconds:3,targetLanes:[0,1,2,3,4],overlapPolicy:'waitForImpact'});
   expect(c.catharsis!.levelEncounters!.triggers[1]).toMatchObject({when:{kind:'machineGunRelease',delaySeconds:8.5},actions:['barrageOn']});

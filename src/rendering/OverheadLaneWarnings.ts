@@ -8,11 +8,16 @@ export class OverheadLaneWarnings {
   private readonly badgeGeometry: THREE.ShapeGeometry;
   private readonly glyphGeometry: THREE.ShapeGeometry;
   private readonly ink = new THREE.MeshBasicMaterial({color:'#111b28',depthTest:false,depthWrite:false,toneMapped:false});
-  private readonly coral = new THREE.MeshBasicMaterial({color:'#ff4a23',depthTest:false,depthWrite:false,toneMapped:false});
+  private readonly coral = new THREE.MeshBasicMaterial({color:'#ffffff',depthTest:false,depthWrite:false,toneMapped:false});
   private readonly ivory = new THREE.MeshBasicMaterial({color:'#fff3c9',depthTest:false,depthWrite:false,toneMapped:false});
   private readonly batches: readonly THREE.InstancedMesh[];
   private readonly transform = new THREE.Object3D();
   private readonly deadlines = new Float64Array(16);
+  private readonly starts = new Float64Array(16);
+  private readonly early = new THREE.Color('#b96e57');
+  private readonly middle = new THREE.Color('#ef633a');
+  private readonly late = new THREE.Color('#ff2518');
+  private readonly tint = new THREE.Color();
   private readonly xs = new Float64Array(16);
   private readonly zs = new Float64Array(16);
   count = 0;
@@ -27,21 +32,34 @@ export class OverheadLaneWarnings {
       new THREE.InstancedMesh(this.glyphGeometry,this.ivory,ARTILLERY_CAPACITY)];
     this.batches.forEach((mesh,i)=>{mesh.name=['artillery-lane-outline','artillery-lane-danger','artillery-lane-glyph'][i];
       mesh.frustumCulled=false;mesh.renderOrder=12+i;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(mesh);});
+    // Allocate instance colors before bounded shader preparation, not on first launch.
+    for(let i=0;i<ARTILLERY_CAPACITY;i++)this.batches[1].setColorAt(i,this.early);
+    this.batches[1].instanceColor!.setUsage(THREE.DynamicDrawUsage);
     this.reset();
   }
 
   update(shells: readonly Readonly<ArtilleryShell>[], nowSeconds: number, cameraRotation?: THREE.Quaternion): void {
     this.deadlines.fill(Infinity);
     for(const shell of shells) {
-      this.deadlines[shell.targetLane]=Math.min(this.deadlines[shell.targetLane],shell.impactAtSeconds);
+      if(shell.impactAtSeconds<this.deadlines[shell.targetLane]){
+        this.deadlines[shell.targetLane]=shell.impactAtSeconds;
+        this.starts[shell.targetLane]=shell.launchedAtSeconds;
+      }
       this.xs[shell.targetLane]=-shell.target.x;this.zs[shell.targetLane]=shell.target.z;
     }
     let count=0;
     if(cameraRotation)this.transform.quaternion.copy(cameraRotation);else this.transform.quaternion.identity();
     for(let lane=0;lane<this.deadlines.length;lane++) {
       if(!Number.isFinite(this.deadlines[lane]))continue;
-      const urgency=Math.max(0,1-(this.deadlines[lane]-nowSeconds));
-      const scale=.94+.08*Math.sin(nowSeconds*(8+urgency*4))**2;
+      const remaining=this.deadlines[lane]-nowSeconds;
+      const progress=Math.max(0,Math.min(1,(nowSeconds-this.starts[lane])/(this.deadlines[lane]-this.starts[lane])));
+      const final=remaining<=.15;
+      this.tint.copy(progress<.5?this.early:this.middle).lerp(progress<.5?this.middle:this.late,
+        progress<.5?progress*2:(progress-.5)*2);
+      if(final)this.tint.copy(this.late);
+      this.batches[1].setColorAt(count,this.tint);
+      const scale=final ? 1.05+.12*Math.sin(Math.max(0,.15-remaining)*Math.PI*24)**2
+        : .94+.08*Math.sin(progress*Math.PI*4)**2;
       // Raising a billboard above the squad expands its projected X spacing.
       // Fit the five lane columns inside the portrait frame, including ink edges.
       this.transform.position.set(this.xs[lane]*.72,2.05,this.zs[lane]);
@@ -52,6 +70,7 @@ export class OverheadLaneWarnings {
       count++;
     }
     this.count=count;
+    this.batches[1].instanceColor!.needsUpdate=true;
     for(const mesh of this.batches){mesh.count=count;mesh.visible=count>0;mesh.instanceMatrix.needsUpdate=true;}
   }
   reset(): void {this.count=0;for(const mesh of this.batches){mesh.count=0;mesh.visible=false;}}
