@@ -61,6 +61,7 @@ async function startGame(): Promise<void> {
     if (defense) {
       portraits = new ObserverPortraits();
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'missionIntro');
+      audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'tankBoss');
     }
     assets = await loadCharacterAssets();
   } catch (error) {

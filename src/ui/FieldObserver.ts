@@ -1,6 +1,6 @@
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
 import { observerEmblem } from './observerEmblem';
-import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '../presentation/ObserverTimeline';
+import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntroTiming } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 import type { DefenseTankState } from '../simulation/defenseTank';
@@ -28,10 +28,12 @@ export class FieldObserver {
   private phrase = 0;
   private readonly locale = FIELD_OBSERVER_LOCALE;
   private expression = '';
+  private tankVoiceStartedAtSeconds: number | null = null;
   private frame = { offset: null as number | null, paused: false, duration: 0 };
   constructor(host: HTMLElement, private readonly audio: ObserverAudio,
     private readonly portraits: PreparedObserverPortraits = new ObserverPortraits()) {
     this.audio.prepareRadio(this.locale, 'missionIntro');
+    this.audio.prepareRadio(this.locale, 'tankBoss');
     this.element.className = 'field-observer'; this.element.hidden = true;
     this.element.setAttribute('aria-live', 'polite');
     this.fallback.className = 'observer-fallback'; this.fallback.setAttribute('aria-hidden', 'true');
@@ -67,8 +69,9 @@ export class FieldObserver {
         if (intro.owns) { frame = intro; message = 'missionIntro'; }
       }
     }
-    const tankFrame = this.tankTimeline.updateWindow(tank?.startedAtSeconds ?? null, .3,
-      tank ? tank.activeAtSeconds - tank.startedAtSeconds - .3 : 0, now, alive && !!tank && tank.status !== 'defeated');
+    const tankFrame = this.tankTimeline.updateWindow(tank?.startedAtSeconds ?? null, tankIntroTiming.atSeconds,
+      tankIntroTiming.durationSeconds, now, alive && !!tank && tank.status !== 'defeated');
+    if (tankFrame.begin) this.tankVoiceStartedAtSeconds = now;
     if (tankFrame.visible || tankFrame.end) { frame = tankFrame; message = 'tankBoss'; }
     const phrase = message === 'missionIntro'
       ? missionIntroTiming.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at ? i : index, 0) : 0;
@@ -95,12 +98,16 @@ export class FieldObserver {
     }
     if (frame.begin && !paused) this.audio.play('radioOpen');
     if (frame.end && !paused) this.audio.play('radioClose');
-    this.frame = { offset: frame.audible && message !== 'tankBoss' ? frame.offset : null, paused, duration: frame.duration };
+    // Begin at the first rendered cue, preserving the opening syllable if a frame crosses +0.3s.
+    const voiceOffset = message === 'tankBoss' && this.tankVoiceStartedAtSeconds !== null
+      ? now - this.tankVoiceStartedAtSeconds : frame.offset;
+    this.frame = { offset: frame.audible ? voiceOffset : null, paused, duration: frame.duration };
     this.audio.syncRadio(this.locale, this.frame.offset, paused, this.frame.duration, message);
     if (!frame.visible) this.presented = false;
   }
   reset(): void {
     this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
+    this.tankVoiceStartedAtSeconds = null;
     this.presented = false;
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
   }

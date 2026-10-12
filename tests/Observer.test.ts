@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 // @ts-expect-error Vitest runs in Node; project typecheck exposes browser types only.
 import { createHash } from 'node:crypto';
 import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue } from '../src/ui/observerLocale';
-import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming } from '../src/presentation/ObserverTimeline';
-import { ObserverVoice, ObserverVoiceFiles, observerVoiceAssets, observerMissionVoiceAssets } from '../src/audio/ObserverVoice';
+import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntroTiming } from '../src/presentation/ObserverTimeline';
+import { ObserverVoice, ObserverVoiceFiles, observerVoiceAssets, observerMissionVoiceAssets, observerTankVoiceAssets, observerVoiceAsset } from '../src/audio/ObserverVoice';
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
 import { FieldObserver } from '../src/ui/FieldObserver';
 import type { PreparedObserverPortraits } from '../src/ui/ObserverPortraits';
@@ -153,12 +153,37 @@ it('never requests missing recordings; caches failed approved-asset requests wit
   for(let i=0;i<5;i++){failed.sync('en',0,false);await Promise.resolve();failed.reset();}
   expect(loader).toHaveBeenCalledOnce();expect(nodes).toHaveLength(0);failed.dispose();
 });
-it('keeps the subtitle-only Tank message out of mission and Destroyer voice loading', () => {
-  const { context, nodes } = audioHarness(), loader = vi.fn();
+it('prepares the approved Tank clip once, plays through its full window, pauses/resumes at the saved offset and retries', async () => {
+  const { context, nodes } = audioHarness(), loader = vi.fn(async (_url: string) => ({ duration: 4.6 } as AudioBuffer));
   const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
-  expect(voice.prepare('zh-TW', 'tankBoss')).toBe('unavailable');
-  voice.sync('zh-TW', 0, false, 2.2, 'tankBoss');
-  expect(loader).not.toHaveBeenCalled(); expect(nodes).toHaveLength(0); voice.dispose();
+  const asset = 'audio/observer_stage1_boss_intro_zh-TW.mp3';
+  expect(observerVoiceAsset('zh-TW', 'tankBoss')).toBe(asset);
+  expect(observerTankVoiceAssets).toEqual({ 'zh-TW': asset, en: null });
+  const bytes = readFileSync(`public/${asset}`);
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe('51e007a7e927e6eb54903524f9c13ef027597ee0747dc9d92892aa91618aebb6');
+  expect(voice.prepare('zh-TW', 'tankBoss')).toBe('pending'); await Promise.resolve(); await Promise.resolve();
+  expect(voice.prepare('zh-TW', 'tankBoss')).toBe('ready'); expect(loader).toHaveBeenCalledOnce();
+  expect(loader.mock.calls[0]?.[0]).toBe(`/${asset}`); expect(nodes).toHaveLength(0);
+  voice.sync('zh-TW', 0, false, 5, 'tankBoss'); await Promise.resolve();
+  expect(nodes[0].start).toHaveBeenCalledWith(0, 0);
+  voice.sync('zh-TW', 2, true, 5, 'tankBoss'); expect(nodes[0].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW', 2, false, 5, 'tankBoss'); await Promise.resolve();
+  expect(nodes[1].start).toHaveBeenCalledWith(0, 2);
+  voice.sync('zh-TW', 4.59, false, 5, 'tankBoss'); expect(nodes[1].stop).not.toHaveBeenCalled();
+  voice.sync('zh-TW', null, false, 5, 'tankBoss'); expect(nodes[1].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW', 0, false, 5, 'tankBoss'); await Promise.resolve();
+  expect(nodes[2].start).toHaveBeenCalledWith(0, 0); expect(loader).toHaveBeenCalledOnce(); voice.dispose();
+});
+it('tolerates a failed Tank recording and cancels its pending playback after a checkpoint reset', async () => {
+  const { context, nodes } = audioHarness(); let resolve!: (b: AudioBuffer) => void;
+  const pending = new ObserverVoice(context, {} as AudioNode, undefined, () => new Promise<AudioBuffer>(r => { resolve = r; }));
+  pending.prepare('zh-TW', 'tankBoss'); pending.sync('zh-TW', 0, false, 5, 'tankBoss');
+  pending.reset(); pending.sync('zh-TW', null, false, 5, 'tankBoss');
+  resolve({ duration: 4.6 } as AudioBuffer); await Promise.resolve(); await Promise.resolve();
+  expect(nodes).toHaveLength(0); pending.dispose();
+  const failed = new ObserverVoice(context, {} as AudioNode, undefined, async () => { throw Error('offline'); });
+  failed.sync('zh-TW', 0, false, 5, 'tankBoss'); await Promise.resolve(); await Promise.resolve();
+  expect(nodes).toHaveLength(0); expect(failed.prepare('zh-TW', 'tankBoss')).toBe('unavailable'); failed.dispose();
 });
 it('resumes at exact presentation offset and cancels stale asynchronous loads on language switch, Retry and disposal', async () => {
   const {context,nodes} = audioHarness();let resolve!: (v:AudioBuffer) => void;
@@ -188,7 +213,7 @@ function missionUi(portraits = readyPortraits()) {
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio,portraits);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
-it('presents the Tank alert portrait and exact subtitle with radio cues once, without a voice file or restore replay', () => {
+it('presents Tank speech/subtitles for five seconds beyond landing, freezes and restores subtitles without replay', () => {
   const portraits = readyPortraits(), get = vi.spyOn(portraits, 'get');
   const { ui, audio, text } = missionUi(portraits), tank = startDefenseTank(0, 17, shipping.catharsis!.defenseTank!);
   for (let tick = 0; tick < 30; tick++) ui.update(undefined, undefined, tick / 60, true, false, tank);
@@ -196,12 +221,21 @@ it('presents the Tank alert portrait and exact subtitle with radio cues once, wi
   expect(ui.element.hidden).toBe(false); expect(get).toHaveBeenCalledWith('alert');
   for (let n = 0; n < 20; n++) ui.update(undefined, undefined, 29 / 60, true, true, tank);
   expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
-  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', null, true, 2.2, 'tankBoss']);
-  for (let tick = 30; tick <= 151; tick++) ui.update(undefined, undefined, tick / 60, true, false, tank);
+  const pausedVoice = audio.syncRadio.mock.lastCall!;
+  expect(pausedVoice[1]).toBeCloseTo(29 / 60 - .3);
+  expect(pausedVoice.slice(2)).toEqual([true, 5, 'tankBoss']);
+  tank.status = 'active';
+  for (let tick = 30; tick <= 316; tick++) ui.update(undefined, undefined, tick / 60, true, false, tank);
+  expect(ui.element.hidden).toBe(false); expect(audio.syncRadio.mock.lastCall?.[1]).toBeGreaterThan(4.6);
+  ui.update(undefined, undefined, 5.31, true, false, tank);
+  expect(ui.element.hidden).toBe(true); expect(tank.activeAtSeconds).toBe(2.5); expect(tankIntroTiming.durationSeconds).toBe(5);
   expect(audio.play.mock.calls).toEqual([['radioOpen'], ['radioClose']]);
-  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 1, true, true, tank);
-  ui.update(undefined, undefined, 1, true, false, tank);
-  expect(ui.element.hidden).toBe(false); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
+  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 3, true, true, tank);
+  ui.update(undefined, undefined, 3, true, false, tank);
+  expect(ui.element.hidden).toBe(false); expect(audio.play).not.toHaveBeenCalled();
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', null, false, 5, 'tankBoss']);
+  ui.reset(); for (let tick = 0; tick < 30; tick++) ui.update(undefined, undefined, tick / 60, true, false, tank);
+  expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen'); ui.dispose();
 });
 it('freezes edge/alarm pulses on Pause and restores remaining visuals without replaying alarm sounds', () => {
   missionUi(); const alarm = vi.fn(), hud = new TankEntranceHud(new ElementStub() as unknown as HTMLElement, alarm);
@@ -215,6 +249,17 @@ it('freezes edge/alarm pulses on Pause and restores remaining visuals without re
   hud.restore(frame); frame.elapsedSeconds = 1.5; hud.update(frame, false);
   expect(hud.element.hidden).toBe(false); expect(alarm).toHaveBeenCalledTimes(2);
   tank.status = 'active'; hud.update(frame, false); expect(hud.element.hidden).toBe(true); hud.dispose();
+});
+it('preserves the Tank opening syllable across a rendered cue and resumes on that voice clock without extending landing', () => {
+  const { ui, audio } = missionUi(), tank = startDefenseTank(0, 17, shipping.catharsis!.defenseTank!);
+  ui.update(undefined, undefined, .2, true, false, tank);
+  ui.update(undefined, undefined, .4, true, false, tank);
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', 0, false, 5, 'tankBoss']);
+  ui.update(undefined, undefined, .5, true, true, tank);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(.1);
+  ui.update(undefined, undefined, .5, true, false, tank);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(.1); expect(tank.activeAtSeconds).toBe(2.5);
+  ui.dispose();
 });
 it('shares the slow siren period with smooth full-field light and holds reduced-motion light steady', () => {
   expect(tankAlarmGlow(0, false)).toBeCloseTo(tankAlarmGlow(TANK_ALARM_PERIOD_SECONDS, false));
@@ -266,7 +311,8 @@ it('makes the audio decision independently when portraits remain pending at the 
 });
 it('prepares Mandarin before Start without playing or arming dialogue',()=>{
   const {ui,audio}=missionUi();
-  expect(audio.prepareRadio.mock.lastCall).toEqual(['zh-TW','missionIntro']);
+  expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', 'missionIntro');
+  expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', 'tankBoss');
   expect(audio.play).not.toHaveBeenCalled();expect(ui.element.hidden).toBe(true);ui.dispose();
 });
 it('bundles the untouched mission recording and approved short bilingual phrases',()=>{

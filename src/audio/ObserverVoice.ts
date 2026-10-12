@@ -8,10 +8,12 @@ export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>
 export const observerMissionVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
   'zh-TW': 'audio/observer_mission_intro_zh-TW.mp3', en: null,
 };
+export const observerTankVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
+  'zh-TW': 'audio/observer_stage1_boss_intro_zh-TW.mp3', en: null,
+};
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
-  if (message === 'tankBoss') return null;
-  return (message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
+  return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
 }
 export type VoiceLoader = (url: string, context: AudioContext) => Promise<AudioBuffer | null>;
 /** Fetching bytes needs no audio permission. Context creation/playback still belongs to the Start gesture. */
@@ -64,9 +66,12 @@ export class ObserverVoice {
     private readonly assets = observerVoiceAssets, private readonly loader: VoiceLoader = loadVoice,
     private readonly missionAssets = observerMissionVoiceAssets) {}
 
+  private asset(locale: ObserverLocale, message: ObserverMessage): string | null {
+    return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
+  }
+
   private load(locale: ObserverLocale, message: ObserverMessage): Promise<AudioBuffer | null> | null {
-    if (message === 'tankBoss') return null;
-    const asset = (message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
+    const asset = this.asset(locale, message);
     if (!asset) return null;
     let pending = this.cache.get(asset);
     if (!pending) {
@@ -77,8 +82,7 @@ export class ObserverVoice {
     return pending;
   }
   prepare(locale: ObserverLocale, message: ObserverMessage): ObserverAudioReadiness {
-    if (message === 'tankBoss') return 'unavailable';
-    const asset = (message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
+    const asset = this.asset(locale, message);
     if (!asset || this.disposed) return 'unavailable';
     this.load(locale, message);
     return this.decoded.has(asset) ? this.decoded.get(asset) ? 'ready' : 'unavailable' : 'pending';

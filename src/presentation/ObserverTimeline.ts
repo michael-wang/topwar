@@ -4,6 +4,8 @@ import type { DestroyerSettings } from '../config/destroyerConfig';
 // Presentation only: a short lead-in for the beep/preload, then three readable phrases.
 export const missionIntroTiming = { atSeconds: .2, durationSeconds: 6.2,
   readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 1.5, 3.7] } as const;
+// The approved 4.6-second clip outlasts landing; this never gates Tank combat.
+export const tankIntroTiming = { atSeconds: .3, durationSeconds: 5 } as const;
 
 /** Disposable presentation clock; never gates simulation or the Destroyer schedule. */
 export class MissionObserverTimeline {

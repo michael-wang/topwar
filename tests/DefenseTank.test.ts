@@ -42,6 +42,28 @@ function suppressFire(sim: Simulation) {
 }
 
 describe('Stage 1 Defense tank', () => {
+  it('uses 3.5s flank / 9s Giant phase-2 slots without backlog, retaining old embedded 5s / 12s checkpoints', () => {
+    const s = active(2).getState(), tank = s.defenseTank!;
+    expect(tankConfig.phases.map(p => p.flankIntervalSeconds)).toEqual([6, 3.5, 4]);
+    expect(tankConfig.phases.map(p => p.giantIntervalSeconds)).toEqual([null, 9, 12]);
+    admitTankFlanks(s, tank, tankConfig); expect(s.enemies).toHaveLength(10);
+    expect(tank.nextFlankAtSeconds).toBe(33.5); expect(tank.nextGiantAtSeconds).toBe(39);
+    s.elapsedSeconds = 33.5 - 1 / 60; admitTankFlanks(s, tank, tankConfig); expect(s.enemies).toHaveLength(10);
+    s.elapsedSeconds = 33.5; admitTankFlanks(s, tank, tankConfig); expect(s.enemies).toHaveLength(20);
+    s.elapsedSeconds = 39; admitTankFlanks(s, tank, tankConfig);
+    expect(s.enemies.filter(e => e.archetype === 'giant')).toHaveLength(1); expect(tank.nextGiantAtSeconds).toBe(48);
+    const count = s.enemies.length; s.elapsedSeconds = 84; admitTankFlanks(s, tank, tankConfig);
+    expect(s.enemies).toHaveLength(count + 11); expect(tank.nextFlankAtSeconds).toBeGreaterThan(84);
+    expect(tank.nextGiantAtSeconds).toBeGreaterThan(84);
+    admitTankFlanks(s, tank, tankConfig); expect(s.enemies).toHaveLength(count + 11);
+    const old = active(2).getState(), oldConfig = old.catharsis!.balance.defenseTank!;
+    oldConfig.phases[1].flankIntervalSeconds = 5; oldConfig.phases[1].giantIntervalSeconds = 12;
+    const replay = active(2); replay.restoreState(old); step(replay);
+    const restored = replay.getState();
+    expect(restored.defenseTank!.nextFlankAtSeconds).toBe(35);
+    expect(restored.defenseTank!.nextGiantAtSeconds).toBe(restored.elapsedSeconds + 12);
+    expect(restored.catharsis!.balance.defenseTank!.phases[1]).toEqual(oldConfig.phases[1]);
+  });
   it.each([1, 2, 3] as const)('phase %i admits only the existing flank counts at 28 units with persistent Boss speeds', phase => {
     const sim = active(phase), s = sim.getState(), p = tankConfig.phases[phase - 1];
     const oldHeavy = { id: 100, tier: 1, archetype: 'heavy' as const, lane: 0, x: -2.8, z: 35, hp: 15 };
@@ -67,7 +89,7 @@ describe('Stage 1 Defense tank', () => {
       admitTankFlanks(s, s.defenseTank!, tankConfig);
       const giant = s.enemies.find(e => e.archetype === 'giant')!;
       expect(giant.z).toBe(28); expect(giant.bossFlankSpeedUnitsPerSecond).toBe(phase === 2 ? 1.1 : 1.3);
-      expect(s.defenseTank!.nextGiantAtSeconds).toBe(s.elapsedSeconds + 12);
+      expect(s.defenseTank!.nextGiantAtSeconds).toBe(s.elapsedSeconds + (phase === 2 ? 9 : 12));
     }
   });
   it('preserves speeds already admitted across phases and the original settings of old Tank checkpoints', () => {
@@ -191,7 +213,7 @@ describe('Stage 1 Defense tank', () => {
       expect(sim.consumeGrenadeEvents()).toEqual([]);
     }
   });
-  it('owns flank waves and 12-second Giants while preserving Supply and normal XP to Lv10', () => {
+  it('owns flank waves and phase-specific Giants while preserving Supply and normal XP to Lv10', () => {
     const sim = active(2); suppressFire(sim); step(sim);
     let s = sim.getState(); expect(s.enemies.every(e => e.lane === 0 || e.lane === 4)).toBe(true);
     expect(s.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(8);

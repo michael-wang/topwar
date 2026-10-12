@@ -14,6 +14,20 @@ function harness(resume: () => Promise<void>) {
 }
 
 describe('explicit optional audio activation', () => {
+  it('prefetches Boss voice before Start, decodes once on activation and preserves readiness on Retry', async () => {
+    const fetcher = vi.fn(async (_url: string) => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) }));
+    vi.stubGlobal('fetch', fetcher);
+    const h = harness(async () => { h.context.state = 'running'; });
+    h.context.decodeAudioData.mockResolvedValue({ duration: 4.6 } as AudioBuffer);
+    const audio = new GameAudio();
+    expect(audio.prepareRadio('zh-TW', 'tankBoss')).toBe('pending');
+    expect(fetcher.mock.calls[0]?.[0]).toBe('/audio/observer_stage1_boss_intro_zh-TW.mp3');
+    expect(h.construct).not.toHaveBeenCalled(); await audio.activate();
+    await vi.waitFor(() => expect(audio.prepareRadio('zh-TW', 'tankBoss')).toBe('ready'));
+    expect(fetcher).toHaveBeenCalledOnce(); expect(h.context.decodeAudioData).toHaveBeenCalledOnce();
+    audio.resetObservation(); expect(audio.prepareRadio('zh-TW', 'tankBoss')).toBe('ready');
+    expect(h.context.decodeAudioData).toHaveBeenCalledOnce(); audio.dispose();
+  });
   it.each([500,1000,2000])('separates ready MP3 decoding from a %ims resume without extending the activation deadline',async delay=>{
     vi.useFakeTimers();vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)})));
     const h=harness(()=>new Promise<void>(resolve=>setTimeout(()=>{h.context.state='running';resolve();},delay)));
