@@ -50,7 +50,7 @@ it.each(['boss-phase1', 'boss-phase2', 'boss-phase3'] as const)('%s uses its rea
   step(sim); const shells = sim.getState().artillery!.shells, phase = s.defenseTank!.phase;
   expect(shells).toHaveLength(phase); expect(new Set(shells.map(s => s.targetLane)).size).toBe(phase);
   for (const shell of shells) expect(shell.flightSeconds).toBeGreaterThanOrEqual(2.4);
-  expect(sim.getState().defenseTank!.nextGiantAtSeconds).toBe(phase === 1 ? null : sim.getState().elapsedSeconds + (phase === 2 ? 9 : 12));
+  expect(sim.getState().defenseTank!.nextGiantAtSeconds).toBe(phase === 1 ? null : sim.getState().elapsedSeconds + 12);
   const deadline = Math.max(...shells.map(s => s.impactAtSeconds));
   // Use each shell's safe adjacent corridor through normal input rather than changing hit rules.
   const safe = [0, 1, 2, 3, 4].find(lane => !shells.some(s => s.targetLane === lane))!;
