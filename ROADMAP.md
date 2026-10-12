@@ -2,16 +2,16 @@
 
 ## NOW
 
-Validate the accepted Beachhead Defense closed playtest on Pixel 8 after legacy retirement. Preserve Lv1–10, AHEAD Survival, continuous 2–5-second naval quiet gaps, directional urgent lane warnings, accumulated Grenades, immediate recovery and restricted shipping sleep QA. No automatic deployment or new gameplay phase.
+Playtest Stage 1's Lv9 Tank Boss on Pixel 8: 6500 HP, three attack/advance phases, Lane 1/5 flanks, satisfying destruction and clear results. Preserve accumulated Grenades, immediate recovery, existing Defense saves and manual deployment.
 
 ## NEXT
 
-1. Review warning urgency, naval quiet periods and Grenade feedback on the phone.
-2. Verify dense Lv10 sleep/Continue and sustained resources on the deployed HTTPS origin.
-3. Record physical-phone performance and balance feedback before another authored experiment.
+1. Judge Tank entrance, hit readability, three-phase pressure and destruction on the phone.
+2. Verify Tank Pause/Continue and clear results on the HTTPS playtest origin.
+3. Tune the authored Boss parameters from physical-phone gameplay and performance feedback.
 
 ## LATER
 
-- Further authored encounters and stage completion.
+- Further authored encounters and stages.
 - New enemy art/content when explicitly requested.
 - Measured mobile performance and tooling improvements.

@@ -61,7 +61,7 @@ it.each([4,5])('admits only future Lv%s groups using saved XP, with identical JS
   pending.enemyStream!.nextEnemyId=3;
   pending.projectiles=[{id:1,kind:'rifle',tier:1,lane:2,x:0,z:pending.player.z+2.5,slopeX:0,
     speed:60,damage:config.tiers.tier1Power,remainingRange:80,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
-  pending.weapons.nextProjectileId=2;sim.restoreState(pending);
+  pending.weapons.nextProjectileId=2;pending.combatStats!.shotsFired=1;sim.restoreState(pending);
   sim.step(1/60,{targetX:0},pilotTuning);
   expect(sim.getState().progression!.xp).toBe(threshold);
   const snapshot=JSON.parse(JSON.stringify(sim.getState())),restored=make();restored.restoreState(snapshot);

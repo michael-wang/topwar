@@ -39,7 +39,7 @@ Current Stage 1 salvos contain one or two shells, 50/50, in distinct randomly se
 
 Warnings begin as fully saturated bright-red inverted triangle outlines with transparent interiors and clear ivory exclamations at fixed overhead lane positions. Red fills inward from the edges toward the center; the filled area directly tracks elapsed flight fraction and is nearly full before impact. Color and opacity stay constant, with the existing scale pulse in the final 150ms. Each lane reflects its earliest incoming impact; multiple threats retain the marker until the last resolves. Pause freezes fill and pulse; restore reconstructs from active shells. Current Stage 1 has no ground warning circles.
 
-## AHEAD endless Survival
+## AHEAD Survival before the Tank Boss
 
 | Level | Grunts | Heavies | Pressure lanes | Interval | Ordinary speed multiplier |
 |---|---:|---:|---:|---:|---:|
@@ -48,7 +48,21 @@ Warnings begin as fully saturated bright-red inverted triangle outlines with tra
 | 9 | 27 | 15 | 5 | 5s | 1.6 |
 | 10 | 23 | 19 | 5 | 4s | 1.6 |
 
-At Lv8 XP≥245/350, future waves retain 31/11 and six seconds but use five lanes and 1.6× ordinary speed. Existing enemies and deadlines are never rewritten. Select profiles by progression level, not surviving squad size. Ordinary admissions cannot push active population above 180; blocked opportunities are consumed without backlog. Giant opportunities occur every 24 seconds, maximum one living Giant, skipped if occupied. Supply opportunities occur every 30 seconds, maximum one active crate. Neither system catches up skipped opportunities. No victory timer or new stage is implemented.
+At Lv8 XP≥245/350, future waves retain 31/11 and six seconds but use five lanes and 1.6× ordinary speed. Existing enemies and deadlines are never rewritten. Select profiles by progression level, not surviving squad size. Ordinary admissions cannot push active population above 180; blocked opportunities are consumed without backlog. Giant opportunities occur every 24 seconds, maximum one living Giant, skipped if occupied. Supply opportunities occur every 30 seconds, maximum one active crate. Neither system catches up skipped opportunities. Current runs hand enemy admission to the Tank Boss at Lv9; historical saves without its authored configuration retain their original Lv9–10 Survival profiles above.
+
+## Stage 1 Tank Boss — initial phone playtest
+
+Reaching Lv9 stops new Destroyer launches and ordinary/Carnival/periodic Giant admissions. Existing enemies and airborne shells remain authoritative. The ship opens its doors and a giant armored tank rolls down its ramp in 2.5 seconds, then immediately attacks. Central Lane 2/3/4 share one 6500-HP armor rectangle; bullets use their existing damage and stop at the nearest enemy, Supply or armor. Grenades retain their existing targeting, 9-HP damage and radius, and can target/hit armor. The Boss is vulnerable once landed; Lv10 is not required to defeat it.
+
+| Phase | HP | Distinct-lane shells | Post-impact cooldown | Advance units/s | Flanks per Lane 1/5 | Flank interval | Giant |
+|---|---|---:|---:|---:|---|---:|---|
+| 1 | >70% | 1 | 4s | 0.12 | 3 Heavy + 1 Grunt | 6s | none |
+| 2 | >35%–70% | 2 | 3s | 0.16 | 4 Heavy + 1 Grunt | 5s | every 12s |
+| 3 | 0–35% | 3 | 2s | 0.36 | 5 Heavy + 1 Grunt | 4s | every 12s |
+
+One unresolved tank salvo at a time; cooldown starts at its final impact using the current phase. Tank targeting uses a dedicated saved RNG; all five lanes are eligible. Flank Giants alternate between Lane 1 and 5. These troops grant normal XP and Lv10 squad rewards. Supply retains its existing schedule and uncapped inventory. No admission backlog or automatic difficulty mitigation. The tank's front crossing the defense line ends the run, regardless of surviving squad size. All parameters live in `catharsis.defenseTank`.
+
+At zero HP, stop admissions and attacks immediately, cancel all airborne shells/warnings, and kill remaining troops without crediting them as direct kills. Consecutive explosions culminate in a large finale; an armored wreck remains. After the finale, STAGE 1 CLEAR shows simulation Clear Time, total and Grunt/Heavy/Giant direct kills, Shots Fired, Shots Hit, Accuracy and Grenades Used, with PLAY AGAIN. Accuracy counts each bullet that hits an enemy or tank once; Supply hits and Grenades do not enter its numerator. Gameplay and final statistics freeze at the lethal tick. Pause freezes the finale; restored encounters do not replay one-shot launch/death cues.
 
 ## Golden Grenades
 

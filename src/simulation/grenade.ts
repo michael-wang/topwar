@@ -65,6 +65,9 @@ export function grenadeTarget(state: SimulationFrameState, config: GrenadeConfig
   // The defense line is behind player Z: a surviving enemy that has crossed
   // player Z is more urgent than one still approaching it, not less urgent.
   const anchor = anchors.sort((a, b) => a.z - b.z || a.id - b.id)[0];
+  const tank = state.defenseTank, tankConfig = state.catharsis.balance.defenseTank;
+  if (tank?.status === 'active' && tank.hp > 0 && tankConfig && (!anchor || tank.z - tankConfig.halfDepth < anchor.z))
+    return { anchorId: null, x: 0, z: tank.z - tankConfig.halfDepth };
   if (!anchor) return { anchorId: null, x: 0, z: state.player.z + config.emptyFieldDepth };
   const local = enemiesInBlast(state.enemies, anchor.x, anchor.z, config.blastRadius);
   // The unweighted centroid stays in this convex circle, so the captured urgent

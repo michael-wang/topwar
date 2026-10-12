@@ -20,6 +20,7 @@ export function createQaStressFixture(options:SimulationOptions,tuning:Simulatio
   const sim=new Simulation({...options,seed:42,startSquad:1,startRocketCount:0});
   const s=sim.getState(),balance=s.catharsis?.balance;
   if(!balance?.defenseMode||!s.enemyStream||!balance.navalBarrage)throw Error('QA requires authored Defense naval Survival');
+  delete balance.defenseTank; // Existing sleep/recovery fixture remains an isolated naval stress scene.
   const stage=progressionStage(10,balance.progression);
   if(stage.weaponFamily!=='machineGun'||stage.squadStage!==3)throw Error('QA requires authored Lv10 three MGs');
   balance.levelEncounters={version:1,initialOrdinaryEnabled:true,triggers:[]};

@@ -67,6 +67,8 @@ export interface LandingAssaultState {
 }
 
 export interface SimulationState {
+  defenseTank?: import('./defenseTank').DefenseTankState;
+  combatStats?: import('./combatStats').CombatStats;
   destroyer?: import('./destroyer').DestroyerState;
   levelEncounters?: import('./levelEncounters').LevelEncounterState;
   navalPresence?: import('./navalPresence').NavalPresenceState;

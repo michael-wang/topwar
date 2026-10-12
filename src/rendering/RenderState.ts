@@ -1,4 +1,6 @@
 export interface GameRenderState {
+  readonly defenseTank?: { readonly state: Readonly<import('../simulation/defenseTank').DefenseTankState>;
+    readonly config: import('../config/defenseTankConfig').DefenseTankSettings; readonly elapsedSeconds: number };
   readonly destroyer?: { readonly state: Readonly<import('../simulation/destroyer').DestroyerState>;
     readonly presence?: Readonly<import('../simulation/navalPresence').NavalPresenceState>;
     readonly config: import('../config/destroyerConfig').DestroyerSettings; readonly elapsedSeconds: number };

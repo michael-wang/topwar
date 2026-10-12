@@ -31,6 +31,9 @@ import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimula
 import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
 import { CatharsisConfigSchema, type CatharsisConfig } from '../config/catharsisConfig';
 import { attackLanePositions } from './enemies/laneComposition';
+import { startDefenseTank, advanceTankPosition, tankPhase, tankHitZ, tankInBlast, admitTankFlanks,
+  tankSalvo, validateDefenseTank } from './defenseTank';
+import { CombatStatsSchema, emptyCombatStats } from './combatStats';
 
 export interface SimulationOptions {
   catharsis?: { balance: CatharsisConfig; trackHalfWidth: number };
@@ -212,6 +215,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'levelEncounters')) fields.push('levelEncounters');
   if (Object.hasOwn(state, 'navalPresence')) fields.push('navalPresence');
   if (Object.hasOwn(state, 'navalBarrage')) fields.push('navalBarrage');
+  if (Object.hasOwn(state, 'defenseTank')) fields.push('defenseTank');
+  if (Object.hasOwn(state, 'combatStats')) fields.push('combatStats');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
     throw new Error('Simulation state has missing or unknown fields');
   }
@@ -530,8 +535,17 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       catharsis!.trackHalfWidth, catharsis!.balance.edgeInset), player.z as number, (squad.count as number)>0) : undefined;
   const navalBarrage=barrageConfig ? validateNavalBarrage(state.navalBarrage,barrageConfig,state.elapsedSeconds as number,
     (squad.count as number)>0,hasUnresolvedDestroyerSalvo(artillery?.shells ?? []),artillery?.shells ?? []) : undefined;
+  if (state.defenseTank !== undefined && !catharsis.balance.defenseTank) throw Error('Tank state requires saved tank configuration');
+  const defenseTank = state.defenseTank === undefined ? undefined : validateDefenseTank(state.defenseTank,
+    catharsis.balance.defenseTank!, state.elapsedSeconds as number, artillery?.shells ?? []);
+  const combatStats = state.combatStats === undefined ? undefined : CombatStatsSchema.parse(state.combatStats);
+  if (defenseTank && ((progression?.level as number) < 9 || !combatStats || navalBarrage?.enabled
+    || defenseTank.status === 'defeated' && (enemies.length || projectiles.length || artillery?.shells.length)
+    || defenseTank.status === 'breached' && (squad.count as number) !== 0)) throw Error('Invalid tank encounter ownership or outcome');
   return {
     state: {
+      ...(defenseTank ? { defenseTank } : {}),
+      ...(combatStats ? { combatStats } : {}),
       ...(artillery ? {artillery} : {}),
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: grenade ?? emptyGrenade() } : {}),
@@ -622,6 +636,7 @@ export class Simulation {
     const boss = null;
     if (enemyStream && this.enemyStreamDefinition) extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, 0, catharsis);
     this.state = {
+      ...(catharsis.balance.defenseTank ? { combatStats: emptyCombatStats() } : {}),
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival: emptyPostCapSurvival() } : {}),
@@ -706,7 +721,7 @@ export class Simulation {
   stepLane(direction: -1 | 1): boolean {
     const experiment = this.state.catharsis;
     if (!experiment?.balance.defenseMode || (direction !== -1 && direction !== 1)) throw new Error('Invalid lane step');
-    if (this.state.squad.count === 0) return false;
+    if (this.state.squad.count === 0 || this.state.defenseTank?.status === 'defeated') return false;
     const selectedLane = Math.max(0, Math.min(experiment.balance.laneCount - 1, this.state.player.selectedLane! + direction));
     if (selectedLane === this.state.player.selectedLane) return false;
     this.state = { ...this.state, player: { ...this.state.player, selectedLane } };
@@ -717,7 +732,7 @@ export class Simulation {
   // No production scheduler invokes this in P3-A.
   launchArtillery(launch: ArtilleryLaunch): number | null {
     const state = this.state, c = state.catharsis;
-    if (!c?.balance.defenseMode || state.squad.count === 0) return null;
+    if (!c?.balance.defenseMode || state.squad.count === 0 || state.defenseTank?.status === 'defeated') return null;
     const config = c.balance.artillery ?? artilleryDefaults;
     const artillery = state.artillery ?? { version: 1 as const, nextId: 1, shells: [] };
     if (artillery.shells.length >= config.maxActive) return null;
@@ -737,6 +752,12 @@ export class Simulation {
     const c=this.state.catharsis?.balance.navalBarrage;
     if(c&&this.state.navalBarrage)this.state.navalBarrage=cancelNavalSalvo(this.state.navalBarrage,c,
       this.state.artillery?.shells??[],this.state.elapsedSeconds);
+    const tank = this.state.defenseTank, tankConfig = this.state.catharsis?.balance.defenseTank;
+    if (tank?.pendingImpactAtSeconds != null && tankConfig) {
+      const pending = this.state.artillery?.shells.filter(s => s.source.type === 'defenseTank') ?? [];
+      this.state.defenseTank = { ...tank, pendingImpactAtSeconds: pending.length ? Math.max(...pending.map(s => s.impactAtSeconds)) : null,
+        nextAttackAtSeconds: pending.length ? null : this.state.elapsedSeconds + tankConfig.phases[tank.phase - 1].cooldownSeconds };
+    }
   }
 
   step(dtSeconds: number, input: SimulationInput, tuning: SimulationTuning): void {
@@ -768,7 +789,7 @@ export class Simulation {
       || !Number.isFinite(tuning.rifle.maxHitRadiusBonus) || tuning.rifle.maxHitRadiusBonus < 0) {
       throw new Error('Simulation rifle tuning must be positive and finite');
     }
-    if (this.state.squad.count === 0) return;
+    if (this.state.squad.count === 0 || this.state.defenseTank?.status === 'defeated') return;
     const nextElapsedSeconds = this.state.elapsedSeconds + dtSeconds;
     if (!Number.isFinite(nextElapsedSeconds) || !Number.isSafeInteger(this.state.tick + 1)) {
       throw new Error('Simulation time or tick exceeds the supported range');
@@ -794,12 +815,19 @@ export class Simulation {
       throw new Error('Simulation movement exceeds the supported range');
     }
     const catharsis = this.state.catharsis;
+    const combatStats = { ...(this.state.combatStats ?? { ...emptyCombatStats(), shotsFired: this.state.weapons.nextProjectileId - 1 }) };
+    const tankConfig = catharsis?.balance.defenseTank;
+    let defenseTank = this.state.defenseTank ? { ...this.state.defenseTank } : undefined;
+    if (!defenseTank && tankConfig && this.state.progression!.level >= tankConfig.triggerLevel)
+      defenseTank = startDefenseTank(this.state.elapsedSeconds, this.state.seed, tankConfig);
+    if (defenseTank && tankConfig) advanceTankPosition(defenseTank, tankConfig, nextElapsedSeconds, dtSeconds);
     const grenade = this.state.grenade ? structuredClone(this.state.grenade) : undefined;
     const grenadeConfig = catharsis?.balance.grenade;
     if (input.throwGrenade && grenade && grenade.inventory > 0 && !grenade.flight && grenadeConfig) {
       const target = grenadeTarget(this.state, grenadeConfig);
       if (target) {
         grenade.inventory -= 1;
+        combatStats.grenadesUsed++;
         grenade.flight = { startX: this.state.player.x, startZ: this.state.player.z,
           targetX: target.x, targetZ: target.z, startedAtSeconds: this.state.elapsedSeconds,
           flightSeconds: grenadeConfig.flightSeconds, damageEnemyHp: grenadeConfig.damageEnemyHp,
@@ -812,6 +840,9 @@ export class Simulation {
         ? enemyApproachSpeed(enemy, catharsis.balance) * dtSeconds : 0) }));
     let progression = this.state.progression;
     const awardKill = (enemy: EnemySimulationState): number => {
+      if (enemy.archetype === 'giant') combatStats.giantKills++;
+      else if (enemy.archetype === 'heavy') combatStats.heavyKills++;
+      else combatStats.gruntKills++;
       if (!progression || !catharsis?.balance.defenseMode) return 0;
       const amount = enemy.archetype === 'giant' ? catharsis.balance.giant.xp
         : enemy.archetype === 'heavy' ? catharsis.balance.progression.heavyKillXp : catharsis.balance.progression.gruntKillXp;
@@ -821,8 +852,8 @@ export class Simulation {
     const stepEvents: PresentationEvent[] = [];
     const enemyStream = this.state.enemyStream ? { ...this.state.enemyStream } : null;
     const carnivalSpawning = carnivalOwnsSpawning(this.state);
-    const ordinarySuppressed = this.state.levelEncounters ? !this.state.levelEncounters.ordinaryEnabled
-      : this.state.destroyer?.status === 'active';
+    const ordinarySuppressed = !!defenseTank || (this.state.levelEncounters ? !this.state.levelEncounters.ordinaryEnabled
+      : this.state.destroyer?.status === 'active');
     let defenseWaves = this.state.defenseWaves;
     if (catharsis?.balance.defenseMode && defenseWaves && enemyStream && this.enemyStreamDefinition)
       defenseWaves = advanceDefenseWaves(defenseWaves, { ...this.state, enemies, enemyStream }, nextElapsedSeconds,
@@ -899,6 +930,7 @@ export class Simulation {
               blastRadius: 0,
               hitRadiusBonus: 0,
               penetrationRemaining: 0 });
+            combatStats.shotsFired++;
           }
           cooldown += interval;
           if (!Number.isFinite(cooldown)) throw new Error('Simulation weapon cooldown exceeds the supported range');
@@ -911,6 +943,7 @@ export class Simulation {
 
     const survivingProjectiles: ProjectileSimulationState[] = [];
     for (const projectile of projectiles) {
+      if (defenseTank?.hp === 0) break;
       if (this.collisionDiagnostics) this.collisionDiagnostics.projectilePasses++;
       const travel = Math.min(projectile.speed * dtSeconds, projectile.remainingRange);
       const endZ = projectile.z + travel;
@@ -918,7 +951,14 @@ export class Simulation {
       let consumed = false;
       const hit = findFirstHit(projectile, endZ, enemyCollisionIndex, tuning.normalEnemyRadius,
           this.state.player.z, nextZ, this.collisionDiagnostics, grenade?.supply);
-      if (hit) {
+      const armorZ = tankHitZ(defenseTank, tankConfig, projectile.lane, projectile.z, endZ);
+      if (armorZ !== undefined && (!hit || armorZ < hit.z)) {
+        defenseTank!.hp = Math.max(0, defenseTank!.hp - projectile.damage / this.tiers.tier1Power);
+        defenseTank!.lastHitAtSeconds = nextElapsedSeconds;
+        combatStats.shotsHit++;
+        consumed = true;
+      }
+      if (hit && !consumed) {
         if (hit.kind === 'grenadeSupply') {
           const supply = grenade!.supply!;
           const destruction = supply.destruction;
@@ -943,6 +983,7 @@ export class Simulation {
             this.grenadeEvents.push({ kind: 'grenadeSupplyHit' });
           }
         } else {
+          combatStats.shotsHit++;
           damageEnemy(hit.enemy, projectile.damage / this.tiers.tier1Power);
         }
         consumed = true;
@@ -953,8 +994,12 @@ export class Simulation {
           penetrationRemaining: 0 });
       }
     }
-    if (grenade?.flight && nextElapsedSeconds + 1e-9 >= grenade.flight.startedAtSeconds + grenade.flight.flightSeconds) {
+    if (grenade?.flight && defenseTank?.hp !== 0 && nextElapsedSeconds + 1e-9 >= grenade.flight.startedAtSeconds + grenade.flight.flightSeconds) {
       const flight = grenade.flight;
+      if (defenseTank && tankConfig && tankInBlast(defenseTank, tankConfig, flight.targetX, flight.targetZ, flight.blastRadius)) {
+        defenseTank.hp = Math.max(0, defenseTank.hp - flight.damageEnemyHp);
+        defenseTank.lastHitAtSeconds = nextElapsedSeconds;
+      }
       const victims = enemiesInBlast(enemies, flight.targetX, flight.targetZ, flight.blastRadius).map(enemy => {
         const damage = Math.min(enemy.hp, flight.damageEnemyHp);
         const killXp = damageEnemy(enemy, flight.damageEnemyHp);
@@ -962,6 +1007,17 @@ export class Simulation {
       });
       this.grenadeEvents.push({ kind: 'grenadeDetonated', x: flight.targetX, z: flight.targetZ, radius: flight.blastRadius, victims });
       grenade.flight = null;
+    }
+    const tankDefeated = !!defenseTank && defenseTank.hp === 0;
+    if (defenseTank && tankConfig) {
+      defenseTank.phase = tankPhase(defenseTank.hp, tankConfig);
+      if (tankDefeated) {
+        defenseTank.status = 'defeated'; defenseTank.defeatedAtSeconds = nextElapsedSeconds;
+        defenseTank.nextAttackAtSeconds = null; defenseTank.pendingImpactAtSeconds = null;
+        enemies.length = 0; survivingProjectiles.length = 0;
+        if (grenade) grenade.flight = null;
+        this.artilleryEvents = []; // No unresolved launch/impact feedback after the clear.
+      }
     }
     // Contact follows projectile deaths; each removed enemy can cause at most one casualty event.
     let contactFormationCount = this.state.squad.count;
@@ -1024,6 +1080,7 @@ export class Simulation {
       }
     }
     let artillery = this.state.artillery;
+    if (tankDefeated && artillery) artillery = { ...artillery, shells: [] };
     if (artillery) {
       const pending = [] as typeof artillery.shells;
       for (const shell of [...artillery.shells].sort((a, b) => a.impactAtSeconds - b.impactAtSeconds || a.id - b.id)) {
@@ -1046,6 +1103,15 @@ export class Simulation {
       artillery = { ...artillery, shells: squad.count > 0 ? pending : [] };
     }
     if (squad.count === 0 && stepEvents.length > 0) survivingProjectiles.length = 0;
+    if (defenseTank?.status === 'active' && tankConfig && defenseTank.z - tankConfig.halfDepth <= defenseLineZ) {
+      defenseTank.status = 'breached';
+      squad = { count: 0, rocketCount: 0, rifleCounts: [0], rifleRemainder: 0 };
+      survivingProjectiles.length = 0;
+      if (artillery) artillery = { ...artillery, shells: [] };
+    }
+    if (squad.count === 0 && defenseTank) {
+      defenseTank.nextAttackAtSeconds = null; defenseTank.pendingImpactAtSeconds = null;
+    }
     // MG casualties consume the front of the Tier-1 roster. Keep each survivor's
     // shot phase when its index shifts; do not inherit a removed member's clock.
     if (memberCooldowns && this.state.progression && catharsis
@@ -1119,8 +1185,10 @@ export class Simulation {
       if (defenseWaves) defenseWaves.nextAtSeconds += balance.defenseWaves.intervalSeconds;
       machineGunReleaseAtSeconds = nextElapsedSeconds;
     }
+    if (!defenseTank && tankConfig && progression!.level >= tankConfig.triggerLevel && squad.count > 0)
+      defenseTank = startDefenseTank(nextElapsedSeconds, this.state.seed, tankConfig);
     const phaseFrame: SimulationState = { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
-      player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade };
+      defenseTank, player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade };
     const carnival = advanceCarnival(this.state.carnival, phaseFrame, this.enemyStreamDefinition?.seed ?? this.state.seed);
     if (phaseFrame.levelEncounters && catharsis?.balance.levelEncounters && squad.count > 0) {
       const triggers = advanceLevelEncounters(phaseFrame.levelEncounters, catharsis.balance.levelEncounters,
@@ -1136,10 +1204,16 @@ export class Simulation {
       ? !phaseFrame.levelEncounters.survivalEnabled : naval?.state.status === 'active');
     const postCapSurvival = survivalBlocked ? emptyPostCapSurvival()
       : advancePostCapSurvival(this.state.postCapSurvival, phaseFrame);
+    if (defenseTank && phaseFrame.levelEncounters) {
+      applyEncounterAction(phaseFrame, 'ordinaryOff'); applyEncounterAction(phaseFrame, 'barrageOff');
+    }
+    if (defenseTank && tankConfig && !tankDefeated) admitTankFlanks(phaseFrame, defenseTank, tankConfig);
     if (defenseWaves && this.state.postCapSurvival?.startedAtSeconds == null && postCapSurvival.startedAtSeconds !== null
       && catharsis?.balance.postCapSurvival.firstWaveDelaySeconds !== undefined)
       defenseWaves = { nextAtSeconds: postCapSurvival.startedAtSeconds + catharsis.balance.postCapSurvival.firstWaveDelaySeconds };
     this.state = { ...this.state, ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream,
+      ...(defenseTank ? { defenseTank } : {}),
+      ...(this.state.combatStats || tankConfig ? { combatStats } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
       ...(catharsis?.balance.defenseMode ? { carnival } : {}),
       ...(naval ? { destroyer: naval.state } : {}),
@@ -1154,8 +1228,8 @@ export class Simulation {
       weapons: { ...(memberCooldowns ? { rifleMemberCooldowns: memberCooldowns } : {}), rifleCooldownRemainingSeconds: nextCooldowns.rifle, rocketCooldownRemainingSeconds: nextCooldowns.rocket,
         nextProjectileId }, tick: this.state.tick + 1,
       elapsedSeconds: nextElapsedSeconds, rngState: this.rng.getState() };
-    if (naval?.fire) this.launchArtillery({ source: destroyerMuzzle(nextElapsedSeconds - naval.state.startedAtSeconds!, catharsis!.balance.destroyer!) });
-    if(this.state.navalBarrage && catharsis?.balance.navalBarrage) {
+    if (!defenseTank && naval?.fire) this.launchArtillery({ source: destroyerMuzzle(nextElapsedSeconds - naval.state.startedAtSeconds!, catharsis!.balance.destroyer!) });
+    if(!defenseTank && this.state.navalBarrage && catharsis?.balance.navalBarrage) {
       const previous=this.state.navalBarrage, presence=this.state.navalPresence;
       const next=advanceNavalBarrage(previous,catharsis.balance.navalBarrage,nextElapsedSeconds,
         (catharsis.balance.artillery?.maxActive ?? artilleryDefaults.maxActive)-(this.state.artillery?.shells.length ?? 0),
@@ -1166,6 +1240,16 @@ export class Simulation {
         const ids=next.lastSalvo!.lanes.map(lane=>this.launchArtillery({source,targetLane:lane}));
         this.state.navalBarrage=recordNavalSalvo(next,catharsis.balance.navalBarrage,
           this.state.artillery!.shells.filter(shell=>ids.includes(shell.id)));
+      }
+    }
+    if (defenseTank && tankConfig && squad.count > 0) {
+      const shells = this.state.artillery?.shells ?? [];
+      const lanes = tankSalvo(defenseTank, tankConfig, nextElapsedSeconds, shells,
+        (catharsis!.balance.artillery?.maxActive ?? artilleryDefaults.maxActive) - shells.length);
+      if (lanes.length) {
+        const source = { id: 'stage1-tank', type: 'defenseTank', position: { x: 0, y: 2.3, z: defenseTank.z - tankConfig.halfDepth - 1.1 } };
+        const ids = lanes.map(targetLane => this.launchArtillery({ source, targetLane }));
+        defenseTank.pendingImpactAtSeconds = Math.max(...this.state.artillery!.shells.filter(s => ids.includes(s.id)).map(s => s.impactAtSeconds));
       }
     }
     if (stepEvents.length > 0) {
@@ -1200,6 +1284,8 @@ export class Simulation {
   getState(): SimulationState {
     return {
       ...this.state,
+      ...(this.state.defenseTank ? { defenseTank: { ...this.state.defenseTank } } : {}),
+      ...(this.state.combatStats ? { combatStats: { ...this.state.combatStats } } : {}),
       ...(this.state.artillery ? { artillery: structuredClone(this.state.artillery) } : {}),
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),
       ...(this.state.grenade ? { grenade: structuredClone(this.state.grenade) } : {}),

@@ -12,11 +12,15 @@ The game uses fixed steps, authored five-lane admissions and explicit progressio
 
 Enemy waves/Carnival/Survival own enemy admissions; NavalPresence owns ship lifecycle; NavalBarrage owns attacks and clocks; levelEncounters supplies small authored component actions. Artillery owns authoritative flight, impact and casualties. Naval visibility cannot suppress Survival. Profile changes affect future admissions only. Blocked opportunities cannot build backlogs.
 
+Optional authored `defenseTank` owns the Lv9 encounter, a single HP/phase/rectangle, entry/advance, flank admissions and post-impact attack clocks. It suppresses other enemy admission and new naval fire while leaving old shells to resolve. Its own saved RNG supplies distinct attack lanes. Tank shells use ordinary Artillery; renderer resources remain disposable. `combatStats` counts player shots, direct kills and successful throws at authoritative boundaries. Tank clear freezes gameplay and excludes the forced enemy cleanup from direct kills; presentation time owns the bounded explosion finale and clear overlay.
+
 ## Configuration and persistence
 
 ConfigStore validates authored JSON and supported runtime overrides atomically. Production public URLs are content-addressed and preserve /topwar/; unchanged portraits/audio retain URLs across commits. Accepted character, weapon and environment meshes are procedural. No retired GLB is downloaded.
 
 Simulation.restoreState performs strict transactional validation. Released Beachhead Defense eight- and ten-level plans preserve their saved progression, movement rules, concurrent/sequential Carnival/Destroyer policy, discrete/continuous naval cooldowns, active shells and Survival deadlines. Grenade capacity in historical config is only a teaching-reward alias; continuing inventory accumulates safely.
+
+Tank state and statistics are optional plain-data checkpoint fields. Historical saves without authored tank configuration keep their original encounters and wire state; no tank or retrospective statistics are injected into them. New checkpoints capture all tank/phase/flank/attack clocks and statistics alongside existing shells and RNG. The legacy `boss: null` wire field remains inert.
 
 A small set of inert wire fields (empty Boss/gate/reward/pickup state, zero rocket clocks, Tier-1 roster and stream cursors) remains to avoid breaking released Defense snapshots. Optional historical config/tuning metadata is parsed but has no retired gameplay implementation. Nonempty old Boss/rocket/gate/finite-formation or non-Defense prototype saves are unsupported; recovery offers a safe fresh start rather than reinterpreting them.
 

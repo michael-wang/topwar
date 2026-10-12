@@ -20,7 +20,7 @@ The quiet tool hatch opens local DEV controls: LATE (Lv10), CRATE3, CRATE8, NAVA
 
 ## Current game
 
-Rifle levels 1–5 lead to MG levels 6–10. Lv4 introduces the Giant. Lv6 starts the 24-second Carnival and persistent Destroyer entrance. Naval attacks and enemy admissions have independent clocks. Phone-approved AHEAD endless Survival starts at +27 seconds. The Destroyer uses one unresolved salvo and continuous 2–5-second post-impact quiet gaps. Golden Grenades accumulate without a gameplay inventory cap.
+Rifle levels 1–5 lead to MG levels 6–10. Lv4 introduces the Giant. Lv6 starts the 24-second Carnival and persistent Destroyer entrance. AHEAD Survival starts at +27 seconds. At Lv9, the giant Tank Boss lands in 2.5 seconds and takes over with three HP phases, artillery and flank troops. Defeating it clears Stage 1 with combat results and PLAY AGAIN. Golden Grenades accumulate without a gameplay inventory cap.
 
 See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](ARCHITECTURE.md) for contracts and [ART_DIRECTION.md](ART_DIRECTION.md) for current art. Historical prototype gameplay is retired; Git history is its archive.
 
@@ -28,7 +28,7 @@ See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](AR
 
 Manual Pause and page hiding save a bounded full-state checkpoint. After reload, Continue/New Game is available before asset initialization. Continue restores paused and explicit Resume activates audio and requests Screen Wake Lock. Returning to a surviving hidden page also remains paused.
 
-Released Beachhead Defense eight- and ten-level saves keep their serialized progression, movement and encounter policies. Ancient forward-running/Tier/Boss saves are unsupported and offer a safe fresh-start path. See [Pixel 8 testing](docs/PIXEL8_DEV_TESTING.md) and [current QA tools](scripts/qa/README.md).
+Released Beachhead Defense eight- and ten-level saves keep their serialized progression, movement and encounter policies; saves authored before the Tank Boss retain their original Survival. Current checkpoints also preserve Tank HP, phase, position, attack/flank clocks and combat statistics. Ancient forward-running/Tier/Boss saves are unsupported and offer a safe fresh-start path. See [Pixel 8 testing](docs/PIXEL8_DEV_TESTING.md) and [current QA tools](scripts/qa/README.md).
 
 ## Manual deployment only
 

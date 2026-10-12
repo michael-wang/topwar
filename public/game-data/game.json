@@ -319,6 +319,47 @@
       "projectileSpeed": 60,
       "range": 80,
       "damageEnemyHp": 1
+    },
+    "defenseTank": {
+      "triggerLevel": 9,
+      "hp": 6500,
+      "entrySeconds": 2.5,
+      "startZ": 54,
+      "battleZ": 40,
+      "halfWidth": 2.1,
+      "halfDepth": 2.7,
+      "phase2HpFraction": 0.7,
+      "phase3HpFraction": 0.35,
+      "streamSeed": 94731,
+      "phases": [
+        {
+          "shells": 1,
+          "cooldownSeconds": 4,
+          "speedUnitsPerSecond": 0.12,
+          "flankIntervalSeconds": 6,
+          "heaviesPerLane": 3,
+          "gruntsPerLane": 1,
+          "giantIntervalSeconds": null
+        },
+        {
+          "shells": 2,
+          "cooldownSeconds": 3,
+          "speedUnitsPerSecond": 0.16,
+          "flankIntervalSeconds": 5,
+          "heaviesPerLane": 4,
+          "gruntsPerLane": 1,
+          "giantIntervalSeconds": 12
+        },
+        {
+          "shells": 3,
+          "cooldownSeconds": 2,
+          "speedUnitsPerSecond": 0.36,
+          "flankIntervalSeconds": 4,
+          "heaviesPerLane": 5,
+          "gruntsPerLane": 1,
+          "giantIntervalSeconds": 12
+        }
+      ]
     }
   },
   "player": {

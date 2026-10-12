@@ -4,6 +4,7 @@ import { IdlePreparation } from '../presentation/IdlePreparation';
 import { GrenadeRenderer } from './GrenadeRenderer';
 import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
 import { DestroyerRenderer } from './DestroyerRenderer';
+import { DefenseTankRenderer } from './DefenseTankRenderer';
 import type { ArtilleryEvent } from '../simulation/artillery';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { BattlefieldAir } from './environment/BattlefieldAir';
@@ -47,6 +48,7 @@ export class GameRenderer {
   private readonly grenadeRenderer = new GrenadeRenderer(this.scene);
   private artilleryRenderer: EnemyArtilleryRenderer | null = null;
   private destroyerRenderer: DestroyerRenderer | null = null;
+  private tankRenderer: DefenseTankRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private viewportCssHeight = 1;
@@ -105,6 +107,7 @@ export class GameRenderer {
     if (this.coastalLighting) {
       this.destroyerRenderer ??= new DestroyerRenderer(this.scene); yield;
       this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene); yield;
+      this.tankRenderer ??= new DefenseTankRenderer(this.scene); yield;
     }
     if (!this.renderer.extensions.has('KHR_parallel_shader_compile')) return;
     const seen = new Set<string>();
@@ -172,6 +175,10 @@ export class GameRenderer {
     if (state.destroyer && (state.destroyer.state.status === 'active' || state.destroyer.presence && state.destroyer.presence.status !== 'absent'))
       this.destroyerRenderer ??= new DestroyerRenderer(this.scene);
     this.destroyerRenderer?.update(state.destroyer);
+    if (state.defenseTank) this.tankRenderer ??= new DefenseTankRenderer(this.scene);
+    this.tankRenderer?.update(state.defenseTank, nowMs);
+    if (state.defenseTank) for (const shell of state.artillery?.shells ?? [])
+      if (shell.source.type === 'defenseTank') this.tankRenderer?.recoil(shell.launchedAtSeconds, state.defenseTank.elapsedSeconds);
     if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
     this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera.quaternion);
     this.renderer.render(this.scene, this.camera);
@@ -206,6 +213,7 @@ export class GameRenderer {
 
   restoreFeedback(state: GameRenderState, nowMs: number): void {
     this.resetFeedback();
+    if (state.defenseTank) { this.tankRenderer ??= new DefenseTankRenderer(this.scene); this.tankRenderer.restore(state.defenseTank, nowMs); }
     if(state.artillery){this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);this.artilleryRenderer.restore(state.artillery);}
     // Snapshot entities already exist. Prime identity before the first paused
     // draw so an existing Giant is readable, without replaying its entrance fade.
@@ -218,6 +226,7 @@ export class GameRenderer {
     this.grenadeRenderer.reset();
     this.artilleryRenderer?.reset();
     this.destroyerRenderer?.reset();
+    this.tankRenderer?.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset(visualSalt);
     this.contactShadows.reset();
@@ -234,6 +243,7 @@ export class GameRenderer {
     this.grenadeRenderer.dispose();
     this.artilleryRenderer?.dispose();
     this.destroyerRenderer?.dispose();
+    this.tankRenderer?.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
     this.contactShadows.dispose();

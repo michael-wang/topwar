@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DefenseTankConfigSchema } from './defenseTankConfig';
 import { LevelEncounterConfigSchema } from './levelEncounterConfig';
 import { NavalBarrageConfigSchema } from './navalBarrageConfig';
 import { ArtilleryConfigSchema } from './artilleryConfig';
@@ -19,6 +20,7 @@ const pressureRampStage = z.strictObject({
 
 // Defense balance. Inert prototype metadata is accepted only for released saves.
 export const CatharsisConfigSchema = z.strictObject({
+  defenseTank: DefenseTankConfigSchema.optional(),
   levelEncounters: LevelEncounterConfigSchema.optional(),
   navalBarrage: NavalBarrageConfigSchema.optional(),
   destroyer: DestroyerConfigSchema.optional(),
@@ -98,7 +100,10 @@ export const CatharsisConfigSchema = z.strictObject({
   heavyHeightMultiplier: z.number().finite().positive().max(2).default(1),
   heavyDepthMultiplier: z.number().finite().positive().max(2).default(1),
   rewardAimRadius: z.number().finite().positive().default(.5),
-}).refine(value => !value.levelEncounters || value.defenseMode
+}).refine(value => !value.defenseTank || value.defenseMode && value.laneCount === 5
+  && value.progression.levelPlan.length >= 9 && !!value.artillery && !!value.destroyer,
+  { message: 'Defense tank requires five lanes, Lv9, naval and artillery configuration' })
+  .refine(value => !value.levelEncounters || value.defenseMode
   && value.levelEncounters.triggers.every(t => (t.when.kind !== 'level' || t.when.level <= value.progression.levelPlan.length)
     && (!t.actions.some(a => a.startsWith('destroyer')) || value.destroyer && value.artillery)
     && (!t.actions.some(a => a.startsWith('barrage')) || value.navalBarrage)),

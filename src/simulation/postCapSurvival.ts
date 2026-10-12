@@ -55,13 +55,13 @@ export function advancePostCapSurvival(previous: PostCapSurvivalState | undefine
     return { startedAtSeconds: now, nextGiantAtSeconds: now + c.giantIntervalSeconds,
       nextGrenadeSupplyAtSeconds: now + c.grenadeSupplyIntervalSeconds };
   }
-  if (now + 1e-9 >= state.nextGiantAtSeconds!) {
+  if (!frame.defenseTank && now + 1e-9 >= state.nextGiantAtSeconds!) {
     if ((c.maxActiveEnemies === undefined || frame.enemies.filter(e => e.hp > 0).length < c.maxActiveEnemies)
       && frame.enemies.filter(e => e.hp > 0 && e.archetype === 'giant').length < c.maxSimultaneousGiants)
       spawnInteriorGiant(frame.player.z, balance, frame.catharsis!.trackHalfWidth, frame.enemies, frame.enemyStream);
     state.nextGiantAtSeconds = nextSlot(state.nextGiantAtSeconds!, now, c.giantIntervalSeconds);
   }
-  if (now + 1e-9 >= state.nextGrenadeSupplyAtSeconds!) {
+  if (frame.defenseTank?.status !== 'defeated' && now + 1e-9 >= state.nextGrenadeSupplyAtSeconds!) {
     // The original teaching crate owns the first Supply encounter, even in a
     // migrated snapshot whose Lv3 entry clock was previously absent.
     if (frame.grenade.supplySpawnedAtSeconds !== null

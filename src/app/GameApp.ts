@@ -15,6 +15,9 @@ import { Simulation } from '../simulation/Simulation';
 import { damageFeedback, squadDefenseValue } from './combatFeedback';
 import { DamageFlashOverlay } from '../ui/DamageFlashOverlay';
 import { GameOverOverlay } from '../ui/GameOverOverlay';
+import { TankBossHud } from '../ui/TankBossHud';
+import { StageClearOverlay } from '../ui/StageClearOverlay';
+import { TANK_DEATH_MS, TANK_EXPLOSION_TIMES_MS } from '../rendering/DefenseTankRenderer';
 import { GameAudio } from '../audio/GameAudio';
 import { defaultRuntimeTuning, type RuntimeTuning } from './runtimeTuning';
 import { SupplyRewardTransfer } from '../ui/SupplyRewardTransfer';
@@ -57,6 +60,10 @@ export class GameApp {
   private readonly fixedStepLoop = new FixedStepLoop();
   private simulation: Simulation;
   private readonly gameOverOverlay: GameOverOverlay;
+  private readonly tankBossHud: TankBossHud;
+  private readonly stageClearOverlay: StageClearOverlay;
+  private tankDeathAtMs: number | null = null;
+  private tankDeathCue = -1;
   private readonly damageFlash: DamageFlashOverlay;
   private readonly audio: GameAudio;
   private readonly startOverlay: GameStartOverlay;
@@ -171,6 +178,8 @@ export class GameApp {
 
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
+    this.tankBossHud = new TankBossHud(viewport);
+    this.stageClearOverlay = new StageClearOverlay(viewport, () => this.retry());
     this.laneInput = this.config.catharsis?.defenseMode ? new LaneStepInput(viewport, window,
       (direction) => {
         if (!this.running || this.startup !== 'started' || this.paused || this.simulation.getFrameState().squad.count === 0) return false;
@@ -265,6 +274,7 @@ export class GameApp {
     this.battleInfo?.dispose();
     this.supplyTransfer?.dispose();this.grenadeButton?.dispose();
     this.gameOverOverlay.dispose();
+    this.tankBossHud.dispose(); this.stageClearOverlay.dispose();
     this.tuningPanel?.dispose();
     this.hudActions.dispose();
     this.devReview?.dispose();
@@ -310,6 +320,7 @@ export class GameApp {
     this.pauseOverlay.setVisible(this.paused);
     this.hudActions.setPaused(this.paused);
     this.gameOverOverlay.setVisible(false);
+    this.tankBossHud.reset(); this.stageClearOverlay.reset(); this.tankDeathAtMs = null; this.tankDeathCue = -1;
     this.damageFlash.reset();
     this.fieldObserver?.reset();
     this.audio.resetObservation();
@@ -366,6 +377,7 @@ export class GameApp {
   private readonly requestGrenade = (): void => {
     if (!this.running || this.startup !== 'started' || this.paused || this.grenadeRequested) return;
     const state = this.simulation.getFrameState();
+    if (state.defenseTank?.status === 'defeated') return;
     if (state.squad.count > 0 && (state.grenade?.inventory ?? 0) > 0 && !state.grenade?.flight
       && state.catharsis && grenadeTarget(state, state.catharsis.balance.grenade))
       this.grenadeRequested = true;
@@ -484,7 +496,7 @@ export class GameApp {
   private syncWakeLock(): void {
     this.wakeLock.setActive(this.running && this.startup === 'started' && (!this.paused||this.qaPreparing) && !this.qaSleepActive && !this.recovery?.blocking
       && !this.hidden && !this.contextLost && document.visibilityState === 'visible'
-      && this.simulation.getFrameState().squad.count > 0);
+      && this.simulation.getFrameState().squad.count > 0 && this.simulation.getFrameState().defenseTank?.status !== 'defeated');
   }
 
   private readonly chooseRecovery = (continueGame: boolean): void => {
@@ -513,6 +525,8 @@ export class GameApp {
         this.xpHud?.reset(); this.battleInfo?.reset();
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
+        this.tankDeathAtMs = s.defenseTank?.status === 'defeated' ? -TANK_DEATH_MS : null;
+        this.tankDeathCue = s.defenseTank?.status === 'defeated' ? TANK_EXPLOSION_TIMES_MS.length - 1 : -1;
         this.restored = true; this.startup = 'started'; this.setPaused(true);
         this.qaSession=!!c.qa;this.qaSleepActive=c.qa?.armed??false;
         if(c.qa){this.syncWakeLock();if(this.qaSleepActive)this.pauseOverlay.setVisible(false);
@@ -535,7 +549,7 @@ export class GameApp {
   private saveCheckpoint(reason: SessionCheckpoint['reason']): void {
     if (this.startup !== 'started') return;
     const started = performance.now(), state = this.simulation.getState();
-    if (state.squad.count === 0) { clearCheckpoint(); return; }
+    if (state.squad.count === 0 || state.defenseTank?.status === 'defeated') { clearCheckpoint(); return; }
     // Crate fixtures intentionally have no enemy stream; retain that level contract too.
     const level = state.enemyStream === null && this.sessionLevel.enemyStream
       ? { ...this.sessionLevel, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } : this.sessionLevel;
@@ -701,13 +715,15 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
+      const cleared = state.defenseTank?.status === 'defeated';
+      this.tankBossHud.update(state);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
-      if (state.squad.count === 0) { this.laneInput?.stop();
+      if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
         if (!this.clearedFinishedCheckpoint) { clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
       this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused);
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
-        !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
+        !cleared && !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
           && !!grenadeTarget(state, state.catharsis!.balance.grenade), this.presentationMs);
       const grenadeEvents = this.simulation.consumeGrenadeEvents();
       this.audio.presentSupply(grenadeEvents,this.presentationMs);
@@ -725,6 +741,16 @@ export class GameApp {
         if (event.kind === 'artilleryLaunch') this.audio.play('enemyLockOn');
       }
       this.renderer.presentArtillery(artilleryEvents, this.presentationMs);
+      if (cleared) {
+        this.tankDeathAtMs ??= this.presentationMs;
+        const age = this.presentationMs - this.tankDeathAtMs;
+        const times = TANK_EXPLOSION_TIMES_MS;
+        for (let i = this.tankDeathCue + 1; i < times.length && age >= times[i]; i++) {
+          this.audio.play(i === times.length - 1 ? 'giantDeath' : 'grenadeExplosion'); this.tankDeathCue = i;
+        }
+        if (age >= TANK_DEATH_MS && state.combatStats)
+          this.stageClearOverlay.show(state.combatStats, state.defenseTank!.defeatedAtSeconds!);
+      }
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);
         if (levelUp) {

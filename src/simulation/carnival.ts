@@ -25,6 +25,9 @@ export function carnivalOwnsSpawning(frame: SimulationState): boolean {
 export function advanceCarnival(previous: CarnivalState | undefined, frame: SimulationState, streamSeed: number): CarnivalState {
   const c = frame.catharsis?.balance.carnival;
   let state = { ...(previous ?? emptyCarnival()) };
+  if (frame.defenseTank) return state.status === 'active' ? { ...state, status: 'complete',
+    elapsedSeconds: Math.min(c?.durationSeconds ?? 0, frame.elapsedSeconds - state.startedAtSeconds!) }
+    : state.status === 'pending' ? emptyCarnival(true) : state;
   if (!c?.enabled || !frame.catharsis?.balance.defenseMode) {
     if (state.status === 'pending') return emptyCarnival(true);
     if (state.status === 'active') state.status = 'complete';

@@ -9,6 +9,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
+import { startDefenseTank } from '../src/simulation/defenseTank';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
 vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
   open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}
@@ -93,6 +94,12 @@ const mock = vi.hoisted(() => ({
   touchDispose: vi.fn(),
 }));
 const stripDom = vi.hoisted(() => ({ progressionHost: {} as HTMLElement }));
+const tankUi = vi.hoisted(() => ({ update: vi.fn(), show: vi.fn(), reset: vi.fn(), replay: null as (() => void) | null }));
+vi.mock('../src/ui/TankBossHud', () => ({ TankBossHud: class { update = tankUi.update; reset = vi.fn(); dispose = vi.fn(); } }));
+vi.mock('../src/ui/StageClearOverlay', () => ({ StageClearOverlay: class {
+  constructor(_viewport: unknown, replay: () => void) { tankUi.replay = replay; }
+  show = tankUi.show; reset = tankUi.reset; dispose = vi.fn();
+} }));
 
 vi.mock('../src/simulation/Simulation', () => ({
   Simulation: class {
@@ -292,6 +299,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   for (const method of Object.values(mock)) method.mockClear();
+  tankUi.update.mockClear(); tankUi.show.mockClear(); tankUi.reset.mockClear();
 });
 
 describe('GameApp config and frame lifecycle', () => {
@@ -1053,3 +1061,20 @@ vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   toggle = mock.panelToggle;
   dispose = mock.panelDispose;
 } }));
+
+it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset the same app', async () => {
+  const raf = createRaf(), base = mock.getState(), app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+  await startGame(app); raf.frame(0);
+  const tank = startDefenseTank(0, 17, gameData.catharsis!.defenseTank!);
+  Object.assign(tank, { status: 'defeated', hp: 0, phase: 3, defeatedAtSeconds: 90 });
+  const stats = { gruntKills: 5, heavyKills: 3, giantKills: 1, shotsFired: 100, shotsHit: 35, grenadesUsed: 2 };
+  mock.getState.mockReturnValue({ ...base, catharsis: { balance: gameData.catharsis!, trackHalfWidth: 3.2 },
+    progression: { level: 9, xp: 0 }, defenseTank: tank, combatStats: stats });
+  raf.frame(100); expect(tankUi.show).not.toHaveBeenCalled();
+  raf.key('p'); raf.frame(10000); expect(tankUi.show).not.toHaveBeenCalled();
+  raf.key('p'); raf.frame(10250);
+  for (let i = 1; i <= 14; i++) raf.frame(10250 + i * 250);
+  expect(tankUi.show).toHaveBeenCalledWith(stats, 90); expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
+  mock.getState.mockReturnValue(base); tankUi.replay!(); expect(tankUi.reset).toHaveBeenCalled();
+  expect(mock.constructedWith).toHaveBeenCalledTimes(2); app.dispose();
+});

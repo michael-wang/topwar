@@ -24,6 +24,7 @@ it('keeps the last Grenade usable after an ordinary Giant kill evolves Lv5 into 
   state.projectiles=[{id:1,kind:'rifle',tier:1,lane:2,slopeX:0,x:0,z:2.5,speed:60,
     damage:config.tiers.tier1Power,remainingRange:20,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
   state.weapons.nextProjectileId=2;
+  state.combatStats!.shotsFired=1;
   sim.restoreState(state);sim.step(1/60,{targetX:0},tuning);
   const evolved=sim.getState();
   expect(evolved.progression).toEqual({level:6,xp:0});expect(evolved.squad.count).toBe(1);

@@ -152,3 +152,21 @@
   .beachhead-defense .xp-hud.level-up .xp-track { animation: none; }
   .beachhead-defense .level-up .level-up-message { animation: none; opacity: 1; transform: none; }
 }
+/* Stage 1 tank encounter: compact HP at the top and a touch-sized clear card. */
+.tank-boss-hud { position: absolute; z-index: 15; top: max(66px, calc(env(safe-area-inset-top) + 54px));
+  left: 10%; width: 80%; pointer-events: none; color: #fff3dc; text-align: center;
+  font: 900 12px/1.5 var(--font-combat-display); text-shadow: 1px 2px #142332; }
+.tank-boss-hud[hidden], .stage-clear-overlay[hidden] { display: none; }
+.tank-boss-bar { height: 13px; overflow: hidden; background: #142332; border: 2px solid #fff3dc; box-shadow: 0 2px #142332; }
+.tank-boss-fill { height: 100%; background: #f3532f; transform-origin: left; }
+.tank-boss-hud[data-phase="3"] .tank-boss-fill { background: #ff2518; }
+.stage-clear-overlay { position: absolute; inset: 0; z-index: 35; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 20px; padding: 24px 18px;
+  background: #142332bc; color: #fff3dc; font-family: var(--font-combat-display); }
+.stage-clear-overlay h1 { margin: 0; font-size: clamp(28px, 8vw, 40px); color: #ffd16c; text-shadow: 2px 3px #142332; }
+.stage-clear-overlay dl { display: grid; grid-template-columns: 1fr auto; gap: 12px 15px; width: min(100%, 330px);
+  padding: 18px 14px; margin: 0; box-sizing: border-box; border: 2px solid #b4c4c9; border-radius: 8px; background: #172f42; }
+.stage-clear-overlay dt { font-size: 13px; }
+.stage-clear-overlay dd { margin: 0; text-align: right; font-size: 16px; font-weight: 900; }
+.stage-clear-overlay button { min-height: 52px; padding: 12px 28px; font: 900 20px var(--font-combat-display);
+  color: #142332; background: #ffd16c; border: 2px solid #fff3dc; border-radius: 8px; cursor: pointer; }

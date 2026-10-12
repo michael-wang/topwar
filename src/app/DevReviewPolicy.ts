@@ -5,7 +5,7 @@ import { destroyerDefaults } from '../config/destroyerConfig';
 // complete saved configuration remains authoritative through Retry/recovery.
 export function isolatedReviewOptions(options: SimulationOptions): SimulationOptions {
   if (!options.catharsis) return options;
-  const { levelEncounters: _encounters, navalBarrage: _barrage, ...balance } = options.catharsis.balance;
+  const { levelEncounters: _encounters, navalBarrage: _barrage, defenseTank: _tank, ...balance } = options.catharsis.balance;
   if (balance.destroyer?.attackPolicy === 'barrage') {
     const {attackPolicy: _policy, ...destroyer}=balance.destroyer;
     balance.destroyer={...destroyer,shotTimes:[...destroyerDefaults.shotTimes]};
