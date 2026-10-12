@@ -29,7 +29,7 @@
           "id": "survival-handoff",
           "when": {
             "kind": "machineGunRelease",
-            "delaySeconds": 27
+            "delaySeconds": 3.2
           },
           "actions": [
             "startSurvival",
@@ -68,7 +68,7 @@
     },
     "carnival": {
       "enabled": true,
-      "durationSeconds": 24,
+      "durationSeconds": 3.2,
       "firstWaveSeconds": 2,
       "waveIntervalSeconds": 1.5,
       "groupSize": 36,
