@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
 import released from './fixtures/released-b7-checkpoint.json';
+import deployed from './fixtures/released-pages-checkpoint.json';
 import { CHECKPOINT_KEY, readCheckpoint, simulationFromCheckpoint } from '../src/app/SessionCheckpoint';
 import { pilotTuning } from '../scripts/qa/DefensePilot';
 
 const canonical = (value) => JSON.stringify(value, (_key, v) => v && !Array.isArray(v)
   && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, v[k]])) : v);
-it('recovers the exact released B7 checkpoint and replays its next 600 recorded inputs', () => {
+it.each([{name:'B7',data:released},{name:'published B6B5',data:deployed}])('recovers the exact $name checkpoint and replays its next 600 recorded inputs', ({data:released}) => {
   const text = JSON.stringify(released.checkpoint);
   const saved = readCheckpoint({getItem: key => key === CHECKPOINT_KEY ? text : null,
     setItem: () => {}, removeItem: () => {}});
