@@ -4,7 +4,7 @@ This is the current closed-playtest contract. Balance values live in `public/gam
 
 ## Controls and combat
 
-Five stationary lanes; player Z=0. Hold left/right for adjacent lane steps, or use A/D/arrows. The squad fires automatically along its selected corridor. Projectiles, swept collision, damage, targeting and RNG are authoritative Simulation behavior. A direct enemy contact or artillery hit removes one living soldier; losing the last soldier is Game Over. Weapon-stage upgrades do not undo casualties.
+Five stationary lanes; player Z=0. Hold left/right for adjacent lane steps, or use A/D/arrows. Touch uses the most recently pressed finger; releasing it restores the newest remaining finger. Same-direction fingers share one cadence without duplicate steps. Direction changes step immediately, then repeat after 180ms at 120ms intervals. In portrait touch mode, transparent hit areas reach the viewport’s lower corners and safe inset, extend 13px above the visible faces, and cover 20% of each XP end while preserving its center and the unchanged button art. Pause/end/retry, lost focus and page hiding clear held input. The squad fires automatically along its selected corridor. Projectiles, swept collision, damage, targeting and RNG are authoritative Simulation behavior. A direct enemy contact or artillery hit removes one living soldier; losing the last soldier is Game Over. Weapon-stage upgrades do not undo casualties.
 
 ## 海防指揮官通訊
 

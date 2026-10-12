@@ -159,10 +159,10 @@ it('never steers from the old invisible viewport/bottom surface or pointer compa
   f.input.dispose();
 });
 
-it.each(['pointercancel','lostpointercapture','touchcancel','blur','hidden','focus','stop','dispose'])(
+it.each(['pointercancel','lostpointercapture','blur','hidden','focus','stop','dispose'])(
   '%s ends a button hold without stale repeat or pressed feedback', cleanup => {
     const f=fixture();f.pointer('pointerdown',-1);vi.advanceTimersByTime(100);
-    if(['pointercancel','lostpointercapture','touchcancel'].includes(cleanup))f.pointer(cleanup,-1);
+    if(['pointercancel','lostpointercapture'].includes(cleanup))f.pointer(cleanup,-1);
     else if(cleanup==='blur')f.keys.dispatchEvent(new Event('blur'));
     else if(cleanup==='hidden'){f.doc.hidden=true;f.doc.dispatchEvent(new Event('visibilitychange'));}
     else if(cleanup==='focus')f.dispatch(f.keys,'focusin',{target:{closest:()=>({})}});
@@ -171,12 +171,16 @@ it.each(['pointercancel','lostpointercapture','touchcancel','blur','hidden','foc
     vi.advanceTimersByTime(1000);expect(f.step).toHaveBeenCalledTimes(1);expect(vi.getTimerCount()).toBe(0);
     f.input.dispose();
   });
-it('ignores second fingers and non-left mouse presses; fresh opposite press works after release',()=>{
+it('uses the latest finger, restores the earlier direction, and restarts only one repeat clock',()=>{
   const f=fixture();f.pointer('pointerdown',1,{pointerType:'mouse',button:2});expect(f.step).not.toHaveBeenCalled();
-  f.pointer('pointerdown',-1);f.pointer('pointerdown',1,{pointerId:2});
-  f.pointer('pointerup',1,{pointerId:2});vi.advanceTimersByTime(180);
-  expect(f.step.mock.calls).toEqual([[-1],[-1]]);
-  f.pointer('pointerup',-1);f.pointer('pointerdown',1,{pointerId:2});expect(f.step.mock.lastCall).toEqual([1]);
+  f.pointer('pointerdown',-1);vi.advanceTimersByTime(100);f.pointer('pointerdown',1,{pointerId:2});
+  expect(f.step.mock.calls).toEqual([[-1],[1]]);expect(f.buttons[0].captures.has(1)).toBe(true);
+  vi.advanceTimersByTime(179);expect(f.step).toHaveBeenCalledTimes(2);
+  vi.advanceTimersByTime(1);expect(f.step.mock.lastCall).toEqual([1]);
+  f.pointer('pointerup',1,{pointerId:2});expect(f.step.mock.calls).toEqual([[-1],[1],[1],[-1]]);
+  expect(vi.getTimerCount()).toBe(1);vi.advanceTimersByTime(179);expect(f.step).toHaveBeenCalledTimes(4);
+  vi.advanceTimersByTime(1);expect(f.step.mock.lastCall).toEqual([-1]);
+  f.pointer('pointerup',-1);expect(vi.getTimerCount()).toBe(0);
   f.input.dispose();
 });
 it('reaches a lane edge without timer churn but retains held feedback until release',()=>{
@@ -201,11 +205,53 @@ it('abandons a failed capture without moving or scheduling a stranded hold',()=>
   f.pointer('pointerdown',-1);expect(f.step).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0);f.input.dispose();
 });
 
-it('cleans up a non-cancelable browser touch cancellation without trying to prevent its default',()=>{
+it('ignores unidentified touch cancellation and handles the authoritative pointer cancellation',()=>{
   const f=fixture();f.pointer('pointerdown',-1);
   const event=new Event('touchcancel',{cancelable:false});
   const prevent=vi.spyOn(event,'preventDefault');f.buttons[0].dispatchEvent(event);
-  expect(prevent).not.toHaveBeenCalled();expect(f.buttons[0].attrs['aria-pressed']).toBe('false');
+  expect(prevent).not.toHaveBeenCalled();expect(f.buttons[0].attrs['aria-pressed']).toBe('true');
+  f.pointer('pointercancel',-1);
   vi.advanceTimersByTime(1000);expect(f.step).toHaveBeenCalledTimes(1);expect(vi.getTimerCount()).toBe(0);
   f.input.dispose();
+});
+
+it.each(['pointerup','pointercancel','lostpointercapture'])('an earlier finger %s cannot cancel the newer direction or its cadence',type=>{
+  const f=fixture();f.pointer('pointerdown',-1);f.pointer('pointerdown',1,{pointerId:2});
+  vi.advanceTimersByTime(100);f.pointer(type,-1);
+  expect(f.buttons[1].attrs['aria-pressed']).toBe('true');expect(vi.getTimerCount()).toBe(1);
+  vi.advanceTimersByTime(80);expect(f.step.mock.calls).toEqual([[-1],[1],[1]]);
+  f.pointer('lostpointercapture',-1);expect(vi.getTimerCount()).toBe(1);
+  f.pointer('pointerup',1,{pointerId:2});expect(vi.getTimerCount()).toBe(0);f.input.dispose();
+});
+it('same-direction fingers keep one cadence without extra immediate moves, including newest-finger release',()=>{
+  const f=fixture();f.pointer('pointerdown',-1);vi.advanceTimersByTime(100);
+  f.pointer('pointerdown',-1,{pointerId:2});f.pointer('pointerdown',-1,{pointerId:2});
+  expect(f.step.mock.calls).toEqual([[-1]]);expect(vi.getTimerCount()).toBe(1);
+  f.pointer('pointerup',-1,{pointerId:2});expect(f.step).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(80);expect(f.step.mock.calls).toEqual([[-1],[-1]]);
+  f.pointer('pointerdown',-1,{pointerId:3});f.pointer('pointerup',-1);vi.advanceTimersByTime(120);
+  expect(f.step.mock.calls).toEqual([[-1],[-1],[-1]]);
+  f.pointer('pointerup',-1,{pointerId:3});expect(vi.getTimerCount()).toBe(0);f.input.dispose();
+});
+it.each(['blur','hidden','focus','stop','dispose'])('%s clears all captured fingers and restart never revives them',cleanup=>{
+  const f=fixture();f.pointer('pointerdown',-1);f.pointer('pointerdown',1,{pointerId:2});
+  if(cleanup==='blur')f.keys.dispatchEvent(new Event('blur'));
+  else if(cleanup==='hidden'){f.doc.hidden=true;f.doc.dispatchEvent(new Event('visibilitychange'));}
+  else if(cleanup==='focus')f.dispatch(f.keys,'focusin',{target:{closest:()=>({})}});
+  else f.input[cleanup as 'stop'|'dispose']();
+  expect(f.buttons.every(b=>b.captures.size===0&&b.attrs['aria-pressed']==='false')).toBe(true);
+  expect(vi.getTimerCount()).toBe(0);f.input.start();
+  f.pointer('pointerup',1,{pointerId:2});vi.advanceTimersByTime(1000);expect(f.step.mock.calls).toEqual([[-1],[1]]);
+  f.pointer('pointerdown',-1,{pointerId:3});expect(f.step.mock.lastCall).toEqual([-1]);f.input.dispose();
+});
+it('keyboard takeover releases all pointers before synchronous lost-capture events can restore a finger',()=>{
+  const f=fixture();for(const b of f.buttons)b.releasePointerCapture=(id:number)=>{b.captures.delete(id);f.dispatch(b,'lostpointercapture',{pointerId:id});};
+  f.pointer('pointerdown',-1);f.pointer('pointerdown',1,{pointerId:2});f.key('keydown','a');
+  expect(f.buttons.every(b=>b.captures.size===0)).toBe(true);expect(f.step.mock.calls).toEqual([[-1],[1],[-1]]);
+  f.key('keyup','a');expect(vi.getTimerCount()).toBe(0);f.input.dispose();
+});
+it('a failed second capture leaves the first finger and its repeat intact',()=>{
+  const f=fixture();f.pointer('pointerdown',-1);f.buttons[1].setPointerCapture=()=>{throw Error('canceled pointer');};
+  f.pointer('pointerdown',1,{pointerId:2});vi.advanceTimersByTime(180);
+  expect(f.step.mock.calls).toEqual([[-1],[-1]]);expect(f.buttons[0].captures.has(1)).toBe(true);f.input.dispose();
 });

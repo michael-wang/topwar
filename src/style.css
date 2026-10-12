@@ -308,15 +308,16 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 }
 .beachhead-defense .game-over-overlay button { background: var(--coast-paper); color: var(--coast-ink); }
 .combat-control-strip {
+  --movement-width: 64px; --movement-gap: 10px;
   position: absolute; z-index: 3; left: var(--hud-safe-left); right: var(--hud-safe-right); bottom: var(--hud-safe-bottom);
-  display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: var(--movement-width) minmax(0, 1fr) var(--movement-width); align-items: center; gap: var(--movement-gap);
   padding: 6px; box-sizing: border-box; border: 1px solid #53667c; border-radius: 12px;
   background: linear-gradient(180deg, #1b2b3de8, #0c1725ed); box-shadow: 0 4px 12px #0b162b55, inset 0 1px 0 #ffffff19;
   pointer-events: none;
 }
 .combat-progression { min-width: 0; }
 .movement-button {
-  width: 64px; height: 60px; padding: 0; display: grid; place-items: center; box-sizing: border-box;
+  width: var(--movement-width); height: 60px; padding: 0; display: grid; place-items: center; box-sizing: border-box;
   border: 1px solid #8b9db0; border-radius: 8px;
   /* Keep the lower bevel inside a continuous border, including its corners. */
   background: linear-gradient(#435c75, #273d55); color: #f8f5e9; box-shadow: inset 0 1px 0 #ffffff38, inset 0 -3px 0 #101b2b, 0 2px 2px #09142499;
@@ -328,6 +329,21 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   background: linear-gradient(#56799a, #345471); color: #ffdb9c; box-shadow: inset 0 2px 5px #0c192e88, 0 0 8px #ffae4938; }
 .movement-button:disabled { cursor: default; color: #91a0b0; border-color: #435469; background: #263649; box-shadow: none; }
 .movement-button:focus-visible { outline: 2px solid var(--combat-gold); outline-offset: 2px; }
+.movement-touch-area { display: none; }
+/* The portrait touch viewport is full-bleed. Expand only transparent button children:
+   20% of XP at each end, 13px above the face, and through the bottom safe inset. */
+@media (any-pointer: coarse) and (orientation: portrait) {
+  .combat-control-strip {
+    --movement-touch-inward: calc(1px + var(--movement-gap) +
+      (100vw - var(--hud-safe-left) - var(--hud-safe-right) - 14px - 2 * var(--movement-width) - 2 * var(--movement-gap)) * .2);
+  }
+  .movement-touch-area { display: block; position: absolute; z-index: 3; top: -14px;
+    bottom: calc(-1 * (var(--hud-safe-bottom) + 8px)); touch-action: none; }
+  .movement-left .movement-touch-area { left: calc(-1 * (var(--hud-safe-left) + 8px));
+    right: max(calc(-1 * var(--movement-touch-inward)), calc(100% + var(--hud-safe-left) + 9px - 50vw)); }
+  .movement-right .movement-touch-area { right: calc(-1 * (var(--hud-safe-right) + 8px));
+    left: max(calc(-1 * var(--movement-touch-inward)), calc(100% + var(--hud-safe-right) + 9px - 50vw)); }
+}
 .xp-hud {
   position: relative; height: 60px; display: flex; align-items: center; pointer-events: none;
   color: var(--combat-paper); font: 900 .75rem/1.3 var(--font-combat-hud); letter-spacing: .03em;
@@ -504,8 +520,7 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .supply-reward-item svg { width: 100%; height: 100%; }
 @keyframes grenade-acquired { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.1); } }
 @media (max-width: 370px) {
-  .combat-control-strip { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; }
-  .movement-button { width: 56px; }
+  .combat-control-strip { --movement-width: 56px; --movement-gap: 8px; }
   .xp-level-number { font-size: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {

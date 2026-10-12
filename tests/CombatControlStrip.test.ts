@@ -18,6 +18,8 @@ it('places accessible visible movement buttons around a dedicated progression ho
     expect(button.type).toBe('button');expect(button.disabled).toBe(true);expect(button.draggable).toBe(false);
     expect(button.innerHTML).toContain('<svg');
     expect(button.innerHTML).toContain(`class="combat-keycue" aria-hidden="true">${index===0?'A':'D'}</span>`);
+    expect(button.children[0].className).toBe('movement-touch-area');
+    expect(button.children[0].attributes['aria-hidden']).toBe('true');
   }
   strip.dispose();expect(root.removed).toBe(true);
 });
