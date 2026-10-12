@@ -84,10 +84,8 @@ it('shows continuously visible lane-locked overhead warnings for the complete fl
   for(const time of [0,.45,1,Math.min(...pair.map(s=>s.impactAtSeconds))-.001]){
     r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000,{x:2.8,z:0},rotation);
     expect(danger.visible).toBe(true);expect(danger.count).toBe(2);expect(danger.material).toMatchObject({opacity:1,transparent:true});
-    const alpha=danger.geometry.getAttribute('warningOpacity');
-    expect(alpha.getX(0)).toBeGreaterThanOrEqual(.149);
-    expect(alpha.getX(0)).toBeLessThanOrEqual(1);
-    if(time===0)expect(alpha.getX(0)).toBeCloseTo(.15);
+    const fill=danger.geometry.getAttribute('warningFillProgress');
+    expect(fill.getX(0)).toBeCloseTo(time/pair[0].flightSeconds);
     expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
     expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
     for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);expect(matrix.elements[12]).toBeCloseTo(-pair[i].target.x*.72);
@@ -96,9 +94,10 @@ it('shows continuously visible lane-locked overhead warnings for the complete fl
     for(let i=0;i<8;i++)expect(scene.getObjectByName(`enemy-shell-warning-${i}`)!.visible).toBe(false);
   }
   r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:2.8,z:0},rotation);
-  danger.getMatrixAt(0,matrix);const fixed=matrix.toArray();
+  danger.getMatrixAt(0,matrix);const fixed=matrix.toArray(),fill=danger.geometry.getAttribute('warningFillProgress').getX(0);
   r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},9000,{x:-2.8,z:0},rotation);
   danger.getMatrixAt(0,matrix);expect(matrix.toArray()).toEqual(fixed); // Paused simulation freezes the pulse too.
+  expect(danger.geometry.getAttribute('warningFillProgress').getX(0)).toBe(fill);
   r.update({shells:[],elapsedSeconds:3,warningPresentation:'overheadLanes'},9001);expect(danger.count).toBe(0);r.dispose();
   expect(scene.children).toHaveLength(0);
 });
@@ -107,9 +106,13 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const first={...shell},second={...shell,id:2,launchedAtSeconds:.3,impactAtSeconds:shell.impactAtSeconds+.3};
   const state={shells:[first,second],elapsedSeconds:.31,warningPresentation:'overheadLanes' as const};
+  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
+  const fill=mesh.geometry.getAttribute('warningFillProgress');
   r.restore(state);r.update(state,0);expect(r.getDebugStats().warnings).toBe(1);
+  expect(fill.getX(0)).toBeCloseTo(.31/first.flightSeconds);
   expect(scene.getObjectByName('enemy-cannon-flash-1')!.visible).toBe(false);
   r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000);expect(r.getDebugStats().warnings).toBe(1);
+  expect(fill.getX(0)).toBeCloseTo((first.impactAtSeconds-second.launchedAtSeconds)/second.flightSeconds);
   r.update({...state,shells:[],elapsedSeconds:first.impactAtSeconds+.1},1000);expect(r.getDebugStats().warnings).toBe(0);
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
@@ -134,43 +137,44 @@ it.each([350,390])('fits every overhead lane including its directional edge insi
   r.dispose();
 });
 
-it('uses independent per-lane colors and a final-150ms punch without moving anchors',()=>{
+it('uses independent per-lane fill and a final-150ms pulse that freezes and resumes with simulation time',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const pair=[{...shell,targetLane:0,target:{...shell.target,x:-2.8},launchedAtSeconds:0,impactAtSeconds:2},
     {...shell,id:2,targetLane:1,target:{...shell.target,x:-1.4},launchedAtSeconds:1,impactAtSeconds:3}];
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
-  expect(mesh.instanceColor).not.toBeNull();
-  const a=new THREE.Color(),b=new THREE.Color(),matrix=new THREE.Matrix4();
+  const matrix=new THREE.Matrix4(),fill=mesh.geometry.getAttribute('warningFillProgress');
   r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},1900);
-  mesh.getColorAt(0,a);mesh.getColorAt(1,b);expect(a.getHex()).toBe(new THREE.Color('#ff1000').getHex());expect(a.equals(b)).toBe(false);
-  const previousRed=new THREE.Color('#ff2518');
-  expect(Math.min(a.r,a.g,a.b)).toBeLessThan(Math.min(previousRed.r,previousRed.g,previousRed.b));
-  expect(mesh.geometry.getAttribute('warningOpacity').getX(0)).toBe(1);
-  expect(mesh.geometry.getAttribute('warningOpacity').getX(1)).toBeLessThan(.6);
+  expect(fill.getX(0)).toBeCloseTo(.95);expect(fill.getX(1)).toBeCloseTo(.45);
   mesh.getMatrixAt(0,matrix);const punch=new THREE.Vector3().setFromMatrixScale(matrix).x;
-  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000);mesh.getMatrixAt(0,matrix);
-  expect(punch).toBeGreaterThan(new THREE.Vector3().setFromMatrixScale(matrix).x);
+  const pausedMatrix=matrix.toArray();
+  r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},9000);mesh.getMatrixAt(0,matrix);
+  expect(matrix.toArray()).toEqual(pausedMatrix);expect(fill.getX(0)).toBeCloseTo(.95);
+  r.update({shells:pair,elapsedSeconds:1.95,warningPresentation:'overheadLanes'},9050);
+  expect(fill.getX(0)).toBeCloseTo(.975);
+  r.update({shells:pair,elapsedSeconds:1.849,warningPresentation:'overheadLanes'},1000);mesh.getMatrixAt(0,matrix);
+  expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBe(1);expect(punch).toBeGreaterThan(1);
   expect(mesh.material).toMatchObject({opacity:1,transparent:true});r.dispose();
 });
 
-it('preallocates one stable directional/alpha shader layout and never blinks off near impact',()=>{
+it('preallocates one inward-fill shader and keeps red and ivory fully visible throughout flight',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
-  const attribute=mesh.geometry.getAttribute('warningOpacity'),color=mesh.instanceColor,material=mesh.material as THREE.MeshBasicMaterial;
-  expect(attribute.count).toBe(8);expect(color!.count).toBe(8);
+  const attribute=mesh.geometry.getAttribute('warningFillProgress'),material=mesh.material as THREE.MeshBasicMaterial;
+  expect(attribute.count).toBe(8);expect(mesh.instanceColor).toBeNull();
   const shader={vertexShader:'#include <common>\n#include <begin_vertex>',fragmentShader:'#include <common>\n#include <color_fragment>'};
   material.onBeforeCompile(shader as any,{} as any);
-  expect(shader.vertexShader).toContain('vWarningOpacity = warningOpacity');
+  expect(shader.vertexShader).toContain('vWarningFillProgress = warningFillProgress');
   expect(shader.vertexShader).toContain('vWarningAccent = warningAccent');
+  expect(shader.vertexShader).toContain('vWarningBarycentric = warningBarycentric');
   expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a)');
-  expect(shader.fragmentShader).toContain('diffuseColor.a *= vWarningOpacity');
-  let previous=0;
-  for(let i=0;i<=100;i++){
-    const time=shell.launchedAtSeconds+(shell.impactAtSeconds-shell.launchedAtSeconds)*i/100;
+  expect(shader.fragmentShader).toContain('(1.0 - sqrt(1.0 - vWarningFillProgress)) / 3.0');
+  expect(shader.fragmentShader).toContain('if (vWarningAccent.a < 0.5 && edgeDistance > inset) discard');
+  for(const progress of [0,.25,.5,.9,.99,1]){
+    const time=shell.launchedAtSeconds+(shell.impactAtSeconds-shell.launchedAtSeconds)*progress;
     r.update({shells:[shell],elapsedSeconds:time,warningPresentation:'overheadLanes'},0);
-    expect(attribute.getX(0)).toBeGreaterThanOrEqual(previous);previous=attribute.getX(0);
-    expect(mesh.geometry.getAttribute('warningOpacity')).toBe(attribute);expect(mesh.instanceColor).toBe(color);
-    if(shell.impactAtSeconds-time<=.15)expect(attribute.getX(0)).toBe(1);
+    expect(attribute.getX(0)).toBeCloseTo(progress);
+    expect(mesh.geometry.getAttribute('warningFillProgress')).toBe(attribute);
+    expect(material.color.getHexString()).toBe('ff1000');expect(material.opacity).toBe(1);
   }
   r.dispose();
 });
@@ -179,12 +183,20 @@ it('merges the downward triangle, thin rim and ivory exclamation into one owned 
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
   const positions=mesh.geometry.getAttribute('position'),accents=mesh.geometry.getAttribute('warningAccent');
+  const barycentric=mesh.geometry.getAttribute('warningBarycentric');
   expect(accents.count).toBe(positions.count);
   const body=[] as THREE.Vector3[],rim=[] as THREE.Vector3[],glyph=[] as THREE.Vector3[];
   const ivory=new THREE.Color('#fff3dc');
   for(let i=0;i<positions.count;i++) {
     const p=new THREE.Vector3().fromBufferAttribute(positions,i);
-    (accents.getW(i)===0?body:Math.abs(accents.getX(i)-ivory.r)<1e-6?glyph:rim).push(p);
+    if(accents.getW(i)===0){
+      const bary=new THREE.Vector3().fromBufferAttribute(barycentric,i);
+      expect(bary.toArray().sort()).toEqual([0,0,1]);
+    }else{
+      const accent=new THREE.Color(accents.getX(i),accents.getY(i),accents.getZ(i));
+      expect(['ff1000','fff3dc']).toContain(accent.getHexString());
+    }
+    (accents.getW(i)===0?body:Math.abs(accents.getY(i)-ivory.g)<1e-6?glyph:rim).push(p);
   }
   expect(body).toHaveLength(3);expect(glyph.length).toBeGreaterThan(3);expect(rim.length).toBeGreaterThan(3);
   const tip=body.reduce((a,b)=>a.y<b.y?a:b);

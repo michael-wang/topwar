@@ -6,17 +6,13 @@ import type { ArtilleryShell } from '../simulation/artillery';
 // One bounded billboard batch; each lane uses its earliest authoritative impact.
 export class OverheadLaneWarnings {
   private readonly geometry: THREE.BufferGeometry;
-  private readonly material = new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,
+  private readonly material = new THREE.MeshBasicMaterial({color:'#ff1000',transparent:true,
     depthTest:false,depthWrite:false,toneMapped:false});
   private readonly batch: THREE.InstancedMesh;
-  private readonly opacity = new THREE.InstancedBufferAttribute(new Float32Array(ARTILLERY_CAPACITY),1);
+  private readonly fillProgress = new THREE.InstancedBufferAttribute(new Float32Array(ARTILLERY_CAPACITY),1);
   private readonly transform = new THREE.Object3D();
   private readonly deadlines = new Float64Array(16);
   private readonly starts = new Float64Array(16);
-  private readonly early = new THREE.Color('#b07c73');
-  private readonly middle = new THREE.Color('#eb5635');
-  private readonly late = new THREE.Color('#ff1000');
-  private readonly tint = new THREE.Color();
   private readonly xs = new Float64Array(16);
   private readonly zs = new Float64Array(16);
   count = 0;
@@ -35,36 +31,45 @@ export class OverheadLaneWarnings {
     const dot=new THREE.Shape();dot.absarc(0,-.11,.075,0,Math.PI*2,false);
     const parts = [new THREE.ShapeGeometry(rim), new THREE.ShapeGeometry(triangle(.375, .335, -.385)),
       new THREE.ShapeGeometry([stem,dot])];
-    // Static accents bypass the per-lane body tint. Merge all regions into one
+    // Static accents bypass the inward fill mask. Merge all regions into one
     // batch: a thin rim, directional fill and ivory glyph need no extra draw calls.
-    const accents = [new THREE.Color('#3b4045'), null, new THREE.Color('#fff3dc')];
+    const accents = [this.material.color, null, new THREE.Color('#fff3dc')];
     parts.forEach((part, index) => {
       const accent = accents[index], values = new Float32Array(part.attributes.position.count * 4);
       if (accent) for (let v = 0; v < values.length; v += 4) {
         values[v] = accent.r; values[v + 1] = accent.g; values[v + 2] = accent.b; values[v + 3] = 1;
       }
       part.setAttribute('warningAccent', new THREE.Float32BufferAttribute(values, 4));
+      const barycentric = new Float32Array(part.attributes.position.count * 3);
+      // The body is one triangle. Its interpolated barycentric coordinates
+      // measure distance from each edge, independent of billboard scale.
+      if (index === 1) for (let v = 0; v < 3; v++) barycentric[v * 3 + v] = 1;
+      part.setAttribute('warningBarycentric', new THREE.Float32BufferAttribute(barycentric, 3));
     });
     this.geometry = mergeGeometries(parts)!;
     for (const part of parts) part.dispose();
-    this.opacity.setUsage(THREE.DynamicDrawUsage);
-    this.geometry.setAttribute('warningOpacity',this.opacity);
+    this.fillProgress.setUsage(THREE.DynamicDrawUsage);
+    this.geometry.setAttribute('warningFillProgress',this.fillProgress);
     // Fixed shader layout is allocated before idle presentation preparation.
-    // Instance alpha avoids separate meshes/materials for independent lane clocks.
+    // Instance progress avoids separate meshes/materials for independent lane clocks.
     this.material.onBeforeCompile=shader=>{
       shader.vertexShader=shader.vertexShader.replace('#include <common>',
-        '#include <common>\nattribute float warningOpacity;\nattribute vec4 warningAccent;\nvarying float vWarningOpacity;\nvarying vec4 vWarningAccent;')
-        .replace('#include <begin_vertex>','#include <begin_vertex>\nvWarningOpacity = warningOpacity;\nvWarningAccent = warningAccent;');
+        '#include <common>\nattribute float warningFillProgress;\nattribute vec4 warningAccent;\nattribute vec3 warningBarycentric;\nvarying float vWarningFillProgress;\nvarying vec4 vWarningAccent;\nvarying vec3 vWarningBarycentric;')
+        .replace('#include <begin_vertex>','#include <begin_vertex>\nvWarningFillProgress = warningFillProgress;\nvWarningAccent = warningAccent;\nvWarningBarycentric = warningBarycentric;');
       shader.fragmentShader=shader.fragmentShader.replace('#include <common>',
-        '#include <common>\nvarying float vWarningOpacity;\nvarying vec4 vWarningAccent;')
-        .replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a);\ndiffuseColor.a *= vWarningOpacity;');
+        '#include <common>\nvarying float vWarningFillProgress;\nvarying vec4 vWarningAccent;\nvarying vec3 vWarningBarycentric;')
+        .replace('#include <color_fragment>',`#include <color_fragment>
+          // Shrink a similar transparent triangle toward its centroid.
+          // Area filled equals elapsed flight fraction, not a saturation curve.
+          float inset = (1.0 - sqrt(1.0 - vWarningFillProgress)) / 3.0;
+          float edgeDistance = min(min(vWarningBarycentric.x, vWarningBarycentric.y), vWarningBarycentric.z);
+          if (vWarningAccent.a < 0.5 && edgeDistance > inset) discard;
+          diffuseColor.rgb = mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a);`);
     };
-    this.material.customProgramCacheKey=()=> 'overhead-warning-directional-v2';
+    this.material.customProgramCacheKey=()=> 'overhead-warning-inward-fill-v3';
     this.batch=new THREE.InstancedMesh(this.geometry,this.material,ARTILLERY_CAPACITY);
     this.batch.name='artillery-lane-danger';this.batch.frustumCulled=false;this.batch.renderOrder=14;
     this.batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(this.batch);
-    for(let i=0;i<ARTILLERY_CAPACITY;i++)this.batch.setColorAt(i,this.early);
-    this.batch.instanceColor!.setUsage(THREE.DynamicDrawUsage);
     this.reset();
   }
 
@@ -84,11 +89,7 @@ export class OverheadLaneWarnings {
       const remaining=this.deadlines[lane]-nowSeconds;
       const progress=Math.max(0,Math.min(1,(nowSeconds-this.starts[lane])/(this.deadlines[lane]-this.starts[lane])));
       const final=remaining<=.15;
-      this.tint.copy(progress<.5?this.early:this.middle).lerp(progress<.5?this.middle:this.late,
-        progress<.5?progress*2:(progress-.5)*2);
-      if(final)this.tint.copy(this.late);
-      this.batch.setColorAt(count,this.tint);
-      this.opacity.setX(count,final?1:.15+.85*(progress*progress*(3-2*progress)));
+      this.fillProgress.setX(count,progress);
       const scale=final ? 1.10+.28*Math.sin(Math.max(0,.15-remaining)*Math.PI*24)**2 : 1;
       // Preserve the accepted lane anchors and vertical band; no player-following offset.
       this.transform.position.set(this.xs[lane]*.72,2.05,this.zs[lane]);
@@ -96,7 +97,7 @@ export class OverheadLaneWarnings {
       this.batch.setMatrixAt(count++,this.transform.matrix);
     }
     this.count=count;this.batch.count=count;this.batch.visible=count>0;
-    this.batch.instanceColor!.needsUpdate=true;this.batch.instanceMatrix.needsUpdate=true;this.opacity.needsUpdate=true;
+    this.batch.instanceMatrix.needsUpdate=true;this.fillProgress.needsUpdate=true;
   }
   reset(): void {this.count=0;this.batch.count=0;this.batch.visible=false;}
   dispose(): void {this.scene.remove(this.batch);this.batch.dispose();this.geometry.dispose();this.material.dispose();}

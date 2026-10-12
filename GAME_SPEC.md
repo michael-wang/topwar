@@ -37,7 +37,7 @@ The Observer warning begins at +1.3 seconds. Barrage activation is authored at +
 
 Current Stage 1 salvos contain one or two shells, 50/50, in distinct randomly selected lanes. Only one unresolved salvo is allowed. After its final authoritative impact, draw one floating-point uniform quiet gap in [2,5) seconds from the dedicated naval RNG; launch at the first eligible fixed tick. No repeated draws, catch-up bursts or automatic difficulty mitigation. Historical configurations retain launch-based or discrete-gap semantics. Shell trajectory, collision, damage, impact effects and audio are unchanged.
 
-Warnings are inverted red triangles with an ivory exclamation and thin muted rim at fixed overhead lane positions. Early opacity is subtle, with increasing red saturation and a stronger saturated-red final pulse. Each lane reflects its earliest incoming impact, remains represented throughout flight, and becomes saturated/opaque with a final 150ms pulse. Multiple threats retain the marker until the last resolves. Pause freezes urgency; restore reconstructs from active shells. Current Stage 1 has no ground warning circles.
+Warnings begin as fully saturated bright-red inverted triangle outlines with transparent interiors and clear ivory exclamations at fixed overhead lane positions. Red fills inward from the edges toward the center; the filled area directly tracks elapsed flight fraction and is nearly full before impact. Color and opacity stay constant, with the existing scale pulse in the final 150ms. Each lane reflects its earliest incoming impact; multiple threats retain the marker until the last resolves. Pause freezes fill and pulse; restore reconstructs from active shells. Current Stage 1 has no ground warning circles.
 
 ## AHEAD endless Survival
 
