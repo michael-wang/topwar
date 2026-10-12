@@ -8,7 +8,7 @@ Five stationary lanes; player Z=0. Hold left/right for adjacent lane steps, or u
 
 ## 海防指揮官通訊
 
-The same royal-blue officer uses the fixed upper radio slot: neutral for Command, alert for naval/Tank warnings, and victory for the Stage 1 salute. Opening phrases are 「這裡是海防指揮部。」「其他防線已經失守，灘頭只剩你們這支部隊。」「這裡是港口最後一道防線。」「無論如何，守住它！」. Gameplay begins independently. Forthcoming Commander intro/victory recordings and victory.webp are enabled only when present in the build; absent or failed media uses readable subtitles and neutral art without missing-file requests. Decoded speech duration determines subtitle progression and communication completion, with a short closing margin. Pause freezes the presentation and resumes speech from its offset; restoring a battle never arms a fresh mission introduction.
+The same royal-blue officer uses the fixed upper radio slot: neutral for Command, alert for naval/Tank warnings, and victory for the Stage 1 salute. Opening phrases are 「這裡是海防指揮部。」「其他防線已經失守，灘頭只剩你們這支部隊。」「這裡是港口最後一道防線。」「無論如何，守住它！」. Gameplay begins independently. Approved Commander intro (10.188s) and victory (8.673s) recordings use the existing prefetch/decode/radio pipeline. The optional victory.webp is enabled only when present in the build; absent or failed media uses readable subtitles and neutral art without missing-file requests. Decoded speech duration determines subtitle progression and communication completion, with a short closing margin. Pause freezes the presentation and resumes speech from its offset; restoring a battle never arms a fresh mission introduction.
 
 ## Progression
 

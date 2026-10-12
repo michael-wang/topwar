@@ -277,7 +277,7 @@ it('waits for decoded portraits before starting all parts of the mission at offs
   expect(ui.element.hidden).toBe(true);expect(audio.play).not.toHaveBeenCalled();
   ready=true;ui.update(undefined,undefined,1.5,true,false);
   expect(ui.element.hidden).toBe(false);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
-  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',0,false,12,'missionIntro']);ui.dispose();
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',0,false,10.54,'missionIntro']);ui.dispose();
 });
 it('keeps ready speech with an emblem at the portrait deadline, freezes it, and reuses portraits on Retry', () => {
   let ready = false;
@@ -288,7 +288,7 @@ it('keeps ready speech with an emblem at the portrait deadline, freezes it, and 
   expect(ui.element.hidden).toBe(false);
   expect((ui as any).portrait.className).toBe('observer-fallback');
   const firstSpeech = audio.syncRadio.mock.calls.find(call=>call[1]!==null);
-  expect(firstSpeech).toEqual(['zh-TW',0,false,12,'missionIntro']);
+  expect(firstSpeech).toEqual(['zh-TW',0,false,10.54,'missionIntro']);
   ready=true;
   for (let tick=190; tick<530; tick++) ui.update(undefined,undefined,tick/60,true,false);
   expect((ui as any).portrait.className).toBe('observer-fallback');
@@ -317,7 +317,8 @@ it('prepares Mandarin before Start without playing or arming dialogue',()=>{
   expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', 'tankBoss');
   expect(audio.play).not.toHaveBeenCalled();expect(ui.element.hidden).toBe(true);ui.dispose();
 });
-it('uses the new Commander script and never requests either forthcoming recording', async()=>{
+it('uses the Commander script and never requests absent optional recordings', async()=>{
+  vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(false);
   const {context,nodes}=audioHarness(), loader=vi.fn(async()=>null);
   const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
   for(const message of ['missionIntro','victory'] as const){
@@ -337,7 +338,7 @@ it('presents four mission phrases once, freezes with Pause and restarts only on 
     if(tick===60){
       for(let n=0;n<30;n++)ui.update(undefined,undefined,1,true,true);
       expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);
-      expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',.8,true,12,'missionIntro']);
+      expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',.8,true,10.54,'missionIntro']);
     }
   }
   expect([...shown]).toEqual(observerMissionDialogue['zh-TW']);
@@ -351,7 +352,7 @@ it('presents four mission phrases once, freezes with Pause and restarts only on 
 it('restores mid-intro as Chinese subtitles without repeated speech',()=>{
   const {ui,audio,text}=missionUi();ui.startMission(0);ui.update(undefined,undefined,2.5,true,false);
   expect(ui.element.hidden).toBe(false);expect(audio.play).not.toHaveBeenCalled();
-  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false,12,'missionIntro']);
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false,10.54,'missionIntro']);
   expect(text()).toBe(observerMissionDialogue['zh-TW'][1]);
   ui.reset();ui.update(undefined,undefined,3,true,false);expect(ui.element.hidden).toBe(true);
   ui.startMission(10);ui.update(undefined,undefined,10,true,false);expect(ui.element.hidden).toBe(true);
@@ -402,7 +403,8 @@ it.each(['en-US','zh-CN','ja','zh-TW'])('ignores %s browser language and saved E
 it('completes all Victory phrases without media, freezes during Pause, and lets Retry or Skip end the communication',()=>{
   const {ui,audio,text}=missionUi();audio.prepareRadio.mockReturnValue('unavailable' as any);
   const shown=new Set<string>();
-  for(let tick=0;tick<=600;tick++){
+  const lastTick=Math.ceil(victoryTiming.durationSeconds*60);
+  for(let tick=0;tick<=lastTick;tick++){
     const done=ui.updateVictory(10+tick/60,false);
     if(!ui.element.hidden)shown.add(text());
     if(tick===60){
@@ -410,7 +412,7 @@ it('completes all Victory phrases without media, freezes during Pause, and lets 
       expect(text()).toBe(observerVictoryDialogue['zh-TW'][0]);
       expect((ui as any).skip.disabled).toBe(true);
     }
-    expect(done).toBe(tick===600);
+    expect(done).toBe(tick===lastTick);
   }
   expect([...shown]).toEqual(observerVictoryDialogue['zh-TW']);
   expect(audio.syncRadio.mock.calls.every(c=>c[1]===null)).toBe(true);
@@ -436,7 +438,7 @@ it('uses actual Commander audio length for subtitle progression and completion, 
     expect(ui.element.hidden).toBe(true);ui.dispose();
   }
 });
-it('prepares forthcoming voice only when present, exposes decoded duration and resumes Victory without truncation',async()=>{
+it('prepares optional voice only when present, exposes decoded duration and resumes Victory without truncation',async()=>{
   vi.spyOn(publicAssets,'hasPublicAsset').mockReturnValue(true);
   const {context,nodes}=audioHarness(),loader=vi.fn(async()=>({duration:15.2} as AudioBuffer));
   const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
@@ -447,4 +449,24 @@ it('prepares forthcoming voice only when present, exposes decoded duration and r
   voice.sync('zh-TW',7,false,15.55,'victory');await Promise.resolve();expect(nodes[1].start).toHaveBeenCalledWith(0,7);
   voice.sync('zh-TW',15.19,false,15.55,'victory');expect(nodes[1].stop).not.toHaveBeenCalled();
   voice.sync('zh-TW',null,false);expect(nodes[1].stop).toHaveBeenCalledOnce();expect(loader).toHaveBeenCalledOnce();voice.dispose();
+});
+
+it.each([
+  ['missionIntro','audio/commander_stage1_intro_zh-TW.mp3','57accbe2425b421369639802e15da432c9cf241fd538a51f129fbdaf8a377506',10.188,missionIntroTiming],
+  ['victory','audio/commander_stage1_victory_zh-TW.mp3','d25277d0217f81128fde4f00246b0ee4f330f507343fa68a589ed1f2c9e2a81b',8.673,victoryTiming],
+] as const)('bundles the approved %s bytes and plays its complete duration across Pause/Resume and Retry',async(message,asset,hash,duration,timing)=>{
+  expect(observerVoiceAsset('zh-TW',message)).toBe(asset);
+  expect(createHash('sha256').update(readFileSync('public/'+asset)).digest('hex')).toBe(hash);
+  expect(timing.durationSeconds).toBeGreaterThan(duration+.3);
+  const {context,nodes}=audioHarness(),loader=vi.fn(async()=>({duration} as AudioBuffer));
+  const voice=new ObserverVoice(context,{} as AudioNode,observerVoiceAssets,loader);
+  voice.prepare('zh-TW',message);await Promise.resolve();await Promise.resolve();
+  voice.sync('zh-TW',0,false,timing.durationSeconds,message);await Promise.resolve();
+  expect(nodes[0].start).toHaveBeenCalledWith(0,0);
+  voice.sync('zh-TW',3,true,timing.durationSeconds,message);expect(nodes[0].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW',3,false,timing.durationSeconds,message);await Promise.resolve();expect(nodes[1].start).toHaveBeenCalledWith(0,3);
+  voice.sync('zh-TW',duration-.01,false,timing.durationSeconds,message);expect(nodes[1].stop).not.toHaveBeenCalled();
+  voice.reset();expect(nodes[1].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW',0,false,timing.durationSeconds,message);await Promise.resolve();expect(nodes[2].start).toHaveBeenCalledWith(0,0);
+  expect(loader).toHaveBeenCalledOnce();voice.dispose();
 });

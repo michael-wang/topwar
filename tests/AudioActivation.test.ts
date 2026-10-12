@@ -20,9 +20,10 @@ describe('explicit optional audio activation', () => {
     vi.stubGlobal('fetch', fetcher);
     const h = harness(async () => { h.context.state = 'running'; });
     const audio = new GameAudio();
+    const available = vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(false);
     for (const message of ['missionIntro', 'victory'] as const) expect(audio.prepareRadio('zh-TW', message)).toBe('unavailable');
     expect(fetcher).not.toHaveBeenCalled(); expect(h.construct).not.toHaveBeenCalled();
-    vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(true);
+    available.mockReturnValue(true);
     for (const message of ['missionIntro', 'victory'] as const) expect(audio.prepareRadio('zh-TW', message)).toBe('pending');
     expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/audio/commander_stage1_intro_zh-TW.mp3', '/audio/commander_stage1_victory_zh-TW.mp3']);
     expect(h.construct).not.toHaveBeenCalled(); await audio.activate();

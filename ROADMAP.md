@@ -6,7 +6,7 @@ Prepare the closed-test candidate with 海防指揮官 opening/victory communica
 
 ## NEXT
 
-1. Supply and review the Commander intro/victory recordings and victory portrait on Pixel 8.
+1. Review the supplied Commander intro/victory recordings on Pixel 8; supply the Victory portrait.
 2. Verify Tank Pause/Continue and clear results on the HTTPS playtest origin.
 3. Tune the authored Boss parameters from physical-phone gameplay and performance feedback.
 
