@@ -2,25 +2,9 @@ import { enemyFamilies } from './characterModel';
 import { expect, it } from 'vitest';
 import { ART } from '../src/art/ArtDirection';
 import * as THREE from 'three';
-import { AttackLaneRenderer } from '../src/rendering/AttackLaneRenderer';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { bodyModel, grayBodyModel, helmetModel, runFrames, vestModel } from './characterModel';
 
-it('renders configured corridor positions and grows beyond the initial experiment count', () => {
-  const scene = new THREE.Scene();
-  const renderer = new AttackLaneRenderer(scene);
-  renderer.update([-2.8, 0, 2.8], 10, 0);
-  renderer.update([-2.8, -1.4, 0, 1.4, 2.8], 10, 1.4);
-  const mesh = scene.getObjectByName('attack-corridors') as THREE.InstancedMesh;
-  expect(mesh.count).toBe(5);
-  const transform = new THREE.Matrix4();
-  mesh.getMatrixAt(3, transform);
-  expect(new THREE.Vector3().setFromMatrixPosition(transform).x).toBeCloseTo(-1.4);
-  renderer.update([-3, -2, -1, 0, 1, 2, 3], 10, 0);
-  expect((scene.getObjectByName('attack-corridors') as THREE.InstancedMesh).count).toBe(7);
-  renderer.dispose();
-  expect(scene.children).toHaveLength(0);
-});
 
 it('renders a larger Heavy and preserves configured scale through death', () => {
   const scene = new THREE.Scene();

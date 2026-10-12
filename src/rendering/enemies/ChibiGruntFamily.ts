@@ -65,10 +65,10 @@ export function createChibiGruntFamily(): CrowdVisualFamily<'grunt'> & { dispose
   const runs = [bodyPose(1, 0, .11), bodyPose(-.25, .025, 0),
     bodyPose(-1, .11, 0), bodyPose(.25, 0, .025)];
   // Wide, low pot shell and thick lip distinguish landing troops from the
-  // defender dome/rear panel. Crown stays at the legacy 1.025 authored height.
+  // defender dome/rear panel. Crown stays at the accepted 1.025 authored height.
   const helmetGeometry = merge([{ geometry: toyHelmetShell({ rx: .35, ry: .245, rz: .32, y: .78,
     front: 1.62, side: 1.80, rear: 1.88 }), color: 'white' }]);
-  // The shared legacy contract still requires a vest resource. A zero-vertex
+  // The shared batch contract still requires a vest resource. A zero-vertex
   // adapter removes visible secondary gear without changing other role renderers
   // or allocating a new material. It contributes no triangles or mesh draw.
   const waistGeometry = new THREE.BufferGeometry();

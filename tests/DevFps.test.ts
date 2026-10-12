@@ -6,7 +6,7 @@ it('uses actual RAF intervals, changes DOM at most three times per second and di
   const element = { className: '', style: { cssText: '' }, remove: vi.fn(),
     get textContent() { return text; }, set textContent(v: string | null) { text = v; writes++; } };
   vi.stubGlobal('document', { createElement: () => element });
-  const fps = new DevFps({ append() {} } as unknown as HTMLElement, true);
+  const fps = new DevFps({ append() {} } as unknown as HTMLElement);
   expect(element.style.cssText).toContain('700 14px');
   expect(element.style.cssText).not.toMatch(/background:|border:|padding:/);
   expect(element.style.cssText).toContain('+ 50px');

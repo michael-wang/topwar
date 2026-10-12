@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { startGameRecording, inspectRecordingFrames } from './browser-recording.mjs';
-const phase='after',glInspect=process.argv.includes('--gl'),record=phase==='after'&&!process.argv.includes('--no-record')&&!glInspect,out=process.argv.find(a=>a.startsWith('--out='))?.slice(6)??`artifacts/p3b6b3c/grenade-${phase}${glInspect?'-gl':phase==='after'&&!record?'-timing':''}`;mkdirSync(out,{recursive:true});
+const glInspect=process.argv.includes('--gl'),record=!process.argv.includes('--no-record')&&!glInspect,out=process.argv.find(a=>a.startsWith('--out='))?.slice(6)??`artifacts/qa/golden-grenade${glInspect?'-gl':!record?'-timing':''}`;mkdirSync(out,{recursive:true});
 const server=await createServer({cacheDir:`${out}/cache`,server:{host:'127.0.0.1',port:5187,strictPort:true,watch:{ignored:['**/artifacts/**']}}});await server.listen();
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});const results=[];
@@ -40,7 +40,7 @@ try{for(const width of [350,390])for(const role of glInspect?['survival10-ahead'
   window.dispatchEvent(new KeyboardEvent('keydown',{key:'q',bubbles:true}));window.dispatchEvent(new KeyboardEvent('keyup',{key:'q',bubbles:true}));
   function assertFlight(){if(!a.simulation.getFrameState().grenade.flight)throw Error('Blocked-input check requires an active flight');}});
  const flying=await page.evaluate(()=>({state:window.__testApp.simulation.getState(),thrown:document.querySelector('.grenade-button').classList.contains('grenade-thrown')}));
- assert.equal(flying.state.grenade.inventory,stateBefore.grenade.inventory-1);if(phase==='after')assert(flying.thrown);
+ assert.equal(flying.state.grenade.inventory,stateBefore.grenade.inventory-1);assert(flying.thrown);
  await page.screenshot({path:`${out}/${width}-${role}-launch.png`});
  await page.waitForFunction(()=>!window.__testApp.simulation.getFrameState().grenade.flight);await page.waitForTimeout(350);
  const first=await page.evaluate(({launchAt})=>{
@@ -48,7 +48,7 @@ try{for(const width of [350,390])for(const role of glInspect?['survival10-ahead'
   return{cues:q.cues.filter(e=>e.ms>=launchAt),confirms:q.confirms,gl:q.gl.filter(e=>e.at>=launchAt),frames:times.length,mean:times.reduce((a,b)=>a+b,0)/times.length,p95:times[Math.floor(times.length*.95)],max:times.at(-1),over100:times.filter(n=>n>100).length,over200:times.filter(n=>n>200).length,rows};
  },{launchAt});
  assert.equal(first.cues.filter(e=>e.cue==='grenadeExplosion').length,1);
- assert.equal(first.cues.filter(e=>e.cue==='grenadeLaunch').length,phase==='after'?1:0);assert.equal(first.confirms.length,phase==='after'?1:0);
+ assert.equal(first.cues.filter(e=>e.cue==='grenadeLaunch').length,1);assert.equal(first.confirms.length,1);
  const feedbackRequests=requests.slice(networkAt).filter(u=>/\.(glb|webp|png|mp3|ogg|wav)(\?|$)/.test(u));assert.deepEqual(feedbackRequests,[]);
  // A second real throw, then Pause/reload in flight: restoration must not replay release feedback.
  if(await page.evaluate(()=>window.__testApp.simulation.getFrameState().grenade.inventory>0)){
@@ -61,12 +61,12 @@ try{for(const width of [350,390])for(const role of glInspect?['survival10-ahead'
   await page.getByRole('button',{name:'繼續上次遊戲'}).tap();await page.locator('.session-recovery').waitFor({state:'detached'});
   assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
   const restore=await page.evaluate(()=>{const a=window.__testApp,cues=[],play=a.audio.play.bind(a.audio);a.audio.play=(cue,...args)=>{cues.push(cue);play(cue,...args);};window.__restoredCues=cues;return{paused:a.paused,flash:document.querySelector('.grenade-button').classList.contains('grenade-thrown'),audio:a.audio.context?.state??'not-created'};});
-  assert(restore.paused&&!restore.flash);if(phase==='after')assert.equal(restore.audio,'not-created');
+  assert(restore.paused&&!restore.flash);assert.equal(restore.audio,'not-created');
   await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.waitForFunction(()=>!window.__testApp.simulation.getFrameState().grenade.flight);
   const cues=await page.evaluate(()=>window.__restoredCues);assert(!cues.includes('grenadeLaunch'));assert.equal(cues.filter(c=>c==='grenadeExplosion').length,1);
   await page.evaluate(()=>{const a=window.__testApp;a.retry();cancelAnimationFrame(a.frameId);});assert.equal(await page.locator('.grenade-thrown').count(),0);
  }else if(stopRecord){writeFileSync(`${out}/${width}-${role}.webm`,await stopRecord());}
  assert.deepEqual(errors,[]);
- results.push({phase,width,role,input,levelAtThrow:stateBefore.progression.level,enemies:stateBefore.enemies.length,inventoryBefore:stateBefore.grenade.inventory,first,feedbackRequests,errors});writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));await page.close();
- console.log(`${phase} ${width} ${role}: one impact, ${phase==='after'?'one launch':'baseline no launch'}, safe in-flight restore`);
+ results.push({width,role,input,levelAtThrow:stateBefore.progression.level,enemies:stateBefore.enemies.length,inventoryBefore:stateBefore.grenade.inventory,first,feedbackRequests,errors});writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));await page.close();
+ console.log(`${width} ${role}: one impact, one launch, safe in-flight restore`);
 }}finally{await browser.close();await server.close();}

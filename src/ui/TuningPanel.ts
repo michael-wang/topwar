@@ -20,7 +20,7 @@ export class TuningPanel {
   readonly reviewControlsHost = document.createElement('div');
   private readonly element: HTMLDetailsElement;
   private readonly resetButton = document.createElement('button');
-  private readonly inputs = new Map<Key, HTMLInputElement | HTMLSelectElement>();
+  private readonly inputs = new Map<Key, HTMLInputElement>();
   private readonly outputs = new Map<Key, HTMLOutputElement>();
   private readonly onPointerDown = (event: PointerEvent): void => { event.stopPropagation(); };
   private readonly onInput = (event: Event): void => {
@@ -42,7 +42,7 @@ export class TuningPanel {
   };
 
   constructor(viewport: HTMLElement, private readonly defaults: RuntimeTuning,
-    private readonly onChange: (values: RuntimeTuning) => void, defenseMode = true) {
+    private readonly onChange: (values: RuntimeTuning) => void) {
     this.values = { ...defaults };
     this.element = document.createElement('details');
     this.element.className = 'tuning-panel tuning-panel--coastal-anchor';

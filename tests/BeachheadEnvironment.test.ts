@@ -8,7 +8,7 @@ it('does not allocate retired bridge scenery and presents sand, shore and fixed 
   const environment = new BridgeEnvironment(scene);
   const lanes = new AttackLaneRenderer(scene);
   environment.update(0, 3.2, 0, true);
-  lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0, 0, true);
+  lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0);
   expect(scene.getObjectByName('bridge-deck')).toBeUndefined();
   expect(scene.getObjectByName('bridge-expansion-joint')).toBeUndefined();
   expect(scene.getObjectByName('stationary-defense-beach')!.visible).toBe(true);
@@ -31,11 +31,11 @@ it('does not allocate retired bridge scenery and presents sand, shore and fixed 
       }
     }
   }
-  expect(scene.getObjectByName('attack-corridors')!.visible).toBe(false);
+  expect(scene.getObjectByName('attack-corridors')).toBeUndefined();
   const openings = scene.getObjectByName('beach-corridor-openings')!;
   const before = openings.children.map((child) => child.position.clone());
   environment.update(0, 3.2, 10000, true);
-  lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0, 2.8, true);
+  lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0);
   expect(openings.children.map((child) => child.position)).toEqual(before);
   lanes.dispose();
   environment.dispose();

@@ -162,7 +162,7 @@ export class GameRenderer {
     if (this.disposed) return;
     this.air.update(state.enemies, state.player.z, nowMs, !!state.defenseMode);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs, true);
-    this.attackLanes.update(state.track.lanePositions, state.player.z, state.player.x, state.defenseMode);
+    this.attackLanes.update(state.track.lanePositions, state.player.z);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs, !!state.defenseMode, -state.player.x, state.player.z);
     this.contactShadows.update(state, this.squadRenderer, nowMs);

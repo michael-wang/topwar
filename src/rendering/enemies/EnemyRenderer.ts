@@ -747,7 +747,7 @@ export class EnemyRenderer {
     const mesh = new THREE.InstancedMesh(vest ? batch.family.vest.geometry : batch.family.helmet.geometry,
       batch.helmetMaterial, capacity);
     mesh.name = `${tier}-toy-soldier-${vest ? 'vest' : 'helmet'}`;
-    // An explicitly hidden secondary source retains the legacy resource slot
+    // An explicitly hidden secondary source retains the shared resource slot
     // while contributing no live draw (the simplified Grunt has no waistband).
     mesh.visible = !vest || batch.family.vest.visible;
     mesh.count = 0;

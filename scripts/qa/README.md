@@ -51,6 +51,6 @@ Active shared helpers: DefensePilot.ts (adjacent movement, threat and Grenade de
 
 ## Save and physical-device limits
 
-Released B7 checkpoints have a checked-in replay fixture and strict validation regression. DEV/release and HTTP/HTTPS/localhost origins have separate storage slots. Corrupt/unsupported prototype saves offer New Game. Pixel instructions are in docs/PIXEL8_DEV_TESTING.md.
+Published B6B5 and completed B7 checkpoints have a checked-in replay fixture and strict validation regression. DEV/release and HTTP/HTTPS/localhost origins have separate storage slots. Corrupt/unsupported prototype saves offer New Game. Pixel instructions are in docs/PIXEL8_DEV_TESTING.md.
 
 Desktop automation validates lifecycle signals and controllable Wake Lock sentinels, not Android's physical 15-second timeout or real tab discard. No script deploys, changes frozen tags or tunes difficulty based on pilot deaths.

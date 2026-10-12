@@ -34,13 +34,13 @@ it('keeps stable asymmetric debris with unequal gaps, sizes, rotations and clust
 it('keeps civilian beach sand free of prepared defenses with stable faint scuffs', () => {
   const positions = [-2.8, -1.4, 0, 1.4, 2.8], scene = new THREE.Scene();
   const renderer = new AttackLaneRenderer(scene);
-  renderer.update(positions, 0, 0, true);
+  renderer.update(positions, 0);
   expect(scene.getObjectByName('beach-obstacle')).toBeUndefined();
   const objects = scene.getObjectByName('beach-corridor-openings')!.children;
   expect(objects).toHaveLength(45);
   expect(objects.every(object => object.name === 'sand-scuff')).toBe(true);
   const before = objects.map(p => p.position.toArray());
-  renderer.update(positions, 0, 2.8, true);
+  renderer.update(positions, 0);
   expect(objects.map(p => p.position.toArray())).toEqual(before);
   renderer.dispose();
 });

@@ -52,7 +52,7 @@ describe('temporary tuning panel', () => {
     const viewport = new ElementStub('div');
     const onChange = vi.fn();
     const values = { ...defaults, groupSize: 24 };
-    const panel = new TuningPanel(viewport as unknown as HTMLElement, values, onChange, true);
+    const panel = new TuningPanel(viewport as unknown as HTMLElement, values, onChange);
     const slider = viewport.children[0].findAll('input').find(input => input.dataset.key === 'groupSize')!;
     expect([slider.min, slider.max, slider.step, slider.value]).toEqual(['10', '60', '2', '24']);
     slider.value = '60';
@@ -73,7 +73,7 @@ describe('temporary tuning panel', () => {
     const input = new LaneStepInput(viewport as unknown as HTMLElement, keys as unknown as Window, step,
       [new ElementStub('button'),new ElementStub('button')] as unknown as [HTMLButtonElement,HTMLButtonElement]);
     input.start();
-    const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
+    const panel = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn());
     const slider = viewport.children[0].findAll('input').find((input) => input.dataset.key === 'fireRate')!;
     const keyDown = (key: string) => {
       const event = new Event('keydown', { cancelable: true });
@@ -174,7 +174,7 @@ describe('temporary tuning panel', () => {
 it('uses the coastal testing hatch without a retired TUNE entry', () => {
   vi.stubGlobal('document', {createElement: (tag: string) => new ElementStub(tag)});
   const viewport = new ElementStub('div');
-  const defense = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn(), true);
+  const defense = new TuningPanel(viewport as unknown as HTMLElement, defaults, vi.fn());
   expect(viewport.children[0].className).toBe('tuning-panel tuning-panel--coastal-anchor');
   const summary = viewport.children[0].children[0];
   expect((summary as unknown as HTMLElement).innerHTML).toContain('<svg');

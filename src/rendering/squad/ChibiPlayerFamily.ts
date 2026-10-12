@@ -36,7 +36,7 @@ function merged(parts: Part[], moving = false): THREE.BufferGeometry {
 }
 
 // Deterministic original geometry. Parts use ground origin, +Y up and +Z forward.
-// Crown 1.025 keeps the legacy total height; head zone starts at .51 (~50%).
+// Crown 1.025 keeps the accepted total height; head zone starts at .51 (~50%).
 export function createChibiPlayerFamily(): PlayerVisualFamily & { dispose(): void } {
   const rootScale = .85, weaponPosition = [.31, .425, .04] as const;
   const weaponRotation = [0, THREE.MathUtils.degToRad(8), 0] as const;

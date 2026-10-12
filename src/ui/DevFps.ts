@@ -4,10 +4,9 @@ export class DevFps {
   private previous: number | null = null;
   private elapsed = 0;
   private intervals = 0;
-  constructor(host: HTMLElement, defense: boolean) {
+  constructor(host: HTMLElement) {
     this.element.className = 'dev-fps';
-    const anchor = defense ? 'z-index:17;top:var(--hud-safe-top);left:calc(var(--hud-safe-left) + 50px)'
-      : 'z-index:2;top:calc(max(.5rem,env(safe-area-inset-top)) + 44px);right:max(.5rem,env(safe-area-inset-right))';
+    const anchor = 'z-index:17;top:var(--hud-safe-top);left:calc(var(--hud-safe-left) + 50px)';
     this.element.style.cssText = `position:absolute;${anchor};height:44px;display:flex;align-items:center;color:#fff3dc;font:700 14px/1 var(--font-utility,sans-serif);text-shadow:0 1px 2px #14212b60;font-variant-numeric:tabular-nums;pointer-events:none`;
     this.reset(); host.append(this.element);
   }

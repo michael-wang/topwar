@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 
 // Accepted Ink Spear: shared by both batches, head at z=0, pointed tail behind.
-// This owned geometry never changes the borrowed Legacy bullet.
 export function defenseTracerGeometry(): THREE.BufferGeometry {
   // Pointed head at the authoritative anchor; the entire spear trails behind it.
   // Two shoulders distinguish the short head from the longer, narrowing tail.

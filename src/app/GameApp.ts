@@ -149,7 +149,7 @@ export class GameApp {
     this.supplyTransfer=this.grenadeButton ? new SupplyRewardTransfer(viewport,this.grenadeButton,
       (x,z,now)=>this.renderer.projectSupplyPosition(x,z,now)) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
-    this.tuningPanel = import.meta.env.DEV ? new TuningPanel(this.config.catharsis?.defenseMode ? viewport : this.hudActions.element, this.runtimeDefaults, (values) => {
+    this.tuningPanel = import.meta.env.DEV ? new TuningPanel(viewport, this.runtimeDefaults, (values) => {
       if (this.startup === 'recovering' || this.recovery?.blocking) return;
       this.runtimeTuning = values;
       // Tuning an exposed value must not replace a restored historical plan or
@@ -159,7 +159,7 @@ export class GameApp {
         groupSize: values.groupSize ?? balance.groupSize,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
-    }, !!this.config.catharsis?.defenseMode) : null;
+    }) : null;
     this.devReview = import.meta.env.DEV && this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
         if (this.startup === 'recovering' || this.recovery?.blocking) return;
@@ -177,7 +177,7 @@ export class GameApp {
         return this.simulation.stepLane(direction);
       }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
-    this.fps = import.meta.env.DEV ? new DevFps(viewport, !!this.config.catharsis?.defenseMode) : null;
+    this.fps = import.meta.env.DEV ? new DevFps(viewport) : null;
     this.wakeStatus = import.meta.env.DEV && this.tuningPanel
       ? new DevWakeStatus(this.tuningPanel.reviewControlsHost, this.wakeLock) : null;
     this.qaPanel=!import.meta.env.DEV && this.config.catharsis?.defenseMode ? new QaPanel(viewport,{
