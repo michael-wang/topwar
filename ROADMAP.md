@@ -2,7 +2,7 @@
 
 ## NOW
 
-Validate the accepted Beachhead Defense closed playtest on Pixel 8 after legacy retirement. Preserve Lv1–10, AHEAD Survival, continuous 2–5-second naval quiet gaps, minimal urgent lane warnings, accumulated Grenades, immediate recovery and restricted shipping sleep QA. No automatic deployment or new gameplay phase.
+Validate the accepted Beachhead Defense closed playtest on Pixel 8 after legacy retirement. Preserve Lv1–10, AHEAD Survival, continuous 2–5-second naval quiet gaps, directional urgent lane warnings, accumulated Grenades, immediate recovery and restricted shipping sleep QA. No automatic deployment or new gameplay phase.
 
 ## NEXT
 

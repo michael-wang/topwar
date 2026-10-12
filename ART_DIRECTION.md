@@ -8,7 +8,7 @@ The accepted direction is Rounded Toy Soldier / Handcrafted Military Arcade, wit
 - Giant: accepted 172-HP encounter silhouette, asymmetric weapon grip, reveal, HP bar and grounded reactions.
 - Ink Spear: exact permanent black pointed silhouette and narrow ivory core, two pooled batches, bounded perspective-aware scaling. No temporary Level Up color/glow transformation.
 - Golden Grenade: authored gold model, acquisition transfer, distinct short launch confirmation, bounded luminous flight feedback and accepted explosion/scorch/blood aftermath.
-- Destroyer: accepted offshore mesh, entrance/station/independent retreat, muzzle flash, shell flight and impact. Minimal per-lane red ! markers increase in opacity/saturation and pulse in the final 150ms; no ground circles for current Stage 1.
+- Destroyer: accepted offshore mesh, entrance/station/independent retreat, muzzle flash, shell flight and impact. Per-lane inverted red triangles with an ivory exclamation and thin muted rim increase in opacity/saturation and pulse in the final 150ms; no ground circles for current Stage 1.
 - Coastal environment: ivory architecture, blue shutters/sea, warm sand, cloth/vegetation/foreground, atmospheric aircraft/flak/artillery. BridgeEnvironment owns the active scene despite its historical name.
 - Field Observer: unchanged neutral/alert WebP portraits and Mandarin recordings, 110×110 breakout composition, Traditional Chinese subtitles and radio cues. Preserve provenance in public/art/observer/PROVENANCE.md.
 - HUD: accepted bottom lane controls, XP/loadout and compact Grenade count. Quiet 44px testing hatch and subtle 14px FPS in local DEV. No new backing cards or overlap with Pause/subtitles/safe areas.

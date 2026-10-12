@@ -105,7 +105,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
       a.simulation.launchArtillery({source,targetLane:0});
       const c=a.config,tuning={...c.player,forwardSpeed:0,trackHalfWidth:c.track.halfWidth,
         defenseLineOffset:c.track.defenseLineOffset,normalEnemyRadius:c.tiers.normalEnemyRadius,
-        bossRadius:c.bosses.basic.radius,rifle:c.weapon.rifle,rocket:c.weapon.rocket};
+        rifle:c.weapon.rifle};
       for(let i=0;i<30;i++)a.simulation.step(1/60,{targetX:0},tuning);
       a.simulation.launchArtillery({source,targetLane:4});
       const sampleAt=a.simulation.getFrameState().artillery.shells[0].impactAtSeconds-.04;

@@ -114,19 +114,21 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
 
-it.each([350,390])('fits every overhead lane including its glyph edge inside the %ipx mobile frame',width=>{
+it.each([350,390])('fits every overhead lane including its directional edge inside the %ipx mobile frame',width=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=new THREE.PerspectiveCamera(coastalCameraFov(width/844),width/844,.1,180);
   camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld();
   const all=Array.from({length:5},(_,lane)=>makeArtilleryShell(lane+1,{source:shell.source},lane,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588));
-  r.update({shells:all,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera.quaternion);
   const ink=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
-  expect(ink.count).toBe(5);
-  for(let i=0;i<ink.count;i++){
-    ink.getMatrixAt(i,matrix);
-    for(let v=0;v<ink.geometry.attributes.position.count;v++){
-      point.fromBufferAttribute(ink.geometry.attributes.position,v).applyMatrix4(matrix).project(camera);
-      expect((point.x*.5+.5)*width).toBeGreaterThan(0);expect((point.x*.5+.5)*width).toBeLessThan(width);
-      expect((.5-point.y*.5)*844).toBeGreaterThan(450);expect((.5-point.y*.5)*844).toBeLessThan(600);
+  for (const seconds of [0, 1, all[0].impactAtSeconds - .1291666667]) {
+    r.update({shells:all,elapsedSeconds:seconds,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera.quaternion);
+    expect(ink.count).toBe(5);
+    for(let i=0;i<ink.count;i++){
+      ink.getMatrixAt(i,matrix);
+      for(let v=0;v<ink.geometry.attributes.position.count;v++){
+        point.fromBufferAttribute(ink.geometry.attributes.position,v).applyMatrix4(matrix).project(camera);
+        expect((point.x*.5+.5)*width).toBeGreaterThan(0);expect((point.x*.5+.5)*width).toBeLessThan(width);
+        expect((.5-point.y*.5)*844).toBeGreaterThan(450);expect((.5-point.y*.5)*844).toBeLessThan(600);
+      }
     }
   }
   r.dispose();
@@ -140,7 +142,9 @@ it('uses independent per-lane colors and a final-150ms punch without moving anch
   expect(mesh.instanceColor).not.toBeNull();
   const a=new THREE.Color(),b=new THREE.Color(),matrix=new THREE.Matrix4();
   r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},1900);
-  mesh.getColorAt(0,a);mesh.getColorAt(1,b);expect(a.getHex()).toBe(new THREE.Color('#ff2518').getHex());expect(a.equals(b)).toBe(false);
+  mesh.getColorAt(0,a);mesh.getColorAt(1,b);expect(a.getHex()).toBe(new THREE.Color('#ff1000').getHex());expect(a.equals(b)).toBe(false);
+  const previousRed=new THREE.Color('#ff2518');
+  expect(Math.min(a.r,a.g,a.b)).toBeLessThan(Math.min(previousRed.r,previousRed.g,previousRed.b));
   expect(mesh.geometry.getAttribute('warningOpacity').getX(0)).toBe(1);
   expect(mesh.geometry.getAttribute('warningOpacity').getX(1)).toBeLessThan(.6);
   mesh.getMatrixAt(0,matrix);const punch=new THREE.Vector3().setFromMatrixScale(matrix).x;
@@ -149,7 +153,7 @@ it('uses independent per-lane colors and a final-150ms punch without moving anch
   expect(mesh.material).toMatchObject({opacity:1,transparent:true});r.dispose();
 });
 
-it('preallocates one stable glyph/alpha shader layout and never blinks off near impact',()=>{
+it('preallocates one stable directional/alpha shader layout and never blinks off near impact',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
   const attribute=mesh.geometry.getAttribute('warningOpacity'),color=mesh.instanceColor,material=mesh.material as THREE.MeshBasicMaterial;
@@ -157,6 +161,8 @@ it('preallocates one stable glyph/alpha shader layout and never blinks off near 
   const shader={vertexShader:'#include <common>\n#include <begin_vertex>',fragmentShader:'#include <common>\n#include <color_fragment>'};
   material.onBeforeCompile(shader as any,{} as any);
   expect(shader.vertexShader).toContain('vWarningOpacity = warningOpacity');
+  expect(shader.vertexShader).toContain('vWarningAccent = warningAccent');
+  expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a)');
   expect(shader.fragmentShader).toContain('diffuseColor.a *= vWarningOpacity');
   let previous=0;
   for(let i=0;i<=100;i++){
@@ -167,4 +173,26 @@ it('preallocates one stable glyph/alpha shader layout and never blinks off near 
     if(shell.impactAtSeconds-time<=.15)expect(attribute.getX(0)).toBe(1);
   }
   r.dispose();
+});
+
+it('merges the downward triangle, thin rim and ivory exclamation into one owned lane batch',()=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
+  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
+  const positions=mesh.geometry.getAttribute('position'),accents=mesh.geometry.getAttribute('warningAccent');
+  expect(accents.count).toBe(positions.count);
+  const body=[] as THREE.Vector3[],rim=[] as THREE.Vector3[],glyph=[] as THREE.Vector3[];
+  const ivory=new THREE.Color('#fff3dc');
+  for(let i=0;i<positions.count;i++) {
+    const p=new THREE.Vector3().fromBufferAttribute(positions,i);
+    (accents.getW(i)===0?body:Math.abs(accents.getX(i)-ivory.r)<1e-6?glyph:rim).push(p);
+  }
+  expect(body).toHaveLength(3);expect(glyph.length).toBeGreaterThan(3);expect(rim.length).toBeGreaterThan(3);
+  const tip=body.reduce((a,b)=>a.y<b.y?a:b);
+  expect(tip.x).toBe(0);expect(tip.y).toBeCloseTo(-.385);
+  expect(Math.max(...body.map(p=>p.x))).toBeCloseTo(.375);
+  expect(Math.max(...rim.map(p=>p.x))).toBeCloseTo(.40); // Narrow .025-unit rim, not the old heavy backing.
+  expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
+  expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
+  let disposed=0;mesh.geometry.addEventListener('dispose',()=>disposed++);
+  r.dispose();expect(disposed).toBe(1);expect(scene.children).toHaveLength(0);
 });
