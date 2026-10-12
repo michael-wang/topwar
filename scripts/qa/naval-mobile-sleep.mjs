@@ -48,11 +48,11 @@ try{
   const prepared=await state(page),boundary=requests.length;
   if(process.argv.includes('--phases-only')){
     await page.locator('.qa-panel>summary').tap();const shell=prepared.artillery.shells[0],samples=[];
-    for(const [phase,seconds] of [['early',shell.launchedAtSeconds+.05],['middle',(shell.launchedAtSeconds+shell.impactAtSeconds)/2],['final150',shell.impactAtSeconds-.1]]){
+    for(const [phase,seconds] of [['early',shell.launchedAtSeconds+.05],['middle',(shell.launchedAtSeconds+shell.impactAtSeconds)/2],['final150',shell.impactAtSeconds-.15],['pulse',shell.impactAtSeconds-.04]]){
       const sample=await page.evaluate(({seconds})=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.pauseOverlay.setVisible(false);
         const original=a.simulation.getFrameState.bind(a.simulation),s=original();a.simulation.getFrameState=()=>({...s,elapsedSeconds:seconds});
         a.renderFrame(performance.now());cancelAnimationFrame(a.frameId);a.simulation.getFrameState=original;
-        const m=a.renderer.scene.getObjectByName('artillery-lane-danger');return {seconds,colors:Array.from(m.instanceColor.array.slice(0,m.count*3)),opacity:m.material.opacity};
+        const m=a.renderer.scene.getObjectByName('artillery-lane-danger');return {seconds,colors:Array.from(m.instanceColor.array.slice(0,m.count*3)),opacity:m.material.opacity,alphas:Array.from(m.geometry.getAttribute('warningOpacity').array.slice(0,m.count))};
       },{seconds});samples.push({phase,...sample});await page.screenshot({path:`${out}/${width}-warning-${phase}.png`});
     }
     assert.notDeepEqual(samples[0].colors,samples[2].colors);writeFileSync(`${out}/${width}-warning-phases.json`,JSON.stringify(samples,null,2));
@@ -101,7 +101,7 @@ try{
   await page.evaluate(()=>{window.__frames=[];const a=window.__testApp,original=a.renderFrame;
     a.renderFrame=stamp=>{original(stamp);const s=a.simulation.getFrameState(),mesh=a.renderer.scene.getObjectByName('artillery-lane-danger');
       window.__frames.push({stamp,seconds:s.elapsedSeconds,enemies:s.enemies.length,projectiles:s.projectiles.length,
-        warnings:mesh?.count??0,opacity:mesh?.material.opacity,shells:s.artillery.shells.map(x=>({id:x.id,lane:x.targetLane,start:x.launchedAtSeconds,end:x.impactAtSeconds})),
+        warnings:mesh?.count??0,opacity:mesh?.material.opacity,alphas:Array.from(mesh.geometry.getAttribute('warningOpacity').array.slice(0,mesh.count)),shells:s.artillery.shells.map(x=>({id:x.id,lane:x.targetLane,start:x.launchedAtSeconds,end:x.impactAtSeconds})),
         colors:mesh?.instanceColor?Array.from(mesh.instanceColor.array.slice(0,mesh.count*3)):[],
         ground:a.renderer.scene.children.filter(m=>m.visible&&m.name.startsWith('enemy-shell-warning-')).length});};
     cancelAnimationFrame(a.frameId);a.frameId=requestAnimationFrame(a.renderFrame);
@@ -109,11 +109,11 @@ try{
   const stop=await startGameRecording(page,width);await page.waitForTimeout(7000);const bytes=await stop();writeFileSync(`${out}/${width}-warning-flight.webm`,bytes);
   await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-warning-flight`,[.5,2,4]);
   const frames=await page.evaluate(()=>window.__frames),active=frames.filter(f=>f.shells.length);
-  for(const f of active){assert.equal(f.ground,0);assert.equal(f.opacity,1);assert.equal(f.warnings,new Set(f.shells.map(s=>s.lane)).size);}
+  for(const f of active){assert.equal(f.ground,0);assert.equal(f.opacity,1);assert(f.alphas.every(a=>a>=.149&&a<=1));assert.equal(f.warnings,new Set(f.shells.map(s=>s.lane)).size);}
   writeFileSync(`${out}/${width}-warning-flight.json`,JSON.stringify(frames,null,2));
   // Paused, exact authoritative samples for early/middle/final 150ms screenshots.
   await button(page,'Pause game').tap();const shell=prepared.artillery.shells[0];
-  for(const [phase,seconds] of [['early',shell.launchedAtSeconds+.05],['middle',(shell.launchedAtSeconds+shell.impactAtSeconds)/2],['final150',shell.impactAtSeconds-.1]]){
+  for(const [phase,seconds] of [['early',shell.launchedAtSeconds+.05],['middle',(shell.launchedAtSeconds+shell.impactAtSeconds)/2],['final150',shell.impactAtSeconds-.15],['pulse',shell.impactAtSeconds-.04]]){
     await page.evaluate(({prepared,seconds})=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.pauseOverlay.setVisible(false);
       a.simulation.restoreState(prepared);a.simulation.consumeArtilleryEvents();
       window.__warningSample=seconds;const original=a.simulation.getFrameState.bind(a.simulation);

@@ -47,16 +47,16 @@ export function runPostCapPilot(seed:number,seconds=150,enabled=true,exerciseRec
     if(prior.startedAtSeconds!==null&&post.nextGrenadeSupplyAtSeconds!==prior.nextGrenadeSupplyAtSeconds)
       supplies.push({due:prior.nextGrenadeSupplyAtSeconds,seconds:after.elapsedSeconds,
         result:!before.grenade!.supply&&after.grenade!.supply?.rewardAmount!==undefined?'spawn'
-          :before.grenade!.supply?'skip-existing':after.grenade!.inventory>=balance.grenade.capacity?'skip-full'
+          :before.grenade!.supply?'skip-existing'
           :'skip-teaching-pending',inventory:after.grenade!.inventory});
     const contacts=sim.consumePresentationEvents();casualties+=contacts.reduce((n,e)=>n+Math.max(0,e.before.count-e.after.count),0);
     const contactIds=new Set(contacts.map(e=>e.kind==='normalEnemyContact'?e.enemyId:-1));
     for(const giant of before.enemies.filter(e=>e.archetype==='giant'))if(!after.enemies.some(e=>e.id===giant.id))
       giantDeaths.push({seconds:after.elapsedSeconds,id:giant.id,killed:!contactIds.has(giant.id),xpBefore:before.progression,xpAfter:after.progression});
     for(const event of sim.consumeGrenadeEvents()) {
-      if(event.kind==='grenadeAcquired')acquisitions.push({seconds:after.elapsedSeconds,postCap:activation!==null,
-        amount:before.grenade!.supply?.rewardAmount??balance.grenade.capacity,before:before.grenade!.inventory,after:after.grenade!.inventory});
-      else throws.push({seconds:after.elapsedSeconds,postCap:activation!==null,kills:event.victims.filter(v=>v.killed).length,
+      if(event.kind==='grenadeAcquired'||event.kind==='grenadeSupplyOpened')acquisitions.push({seconds:after.elapsedSeconds,postCap:activation!==null,
+        amount:event.amount,before:before.grenade!.inventory,after:after.grenade!.inventory});
+      else if(event.kind==='grenadeDetonated') throws.push({seconds:after.elapsedSeconds,postCap:activation!==null,kills:event.victims.filter(v=>v.killed).length,
         xp:event.victims.reduce((sum,v)=>sum+v.killXp,0),inventory:after.grenade!.inventory});
     }
     if(after.grenade!.inventory!==lastInventory) {inventory.push({seconds:after.elapsedSeconds,count:after.grenade!.inventory});lastInventory=after.grenade!.inventory;}

@@ -22,7 +22,7 @@ try {
       const sim=observed.makeNavalRun(seed,scenario,barrage,config),control=plain.makeNavalRun(seed,scenario,barrage,config);
       assert.deepEqual(sim.getState(),control.getState());
       const collector=new observed.SurvivalDiagnosis(sim.getState());observed.bindObserver(collector);
-      const salvos=[],intro=[],impacts=[],waveClocks=[],costs=[];let peakShells=0,checked=1,heldTicks=0;
+      const salvos=[],intro=[],impacts=[],waveClocks=[],costs=[];let peakShells=0,checked=1,heldTicks=0,flightTicks=0;
       try {for(let tick=0;tick<600*60&&sim.getFrameState().squad.count;tick++) {
         const before=sim.getState(),lane=before.player.selectedLane;
         const input=observed.survivalDecision(sim,tick,policy), direction=sim.getFrameState().player.selectedLane-lane;
@@ -33,7 +33,8 @@ try {
         if(tick%60===0){assert.deepEqual(after,control.getState());checked++;}
         const wait=before.catharsis.balance.navalBarrage.overlapPolicy==='waitForImpact',
           unresolved=before.artillery?.shells.some(s=>s.source.type==='destroyer'&&s.impactAtSeconds>after.elapsedSeconds+1e-9);
-        if(wait&&before.navalBarrage.enabled&&after.squad.count&&before.navalBarrage.nextAtSeconds<=after.elapsedSeconds+1e-9&&unresolved){
+        if(before.navalBarrage.pendingImpact&&unresolved&&after.squad.count){flightTicks++;assert.equal(after.navalBarrage.rngState,before.navalBarrage.rngState);assert.equal(after.navalBarrage.opportunities,before.navalBarrage.opportunities);}
+        if(wait&&before.navalBarrage.enabled&&after.squad.count&&before.navalBarrage.nextAtSeconds!==null&&before.navalBarrage.nextAtSeconds<=after.elapsedSeconds+1e-9&&unresolved){
           heldTicks++;assert.equal(after.navalBarrage.rngState,before.navalBarrage.rngState);
           assert.equal(after.navalBarrage.nextAtSeconds,before.navalBarrage.nextAtSeconds);
           assert.equal(after.navalBarrage.opportunities,before.navalBarrage.opportunities);
@@ -44,7 +45,7 @@ try {
           const cooldown=before.navalBarrage.cooldown;
           const resolution=previousFinalImpact??cooldown?.resolvedAtSeconds;
           salvos.push({...after.navalBarrage.lastSalvo,nominalAtSeconds:before.navalBarrage.nextAtSeconds,
-            resolvedAtSeconds:resolution??null,actualQuietSeconds:resolution===undefined?null:after.elapsedSeconds-resolution});
+            resolvedAtSeconds:resolution??null,sampledGapSeconds:cooldown?.gapSeconds??null,actualQuietSeconds:resolution===undefined?null:after.elapsedSeconds-resolution});
         }
         for(const event of e.artillery) {
           if(event.kind==='artilleryLaunch' && after.postCapSurvival.startedAtSeconds===null)intro.push(event.shell);
@@ -57,7 +58,7 @@ try {
         if(after.postCapSurvival.startedAtSeconds!==null && after.elapsedSeconds-after.postCapSurvival.startedAtSeconds>=180-1e-9)break;
       }}finally{observed.bindObserver();}
       const final=sim.getState();assert.deepEqual(final,control.getState());costs.sort((a,b)=>a-b);
-      const result={barrage,scenario,policy,seed,...collector.finish(final),salvos,intro,impacts,waveClocks,peakShells,heldSeconds:heldTicks/60,
+      const result={barrage,scenario,policy,seed,...collector.finish(final),salvos,intro,impacts,waveClocks,peakShells,heldSeconds:heldTicks/60,inFlightWaitSeconds:flightTicks/60,
         barrageState:final.navalBarrage,navalPresence:final.navalPresence,stepMs:{mean:costs.reduce((a,b)=>a+b,0)/costs.length,
           p95:costs[Math.floor(costs.length*.95)],max:costs.at(-1)},deterministic:{checked,
           sha256:createHash('sha256').update(JSON.stringify(final)).digest('hex')}};

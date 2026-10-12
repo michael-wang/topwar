@@ -29,7 +29,7 @@ try{for(const width of [350,390])for(const mode of ['off','on'])for(const phase 
     const a=window.__testApp;cancelAnimationFrame(a.frameId);a.simulation.restoreState(state);a.simulation.consumePresentationEvents();a.simulation.consumeGrenadeEvents();a.simulation.consumeArtilleryEvents();
     a.renderer.resetFeedback();a.presentationMs=state.elapsedSeconds*1000;a.previousFrameTimestampMs=null;a.fixedStepLoop.reset();
     a.audio.restoreObservation(a.previousDefenseValue,state.enemies,state.streamRewards,state.boss,state.projectiles);
-    window.__bench={stamps:[],cpu:[],samples:[],shader:[],start:performance.now(),lastSample:-Infinity,peakEnemies:0,peakProjectiles:0,peakShells:0};
+    window.__bench={stamps:[],cpu:[],samples:[],shader:[],slowFrames:[],start:performance.now(),lastSample:-Infinity,peakEnemies:0,peakProjectiles:0,peakShells:0};
     const gl=a.renderer.renderer.getContext();for(const method of ['compileShader','linkProgram']){const native=gl[method].bind(gl);gl[method]=(...args)=>{const at=performance.now(),value=native(...args);window.__bench.shader.push({method,at:at-window.__bench.start,ms:performance.now()-at});return value;};}
     const step=a.simulation.step.bind(a.simulation);a.simulation.step=(dt,input,tuning)=>{
       const s=a.simulation.getFrameState(),tick=s.tick;
@@ -41,7 +41,11 @@ try{for(const width of [350,390])for(const mode of ['off','on'])for(const phase 
       step(dt,{...input,throwGrenade:false},tuning);
     };
     const native=a.renderFrame;a.renderFrame=stamp=>{const at=performance.now();native(stamp);const b=window.__bench,s=a.simulation.getFrameState();
-      b.stamps.push(stamp);b.cpu.push(performance.now()-at);b.peakEnemies=Math.max(b.peakEnemies,s.enemies.length);
+      const cpu=performance.now()-at,previous=b.stamps.at(-1);
+      if(cpu>100 || previous!==undefined&&stamp-previous>100)b.slowFrames.push({wall:at-b.start,seconds:s.elapsedSeconds,cpu,
+        interval:previous===undefined?null:stamp-previous,enemies:s.enemies.length,shells:s.artillery?.shells.length??0,
+        warnings:a.renderer.scene.getObjectByName('artillery-lane-danger')?.count??0});
+      b.stamps.push(stamp);b.cpu.push(cpu);b.peakEnemies=Math.max(b.peakEnemies,s.enemies.length);
       b.peakProjectiles=Math.max(b.peakProjectiles,s.projectiles.length);b.peakShells=Math.max(b.peakShells,s.artillery?.shells.length??0);
       if(s.elapsedSeconds-b.lastSample>=5){b.lastSample=s.elapsedSeconds;b.samples.push({wall:performance.now()-b.start,seconds:s.elapsedSeconds,soldiers:s.squad.count,
         enemies:s.enemies.length,shells:s.artillery?.shells.length??0,...a.renderer.getDebugStats()});}
@@ -54,7 +58,7 @@ try{for(const width of [350,390])for(const mode of ['off','on'])for(const phase 
     const stats=arr=>{const v=[...arr].sort((a,b)=>a-b);return {mean:v.reduce((a,b)=>a+b,0)/v.length,p95:v[Math.floor(v.length*.95)],max:v.at(-1),frames:v.length,over100:v.filter(x=>x>100).length,over200:v.filter(x=>x>200).length};};
     return {frameMs:stats(b.stamps.slice(1).map((v,i)=>v-b.stamps[i])),submissionMs:stats(b.cpu),wallMs:performance.now()-b.start,
       seconds:a.simulation.getFrameState().elapsedSeconds,soldiers:a.simulation.getFrameState().squad.count,
-      peakEnemies:b.peakEnemies,peakProjectiles:b.peakProjectiles,peakShells:b.peakShells,shader:b.shader,samples:b.samples,final:a.renderer.getDebugStats(),barrage:a.simulation.getState().navalBarrage};});
+      peakEnemies:b.peakEnemies,peakProjectiles:b.peakProjectiles,peakShells:b.peakShells,shader:b.shader,slowFrames:b.slowFrames,samples:b.samples,final:a.renderer.getDebugStats(),barrage:a.simulation.getState().navalBarrage};});
   const boundary=requests.length;await page.screenshot({path:`${out}/${width}-${mode}-${phase}.png`});
   assert.deepEqual(errors,[]);const result={width,mode,phase,cpuThrottle:4,policy:'Adjacent every 200ms; pending artillery lanes excluded; nearest enemy/Supply/Giant preference; no Grenades, invulnerability or render-quality changes.',startupMs,...data,errors,requests};
   results.push(result);writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));console.log(JSON.stringify({...result,samples:undefined,requests:undefined,shader:data.shader.length,final:undefined}));await page.close();

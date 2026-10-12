@@ -52,7 +52,7 @@ try {
     if(b.postCapSurvival.startedAtSeconds!==null&&b.postCapSurvival.nextGrenadeSupplyAtSeconds!==s.postCapSurvival.nextGrenadeSupplyAtSeconds)
      q.supplySlots.push({seconds:s.elapsedSeconds,due:b.postCapSurvival.nextGrenadeSupplyAtSeconds,
       result:!b.grenade.supply&&s.grenade.supply?.rewardAmount!==undefined?'spawn':b.grenade.supply?'existing'
-        :s.grenade.inventory===3?'full':'teaching-pending'});
+        :'teaching-pending'});
     if(!b.grenade.supply&&s.grenade.supply?.rewardAmount!==undefined)window.__snapshots.supply=s;
     if(!b.grenade.flight&&s.grenade.flight)window.__snapshots.flight=s;
    };
@@ -130,8 +130,8 @@ try {
   assert(v.qa.giantSlots.length>=6&&v.qa.supplySlots.length>=5,'Fixed recurring opportunities continue');
   assert(v.state.progression.level===6&&v.state.progression.xp===0,'Progression remains capped');
   // Shared Q/touch path, flight freeze, then consume a reserve and collect +1 at a future slot.
-  assert(v.state.grenade.inventory===3,'Recurring pickups filled reserves');
-  await page.keyboard.press('q');await advance(100,false);v=await sample();assert(v.state.grenade.inventory===2&&v.state.grenade.flight,'Q consumes one reserve');
+  const heldBeforeThrow=v.state.grenade.inventory;assert(Number.isSafeInteger(heldBeforeThrow)&&heldBeforeThrow>0,'Recurring pickups accumulate representable reserves');
+  await page.keyboard.press('q');await advance(100,false);v=await sample();assert(v.state.grenade.inventory===heldBeforeThrow-1&&v.state.grenade.flight,'Q consumes one reserve');
   await page.getByRole('button',{name:'Pause game'}).tap();const frozen=(await sample()).state;await advance(500,false);
   assert(JSON.stringify((await sample()).state)===JSON.stringify(frozen),'Pause freezes schedules and flight');
   await page.getByRole('button',{name:'Resume game'}).tap();await advance(1000,false);
@@ -142,13 +142,13 @@ try {
   // MG may collect within the sampling second. Review the actual recorded spawn
   // snapshot, then acquire it again through ordinary fire rather than miss it.
   await page.evaluate(()=>{const a=window.__testApp,s=window.__snapshots.supply;
-   if(s.grenade.supply?.rewardAmount!==1||s.grenade.inventory!==2)throw Error('Supply spawn changed inventory');
+   if(s.grenade.supply?.rewardAmount!==1)throw Error('Supply spawn changed inventory');
    a.simulation.restoreState(s);a.fixedStepLoop.reset();a.renderFrame(window.__clock);cancelAnimationFrame(a.frameId);});
   await page.screenshot({path:`${out}/${width}-recurring-supply.png`});
-  await advance(3000);v=await sample();assert(v.state.grenade.inventory===3&&!v.state.grenade.supply,'MG collects +1 Supply');
+  const recurringBefore=(await sample()).state.grenade.inventory;await advance(3000);v=await sample();assert(v.state.grenade.inventory===recurringBefore+1&&!v.state.grenade.supply,'MG adds +1 Supply to accumulated inventory');
   for(let n=0;n<12&&!(await page.locator('.grenade-button').isEnabled());n++)await advance(500);
   await page.locator('.grenade-button').tap();await advance(1000,false);
-  assert((await sample()).state.grenade.inventory===2,'Touch consumes exactly one');
+  assert((await sample()).state.grenade.inventory===recurringBefore,'Touch consumes exactly one');
   const replay=await page.evaluate(()=>{
    const a=window.__testApp,sim=a.simulation,saved=sim.getState(),records=[];
    for(const key of ['release','supply','flight']){
