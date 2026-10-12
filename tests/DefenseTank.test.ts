@@ -235,11 +235,12 @@ describe('Stage 1 Defense tank', () => {
     expect(s.progression!.level).toBe(10); expect(s.squad.count).toBe(3); expect(s.grenade!.supply).not.toBeNull();
     expect(s.combatStats!.gruntKills).toBe(1);
   });
-  it('crosses HP thresholds, speeds up phase 3 and loses the entire squad on breach', () => {
+  it('crosses HP thresholds, keeps phase 3 advancing at phase 2 speed and loses the entire squad on breach', () => {
     expect(tankPhase(4550.1, tankConfig)).toBe(1); expect(tankPhase(4550, tankConfig)).toBe(2);
     expect(tankPhase(2275, tankConfig)).toBe(3);
+    expect(tankConfig.phases.map(p => p.speedUnitsPerSecond)).toEqual([.12, .16, .16]);
     const sim = active(3), before = sim.getState().defenseTank!.z; step(sim);
-    expect(before - sim.getState().defenseTank!.z).toBeCloseTo(.36 / 60);
+    expect(before - sim.getState().defenseTank!.z).toBeCloseTo(.16 / 60);
     const s = sim.getState(); s.defenseTank!.z = tankConfig.halfDepth - tuning.defenseLineOffset + .001;
     sim.restoreState(s); step(sim); expect(sim.getState().squad.count).toBe(0);
     expect(sim.getState().defenseTank!.status).toBe('breached');
@@ -255,12 +256,17 @@ describe('Stage 1 Defense tank', () => {
     sim.restoreState(final); step(sim, 120); expect(sim.getState()).toEqual(final);
     expect(sim.launchArtillery({ source: { id: 'test', type: 'destroyer', position: { x: 0, y: 2, z: 52 } } })).toBeNull();
   });
-  it.each(['entering', 'active', 'cooldown', 'previous-phase2'] as const)('checkpoints %s with deterministic continuation and rejects malformed tank data transactionally', stage => {
-    const sim = stage === 'entering' ? fixture() : active(2), savedConfig = structuredClone(config);
+  it.each(['entering', 'active', 'cooldown', 'previous-phase2', 'previous-phase3'] as const)('checkpoints %s with deterministic continuation and rejects malformed tank data transactionally', stage => {
+    const sim = stage === 'entering' ? fixture() : active(stage === 'previous-phase3' ? 3 : 2), savedConfig = structuredClone(config);
     if (stage === 'previous-phase2') {
       const old = sim.getState(), phase = old.catharsis!.balance.defenseTank!.phases[1];
       Object.assign(phase, { heaviesPerLane: 4, flankIntervalSeconds: 3.5, giantIntervalSeconds: 9 });
       savedConfig.catharsis!.defenseTank!.phases[1] = structuredClone(phase);
+      sim.restoreState(old);
+    }
+    if (stage === 'previous-phase3') {
+      const old = sim.getState(); old.catharsis!.balance.defenseTank!.phases[2].speedUnitsPerSecond = .36;
+      savedConfig.catharsis!.defenseTank!.phases[2].speedUnitsPerSecond = .36;
       sim.restoreState(old);
     }
     suppressFire(sim); step(sim);
@@ -283,6 +289,10 @@ describe('Stage 1 Defense tank', () => {
     sim.consumeArtilleryEvents();
     for (let i = 0; i < 240; i++) { step(sim); step(replay); expect(replay.consumeArtilleryEvents()).toEqual(sim.consumeArtilleryEvents()); }
     expect(replay.getState()).toEqual(sim.getState());
+    if (stage === 'previous-phase3') {
+      expect(replay.getState().catharsis!.balance.defenseTank!.phases[2].speedUnitsPerSecond).toBe(.36);
+      expect(s.defenseTank!.z - replay.getState().defenseTank!.z).toBeCloseTo(.36 * 4, 7);
+    }
     const before = replay.getState(), bad = structuredClone(before); bad.defenseTank!.hp = -1;
     expect(() => replay.restoreState(bad)).toThrow(); expect(replay.getState()).toEqual(before);
   });

@@ -362,7 +362,7 @@
         {
           "shells": 3,
           "cooldownSeconds": 2,
-          "speedUnitsPerSecond": 0.36,
+          "speedUnitsPerSecond": 0.16,
           "flankIntervalSeconds": 4,
           "heaviesPerLane": 5,
           "gruntsPerLane": 1,

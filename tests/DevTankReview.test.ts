@@ -48,6 +48,7 @@ it.each(['boss-phase1', 'boss-phase2', 'boss-phase3'] as const)('%s uses its rea
   const sim = make(role), s = sim.getState(); s.defenseTank!.z = 6;
   s.weapons.rifleCooldownRemainingSeconds = 100; s.weapons.rifleMemberCooldowns = [100, 100]; sim.restoreState(s);
   step(sim); const shells = sim.getState().artillery!.shells, phase = s.defenseTank!.phase;
+  expect(s.defenseTank!.z - sim.getState().defenseTank!.z).toBeCloseTo([.12, .16, .16][phase - 1] / 60, 7);
   expect(shells).toHaveLength(phase); expect(new Set(shells.map(s => s.targetLane)).size).toBe(phase);
   for (const shell of shells) expect(shell.flightSeconds).toBeGreaterThanOrEqual(2.4);
   expect(sim.getState().defenseTank!.nextGiantAtSeconds).toBe(phase === 1 ? null : sim.getState().elapsedSeconds + 12);

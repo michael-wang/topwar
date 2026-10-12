@@ -62,7 +62,7 @@ Reaching Lv9 stops new Destroyer launches and ordinary/Carnival/periodic Giant a
 |---|---|---:|---:|---:|---|---:|---|
 | 1 | >70% | 1 | 4s | 0.12 | 3 Heavy + 1 Grunt | 6s | none |
 | 2 | >35%–70% | 2 | 3s | 0.16 | 3 Heavy + 1 Grunt | 4s | every 12s |
-| 3 | 0–35% | 3 | 2s | 0.36 | 5 Heavy + 1 Grunt | 4s | every 12s |
+| 3 | 0–35% | 3 | 2s | 0.16 | 5 Heavy + 1 Grunt | 4s | every 12s |
 
 New Boss flank groups begin at 28 units, retaining row spacing. Heavy speeds are 1.4/1.7/2.0 units/s for phases 1/2/3; Giant speeds are 1.1/1.3 for phases 2/3. Each admission retains its speed through phase changes and checkpoint recovery. Ordinary/AHEAD troops and older checkpoints retain their authored speeds and spawn distances.
 
