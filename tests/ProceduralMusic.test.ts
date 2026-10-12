@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameAudio } from '../src/audio/GameAudio';
 import { MAX_MUSIC_VOICES, MUSIC_LOOKAHEAD_SECONDS, ProceduralMusic } from '../src/audio/ProceduralMusic';
-import { MUSIC_BAR_SECONDS, MUSIC_BPM, MUSIC_STEP_MS, MUSIC_STEPS_PER_BAR, musicEventsForStep, musicHarmonyForBar, musicMotifVariant, musicPhraseIntensity, musicStateFor, musicStepAt, type MusicFrame, type MusicState } from '../src/audio/MusicComposition';
+import { BOSS_MUSIC_BPM, MUSIC_BAR_SECONDS, MUSIC_BPM, MUSIC_STEP_MS, MUSIC_STEPS_PER_BAR, musicEventsForStep, musicHarmonyForBar, musicMotifVariant, musicPhraseIntensity, musicStateFor, musicStepAt, musicStepMs, type MusicFrame, type MusicState } from '../src/audio/MusicComposition';
 
 const normal: MusicFrame = { squadCount: 3,
   paused: false, musicVolume: .22 };
@@ -51,6 +51,52 @@ function audioHarness() {
 }
 
 describe('original procedural battlefield composition', () => {
+  it('gives the Boss an independent melody and harmony at 116 BPM, building drums and melody across phases', () => {
+    expect(BOSS_MUSIC_BPM).toBe(116); expect(musicStepMs('BOSS_1')).toBeCloseTo(60_000 / 116 / 2);
+    expect(Array.from({ length: 4 }, (_, bar) => musicHarmonyForBar(bar, 'BOSS_1').name)).toEqual(['Am', 'F', 'Dm', 'E']);
+    const phrase = (state: MusicState) => Array.from({ length: 8 }, (_, step) => musicEventsForStep(17, step, state)).flat();
+    const bossMotif = phrase('BOSS_2').filter(e => e.instrument === 'motif').map(e => Math.round(69 + 12 * Math.log2(e.frequencyHz / 440)));
+    expect(bossMotif).toEqual([57, 64, 69, 72, 71, 67, 69, 64]);
+    expect(bossMotif).not.toEqual(phrase('NORMAL').filter(e => e.instrument === 'motif').map(e => Math.round(69 + 12 * Math.log2(e.frequencyHz / 440))));
+    expect(phrase('BOSS_INTRO').every(e => e.instrument === 'pad' || e.instrument === 'bass')).toBe(true);
+    expect(['BOSS_1', 'BOSS_2', 'BOSS_3'].map(state => phrase(state as MusicState).filter(e => e.instrument === 'drum').length)).toEqual([2, 4, 8]);
+    expect(['BOSS_1', 'BOSS_2', 'BOSS_3'].map(state => phrase(state as MusicState).filter(e => e.instrument === 'motif').length)).toEqual([6, 8, 10]);
+    expect(musicEventsForStep(17, 0, 'VICTORY')).toEqual([]);
+  });
+  it('follows the saved Tank clock and phase, freezes on Pause, resumes and stops at victory with bounded voices', () => {
+    const { context, gains, filters, advance } = audioHarness();
+    const music = new ProceduralMusic(context as unknown as AudioContext, context.createGain() as unknown as GainNode, 17);
+    const boss: MusicFrame = { ...normal, tank: { status: 'entering', phase: 1, elapsedSeconds: 0, entrySeconds: 2.5 } };
+    advance(music, 90000, normal, 0);
+    advance(music, 90020, boss, .02);
+    expect(musicStateFor(boss)).toBe('BOSS_INTRO');
+    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22 * .55, .02, .2);
+    boss.tank!.status = 'active'; boss.tank!.elapsedSeconds = 3.35;
+    advance(music, 0, boss, 2.52); // Presentation starts at zero after a restored checkpoint.
+    expect(music.currentStepIndex).toBe(musicStepAt(850, 'BOSS_1'));
+    advance(music, 0, { ...boss, paused: true }, 3);
+    const frozen = music.currentStepIndex;
+    advance(music, 0, { ...boss, paused: true }, 6);
+    expect(music.currentStepIndex).toBe(frozen);
+    advance(music, 0, boss, 6.01);
+    expect(music.currentStepIndex).toBe(musicStepAt(850, 'BOSS_1'));
+    for (const phase of [1, 2, 3] as const) {
+      boss.tank!.phase = phase;
+      expect(musicStateFor(boss)).toBe(`BOSS_${phase}`);
+      for (let tick = 0; tick < 100; tick++) {
+        boss.tank!.elapsedSeconds += .05;
+        advance(music, 0, boss, 6.06 + (phase - 1) * 5 + tick * .05);
+        expect(music.activeVoiceCount).toBeLessThanOrEqual(MAX_MUSIC_VOICES);
+      }
+    }
+    expect(music.activeVoiceCount).toBeGreaterThan(0);
+    boss.tank!.status = 'defeated'; advance(music, 0, boss, 21.1);
+    expect(musicStateFor(boss)).toBe('VICTORY');
+    expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(0, 21.1, .05);
+    advance(music, 0, boss, 21.3); expect(music.activeVoiceCount).toBe(0);
+    boss.tank!.status = 'breached'; expect(musicStateFor(boss)).toBe('GAME_OVER');
+    music.dispose(); expect(filters.every(filter => filter.disconnect.mock.calls.length === 1)).toBe(true);
+  });
   it('moves through Dm, Bb, C and Dm/A over eight bars with tonal, overlapping pads', () => {
     expect(MUSIC_BPM).toBe(88);
     expect(MUSIC_STEPS_PER_BAR).toBe(8);
@@ -128,7 +174,7 @@ describe('original procedural battlefield composition', () => {
     expect(context.createOscillator).not.toHaveBeenCalled();
     expect(music.bus).toBe(gains[1]);
     expect(gains[1].connect).toHaveBeenCalledWith(master);
-    expect(filters.map((filter) => filter.frequency.value)).toEqual([1200, 700, 1900]);
+    expect(filters.map((filter) => filter.frequency.value)).toEqual([1200, 700, 1900, 900]);
     advance(music, 0);
     expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22, 0, .07);
     expect(oscillators).toHaveLength(6); // Three pad tones, two oscillators each.

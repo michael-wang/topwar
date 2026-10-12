@@ -722,7 +722,6 @@ export class GameApp {
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
       const cleared = state.defenseTank?.status === 'defeated';
-      this.tankBossHud.update(state, this.presentationMs);
       this.tankEntranceHud.update(state, this.paused);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
@@ -797,6 +796,9 @@ export class GameApp {
         squadCount: state.squad.count,
         paused: this.paused,
         musicVolume: this.runtimeTuning.musicVolume,
+        tank: state.defenseTank ? { status: state.defenseTank.status, phase: state.defenseTank.phase,
+          elapsedSeconds: state.elapsedSeconds - state.defenseTank.startedAtSeconds,
+          entrySeconds: state.defenseTank.activeAtSeconds - state.defenseTank.startedAtSeconds } : undefined,
       });
       const audioFinishedMs = perf ? performance.now() : 0;
       this.previousDefenseValue = currentDefenseValue;
@@ -814,6 +816,7 @@ export class GameApp {
       if (renderEvents.length > 0) this.renderer.present(renderEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
+      this.tankBossHud.update(state, this.presentationMs, this.renderer.projectTankHealthPosition());
       this.supplyTransfer?.update(this.presentationMs);
       const renderFinishedMs = perf ? performance.now() : 0;
       this.audio.updateEnvironment(this.presentationMs);

@@ -3,10 +3,10 @@ import { combatResults } from '../simulation/combatStats';
 
 export function clearResultRows(stats: Readonly<CombatStats>, clearSeconds: number): [string, string][] {
   const s = combatResults(stats, clearSeconds), minutes = Math.floor(s.clearSeconds / 60);
-  return [['Clear Time', `${minutes}:${(s.clearSeconds % 60).toFixed(1).padStart(4, '0')}`],
-    ['Total Enemies Defeated', String(s.totalKills)], ['Grunt / Heavy / Giant Kills', `${s.gruntKills} / ${s.heavyKills} / ${s.giantKills}`],
-    ['Shots Fired', String(s.shotsFired)], ['Shots Hit', String(s.shotsHit)], ['Accuracy', `${(s.accuracy * 100).toFixed(1)}%`],
-    ['Grenades Used', String(s.grenadesUsed)]];
+  return [['通關時間', `${minutes}:${(s.clearSeconds % 60).toFixed(1).padStart(4, '0')}`],
+    ['擊殺總數', String(s.totalKills)], ['一般兵／重裝兵／巨人兵', `${s.gruntKills} / ${s.heavyKills} / ${s.giantKills}`],
+    ['發射子彈', String(s.shotsFired)], ['命中子彈', String(s.shotsHit)], ['命中率', `${(s.accuracy * 100).toFixed(1)}%`],
+    ['使用手榴彈', String(s.grenadesUsed)]];
 }
 export class StageClearOverlay {
   readonly element = document.createElement('div');
@@ -15,8 +15,9 @@ export class StageClearOverlay {
   private shown = false;
   constructor(viewport: HTMLElement, private readonly onPlayAgain: () => void) {
     this.element.className = 'stage-clear-overlay'; this.element.hidden = true;
-    const title = document.createElement('h1'); title.textContent = 'STAGE 1 CLEAR';
-    this.button.type = 'button'; this.button.textContent = 'PLAY AGAIN';
+    this.element.lang = 'zh-Hant';
+    const title = document.createElement('h1'); title.textContent = '第一關通關！';
+    this.button.type = 'button'; this.button.textContent = '再玩一次';
     this.button.addEventListener('click', onPlayAgain); this.button.addEventListener('pointerdown', this.stopPointer);
     this.element.append(title, this.results, this.button); viewport.append(this.element);
   }

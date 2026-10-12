@@ -321,6 +321,7 @@
       "damageEnemyHp": 1
     },
     "defenseTank": {
+      "flankSpawnAheadDistance": 28,
       "flight": {
         "horizontalSpeed": 24,
         "gravity": 8,
@@ -344,7 +345,8 @@
           "flankIntervalSeconds": 6,
           "heaviesPerLane": 3,
           "gruntsPerLane": 1,
-          "giantIntervalSeconds": null
+          "giantIntervalSeconds": null,
+          "heavySpeedUnitsPerSecond": 1.4
         },
         {
           "shells": 2,
@@ -353,7 +355,9 @@
           "flankIntervalSeconds": 5,
           "heaviesPerLane": 4,
           "gruntsPerLane": 1,
-          "giantIntervalSeconds": 12
+          "giantIntervalSeconds": 12,
+          "heavySpeedUnitsPerSecond": 1.7,
+          "giantSpeedUnitsPerSecond": 1.1
         },
         {
           "shells": 3,
@@ -362,7 +366,9 @@
           "flankIntervalSeconds": 4,
           "heaviesPerLane": 5,
           "gruntsPerLane": 1,
-          "giantIntervalSeconds": 12
+          "giantIntervalSeconds": 12,
+          "heavySpeedUnitsPerSecond": 2.0,
+          "giantSpeedUnitsPerSecond": 1.3
         }
       ]
     }

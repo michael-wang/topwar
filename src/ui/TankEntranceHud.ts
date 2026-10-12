@@ -1,11 +1,13 @@
 import type { SimulationFrameState } from '../simulation/SimulationState';
+import { TANK_ALARM_PERIOD_SECONDS, tankAlarmGlow } from '../presentation/TankAlarm';
 
-// Simulation time freezes both the edge pulses and the small alarm cadence.
+// One encounter clock freezes both full-field light and alarm cadence on Pause.
 export class TankEntranceHud {
   readonly element = document.createElement('div');
   private start: number | null = null;
   private lastPulse = -1;
   private silent = false;
+  private readonly reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   constructor(host: HTMLElement, private readonly alarm: () => void) {
     this.element.className = 'tank-entrance-warning'; this.element.hidden = true;
     const text = document.createElement('span'); text.textContent = 'BOSS INCOMING';
@@ -20,8 +22,8 @@ export class TankEntranceHud {
     const visible = !!tank && tank.status === 'entering' && state.squad.count > 0;
     this.element.hidden = !visible;
     if (!visible) return;
-    this.element.style.opacity = String(.4 + .6 * Math.cos(age * Math.PI * 3) ** 2);
-    const pulse = Math.floor((age + 1e-9) / .75);
+    this.element.style.setProperty('--tank-alarm-glow', String(tankAlarmGlow(age, this.reducedMotion?.matches ?? false)));
+    const pulse = Math.floor((age + 1e-9) / TANK_ALARM_PERIOD_SECONDS);
     if (!paused && !this.silent && pulse > this.lastPulse) { this.alarm(); this.lastPulse = pulse; }
   }
   restore(state: SimulationFrameState): void {

@@ -152,22 +152,28 @@
   .beachhead-defense .xp-hud.level-up .xp-track { animation: none; }
   .beachhead-defense .level-up .level-up-message { animation: none; opacity: 1; transform: none; }
 }
-/* Stage 1 tank encounter: compact HP at the top and a touch-sized clear card. */
-.tank-boss-hud { position: absolute; z-index: 15; top: max(66px, calc(env(safe-area-inset-top) + 54px));
-  left: 10%; width: 80%; pointer-events: none; color: #fff3dc; text-align: center;
-  font: 900 12px/1.5 var(--font-combat-display); text-shadow: 1px 2px #142332; }
+/* Stage 1 tank encounter: projected turret HP and a touch-sized clear card. */
+.tank-boss-hud { position:absolute; z-index:8; width:clamp(132px, 42vw, 168px); pointer-events:none;
+  transform:translate(-50%, -100%); color:#fff3dc; text-align:center;
+  font:900 12px/1.5 var(--font-utility, sans-serif); text-shadow:1px 1px #142332; }
 .tank-boss-hud[hidden], .stage-clear-overlay[hidden] { display: none; }
-.tank-entrance-warning { position:absolute; inset:0; z-index:16; pointer-events:none;
-  border:4px solid #ff3a2c; box-shadow:inset 0 0 18px #ef241c85; }
+.tank-entrance-warning { position:absolute; inset:0; z-index:1; pointer-events:none;
+  border:4px solid #ff3a2c; box-shadow:inset 0 0 18px #ef241c85;
+  background:rgb(255 32 20 / var(--tank-alarm-glow, .08)); }
 .tank-entrance-warning[hidden] { display:none; }
-.tank-entrance-warning span { position:absolute; top:max(108px, calc(env(safe-area-inset-top) + 96px));
+.tank-entrance-warning span { position:absolute; top:calc(var(--hud-inset-top, 0px) + 184px);
   left:0; width:100%; color:#ffe5b0; text-align:center; font:900 14px var(--font-combat-display);
   letter-spacing:.12em; text-shadow:1px 2px #54221c; }
-.tank-boss-bar { height: 13px; overflow: hidden; background: #142332; border: 2px solid #fff3dc; box-shadow: 0 2px #142332; }
+.tank-boss-bar { position:relative; height:18px; overflow:hidden; background:#142332;
+  border:2px solid #fff3dc; box-shadow:0 2px #142332; }
+.tank-boss-hp { position:absolute; inset:0; display:grid; place-items:center; }
 .tank-boss-fill { height: 100%; background: #f3532f; transform-origin: left; }
-.tank-boss-damage { position:absolute; top:39px; left:0; width:100%; color:#fff4c4;
+.tank-boss-damage { position:absolute; bottom:calc(100% + 3px); left:0; width:100%; color:#fff4c4;
   font:800 14px var(--font-utility, sans-serif); text-shadow:1px 2px #142332; }
 .tank-boss-damage[hidden] { display:none; }
+@media (prefers-reduced-motion: reduce) {
+  .tank-entrance-warning { background:rgb(255 32 20 / .08); }
+}
 .tank-boss-hud[data-phase="3"] .tank-boss-fill { background: #ff2518; }
 .stage-clear-overlay { position: absolute; inset: 0; z-index: 35; display: flex; flex-direction: column;
   justify-content: center; align-items: center; gap: 20px; padding: 24px 18px;

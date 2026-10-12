@@ -5,7 +5,8 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { emptyCarnival } from '../src/simulation/carnival';
 import { emptyDestroyer } from '../src/simulation/destroyer';
-import { tankPhase, startDefenseTank } from '../src/simulation/defenseTank';
+import { tankPhase, startDefenseTank, admitTankFlanks } from '../src/simulation/defenseTank';
+import { enemyApproachSpeed } from '../src/simulation/enemies/latePressure';
 import { qaSimulationTuning } from '../src/app/QaStressFixture';
 import { CHECKPOINT_KEY, readCheckpoint, writeCheckpoint, simulationFromCheckpoint, type SessionCheckpoint } from '../src/app/SessionCheckpoint';
 import { defaultRuntimeTuning } from '../src/app/runtimeTuning';
@@ -41,6 +42,53 @@ function suppressFire(sim: Simulation) {
 }
 
 describe('Stage 1 Defense tank', () => {
+  it.each([1, 2, 3] as const)('phase %i admits only the existing flank counts at 28 units with persistent Boss speeds', phase => {
+    const sim = active(phase), s = sim.getState(), p = tankConfig.phases[phase - 1];
+    const oldHeavy = { id: 100, tier: 1, archetype: 'heavy' as const, lane: 0, x: -2.8, z: 35, hp: 15 };
+    s.enemies = [oldHeavy]; s.enemyStream!.nextEnemyId = 101;
+    admitTankFlanks(s, s.defenseTank!, tankConfig);
+    const admitted = s.enemies.slice(1);
+    expect(admitted).toHaveLength(2 * (p.heaviesPerLane + p.gruntsPerLane));
+    expect(admitted.every(e => e.lane === 0 || e.lane === 4)).toBe(true);
+    expect(admitted.filter(e => e.archetype === 'heavy').every(e => e.bossFlankSpeedUnitsPerSecond === [1.4, 1.7, 2][phase - 1])).toBe(true);
+    expect(admitted.filter(e => e.archetype === 'grunt').every(e => e.bossFlankSpeedUnitsPerSecond === undefined)).toBe(true);
+    expect(Math.min(...admitted.map(e => e.z))).toBe(28);
+    expect(s.defenseTank!.nextFlankAtSeconds).toBe(30 + p.flankIntervalSeconds);
+    const ordinarySpeed = enemyApproachSpeed(oldHeavy, s.catharsis!.balance);
+    sim.restoreState(s); expect(sim.getState().enemies).toEqual(s.enemies);
+    step(sim);
+    const after = sim.getState();
+    expect(35 - after.enemies.find(e => e.id === 100)!.z).toBeCloseTo(ordinarySpeed / 60);
+    expect(28 - after.enemies.find(e => e.id === 101)!.z).toBeCloseTo([1.4, 1.7, 2][phase - 1] / 60);
+    const invalid = structuredClone(s); invalid.enemies[1].bossFlankSpeedUnitsPerSecond = 0;
+    expect(() => sim.restoreState(invalid)).toThrow(); expect(sim.getState()).toEqual(after);
+    if (phase > 1) {
+      s.elapsedSeconds = s.defenseTank!.nextGiantAtSeconds!;
+      admitTankFlanks(s, s.defenseTank!, tankConfig);
+      const giant = s.enemies.find(e => e.archetype === 'giant')!;
+      expect(giant.z).toBe(28); expect(giant.bossFlankSpeedUnitsPerSecond).toBe(phase === 2 ? 1.1 : 1.3);
+      expect(s.defenseTank!.nextGiantAtSeconds).toBe(s.elapsedSeconds + 12);
+    }
+  });
+  it('preserves speeds already admitted across phases and the original settings of old Tank checkpoints', () => {
+    const sim = active(), s = sim.getState();
+    admitTankFlanks(s, s.defenseTank!, tankConfig);
+    s.defenseTank!.phase = 2; s.defenseTank!.hp = 4550;
+    s.defenseTank!.nextFlankAtSeconds = s.elapsedSeconds;
+    admitTankFlanks(s, s.defenseTank!, tankConfig);
+    expect(s.enemies[0].bossFlankSpeedUnitsPerSecond).toBe(1.4);
+    expect(s.enemies[8].bossFlankSpeedUnitsPerSecond).toBe(1.7);
+    sim.restoreState(s); expect(sim.getState().enemies).toEqual(s.enemies);
+    const historical = structuredClone(tankConfig);
+    delete historical.flankSpawnAheadDistance;
+    for (const p of historical.phases) { delete p.heavySpeedUnitsPerSecond; delete p.giantSpeedUnitsPerSecond; }
+    const old = active().getState(); old.catharsis!.balance.defenseTank = historical;
+    admitTankFlanks(old, old.defenseTank!, historical);
+    expect(Math.min(...old.enemies.map(e => e.z))).toBe(old.catharsis!.balance.defenseSpawnAheadDistance);
+    expect(old.enemies.every(e => e.bossFlankSpeedUnitsPerSecond === undefined)).toBe(true);
+    const replay = new Simulation({ seed: old.seed, level, startSquad: 2, startRocketCount: 0, tiers: config.tiers, catharsis: old.catharsis });
+    replay.restoreState(old); expect(replay.getState().enemies).toEqual(old.enemies);
+  });
   it('clears the middle lanes once at 0.5s without XP or direct kills, including across entry checkpoints', () => {
     const sim = fixture(); suppressFire(sim);
     const initial = sim.getState();
@@ -200,8 +248,10 @@ describe('Stage 1 Defense tank', () => {
   it('reports exact totals, bullet-only accuracy, zero-shot accuracy and readable clear time', () => {
     const stats = { gruntKills: 5, heavyKills: 3, giantKills: 1, shotsFired: 100, shotsHit: 35, grenadesUsed: 20 };
     expect(combatResults(stats, 90).totalKills).toBe(9); expect(combatResults(stats, 90).accuracy).toBe(.35);
-    expect(clearResultRows(stats, 90)).toContainEqual(['Clear Time', '1:30.0']);
-    expect(clearResultRows(stats, 90)).toContainEqual(['Accuracy', '35.0%']);
+    expect(clearResultRows(stats, 90)).toContainEqual(['通關時間', '1:30.0']);
+    expect(clearResultRows(stats, 90)).toContainEqual(['命中率', '35.0%']);
+    expect(clearResultRows(stats, 90).map(row => row[0])).toEqual(['通關時間', '擊殺總數', '一般兵／重裝兵／巨人兵',
+      '發射子彈', '命中子彈', '命中率', '使用手榴彈']);
     expect(combatResults({ ...stats, shotsFired: 0, shotsHit: 0 }, 0).accuracy).toBe(0);
   });
 });

@@ -83,7 +83,6 @@ export class FieldObserver {
       this.presented = true;
     }
     this.element.hidden = !frame.visible;
-    this.element.classList.toggle('field-observer--tank', message === 'tankBoss');
     if (frame.visible) {
       const expression = message === 'tankBoss' ? 'alert'
         : message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';

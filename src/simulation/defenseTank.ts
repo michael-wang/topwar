@@ -76,21 +76,23 @@ export function admitTankFlanks(frame: SimulationState, tank: DefenseTankState, 
   const lanes = attackLanePositions(balance.laneCount, trackHalfWidth, balance.edgeInset);
   const spawn = (lane: number, archetype: 'grunt' | 'heavy' | 'giant', depth: number) => {
     const cursor = frame.enemyStream!;
+    const speed = archetype === 'heavy' ? p.heavySpeedUnitsPerSecond : archetype === 'giant' ? p.giantSpeedUnitsPerSecond : undefined;
     if (!Number.isSafeInteger(cursor.nextEnemyId + 1)) throw Error('Tank flank enemy ID overflow');
     frame.enemies.push({ id: cursor.nextEnemyId++, tier: 1, archetype, lane, x: lanes[lane], z: depth,
+      ...(speed !== undefined ? { bossFlankSpeedUnitsPerSecond: speed } : {}),
       hp: archetype === 'giant' ? balance.giant.hp : archetype === 'heavy' ? balance.heavyHp : 1 });
   };
   if (now + 1e-9 >= tank.nextFlankAtSeconds) {
     for (const lane of [0, 4]) {
       for (let i = 0; i < p.heaviesPerLane + p.gruntsPerLane; i++)
-        spawn(lane, i < p.heaviesPerLane ? 'heavy' : 'grunt', balance.defenseSpawnAheadDistance + i * balance.memberDepthSpacing);
+        spawn(lane, i < p.heaviesPerLane ? 'heavy' : 'grunt', (c.flankSpawnAheadDistance ?? balance.defenseSpawnAheadDistance) + i * balance.memberDepthSpacing);
     }
     tank.nextFlankAtSeconds = nextSlot(tank.nextFlankAtSeconds, now, p.flankIntervalSeconds);
   }
   if (p.giantIntervalSeconds !== null) {
     tank.nextGiantAtSeconds ??= now + p.giantIntervalSeconds;
     if (now + 1e-9 >= tank.nextGiantAtSeconds) {
-      spawn(tank.giantLane, 'giant', balance.defenseSpawnAheadDistance);
+      spawn(tank.giantLane, 'giant', c.flankSpawnAheadDistance ?? balance.defenseSpawnAheadDistance);
       tank.giantLane = tank.giantLane === 0 ? 4 : 0;
       tank.nextGiantAtSeconds = nextSlot(tank.nextGiantAtSeconds, now, p.giantIntervalSeconds);
     }

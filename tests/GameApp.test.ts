@@ -124,6 +124,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
     presentGrenade = vi.fn();
     presentArtillery = vi.fn();
     presentTankEntrance = vi.fn();
+    projectTankHealthPosition = vi.fn(() => ({ x: 195, y: 240 }));
     presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;
     preparePresentation = vi.fn();

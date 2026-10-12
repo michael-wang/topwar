@@ -16,6 +16,8 @@ export interface SquadSimulationState {
 export interface EnemySimulationState {
   // Admission-time ordinary Survival speed. Absent in historical/pre-NAVAL enemies.
   survivalSpeedMultiplier?: number;
+  // Captured only for newly admitted Boss flank Heavy/Giant troops.
+  bossFlankSpeedUnitsPerSecond?: number;
   lane?: number;
   archetype?: 'grunt' | 'heavy' | 'giant';
   id: number;

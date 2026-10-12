@@ -1,5 +1,6 @@
-import { MUSIC_BAR_SECONDS, MUSIC_MAX_VOLUME, MUSIC_STEP_MS,
+import { MUSIC_MAX_VOLUME,
   MUSIC_STEPS_PER_BAR, musicEventsForStep, musicStateFor, musicStepAt,
+  musicStepMs, isBossMusic,
   type MusicEvent, type MusicFrame, type MusicInstrument, type MusicState,
 } from './MusicComposition';
 
@@ -20,6 +21,7 @@ export class ProceduralMusic {
   private wasPaused = false;
   private wasSilent = true;
   private disposed = false;
+  private lastState: MusicState | null = null;
 
   constructor(private readonly context: AudioContext, master: GainNode,
     private readonly seed = 0x4d25317b) {
@@ -34,7 +36,7 @@ export class ProceduralMusic {
       return node;
     };
     this.filters = { pad: filter(1200), bass: filter(700),
-      motif: filter(1900) };
+      motif: filter(1900), drum: filter(900) };
   }
 
   get activeVoiceCount(): number { return this.active.size; }
@@ -43,17 +45,23 @@ export class ProceduralMusic {
   update(presentationMs: number, frame: MusicFrame): void {
     if (this.disposed) return;
     const state = musicStateFor(frame);
+    const changed = this.lastState !== state;
+    if (changed && this.lastState !== null) this.releaseVoices(this.context.currentTime);
+    this.lastState = state;
+    const musicMs = isBossMusic(state) && frame.tank
+      ? Math.max(0, frame.tank.elapsedSeconds - (state === 'BOSS_INTRO' ? 0 : frame.tank.entrySeconds)) * 1000 : presentationMs;
+    const stepMs = musicStepMs(state);
     const volume = Math.max(0, Math.min(MUSIC_MAX_VOLUME, frame.musicVolume));
     const now = this.context.currentTime;
-    const silent = frame.paused || state === 'GAME_OVER' || volume === 0;
-    const target = silent ? 0 : volume;
+    const silent = frame.paused || state === 'GAME_OVER' || state === 'VICTORY' || volume === 0;
+    const target = silent ? 0 : volume * (state === 'BOSS_INTRO' ? .55 : 1);
     if (volume === 0) {
       this.bus.gain.cancelScheduledValues(now);
       this.bus.gain.setValueAtTime(0, now);
       this.lastBusTarget = 0;
     } else if (Number.isNaN(this.lastBusTarget) || Math.abs(target - this.lastBusTarget) > .001) {
       this.bus.gain.setTargetAtTime(target, now,
-        frame.paused ? .035 : state === 'GAME_OVER' ? .22
+        frame.paused ? .035 : state === 'GAME_OVER' ? .22 : state === 'VICTORY' ? .05 : state === 'BOSS_INTRO' ? .2
           : target < volume ? .035 : .07);
       this.lastBusTarget = target;
     }
@@ -64,13 +72,13 @@ export class ProceduralMusic {
       return;
     }
 
-    const expectedNow = presentationMs / 1000 + this.clockOffsetSeconds;
-    if (this.nextStep < 0 || this.wasPaused || this.wasSilent
+    const expectedNow = musicMs / 1000 + this.clockOffsetSeconds;
+    if (this.nextStep < 0 || changed || this.wasPaused || this.wasSilent
       || Math.abs(now - expectedNow) > .25) {
       if (this.nextStep >= 0 && Math.abs(now - expectedNow) > .25) this.releaseVoices(now);
-      this.clockOffsetSeconds = now - presentationMs / 1000;
-      this.nextStep = musicStepAt(presentationMs) + 1;
-      this.voiceCurrentChord(presentationMs, state, now + .008);
+      this.clockOffsetSeconds = now - musicMs / 1000;
+      this.nextStep = musicStepAt(musicMs, state) + 1;
+      this.voiceCurrentChord(musicMs, state, now + .008);
     }
     this.wasPaused = false;
     this.wasSilent = false;
@@ -78,7 +86,7 @@ export class ProceduralMusic {
     // The next grid event is queued before its audible time; late frames skip missed steps.
     const horizon = now + MUSIC_LOOKAHEAD_SECONDS;
     for (let queued = 0; queued < 4; queued++) {
-      const start = this.clockOffsetSeconds + this.nextStep * MUSIC_STEP_MS / 1000;
+      const start = this.clockOffsetSeconds + this.nextStep * stepMs / 1000;
       if (start > horizon) break;
       if (start >= now - .06) {
         for (const event of musicEventsForStep(this.seed, this.nextStep, state)) {
@@ -97,6 +105,7 @@ export class ProceduralMusic {
     this.lastBusTarget = NaN;
     this.wasPaused = false;
     this.wasSilent = true;
+    this.lastState = null;
     this.bus.gain.setTargetAtTime(0, this.context.currentTime, .03);
   }
 
@@ -118,13 +127,15 @@ export class ProceduralMusic {
 
   private voiceCurrentChord(presentationMs: number, state: MusicState,
     startSeconds: number): void {
-    const step = musicStepAt(presentationMs);
+    const stepMs = musicStepMs(state), step = musicStepAt(presentationMs, state);
     const barStartStep = Math.floor(step / MUSIC_STEPS_PER_BAR) * MUSIC_STEPS_PER_BAR;
-    const elapsedInBarSeconds = (presentationMs - barStartStep * MUSIC_STEP_MS) / 1000;
-    const remaining = Math.max(.4, MUSIC_BAR_SECONDS - elapsedInBarSeconds + .32);
+    const elapsedInBarSeconds = (presentationMs - barStartStep * stepMs) / 1000;
+    const remaining = Math.max(.4, stepMs * MUSIC_STEPS_PER_BAR / 1000 - elapsedInBarSeconds + .32);
     for (const event of musicEventsForStep(this.seed, barStartStep, state)) {
       if (event.instrument === 'pad') this.schedule({ ...event, durationSeconds: remaining }, startSeconds);
     }
+    if (isBossMusic(state)) for (const event of musicEventsForStep(this.seed, step, state))
+      if (event.instrument !== 'pad') this.schedule(event, startSeconds);
   }
 
   private schedule(event: MusicEvent, start: number): void {
@@ -132,18 +143,19 @@ export class ProceduralMusic {
       ? [[1, 'triangle', .7], [1.004, 'sawtooth', .3]] as const
       : event.instrument === 'bass'
         ? [[1, 'sine', .65], [2, 'triangle', .35]] as const
-        : [[1, 'triangle', 1]] as const;
+        : event.instrument === 'drum' ? [[1, 'sine', 1]] as const : [[1, 'triangle', 1]] as const;
     if (this.active.size + voices.length > MAX_MUSIC_VOICES) return;
     const end = start + event.durationSeconds;
     const attack = event.instrument === 'pad' ? .25
-      : event.instrument === 'bass' ? .016 : .012;
+      : event.instrument === 'bass' ? .016 : event.instrument === 'drum' ? .005 : .012;
     const release = event.instrument === 'pad' ? .48
-      : event.instrument === 'bass' ? .28 : .2;
+      : event.instrument === 'bass' ? .28 : event.instrument === 'drum' ? .12 : .2;
     for (const [ratio, wave, share] of voices) {
       const oscillator = this.context.createOscillator();
       const gain = this.context.createGain();
       oscillator.type = wave;
       oscillator.frequency.setValueAtTime(event.frequencyHz * ratio, start);
+      if (event.instrument === 'drum') oscillator.frequency.exponentialRampToValueAtTime(event.frequencyHz * .35, start + .12);
       const peak = event.peakGain * share;
       gain.gain.setValueAtTime(.001, start);
       gain.gain.exponentialRampToValueAtTime(peak, start + attack);

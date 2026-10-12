@@ -395,12 +395,17 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     const archetype = value.archetype;
     if (Object.keys(value).length !== 5 + (archetype === undefined ? 0 : 1) + (value.lane === undefined ? 0 : 1)
       + (value.survivalSpeedMultiplier === undefined ? 0 : 1)
+      + (value.bossFlankSpeedUnitsPerSecond === undefined ? 0 : 1)
       || (value.lane !== undefined && !laneIsValid(value.lane))
       || (catharsis?.balance.defenseMode && (!laneIsValid(value.lane) || value.tier !== 1))
       || (archetype !== undefined && archetype !== 'grunt' && archetype !== 'heavy' && archetype !== 'giant')
       || (value.survivalSpeedMultiplier !== undefined && (!catharsis?.balance.defenseMode
         || (archetype !== 'grunt' && archetype !== 'heavy') || !positiveFinite(value.survivalSpeedMultiplier)
         || (value.survivalSpeedMultiplier as number) > 4))
+      || (value.bossFlankSpeedUnitsPerSecond !== undefined && (!catharsis?.balance.defenseMode
+        || !catharsis.balance.defenseTank || (archetype !== 'heavy' && archetype !== 'giant')
+        || (value.lane !== 0 && value.lane !== 4) || value.survivalSpeedMultiplier !== undefined
+        || !positiveFinite(value.bossFlankSpeedUnitsPerSecond)))
       || ['id', 'tier', 'x', 'z', 'hp'].some((field) => !Object.hasOwn(value, field))) {
       throw new Error(`Simulation enemy ${index} has missing or unknown fields`);
     }
@@ -421,6 +426,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
     }
     return { id, tier: value.tier as number, x: value.x, z: value.z, hp: value.hp,
       ...(value.survivalSpeedMultiplier !== undefined ? { survivalSpeedMultiplier: value.survivalSpeedMultiplier as number } : {}),
+      ...(value.bossFlankSpeedUnitsPerSecond !== undefined ? { bossFlankSpeedUnitsPerSecond: value.bossFlankSpeedUnitsPerSecond as number } : {}),
       ...(value.lane !== undefined ? { lane: value.lane as number } : {}),
       ...(archetype ? { archetype: archetype as 'grunt' | 'heavy' | 'giant' } : {}) };
   });

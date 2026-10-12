@@ -13,6 +13,7 @@ import { startDefenseTank } from '../src/simulation/defenseTank';
 import shipping from './helpers/ShippingConfig';
 import { TankEntranceHud } from '../src/ui/TankEntranceHud';
 import type { SimulationFrameState } from '../src/simulation/SimulationState';
+import { tankAlarmGlow, TANK_ALARM_PERIOD_SECONDS } from '../src/presentation/TankAlarm';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
 afterEach(() => vi.unstubAllGlobals());
 it('selects Traditional Chinese browser locales, English fallback and persisted overrides safely', () => {
@@ -173,7 +174,7 @@ it('resumes at exact presentation offset and cancels stale asynchronous loads on
 });
 class ElementStub extends EventTarget {
   classList = { toggle: vi.fn() };
-  children: ElementStub[] = []; style: Record<string,string>={}; attrs:Record<string,string>={};
+  children: ElementStub[] = []; style: Record<string,any>={ setProperty: (k: string, v: string) => { this.style[k] = v; } }; attrs:Record<string,string>={};
   hidden=false; lang=''; textContent=''; src=''; remove=vi.fn(); blur=vi.fn();
   append(...children:ElementStub[]){this.children.push(...children);}
   replaceWith=vi.fn();
@@ -207,13 +208,18 @@ it('freezes edge/alarm pulses on Pause and restores remaining visuals without re
   const tank = startDefenseTank(0, 17, shipping.catharsis!.defenseTank!);
   const frame = { elapsedSeconds: 0, squad: { count: 2 }, defenseTank: tank } as { elapsedSeconds: number } & SimulationFrameState;
   hud.update(frame, false); expect(alarm).toHaveBeenCalledOnce();
-  const opacity = hud.element.style.opacity;
+  const glow = (hud.element.style as any)['--tank-alarm-glow'];
   for (let n = 0; n < 20; n++) hud.update(frame, true);
-  expect(hud.element.style.opacity).toBe(opacity); hud.update(frame, false); expect(alarm).toHaveBeenCalledOnce();
+  expect((hud.element.style as any)['--tank-alarm-glow']).toBe(glow); hud.update(frame, false); expect(alarm).toHaveBeenCalledOnce();
   frame.elapsedSeconds = .75; hud.update(frame, false); expect(alarm).toHaveBeenCalledTimes(2);
   hud.restore(frame); frame.elapsedSeconds = 1.5; hud.update(frame, false);
   expect(hud.element.hidden).toBe(false); expect(alarm).toHaveBeenCalledTimes(2);
   tank.status = 'active'; hud.update(frame, false); expect(hud.element.hidden).toBe(true); hud.dispose();
+});
+it('shares the slow siren period with smooth full-field light and holds reduced-motion light steady', () => {
+  expect(tankAlarmGlow(0, false)).toBeCloseTo(tankAlarmGlow(TANK_ALARM_PERIOD_SECONDS, false));
+  expect(tankAlarmGlow(0, false)).toBeGreaterThan(tankAlarmGlow(TANK_ALARM_PERIOD_SECONDS / 2, false));
+  expect(tankAlarmGlow(0, true)).toBe(tankAlarmGlow(.375, true));
 });
 it('waits for decoded portraits before starting all parts of the mission at offset zero', () => {
   let ready = false;

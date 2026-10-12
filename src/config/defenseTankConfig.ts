@@ -7,12 +7,14 @@ const phase = z.strictObject({
   speedUnitsPerSecond: positive, flankIntervalSeconds: positive,
   heaviesPerLane: z.number().int().positive(), gruntsPerLane: z.number().int().nonnegative(),
   giantIntervalSeconds: positive.nullable(),
+  heavySpeedUnitsPerSecond: positive.optional(), giantSpeedUnitsPerSecond: positive.optional(),
 });
 export const DefenseTankConfigSchema = z.strictObject({
   flight: ArtilleryFlightSchema.default({ horizontalSpeed: artilleryDefaults.horizontalSpeed,
     gravity: artilleryDefaults.gravity, minimumFlightSeconds: 2.4 }),
   triggerLevel: z.literal(9), hp: positive, entrySeconds: positive,
   startZ: positive, battleZ: positive, halfWidth: positive, halfDepth: positive,
+  flankSpawnAheadDistance: positive.optional(),
   phase2HpFraction: positive.lt(1), phase3HpFraction: positive.lt(1),
   streamSeed: z.number().int().min(0).max(0xffffffff),
   phases: z.tuple([phase, phase, phase]),

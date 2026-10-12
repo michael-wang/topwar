@@ -32,6 +32,8 @@ export function rendererInfoSnapshot(info: Pick<THREE.WebGLInfo, 'render' | 'mem
 }
 
 export class GameRenderer {
+  private readonly tankHealthVector = new THREE.Vector3();
+  private readonly tankHealthPoint = { x: 0, y: 0 };
   getDebugStats() {
     return {
       ...rendererInfoSnapshot(this.renderer.info, window.devicePixelRatio || 1,
@@ -207,6 +209,14 @@ export class GameRenderer {
     this.supplyProjection.set(-x,.9+.07*Math.sin(nowMs/220),z).project(this.camera);
     return {x:(this.supplyProjection.x+1)*this.viewport.clientWidth/2,
       y:(1-this.supplyProjection.y)*this.viewport.clientHeight/2};
+  }
+  projectTankHealthPosition(): { x: number; y: number } | null {
+    if (!this.tankRenderer?.group.visible) return null;
+    this.tankRenderer.healthBarPosition(this.tankHealthVector).project(this.camera);
+    if (Math.abs(this.tankHealthVector.z) > 1) return null;
+    this.tankHealthPoint.x = (this.tankHealthVector.x + 1) * this.viewport.clientWidth / 2;
+    this.tankHealthPoint.y = (1 - this.tankHealthVector.y) * this.viewport.clientHeight / 2;
+    return this.tankHealthPoint;
   }
   presentTankEntrance(events: readonly TankEntranceEvent[], nowMs: number): void {
     if (!events.length) return;

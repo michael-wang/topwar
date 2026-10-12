@@ -113,6 +113,9 @@ export class DefenseTankRenderer {
     this.shock.position.set(0, .09, event.z);
     this.shockDepth = event.z - event.victims.reduce((z, v) => Math.min(z, v.z), event.z - 8) + 3;
   }
+  healthBarPosition(target: THREE.Vector3): THREE.Vector3 {
+    return this.turret.localToWorld(target.set(0, 1.5, 0));
+  }
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
     for (const event of events) if (event.kind === 'grenadeDetonated' && (event.tankDamage ?? 0) > 0) {
       this.hitAtMs = nowMs; this.hitDurationMs = 230; this.hitStrength = .9;

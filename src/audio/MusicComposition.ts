@@ -1,17 +1,20 @@
 export const MUSIC_BPM = 88;
+export const BOSS_MUSIC_BPM = 116;
 export const MUSIC_STEP_MS = 60_000 / MUSIC_BPM / 2;
 export const MUSIC_STEPS_PER_BAR = 8;
 export const MUSIC_BAR_SECONDS = MUSIC_STEP_MS * MUSIC_STEPS_PER_BAR / 1000;
 export const MUSIC_MAX_VOLUME = .5;
 
-export type MusicState = 'NORMAL' | 'GAME_OVER';
+export type MusicState = 'NORMAL' | 'GAME_OVER' | 'BOSS_INTRO' | 'BOSS_1' | 'BOSS_2' | 'BOSS_3' | 'VICTORY';
 export interface MusicFrame {
   squadCount: number;
   paused: boolean;
   musicVolume: number;
+  tank?: { status: 'entering' | 'active' | 'defeated' | 'breached'; phase: 1 | 2 | 3;
+    elapsedSeconds: number; entrySeconds: number };
 }
-export type ChordName = 'Dm' | 'Bb' | 'C' | 'Dm/A';
-export type MusicInstrument = 'pad' | 'bass' | 'motif';
+export type ChordName = 'Dm' | 'Bb' | 'C' | 'Dm/A' | 'Am' | 'F' | 'E';
+export type MusicInstrument = 'pad' | 'bass' | 'motif' | 'drum';
 export interface MusicEvent {
   instrument: MusicInstrument;
   frequencyHz: number;
@@ -29,7 +32,7 @@ interface Harmony {
   motifHz: readonly [number, number, number, number, number];
 }
 
-const HARMONY: Record<ChordName, Harmony> = {
+const HARMONY = {
   Dm: { name: 'Dm', rootHz: 73.42, fifthHz: 110, octaveHz: 146.83,
     padHz: [146.83, 220, 349.23], motifHz: [349.23, 392, 440, 329.63, 293.66] },
   Bb: { name: 'Bb', rootHz: 58.27, fifthHz: 87.31, octaveHz: 116.54,
@@ -38,7 +41,25 @@ const HARMONY: Record<ChordName, Harmony> = {
     padHz: [130.81, 196, 329.63], motifHz: [329.63, 392, 440, 293.66, 261.63] },
   'Dm/A': { name: 'Dm/A', rootHz: 55, fifthHz: 73.42, octaveHz: 110,
     padHz: [110, 146.83, 349.23], motifHz: [349.23, 392, 440, 329.63, 293.66] },
+} satisfies Partial<Record<ChordName, Harmony>>;
+const BOSS_HARMONY: Record<'Am' | 'F' | 'Dm' | 'E', Harmony> = {
+  Am: { name: 'Am', rootHz: 55, fifthHz: 82.41, octaveHz: 110,
+    padHz: [110, 164.81, 261.63], motifHz: [220, 329.63, 440, 523.25, 493.88] },
+  F: { name: 'F', rootHz: 43.65, fifthHz: 65.41, octaveHz: 87.31,
+    padHz: [87.31, 130.81, 220], motifHz: [349.23, 329.63, 261.63, 220, 392] },
+  Dm: { name: 'Dm', rootHz: 36.71, fifthHz: 55, octaveHz: 73.42,
+    padHz: [73.42, 110, 174.61], motifHz: [293.66, 440, 587.33, 523.25, 349.23] },
+  E: { name: 'E', rootHz: 41.2, fifthHz: 61.74, octaveHz: 82.41,
+    padHz: [82.41, 123.47, 207.65], motifHz: [329.63, 415.3, 493.88, 659.25, 587.33] },
 };
+const BOSS_FORM = ['Am', 'F', 'Dm', 'E'] as const;
+// Original four-bar military/arcade call and answer, independent of the normal motif.
+const BOSS_MELODY = [
+  [57, 64, 69, 72, 71, 67, 69, 64],
+  [65, 64, 60, 57, 60, 65, 67, 64],
+  [62, 69, 74, 72, 69, 65, 64, 62],
+  [64, 68, 71, 76, 74, 71, 68, 64],
+] as const;
 const NORMAL_FORM: readonly ChordName[] = ['Dm', 'Dm', 'Bb', 'Bb', 'C', 'C', 'Dm/A', 'Dm/A'];
 const PHRASE_DYNAMICS = [.75, .75, .85, .85, 1, 1, .8, .8] as const;
 const MOTIF_STEPS = [1, 2, 4, 6, 7] as const;
@@ -53,17 +74,24 @@ function hash(value: number): number {
   return (value ^ (value >>> 16)) >>> 0;
 }
 
-export function musicStateFor(frame: Pick<MusicFrame, 'squadCount'>): MusicState {
-  return frame.squadCount === 0 ? 'GAME_OVER' : 'NORMAL';
+export function musicStateFor(frame: Pick<MusicFrame, 'squadCount' | 'tank'>): MusicState {
+  if (frame.squadCount === 0 || frame.tank?.status === 'breached') return 'GAME_OVER';
+  if (frame.tank?.status === 'defeated') return 'VICTORY';
+  if (frame.tank?.status === 'entering') return 'BOSS_INTRO';
+  if (frame.tank?.status === 'active') return `BOSS_${frame.tank.phase}`;
+  return 'NORMAL';
 }
 
-export function musicStepAt(presentationMs: number): number {
-  return Math.floor(Math.max(0, presentationMs) / MUSIC_STEP_MS);
+export const isBossMusic = (state: MusicState): boolean => state.startsWith('BOSS_');
+export const musicStepMs = (state: MusicState): number => isBossMusic(state) ? 60_000 / BOSS_MUSIC_BPM / 2 : MUSIC_STEP_MS;
+export function musicStepAt(presentationMs: number, state: MusicState = 'NORMAL'): number {
+  return Math.floor(Math.max(0, presentationMs) / musicStepMs(state));
 }
 
 export function musicHarmonyForBar(bar: number, state: MusicState): Harmony {
+  if (isBossMusic(state)) return BOSS_HARMONY[BOSS_FORM[((bar % 4) + 4) % 4]];
   const form = NORMAL_FORM;
-  return HARMONY[form[((bar % form.length) + form.length) % form.length]];
+  return HARMONY[form[((bar % form.length) + form.length) % form.length] as keyof typeof HARMONY];
 }
 
 export function musicPhraseIntensity(bar: number): number {
@@ -76,7 +104,8 @@ export function musicMotifVariant(seed: number, phrase: number): number {
 }
 
 export function musicEventsForStep(seed: number, step: number, state: MusicState): MusicEvent[] {
-  if (state === 'GAME_OVER') return [];
+  if (state === 'GAME_OVER' || state === 'VICTORY') return [];
+  if (isBossMusic(state)) return bossEventsForStep(step, state);
   const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
   const inBar = ((step % MUSIC_STEPS_PER_BAR) + MUSIC_STEPS_PER_BAR) % MUSIC_STEPS_PER_BAR;
   const withinPhrase = ((bar % 8) + 8) % 8;
@@ -121,6 +150,30 @@ export function musicEventsForStep(seed: number, step: number, state: MusicState
         peakGain: .15 * intensity,
         chord: harmony.name });
     }
+  }
+  return events;
+}
+
+function bossEventsForStep(step: number, state: MusicState): MusicEvent[] {
+  const bar = Math.floor(step / MUSIC_STEPS_PER_BAR), inBar = step % MUSIC_STEPS_PER_BAR;
+  const harmony = musicHarmonyForBar(bar, state), events: MusicEvent[] = [];
+  const phase = state === 'BOSS_3' ? 3 : state === 'BOSS_2' ? 2 : 1;
+  const add = (instrument: MusicInstrument, frequencyHz: number, durationSeconds: number, peakGain: number) =>
+    events.push({ instrument, frequencyHz, durationSeconds, peakGain, chord: harmony.name });
+  if (inBar === 0) for (const hz of harmony.padHz) add('pad', hz,
+    musicStepMs(state) * MUSIC_STEPS_PER_BAR / 1000 + .2, state === 'BOSS_INTRO' ? .07 : .09);
+  if (state === 'BOSS_INTRO') {
+    if (inBar === 0 || inBar === 4) add('bass', harmony.rootHz, .8, .2);
+    return events;
+  }
+  if (phase === 3 || inBar % (phase === 2 ? 2 : 4) === 0) {
+    add('bass', inBar % 4 === 0 ? harmony.rootHz : harmony.fifthHz, .3, .2 + phase * .015);
+    add('drum', inBar % 4 === 0 ? 72 : 150, .16, .16 + phase * .025);
+  }
+  if (phase > 1 || inBar !== 1 && inBar !== 5) {
+    const note = BOSS_MELODY[((bar % 4) + 4) % 4][inBar];
+    add('motif', 440 * 2 ** ((note - 69) / 12), .25, .14 + phase * .025);
+    if (phase === 3 && inBar % 4 === 0) add('motif', 440 * 2 ** ((note + 12 - 69) / 12), .24, .09);
   }
   return events;
 }
