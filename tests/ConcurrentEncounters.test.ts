@@ -63,10 +63,11 @@ it('rejects mismatched overlapping starts, absent entrances, replayed shots and 
   }
 });
 
-it('a real shell can kill the sole Lv6 specialist during Carnival and its Game Over snapshot remains loadable', () => {
+it('a real shell can kill the sole Lv6 specialist after early Survival handoff and its Game Over snapshot remains loadable', () => {
   const a = carnivalEntry();
   for (let i = 0; i < 60 * 14 && a.getFrameState().squad.count; i++) a.step(1 / 60, { targetX: 0 }, pilotTuning);
-  const dead = a.getState(); expect(dead.squad.count).toBe(0); expect(dead.carnival!.status).toBe('active');
+  const dead = a.getState(); expect(dead.squad.count).toBe(0); expect(dead.carnival!.status).toBe('complete');
+  expect(dead.postCapSurvival).not.toBeNull();
   const b = carnivalEntry(); b.restoreState(JSON.parse(JSON.stringify(dead))); expect(b.getState()).toEqual(dead);
   advance(a, 120); advance(b, 120); expect(a.getState()).toEqual(dead); expect(b.getState()).toEqual(dead);
 });

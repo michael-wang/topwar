@@ -10,11 +10,9 @@ import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironmen
 
 it('updates the coastal scene and restores its owner background on disposal', () => {
   const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene);
-  environment.update(80, 3.2, 500, true);
+  environment.update(80, 3.2, 500);
   expect((scene.fog as THREE.Fog).near).toBe(ART.coastalDefense.fogNear);
   expect((scene.background as THREE.Color).getHexString()).toBe('78bde0');
-  expect(scene.getObjectByName('distant-artillery-layer')!.visible).toBe(false);
-  expect(scene.getObjectByName('battlefield-low-haze')).toBeUndefined();
   expect(scene.getObjectByName('stationary-defense-beach')!.position.z).toBe(80);
   environment.dispose(); expect(scene.fog).toBeNull(); expect(scene.background).toBeNull(); expect(scene.children).toHaveLength(0);
 });

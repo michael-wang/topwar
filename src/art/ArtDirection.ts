@@ -21,7 +21,7 @@ export const ART = {
   raider: { helmet: '#6f7c5a', helmetLight: '#94a081', body: '#61704f', bodyDeep: '#536246',
     shorts: '#62727a', stone: '#c6b68c', rim: '#4c5945', hardware: '#49555c' },
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
-    ash: '#e9dfc2', dust: '#cfb994', gray: '#a2b2b8' },
+    dust: '#cfb994', gray: '#a2b2b8' },
   defenseTracer: { core: '#fff2ce', outline: '#080b10', coreLengthRatio: .68,
     corePixels: 1.8, outlinePixels: 4, lengthPixels: 17,
     maxCoreWidth: .16, maxOutlineWidth: .35, maxLength: 1.5 },

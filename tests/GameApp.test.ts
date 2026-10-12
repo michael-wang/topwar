@@ -329,17 +329,6 @@ describe('GameApp config and frame lifecycle', () => {
     expect(element.remove).toHaveBeenCalledOnce();
     reset.mockRestore();
   });
-  it('advances independent environmental audio from presentation time', async () => {
-    const raf = createRaf();
-    const updateEnvironment = vi.spyOn(GameAudio.prototype, 'updateEnvironment');
-    const app = new GameApp({} as HTMLElement, createConfigStore().store,
-      level, {} as CharacterAssets);
-    await startGame(app);
-    raf.frame(100);
-    expect(updateEnvironment).toHaveBeenCalledWith(0);
-    app.dispose();
-    updateEnvironment.mockRestore();
-  });
   it('shows a runtime error and stops scheduling frames when rendering throws', async () => {
     const raf = createRaf();
     const notice = { className: '', textContent: '', setAttribute: vi.fn() };
@@ -902,7 +891,6 @@ describe('intentional gameplay startup', () => {
     const raf = createRaf();
     const observe = vi.spyOn(GameAudio.prototype, 'observe');
     const music = vi.spyOn(GameAudio.prototype, 'updateMusic');
-    const environment = vi.spyOn(GameAudio.prototype, 'updateEnvironment');
     const play = vi.spyOn(GameAudio.prototype, 'play');
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     const initial = structuredClone(mock.getState());
@@ -913,7 +901,6 @@ describe('intentional gameplay startup', () => {
     expect(mock.consumePresentationEvents).not.toHaveBeenCalled();
     expect(observe).not.toHaveBeenCalled();
     expect(music).not.toHaveBeenCalled();
-    expect(environment).not.toHaveBeenCalled();
     expect(play).not.toHaveBeenCalled();
     expect(GameAudio.prototype.activate).not.toHaveBeenCalled();
     expect(mock.render.mock.calls.every(call => call[1] === 0)).toBe(true);

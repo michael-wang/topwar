@@ -1,32 +1,31 @@
-import acceptedAmbient from './fixtures/accepted-ambient.json';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { BridgeEnvironment, BATTLEFIELD_FOG_FAR } from '../src/rendering/environment/BridgeEnvironment';
-import { WarActivityScheduler, AIRCRAFT_STARTED, SKY_FLAK_STARTED, AIRCRAFT_PASS_MS } from '../src/rendering/environment/WarActivityScheduler';
+import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
+import { WarActivityScheduler, AIRCRAFT_STARTED, AIRCRAFT_PASS_MS } from '../src/rendering/environment/WarActivityScheduler';
 
-describe('presentation-only water and sky activity', () => {
-  it('schedules repeatable aircraft and flak activity without gameplay RNG', () => {
+describe('presentation-only aircraft', () => {
+  it('schedules repeatable aircraft without gameplay RNG and resets on rewind', () => {
     const random = vi.spyOn(Math, 'random').mockImplementation(() => {
       throw new Error('Visual scheduling must not use Math.random');
     });
     try {
-      const sequence = (seed: number) => {
-        const scheduler = new WarActivityScheduler(seed);
-        const events: { at: number; kind: number; flakY: number }[] = [];
+      const sequence = (scheduler: WarActivityScheduler) => {
+        const events = [];
         for (let index = 0; index < 20; index++) {
           const at = scheduler.nextEventMs;
           const kind = scheduler.update(at);
-          events.push({ at, kind, flakY: scheduler.flakY });
+          events.push({ at, kind, passes: structuredClone(scheduler.aircraftPasses) });
         }
         return events;
       };
-      const first = sequence(17);
-      expect(sequence(17)).toEqual(first);
-      expect(sequence(18)).not.toEqual(first);
-      expect(first.some((event) => event.kind & AIRCRAFT_STARTED)).toBe(true);
-      expect(first.some((event) => event.kind & SKY_FLAK_STARTED)).toBe(true);
-      expect(first.filter((event) => event.kind & SKY_FLAK_STARTED)
-        .every((event) => event.flakY >= 14 && event.flakY <= 19)).toBe(true);
+      const scheduler = new WarActivityScheduler(17);
+      const first = sequence(scheduler);
+      expect(sequence(new WarActivityScheduler(17))).toEqual(first);
+      expect(sequence(new WarActivityScheduler(18))).not.toEqual(first);
+      expect(first.every((event) => event.kind === AIRCRAFT_STARTED)).toBe(true);
+      scheduler.update(0);
+      expect(scheduler.aircraftPasses.every(pass => pass.startedAtMs === -Infinity)).toBe(true);
+      expect(sequence(scheduler)).toEqual(first);
     } finally {
       random.mockRestore();
     }
@@ -35,9 +34,7 @@ describe('presentation-only water and sky activity', () => {
   it('occasionally overlaps opposite-direction planes while keeping quiet gaps', () => {
     const sample = () => {
       const scheduler = new WarActivityScheduler(17);
-      let overlaps = 0;
-      let singles = 0;
-      let gaps = 0;
+      let overlaps = 0, singles = 0, gaps = 0;
       for (let nowMs = 0; nowMs <= 120_000; nowMs += 100) {
         scheduler.update(nowMs);
         const active = scheduler.aircraftPasses.filter((pass) =>
@@ -59,22 +56,19 @@ describe('presentation-only water and sky activity', () => {
     expect(result.gaps).toBeGreaterThan(result.overlaps);
   });
 
-  it('keeps two bounded coastal aircraft and flak pools and disposes their resources', () => {
+  it('keeps only two coastal aircraft, reuses their resources and disposes once', () => {
     const scene = new THREE.Scene();
+    const originalBackground = scene.background, originalFog = scene.fog;
     const environment = new BridgeEnvironment(scene);
     const skyLayer = scene.getObjectByName('battlefield-sky-activity') as THREE.Group;
-    const aircraft = skyLayer.children.filter((child) => child.name === 'battlefield-aircraft');
-    const flak = skyLayer.children.filter((child) => child.name === 'battlefield-sky-flak-slot');
+    const aircraft = skyLayer.children;
     expect(aircraft).toHaveLength(2);
-    expect(flak).toHaveLength(2);
+    expect(aircraft.every(plane => plane.name === 'battlefield-aircraft')).toBe(true);
     const aircraftMaterial = (aircraft[0].children[0] as THREE.Mesh).material as THREE.Material;
     const aircraftGeometry = (aircraft[0].children[0] as THREE.Mesh).geometry;
     const disposeMaterial = vi.spyOn(aircraftMaterial, 'dispose');
     const disposeGeometry = vi.spyOn(aircraftGeometry, 'dispose');
-    let sawAircraft = false;
-    let sawFlak = false;
-    let aircraftOnScreen = false;
-    let flakOnScreen = false;
+    let sawAircraft = false, aircraftOnScreen = false;
     const camera = new THREE.PerspectiveCamera(48, 9 / 16, .1, 180);
     for (let nowMs = 0; nowMs <= 35_000; nowMs += 100) {
       const playerZ = nowMs / 500;
@@ -82,68 +76,24 @@ describe('presentation-only water and sky activity', () => {
       camera.position.set(0, 6.5, playerZ - 10);
       camera.lookAt(0, 0, playerZ + 12.5);
       camera.updateMatrixWorld();
-      const inPortrait = (object: THREE.Object3D) => {
-        const point = object.getWorldPosition(new THREE.Vector3()).project(camera);
-        return Math.abs(point.x) < 1 && Math.abs(point.y) < 1;
-      };
-      expect(skyLayer.children.filter((child) => child.name === 'battlefield-aircraft')).toHaveLength(2);
-      expect(skyLayer.children.filter((child) => child.name === 'battlefield-sky-flak-slot'))
-        .toHaveLength(2);
-
-      for (const plane of aircraft.filter((candidate) => candidate.visible)) {
+      expect(skyLayer.children).toHaveLength(2);
+      for (const plane of aircraft.filter(candidate => candidate.visible)) {
         sawAircraft = true;
         expect(plane.position.y).toBeGreaterThan(12);
-        expect(plane.getWorldPosition(new THREE.Vector3()).z - playerZ)
-          .toBeGreaterThan(BATTLEFIELD_FOG_FAR);
-        aircraftOnScreen ||= inPortrait(plane);
+        expect(plane.getWorldPosition(new THREE.Vector3()).z - playerZ).toBeGreaterThan(100);
+        const point = plane.getWorldPosition(new THREE.Vector3()).project(camera);
+        aircraftOnScreen ||= Math.abs(point.x) < 1 && Math.abs(point.y) < 1;
       }
-      if (flak.some((slot) => slot.visible)) sawFlak = true;
-      flakOnScreen ||= flak.some((slot) => slot.visible && inPortrait(slot));
     }
-    expect([sawAircraft, sawFlak]).toEqual([true, true]);
-    expect([aircraftOnScreen, flakOnScreen]).toEqual([true, true]);
+    expect(sawAircraft).toBe(true);
+    expect(aircraftOnScreen).toBe(true);
+    environment.update(0, 3.2, 0);
+    expect(aircraft.every(plane => !plane.visible)).toBe(true);
     environment.dispose();
-    expect(scene.getObjectByName('battlefield-water-traffic')).toBeUndefined();
-    expect(scene.getObjectByName('battlefield-sky-activity')).toBeUndefined();
+    expect(scene.children).toHaveLength(0);
+    expect(scene.background).toBe(originalBackground);
+    expect(scene.fog).toBe(originalFog);
     expect(disposeMaterial).toHaveBeenCalledOnce();
     expect(disposeGeometry).toHaveBeenCalledOnce();
   });
-
-  it('uses a short sky flash followed by a compact charcoal smoke puff', () => {
-    const scene = new THREE.Scene();
-    const environment = new BridgeEnvironment(scene);
-    const scheduler = new WarActivityScheduler();
-    let flakAt = 0;
-    for (let index = 0; index < 8; index++) {
-      const at = scheduler.nextEventMs;
-      const event = scheduler.update(at);
-      environment.update(0, 3.2, at);
-      if (event & SKY_FLAK_STARTED) { flakAt = at; break; }
-    }
-    expect(flakAt).toBeGreaterThan(0);
-    const slot = scene.getObjectsByProperty('name', 'battlefield-sky-flak-slot')
-      .find((candidate) => candidate.visible) as THREE.Group;
-    const flash = slot.getObjectByName('sky-flak-flash') as THREE.Sprite;
-    const glow = slot.getObjectByName('sky-flak-glow') as THREE.Sprite;
-    const smoke = slot.getObjectByName('sky-flak-smoke') as THREE.Sprite;
-    expect(flash.visible).toBe(true);
-    expect(smoke.visible).toBe(false);
-    environment.update(0, 3.2, flakAt + 190);
-    expect(flash.visible).toBe(false);
-    expect(glow.visible).toBe(true);
-    expect(smoke.visible).toBe(true);
-    expect((smoke.material as THREE.SpriteMaterial).color.getHSL({ h: 0, s: 0, l: 0 }).l)
-      .toBeLessThan(.15);
-    environment.update(0, 3.2, flakAt + 2200);
-    expect(slot.visible).toBe(false);
-    environment.dispose();
-  });
-});
-
-it('preserves the accepted coastal aircraft/flak sequence after retiring the ship actor', () => {
-  const scheduler=new WarActivityScheduler(17),samples=[];
-  for(let ms=0;ms<=120000;ms+=100){const mask=scheduler.update(ms)&6;
-    if(mask)samples.push({ms,mask,aircraft:structuredClone(scheduler.aircraftPasses),flakAt:scheduler.flakStartedAtMs,flakX:scheduler.flakX,flakY:scheduler.flakY});}
-  // JSON fixtures encode not-yet-started (-Infinity) presentation clocks as null.
-  expect(JSON.parse(JSON.stringify(samples))).toEqual(acceptedAmbient);
 });

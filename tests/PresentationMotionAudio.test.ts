@@ -5,9 +5,6 @@ import * as THREE from 'three';
 import { firingRecoil, SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { ProjectilePulseTracker, projectilePulseScale } from '../src/rendering/projectiles/ProjectileRenderer';
 import { AudioCueObserver, GameAudio, shotCueGapMs } from '../src/audio/GameAudio';
-import { EnvironmentAudioScheduler, type EnvironmentAudioEvent,
-  type GroundArtilleryAudioEvent } from '../src/audio/EnvironmentAudioScheduler';
-import { ArtilleryScheduler } from '../src/rendering/environment/ArtilleryScheduler';
 
 describe('presentation-only motion', () => {
   it('keeps gameplay X/Z while firing the rifle and showing its muzzle flash', () => {
@@ -134,95 +131,7 @@ describe('audio cue observation and safety', () => {
     expect(removeKeys).not.toHaveBeenCalled();
   });
 
-  it('schedules environmental sounds independently of visual impacts and resets safely', () => {
-    const scheduler = new EnvironmentAudioScheduler(17);
-    const sequence = () => {
-      const events: { at: number; event: EnvironmentAudioEvent }[] = [];
-      for (let index = 0; index < 300; index++) {
-        const at = scheduler.nextEventMs;
-        for (const event of scheduler.update(at)) events.push({ at, event: { ...event } });
-      }
-      return events;
-    };
-    const random = vi.spyOn(Math, 'random').mockImplementation(() => {
-      throw new Error('Environment scheduling must not consume gameplay RNG');
-    });
-    const first = sequence();
-    scheduler.reset();
-    expect(sequence()).toEqual(first);
-    random.mockRestore();
-    const ground = first.filter((item): item is { at: number;
-      event: GroundArtilleryAudioEvent } => item.event.kind === 'groundArtillery');
-    expect(ground.length).toBeGreaterThan(100);
-    expect(first.some(({ event }) => event.kind === 'skyFlak')).toBe(true);
-    const gaps = ground.map(({ at }, index) => at - (ground[index - 1]?.at ?? 0));
-    expect(gaps.every((gap) => gap >= 1200 && gap <= 8500)).toBe(true);
-    expect(gaps.some((gap) => gap < 2200)).toBe(true);
-    expect(gaps.some((gap) => gap > 2400 && gap < 5000)).toBe(true);
-    expect(gaps.some((gap) => gap > 5200)).toBe(true);
-    expect(new Set(gaps.map((gap) => Math.floor(gap / 250))).size).toBeGreaterThan(12);
-    let shortStreak = 0;
-    for (const gap of gaps) {
-      shortStreak = gap < 2200 ? shortStreak + 1 : 0;
-      expect(shortStreak).toBeLessThanOrEqual(2);
-    }
-    const volumes = ground.map(({ event }) => event.volumeScale);
-    const durations = ground.map(({ event }) => event.durationScale);
-    const pitches = ground.map(({ event }) => event.pitchScale);
-    expect(volumes.every((value) => value >= .55 && value <= 1.2)).toBe(true);
-    expect(durations.every((value) => value >= .65 && value <= 1.5)).toBe(true);
-    expect(pitches.every((value) => value >= .88 && value <= 1.08)).toBe(true);
-    expect(Math.min(...volumes)).toBeLessThan(.7);
-    expect(Math.max(...volumes)).toBeGreaterThan(1.05);
-    expect(Math.min(...durations)).toBeLessThan(.8);
-    expect(Math.max(...durations)).toBeGreaterThan(1.3);
-    const visual = new ArtilleryScheduler();
-    const independentAudio = new EnvironmentAudioScheduler();
-    expect(independentAudio.nextGroundAtMs).not.toBe(visual.nextImpactAtMs);
-    const intervalScheduler = new EnvironmentAudioScheduler(17);
-    for (let index = 0; index < 30; index++) {
-      const groundAt = intervalScheduler.nextGroundAtMs;
-      const flakAt = intervalScheduler.nextFlakAtMs;
-      const at = intervalScheduler.nextEventMs;
-      intervalScheduler.update(at);
-      if (at === groundAt) expect(intervalScheduler.nextGroundAtMs - at)
-        .toBeGreaterThanOrEqual(1200);
-      if (at === groundAt) expect(intervalScheduler.nextGroundAtMs - at)
-        .toBeLessThanOrEqual(8500);
-      if (at === flakAt) expect(intervalScheduler.nextFlakAtMs - at)
-        .toBeGreaterThanOrEqual(3500);
-      if (at === flakAt) expect(intervalScheduler.nextFlakAtMs - at)
-        .toBeLessThanOrEqual(7000);
-    }
-    const audio = new GameAudio();
-    const play = vi.spyOn(audio, 'play');
-    const defaultSchedule = new EnvironmentAudioScheduler();
-    audio.updateEnvironment(0);
-    expect(play).not.toHaveBeenCalled();
-    let matchedGroundParameters = false;
-    for (let index = 0; index < 8; index++) {
-      const at = defaultSchedule.nextEventMs;
-      const due = defaultSchedule.update(at).map((event) => ({ ...event }));
-      audio.updateEnvironment(at);
-      if (due.length === 1 && due[0].kind === 'groundArtillery'
-        && play.mock.calls.at(-1)?.[0] === 'groundArtillery') {
-        expect(play.mock.calls.at(-1)?.[1]).toEqual(due[0]);
-        matchedGroundParameters = true;
-      }
-    }
-    expect(matchedGroundParameters).toBe(true);
-    expect(play.mock.calls.some(([cue]) => cue === 'groundArtillery')).toBe(true);
-    expect(play.mock.calls.some(([cue]) => cue === 'skyFlak')).toBe(true);
-    audio.resetObservation();
-    play.mockClear();
-    audio.updateEnvironment(defaultSchedule.nextEventMs);
-    expect(play).toHaveBeenCalled();
-    audio.dispose();
-  });
-
   it('activates explicitly, tolerates suspension, and keeps its context across observation resets', async () => {
-    const viewport = new EventTarget();
-    const keys = new EventTarget();
     const starts = vi.fn();
     const stops = vi.fn();
     const oscillators: { type: string; frequency: { setValueAtTime: ReturnType<typeof vi.fn> } }[] = [];
@@ -282,18 +191,16 @@ describe('audio cue observation and safety', () => {
     audio.observe(1, 1, [], 50);
     expect(starts).toHaveBeenCalledTimes(5);
     expect(constructor).toHaveBeenCalledTimes(1);
-    const renderCue = (cue: Parameters<GameAudio['play']>[0],
-      variation?: GroundArtilleryAudioEvent) => {
+    const renderCue = (cue: Parameters<GameAudio['play']>[0]) => {
       const firstOscillator = oscillators.length;
       const firstGain = gains.length;
       const firstStart = starts.mock.calls.length;
       const firstStop = stops.mock.calls.length;
-      audio.play(cue, variation);
+      audio.play(cue);
       const renderedOscillators = oscillators.slice(firstOscillator);
       const renderedGains = gains.slice(firstGain);
       return {
         count: renderedOscillators.length,
-        pitches: renderedOscillators.map((node) => node.frequency.setValueAtTime.mock.calls[0][0]),
         waves: renderedOscillators.map((node) => node.type),
         volumes: renderedGains.map((node) => Math.max(
           ...node.gain.setValueAtTime.mock.calls.map(([value]) => value as number),
@@ -310,8 +217,6 @@ describe('audio cue observation and safety', () => {
     const enemyDeath = renderCue('enemyDeath');
     const damage = renderCue('damage');
     const fatal = renderCue('fatal');
-    const ground = renderCue('groundArtillery');
-    const flak = renderCue('skyFlak');
     expect(rifle.waves).toEqual(['sawtooth']);
     expect(rifle.ends[0]).toBeLessThan(.06);
     expect(enemyHit.waves).toEqual(['triangle', 'sine']);
@@ -321,35 +226,17 @@ describe('audio cue observation and safety', () => {
     expect(enemyDeath.ends[0]).toBeGreaterThan(enemyHit.ends[0]);
     expect(damage.volumes[0]).toBeCloseTo(.18); // Approved injury profile.
     expect(fatal.volumes[0]).toBeCloseTo(.22);
-    expect(ground.count).toBe(2);
-    expect(ground.volumes[0]).toBeGreaterThan(.09);
-    expect(ground.ends.slice(1).every((at) => at > .8)).toBe(true);
+    const giant = renderCue('giantDeath');
+    expect(giant.count).toBe(3);
+    expect(giant.starts.at(-1)).toBeCloseTo(.52);
+    expect(giant.ends.at(-1)).toBeCloseTo(1.12);
     expect(context.createBuffer).toHaveBeenCalledOnce();
     expect(buffers[0].length).toBe(13600);
-    expect(buffers[0].some((sample) => sample !== 0)).toBe(true);
-    renderCue('groundArtillery');
-    const quiet = renderCue('groundArtillery', { kind: 'groundArtillery',
-      volumeScale: .55, durationScale: .65, pitchScale: 1.08 });
-    const loud = renderCue('groundArtillery', { kind: 'groundArtillery',
-      volumeScale: 1.2, durationScale: 1.5, pitchScale: .88 });
-    expect(quiet.volumes[0]).toBeCloseTo(.077);
-    expect(loud.volumes[0]).toBeCloseTo(.168);
-    expect(ground.volumes[0]).toBeCloseTo(.14);
-    expect(ground.volumes[1]).toBeCloseTo(.065);
-    expect(ground.volumes[2]).toBeCloseTo(.105);
-    expect(flak.volumes[0]).toBeCloseTo(.05);
-    expect(quiet.ends.at(-1)!).toBeLessThan(.75);
-    expect(loud.ends.at(-1)!).toBeGreaterThan(1.5);
-    expect(quiet.pitches[0]).toBeGreaterThan(loud.pitches[0]);
-    expect(quiet.ends.at(-1)).toBeCloseTo(quiet.ends[1]);
-    expect(loud.ends.at(-1)).toBeCloseTo(loud.ends[1]);
+    expect(buffers[0].some(sample => sample !== 0)).toBe(true);
+    renderCue('giantDeath');
     expect(context.createBuffer).toHaveBeenCalledOnce();
-    expect(context.createBufferSource).toHaveBeenCalledTimes(4);
-    expect(flak.ends[0]).toBeLessThan(.25);
-    expect(flak.volumes[0]).toBeLessThan(ground.volumes[0]);
-    expect(filters.map((filter) => [filter.type, filter.frequency.value]))
-      .toEqual([['lowpass', 380], ['lowpass', 600],
-        ['lowpass', 380], ['lowpass', 380], ['lowpass', 380]]);
+    expect(filters.map(filter => [filter.type, filter.frequency.value]))
+      .toEqual([['lowpass', 600], ['lowpass', 600]]);
     audio.dispose();
     expect(stops).toHaveBeenCalled();
     expect(context.close).toHaveBeenCalledOnce();

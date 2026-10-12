@@ -59,7 +59,7 @@ it('rewinds only presentation uniforms and disposes every owned shore/sea/sky re
 
 it('removes redundant static defense foam while retaining accepted offshore transports', () => {
   const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene);
-  environment.update(0, 3.2, 3000, true);
+  environment.update(0, 3.2, 3000);
   expect(scene.getObjectsByProperty('name', 'shoreline-foam')).toHaveLength(0);
   expect(scene.getObjectByName('coastal-wet-sand-and-surf')).toBeDefined();
   expect(scene.getObjectByName('offshore-troop-transports')).toBeDefined();

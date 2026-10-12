@@ -1,8 +1,8 @@
 import { playerFamily, enemyFamilies } from './characterModel';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { laneLocomotion, recoilEnvelope, giantWeightPose, LANE_LOCOMOTION_MS } from '../src/presentation/CharacterMotion';
-import { BattlefieldAir, AMBIENT_MOTES, FOOT_DUST_CAPACITY } from '../src/rendering/environment/BattlefieldAir';
+import { BattlefieldAir, FOOT_DUST_CAPACITY } from '../src/rendering/environment/BattlefieldAir';
 import { SquadRenderer } from '../src/rendering/squad/SquadRenderer';
 import { bodyModel, helmetModel, vestModel, rifleModel } from './characterModel';
 import { createChibiGiantFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
@@ -42,20 +42,20 @@ it('keeps Giant weight and secondary motion small, asynchronous and independent 
     expect(Math.abs(p.sway)).toBeLessThanOrEqual(.036);
   }
 });
-it('bounds ambient/dust buffers and never allocates another emitter during a long Giant walk', () => {
+it('bounds Giant dust buffers and never allocates another emitter during a long Giant walk', () => {
   const scene=new THREE.Scene(), air=new BattlefieldAir(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,hp:210,x:0,z:20,visualScaleX:3.4,gaitCycleMs:850};
-  const ash=scene.getObjectByName('battlefield-air-motes') as THREE.Points;
   const dust=scene.getObjectByName('giant-foot-dust') as THREE.Points;
-  expect(ash.geometry.attributes.position.count).toBe(AMBIENT_MOTES);
   expect(dust.geometry.attributes.position.count).toBe(FOOT_DUST_CAPACITY);
   const geometry=dust.geometry;
-  for(let t=0;t<60000;t+=50) air.update([enemy],0,t,true);
-  expect(scene.children).toHaveLength(2); expect(dust.geometry).toBe(geometry);
+  const disposeGeometry=vi.spyOn(geometry, 'dispose'), disposeMaterial=vi.spyOn(dust.material as THREE.Material, 'dispose');
+  for(let t=0;t<60000;t+=50) air.update([enemy],t,true);
+  expect(scene.children).toHaveLength(1); expect(dust.geometry).toBe(geometry);
   expect(Array.from(dust.geometry.attributes.position.array).every(Number.isFinite)).toBe(true);
-  air.update([],0,61000,true); expect(dust.visible).toBe(false);
-  air.reset(); expect(ash.visible).toBe(false);expect(dust.visible).toBe(false);
+  air.update([],61000,true); expect(dust.visible).toBe(false);
+  air.reset(); expect(dust.visible).toBe(false);
   air.dispose();expect(scene.children).toHaveLength(0);
+  expect(disposeGeometry).toHaveBeenCalledOnce();expect(disposeMaterial).toHaveBeenCalledOnce();
 });
 
 

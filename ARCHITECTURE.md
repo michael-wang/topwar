@@ -30,7 +30,7 @@ SessionCheckpoint uses one localStorage slot per DEV/release origin, format and 
 
 RenderState contains current player/enemy/projectile/Grenade/naval/artillery/progression data, never GPU objects. Instanced projectile and crowd batches, bounded effect pools and idle presentation preparation preserve mobile performance. Heavy HP bars, accepted VFX intensity and rendering resolution are not reduced. Retry/reset clears transient feedback; disposal releases owned resources once. Restoring state initializes observations without replaying launch, acquisition, Level Up or Observer cues.
 
-BridgeEnvironment retains its name but owns only the current coastal battlefield, transports, architecture, aircraft, flak and distant artillery. Retired bridge deck/rails/warship paths are removed. The accepted aircraft/flak visual sequence retains its entropy ordering and has a released golden fixture.
+BridgeEnvironment retains its name but owns the current coastal battlefield, transports, architecture and distant aircraft. WarActivityScheduler schedules aircraft only. Background infernos, random artillery/flak visuals and audio are retired; no associated resources or frame updates remain. BattlefieldAir owns only pooled Giant foot dust. Gameplay artillery and shared combat audio buffers remain independent.
 
 GameAudio uses one browser-activated AudioContext and prepared procedural buffers. Voice readiness is independent of optional portrait success. Pause and lifecycle suspension preserve synchronization; explicit Resume handles browser autoplay restrictions.
 

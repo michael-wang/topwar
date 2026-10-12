@@ -42,7 +42,7 @@ it('bounds every row offset and new buffered foot within the shallow entry envel
 });
 
 it('anchors the sand far edge and landing craft endpoint to the visual shore', () => {
-  const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene); environment.update(0, 3.2, 0, true);
+  const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene); environment.update(0, 3.2, 0);
   const sand = scene.getObjectByName('defense-sand') as THREE.Mesh; sand.updateMatrixWorld();
   expect(new THREE.Box3().setFromObject(sand).max.z).toBeCloseTo(ART.coastalDefense.shorelineZ);
   expect(new THREE.Box3().setFromObject(sand).min.z).toBeCloseTo(-47);

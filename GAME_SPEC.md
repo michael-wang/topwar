@@ -80,7 +80,7 @@ A successful throw consumes one Grenade and creates one authoritative flight. On
 
 ## Presentation, lifecycle and QA
 
-Accepted Blue Squad, Grunt/Heavy/Giant, coastal scene, Ink Spear, Golden Grenade and Destroyer art are unchanged. Traditional Chinese Commander dialogue uses prepared portraits and Mandarin voice; one usable portrait substitutes for both expressions, and failed portraits use a local radio emblem. Warnings are never suppressed by missing portraits.
+Accepted Blue Squad, Grunt/Heavy/Giant, coastal scene, Ink Spear, Golden Grenade and Destroyer art are unchanged. Distant infernos, random background artillery/flak visuals and sounds, and ambient ash are retired. Coastal buildings, sea, clouds, aircraft, Giant foot dust and all actual combat effects remain. Traditional Chinese Commander dialogue uses prepared portraits and Mandarin voice; one usable portrait substitutes for both expressions, and failed portraits use a local radio emblem. Warnings are never suppressed by missing portraits.
 
 Tap-to-Start and Resume are real audio activation gestures. Pause/hidden/freeze/context loss suspend simulation, clear held inputs and release Wake Lock. Visibility return never automatically resumes. Full authoritative checkpoints preserve RNG, weapon clocks, enemy HP/positions, projectiles, Grenades, progression and encounter schedules. Continue remains paused and does not replay one-shot feedback.
 

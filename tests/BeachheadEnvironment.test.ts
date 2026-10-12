@@ -7,7 +7,7 @@ it('does not allocate retired bridge scenery and presents sand, shore and fixed 
   const scene = new THREE.Scene();
   const environment = new BridgeEnvironment(scene);
   const lanes = new AttackLaneRenderer(scene);
-  environment.update(0, 3.2, 0, true);
+  environment.update(0, 3.2, 0);
   lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0);
   expect(scene.getObjectByName('bridge-deck')).toBeUndefined();
   expect(scene.getObjectByName('bridge-expansion-joint')).toBeUndefined();
@@ -17,7 +17,7 @@ it('does not allocate retired bridge scenery and presents sand, shore and fixed 
   expect(scene.getObjectByName('coastal-wet-sand-and-surf')).toBeDefined();
   expect(scene.getObjectByName('shoreline-foam')).toBeUndefined();
   for (const halfWidth of [3.2, 4.2]) {
-    environment.update(0, halfWidth, 0, true);
+    environment.update(0, halfWidth, 0);
     scene.updateMatrixWorld(true);
     for (const side of ['left', 'right']) {
       const compound = scene.getObjectByName(`coastal-compound-${side}`)!;
@@ -34,7 +34,7 @@ it('does not allocate retired bridge scenery and presents sand, shore and fixed 
   expect(scene.getObjectByName('attack-corridors')).toBeUndefined();
   const openings = scene.getObjectByName('beach-corridor-openings')!;
   const before = openings.children.map((child) => child.position.clone());
-  environment.update(0, 3.2, 10000, true);
+  environment.update(0, 3.2, 10000);
   lanes.update([-2.8, -1.4, 0, 1.4, 2.8], 0);
   expect(openings.children.map((child) => child.position)).toEqual(before);
   lanes.dispose();

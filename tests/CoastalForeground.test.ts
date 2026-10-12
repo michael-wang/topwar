@@ -33,7 +33,7 @@ it('owns foreground only through the defense beach and disposes its resources wi
   expect(group.parent?.name).toBe('stationary-defense-beach');
   const mesh=group.children[0].children[0] as THREE.Mesh;
   const geometry=vi.spyOn(mesh.geometry,'dispose'), material=vi.spyOn(mesh.material as THREE.Material,'dispose');
-  environment.update(0,3.2,0,true);expect(group.parent!.visible).toBe(true);
-  environment.update(0,3.2,1,true);expect(group.parent!.visible).toBe(true);
+  environment.update(0,3.2,0);expect(group.parent!.visible).toBe(true);
+  environment.update(0,3.2,1);expect(group.parent!.visible).toBe(true);
   environment.dispose();expect(geometry).toHaveBeenCalledOnce();expect(material).toHaveBeenCalledOnce();expect(scene.children).toHaveLength(0);
 });

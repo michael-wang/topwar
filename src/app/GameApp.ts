@@ -825,15 +825,13 @@ export class GameApp {
       this.tankBossHud.update(state, this.presentationMs, this.renderer.projectTankHealthPosition());
       this.supplyTransfer?.update(this.presentationMs);
       const renderFinishedMs = perf ? performance.now() : 0;
-      this.audio.updateEnvironment(this.presentationMs);
       if (perf) {
-        const audioEnvironmentFinishedMs = performance.now();
         perf.recordCpuBreakdown(stepCpuMs, stateFinishedMs - stateStartedMs,
           mapFinishedMs - renderStartedMs);
         const r = this.renderer.getDebugStats();
         perf.record(elapsedSeconds > 0 ? elapsedSeconds * 1000 : 0, stateFinishedMs - simStartedMs,
           renderFinishedMs - renderStartedMs,
-          audioFinishedMs - audioStartedMs + audioEnvironmentFinishedMs - renderFinishedMs,
+          audioFinishedMs - audioStartedMs,
           { enemies: state.enemies.length, projectiles: state.projectiles.length,
             drawCalls: r.drawCalls, triangles: r.triangles, projectilePool: r.projectiles.pool });
         const stream = this.level.enemyStream;
