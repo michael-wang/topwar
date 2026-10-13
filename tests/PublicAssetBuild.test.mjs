@@ -10,7 +10,8 @@ it('emits each asset once with a content hash that agrees with the JS manifest',
   for (const [path, filename] of Object.entries(manifest)) {
     const bytes = readFileSync(`public/${path}`);
     expect(filename).toContain(createHash('sha256').update(bytes).digest('hex').slice(0, 16));
-    expect(emitted.find(f => f.fileName === filename).source).toEqual(bytes);
+    // Byte-for-byte equality without a multi-million-element assertion walk for music files.
+    expect(Buffer.from(emitted.find(f => f.fileName === filename).source).equals(bytes)).toBe(true);
     expect(emitted.some(f => f.fileName === path)).toBe(false);
   }
   expect(publicAssets('public').manifest).toEqual(manifest);

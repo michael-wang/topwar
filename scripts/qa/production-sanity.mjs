@@ -125,7 +125,14 @@ async function checkPlaytestScenes(page,width,out) {
     const at=role==='naval'?s.destroyer.startedAtSeconds+s.catharsis.balance.destroyer.shotTimes[0]:s.defenseTank.activeAtSeconds;
     window.__advance(Math.max(0,at+.3-s.elapsedSeconds));},role);
    assert((await page.evaluate(()=>window.__testApp.simulation.getState().artillery.shells.length))>0);
-   if(role==='boss-intro')assert.equal(await page.evaluate(()=>window.__testApp.audio.music.lastState),'BOSS_1');
+   if(role==='boss-intro') {
+    assert.equal(await page.evaluate(()=>window.__testApp.audio.music.lastState),'BOSS_1');
+    await page.waitForFunction(()=>window.__testApp.audio.bossTheme?.playing);
+    await page.evaluate(()=>window.__draw());
+    assert(await page.evaluate(()=>window.__testApp.audio.bossTheme.media.duration>135&&window.__testApp.audio.bossTheme.media.loop));
+    // The AudioParam value reflects the next audio render quantum, not the JS call stack.
+    await page.waitForFunction(()=>window.__testApp.audio.music.bus.gain.value===0);
+   }
    await page.screenshot({path:`${out}/playtest-${role}-combat-${width}.png`});
   }
   scenes.push({role,restored:true,voice:message});
@@ -161,11 +168,11 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
   const asset=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`art/observer/${expression}.webp`]}`);
   if(!asset.ok()||!asset.headers()['content-type']?.includes('image/webp'))throw Error('Missing local observer portrait under Pages base path');
  }
- for(const name of ['observer_destroyer_zh-TW.mp3','observer_stage1_boss_intro_zh-TW.mp3','commander_stage1_intro_zh-TW.mp3','commander_stage1_victory_zh-TW.mp3','commander_air_support_zh-TW.mp3']){
+ for(const name of ['observer_destroyer_zh-TW.mp3','observer_stage1_boss_intro_zh-TW.mp3','commander_stage1_intro_zh-TW.mp3','commander_stage1_victory_zh-TW.mp3','commander_air_support_zh-TW.mp3','boss-theme.mp3']){
   const voice=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`audio/${name}`]}`);
   if(!voice.ok()||!voice.headers()['content-type']?.includes('audio/mpeg')
     ||!(await voice.body()).equals(readFileSync(`public/audio/${name}`)))
-    throw Error('Approved observer voice missing or altered under Pages base path');
+    throw Error('Approved audio missing or altered under Pages base path');
  }
  const config=await configResponse?.json(),levelData=await levelResponse?.json();
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');

@@ -36,6 +36,8 @@ BridgeEnvironment retains its name but owns the current coastal battlefield, tra
 
 GameAudio uses one browser-activated AudioContext and prepared procedural buffers. Voice readiness is independent of optional portrait success. Pause and lifecycle suspension preserve synchronization; explicit Resume handles browser autoplay restrictions.
 
+Boss music uses one lazy streaming HTMLAudioElement connected once to the existing master bus. No PCM song buffer or new checkpoint field is allocated. Its position derives from the saved Tank encounter age; phase changes do not restart it. The browser handles Xing delay/padding at the loop boundary. Pausing/background silences both media and procedural sources, and Retry/Dispose cancel pending playback/fade cleanup. Procedural Boss music is exclusively the pending/error fallback; ordinary and Victory compositions retain their existing clocks.
+
 ## Browser lifecycle and tools
 
 Hidden/pagehide/freeze/context loss suspend simulation and held input, save and release Screen Wake Lock. Returning visible remains paused. Wake Lock acquisition is race-safe, optional and secure-context-only; failures cannot block gameplay. The DEV QA sleep scenario suppresses reacquisition until exited. Historical release QA checkpoints still restore their Defense state; public builds ignore the old armed-test flag and permit ordinary Resume.

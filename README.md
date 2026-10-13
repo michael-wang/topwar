@@ -35,3 +35,5 @@ Released Beachhead Defense eight- and ten-level saves keep their serialized prog
 Production paths use `/topwar/` and content-addressed public assets. Run the quality gates above, then deliberately dispatch the existing **Deploy TopWar to GitHub Pages** workflow with the reviewed branch/tag/commit. It has no push trigger. No coding task deploys automatically.
 
 The frozen `playtest-2026-10-08` tag must not be moved, deleted or recreated. Historical reports and experiments remain available in Git history.
+
+Boss music asset: `public/audio/boss-theme.mp3` is user-provided family-original music (使用者提供的家人原創配樂). It is used unmodified from the approved handoff; public composer attribution awaits the user's confirmation.
