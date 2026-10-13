@@ -321,11 +321,12 @@
       "damageEnemyHp": 1
     },
     "commanderSupport": {
-      "dangerDistance": 14,
+      "dangerDistance": 25,
       "earliestBossSeconds": 5.5,
-      "warningSeconds": 1.25,
-      "strikeSpacingSeconds": 0.35,
-      "clearFraction": 0.8
+      "warningSeconds": 7.5,
+      "strikeSpacingSeconds": 0.65,
+      "clearFraction": 0.8,
+      "heavyRaid": { "bossDamage": 500, "giantDamageFraction": 0.85, "bandDepthUnits": 14 }
     },
     "defenseTank": {
       "flankSpawnAheadDistance": 28,

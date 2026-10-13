@@ -104,7 +104,7 @@ const mock = vi.hoisted(() => ({
 }));
 const stripDom = vi.hoisted(() => ({ progressionHost: {} as HTMLElement }));
 const tankUi = vi.hoisted(() => ({ update: vi.fn(), show: vi.fn(), reset: vi.fn(), replay: null as (() => void) | null }));
-vi.mock('../src/ui/TankBossHud', () => ({ TankBossHud: class { update = tankUi.update; presentGrenade = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
+vi.mock('../src/ui/TankBossHud', () => ({ TankBossHud: class { update = tankUi.update; presentGrenade = vi.fn(); presentSupport = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
 vi.mock('../src/ui/TankEntranceHud', () => ({ TankEntranceHud: class { update = vi.fn(); restore = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
 vi.mock('../src/ui/StageClearOverlay', () => ({ StageClearOverlay: class {
   constructor(_viewport: unknown, replay: () => void) { tankUi.replay = replay; }

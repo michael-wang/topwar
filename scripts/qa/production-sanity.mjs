@@ -39,6 +39,48 @@ async function controlledFrames(page) {
    gpu.render=render;window.__draw();};window.__draw();
  });
 }
+async function checkAirSupport(page,width,out) {
+ await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();
+ await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','airSupport')>0);
+ await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.1);});
+ await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupport'&&window.__testApp.audio.voice.source!==null);
+ const duration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(duration-6.765708)<.002);
+ assert.equal(await page.locator('.field-observer p').textContent(),'各位！我剛爭取到空中轟炸支援！');
+ await page.evaluate(()=>window.__advance(3.3));
+ assert.equal(await page.locator('.field-observer p').textContent(),'轟炸機馬上抵達現場！注意！轟炸即將開始！！');
+ await page.getByRole('button',{name:'Pause game',exact:true}).tap();
+ const saved=await page.evaluate(()=>({state:window.__testApp.simulation.getState(),clock:window.__testApp.presentationMs}));
+ await page.evaluate(()=>window.__advance(.5));assert.deepEqual(await page.evaluate(()=>({state:window.__testApp.simulation.getState(),clock:window.__testApp.presentationMs})),saved);
+ assert.equal(await page.evaluate(()=>window.__testApp.audio.voice.source),null);
+ assert.equal(await page.evaluate(()=>window.__testApp.audio.supportSources.size),0);
+ await page.reload();await page.getByRole('button',{name:'繼續上次遊戲'}).tap();await page.locator('.session-recovery').waitFor({state:'detached'});
+ await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved.state);
+ await page.getByRole('button',{name:'Resume game',exact:true}).tap();
+ await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','airSupport')>0);
+ await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();});
+ await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupport'&&window.__testApp.audio.voice.source!==null);
+ assert((await page.evaluate(()=>window.__testApp.audio.voice.offset))>=3.3);
+ await page.screenshot({path:out+'/air-entry-'+width+'.png',scale:'css'});
+ await page.evaluate(()=>{const a=window.__testApp,consume=a.simulation.consumeSupportEvents.bind(a.simulation);window.__raidDamage=[];
+  a.simulation.consumeSupportEvents=()=>{const events=consume();for(const e of events)if(e.kind==='supportBomb')window.__raidDamage.push(e.tankDamage);return events;};
+  const s=a.simulation.getState();window.__advance(6.5-(s.elapsedSeconds-s.commanderSupport.airstrike.triggeredAtSeconds));});
+ assert.equal(await page.evaluate(()=>window.__testApp.renderer.supportRenderer.planes.filter(p=>p.visible).length),3);
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.strikesCompleted),0);
+ await page.screenshot({path:out+'/air-arrival-'+width+'.png',scale:'css'});
+ for(const [target,name] of [[7.65,'near'],[8.30,'middle'],[8.95,'far'],[9.6,'tank-1'],[10.25,'tank-2'],[10.9,'tank-3'],[12,'after'],[16,'departure']]){
+  await page.evaluate(target=>{const s=window.__testApp.simulation.getState();window.__advance(target-(s.elapsedSeconds-s.commanderSupport.airstrike.triggeredAtSeconds));},target);
+  await page.screenshot({path:out+'/air-'+name+'-'+width+'.png',scale:'css'});
+ }
+ const state=await page.evaluate(()=>window.__testApp.simulation.getState());assert.equal(state.commanderSupport.airstrike.status,'completed');
+ assert.deepEqual(await page.evaluate(()=>window.__raidDamage),[0,0,0,500,500,500]);
+ assert.equal(state.combatStats.gruntKills+state.combatStats.heavyKills+state.combatStats.giantKills,0);
+ assert(state.squad.count>0);assert.equal(state.commanderSupport.airstrike.impacts.length,12);
+ await page.getByRole('button',{name:'Pause game',exact:true}).tap();
+ await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();
+ await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.1);});
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.strikesCompleted),0);
+ return {role:'air-support',voice:duration,damage:[500,500,500],restored:true,retry:true};
+}
 async function checkPlaytestScenes(page,width,out) {
  await page.waitForFunction(()=>['destroyer','tankBoss','victory'].every(m=>window.__testApp.audio.radioDurationSeconds('zh-TW',m)>0));
  await controlledFrames(page);
@@ -88,6 +130,7 @@ async function checkPlaytestScenes(page,width,out) {
   }
   scenes.push({role,restored:true,voice:message});
  }
+ scenes.push(await checkAirSupport(page,width,out));
  await page.locator('.tuning-panel > summary').tap();await page.locator('[data-action="normal"]').tap();
  await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();});
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),1);
@@ -118,7 +161,7 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
   const asset=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`art/observer/${expression}.webp`]}`);
   if(!asset.ok()||!asset.headers()['content-type']?.includes('image/webp'))throw Error('Missing local observer portrait under Pages base path');
  }
- for(const name of ['observer_destroyer_zh-TW.mp3','observer_stage1_boss_intro_zh-TW.mp3','commander_stage1_intro_zh-TW.mp3','commander_stage1_victory_zh-TW.mp3']){
+ for(const name of ['observer_destroyer_zh-TW.mp3','observer_stage1_boss_intro_zh-TW.mp3','commander_stage1_intro_zh-TW.mp3','commander_stage1_victory_zh-TW.mp3','commander_air_support_zh-TW.mp3']){
   const voice=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`audio/${name}`]}`);
   if(!voice.ok()||!voice.headers()['content-type']?.includes('audio/mpeg')
     ||!(await voice.body()).equals(readFileSync(`public/audio/${name}`)))
@@ -159,7 +202,7 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
  await page.keyboard.press('Escape'); await page.keyboard.press('4'); await page.keyboard.press('5'); await page.keyboard.press('6');
  if(await page.locator('.qa-panel,.dev-advanced,.dev-fps,.dev-wake-status').count())throw Error('Production exposed engineering QA controls');
- assert.deepEqual(await page.locator('.dev-review-controls button[data-role]').allTextContents(), ['🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算']);
+ assert.deepEqual(await page.locator('.dev-review-controls button[data-role]').allTextContents(), ['🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算','✈️ 空中支援']);
  if(!query) await checkPlaytestScenes(page,width,out);
  errors.push(...await page.evaluate(()=>window.__qaUnhandled));
  results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,sha,defenseMode:config.catharsis.defenseMode,teachingGrantAmount:config.catharsis.grenade.teachingGrantAmount,xpRequirements:config.catharsis.progression.xpRequirements,runtimeRequests,jsonFetches,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==1||labControls!==1||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();

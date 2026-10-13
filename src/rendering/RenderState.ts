@@ -1,4 +1,6 @@
 export interface GameRenderState {
+  readonly commanderSupport?: { readonly state: NonNullable<import('../simulation/SimulationState').SimulationFrameState['commanderSupport']>;
+    readonly config?: import('../simulation/commanderSupport').CommanderSupportConfig; readonly elapsedSeconds: number };
   readonly defenseTank?: { readonly state: Readonly<import('../simulation/defenseTank').DefenseTankState>;
     readonly config: import('../config/defenseTankConfig').DefenseTankSettings; readonly elapsedSeconds: number };
   readonly destroyer?: { readonly state: Readonly<import('../simulation/destroyer').DestroyerState>;
@@ -46,6 +48,7 @@ export interface ProjectileRenderState {
 }
 
 export interface EnemyRenderState {
+  readonly lane?: number;
   readonly gaitCycleMs?: number;
   readonly maxHp?: number;
   readonly archetype?: 'grunt' | 'heavy' | 'giant';

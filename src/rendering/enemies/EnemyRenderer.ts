@@ -39,7 +39,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
-  blast: { x: number; z: number } | null;
+  blast: { x: number; z: number; heavyRaid?: boolean } | null;
   frozenRoot: THREE.Matrix4;
   recoilDirection: THREE.Vector2;
   variant:number;
@@ -135,7 +135,7 @@ export class EnemyRenderer {
   private readonly blood: IntegratedDeathBlood;
   private readonly hitBlood: BloodSplat;
   private readonly hitImpulse = new EnemyHitImpulse();
-  private readonly blastDeaths = new Map<number, { x: number; z: number }>();
+  private readonly blastDeaths = new Map<number, { x: number; z: number; heavyRaid?: boolean }>();
   private readonly blastReactions = new Map<number, { x: number; z: number; atMs: number }>();
   private readonly blastAxis = new THREE.Vector3();
   private readonly blastRotation = new THREE.Matrix4();
@@ -219,15 +219,15 @@ export class EnemyRenderer {
     }
   }
 
-  private presentPushDeaths(victims: TankEntranceEvent['victims'], nowMs: number): void {
+  private presentPushDeaths(victims: TankEntranceEvent['victims'], nowMs: number, heavyRaid = false): void {
     const available = Math.max(0, GRENADE_FX.airborneLimit - this.deathVisuals.filter(v => v.group.visible && v.blast).length - this.blastDeaths.size);
     const launched = victims.filter(v => v.archetype !== 'giant')
-      .sort((a, b) => a.z - b.z || a.id - b.id).slice(0, available);
+      .sort((a, b) => a.z - b.z || a.id - b.id).slice(0, heavyRaid ? Math.min(4, available) : available);
     for (const victim of launched) this.blastDeaths.set(victim.id,
-      { x: victim.x === 0 ? (victim.id % 2 ? 1 : -1) : -Math.sign(victim.x), z: -.2 });
+      { x: victim.x === 0 ? (victim.id % 2 ? 1 : -1) : -Math.sign(victim.x), z: -.2, ...(heavyRaid ? { heavyRaid } : {}) });
   }
-  presentSupportBomb(event: { victims: TankEntranceEvent['victims']; blasts: readonly { x: number; z: number }[] }, nowMs: number): void {
-    this.presentPushDeaths(event.victims, nowMs);
+  presentSupportBomb(event: { heavy?: boolean; victims: TankEntranceEvent['victims']; blasts: readonly { x: number; z: number }[] }, nowMs: number): void {
+    this.presentPushDeaths(event.victims, nowMs, event.heavy);
     for (const blast of event.blasts) this.giantImpactDust.spawn(-blast.x, blast.z, nowMs);
   }
   presentTankEntrance(event: TankEntranceEvent, nowMs: number): void {
@@ -699,7 +699,7 @@ export class EnemyRenderer {
     for (const visual of this.deathVisuals) {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
-      if (visual.role === 'grunt') {
+      if (visual.role === 'grunt' || visual.blast?.heavyRaid) {
         const air = visual.blast ? airborneGrenadePose(elapsed) : null;
         const pose = air ?? gruntDeathBody(elapsed);
         // World Y only: captured gait, helmet lag, rotation and scale stay exact.
@@ -707,13 +707,13 @@ export class EnemyRenderer {
         visual.group.matrix.copy(visual.frozenRoot);
         if (air && visual.blast) {
           this.blastAxis.set(visual.blast.z, 0, -visual.blast.x);
-          this.blastRotation.makeRotationAxis(this.blastAxis, air.angle);
+          this.blastRotation.makeRotationAxis(this.blastAxis, air.angle * (visual.blast.heavyRaid ? 2.4 : 1));
           visual.group.matrix.premultiply(this.blastRotation);
           visual.group.matrix.elements[12] = visual.frozenRoot.elements[12] + visual.blast.x * air.distance;
           visual.group.matrix.elements[13] = visual.frozenRoot.elements[13];
           visual.group.matrix.elements[14] = visual.frozenRoot.elements[14] + visual.blast.z * air.distance;
         }
-        visual.group.matrix.elements[13] += pose.lift;
+        visual.group.matrix.elements[13] += pose.lift * (visual.blast?.heavyRaid ? 2.5 : 1);
         visual.group.matrixWorldNeedsUpdate = true;
         visual.group.visible = pose.visible;
         visual.bodyMaterial.transparent = visual.gearMaterial.transparent = pose.opacity < 1;

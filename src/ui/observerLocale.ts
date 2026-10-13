@@ -2,9 +2,14 @@ export type ObserverLocale = 'zh-TW' | 'en';
 // Closed playtest policy. Keep the bilingual resources/helpers for later testing.
 export const FIELD_OBSERVER_LOCALE: ObserverLocale = 'zh-TW';
 export type ObserverMessage = 'destroyer' | 'missionIntro' | 'tankBoss' | 'victory' | 'giant' | 'airSupport';
-export const observerSupportDialogue: Record<'giant' | 'airSupport', Record<ObserverLocale, string>> = {
+export const observerSupportDialogue: Record<'giant', Record<ObserverLocale, string>> = {
   giant: { 'zh-TW': '注意！敵軍巨型機械兵出現了！別讓它靠近防線！', en: 'Enemy giant machine spotted! Keep it away from the defense line!' },
-  airSupport: { 'zh-TW': '撐住！我替你們爭取到空中支援了！全員掩護！', en: 'Hold on! Air support is on its way! Take cover!' },
+};
+// Approved 6.766s recording: the sentence break is the silence at 2.6–3.1s.
+export const airSupportTiming = { durationSeconds: 6.95, phraseAtSeconds: 3.05 };
+export const observerAirSupportDialogue: Record<ObserverLocale, readonly string[]> = {
+  'zh-TW': ['各位！我剛爭取到空中轟炸支援！', '轟炸機馬上抵達現場！注意！轟炸即將開始！！'],
+  en: ['Everyone! I secured bomber support!', 'Bombers arriving! Attention! Bombing is about to begin!'],
 };
 export const observerTankDialogue: Record<ObserverLocale, string> = {
   'zh-TW': '警告！發現敵軍超重型坦克！正朝我方防線推進！',

@@ -187,7 +187,9 @@ export class GameRenderer {
       if (shell.source.type === 'defenseTank') this.tankRenderer?.recoil(shell.launchedAtSeconds, state.defenseTank.elapsedSeconds);
     if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
     this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera.quaternion);
-    const shake = this.supportRenderer?.update(nowMs, state.player.z, state.squad.count === 0 || state.defenseTank?.state.status === 'defeated') ?? 0;
+    if (state.commanderSupport?.state.airstrike?.triggeredAtSeconds !== null && state.commanderSupport?.state.airstrike?.triggeredAtSeconds !== undefined)
+      this.supportRenderer ??= new SupportAirstrikeRenderer(this.scene);
+    const shake = this.supportRenderer?.update(nowMs, state) ?? 0;
     this.camera.position.x += shake;
     this.renderer.render(this.scene, this.camera);
     this.camera.position.x -= shake;
@@ -230,6 +232,7 @@ export class GameRenderer {
     this.supportRenderer.present(events, nowMs);
     for (const event of events) if (event.kind === 'supportBomb')
       this.enemyRenderer.presentSupportBomb(event, nowMs);
+    this.tankRenderer?.presentSupport(events, nowMs);
   }
 
   presentTankEntrance(events: readonly TankEntranceEvent[], nowMs: number): void {

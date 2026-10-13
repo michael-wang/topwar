@@ -6,6 +6,8 @@ import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntr
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 import type { DefenseTankState } from '../simulation/defenseTank';
+import type { CommanderSupportConfig } from '../simulation/commanderSupport';
+import { airSupportTiming, observerAirSupportDialogue } from './observerLocale';
 import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue, observerTankDialogue, observerVictoryDialogue, observerSupportDialogue,
   type ObserverLocale, type ObserverMessage } from './observerLocale';
 
@@ -46,6 +48,7 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'missionIntro');
     this.audio.prepareRadio(this.locale, 'tankBoss');
     this.audio.prepareRadio(this.locale, 'victory');
+    this.audio.prepareRadio(this.locale, 'airSupport');
     this.element.className = 'field-observer'; this.element.hidden = true;
     this.element.setAttribute('aria-live', 'polite');
     this.element.setAttribute('aria-label', '海防指揮官通訊');
@@ -64,7 +67,7 @@ export class FieldObserver {
     this.updateText(); host.append(this.element);
   }
   private updateText(): void {
-    this.text.textContent = this.message === 'giant' || this.message === 'airSupport'
+    this.text.textContent = this.message === 'airSupport' ? observerAirSupportDialogue[this.locale][this.phrase] : this.message === 'giant'
       ? observerSupportDialogue[this.message][this.locale] : this.message === 'missionIntro'
       ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'victory'
         ? observerVictoryDialogue[this.locale][this.phrase] : this.message === 'tankBoss'
@@ -78,7 +81,7 @@ export class FieldObserver {
     if (now === 0) this.missionTimeline.start(now);
   }
   update(state: DestroyerState | undefined, config: DestroyerSettings | undefined, now: number, alive: boolean, paused: boolean,
-    tank?: Readonly<DefenseTankState>, support?: SimulationFrameState['commanderSupport']): void {
+    tank?: Readonly<DefenseTankState>, support?: SimulationFrameState['commanderSupport'], supportConfig?: CommanderSupportConfig): void {
     const requests: Parameters<CommanderComms['update']>[0] = [];
     if (state?.status === 'active') this.audio.prepareRadio(this.locale, 'destroyer');
     const navalFrame = this.timeline.update(state, config, now, alive);
@@ -100,8 +103,12 @@ export class FieldObserver {
     const notice = { visible: true, begin: true, end: false, offset: 0, duration: 3.8, audible: false };
     if (this.observedSupport && alive) {
       if (giantAt !== null && giantAt !== this.giantAt) requests.push({ frame: notice, message: 'giant' });
-      if (airAt !== null && airAt !== this.airAt && support?.airstrike?.status !== 'cancelled')
-        requests.push({ frame: notice, message: 'airSupport' });
+    }
+    if (alive && airAt !== null && support?.airstrike?.status !== 'cancelled'
+      && (this.observedSupport ? airAt !== this.airAt : !!supportConfig?.heavyRaid && now - airAt < airSupportTiming.durationSeconds)) {
+      const modern = !!supportConfig?.heavyRaid;
+      requests.push({ frame: { ...notice, begin: this.observedSupport, offset: Math.max(0, now - airAt),
+        duration: modern ? airSupportTiming.durationSeconds : 3.8, audible: modern }, message: 'airSupport' });
     }
     this.observedSupport = true; this.giantAt = giantAt; this.airAt = airAt;
     const selected = this.comms.update(requests, now, paused, alive);
@@ -133,7 +140,7 @@ export class FieldObserver {
   }
   private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
     const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
-    const phrase = message === 'missionIntro' || message === 'victory'
+    const phrase = message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
       ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * frame.duration / timing.durationSeconds ? i : index, 0) : 0;
     if (message !== this.message) this.presented = false;
     if (message !== this.message || phrase !== this.phrase) {

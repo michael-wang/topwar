@@ -8,6 +8,21 @@ import { admitDefenseGroup } from '../simulation/enemies/defenseGroup';
 import { effectiveSeed } from '../simulation/enemies/effectiveSeed';
 import { pressureWaveSettings } from '../simulation/enemies/latePressure';
 import { postCapOrdinarySettings } from '../simulation/postCapSurvival';
+import { attackLanePositions } from '../simulation/enemies/laneComposition';
+
+export function createAirSupportPlaytest(options: SimulationOptions, rate: number): Simulation {
+  const sim = createTankPlaytest(options, rate, false, .65), s = sim.getState();
+  const b = s.catharsis!.balance, c = b.defenseTank!, now = s.elapsedSeconds;
+  Object.assign(s.defenseTank!, { startedAtSeconds: now - c.entrySeconds - 6,
+    activeAtSeconds: now - 6, entranceCleared: true });
+  s.commanderSupport!.giantSeen = true;
+  const lanes = attackLanePositions(5, options.catharsis!.trackHalfWidth, b.edgeInset);
+  for (const lane of [0, 4]) for (const [i, archetype] of (['heavy', 'heavy', 'grunt', 'grunt', 'giant'] as const).entries())
+    s.enemies.push({ id: s.enemyStream!.nextEnemyId++, tier: 1, archetype, lane, x: lanes[lane], z: 24 + i * .6,
+      hp: archetype === 'giant' ? b.giant.hp : archetype === 'heavy' ? b.heavyHp : 1,
+      ...(archetype !== 'grunt' ? { bossFlankSpeedUnitsPerSecond: archetype === 'heavy' ? c.phases[1].heavySpeedUnitsPerSecond : c.phases[1].giantSpeedUnitsPerSecond } : {}) });
+  sim.restoreState(s); return sim;
+}
 
 // Closed-playtest sample results use the real finished Simulation and shipping presentation.
 export function createVictoryReview(options: SimulationOptions, rate: number): Simulation {

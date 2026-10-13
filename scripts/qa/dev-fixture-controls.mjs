@@ -1,7 +1,7 @@
-// Only the three playtest scenarios use visible buttons. Regression presets are
+// Only the four playtest scenarios use visible buttons. Regression presets are
 // installed by the intercepted test response, never by a public game endpoint.
 export async function selectDevFixture(page, role) {
-  if (['naval', 'boss-intro', 'victory'].includes(role)) {
+  if (['naval', 'boss-intro', 'victory', 'air-support'].includes(role)) {
     if (!await page.locator('.tuning-panel').evaluate(panel => panel.open))
       await page.locator('.tuning-panel > summary').click();
     await page.locator(`.dev-review-controls [data-role="${role}"]`).click();
@@ -17,7 +17,7 @@ export async function selectDevFixture(page, role) {
       a.__qaCreateSimulation = a.createSimulation.bind(a);
       a.createSimulation = () => {
         const role = a.devReviewFixture;
-        if (!role || ['naval', 'boss-intro', 'victory'].includes(role)) return a.__qaCreateSimulation();
+        if (!role || ['naval', 'boss-intro', 'victory', 'air-support'].includes(role)) return a.__qaCreateSimulation();
         const c = a.config, t = a.runtimeTuning;
         const options = { seed: 17, level: a.level, startSquad: c.player.startSquad,
           startRocketCount: c.player.startRocketCount, collisionDiagnostics: a.perf?.counters,

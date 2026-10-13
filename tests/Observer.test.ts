@@ -489,20 +489,53 @@ it('uses subtitle-only Alert notices once, freezes on Pause and never replays re
   expect(audio.play.mock.calls).toEqual([['radioOpen'], ['radioClose']]);
   s.airstrike!.triggeredAtSeconds = 4; s.airstrike!.status = 'waiting';
   ui.update(undefined, undefined, 4, true, false, undefined, s);
-  expect(text()).toContain('空中支援'); expect((ui as any).expression).toBe('alert');
+  expect(text()).toContain('空中轟炸支援'); expect((ui as any).expression).toBe('alert');
   ui.reset(); audio.play.mockClear();
   ui.update(undefined, undefined, 4.2, true, false, undefined, s);
   ui.update(undefined, undefined, 4.3, true, false, undefined, s);
   expect(ui.element.hidden).toBe(true); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
 });
-it('never requests or substitutes an existing MP3 for Giant or air support', async () => {
+it('never requests or substitutes an existing MP3 for Giant', async () => {
   const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 4.6 } as AudioBuffer));
   const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
-  for (const message of ['giant', 'airSupport'] as const) {
+  for (const message of ['giant'] as const) {
     expect(observerVoiceAsset('zh-TW', message)).toBeNull(); expect(voice.prepare('zh-TW', message)).toBe('unavailable');
     voice.sync('zh-TW', 0, false, 3.8, message);
   }
   await Promise.resolve(); expect(loader).not.toHaveBeenCalled(); expect(nodes).toHaveLength(0); voice.dispose();
+});
+it('plays the original support recording, pauses/seeks without restarting, and rejects shortened historical windows', async () => {
+  const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 6.765708 } as AudioBuffer));
+  expect(createHash('sha256').update(readFileSync('public/audio/commander_air_support_zh-TW.mp3')).digest('hex'))
+    .toBe('82d89bc1d88ea44a8226255a8de74af3896f1e46b905c5d15f49bc1347c7faea');
+  const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
+  expect(observerVoiceAsset('zh-TW', 'airSupport')).toBe('audio/commander_air_support_zh-TW.mp3');
+  voice.prepare('zh-TW', 'airSupport'); await Promise.resolve(); await Promise.resolve();
+  voice.sync('zh-TW', 0, false, 6.95, 'airSupport'); await Promise.resolve();
+  expect(nodes[0].start).toHaveBeenCalledWith(0, 0);
+  voice.sync('zh-TW', 3.2, true, 6.95, 'airSupport'); expect(nodes[0].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW', 3.2, false, 6.95, 'airSupport'); await Promise.resolve();
+  expect(nodes[1].start).toHaveBeenCalledWith(0, 3.2);
+  voice.reset(); voice.sync('zh-TW', 0, false, 3.8, 'airSupport'); await Promise.resolve();
+  expect(nodes).toHaveLength(2); expect(loader).toHaveBeenCalledOnce(); voice.dispose();
+});
+it('shows two support phrases through the entire voice and restores only its remaining portion without an opening cue', () => {
+  const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = shipping.catharsis!.commanderSupport!;
+  ui.update(undefined, undefined, 60, true, false, undefined, s, c);
+  s.airstrike!.triggeredAtSeconds = 60.1; s.airstrike!.status = 'waiting';
+  ui.update(undefined, undefined, 60.1, true, false, undefined, s, c);
+  expect(text()).toBe('各位！我剛爭取到空中轟炸支援！');
+  ui.update(undefined, undefined, 63.3, true, false, undefined, s, c);
+  expect(text()).toBe('轟炸機馬上抵達現場！注意！轟炸即將開始！！');
+  const paused = audio.syncRadio.mock.lastCall;
+  ui.update(undefined, undefined, 63.3, true, true, undefined, s, c);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBe(paused?.[1]);
+  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 63.3, true, true, undefined, s, c);
+  ui.update(undefined, undefined, 63.3, true, false, undefined, s, c);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(3.2); expect(audio.play).not.toHaveBeenCalled();
+  ui.update(undefined, undefined, 66.87, true, false, undefined, s, c); expect(ui.element.hidden).toBe(false);
+  ui.update(undefined, undefined, 67.1, true, false, undefined, s, c); expect(ui.element.hidden).toBe(true);
+  ui.reset(); ui.update(undefined, undefined, 68, true, false, undefined, s, c); expect(ui.element.hidden).toBe(true); ui.dispose();
 });
 it('orders pending radio messages by priority and preserves an already-playing official recording', () => {
   const q = new CommanderComms(), frame = { visible: true, begin: true, end: false, offset: 0, duration: 5, audible: true };

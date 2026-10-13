@@ -8,13 +8,13 @@ Browser scripts use Playwright and Chrome from the existing QA runtime. Set TOPW
 
 DEV checks require a separate Vite server; use `npm run dev -- --host 127.0.0.1 --port 5175 --strictPort` and `$env:TOPWAR_QA_URL='http://127.0.0.1:5175/'`. Do not stop another developer's server. Production checks start/close their own strict-port Vite preview and require a fresh npm run build. Run performance tools alone, without another Chrome/test load.
 
-Local Vite and closed-playtest Pages share 驅逐艦進場, BOSS 進場 and 勝利結算, plus 返回一般遊戲. Selection closes the menu. DEV-only 進階調校 starts folded and contains balance/audio and sleep/checkpoint QA. Victory uses the real Tank finale and marked sample results. MG/Supply/Survival/phase presets still support regression checks through `selectDevFixture`; they are not visible controls. Only the three approved initializers ship in Production; engineering QA and other presets do not. Switching scenes replaces the current run, as the menu explains.
+Local Vite and closed-playtest Pages share 驅逐艦進場, BOSS 進場, 勝利結算 and 空中支援, plus 返回一般遊戲. Selection closes the menu. DEV-only 進階調校 starts folded and contains balance/audio and sleep/checkpoint QA. Victory uses the real Tank finale and marked sample results. MG/Supply/Survival/phase presets still support regression checks through `selectDevFixture`; they are not visible controls. Only the four approved initializers ship in Production; engineering QA and other presets do not. Switching scenes replaces the current run, as the menu explains.
 
 ## Regression commands
 
 | Tool | Current purpose |
 |---|---|
-| production-sanity.mjs | Shipping /topwar/ assets, startup, current AHEAD policy and approved three-scene playback/voice/music/checkpoint recovery, plus exclusion of engineering QA; both widths |
+| production-sanity.mjs | Shipping /topwar/ assets, startup, current AHEAD policy and approved four-scene playback/voice/music/checkpoint recovery, plus exclusion of engineering QA; both widths |
 | production-resume.mjs | Real production Pause → reload → Continue, identical state/continuation, Retry |
 | instant-recovery.mjs | DEV delayed-config recovery choice before assets, blocked inputs, repeated reloads |
 | recovery-wake.mjs | Wake Lock grant/denial/deferred races, Pause/hidden/recovery and disposal |
@@ -22,7 +22,7 @@ Local Vite and closed-playtest Pages share 驅逐艦進場, BOSS 進場 and 勝�
 | naval-mobile-sleep.mjs | Own DEV server/advanced QA stress fixture, valid recovery, sleep suppression, lifecycle and WebGL context restore, warning recording |
 | grenade-inventory.mjs | Exact +1 accumulation through large counts/MAX_SAFE_INTEGER, count bounds, one real throw and reload |
 | golden-grenade.mjs | Normal/dense launch, explosion, HUD/trail/audio and in-flight restoration |
-| mobile-mg-test.mjs | Retained MG6–10 fixture/Retry regressions, authored firing rates and three-button menu bounds |
+| mobile-mg-test.mjs | Retained MG6–10 fixture/Retry regressions, authored firing rates and four-button menu bounds |
 | survival-pressure-browser.mjs | All four comparison modes, Lv7–10, Retry/continuation and optional recordings/performance |
 | supply-fixtures-sanity.mjs | CRATE3/CRATE8 three-stage destruction, reward transfer, Pause/restore and destination alignment |
 | naval-lane-warnings.mjs | Dense Lv8–10 authoritative lane warnings, full flight, pause/restoration and no ground circles |

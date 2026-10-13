@@ -434,6 +434,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   });
 
   if (enemies.filter(e => e.archetype === 'giant').length > 1
+      && !(catharsis?.balance.defenseMode && (postCapSurvival.startedAtSeconds !== null || state.defenseTank))
     || (enemies.some(e => e.archetype === 'giant') && !(giantEncounter as { spawned?: boolean } | undefined)?.spawned)) {
     throw new Error('Only one introduced Giant is supported');
   }
@@ -1029,6 +1030,12 @@ export class Simulation {
         ...(tankDamage > 0 ? { tankDamage } : {}) });
       grenade.flight = null;
     }
+    const commanderSupport = this.state.commanderSupport ? { ...this.state.commanderSupport,
+      airstrike: this.state.commanderSupport.airstrike ? { ...this.state.commanderSupport.airstrike } : null } : undefined;
+    // Heavy raids share the ordinary Tank defeat boundary; external kills never award XP/stats.
+    if (commanderSupport && catharsis?.balance.commanderSupport?.heavyRaid && defenseTank?.hp !== 0)
+      this.supportEvents.push(...advanceCommanderSupport({ ...this.state, elapsedSeconds: nextElapsedSeconds,
+        defenseTank, squad, enemies, player: { ...this.state.player, x: nextX, z: nextZ } }, catharsis.balance.commanderSupport, commanderSupport));
     const tankDefeated = !!defenseTank && defenseTank.hp === 0;
     if (defenseTank && tankConfig) {
       defenseTank.phase = tankPhase(defenseTank.hp, tankConfig);
@@ -1229,8 +1236,6 @@ export class Simulation {
       applyEncounterAction(phaseFrame, 'ordinaryOff'); applyEncounterAction(phaseFrame, 'barrageOff');
     }
     if (defenseTank && tankConfig && !tankDefeated) admitTankFlanks(phaseFrame, defenseTank, tankConfig);
-    const commanderSupport = this.state.commanderSupport ? { ...this.state.commanderSupport,
-      airstrike: this.state.commanderSupport.airstrike ? { ...this.state.commanderSupport.airstrike } : null } : undefined;
     if (commanderSupport) this.supportEvents.push(...advanceCommanderSupport(phaseFrame, catharsis?.balance.commanderSupport, commanderSupport));
     if (defenseWaves && this.state.postCapSurvival?.startedAtSeconds == null && postCapSurvival.startedAtSeconds !== null
       && catharsis?.balance.postCapSurvival.firstWaveDelaySeconds !== undefined)

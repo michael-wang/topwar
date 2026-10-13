@@ -158,6 +158,7 @@ export class GameAudio {
   private supplyRewardAtMs: number | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();
   private readonly supportSources = new Set<OscillatorNode>();
+  private readonly supportImpactSources = new Set<AudioScheduledSourceNode>();
   private rumbleBuffer: AudioBuffer | null = null;
   private grenadeBuffer: AudioBuffer | null = null;
   private readonly grenadeSources = new Set<AudioScheduledSourceNode>();
@@ -284,26 +285,61 @@ export class GameAudio {
 
   silenceMusic(): void { this.music?.silence(); }
 
-  syncSupportFlyover(offset: number | null, paused: boolean): void {
+  syncSupportFlyover(offset: number | null, paused: boolean, duration = 1.2, firstImpactSeconds = 7.5, strikeSpacing = .65): void {
     const context = this.context;
-    if (offset === null || offset < 0 || offset >= 1.2 || paused) {
+    if (paused || offset === null || offset < 0 || offset >= duration) {
       for (const source of this.supportSources) { try { source.stop(); } catch { /* ended */ } this.active.delete(source); }
-      this.supportSources.clear(); return;
+      this.supportSources.clear();
+      if (paused) { for (const source of this.supportImpactSources) { try { source.stop(); } catch { /* ended */ } } this.supportImpactSources.clear(); }
+      return;
     }
     if (!this.unlocked || !context || context.state !== 'running' || !this.master || this.supportSources.size) return;
-    // Resume at the remaining Doppler sweep, with two short-lived voices and no asset requests.
-    for (const [from, to, volume, wave] of [[310, 65, .12, 'sawtooth'], [145, 42, .17, 'triangle']] as const) {
-      const source = context.createOscillator(), gain = context.createGain(), now = context.currentTime;
-      source.type = wave;
-      source.frequency.setValueAtTime(from * (to / from) ** (offset / 1.2), now);
-      source.frequency.exponentialRampToValueAtTime(to, now + 1.2 - offset);
-      gain.gain.setValueAtTime(Math.max(.001, volume * Math.sin(Math.PI * offset / 1.2)), now);
-      if (offset < .3) gain.gain.linearRampToValueAtTime(volume, now + .3 - offset);
-      gain.gain.exponentialRampToValueAtTime(.001, now + 1.2 - offset);
-      source.connect(gain); gain.connect(this.master);
+    const heavy = duration > 2, now = context.currentTime, remaining = duration - offset;
+    const tone = (from: number, to: number, volume: number, wave: OscillatorType, delay = 0, seconds = remaining, whistle = false) => {
+      const source = context.createOscillator(), gain = context.createGain(); source.type = wave;
+      const start = now + delay;
+      source.frequency.setValueAtTime(from, start); source.frequency.exponentialRampToValueAtTime(to, start + seconds);
+      const curve = new Float32Array(48);
+      for (let i = 0; i < curve.length; i++) {
+        const t = offset + remaining * i / (curve.length - 1);
+        curve[i] = Math.max(.001, volume * (whistle ? Math.sin(Math.PI * i / (curve.length - 1))
+          : heavy ? (.12 + .88 * Math.min(1, t / firstImpactSeconds)) * Math.min(1, (duration - t) / 8) * (this.radioActive && t < 6.95 ? .38 : 1)
+          : Math.sin(Math.PI * t / duration)));
+      }
+      gain.gain.setValueCurveAtTime(curve, start, seconds);
+      source.connect(gain); gain.connect(this.master!);
       source.onended = () => { source.disconnect(); gain.disconnect(); this.active.delete(source); this.supportSources.delete(source); };
-      this.active.add(source); this.supportSources.add(source); source.start(now); source.stop(now + 1.2 - offset);
+      this.active.add(source); this.supportSources.add(source); source.start(start); source.stop(start + seconds);
+    };
+    if (heavy) {
+      const pitch = (112 / 144) ** (offset / duration);
+      tone(72 * pitch, 56, .085, 'triangle'); tone(144 * pitch, 112, .035, 'sawtooth'); tone(216 * pitch, 168, .025, 'sine');
+      for (let i = 0; i < 6; i++) {
+        const end = firstImpactSeconds + i * strikeSpacing, begin = end - .6;
+        if (offset < end) { const skipped = Math.max(0, offset - begin);
+          tone(1100 * (.22 ** (skipped / .6)), 242, .07, 'sine', Math.max(0, begin - offset), .6 - skipped, true); }
+      }
+    } else { tone(310 * (65 / 310) ** (offset / duration), 65, .12, 'sawtooth'); tone(145 * (42 / 145) ** (offset / duration), 42, .17, 'triangle'); }
+  }
+
+  playSupportImpact(): void {
+    const c = this.context;
+    if (!this.unlocked || !c || c.state !== 'running' || !this.master) return;
+    while (this.supportImpactSources.size > 8) { const old = this.supportImpactSources.values().next().value!; old.stop(); this.supportImpactSources.delete(old); }
+    const end = (source: AudioScheduledSourceNode, gain: GainNode) => {
+      source.onended = () => { source.disconnect(); gain.disconnect(); this.active.delete(source); this.supportImpactSources.delete(source); };
+      this.active.add(source); this.supportImpactSources.add(source);
+    };
+    for (const [from, to, volume, seconds] of [[190, 65, .19, .38], [85, 38, .15, 1.65]] as const) {
+      const source = c.createOscillator(), gain = c.createGain(), now = c.currentTime;
+      source.type = 'triangle'; source.frequency.setValueAtTime(from, now); source.frequency.exponentialRampToValueAtTime(to, now + seconds);
+      gain.gain.setValueAtTime(volume, now); gain.gain.exponentialRampToValueAtTime(.001, now + seconds);
+      source.connect(gain); gain.connect(this.master); end(source, gain); source.start(now); source.stop(now + seconds);
     }
+    const source = c.createBufferSource(), gain = c.createGain();
+    source.buffer = this.grenadeBuffer ??= this.createGrenadeBuffer(c); source.playbackRate.value = .65;
+    gain.gain.setValueAtTime(.22, c.currentTime); gain.gain.exponentialRampToValueAtTime(.001, c.currentTime + 1.5);
+    source.connect(gain); gain.connect(this.master); end(source, gain); source.start(); source.stop(c.currentTime + 1.5);
   }
 
   suspendForBackground(): void {

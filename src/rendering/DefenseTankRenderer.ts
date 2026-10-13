@@ -136,7 +136,12 @@ export class DefenseTankRenderer {
       break;
     }
   }
-  update(frame: GameRenderState['defenseTank'], nowMs: number): void {
+    presentSupport(events: readonly import('../simulation/commanderSupport').SupportEvent[], nowMs: number): void {
+      if (events.some(e => e.kind === 'supportBomb' && (e.tankDamage ?? 0) > 0)) {
+        this.hitAtMs = nowMs; this.hitDurationMs = 350; this.hitStrength = 1;
+      }
+    }
+    update(frame: GameRenderState['defenseTank'], nowMs: number): void {
     this.group.visible = !!frame; this.landing.visible = !!frame;
     const shockProgress = (nowMs - this.entranceAtMs) / 700;
     this.shock.visible = !!frame && shockProgress >= 0 && shockProgress < 1;

@@ -1,5 +1,8 @@
 import { expect, it } from 'vitest';
-import config from './helpers/ShippingConfig';
+import shipping from './helpers/ShippingConfig';
+// Released C3 checkpoints keep these embedded timings and quota rules.
+const config = structuredClone(shipping);
+config.catharsis!.commanderSupport = { dangerDistance: 14, earliestBossSeconds: 5.5, warningSeconds: 1.25, strikeSpacingSeconds: .35, clearFraction: .8 };
 import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createTankReview } from '../src/app/DevTankReview';

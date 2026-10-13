@@ -502,7 +502,7 @@ export class GameApp {
         && this.presentationMs - this.tankDeathAtMs >= TANK_DEATH_MS)
         this.fieldObserver?.updateVictory(this.presentationMs / 1000, true);
       else if (s.defenseTank?.status === 'defeated') this.fieldObserver?.finishCombat(this.presentationMs / 1000, true);
-      else this.fieldObserver?.update(s.destroyer, s.catharsis?.balance.destroyer, s.elapsedSeconds, s.squad.count > 0, true, s.defenseTank, s.commanderSupport);
+      else this.fieldObserver?.update(s.destroyer, s.catharsis?.balance.destroyer, s.elapsedSeconds, s.squad.count > 0, true, s.defenseTank, s.commanderSupport, s.catharsis?.balance.commanderSupport);
       this.audio.silenceMusic();
     } else {
       this.startInputs();
@@ -755,16 +755,20 @@ export class GameApp {
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
         if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
       if (!cleared)
-        this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank, state.commanderSupport);
+        this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank, state.commanderSupport, state.catharsis?.balance.commanderSupport);
       if (cleared && (this.tankDeathAtMs === null || this.presentationMs - this.tankDeathAtMs < TANK_DEATH_MS))
         this.fieldObserver?.finishCombat(this.presentationMs / 1000, this.paused);
       const supportEvents = this.simulation.consumeSupportEvents();
-      this.renderer.presentSupport(supportEvents, this.presentationMs);
-      for (const event of supportEvents) if (event.kind === 'supportBomb') this.audio.play('grenadeExplosion');
+      for (const event of supportEvents) if (event.kind === 'supportBomb') {
+        if (event.heavy) this.audio.playSupportImpact(); else this.audio.play('grenadeExplosion');
+      }
       const supportAir = state.commanderSupport?.airstrike;
-      this.audio.syncSupportFlyover(!cleared && state.squad.count > 0 && supportAir?.bombAtSeconds !== null
-        && supportAir?.bombAtSeconds !== undefined && supportAir.strikesCompleted > 0 && supportAir.status !== 'cancelled'
-        ? state.elapsedSeconds - supportAir.bombAtSeconds : null, this.paused);
+      const supportConfig = state.catharsis?.balance.commanderSupport;
+      this.audio.syncSupportFlyover(!cleared && state.squad.count > 0 && supportAir?.triggeredAtSeconds != null
+        && supportAir.status !== 'cancelled' ? state.elapsedSeconds - (supportConfig?.heavyRaid
+          ? supportAir.triggeredAtSeconds : supportAir.bombAtSeconds!) : null, this.paused,
+        supportConfig?.heavyRaid ? supportConfig.warningSeconds + 5 * supportConfig.strikeSpacingSeconds + 10 : 1.2,
+        supportConfig?.warningSeconds, supportConfig?.strikeSpacingSeconds);
       const tankEntranceEvents = this.simulation.consumeTankEntranceEvents();
       this.renderer.presentTankEntrance(tankEntranceEvents, this.presentationMs);
       if (tankEntranceEvents.length) this.audio.play('supplyImpact');
@@ -783,6 +787,9 @@ export class GameApp {
         else if (event.kind === 'grenadeDetonated') this.audio.play('grenadeExplosion');
       }
       this.renderer.presentGrenade(grenadeEvents, this.presentationMs);
+      // A coincident Grenade cannot hide the heavy raid's 500-HP hit/flash.
+      this.renderer.presentSupport(supportEvents, this.presentationMs);
+      this.tankBossHud.presentSupport(supportEvents, this.presentationMs);
       const artilleryEvents = this.simulation.consumeArtilleryEvents();
       for (const event of artilleryEvents) {
         this.audio.play(event.kind === 'artilleryLaunch' ? 'enemyCannon' : 'enemyShellImpact');

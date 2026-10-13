@@ -22,6 +22,12 @@ export class TankBossHud {
       this.damageUntilMs = nowMs + 750; this.damage.hidden = false;
     }
   }
+  presentSupport(events: readonly import('../simulation/commanderSupport').SupportEvent[], nowMs: number): void {
+    for (const e of events) if (e.kind === 'supportBomb' && (e.tankDamage ?? 0) > 0) {
+      this.damage.textContent = `空襲 −${e.tankDamage} HP`;
+      this.damageUntilMs = nowMs + 600; this.damage.hidden = false;
+    }
+  }
   update(state: SimulationFrameState, nowMs: number, position: { x: number; y: number } | null): void {
     const tank = state.defenseTank, config = state.catharsis?.balance.defenseTank;
     this.element.hidden = !tank || !config || tank.status !== 'active' || !position;
