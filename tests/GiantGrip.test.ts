@@ -19,7 +19,8 @@ it('owns exactly one mechanical grip in the single ram mesh, with only the shiel
     expect(region(mesh.geometry,ART.enemyArmory.iron,(x,y)=>x>.50&&y>.30&&y<.7).isEmpty()).toBe(true);
     expect(region(mesh.geometry,ART.enemyArmory.steel,(x,y)=>x<-.3&&y>.25&&y<.7).isEmpty()).toBe(false);
   }
-  const hand=region(weapon,ART.enemyArmory.iron),shaft=region(weapon,ART.enemyArmory.copper),head=region(weapon,ART.enemyArmory.armor);
+  const hand=region(weapon,ART.enemyArmory.iron),shaft=region(weapon,ART.enemyArmory.copper),head=region(weapon,ART.enemyArmory.giant);
+  expect(head.isEmpty()).toBe(false);
   const center=hand.getCenter(new THREE.Vector3());center.toArray().forEach((v,i)=>expect(v).toBeCloseTo(GIANT_WEAPON_GRIP[i],5));
   expect(shaft.min.y).toBeLessThan(center.y);expect(shaft.max.y).toBeGreaterThan(center.y);
   expect(shaft.getCenter(new THREE.Vector3()).x).toBeCloseTo(center.x);

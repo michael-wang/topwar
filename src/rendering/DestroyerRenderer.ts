@@ -11,7 +11,7 @@ export class DestroyerRenderer {
   readonly group = new THREE.Group();
   readonly muzzle = new THREE.Object3D();
   private readonly block = paintedBlockGeometry();
-  private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.armor, roughness: .85 }));
+  private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.vehicle, roughness: .85 }));
   private readonly ivory = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.sand, roughness: .85 }));
   private readonly ink = new THREE.MeshStandardMaterial({ color: ART.enemyArmory.iron, roughness: .75 });
   private readonly gold = new THREE.MeshStandardMaterial({ color: ART.enemyArmory.warning, roughness: .65 });

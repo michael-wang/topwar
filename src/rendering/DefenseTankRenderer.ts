@@ -25,7 +25,7 @@ export class DefenseTankRenderer {
     opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending });
   private readonly flameCoreMaterial = new THREE.MeshBasicMaterial({ color: '#ffd36b', transparent: true,
     opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending });
-  private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.armor, roughness: .85 }));
+  private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.vehicle, roughness: .85 }));
   private readonly steel = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.ivory, roughness: .7 }));
   private readonly dark = new THREE.MeshStandardMaterial({ color: ART.enemyArmory.iron, roughness: .85 });
   private readonly accent = new THREE.MeshStandardMaterial({ color: ART.enemyArmory.warning, roughness: .75 });
@@ -233,7 +233,7 @@ export class DefenseTankRenderer {
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
     this.flames.visible = this.flameCores.visible = false;
-    this.armor.color.set(ART.enemyArmory.armor);
+    this.armor.color.set(ART.enemyArmory.vehicle);
     this.shock.visible = false; this.entranceAtMs = -Infinity;
     this.hitAtMs = -Infinity; this.observedHit = null; this.hitFlash.opacity = 0;
     for (const mesh of this.hitMeshes) mesh.visible = false;

@@ -5,7 +5,7 @@ import { ART } from '../../art/ArtDirection';
 export const COMBAT_COLORS = {
   player: { trousers: '#365973', gear: '#4c6673' },
   grunt: { belt: '#526358', canteen: '#8e9987' },
-  heavy: { trousers: '#4e6067', harness: ART.enemyArmory.sand, pouch: ART.enemyArmory.steel },
+  heavy: { trousers: '#4e6067', harness: ART.enemyArmory.sand, pouch: ART.enemyArmory.armor },
   giant: { sash: ART.enemyArmory.copper, satchel: ART.enemyArmory.steel },
 } as const;
 

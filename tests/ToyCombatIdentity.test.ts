@@ -54,18 +54,19 @@ it('authors lower clothing/leg panels and role equipment inside owning reference
   }
 });
 
-it('gives Heavy a front plate and broad shoulder armor distinct from Grunt field gear', () => {
+it('gives Heavy a round armored belly, thick shoulders and exposed human eyes distinct from Grunt', () => {
   const heavy=createChibiHeavyFamily(), grunt=createChibiGruntFamily();
   const harness=region(heavy.body.geometry,COMBAT_COLORS.heavy.harness);
   expect(harness.min.x).toBeLessThan(-.20); expect(harness.max.x).toBeGreaterThan(.20);
-  expect(harness.min.y).toBeGreaterThan(.24); expect(harness.max.y).toBeGreaterThan(.50);
+  expect(harness.min.y).toBeLessThan(.20); expect(harness.max.y).toBeGreaterThan(.50);
   expect(harness.max.y).toBeLessThan(.61);
-  const shoulders=region(heavy.body.geometry,ART.enemyArmory.steel);
+  const shoulders=region(heavy.body.geometry,ART.enemyArmory.heavy);
   expect(shoulders.min.x).toBeLessThan(-.50); expect(shoulders.max.x).toBeGreaterThan(.50);
   expect(shoulders.max.y).toBeGreaterThan(.60);
   expect(harness.max.z).toBeGreaterThan(.30);
-  const visor=region(heavy.helmet.geometry,ART.enemyArmory.warning);
-  expect(visor.getSize(new THREE.Vector3()).x).toBeGreaterThan(.45);
+  const eyes=region(heavy.body.geometry,ART.faction.weapon);
+  expect(eyes.min.x).toBeLessThan(-.10); expect(eyes.max.x).toBeGreaterThan(.10);
+  expect(region(heavy.helmet.geometry,ART.enemyArmory.iron).isEmpty()).toBe(true);
   const canteen=region(grunt.body.geometry,COMBAT_COLORS.grunt.canteen);
   expect(canteen.max.x).toBeLessThan(0);
   expect(region(grunt.body.geometry,COMBAT_COLORS.heavy.harness).isEmpty()).toBe(true);

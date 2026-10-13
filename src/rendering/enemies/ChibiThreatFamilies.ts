@@ -10,8 +10,8 @@ import { paddedBarrel, canvasFieldBag } from '../characters/StructuredToyParts';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
 import { HEAVY_GAIT_CYCLE_MS, type CrowdVisualFamily, type GiantVisualFamily } from '../CharacterVisualFamilies';
 
-export const THREAT_COLORS = { shirt: ART.enemyArmory.armor, shorts: COMBAT_COLORS.heavy.trousers,
-  stone: ART.enemyArmory.sand, helmet: ART.enemyArmory.armor } as const;
+export const THREAT_COLORS = { shirt: ART.enemyArmory.heavy, shorts: COMBAT_COLORS.heavy.trousers,
+  stone: ART.enemyArmory.sand, helmet: ART.enemyArmory.giant } as const;
 type Part = { geometry: THREE.BufferGeometry; color?: string; lower?: number; lowerColor?: string; fixed?: boolean;
   piece?: number | ((y: number) => number) };
 const block = (x: number, y: number, z: number, w: number, h: number, d: number) =>
@@ -44,27 +44,27 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
 }
 const matte = () => new THREE.MeshStandardMaterial({ color: 'white', vertexColors: true, roughness: 1, metalness: 0 });
 function face(y: number, z: number, radius = .018): Part[] {
-  return [-1, 1].map(side => ({ geometry: ball(side * .095, y, z, radius, radius * 1.12, .012, 8, 4), color: ART.faction.weapon, piece: 1 }));
+  return [-1, 1].map(side => ({ geometry: ball(side * .105, y, z, radius, radius * 1.12, .012, 8, 4), color: ART.faction.weapon, piece: 1 }));
 }
 
 function heavyPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): THREE.BufferGeometry {
   return merge([
-    { geometry: paddedBarrel(.34, .48, .275, .35, .10,20,.30), color: THREAT_COLORS.shirt, lower: .30, piece: (y) => y >= .35 ? 2 : 3 },
+    { geometry: paddedBarrel(.39, .52, .31, .36, .17,20,.30), color: THREAT_COLORS.shirt, lower: .30, piece: (y) => y >= .35 ? 2 : 3 },
     ...[-1,1].map(side => ({ geometry: ball(side*.26,.205,0,.105,.045,.125,8,4), color: THREAT_COLORS.shorts, piece: 3 })),
-    { geometry: block(0,.42,.26,.52,.32,.12), color: COMBAT_COLORS.heavy.harness, piece: 6 },
+    { geometry: ball(0,.375,.245,.335,.21,.12,16,10), color: COMBAT_COLORS.heavy.harness, piece: 6 },
     ...[-1,1].map(side => ({ geometry: canvasFieldBag(.18,.155,.10).rotateY(side*.16)
       .translate(side*.245,.245,.235), color: COMBAT_COLORS.heavy.pouch, piece: side < 0 ? 6 : 7 })),
-    { geometry: ball(0, .65, 0, .32, .20, .26, 20, 12), color: ART.faction.skin, piece: 1 },
-    ...face(.655, .264, .027),
+    { geometry: ball(0, .675, 0, .35, .22, .285, 20, 12), color: ART.faction.skin, piece: 1 },
+    ...face(.686, .289, .028),
     ...[-1, 1].map(side => ({ geometry: ball(side * (.495 + reaction * .055), .34 - reaction * .10, side * stride * .12, .13, .13, .13, 16, 10), color: ART.faction.skin, fixed: true, piece: side < 0 ? 4 : 5 })),
     { fixed: true, geometry: toyShoe({ x: -.265 - reaction * .045 - (liftLeft > .05 ? .045 : 0), y: liftLeft, z: stride * .13,
       width: .34, height: .15, depth: .27, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }), piece: 8 },
     { fixed: true, geometry: toyShoe({ x: .265 + reaction * .045 + (liftRight > .05 ? .045 : 0), y: liftRight, z: -stride * .13,
       width: .34, height: .15, depth: .27, upper: ART.footwear.enemyUpper, sole: ART.footwear.enemySole }), piece: 9 },
-    ...[-1,1].map(side => ({ geometry: block(side*.36,.52,0,.36,.24,.44),
-      color: ART.enemyArmory.steel, piece: 2 })),
-    ...[-1,1].map(side => ({ geometry: block(side*(.495+reaction*.055),.34-reaction*.10,side*stride*.12,
-      .24,.20,.28), color: ART.enemyArmory.iron, piece: side < 0 ? 4 : 5, fixed: true })),
+    ...[-1,1].map(side => ({ geometry: ball(side*.365,.51,0,.20,.14,.235,12,8),
+      color: ART.enemyArmory.heavy, piece: 2 })),
+    ...[-1,1].map(side => ({ geometry: ball(side*(.495+reaction*.055),.34-reaction*.10,side*stride*.12-.06,
+      .135,.10,.13,12,8), color: ART.enemyArmory.steel, piece: side < 0 ? 4 : 5, fixed: true })),
   ], reaction);
 }
 
@@ -72,13 +72,10 @@ export function createChibiHeavyFamily(): CrowdVisualFamily<'heavy'> & { dispose
   const idle = heavyPose(0), runs = [heavyPose(1, 0, .09), heavyPose(-.25, .018, 0),
     heavyPose(-1, .09, 0), heavyPose(.25, 0, .018)], death = heavyPose(0, 0, 0, 1), transition = heavyPose(0, 0, 0, .5);
   const helmetGeometry = merge([{ geometry: toyHelmetShell({
-    // Deep cheek guards and a single broad observation visor, above the human chin.
-    rx: .425, ry: .225, rz: .37, y: .765, front: 1.30, side: 2.05, rear: 2.30,
+    // Oversized round khaki helmet; the open front leaves both human eyes clear.
+    rx: .445, ry: .245, rz: .39, y: .78, front: 1.30, side: 2.05, rear: 2.30,
     segments: 24, rings: 10, thickness: .02,
-  }), color: ART.enemyArmory.armor },
-    { geometry: block(0,.72,.30,.63,.20,.11), color: ART.enemyArmory.iron },
-    { geometry: block(0,.735,.357,.49,.055,.025), color: ART.enemyArmory.warning },
-  ]);
+  }), color: ART.enemyArmory.sand }]);
   // Invisible contract adapter, matching Grunt. Heavy has no secondary armor region.
   const armorGeometry = new THREE.BufferGeometry();
   for (const attribute of ['position', 'normal', 'color'])
@@ -109,8 +106,8 @@ function giantPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): T
   return merge([
     // An offset ammunition vault, shield arm and short ram give this siege machine
     // its own silhouette. Rigid gait, grip and logical death pieces stay unchanged.
-    { geometry: block(0,.72,0,.84,.55,.49), color: ART.enemyArmory.armor, piece: (y) => y >= .65 ? 3 : 4 },
-    { geometry: block(0,.73,.28,.55,.36,.10), color: ART.enemyArmory.sand, piece: 3 },
+    { geometry: block(0,.72,0,.84,.55,.49), color: ART.enemyArmory.giant, piece: (y) => y >= .65 ? 3 : 4 },
+    { geometry: block(0,.73,.28,.55,.36,.10), color: ART.enemyArmory.copper, piece: 3 },
     { geometry: block(0,.39,0,.54,.14,.35), color: COMBAT_COLORS.giant.sash, piece: 4 },
     { geometry: block(0,.29,0,.51,.16,.32), color: ART.raider.shorts, piece: 5 },
     { geometry: block(-.30,.91,-.12,.33,.49,.40), color: COMBAT_COLORS.giant.satchel, piece: 8 },
@@ -120,7 +117,7 @@ function giantPose(stride: number, liftLeft = 0, liftRight = 0, reaction = 0): T
     { geometry: block(-.48-reaction*.035,.50+reaction*.24,-stride*.10,.29,.45,.39),
       color: ART.enemyArmory.steel, piece: 6, fixed: true },
     { geometry: block(-.48-reaction*.035,.52+reaction*.24,.21-stride*.10,.20,.30,.06),
-      color: ART.enemyArmory.armor, piece: 6, fixed: true },
+      color: ART.enemyArmory.giant, piece: 6, fixed: true },
     ...[-1,1].map(side => ({ geometry: block(side*.28,.25+(side < 0 ? liftLeft : liftRight),side*stride*.14,.24,.28,.25),
       color: ART.raider.shorts, piece: 5, fixed: true })),
     ...[-1,1].map(side => ({ geometry: block(side*.28,.34+(side < 0 ? liftLeft : liftRight),.14+side*stride*.14,.27,.15,.14),

@@ -22,7 +22,8 @@ export const ART = {
     shorts: '#62727a', stone: '#c6b68c', rim: '#4c5945', hardware: '#49555c' },
   // Shared antique enemy armory; silhouettes, rather than tiny trim, identify roles.
   enemyArmory: { armor: '#465947', iron: '#293537', steel: '#637778',
-    sand: '#b8a579', ivory: '#dfd5b8', copper: '#956746', warning: '#e6ad44' },
+    sand: '#b8a579', ivory: '#dfd5b8', copper: '#956746', warning: '#e6ad44',
+    heavy: '#7c888c', giant: '#73564a', vehicle: '#3c4d54' },
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
     dust: '#cfb994', gray: '#a2b2b8' },
   defenseTracer: { core: '#fff2ce', outline: '#080b10', coreLengthRatio: .68,

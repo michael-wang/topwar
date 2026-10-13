@@ -29,12 +29,12 @@ it('keeps Heavy jacket side walls vertical through the middle',()=>{
   }
   barrel.dispose();
 });
-it('merges Heavy shoulder/pouch and Giant shield/vault equipment into static poses with single disposal',()=>{
+it('merges Heavy pouches and Giant shield/vault equipment into static poses with single disposal',()=>{
   for(const create of [createChibiHeavyFamily,createChibiGiantFamily]){
     const family=create(),color=family.role==='heavy'?COMBAT_COLORS.heavy.pouch:COMBAT_COLORS.giant.satchel;
     for(const mesh of [family.body,...family.runFrames]){
       const gear=region(mesh.geometry,color);expect(gear.isEmpty()).toBe(false);
-      expect(gear.min.x).toBeLessThan(-.35);expect(gear.max.z).toBeGreaterThan(.18);
+      expect(gear.min.x).toBeLessThan(family.role === 'heavy' ? -.30 : -.35);expect(gear.max.z).toBeGreaterThan(.18);
     }
     expect(family.vest.visible).toBe(false);
     const spies=[family.body,...family.runFrames].map(m=>vi.spyOn(m.geometry,'dispose'));
