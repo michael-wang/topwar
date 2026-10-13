@@ -73,5 +73,12 @@ it('keeps a damaged wreck and bounded consecutive/final explosions; restoring a 
   }
   r.restore(frame, 20000); r.update(frame, 20000);
   expect(scene.children.filter(o => o.name.startsWith('grenade-') && o.visible)).toHaveLength(0);
+  const smoke = r.group.children.find(o => o instanceof THREE.InstancedMesh && o.count === 8) as THREE.InstancedMesh;
+  const geometry = smoke.geometry, initialSmoke = Array.from(smoke.instanceMatrix.array);
+  r.update(frame, 20100);
+  const movingSmoke = Array.from(smoke.instanceMatrix.array);
+  expect(movingSmoke).not.toEqual(initialSmoke); // Frozen combat time must not freeze victory smoke.
+  r.update(frame, 20100); expect(Array.from(smoke.instanceMatrix.array)).toEqual(movingSmoke);
+  expect(smoke.geometry).toBe(geometry); expect(smoke.count).toBe(8); expect(smoke.visible).toBe(true);
   expect(r.group.visible).toBe(true); r.dispose(); expect(scene.children).toHaveLength(0);
 });

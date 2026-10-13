@@ -132,6 +132,7 @@ export class DefenseTankRenderer {
     }
     if (!frame) { this.explosions.update(nowMs, 0); return; }
     const s = frame.state, c = frame.config, entry = Math.min(1, Math.max(0, (frame.elapsedSeconds - s.startedAtSeconds) / c.entrySeconds));
+    if (s.status === 'defeated' && !this.defeated) { this.defeated = true; this.deathAtMs = nowMs; }
     this.group.visible = s.status !== 'entering' || entry >= TANK_ENTRANCE_CLEAR_FRACTION;
     const door = Math.min(1, Math.max(0, entry - TANK_ENTRANCE_CLEAR_FRACTION) * 8);
     this.leftDoor.position.x = -1.15 - door * 2.1;
@@ -169,15 +170,18 @@ export class DefenseTankRenderer {
     }
     this.tracks.instanceMatrix.needsUpdate = true;
     this.smoke.visible = s.status === 'active' || s.status === 'defeated';
+    this.smokeMaterial.opacity = s.status === 'defeated' ? .42 : .3;
+    // Combat time freezes on the lethal tick; victory smoke follows the pause-aware presentation clock.
+    const smokeAge = age + (s.status === 'defeated' ? Math.max(0, nowMs - this.deathAtMs) / 1000 : 0);
     for (let i = 0; i < 8; i++) {
-      const t = (age * (s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
+      const t = (smokeAge * (s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
       this.transform.position.set(i % 2 ? -1.35 : 1.35, 2.4 + t * .8, 2 + t * .6);
-      this.transform.rotation.set(0, i, 0); this.transform.scale.setScalar((.12 + t * .2) * (s.phase === 3 ? 1.6 : 1));
+      this.transform.rotation.set(0, i, 0); this.transform.scale.setScalar((.12 + t * .2) * (s.phase === 3 ? 1.6 : 1)
+        * (s.status === 'defeated' ? 1.2 : 1));
       this.transform.updateMatrix(); this.smoke.setMatrixAt(i, this.transform.matrix);
     }
     this.smoke.instanceMatrix.needsUpdate = true;
     if (s.status === 'defeated') {
-      if (!this.defeated) { this.defeated = true; this.deathAtMs = nowMs; }
       const deathAge = nowMs - this.deathAtMs;
       for (let i = this.lastBurst + 1; i < TANK_EXPLOSION_TIMES_MS.length && deathAge >= TANK_EXPLOSION_TIMES_MS[i]; i++) {
         const final = i === TANK_EXPLOSION_TIMES_MS.length - 1;

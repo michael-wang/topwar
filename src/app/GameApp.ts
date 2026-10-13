@@ -822,7 +822,9 @@ export class GameApp {
       if (renderEvents.length > 0) this.renderer.present(renderEvents,
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
       this.renderer.render(renderState, this.presentationMs);
-      this.tankBossHud.update(state, this.presentationMs, this.renderer.projectTankHealthPosition());
+      const tankHealthPosition = this.renderer.projectTankHealthPosition();
+      this.tankBossHud.update(state, this.presentationMs, tankHealthPosition);
+      if (cleared) this.stageClearOverlay.update(tankHealthPosition);
       this.supplyTransfer?.update(this.presentationMs);
       const renderFinishedMs = perf ? performance.now() : 0;
       if (perf) {
