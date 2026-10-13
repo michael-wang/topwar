@@ -13,7 +13,11 @@ export const CommanderSupportConfigSchema = z.strictObject({
   strikeSpacingSeconds: z.number().finite().positive(),
   clearFraction: z.number().finite().gt(0).lt(1),
   // Absent in released checkpoints: keep their original quota-based three rounds.
-  heavyRaid: z.strictObject({ bossDamage: z.number().finite().positive(), giantDamageFraction: z.number().finite().gt(0).lte(1), bandDepthUnits: z.number().finite().positive() }).optional(),
+  heavyRaid: z.strictObject({ bossDamage: z.number().finite().positive(), giantDamageFraction: z.number().finite().gt(0).lte(1), bandDepthUnits: z.number().finite().positive(),
+    // Missing in released six-round raids: retain their original trigger and three Tank hits.
+    lastStand: z.strictObject({ bossHpThreshold: z.number().finite().positive(), etaSafetySeconds: clock,
+      minimumBossHp: clock }).optional(),
+  }).optional(),
 });
 export type CommanderSupportConfig = z.infer<typeof CommanderSupportConfigSchema>;
 const airSchema = z.strictObject({
@@ -37,8 +41,14 @@ export const emptyCommanderSupport = (enabled: boolean, giantSeen = false): Comm
     bombAtSeconds: null, strikesCompleted: 0, targets: [] } : null,
 });
 
+/** Later bombs advance beyond the Tank; a Tank already at the HP floor is also bypassed. */
+export function supportTankBombZ(round: number, tankZ: number, bossHp: number, c: CommanderSupportConfig): number {
+  if (!c.heavyRaid?.lastStand || round === 3 && bossHp > c.heavyRaid.lastStand.minimumBossHp) return tankZ;
+  return tankZ + (round === 3 ? .5 : round - 3) * c.heavyRaid.bandDepthUnits;
+}
+
 export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupportConfig | undefined,
-  state: CommanderSupportState): SupportEvent[] {
+  state: CommanderSupportState, defenseLineZ: number): SupportEvent[] {
   const events: SupportEvent[] = [], now = frame.elapsedSeconds, tank = frame.defenseTank;
   // The authoritative spawn, including a Boss flank Giant, is the announcement source.
   if (!state.giantSeen && frame.enemies.some(e => e.hp > 0 && e.archetype === 'giant')) {
@@ -54,13 +64,19 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
   const navalEnd = frame.destroyer?.startedAtSeconds !== null && frame.destroyer?.startedAtSeconds !== undefined
     ? frame.destroyer.startedAtSeconds + (frame.catharsis?.balance.destroyer?.radioAtSeconds ?? 0)
       + (frame.catharsis?.balance.destroyer?.radioDurationSeconds ?? 0) : -Infinity;
-  if (air.status === 'ready' && tank?.status === 'active' && tank.phase >= 2
+  const lastStand = c.heavyRaid?.lastStand;
+  if (air.status === 'ready' && tank?.status === 'active' && (lastStand ? tank.phase === 3 : tank.phase >= 2)
     && now >= Math.max(tank.startedAtSeconds, navalEnd) + c.earliestBossSeconds) {
     const flank = (lane: number) => frame.enemies.filter(e => e.lane === lane && e.hp > 0);
     const left = flank(0), right = flank(4);
     const danger = (enemies: EnemySimulationState[]) => enemies.some(e =>
       (e.archetype === 'heavy' || e.archetype === 'giant') && e.z >= frame.player.z && e.z - frame.player.z <= c.dangerDistance);
-    if (danger(left) && danger(right)) {
+    const imminentBreach = (enemy: EnemySimulationState) => {
+      if (enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') return false;
+      const speed = enemyApproachSpeed(enemy, frame.catharsis!.balance);
+      return speed > 0 && (enemy.z - defenseLineZ) / speed <= c.warningSeconds + lastStand!.etaSafetySeconds;
+    };
+    if (lastStand ? tank.hp <= lastStand.bossHpThreshold || left.some(imminentBreach) || right.some(imminentBreach) : danger(left) && danger(right)) {
       if (c.heavyRaid) { air.targets = []; air.impacts = []; air.tankZAtWarning = tank.z; }
       else {
         // Released checkpoints retain their fixed nearest-first quota.
@@ -78,12 +94,12 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
     if (c.heavyRaid) {
       const lanePositions = attackLanePositions(5, frame.catharsis!.trackHalfWidth, frame.catharsis!.balance.edgeInset);
       const victims: SupportBombEvent['victims'] = [], blasts: SupportBombEvent['blasts'] = [];
-      // Three moving bombing bands, then three distinct Tank impacts. A short trailing
+      // Three moving bombing bands, then central impacts. A short trailing
       // overlap follows enemies crossing the previous boundary during the fixed cadence.
       for (const lane of index < 3 ? HEAVY_RAID_LANES : [2]) {
         const depth = lane === 2 ? Math.max(1, air.tankZAtWarning! - frame.player.z) / 3 : c.heavyRaid.bandDepthUnits;
         const lower = frame.player.z + index * depth, upper = lower + depth;
-        const centerZ = index < 3 ? lower + depth / 2 : tank!.z;
+        const centerZ = index < 3 ? lower + depth / 2 : supportTankBombZ(index, tank!.z, tank!.hp, c);
         blasts.push({ x: lanePositions[lane], z: centerZ });
         const hit = frame.enemies.filter(e => e.lane === lane && e.hp > 0 && (index < 3
           ? e.z > lower - (index > 0 ? enemyApproachSpeed(e, frame.catharsis!.balance) * c.strikeSpacingSeconds : 0) && e.z <= upper
@@ -96,7 +112,8 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
           }
         }
       }
-      const tankDamage = index >= 3 ? Math.min(tank!.hp, c.heavyRaid.bossDamage) : 0;
+      const tankDamage = lastStand ? index === 3 ? Math.min(c.heavyRaid.bossDamage, Math.max(0, tank!.hp - lastStand.minimumBossHp)) : 0
+        : index >= 3 ? Math.min(tank!.hp, c.heavyRaid.bossDamage) : 0;
       if (tankDamage) { tank!.hp -= tankDamage; tank!.lastHitAtSeconds = now; }
       events.push({ kind: 'supportBomb', heavy: true, index, victims, blasts, tankDamage });
       air.impacts = [...(air.impacts ?? []), ...blasts.map(p => ({ ...p, atSeconds: now }))];

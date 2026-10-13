@@ -71,10 +71,10 @@ it('requires an active phase 2/3 Boss and Heavy/Giant danger in both flanks, aft
     if (block === 'intro') frame.defenseTank!.startedAtSeconds = frame.elapsedSeconds;
     if (block === 'one-flank') frame.enemies = frame.enemies.filter(e => e.lane !== 4);
     if (block === 'distant') frame.enemies.forEach(e => e.z = 25);
-    advanceCommanderSupport(frame, c, frame.commanderSupport);
+    advanceCommanderSupport(frame, c, frame.commanderSupport, 0);
     expect(frame.commanderSupport.airstrike!.status).toBe('ready');
   }
-  advanceCommanderSupport(s, c, s.commanderSupport!);
+  advanceCommanderSupport(s, c, s.commanderSupport!, 0);
   expect(s.commanderSupport!.airstrike).toMatchObject({ status: 'waiting', triggeredAtSeconds: 60, bombAtSeconds: 61.25 });
 });
 
@@ -126,11 +126,11 @@ it('keeps historical embedded settings and does not arm retroactive support on r
 
 it.each(['defeated', 'game-over'] as const)('cancels remaining strikes after %s', outcome => {
   const s = boss(true).getState(), c = config.catharsis!.commanderSupport!;
-  advanceCommanderSupport(s, c, s.commanderSupport!);
+  advanceCommanderSupport(s, c, s.commanderSupport!, 0);
   s.elapsedSeconds += 2;
   if (outcome === 'defeated') s.defenseTank!.status = 'defeated'; else s.squad.count = 0;
   const ids = s.enemies.map(e => e.id);
-  expect(advanceCommanderSupport(s, c, s.commanderSupport!)).toEqual([]);
+  expect(advanceCommanderSupport(s, c, s.commanderSupport!, 0)).toEqual([]);
   expect(s.enemies.map(e => e.id)).toEqual(ids); expect(s.commanderSupport!.airstrike!.status).toBe('cancelled');
   expect(validateCommanderSupport(s.commanderSupport, c, s.elapsedSeconds)).toEqual(s.commanderSupport);
 });

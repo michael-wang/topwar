@@ -1,5 +1,8 @@
 import { expect, it } from 'vitest';
-import config from './helpers/ShippingConfig';
+import shipping from './helpers/ShippingConfig';
+// Released C4 six-round checkpoints retain their embedded phase-2 trigger and three Tank hits.
+const config = structuredClone(shipping);
+delete config.catharsis!.commanderSupport!.heavyRaid!.lastStand;
 import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { createAirSupportPlaytest } from '../src/app/TankPlaytest';
@@ -13,6 +16,7 @@ const options = { seed: 17, level, startSquad: 3, startRocketCount: 0, tiers: co
   catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } };
 function raid() {
   const sim = createAirSupportPlaytest(options, config.weapon.rifle.fireRate), s = sim.getState();
+  s.defenseTank!.hp = 4225; s.defenseTank!.phase = 2;
   s.weapons.rifleMemberCooldowns = Array(s.squad.count).fill(100); s.weapons.rifleCooldownRemainingSeconds = 100;
   s.defenseTank!.nextAttackAtSeconds = 1000; s.defenseTank!.nextFlankAtSeconds = 1000; s.defenseTank!.nextGiantAtSeconds = 1000;
   s.artillery = { version: 1, nextId: 1, shells: [] };

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GrenadeExplosion } from './GrenadeExplosion';
 import { HeavyAirstrikeExplosion } from './HeavyAirstrikeExplosion';
-import { HEAVY_RAID_LANES, HEAVY_RAID_ROUNDS, type CommanderSupportConfig, type SupportEvent } from '../simulation/commanderSupport';
+import { HEAVY_RAID_LANES, HEAVY_RAID_ROUNDS, supportTankBombZ, type CommanderSupportConfig, type SupportEvent } from '../simulation/commanderSupport';
 import type { GameRenderState } from './RenderState';
 const BOMBER_LANES = HEAVY_RAID_LANES;
 const HEIGHT_OFFSET = [0, .3, .15], HEADING = [.05, 0, -.05], FALLBACK_X = [-4.5, 0, 4.5];
@@ -12,9 +12,10 @@ function bomberZ(age: number, c: CommanderSupportConfig, tankZ: number, lane: nu
   const segment = (age - c.warningSeconds) / c.strikeSpacingSeconds;
   if (segment < 2) return near + depth * segment;
   const far = near + depth * 2;
-  const end = lane === 2 ? tankZ + 1 : far + depth * 1.5;
+  const followThrough = c.heavyRaid!.lastStand ? c.heavyRaid!.bandDepthUnits : .5;
+  const end = lane === 2 ? tankZ + followThrough * 2 : far + depth * 1.5;
   if (segment <= 5) return lane === 2
-    ? segment < 3 ? far + (tankZ - far) * (segment - 2) : tankZ + (segment - 3) * .5
+    ? segment < 3 ? far + (tankZ - far) * (segment - 2) : tankZ + (segment - 3) * followThrough
     : far + (segment - 2) * depth / 2;
   return end + (age - c.warningSeconds - 5 * c.strikeSpacingSeconds) * 9;
 }
@@ -114,7 +115,8 @@ export class SupportAirstrikeRenderer {
         bomb.visible = !ended && a.status !== 'cancelled' && a.strikesCompleted <= round && t >= 0 && t < 1;
         if (!bomb.visible) continue;
         const depth = lane === 2 ? Math.max(1, tankZ) / 3 : c.heavyRaid.bandDepthUnits;
-        const z = round < 3 ? (round + .5) * depth : state.defenseTank?.state.z ?? tankZ;
+        const z = round < 3 ? (round + .5) * depth : supportTankBombZ(round, state.defenseTank?.state.z ?? tankZ,
+          state.defenseTank?.state.hp ?? Infinity, c);
         const startZ = bomberZ(impactAge, c, tankZ, lane);
         const laneX = -(state.track.lanePositions?.[lane] ?? 0), planeIndex = lane === 0 ? 0 : lane === 2 ? 1 : 2;
         const startY = bomberY(impactAge - .6, c, planeIndex) - .15;

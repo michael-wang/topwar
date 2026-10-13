@@ -42,7 +42,12 @@ async function controlledFrames(page) {
 async function checkAirSupport(page,width,out) {
  await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();
  await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','airSupport')>0);
- await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.1);});
+ await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);
+  // Isolate external raid accounting from ordinary player auto-fire during this check.
+  const s=a.simulation.getState();s.projectiles=[];s.weapons.rifleMemberCooldowns.fill(100);s.weapons.rifleCooldownRemainingSeconds=100;
+  a.simulation.restoreState(s);window.__draw();window.__advance(.1);});
+ // Ordinary controls dodge this fixed fixture's first salvos; no enemy/attack protection.
+ for(let i=0;i<3;i++)await page.getByRole('button',{name:'Move right',exact:true}).tap();
  await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupport'&&window.__testApp.audio.voice.source!==null);
  const duration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(duration-6.765708)<.002);
  assert.equal(await page.locator('.field-observer p').textContent(),'各位！我剛爭取到空中轟炸支援！');
@@ -72,14 +77,15 @@ async function checkAirSupport(page,width,out) {
   await page.screenshot({path:out+'/air-'+name+'-'+width+'.png',scale:'css'});
  }
  const state=await page.evaluate(()=>window.__testApp.simulation.getState());assert.equal(state.commanderSupport.airstrike.status,'completed');
- assert.deepEqual(await page.evaluate(()=>window.__raidDamage),[0,0,0,500,500,500]);
+ assert.deepEqual(await page.evaluate(()=>window.__raidDamage),[0,0,0,500,0,0]);
+ assert.equal(state.defenseTank.hp,450);assert.equal(state.defenseTank.phase,3);
  assert.equal(state.combatStats.gruntKills+state.combatStats.heavyKills+state.combatStats.giantKills,0);
  assert(state.squad.count>0);assert.equal(state.commanderSupport.airstrike.impacts.length,12);
  await page.getByRole('button',{name:'Pause game',exact:true}).tap();
  await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();
  await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.1);});
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.strikesCompleted),0);
- return {role:'air-support',voice:duration,damage:[500,500,500],restored:true,retry:true};
+ return {role:'air-support',voice:duration,damage:[500],bossHp:450,restored:true,retry:true};
 }
 async function checkPlaytestScenes(page,width,out) {
  await page.waitForFunction(()=>['destroyer','tankBoss','victory'].every(m=>window.__testApp.audio.radioDurationSeconds('zh-TW',m)>0));

@@ -326,7 +326,8 @@
       "warningSeconds": 7.5,
       "strikeSpacingSeconds": 0.65,
       "clearFraction": 0.8,
-      "heavyRaid": { "bossDamage": 500, "giantDamageFraction": 0.85, "bandDepthUnits": 14 }
+      "heavyRaid": { "bossDamage": 500, "giantDamageFraction": 0.85, "bandDepthUnits": 14,
+        "lastStand": { "bossHpThreshold": 1000, "etaSafetySeconds": 2, "minimumBossHp": 150 } }
     },
     "defenseTank": {
       "flankSpawnAheadDistance": 28,

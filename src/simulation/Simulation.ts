@@ -1035,7 +1035,8 @@ export class Simulation {
     // Heavy raids share the ordinary Tank defeat boundary; external kills never award XP/stats.
     if (commanderSupport && catharsis?.balance.commanderSupport?.heavyRaid && defenseTank?.hp !== 0)
       this.supportEvents.push(...advanceCommanderSupport({ ...this.state, elapsedSeconds: nextElapsedSeconds,
-        defenseTank, squad, enemies, player: { ...this.state.player, x: nextX, z: nextZ } }, catharsis.balance.commanderSupport, commanderSupport));
+        defenseTank, squad, enemies, player: { ...this.state.player, x: nextX, z: nextZ } }, catharsis.balance.commanderSupport, commanderSupport,
+        nextZ - tuning.defenseLineOffset));
     const tankDefeated = !!defenseTank && defenseTank.hp === 0;
     if (defenseTank && tankConfig) {
       defenseTank.phase = tankPhase(defenseTank.hp, tankConfig);
@@ -1236,7 +1237,7 @@ export class Simulation {
       applyEncounterAction(phaseFrame, 'ordinaryOff'); applyEncounterAction(phaseFrame, 'barrageOff');
     }
     if (defenseTank && tankConfig && !tankDefeated) admitTankFlanks(phaseFrame, defenseTank, tankConfig);
-    if (commanderSupport) this.supportEvents.push(...advanceCommanderSupport(phaseFrame, catharsis?.balance.commanderSupport, commanderSupport));
+    if (commanderSupport) this.supportEvents.push(...advanceCommanderSupport(phaseFrame, catharsis?.balance.commanderSupport, commanderSupport, defenseLineZ));
     if (defenseWaves && this.state.postCapSurvival?.startedAtSeconds == null && postCapSurvival.startedAtSeconds !== null
       && catharsis?.balance.postCapSurvival.firstWaveDelaySeconds !== undefined)
       defenseWaves = { nextAtSeconds: postCapSurvival.startedAtSeconds + catharsis.balance.postCapSurvival.firstWaveDelaySeconds };
