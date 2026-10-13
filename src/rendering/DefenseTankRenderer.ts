@@ -226,10 +226,11 @@ export class DefenseTankRenderer {
     const age = nowSeconds - atSeconds;
     if (age >= 0 && age < .25) this.turret.position.z = .4 * Math.sin(age / .25 * Math.PI);
   }
-  restore(frame: GameRenderState['defenseTank'], nowMs: number): void {
+  restore(frame: GameRenderState['defenseTank'], nowMs: number, victoryElapsedMs = TANK_DEATH_MS): void {
     this.reset();
     this.observedHit = frame?.state.lastHitAtSeconds ?? null;
-    if (frame?.state.status === 'defeated') { this.defeated = true; this.deathAtMs = nowMs - TANK_DEATH_MS; this.lastBurst = TANK_EXPLOSION_TIMES_MS.length - 1; }
+    if (frame?.state.status === 'defeated') { this.defeated = true; this.deathAtMs = nowMs - victoryElapsedMs;
+      this.lastBurst = TANK_EXPLOSION_TIMES_MS.filter(at => at <= victoryElapsedMs).length - 1; }
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
     this.flames.visible = this.flameCores.visible = false;

@@ -14,7 +14,7 @@ try { for (const width of [350, 390]) {
   await page.goto('http://127.0.0.1:5186/topwar/'); await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
-  assert.equal(await page.locator('.dev-fps,.dev-wake-status,.tuning-panel,.dev-survival-test').count(), 0);
+  assert.equal(await page.locator('.dev-fps,.dev-wake-status,.qa-panel,.dev-advanced,.dev-survival-test').count(), 0);
   const saved = await page.evaluate(() => {
     const a = window.__testApp, c = a.config, r = a.runtimeTuning;
     const tuning = { ...c.player, forwardSpeed: r.forwardSpeed, trackHalfWidth: c.track.halfWidth,
@@ -31,7 +31,7 @@ try { for (const width of [350, 390]) {
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
   assert.deepEqual(await page.evaluate(() => window.__testApp.simulation.getState()), saved.state);
   assert(await page.evaluate(() => window.__testApp.paused && window.__testApp.lifecycle === null && window.__testApp.fps === null));
-  assert.equal(await page.locator('.dev-fps,.tuning-panel,.dev-survival-test').count(), 0);
+  assert.equal(await page.locator('.dev-fps,.qa-panel,.dev-survival-test').count(), 0);
   const identical = await page.evaluate(({ state, tuning }) => {
     const sim = window.__testApp.simulation, canonical = value => JSON.stringify(value);
     for (let i = 0; i < 120; i++) sim.step(1 / 60, { targetX: 0 }, tuning);

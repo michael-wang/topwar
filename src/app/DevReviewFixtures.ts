@@ -1,6 +1,6 @@
+import { createPlaytestScenario, isPlaytestScene } from './PlaytestScenarios';
 import { teachingGrenadeGrant } from '../config/grenadeConfig';
 import { Simulation, type SimulationOptions } from '../simulation/Simulation';
-import { createNavalReview } from './NavalReview';
 import { emptyCarnival } from '../simulation/carnival';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 import { admitDefenseGroup } from '../simulation/enemies/defenseGroup';
@@ -14,7 +14,7 @@ import { createMachineGunReview, type MachineGunReviewFixture } from './DevMachi
 import { createSurvivalReview, type SurvivalReviewFixture } from './DevSurvivalReview';
 import { isolatedReviewOptions } from './DevReviewPolicy';
 import { createNavalBarrageReview, type NavalBarrageReviewFixture } from './DevNavalBarrageReview';
-import { createTankReview, createVictoryReview, type TankReviewFixture } from './DevTankReview';
+import { createTankReview, type TankReviewFixture } from './DevTankReview';
 
 export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval' | 'victory' | MachineGunReviewFixture | SurvivalReviewFixture | NavalBarrageReviewFixture | TankReviewFixture;
 export const DEV_REVIEW_FIXTURES = {
@@ -22,17 +22,16 @@ export const DEV_REVIEW_FIXTURES = {
   crate8: { level: 8, soldiers: 1 }, naval: { level: 10, soldiers: 3 },
 } as const;
 
-// DEV menu and retained regression presets; historical-only scenarios live in tests/helpers.
+// Retained DEV regression presets delegate the approved scenes to the shared initializer.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
-  if (role === 'victory') return createVictoryReview(options, baseFireRate);
+  if (isPlaytestScene(role)) return createPlaytestScenario(options, baseFireRate, role);
   if (role.startsWith('boss-')) return createTankReview(options, baseFireRate, role as TankReviewFixture);
   if(role.startsWith('barrage')) return createNavalBarrageReview(options,baseFireRate,role as NavalBarrageReviewFixture);
   options = isolatedReviewOptions(options);
   if (role.startsWith('survival')) return createSurvivalReview(options, baseFireRate, role as SurvivalReviewFixture);
   if (role === 'mg6' || role === 'mg7' || role === 'mg8' || role === 'mg9' || role === 'mg10')
     return createMachineGunReview(options, baseFireRate, role);
-  if (role === 'naval') return createNavalReview(options);
   if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);
   const level = maxProgressionLevel(options.catharsis!.balance.progression);
   const fixture = { level, soldiers: progressionStage(level, options.catharsis!.balance.progression).squadStage };

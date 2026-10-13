@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+import { exposeProductionApp } from './production-app-hook.mjs';
 // Run from the repository root. Generated output is ignored by Git.
 import { preview } from 'vite';
 // Uses the existing QA browser runtime; no shipping dependency.
@@ -15,19 +17,82 @@ if (['dev-fps', 'dev-wake-status', 'vite:beforeFullReload', 'checkpoint-write', 
   throw Error('DEV FPS/lifecycle diagnostics or HP audit controls survived production tree-shaking');
 if(['15 秒熄屏 / Resume 測試','開發測試工具','確認開始測試','Bounded QA preparation','QA preparation lost',
   'QA requires authored Defense naval Survival','QA requires authored Lv10 three MGs',
-  '🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算','DEV 範例戰績','PLAYTEST_ENTRIES'].some(marker=>shippingJs.includes(marker)))
-  throw Error('DEV playtest menu or sleep fixture survived production tree-shaking');
+  'BOSS TEST requires'].some(marker=>shippingJs.includes(marker)))
+  throw Error('Engineering sleep fixture survived production tree-shaking');
 if (['SURVIVAL TEST', 'dev-survival-test', 'survival7-baseline', 'survival10-experimental', 'survival10-staged', 'survival10-ahead', 'Invalid SURVIVAL TEST preset', 'ordinarySpeedMultiplier:1.4', 'ordinarySpeedMultiplier:1.6', 'heavyCount:11', 'heavyCount:15', 'heavyCount:19', 'minimumXp:245'].some(marker => shippingJs.includes(marker)))
   throw Error('Survival comparison controls or fixtures survived production tree-shaking');
-if (['NAVAL BARRAGE', 'dev-naval-barrage', 'Invalid NAVAL BARRAGE review', 'BARRAGE ON', 'BARRAGE OFF', 'BOSS TEST', 'dev-boss-test', 'BOSS TEST requires', 'boss-intro', 'boss-phase1', 'boss-phase2', 'boss-phase3', 'boss-finish', 'MG TEST', 'dev-mg-test', 'MG6', 'MG9', 'MG10', 'MG TEST requires', 'MG TEST preset must'].some(marker => shippingJs.includes(marker)))
+if (['NAVAL BARRAGE', 'dev-naval-barrage', 'Invalid NAVAL BARRAGE review', 'BARRAGE ON', 'BARRAGE OFF', 'BOSS TEST', 'dev-boss-test', 'BOSS TEST requires', 'boss-phase1', 'boss-phase2', 'boss-phase3', 'boss-finish', 'MG TEST', 'dev-mg-test', 'MG6', 'MG9', 'MG10', 'MG TEST requires', 'MG TEST preset must'].some(marker => shippingJs.includes(marker)))
   throw Error('Development combat test controls or fixtures survived production tree-shaking');
-if (['TRACER:', 'dev-projectile-controls', 'Ivory dart', 'Red tracer', 'Ink spear', 'LV1 RIFLE', 'EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'dev-review-controls', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'CRATE3', 'CRATE8', 'NAVAL', 'createNavalReview', 'SHELL review requires', 'shell-review-muzzle', 'artillery dodge test', 'Supply DEV review requires', 'Late DEV entry requires', 'Restart Lv6 before the Machine Gun release and full Carnival'].some(marker => shippingJs.includes(marker)))
+if (['TRACER:', 'dev-projectile-controls', 'Ivory dart', 'Red tracer', 'Ink spear', 'LV1 RIFLE', 'EnemyVfxLab', 'ENEMY_VFX_LAB', 'enemy-vfx-lab', 'DEV Review', 'DEV TOOLS', 'BALANCE & AUDIO', 'Reset Defaults', 'CURVE', 'Digit4', 'EVOLVE', 'Digit5', 'Digit6', 'MG7', 'MG8', 'CRATE3', 'CRATE8', 'SHELL review requires', 'shell-review-muzzle', 'artillery dodge test', 'Supply DEV review requires', 'Late DEV entry requires', 'Restart Lv6 before the Machine Gun release and full Carnival'].some(marker => shippingJs.includes(marker)))
   throw Error('Development review controls/factory survived production tree-shaking');
 const server=await preview({preview:{host:'127.0.0.1',port:5181,strictPort:true}});
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results={};
 const authoredConfig=JSON.parse(readFileSync('public/game-data/game.json','utf8'));
 const authoredLevel=JSON.parse(readFileSync('public/game-data/levels/level-001.json','utf8'));
+async function controlledFrames(page) {
+ await page.evaluate(()=>{
+  const a=window.__testApp;cancelAnimationFrame(a.frameId);window.__stamp=performance.now();
+  window.__draw=()=>{a.renderFrame(window.__stamp);cancelAnimationFrame(a.frameId);};
+  window.__advance=seconds=>{const gpu=a.renderer.renderer,render=gpu.render;gpu.render=()=>{};
+   for(let i=0;i<Math.ceil(seconds*60);i++){window.__stamp+=1000/60;window.__draw();}
+   gpu.render=render;window.__draw();};window.__draw();
+ });
+}
+async function checkPlaytestScenes(page,width,out) {
+ await page.waitForFunction(()=>['destroyer','tankBoss','victory'].every(m=>window.__testApp.audio.radioDurationSeconds('zh-TW',m)>0));
+ await controlledFrames(page);
+ const scenes=[];
+ for(const [role,message,entrySeconds] of [['naval','destroyer',1.5],['boss-intro','tankBoss',.8],['victory','victory',4.3]]) {
+  if(!await page.locator('.tuning-panel').evaluate(e=>e.open))await page.locator('.tuning-panel > summary').tap();
+  assert(await page.getByText('切換場景或返回一般遊戲會取代目前進度。',{exact:true}).isVisible());
+  if(role==='naval') {
+   const bounds=await page.locator('.dev-review-controls button[data-role]').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height};}));
+   bounds.forEach(b=>assert(b.left>=0&&b.right<=width&&b.top>=0&&b.bottom<=844&&b.height>=52));
+   await page.screenshot({path:`${out}/playtest-menu-${width}.png`});
+  }
+  await page.locator(`[data-role="${role}"]`).tap();
+  assert.equal(await page.locator('.tuning-panel').evaluate(e=>e.open),false);
+  await page.evaluate(seconds=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(seconds);},entrySeconds);
+  await page.waitForFunction(message=>window.__testApp.audio.voice?.message===message&&window.__testApp.audio.voice.source!==null,message);
+  assert(await page.locator('.field-observer').isVisible());
+  await page.screenshot({path:`${out}/playtest-${role}-${width}.png`});
+  await page.getByRole('button',{name:'Pause game',exact:true}).tap();
+  const saved=await page.evaluate(()=>({state:window.__testApp.simulation.getState(),cp:JSON.parse(localStorage.getItem('topwar:session:v1:release'))}));
+  assert.equal(saved.cp.fixture,role);assert(saved.cp.state);
+  await page.evaluate(()=>window.__advance(.5));assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved.state);
+  await page.reload();await page.getByRole('button',{name:'繼續上次遊戲'}).tap();await page.locator('.session-recovery').waitFor({state:'detached'});
+  await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved.state);
+  assert(await page.evaluate(()=>window.__testApp.paused));
+  await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.2);});
+  if(role==='victory') {
+   await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','victory')>0);
+   await page.evaluate(()=>window.__draw());
+   await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='victory'&&window.__testApp.audio.voice.source!==null);
+   assert(await page.evaluate(offset=>window.__testApp.audio.voice.offset>=offset,saved.cp.playtestVictory.communication.offsetSeconds));
+   await page.evaluate(()=>window.__advance(9));await page.waitForTimeout(2500);
+   assert(await page.locator('.stage-clear-overlay').isVisible());assert(await page.getByText('DEV 範例戰績',{exact:true}).isVisible());
+   assert.equal(await page.evaluate(()=>window.__testApp.audio.music.lastState),'VICTORY');
+   assert(await page.evaluate(()=>window.__testApp.renderer.tankRenderer.smoke.visible&&window.__testApp.renderer.tankRenderer.flames.visible));
+   await page.screenshot({path:`${out}/playtest-victory-results-${width}.png`});
+   await page.getByRole('button',{name:'再玩一次',exact:true}).tap();await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();});
+   assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().defenseTank.hp),0);
+  } else {
+   assert.equal(await page.evaluate(()=>window.__testApp.audio.voice.source),null);
+   await page.evaluate(role=>{const s=window.__testApp.simulation.getState();
+    const at=role==='naval'?s.destroyer.startedAtSeconds+s.catharsis.balance.destroyer.shotTimes[0]:s.defenseTank.activeAtSeconds;
+    window.__advance(Math.max(0,at+.3-s.elapsedSeconds));},role);
+   assert((await page.evaluate(()=>window.__testApp.simulation.getState().artillery.shells.length))>0);
+   if(role==='boss-intro')assert.equal(await page.evaluate(()=>window.__testApp.audio.music.lastState),'BOSS_1');
+   await page.screenshot({path:`${out}/playtest-${role}-combat-${width}.png`});
+  }
+  scenes.push({role,restored:true,voice:message});
+ }
+ await page.locator('.tuning-panel > summary').tap();await page.locator('[data-action="normal"]').tap();
+ await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();});
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),1);
+ results[`${width}:playtest`]=scenes;
+}
 try {
 for(const width of [390,350]){
 for(const [query,level]of [['',1],['?review=threats',1]]){
@@ -44,6 +109,7 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
    const nativeFetch=window.fetch.bind(window);
    window.fetch=(input,options)=>{const url=input instanceof Request?input.url:String(input);if(url.includes('/game-data/'))window.__qaJsonFetches.push({url,cache:options?.cache});return nativeFetch(input,options);};
  });
+ await exposeProductionApp(page);
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
  await page.waitForSelector('.game-start-overlay');
  const sha=(await page.locator('.build-label').textContent()).split(' · ').at(-1);
@@ -92,9 +158,11 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  const evolveLabControls=await page.locator('[data-role="evolve"]').count();
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
  await page.keyboard.press('Escape'); await page.keyboard.press('4'); await page.keyboard.press('5'); await page.keyboard.press('6');
- if(await page.locator('.tuning-panel,.dev-review-controls,.qa-panel,[aria-label="開發測試工具"]').count())throw Error('Production exposed DEV/QA launch controls');
+ if(await page.locator('.qa-panel,.dev-advanced,.dev-fps,.dev-wake-status').count())throw Error('Production exposed engineering QA controls');
+ assert.deepEqual(await page.locator('.dev-review-controls button[data-role]').allTextContents(), ['🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算']);
+ if(!query) await checkPlaytestScenes(page,width,out);
  errors.push(...await page.evaluate(()=>window.__qaUnhandled));
- results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,sha,defenseMode:config.catharsis.defenseMode,teachingGrantAmount:config.catharsis.grenade.teachingGrantAmount,xpRequirements:config.catharsis.progression.xpRequirements,runtimeRequests,jsonFetches,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==0||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
+ results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,sha,defenseMode:config.catharsis.defenseMode,teachingGrantAmount:config.catharsis.grenade.teachingGrantAmount,xpRequirements:config.catharsis.progression.xpRequirements,runtimeRequests,jsonFetches,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==1||labControls!==1||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
 }
 writeFileSync(`${out}/production-sanity.json`,JSON.stringify(results,null,2));

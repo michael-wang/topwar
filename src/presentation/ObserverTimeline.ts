@@ -8,6 +8,12 @@ export const victoryTiming = { atSeconds: 0, durationSeconds: 9.03,
   readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 3.76, 5.56, 7.38] } as const;
 // The approved 4.6-second clip outlasts landing; this never gates Tank combat.
 export const tankIntroTiming = { atSeconds: .3, durationSeconds: 5 } as const;
+export interface VictoryCommunicationCheckpoint {
+  finished: boolean;
+  offsetSeconds: number | null;
+  durationSeconds: number;
+  voiced: boolean;
+}
 
 /** Disposable presentation clock; never gates simulation or the Destroyer schedule. */
 export class MissionObserverTimeline {
@@ -21,6 +27,15 @@ export class MissionObserverTimeline {
   get active(): boolean { return this.attempt !== null; }
   reset(): void { this.attempt = null; this.started = null; this.voiced = false; this.duration = 0; }
   start(now: number): void { this.reset(); this.attempt = now; this.previous = now; }
+  checkpoint(now: number) {
+    return { offsetSeconds: this.started === null ? null : Math.max(0, now - this.started),
+      durationSeconds: this.duration || this.timing.durationSeconds, voiced: this.voiced };
+  }
+  restore(checkpoint: Omit<VictoryCommunicationCheckpoint, 'finished'>, now: number): void {
+    this.start(now);
+    this.started = checkpoint.offsetSeconds === null ? null : now - checkpoint.offsetSeconds;
+    this.duration = checkpoint.durationSeconds; this.voiced = checkpoint.voiced;
+  }
   update(now: number, alive: boolean, paused: boolean, readiness: 'pending' | 'ready' | 'unavailable', portraitsPending = false,
     voiceDurationSeconds: number | null = null) {
     const hidden = { owns: false, visible: false, begin: false, end: false,

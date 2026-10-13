@@ -245,9 +245,9 @@ export class GameRenderer {
     this.squadRenderer.presentLevelUp(event, nowMs);
   }
 
-  restoreFeedback(state: GameRenderState, nowMs: number): void {
+  restoreFeedback(state: GameRenderState, nowMs: number, victoryElapsedMs?: number): void {
     this.resetFeedback();
-    if (state.defenseTank) { this.tankRenderer ??= new DefenseTankRenderer(this.scene); this.tankRenderer.restore(state.defenseTank, nowMs); }
+    if (state.defenseTank) { this.tankRenderer ??= new DefenseTankRenderer(this.scene); this.tankRenderer.restore(state.defenseTank, nowMs, victoryElapsedMs); }
     if(state.artillery){this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);this.artilleryRenderer.restore(state.artillery);}
     // Snapshot entities already exist. Prime identity before the first paused
     // draw so an existing Giant is readable, without replaying its entrance fade.

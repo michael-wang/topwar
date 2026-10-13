@@ -15,7 +15,7 @@ export class StageClearOverlay {
   private readonly illustration = document.createElement('img');
   private readonly button = document.createElement('button');
   private shown = false;
-  private readonly previewNote = import.meta.env.DEV ? document.createElement('small') : null;
+  private readonly previewNote = document.createElement('small');
   constructor(viewport: HTMLElement, private readonly onPlayAgain: () => void) {
     this.element.className = 'stage-clear-overlay'; this.element.hidden = true;
     this.element.lang = 'zh-Hant';
@@ -29,7 +29,7 @@ export class StageClearOverlay {
     this.button.type = 'button'; this.button.textContent = '再玩一次';
     this.button.addEventListener('click', onPlayAgain); this.element.addEventListener('pointerdown', this.stopPointer);
     this.element.append(title, this.results, this.illustration, this.button); viewport.append(this.element);
-    if (import.meta.env.DEV && this.previewNote) {
+    if (this.previewNote) {
       this.previewNote.textContent = 'DEV 範例戰績'; this.previewNote.hidden = true;
       this.previewNote.style.cssText = 'position:absolute;left:8%;top:47%;font:11px sans-serif;color:#ffdb78';
       this.element.append(this.previewNote);

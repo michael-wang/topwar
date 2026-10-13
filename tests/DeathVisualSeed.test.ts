@@ -29,8 +29,8 @@ it('replays six coherent compositions and avoids adjacent same-role repeats',()=
  }
  expect(bloodSource+seedSource+fluidSource).not.toContain('Math.random');
 });
-it('keeps the development visual cycle outside validated gameplay and production activation',()=>{
- expect(appSource).toContain('import.meta.env.DEV && this.devReviewFixture ? ++this.devReviewVisualSalt : 0');
+it('keeps the shared Playtest visual cycle outside validated gameplay and ordinary runs',()=>{
+ expect(appSource).toContain('this.devReviewFixture ? ++this.devReviewVisualSalt : 0');
  const c=GameConfigSchema.parse(gameData),options={seed:5,level:LevelDefinitionSchema.parse(level),startSquad:c.player.startSquad,startRocketCount:c.player.startRocketCount,tiers:c.tiers,catharsis:{trackHalfWidth:c.track.halfWidth,balance:c.catharsis!}};
  const a=createDevReviewFixture(options,3,'machineGun').getState(),b=createDevReviewFixture(options,3,'machineGun').getState();
  expect(a).toEqual(b);expect(a).not.toHaveProperty('visualSalt');

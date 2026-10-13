@@ -180,8 +180,8 @@ it('uses the coastal testing hatch without a retired TUNE entry', () => {
   const summary = viewport.children[0].children[0];
   expect((summary as unknown as HTMLElement).innerHTML).toContain('<svg');
   expect((summary as unknown as HTMLElement).innerHTML).not.toContain('DEV');
-  expect((summary as unknown as HTMLElement).ariaLabel).toBe('開發測試工具');
-  expect((summary as unknown as HTMLElement).title).toBe('開發測試工具');
+  expect((summary as unknown as HTMLElement).ariaLabel).toBe('封閉測試工具');
+  expect((summary as unknown as HTMLElement).title).toBe('封閉測試工具');
   expect(viewport.children[0].children[1].children[0].textContent).toBe('測試場景');
   expect(viewport.children[0].children[1].children[1]).toBe(defense.reviewControlsHost);
   const advanced = viewport.children[0].children[1].children[2];

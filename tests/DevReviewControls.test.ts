@@ -25,6 +25,7 @@ it('offers exactly three Traditional Chinese one-tap scenarios with selection an
   expect(buttons.map(b => b.textContent)).toEqual(['🚢 驅逐艦進場', '🚨 BOSS 進場', '🏆 勝利結算']);
   expect(root.children[0].textContent).toContain('min-height:52px');
   expect(root.children[0].textContent).toContain(':active');
+  expect(root.children.some(b=>b.textContent.includes('取代目前進度'))).toBe(true);
   for (const button of buttons) {
     button.dispatchEvent(new Event('click'));
     expect(select.mock.lastCall).toEqual([button.dataset.role]);

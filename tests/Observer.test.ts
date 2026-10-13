@@ -517,3 +517,18 @@ it('orders pending radio messages by priority and preserves an already-playing o
   expect(q.update([], 20, false).message).toBe('giant');
   q.reset(); expect(q.update([{ message: 'giant', frame }], 0, false).frame.begin).toBe(true);
 });
+it('restores a Victory preview at its saved voice offset without replaying the opening radio cue', () => {
+  const original=missionUi();original.audio.radioDurationSeconds.mockReturnValue(8.67);
+  original.ui.updateVictory(0,false);for(let tick=1;tick<=75;tick++)original.ui.updateVictory(tick/60,false);
+  const saved=original.ui.victoryCheckpoint(1.25)!;
+  expect(saved).toMatchObject({offsetSeconds:1.25,finished:false,voiced:true});
+  const restored=missionUi();restored.ui.restoreVictory(saved,0);
+  restored.ui.updateVictory(0,true);expect(restored.audio.syncRadio.mock.lastCall?.[1]).toBe(1.25);
+  restored.ui.updateVictory(.15,false);expect(restored.audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(1.4);
+  expect(restored.audio.play).not.toHaveBeenCalled();
+  for(let tick=10;tick<500;tick++)restored.ui.updateVictory(tick/60,false);
+  expect(restored.audio.play.mock.calls).toEqual([['radioClose']]);
+  const complete=restored.ui.victoryCheckpoint(500/60)!;expect(complete.finished).toBe(true);
+  restored.ui.restoreVictory(complete,0);expect(restored.ui.updateVictory(0,true)).toBe(true);
+  original.ui.dispose();restored.ui.dispose();
+});

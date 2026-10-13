@@ -19,7 +19,7 @@ vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} 
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   updateVictory(now: number, paused: boolean) { return mock.victory(now, paused); }
-  finishCombat() {}
+  finishCombat() {} victoryCheckpoint() { return undefined; } restoreVictory() {}
   update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
@@ -29,6 +29,10 @@ vi.mock('../src/ui/DevReviewControls', () => ({ DevReviewControls: class {
   constructor(_viewport: unknown, select: unknown) { mock.reviewConstructed(select); }
   setSelected() {} dispose() {}
 } }));
+vi.mock('../src/app/PlaytestScenarios', async original => ({
+  ...await original<typeof import('../src/app/PlaytestScenarios')>(),
+  createPlaytestScenario: (...args: unknown[]) => { mock.reviewFixture(...args); return { getState: mock.getState, getFrameState: mock.getState }; },
+}));
 vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...args: unknown[]) => {
   mock.reviewFixture(...args); return { getState: mock.getState, getFrameState: mock.getState };
 } }));
@@ -755,15 +759,15 @@ it('restarts selected development fixtures and clears renderer feedback on every
 });
 
 
-it('omits all DEV scenarios, tuning and QA launch controls outside DEV', () => {
+it('shares the approved playtest menu outside DEV while omitting engineering QA', () => {
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
   try {
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
-    expect(mock.reviewConstructed).not.toHaveBeenCalled();expect(mock.reviewFixture).not.toHaveBeenCalled();
-    expect(mock.panelConstructedWith).not.toHaveBeenCalled(); expect(mock.qaConstructed).not.toHaveBeenCalled(); app.dispose();
+    expect(mock.reviewConstructed).toHaveBeenCalledOnce();expect(mock.reviewFixture).not.toHaveBeenCalled();
+    expect(mock.panelConstructedWith).toHaveBeenCalledOnce(); expect(mock.qaConstructed).not.toHaveBeenCalled(); app.dispose();
   } finally { vi.unstubAllEnvs(); }
 });
 

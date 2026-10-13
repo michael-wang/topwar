@@ -1,3 +1,4 @@
+import { createPlaytestScenario, isPlaytestScene } from './PlaytestScenarios';
 import { FieldObserver } from '../ui/FieldObserver';
 import type { ObserverPortraits } from '../ui/ObserverPortraits';
 import { ProgressionLevelObserver } from '../presentation/ProgressionLevelUp';
@@ -159,7 +160,7 @@ export class GameApp {
     this.supplyTransfer=this.grenadeButton ? new SupplyRewardTransfer(viewport,this.grenadeButton,
       (x,z,now)=>this.renderer.projectSupplyPosition(x,z,now)) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
-    this.tuningPanel = import.meta.env.DEV ? new TuningPanel(viewport, this.runtimeDefaults, (values) => {
+    this.tuningPanel = new TuningPanel(viewport, this.runtimeDefaults, (values) => {
       if (this.startup === 'recovering' || this.recovery?.blocking) return;
       this.runtimeTuning = values;
       // Tuning an exposed value must not replace a restored historical plan or
@@ -169,14 +170,15 @@ export class GameApp {
         groupSize: values.groupSize ?? balance.groupSize,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
-    }) : null;
-    this.devReview = import.meta.env.DEV && this.config.catharsis?.defenseMode
+    });
+    this.devReview = this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
         if (this.startup === 'recovering' || this.recovery?.blocking) return;
         this.exitSleepTest();
         this.devReviewFixture = role;
         this.devReview?.setSelected(role ?? undefined);
-        if (role === null) {
+        if (role === null || this.restored) {
+          // An explicit new scene uses current authored data; Continue keeps the saved data intact.
           this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
           this.tuningPanel?.setValues(this.runtimeTuning);
         }
@@ -330,7 +332,7 @@ export class GameApp {
     this.hudActions.setPaused(this.paused);
     this.gameOverOverlay.setVisible(false);
     this.tankBossHud.reset(); this.stageClearOverlay.reset(); this.tankDeathAtMs = null; this.tankDeathCue = -1;
-    if (import.meta.env.DEV) this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
+    this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
     this.stageClearAtMs = null;
     this.tankEntranceHud.reset();
     this.damageFlash.reset();
@@ -342,13 +344,13 @@ export class GameApp {
     this.supplyTransfer?.reset();this.grenadeButton?.reset();
     this.grenadeRequested = false;
     this.progressionObserver.reset();
-    if (import.meta.env.DEV && this.devReviewFixture && initialState.progression && initialState.catharsis) {
+    if (this.devReviewFixture && initialState.progression && initialState.catharsis) {
       // Selecting a QA loadout is initialization, not an earned level-up.
       this.progressionObserver.observe(initialState.progression.level);
       this.xpHud?.update(initialState.progression, initialState.catharsis.balance.progression, 0);
     }
     if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance.progression, this.presentationMs);
-    this.renderer.resetFeedback(import.meta.env.DEV && this.devReviewFixture ? ++this.devReviewVisualSalt : 0);
+    this.renderer.resetFeedback(this.devReviewFixture ? ++this.devReviewVisualSalt : 0);
     this.syncWakeLock();
   }
 
@@ -368,6 +370,7 @@ export class GameApp {
       startSquad: this.config.player.startSquad,
       startRocketCount: this.config.player.startRocketCount,
       tiers: this.config.tiers };
+    if (isPlaytestScene(this.devReviewFixture)) return createPlaytestScenario(options, this.runtimeTuning.fireRate, this.devReviewFixture);
     if (import.meta.env.DEV && this.devReviewFixture)
       return createDevReviewFixture(options, this.runtimeTuning.fireRate, this.devReviewFixture);
     return new Simulation(options);
@@ -523,8 +526,8 @@ export class GameApp {
       try {
         this.simulation = simulationFromCheckpoint(c);
         this.config = c.config; this.sessionLevel = c.level; this.runtimeTuning = { ...c.tuning };
-        if (import.meta.env.DEV) { this.devReviewFixture = c.fixture as DevReviewFixture | null;
-          this.devReview?.setSelected(this.devReviewFixture ?? undefined); this.tuningPanel?.setValues(this.runtimeTuning); }
+        this.devReviewFixture = c.fixture as DevReviewFixture | null;
+        this.devReview?.setSelected(this.devReviewFixture ?? undefined); this.tuningPanel?.setValues(this.runtimeTuning);
         const s = this.simulation.getFrameState();
         this.tankEntranceHud.restore(s);
         this.targetX = s.player.x; this.lastRunSeed = s.seed;
@@ -538,17 +541,19 @@ export class GameApp {
           formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
           defenseLineOffset: this.config.track.defenseLineOffset,
           catharsis: s.catharsis,
-        }), 0);
+        }), 0, c.playtestVictory?.elapsedMs);
         this.xpHud?.reset(); this.battleInfo?.reset();
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
-        this.tankDeathAtMs = s.defenseTank?.status === 'defeated' ? -TANK_DEATH_MS : null;
+        this.tankDeathAtMs = s.defenseTank?.status === 'defeated' ? -(c.playtestVictory?.elapsedMs ?? TANK_DEATH_MS) : null;
         this.stageClearAtMs = null;
-        this.tankDeathCue = s.defenseTank?.status === 'defeated' ? TANK_EXPLOSION_TIMES_MS.length - 1 : -1;
+        this.tankDeathCue = s.defenseTank?.status === 'defeated'
+          ? TANK_EXPLOSION_TIMES_MS.filter(at => at <= (c.playtestVictory?.elapsedMs ?? TANK_DEATH_MS)).length - 1 : -1;
+        if (c.playtestVictory?.communication) this.fieldObserver?.restoreVictory(c.playtestVictory.communication, 0);
         this.restored = true; this.startup = 'started'; this.setPaused(true);
         // Historical release QA saves still restore as ordinary paused Defense.
+        this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
         if (import.meta.env.DEV) {
-          this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
           this.qaSession=!!c.qa;this.qaSleepActive=c.qa?.armed??false;
           if(c.qa){this.syncWakeLock();if(this.qaSleepActive)this.pauseOverlay.setVisible(false);
             this.tuningPanel?.openAdvanced();
@@ -572,14 +577,17 @@ export class GameApp {
   private saveCheckpoint(reason: SessionCheckpoint['reason']): void {
     if (this.startup !== 'started') return;
     const started = performance.now(), state = this.simulation.getState();
-    if (state.squad.count === 0 || state.defenseTank?.status === 'defeated') { clearCheckpoint(); return; }
+    const victoryPreview = this.devReviewFixture === 'victory' && state.defenseTank?.status === 'defeated';
+    if (state.squad.count === 0 || state.defenseTank?.status === 'defeated' && !victoryPreview) { clearCheckpoint(); return; }
     // Crate fixtures intentionally have no enemy stream; retain that level contract too.
     const level = state.enemyStream === null && this.sessionLevel.enemyStream
       ? { ...this.sessionLevel, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } : this.sessionLevel;
     const result = writeCheckpoint({ version: 1, simulationContract: 1, game: 'topwar',
       mode: 'defense', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
       savedAt: Date.now(), paused: true, hidden: this.hidden, reason,
-      fixture: import.meta.env.DEV ? this.devReviewFixture : null,
+      fixture: this.devReviewFixture,
+      ...(victoryPreview ? { playtestVictory: { elapsedMs: this.tankDeathAtMs === null ? 0 : this.presentationMs - this.tankDeathAtMs,
+        communication: this.fieldObserver?.victoryCheckpoint(this.presentationMs / 1000) } } : {}),
       ...(import.meta.env.DEV && this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
       config: this.config as GameConfig, level, tuning: this.runtimeTuning, state });
     if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-write', { ...result, totalMilliseconds: performance.now() - started });
@@ -745,7 +753,7 @@ export class GameApp {
       this.tankEntranceHud.update(state, this.paused);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
-        if (!this.clearedFinishedCheckpoint) { clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
+        if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
       if (!cleared)
         this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank, state.commanderSupport);
       if (cleared && (this.tankDeathAtMs === null || this.presentationMs - this.tankDeathAtMs < TANK_DEATH_MS))

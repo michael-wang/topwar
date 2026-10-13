@@ -1,17 +1,12 @@
-import type { DevReviewFixture } from '../app/DevReviewFixtures';
+import { PLAYTEST_ENTRIES, type PlaytestScene } from '../app/PlaytestScenarios';
+export { PLAYTEST_ENTRIES } from '../app/PlaytestScenarios';
 
-export const PLAYTEST_ENTRIES = [
-  { role: 'naval', label: '🚢 驅逐艦進場' },
-  { role: 'boss-intro', label: '🚨 BOSS 進場' },
-  { role: 'victory', label: '🏆 勝利結算' },
-] as const;
-
-// Created only in DEV; presets and these styles never enter the public bundle.
+// Shared closed-playtest menu; engineering presets have no buttons.
 export class DevReviewControls {
   readonly element = document.createElement('div');
   private readonly buttons: HTMLButtonElement[] = [];
   private readonly stopPointer = (event: Event) => event.stopPropagation();
-  constructor(host: HTMLElement, select: (role: DevReviewFixture | null) => void) {
+  constructor(host: HTMLElement, select: (role: PlaytestScene | null) => void) {
     this.element.className = 'dev-review-controls';
     this.element.setAttribute('aria-label', '測試場景');
     this.element.style.cssText = 'display:grid;gap:10px;margin:0 0 8px';
@@ -20,6 +15,8 @@ export class DevReviewControls {
       .dev-review-controls button[data-role]:active{transform:translateY(2px);filter:brightness(1.4);box-shadow:inset 0 2px 5px #0008}
       .dev-review-controls button:focus-visible{outline:2px solid #ffdb78;outline-offset:2px}`;
     this.element.append(style);
+    const notice = document.createElement('p'); notice.textContent = '切換場景或返回一般遊戲會取代目前進度。';
+    notice.style.cssText = 'margin:0;color:#ddcfb2;font:12px/1.5 sans-serif'; this.element.append(notice);
     for (const { role, label } of PLAYTEST_ENTRIES) {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = label; button.dataset.role = role;
@@ -34,7 +31,7 @@ export class DevReviewControls {
     this.element.addEventListener('pointerdown', this.stopPointer);
     host.append(this.element); this.setSelected();
   }
-  setSelected(role?: DevReviewFixture): void {
+  setSelected(role?: string): void {
     for (const button of this.buttons) {
       const selected = button.dataset.role === role;
       button.setAttribute('aria-pressed', String(selected));

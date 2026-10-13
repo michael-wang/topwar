@@ -2,7 +2,7 @@ import { CommanderComms } from '../presentation/CommanderComms';
 import type { SimulationFrameState } from '../simulation/SimulationState';
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
 import { observerEmblem } from './observerEmblem';
-import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntroTiming, victoryTiming } from '../presentation/ObserverTimeline';
+import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntroTiming, victoryTiming, type VictoryCommunicationCheckpoint } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 import type { DefenseTankState } from '../simulation/defenseTank';
@@ -113,6 +113,13 @@ export class FieldObserver {
     this.present(selected.frame, selected.message, now, paused);
   }
   /** Called only after the Tank finale, on the pause-aware presentation clock. */
+  victoryCheckpoint(now: number): VictoryCommunicationCheckpoint | undefined {
+    return this.victoryStarted ? { ...this.victoryTimeline.checkpoint(now), finished: this.victoryFinished } : undefined;
+  }
+  restoreVictory(checkpoint: VictoryCommunicationCheckpoint, now: number): void {
+    this.reset(); this.victoryStarted = true; this.victoryFinished = checkpoint.finished; this.finaleClock = true;
+    if (!checkpoint.finished) this.victoryTimeline.restore(checkpoint, now);
+  }
   updateVictory(now: number, paused: boolean): boolean {
     if (this.victoryFinished) return true;
     if (!this.finaleClock) { this.comms.finishBattle(); this.comms.rebase(); this.finaleClock = true; }

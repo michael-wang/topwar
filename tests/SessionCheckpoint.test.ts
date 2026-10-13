@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createPlaytestScenario } from '../src/app/PlaytestScenarios';
 import game from '../public/game-data/game.json';
 import levelData from '../public/game-data/levels/level-001.json';
 import { GameConfigSchema } from '../src/config/configSchema';
@@ -32,6 +33,28 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it.each(['naval','boss-intro','victory'] as const)('accepts the approved %s scene in Production with exact Simulation state', role => {
+    const { c } = checkpoint(), store = storage();
+    const sim = createPlaytestScenario({ seed:17, level, startSquad:1, startRocketCount:0, tiers:config.tiers,
+      catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth} }, config.weapon.rifle.fireRate, role);
+    const saved = { ...c, fixture:role, state:sim.getState(),
+      ...(role==='naval' ? {level:{...level,enemyStream:undefined,enemyGroups:[],upgradeGates:[]}} : {}),
+      ...(role==='victory' ? { playtestVictory:{elapsedMs:4500,communication:{offsetSeconds:1.3,durationSeconds:9.02,voiced:true,finished:false}} } : {}) };
+    vi.stubEnv('DEV',false);
+    try {
+      expect(writeCheckpoint(saved,store).ok).toBe(true);
+      const loaded=readCheckpoint(store);expect(loaded.status).toBe('valid');
+      if(loaded.status!=='valid')throw Error('Approved scene rejected');
+      expect(simulationFromCheckpoint(loaded.checkpoint).getState()).toEqual(saved.state);
+      expect(loaded.checkpoint.playtestVictory).toEqual(saved.playtestVictory);
+      writeCheckpoint({...saved,fixture:'boss-phase2'},store);expect(readCheckpoint(store).status).toBe('invalid');
+      if(role==='victory') {
+        writeCheckpoint({...saved,fixture:null},store);expect(readCheckpoint(store).status).toBe('invalid');
+        writeCheckpoint({...saved,playtestVictory:{elapsedMs:100,communication:saved.playtestVictory!.communication}},store);
+        expect(readCheckpoint(store).status).toBe('invalid');
+      }
+    } finally { vi.unstubAllEnvs(); }
+  });
   it.each([4,20,50,100,1000,Number.MAX_SAFE_INTEGER])('recovers exact inventory %i and deterministic in-flight continuation',inventory=>{
     const {sim,c}=checkpoint(),state=sim.getState();state.grenade!.inventory=inventory;sim.restoreState(state);
     const store=storage(),saved={...c,state:sim.getState()};expect(writeCheckpoint(saved,store).ok).toBe(true);

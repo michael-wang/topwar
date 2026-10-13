@@ -1,3 +1,4 @@
+import { isPlaytestScene } from './PlaytestScenarios';
 import { z } from 'zod';
 import { GameConfigSchema } from '../config/configSchema';
 import type { ConfigStorage } from '../config/ConfigStore';
@@ -26,6 +27,10 @@ const envelope = z.strictObject({
   savedAt: z.number().finite().nonnegative(), paused: z.literal(true), hidden: z.boolean(),
   reason: z.enum(['pause', 'hidden', 'pagehide', 'freeze', 'contextlost']),
   fixture: z.string().max(80).nullable(), config: GameConfigSchema,
+  playtestVictory: z.strictObject({ elapsedMs: nonnegative, communication: z.strictObject({
+    finished: z.boolean(), offsetSeconds: nonnegative.nullable(), durationSeconds: positive, voiced: z.boolean(),
+  }).refine(c => c.finished || c.offsetSeconds === null || c.offsetSeconds < c.durationSeconds,
+    'Victory radio offset must be in its active window').optional() }).optional(),
   qa: z.strictObject({ version:z.literal(1),kind:z.literal('sleep-lv10'),armed:z.boolean() }).optional(),
   level: LevelDefinitionSchema, tuning: RuntimeTuningSchema, state: z.unknown(),
 });
@@ -57,13 +62,16 @@ export function readCheckpoint(storage = browserSessionStorage()): CheckpointRea
   try {
     if (text.length > MAX_CHECKPOINT_CHARACTERS) throw Error('Oversized checkpoint');
     const c = envelope.parse(JSON.parse(text)) as SessionCheckpoint;
-    if (c.fixture !== null && (!import.meta.env.DEV
+    if (c.fixture !== null && !isPlaytestScene(c.fixture) && (!import.meta.env.DEV
       || !/^(late|crate3|crate8|naval|victory|mg(6|7|8|9|10)|survival(7|8|9|10)-(baseline|experimental|staged|ahead)|barrage(8|9|10)-(on|off)|boss-(intro|phase1|phase2|phase3|finish))$/.test(c.fixture)))
       throw Error('Unsupported fixture');
     if (c.level.id !== c.state.levelId || !c.state.catharsis?.balance.defenseMode
       || !c.config.catharsis?.defenseMode || c.state.squad.count === 0)
       throw Error('Incompatible or finished checkpoint');
     simulationFromCheckpoint(c); // Includes the existing strict historical migrations/clock validation.
+    if (c.playtestVictory && (c.fixture !== 'victory' || c.state.defenseTank?.status !== 'defeated'
+      || c.playtestVictory.communication && c.playtestVictory.elapsedMs < 3200))
+      throw Error('Incompatible Victory preview checkpoint');
     if(c.qa && (c.mode!=='defense'||c.fixture!==null||c.state.seed!==42||c.state.progression?.level!==10
       ||!c.state.postCapSurvival?.startedAtSeconds && c.state.postCapSurvival?.startedAtSeconds!==0))
       throw Error('Incompatible QA checkpoint');

@@ -57,32 +57,36 @@ export class TuningPanel {
       heading.textContent = '測試場景'; content.append(heading);
       this.reviewControlsHost.className = 'dev-review-host';
       content.append(this.reviewControlsHost);
+    }
+    if (import.meta.env.DEV) {
       this.advanced.className = 'dev-advanced';
       const summary = document.createElement('summary'); summary.textContent = '進階調校';
       summary.style.cssText = 'width:100%;box-sizing:border-box;min-height:44px;padding:10px;font-size:14px';
       this.advanced.append(summary, this.advancedControlsHost); content.append(this.advanced);
     }
     this.element.append(summary, content);
-    for (const control of controls) {
-      if (defaults[control.key] === undefined) continue;
-      const label = document.createElement('label');
-      label.textContent = control.key === 'fireRate' ? 'Base fire rate' : control.label;
-      const input = document.createElement('input');
-      input.type = 'range'; input.min = String(control.min);
-      input.max = String(control.max); input.step = String(control.step);
-      input.dataset.key = control.key;
-      const output = document.createElement('output');
-      label.append(input, output);
-      this.advancedControlsHost.append(label);
-      this.inputs.set(control.key, input);
-      this.outputs.set(control.key, output);
-      input.addEventListener('input', this.onInput);
+    if (import.meta.env.DEV) {
+      for (const control of controls) {
+        if (defaults[control.key] === undefined) continue;
+        const label = document.createElement('label');
+        label.textContent = control.key === 'fireRate' ? 'Base fire rate' : control.label;
+        const input = document.createElement('input');
+        input.type = 'range'; input.min = String(control.min);
+        input.max = String(control.max); input.step = String(control.step);
+        input.dataset.key = control.key;
+        const output = document.createElement('output');
+        label.append(input, output);
+        this.advancedControlsHost.append(label);
+        this.inputs.set(control.key, input);
+        this.outputs.set(control.key, output);
+        input.addEventListener('input', this.onInput);
+      }
+      const reset = this.resetButton;
+      reset.type = 'button';
+      reset.textContent = 'Reset Defaults';
+      reset.addEventListener('click', this.onReset);
+      this.advancedControlsHost.append(reset);
     }
-    const reset = this.resetButton;
-    reset.type = 'button';
-    reset.textContent = 'Reset Defaults';
-    reset.addEventListener('click', this.onReset);
-    this.advancedControlsHost.append(reset);
     this.element.addEventListener('pointerdown', this.onPointerDown);
     this.element.addEventListener('toggle', this.releaseClosedFocus);
     viewport.append(this.element);
