@@ -320,6 +320,13 @@
       "range": 80,
       "damageEnemyHp": 1
     },
+    "commanderSupport": {
+      "dangerDistance": 14,
+      "earliestBossSeconds": 5.5,
+      "warningSeconds": 1.25,
+      "strikeSpacingSeconds": 0.35,
+      "clearFraction": 0.8
+    },
     "defenseTank": {
       "flankSpawnAheadDistance": 28,
       "flight": {

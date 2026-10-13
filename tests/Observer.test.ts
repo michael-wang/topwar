@@ -15,6 +15,8 @@ import { TankEntranceHud } from '../src/ui/TankEntranceHud';
 import type { SimulationFrameState } from '../src/simulation/SimulationState';
 import { tankAlarmGlow, TANK_ALARM_PERIOD_SECONDS } from '../src/presentation/TankAlarm';
 import * as publicAssets from '../src/core/publicAssetUrl';
+import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
+import { CommanderComms } from '../src/presentation/CommanderComms';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 it('selects Traditional Chinese browser locales, English fallback and persisted overrides safely', () => {
@@ -297,10 +299,12 @@ it('keeps ready speech with an emblem at the portrait deadline, freezes it, and 
   expect(ui.element.hidden).toBe(false);expect((ui as any).portrait.className).not.toBe('observer-fallback');
   expect(audio.play).toHaveBeenCalledTimes(2);ui.dispose();
 });
-it('preserves critical Destroyer subtitles and radio with no portraits, including mission precedence', () => {
+it('queues Destroyer communication behind a playing mission recording even without portraits', () => {
   const {ui,audio,text}=missionUi({readiness:'unavailable',get:()=>null});ui.startMission(0);
   for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
-  expect(ui.element.hidden).toBe(false);expect(text()).toBe(observerDialogue['zh-TW']);
+  expect(ui.element.hidden).toBe(false);expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);
+  for(let tick=120;tick<690;tick++)ui.update(state,config,tick/60,true,false);
+  expect(text()).toBe(observerDialogue['zh-TW']);
   expect((ui as any).portrait.className).toBe('observer-fallback');
   expect(audio.syncRadio.mock.lastCall?.[1]).not.toBeNull();ui.dispose();
 });
@@ -469,4 +473,47 @@ it.each([
   voice.reset();expect(nodes[1].stop).toHaveBeenCalledOnce();
   voice.sync('zh-TW',0,false,timing.durationSeconds,message);await Promise.resolve();expect(nodes[2].start).toHaveBeenCalledWith(0,0);
   expect(loader).toHaveBeenCalledOnce();voice.dispose();
+});
+
+it('uses subtitle-only Alert notices once, freezes on Pause and never replays restored Giant/support warnings', () => {
+  const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true);
+  ui.update(undefined, undefined, 0, true, false, undefined, s);
+  s.giantSeen = true; s.giantAtSeconds = .1;
+  ui.update(undefined, undefined, .1, true, false, undefined, s);
+  expect(text()).toContain('巨型機械兵'); expect((ui as any).expression).toBe('alert');
+  expect(audio.play.mock.calls).toEqual([['radioOpen']]);
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', null, false, 3.8, 'giant']);
+  for (let i = 0; i < 30; i++) ui.update(undefined, undefined, .1, true, true, undefined, s);
+  expect(audio.play).toHaveBeenCalledTimes(1);
+  for (let tick = 7; tick <= 235; tick++) ui.update(undefined, undefined, tick / 60, true, false, undefined, s);
+  expect(audio.play.mock.calls).toEqual([['radioOpen'], ['radioClose']]);
+  s.airstrike!.triggeredAtSeconds = 4; s.airstrike!.status = 'waiting';
+  ui.update(undefined, undefined, 4, true, false, undefined, s);
+  expect(text()).toContain('空中支援'); expect((ui as any).expression).toBe('alert');
+  ui.reset(); audio.play.mockClear();
+  ui.update(undefined, undefined, 4.2, true, false, undefined, s);
+  ui.update(undefined, undefined, 4.3, true, false, undefined, s);
+  expect(ui.element.hidden).toBe(true); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
+});
+it('never requests or substitutes an existing MP3 for Giant or air support', async () => {
+  const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 4.6 } as AudioBuffer));
+  const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
+  for (const message of ['giant', 'airSupport'] as const) {
+    expect(observerVoiceAsset('zh-TW', message)).toBeNull(); expect(voice.prepare('zh-TW', message)).toBe('unavailable');
+    voice.sync('zh-TW', 0, false, 3.8, message);
+  }
+  await Promise.resolve(); expect(loader).not.toHaveBeenCalled(); expect(nodes).toHaveLength(0); voice.dispose();
+});
+it('orders pending radio messages by priority and preserves an already-playing official recording', () => {
+  const q = new CommanderComms(), frame = { visible: true, begin: true, end: false, offset: 0, duration: 5, audible: true };
+  expect(q.update([{ message: 'missionIntro', frame }], 0, false).message).toBe('missionIntro');
+  expect(q.update([{ message: 'giant', frame: { ...frame, audible: false, duration: 3.8 } },
+    { message: 'destroyer', frame }, { message: 'airSupport', frame: { ...frame, audible: false } },
+    { message: 'tankBoss', frame }], 1, false).message).toBe('missionIntro');
+  expect(q.update([], 5, false).message).toBe('tankBoss');
+  expect(q.update([], 5, true).frame.offset).toBe(0);
+  expect(q.update([], 10, false).message).toBe('airSupport');
+  expect(q.update([], 15, false).message).toBe('destroyer');
+  expect(q.update([], 20, false).message).toBe('giant');
+  q.reset(); expect(q.update([{ message: 'giant', frame }], 0, false).frame.begin).toBe(true);
 });

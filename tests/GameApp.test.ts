@@ -19,6 +19,7 @@ vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} 
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   updateVictory(now: number, paused: boolean) { return mock.victory(now, paused); }
+  finishCombat() {}
   update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
@@ -119,6 +120,7 @@ vi.mock('../src/simulation/Simulation', () => ({
     consumeGrenadeEvents = vi.fn(() => []);
     consumeArtilleryEvents = vi.fn(() => []);
     consumeTankEntranceEvents = vi.fn(() => []);
+    consumeSupportEvents = vi.fn(() => []);
   },
 }));
 
@@ -129,6 +131,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
     presentGrenade = vi.fn();
     presentArtillery = vi.fn();
     presentTankEntrance = vi.fn();
+    presentSupport = vi.fn();
     projectTankHealthPosition = vi.fn(() => ({ x: 195, y: 240 }));
     presentLevelUp = mock.presentLevelUp;
     resetFeedback = mock.resetFeedback;

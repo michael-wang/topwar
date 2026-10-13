@@ -1,3 +1,4 @@
+import { emptyCommanderSupport, advanceCommanderSupport, validateCommanderSupport, type SupportEvent } from './commanderSupport';
 import { advanceLevelEncounters, applyEncounterAction, emptyLevelEncounters, validateLevelEncounters } from './levelEncounters';
 import { advanceNavalPresence, emptyNavalPresence, validateNavalPresence } from './navalPresence';
 import { advanceNavalBarrage, emptyNavalBarrage, validateNavalBarrage, hasUnresolvedDestroyerSalvo,
@@ -215,6 +216,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (Object.hasOwn(state, 'levelEncounters')) fields.push('levelEncounters');
   if (Object.hasOwn(state, 'navalPresence')) fields.push('navalPresence');
   if (Object.hasOwn(state, 'navalBarrage')) fields.push('navalBarrage');
+  if (Object.hasOwn(state, 'commanderSupport')) fields.push('commanderSupport');
   if (Object.hasOwn(state, 'defenseTank')) fields.push('defenseTank');
   if (Object.hasOwn(state, 'combatStats')) fields.push('combatStats');
   if (Object.keys(state).length !== fields.length || fields.some((field) => !Object.hasOwn(state, field))) {
@@ -548,8 +550,11 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (defenseTank && ((progression?.level as number) < 9 || !combatStats || navalBarrage?.enabled
     || defenseTank.status === 'defeated' && (enemies.length || projectiles.length || artillery?.shells.length)
     || defenseTank.status === 'breached' && (squad.count as number) !== 0)) throw Error('Invalid tank encounter ownership or outcome');
+  const commanderSupport = state.commanderSupport === undefined ? undefined
+    : validateCommanderSupport(state.commanderSupport, catharsis?.balance.commanderSupport, state.elapsedSeconds as number);
   return {
     state: {
+      ...(commanderSupport ? { commanderSupport } : {}),
       ...(defenseTank ? { defenseTank } : {}),
       ...(combatStats ? { combatStats } : {}),
       ...(artillery ? {artillery} : {}),
@@ -609,6 +614,7 @@ export class Simulation {
   private presentationEvents: PresentationEvent[] = [];
   private grenadeEvents: GrenadeEvent[] = [];
   private artilleryEvents: ArtilleryEvent[] = [];
+  private supportEvents: SupportEvent[] = [];
   private tankEntranceEvents: TankEntranceEvent[] = [];
   private static readonly MAX_PRESENTATION_EVENTS = 256;
 
@@ -643,6 +649,7 @@ export class Simulation {
     const boss = null;
     if (enemyStream && this.enemyStreamDefinition) extendEnemyStream(enemies, enemyStream, this.enemyStreamDefinition, 0, catharsis);
     this.state = {
+      ...(catharsis.balance.defenseMode ? { commanderSupport: emptyCommanderSupport(!!catharsis.balance.commanderSupport) } : {}),
       ...(catharsis.balance.defenseTank ? { combatStats: emptyCombatStats() } : {}),
       ...(catharsis ? { catharsis } : {}),
       ...(catharsis?.balance.defenseMode ? { grenade: emptyGrenade() } : {}),
@@ -1222,10 +1229,14 @@ export class Simulation {
       applyEncounterAction(phaseFrame, 'ordinaryOff'); applyEncounterAction(phaseFrame, 'barrageOff');
     }
     if (defenseTank && tankConfig && !tankDefeated) admitTankFlanks(phaseFrame, defenseTank, tankConfig);
+    const commanderSupport = this.state.commanderSupport ? { ...this.state.commanderSupport,
+      airstrike: this.state.commanderSupport.airstrike ? { ...this.state.commanderSupport.airstrike } : null } : undefined;
+    if (commanderSupport) this.supportEvents.push(...advanceCommanderSupport(phaseFrame, catharsis?.balance.commanderSupport, commanderSupport));
     if (defenseWaves && this.state.postCapSurvival?.startedAtSeconds == null && postCapSurvival.startedAtSeconds !== null
       && catharsis?.balance.postCapSurvival.firstWaveDelaySeconds !== undefined)
       defenseWaves = { nextAtSeconds: postCapSurvival.startedAtSeconds + catharsis.balance.postCapSurvival.firstWaveDelaySeconds };
     this.state = { ...this.state, ...(giantEncounter ? { giantEncounter } : {}), ...(progression ? { progression } : {}), player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream,
+      ...(commanderSupport ? { commanderSupport } : {}),
       ...(defenseTank ? { defenseTank } : {}),
       ...(this.state.combatStats || tankConfig ? { combatStats } : {}),
       ...(catharsis?.balance.defenseMode ? { postCapSurvival } : {}),
@@ -1278,6 +1289,8 @@ export class Simulation {
   consumeArtilleryEvents(): ArtilleryEvent[] {
     const events = this.artilleryEvents; this.artilleryEvents = []; return events;
   }
+  consumeSupportEvents(): SupportEvent[] { const events = this.supportEvents; this.supportEvents = []; return events; }
+
   consumeTankEntranceEvents(): TankEntranceEvent[] {
     const events = this.tankEntranceEvents; this.tankEntranceEvents = []; return events;
   }
@@ -1301,6 +1314,7 @@ export class Simulation {
   getState(): SimulationState {
     return {
       ...this.state,
+      ...(this.state.commanderSupport ? { commanderSupport: structuredClone(this.state.commanderSupport) } : {}),
       ...(this.state.defenseTank ? { defenseTank: { ...this.state.defenseTank } } : {}),
       ...(this.state.combatStats ? { combatStats: { ...this.state.combatStats } } : {}),
       ...(this.state.artillery ? { artillery: structuredClone(this.state.artillery) } : {}),
@@ -1362,6 +1376,7 @@ export class Simulation {
     this.grenadeEvents = [];
     this.artilleryEvents = [];
     this.tankEntranceEvents = [];
+    this.supportEvents = [];
     this.rng = candidate.rng;
     this.enemyStreamDefinition = this.effectiveStreamDefinition(candidate.state.seed);
     this.presentationEvents = [];

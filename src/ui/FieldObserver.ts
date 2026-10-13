@@ -1,10 +1,12 @@
+import { CommanderComms } from '../presentation/CommanderComms';
+import type { SimulationFrameState } from '../simulation/SimulationState';
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
 import { observerEmblem } from './observerEmblem';
 import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntroTiming, victoryTiming } from '../presentation/ObserverTimeline';
 import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 import type { DefenseTankState } from '../simulation/defenseTank';
-import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue, observerTankDialogue, observerVictoryDialogue,
+import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue, observerTankDialogue, observerVictoryDialogue, observerSupportDialogue,
   type ObserverLocale, type ObserverMessage } from './observerLocale';
 
 export interface ObserverAudio {
@@ -27,13 +29,17 @@ export class FieldObserver {
   private readonly text = document.createElement('p');
   private readonly lamp = document.createElement('span');
   private readonly timeline = new ObserverTimeline();
+  private readonly comms = new CommanderComms();
+  private observedSupport = false;
+  private giantAt: number | null = null;
+  private airAt: number | null = null;
+  private finaleClock = false;
   private readonly tankTimeline = new ObserverTimeline();
   private readonly missionTimeline = new MissionObserverTimeline();
   private message: ObserverMessage = 'destroyer';
   private phrase = 0;
   private readonly locale = FIELD_OBSERVER_LOCALE;
   private expression = '';
-  private tankVoiceStartedAtSeconds: number | null = null;
   private frame = { offset: null as number | null, paused: false, duration: 0 };
   constructor(host: HTMLElement, private readonly audio: ObserverAudio,
     private readonly portraits: PreparedObserverPortraits = new ObserverPortraits()) {
@@ -58,7 +64,8 @@ export class FieldObserver {
     this.updateText(); host.append(this.element);
   }
   private updateText(): void {
-    this.text.textContent = this.message === 'missionIntro'
+    this.text.textContent = this.message === 'giant' || this.message === 'airSupport'
+      ? observerSupportDialogue[this.message][this.locale] : this.message === 'missionIntro'
       ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'victory'
         ? observerVictoryDialogue[this.locale][this.phrase] : this.message === 'tankBoss'
         ? observerTankDialogue[this.locale] : observerDialogue[this.locale];
@@ -71,37 +78,53 @@ export class FieldObserver {
     if (now === 0) this.missionTimeline.start(now);
   }
   update(state: DestroyerState | undefined, config: DestroyerSettings | undefined, now: number, alive: boolean, paused: boolean,
-    tank?: Readonly<DefenseTankState>): void {
+    tank?: Readonly<DefenseTankState>, support?: SimulationFrameState['commanderSupport']): void {
+    const requests: Parameters<CommanderComms['update']>[0] = [];
     if (state?.status === 'active') this.audio.prepareRadio(this.locale, 'destroyer');
     const navalFrame = this.timeline.update(state, config, now, alive);
-    let frame = navalFrame;
     let message: ObserverMessage = 'destroyer';
     if (this.missionTimeline.active) {
-      if (navalFrame.visible || !alive) this.missionTimeline.reset();
+      if (!alive) this.missionTimeline.reset();
       else {
         const audioReady = this.audio.prepareRadio(this.locale, 'missionIntro');
         const intro = this.missionTimeline.update(now, alive, paused, audioReady,
           this.portraits.readiness === 'pending', this.audio.radioDurationSeconds?.(this.locale, 'missionIntro') ?? null);
-        if (intro.owns) { frame = intro; message = 'missionIntro'; }
+        if (intro.owns) { message = 'missionIntro'; requests.push({ frame: intro, message }); }
       }
     }
     const tankFrame = this.tankTimeline.updateWindow(tank?.startedAtSeconds ?? null, tankIntroTiming.atSeconds,
       tankIntroTiming.durationSeconds, now, alive && !!tank && tank.status !== 'defeated');
-    if (tankFrame.begin) this.tankVoiceStartedAtSeconds = now;
-    if (tankFrame.visible || tankFrame.end) { frame = tankFrame; message = 'tankBoss'; }
-    this.present(frame, message, now, paused);
+
+    requests.push({ frame: navalFrame, message: 'destroyer' }, { frame: tankFrame, message: 'tankBoss' });
+    const giantAt = support?.giantAtSeconds ?? null, airAt = support?.airstrike?.triggeredAtSeconds ?? null;
+    const notice = { visible: true, begin: true, end: false, offset: 0, duration: 3.8, audible: false };
+    if (this.observedSupport && alive) {
+      if (giantAt !== null && giantAt !== this.giantAt) requests.push({ frame: notice, message: 'giant' });
+      if (airAt !== null && airAt !== this.airAt && support?.airstrike?.status !== 'cancelled')
+        requests.push({ frame: notice, message: 'airSupport' });
+    }
+    this.observedSupport = true; this.giantAt = giantAt; this.airAt = airAt;
+    const selected = this.comms.update(requests, now, paused, alive);
+    this.present(selected.frame, selected.message, now, paused);
+  }
+  finishCombat(now: number, paused: boolean): void {
+    if (!this.finaleClock) { this.comms.finishBattle(); this.comms.rebase(); this.finaleClock = true; }
+    const selected = this.comms.update([], now, paused);
+    this.present(selected.frame, selected.message, now, paused);
   }
   /** Called only after the Tank finale, on the pause-aware presentation clock. */
   updateVictory(now: number, paused: boolean): boolean {
     if (this.victoryFinished) return true;
-    if (!this.victoryStarted) { this.reset(); this.victoryStarted = true; this.victoryTimeline.start(now); }
+    if (!this.finaleClock) { this.comms.finishBattle(); this.comms.rebase(); this.finaleClock = true; }
+    if (!this.victoryStarted && this.comms.busy) { this.finishCombat(now, paused); return false; }
+    if (!this.victoryStarted) { this.victoryStarted = true; this.victoryTimeline.start(now); }
     const frame = this.victoryTimeline.update(now, true, paused, this.audio.prepareRadio(this.locale, 'victory'),
       this.portraits.readiness === 'pending', this.audio.radioDurationSeconds?.(this.locale, 'victory') ?? null);
     this.present(frame, 'victory', now, paused);
     this.victoryFinished = !this.victoryTimeline.active;
     return this.victoryFinished;
   }
-  private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, now: number, paused: boolean): void {
+  private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
     const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
     const phrase = message === 'missionIntro' || message === 'victory'
       ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * frame.duration / timing.durationSeconds ? i : index, 0) : 0;
@@ -118,7 +141,7 @@ export class FieldObserver {
     this.element.hidden = !frame.visible;
     this.skip.hidden = message !== 'victory' || !frame.visible; this.skip.disabled = paused;
     if (frame.visible) {
-      const expression = message === 'victory' ? 'victory' : message === 'tankBoss' ? 'alert'
+      const expression = message === 'victory' ? 'victory' : message === 'tankBoss' || message === 'giant' || message === 'airSupport' ? 'alert'
         : message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
       const prepared = this.attemptPortraits[expression] ?? this.fallback;
       if (prepared !== this.portrait) { this.portrait.replaceWith(prepared); this.portrait = prepared; }
@@ -127,11 +150,10 @@ export class FieldObserver {
       this.element.style.transform = `translateX(${(1 - fade) * -12}px)`;
       this.lamp.style.transform = `scale(${.8 + .2 * Math.sin(frame.offset * 12) ** 2})`;
     }
-    if (frame.begin && !paused) this.audio.play('radioOpen');
     if (frame.end && !paused) this.audio.play('radioClose');
+    if (frame.begin && !paused) this.audio.play('radioOpen');
     // Begin at the first rendered cue, preserving the opening syllable if a frame crosses +0.3s.
-    const voiceOffset = message === 'tankBoss' && this.tankVoiceStartedAtSeconds !== null
-      ? now - this.tankVoiceStartedAtSeconds : frame.offset;
+    const voiceOffset = frame.offset;
     this.frame = { offset: frame.audible ? voiceOffset : null, paused, duration: frame.duration };
     this.audio.syncRadio(this.locale, this.frame.offset, paused, this.frame.duration, message);
     if (!frame.visible) this.presented = false;
@@ -139,7 +161,7 @@ export class FieldObserver {
   reset(): void {
     this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
     this.victoryTimeline.reset(); this.victoryStarted = false; this.victoryFinished = false; this.skip.hidden = true;
-    this.tankVoiceStartedAtSeconds = null;
+    this.comms.reset(); this.observedSupport = false; this.giantAt = this.airAt = null; this.finaleClock = false;
     this.presented = false;
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
   }

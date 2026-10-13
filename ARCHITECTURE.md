@@ -16,6 +16,8 @@ Optional authored `defenseTank` owns the Lv9 encounter, a single HP/phase/rectan
 
 ## Configuration and persistence
 
+Optional authored `commanderSupport` and its plain-data state own the first-Giant announcement and one deterministic Boss flank airstrike. A warning locks nearest-first enemy IDs; three fixed-step rounds remove only that quota without kill/XP rewards or schedule changes. Checkpoints capture warning/bomb clocks, pending IDs and round progress. Missing historical state stays absent; restoration never arms retrospective support. Transient bomb events are consumed once and discarded on restore. Commander radio has a small per-attempt priority queue that preserves playing recordings; it cannot gate combat. One disposable aircraft and a four-slot existing explosion pool provide the brief support presentation, without reviving ambient war schedulers.
+
 ConfigStore validates authored JSON and supported runtime overrides atomically. Production public URLs are content-addressed and preserve /topwar/; unchanged portraits/audio retain URLs across commits. Accepted character, weapon and environment meshes are procedural. No retired GLB is downloaded.
 
 Simulation.restoreState performs strict transactional validation. Released Beachhead Defense eight- and ten-level plans preserve their saved progression, movement rules, concurrent/sequential Carnival/Destroyer policy, discrete/continuous naval cooldowns, active shells and Survival deadlines. Grenade capacity in historical config is only a teaching-reward alias; continuing inventory accumulates safely.

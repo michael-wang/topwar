@@ -1,3 +1,5 @@
+import { SupportAirstrikeRenderer } from './SupportAirstrikeRenderer';
+import type { SupportEvent } from '../simulation/commanderSupport';
 import { ART } from '../art/ArtDirection';
 import { GIANT_REVEAL_MS } from '../presentation/GiantDrama';
 import { IdlePreparation } from '../presentation/IdlePreparation';
@@ -51,6 +53,7 @@ export class GameRenderer {
   private readonly grenadeRenderer = new GrenadeRenderer(this.scene);
   private artilleryRenderer: EnemyArtilleryRenderer | null = null;
   private destroyerRenderer: DestroyerRenderer | null = null;
+  private supportRenderer: SupportAirstrikeRenderer | null = null;
   private tankRenderer: DefenseTankRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
@@ -184,7 +187,10 @@ export class GameRenderer {
       if (shell.source.type === 'defenseTank') this.tankRenderer?.recoil(shell.launchedAtSeconds, state.defenseTank.elapsedSeconds);
     if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
     this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera.quaternion);
+    const shake = this.supportRenderer?.update(nowMs, state.player.z, state.squad.count === 0 || state.defenseTank?.state.status === 'defeated') ?? 0;
+    this.camera.position.x += shake;
     this.renderer.render(this.scene, this.camera);
+    this.camera.position.x -= shake;
   }
 
   present(events: readonly PresentationEvent[], nowMs: number,
@@ -218,6 +224,14 @@ export class GameRenderer {
     this.tankHealthPoint.y = (1 - this.tankHealthVector.y) * this.viewport.clientHeight / 2;
     return this.tankHealthPoint;
   }
+  presentSupport(events: readonly SupportEvent[], nowMs: number): void {
+    if (!events.length) return;
+    this.supportRenderer ??= new SupportAirstrikeRenderer(this.scene);
+    this.supportRenderer.present(events, nowMs);
+    for (const event of events) if (event.kind === 'supportBomb')
+      this.enemyRenderer.presentSupportBomb(event, nowMs);
+  }
+
   presentTankEntrance(events: readonly TankEntranceEvent[], nowMs: number): void {
     if (!events.length) return;
     this.tankRenderer ??= new DefenseTankRenderer(this.scene);
@@ -247,6 +261,7 @@ export class GameRenderer {
     this.artilleryRenderer?.reset();
     this.destroyerRenderer?.reset();
     this.tankRenderer?.reset();
+    this.supportRenderer?.reset();
     this.squadRenderer.reset();
     this.enemyRenderer.reset(visualSalt);
     this.contactShadows.reset();
@@ -264,6 +279,7 @@ export class GameRenderer {
     this.artilleryRenderer?.dispose();
     this.destroyerRenderer?.dispose();
     this.tankRenderer?.dispose();
+    this.supportRenderer?.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
     this.contactShadows.dispose();

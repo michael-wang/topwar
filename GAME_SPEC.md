@@ -78,6 +78,16 @@ The Lv3 teaching Supply appears after eight seconds and grants three Grenades; r
 
 A successful throw consumes one Grenade and creates one authoritative flight. One flight at a time; Q and the HUD use the same input path. Existing global threat selection, 0.65-second flight, 9-HP damage and radius 4 remain unchanged. A blast overlapping active Tank armor applies the same 9 HP once, with a stronger local armor flash and actual damage text beside Boss HP; nearer flank enemies may still be selected as the throw's target. Launch sound and gold HUD pulse occur only for an actual throw. Acquisition transfer, launch and explosion feedback remain distinct. Staged crate destruction retains its three stages and 0.7-second recovery windows.
 
+## Commander battlefield support
+
+The actual first living Giant admission awards one Alert radio notice, with 3.8-second Traditional Chinese subtitles and Radio Open/Close, without a substitute recording. Retry rearms it; restoring an already-seen Giant never replays it.
+
+Each newly configured Boss battle has one airstrike. The Tank must be active in phase 2/3, with a living Heavy/Giant within 14 units ahead of the player in **both** Lane 1/5 (simulation lanes 0/4). It waits at least 5.5 seconds after Tank entry starts, or after an overlapping naval radio window ends, so the Boss introduction can finish. No squad-health or performance condition is used. Accepted 28-unit/1.7-unit-per-second phase-2 Heavy admissions naturally reach the danger zone in about 8.2 seconds.
+
+At warning time, each flank's living enemies are sorted nearest-first, then by ID. The closest `floor(count × 0.8)` are locked as targets, leaving at least one per flank; integer rounding applies to small groups. Three paired bombing rounds begin after 1.25 seconds, spaced 0.35 seconds apart. Later admissions are never added to that quota. A short aircraft silhouette, pause-aware procedural Doppler pass and reused combat fire/dust/knockback accompany the strike. It affects neither central lanes, Tank HP, player troops, Supply nor airborne artillery, grants no XP/direct kills, and leaves all spawn/attack deadlines unchanged.
+
+Warning/bomb times, target IDs and completed rounds are authoritative checkpoint data. Pause freezes them; Restore executes only remaining rounds, never old radio cues or completed cleanup. Boss defeat/Game Over cancel pending support. Historical saves without support configuration/state retain their original battles, without retroactive support. Radio priority is Victory > Tank entry > air support > Destroyer > Giant > mission; a playing official MP3 finishes before another transmission starts. Missing portraits/audio cannot delay the simulation strike.
+
 ## Presentation, lifecycle and QA
 
 Accepted Blue Squad, Grunt/Heavy/Giant, coastal scene, Ink Spear, Golden Grenade and Destroyer art are unchanged. Distant infernos, random background artillery/flak visuals and sounds, and ambient ash are retired. Coastal buildings, sea, clouds, aircraft, Giant foot dust and all actual combat effects remain. Traditional Chinese Commander dialogue uses prepared portraits and Mandarin voice; one usable portrait substitutes for both expressions, and failed portraits use a local radio emblem. Warnings are never suppressed by missing portraits.

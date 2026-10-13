@@ -16,6 +16,7 @@ export const observerTankVoiceAssets: Readonly<Record<ObserverLocale, string | n
 };
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
+  if (message === 'giant' || message === 'airSupport') return null;
   const asset = (message === 'victory' ? observerVictoryVoiceAssets : message === 'tankBoss' ? observerTankVoiceAssets
     : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
   return asset && (message === 'missionIntro' || message === 'victory') && !hasPublicAsset(asset) ? null : asset;
@@ -72,6 +73,7 @@ export class ObserverVoice {
     private readonly missionAssets = observerMissionVoiceAssets) {}
 
   private asset(locale: ObserverLocale, message: ObserverMessage): string | null {
+    if (message === 'giant' || message === 'airSupport') return null;
     if (message === 'victory' || message === 'missionIntro' && this.missionAssets === observerMissionVoiceAssets)
       return observerVoiceAsset(locale, message);
     return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? this.missionAssets : this.assets)[locale];

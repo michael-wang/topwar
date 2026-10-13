@@ -219,12 +219,19 @@ export class EnemyRenderer {
     }
   }
 
-  presentTankEntrance(event: TankEntranceEvent, nowMs: number): void {
+  private presentPushDeaths(victims: TankEntranceEvent['victims'], nowMs: number): void {
     const available = Math.max(0, GRENADE_FX.airborneLimit - this.deathVisuals.filter(v => v.group.visible && v.blast).length - this.blastDeaths.size);
-    const launched = event.victims.filter(v => v.archetype !== 'giant')
+    const launched = victims.filter(v => v.archetype !== 'giant')
       .sort((a, b) => a.z - b.z || a.id - b.id).slice(0, available);
     for (const victim of launched) this.blastDeaths.set(victim.id,
       { x: victim.x === 0 ? (victim.id % 2 ? 1 : -1) : -Math.sign(victim.x), z: -.2 });
+  }
+  presentSupportBomb(event: { victims: TankEntranceEvent['victims']; blasts: readonly { x: number; z: number }[] }, nowMs: number): void {
+    this.presentPushDeaths(event.victims, nowMs);
+    for (const blast of event.blasts) this.giantImpactDust.spawn(-blast.x, blast.z, nowMs);
+  }
+  presentTankEntrance(event: TankEntranceEvent, nowMs: number): void {
+    this.presentPushDeaths(event.victims, nowMs);
     const front = event.victims.reduce((z, v) => Math.min(z, v.z), event.z);
     for (const x of [-1.4, 0, 1.4]) this.giantImpactDust.spawn(x, front, nowMs);
   }

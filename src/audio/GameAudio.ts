@@ -157,6 +157,7 @@ export class GameAudio {
   private readonly radioSources = new Set<AudioScheduledSourceNode>();
   private supplyRewardAtMs: number | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();
+  private readonly supportSources = new Set<OscillatorNode>();
   private rumbleBuffer: AudioBuffer | null = null;
   private grenadeBuffer: AudioBuffer | null = null;
   private readonly grenadeSources = new Set<AudioScheduledSourceNode>();
@@ -235,6 +236,7 @@ export class GameAudio {
   }
 
   resetObservation(): void {
+    this.syncSupportFlyover(null, true);
     this.syncRadio('en', null, false);
     this.silenceArtillery();
     this.lastGrenadeAudioSeconds = -Infinity; this.grenadeSources.clear();
@@ -282,8 +284,30 @@ export class GameAudio {
 
   silenceMusic(): void { this.music?.silence(); }
 
+  syncSupportFlyover(offset: number | null, paused: boolean): void {
+    const context = this.context;
+    if (offset === null || offset < 0 || offset >= 1.2 || paused) {
+      for (const source of this.supportSources) { try { source.stop(); } catch { /* ended */ } this.active.delete(source); }
+      this.supportSources.clear(); return;
+    }
+    if (!this.unlocked || !context || context.state !== 'running' || !this.master || this.supportSources.size) return;
+    // Resume at the remaining Doppler sweep, with two short-lived voices and no asset requests.
+    for (const [from, to, volume, wave] of [[310, 65, .12, 'sawtooth'], [145, 42, .17, 'triangle']] as const) {
+      const source = context.createOscillator(), gain = context.createGain(), now = context.currentTime;
+      source.type = wave;
+      source.frequency.setValueAtTime(from * (to / from) ** (offset / 1.2), now);
+      source.frequency.exponentialRampToValueAtTime(to, now + 1.2 - offset);
+      gain.gain.setValueAtTime(Math.max(.001, volume * Math.sin(Math.PI * offset / 1.2)), now);
+      if (offset < .3) gain.gain.linearRampToValueAtTime(volume, now + .3 - offset);
+      gain.gain.exponentialRampToValueAtTime(.001, now + 1.2 - offset);
+      source.connect(gain); gain.connect(this.master);
+      source.onended = () => { source.disconnect(); gain.disconnect(); this.active.delete(source); this.supportSources.delete(source); };
+      this.active.add(source); this.supportSources.add(source); source.start(now); source.stop(now + 1.2 - offset);
+    }
+  }
+
   suspendForBackground(): void {
-    this.silenceMusic(); this.silenceArtillery();
+    this.silenceMusic(); this.silenceArtillery(); this.syncSupportFlyover(null, true);
     if (this.context?.state === 'running') void this.context.suspend().catch(() => {});
   }
 
@@ -432,6 +456,7 @@ export class GameAudio {
   }
 
   dispose(): void {
+    this.syncSupportFlyover(null, true);
     this.preparation?.dispose(); this.preparation = null;
     if (this.disposed) return;
     this.disposed = true;
