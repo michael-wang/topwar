@@ -1,20 +1,20 @@
-import { exposeProductionApp } from './production-app-hook.mjs';
-// Shipping QA UI/recovery checks. Private app access and Wake Lock mocks exist
+// DEV advanced QA/recovery checks. Private app access and Wake Lock mocks exist
 // only in intercepted test responses; no debug endpoint is shipped.
 import assert from 'node:assert/strict';
-import { preview } from 'vite';
+import { createServer } from 'vite';
 import { mkdirSync,writeFileSync } from 'node:fs';
 import { startGameRecording,inspectRecordingFrames } from './browser-recording.mjs';
 const out=process.argv[2]??'artifacts/p3b6b6/mobile';mkdirSync(out,{recursive:true});
-const server=await preview({preview:{host:'127.0.0.1',port:5196,strictPort:true}});
+const server=await createServer({server:{host:'127.0.0.1',port:5196,strictPort:true}});await server.listen();
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const rows=[];
 const button=(page,name)=>page.getByRole('button',{name,exact:true});
 const state=page=>page.evaluate(()=>window.__testApp.simulation.getState());
-const key='topwar:session:v1:release';
+const key='topwar:session:v1:dev';
 async function install(page,platform='mock'){
-  await exposeProductionApp(page);
+  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,
+    body:(await r.text()).replace('app.start();','window.__testApp=app;app.start();')});});
   await page.addInitScript(platform=>{
     window.__wake={requests:0,releases:0,held:[],mode:platform};
     if(platform==='insecure')Object.defineProperty(window,'isSecureContext',{configurable:true,value:false});
@@ -26,8 +26,12 @@ async function install(page,platform='mock'){
     }}});
   },platform);
 }
-async function start(page){await page.goto('http://127.0.0.1:5196/topwar/');await button(page,'Start game with audio').tap();await page.waitForFunction(()=>window.__testApp.startup==='started');}
-async function sleepFixture(page){await page.locator('.qa-panel>summary').tap();await button(page,'15 秒熄屏 / Resume 測試').tap();await button(page,'確認開始測試').tap();
+async function start(page){await page.goto('http://127.0.0.1:5196/');await button(page,'Start game with audio').tap();await page.waitForFunction(()=>window.__testApp.startup==='started');}
+async function openQa(page){
+  for(const selector of ['.tuning-panel','.dev-advanced','.qa-panel'])if(!await page.locator(selector).evaluate(e=>e.open))await page.locator(`${selector}>summary`).tap();
+}
+async function toggleQa(page){if(await page.locator('.tuning-panel').evaluate(e=>e.open))await page.locator('.tuning-panel>summary').tap();else await openQa(page);}
+async function sleepFixture(page){await openQa(page);await button(page,'15 秒熄屏 / Resume 測試').tap();await button(page,'確認開始測試').tap();
   await page.waitForFunction(()=>window.__testApp.qaSleepActive&&!window.__testApp.qaPreparing&&document.querySelector('.qa-panel [role="status"]').textContent.includes('請勿觸碰'),{},{timeout:45000});}
 function quantiles(values){const s=[...values].sort((a,b)=>a-b);return {mean:s.reduce((a,b)=>a+b,0)/s.length,p95:s[Math.floor(s.length*.95)],max:s.at(-1),over100:s.filter(x=>x>100).length,over200:s.filter(x=>x>200).length,frames:s.length};}
 try{
@@ -35,17 +39,17 @@ try{
   const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));await install(page);await start(page);
   await page.waitForFunction(()=>window.__testApp.wakeLock.status==='active');
-  const hatch=await page.locator('.qa-panel>summary').boundingBox();assert.equal(hatch.width,44);assert.equal(hatch.height,44);assert(hatch.x>=0&&hatch.x+hatch.width<width);
-  assert.equal(await page.locator('.dev-fps,.tuning-panel,.dev-survival-test,.dev-mg-test').count(),0);
+  const hatch=await page.locator('.tuning-panel>summary').boundingBox();assert.equal(hatch.width,44);assert.equal(hatch.height,44);assert(hatch.x>=0&&hatch.x+hatch.width<width);
+  assert.equal(await page.locator('.dev-survival-test,.dev-mg-test').count(),0);
   assert.equal(await page.locator('[aria-label="開發測試工具"]').count(),1);
   await page.screenshot({path:`${out}/${width}-hatch.png`});
   await button(page,'Pause game').tap();const ordinary=await state(page),normalSave=await page.evaluate(key=>localStorage.getItem(key),key);
-  await page.locator('.qa-panel>summary').tap();await button(page,'15 秒熄屏 / Resume 測試').tap();await button(page,'取消').tap();
+  await openQa(page);await button(page,'15 秒熄屏 / Resume 測試').tap();await button(page,'取消').tap();
   assert.deepEqual(await state(page),ordinary);assert.equal(await page.evaluate(key=>localStorage.getItem(key),key),normalSave);
-  await page.locator('.qa-panel>summary').tap();const begin=performance.now();await sleepFixture(page);
+  await toggleQa(page);const begin=performance.now();await sleepFixture(page);
   const prepared=await state(page),boundary=requests.length;
   if(process.argv.includes('--phases-only')){
-    await page.locator('.qa-panel>summary').tap();const shell=prepared.artillery.shells[0],samples=[];
+    await toggleQa(page);const shell=prepared.artillery.shells[0],samples=[];
     for(const [phase,seconds] of [['early',shell.launchedAtSeconds],['middle',(shell.launchedAtSeconds+shell.impactAtSeconds)/2],['final150',shell.impactAtSeconds-.15],['pulse',shell.impactAtSeconds-.04]]){
       const sample=await page.evaluate(({seconds})=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.pauseOverlay.setVisible(false);
         const original=a.simulation.getFrameState.bind(a.simulation),s=original();a.simulation.getFrameState=()=>({...s,elapsedSeconds:seconds});
@@ -65,14 +69,14 @@ try{
   await page.screenshot({path:`${out}/${width}-sleep-panel.png`});
   const touch=await page.locator('.qa-panel button').evaluateAll(buttons=>buttons.map(b=>({text:b.textContent,height:b.getBoundingClientRect().height,width:b.getBoundingClientRect().width})));
   assert(touch.filter(b=>b.width).every(b=>b.height>=44));
-  await page.locator('.qa-panel>summary').tap();await page.screenshot({path:`${out}/${width}-sleep-scene.png`});
+  await toggleQa(page);await page.screenshot({path:`${out}/${width}-sleep-scene.png`});
   const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
   await page.evaluate(()=>{window.__pausedStamps=[];window.__pausedMeasure=true;
     const frame=stamp=>{if(window.__pausedMeasure){window.__pausedStamps.push(stamp);requestAnimationFrame(frame);}};requestAnimationFrame(frame);});
   await page.waitForTimeout(10000);
   const paused=await page.evaluate(()=>{window.__pausedMeasure=false;return {stamps:window.__pausedStamps,stats:window.__testApp.renderer.getDebugStats()};});
   const pausedFrameMs=quantiles(paused.stamps.slice(1).map((t,i)=>t-paused.stamps[i]));
-  await cdp.send('Emulation.setCPUThrottlingRate',{rate:1});await cdp.detach();await page.locator('.qa-panel>summary').tap();
+  await cdp.send('Emulation.setCPUThrottlingRate',{rate:1});await cdp.detach();await toggleQa(page);
   await button(page,'Resume game').tap();await page.keyboard.press('Escape');await page.keyboard.press('q');await page.waitForTimeout(300);
   assert.deepEqual(await state(page),prepared);
   await page.evaluate(()=>{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'hidden'});document.dispatchEvent(new Event('visibilitychange'));});
@@ -94,7 +98,7 @@ try{
   await page.screenshot({path:`${out}/${width}-restored.png`});
   const restoredStats=await page.evaluate(()=>window.__testApp.renderer.getDebugStats());
   await button(page,'結束測試（保持暫停）').tap();assert(await page.evaluate(()=>window.__testApp.paused&&!window.__testApp.qaSleepActive));
-  await page.locator('.qa-panel>summary').tap();await button(page,'Resume game').tap();await page.waitForFunction(()=>window.__testApp.wakeLock.status==='active');
+  await toggleQa(page);await button(page,'Resume game').tap();await page.waitForFunction(()=>window.__testApp.wakeLock.status==='active');
   // Record complete real flights and fill progress. No simulation time scaling.
   await page.evaluate(()=>{window.__frames=[];const a=window.__testApp,original=a.renderFrame;
     a.renderFrame=stamp=>{original(stamp);const s=a.simulation.getFrameState(),mesh=a.renderer.scene.getObjectByName('artillery-lane-danger');
@@ -131,4 +135,4 @@ try{
   const label=await page.locator('.qa-panel').textContent();assert(label.includes(platform==='denied'?'DENIED':platform==='insecure'?'INSECURE':'UNSUPPORTED'));
   rows.push({platform,harmless:true,label});writeFileSync(`${out}/results.json`,JSON.stringify(rows,null,2));await page.close();
  }
-}finally{await browser.close();await new Promise(resolve=>server.httpServer.close(resolve));}
+}finally{await browser.close();await server.close();}

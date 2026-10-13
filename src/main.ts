@@ -61,6 +61,7 @@ async function startGame(): Promise<void> {
     if (defense) {
       portraits = new ObserverPortraits();
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'missionIntro');
+      if (import.meta.env.DEV) audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'destroyer');
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'tankBoss');
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'victory');
     }

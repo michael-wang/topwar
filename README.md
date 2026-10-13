@@ -16,7 +16,7 @@ npm run build
 
 Tap to Start activates audio. Hold the bottom arrows or use A/D/arrow keys to move between adjacent lanes; Q throws a Grenade. Pause suspends gameplay. Retry starts the selected scenario again.
 
-The quiet tool hatch opens local DEV controls: LATE (Lv10), CRATE3, CRATE8, NAVAL; collapsible MG TEST, SURVIVAL TEST, NAVAL BARRAGE and BOSS TEST; authored tuning and audio controls. BOSS TEST offers INTRO (Lv9 landing with a remaining Lv8 crowd), PHASE 1/2/3 (100%/65%/30% HP) and FINISH (2% HP), all playable and recoverable. The small FPS label measures actual rendered RAF intervals. Production ships only the restricted recovery/screen-sleep QA panel, never the full tuning tools or test-only fixtures.
+The local DEV hatch offers three one-tap scenes: 🚢 驅逐艦進場 (complete movement, Commander voice and real artillery), 🚨 BOSS 進場 (remaining Lv8 crowd, Tank entrance/voice and real battle), and 🏆 勝利結算 (Tank finale, victory communication/music and results marked DEV 範例戰績). Each selection closes the menu; 返回一般遊戲 resets to the authored normal run. Balance/audio and Wake Lock/checkpoint QA are inside the initially collapsed 進階調校 section. Older fixture presets remain available to regression scripts, not menu buttons. Production includes no DEV/QA launch controls or fixture factories.
 
 ## Current game
 

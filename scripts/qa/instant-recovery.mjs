@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const phase='after',out=process.argv[2]??'artifacts/qa/instant-recovery';
 mkdirSync(out, { recursive: true });
@@ -32,8 +33,7 @@ try { for (const width of [350, 390]) {
   });
   await page.goto(url); await page.getByRole('button', { name: 'Start game with audio' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
-  await page.locator('.tuning-panel > summary').tap(); await page.locator('.dev-survival-test > summary').tap();
-  await page.locator('[data-survival="ahead"]').tap(); await page.locator('.tuning-panel > summary').tap(); await page.locator('[data-survival="10"]').tap();
+  await selectDevFixture(page, 'survival10-ahead');
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap();
   const saved = await page.evaluate(() => window.__testApp.simulation.getState()); delayed = true;
   for (let repeat = 0; repeat < 3; repeat++) {

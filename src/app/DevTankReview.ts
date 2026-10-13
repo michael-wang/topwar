@@ -18,6 +18,18 @@ export const BOSS_TEST_PRESETS = {
   'boss-finish': { label: 'FINISH', hpFraction: .02 },
 } as const;
 
+// DEV sample results use the real finished Simulation and shipping presentation.
+export function createVictoryReview(options: SimulationOptions, rate: number): Simulation {
+  const sim = createTankReview(options, rate, 'boss-finish'), s = sim.getState();
+  s.elapsedSeconds = 216.6; s.tick = Math.round(s.elapsedSeconds * 60);
+  Object.assign(s.defenseTank!, { status: 'defeated', entranceCleared: true, hp: 0, phase: 3,
+    defeatedAtSeconds: s.elapsedSeconds, nextAttackAtSeconds: null, pendingImpactAtSeconds: null });
+  s.enemies = []; s.projectiles = []; s.artillery = { version: 1, nextId: 1, shells: [] };
+  s.combatStats = { gruntKills: 65, heavyKills: 234, giantKills: 6,
+    shotsFired: 11410, shotsHit: 11024, grenadesUsed: 8 };
+  sim.restoreState(s); return sim;
+}
+
 // DEV loadouts use shipping configuration and real attack/admission clocks.
 export function createTankReview(options: SimulationOptions, rate: number, role: TankReviewFixture): Simulation {
   const preset = BOSS_TEST_PRESETS[role], balance = options.catharsis?.balance;

@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 import { startGameRecording, inspectRecordingFrames } from './browser-recording.mjs';
 const out = process.argv[2] ?? 'artifacts/p3b6b2/browser';mkdirSync(out,{recursive:true});
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ?? 'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
@@ -30,17 +31,14 @@ try { for (const width of [350,390]) for(const selectedProfile of profileOnly?[p
   await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
   if(width===350)await page.locator('.beachhead-defense').evaluate(e=>e.style.setProperty('--hud-inset-bottom','34px'));
   const open=async()=>{if(!await page.locator('.tuning-panel').evaluate(e=>e.open))await page.locator('.tuning-panel > summary').tap();};
-  await open();assert.deepEqual(await page.locator('.dev-review-controls button').allTextContents(),['LATE','CRATE3','CRATE8','NAVAL']);
-  assert.deepEqual(await page.locator('.dev-mg-test button').allTextContents(),['MG6','MG7','MG8','MG9','MG10']);
-  assert.equal(await page.locator('.dev-survival-test').evaluate(e=>e.open),false);
-  await page.locator('.dev-survival-test > summary').tap();
-  const bounds=await page.locator('.dev-survival-test button').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return{label:b.textContent,x:r.x,width:r.width,height:r.height,right:r.right};}));
+  await open();assert.deepEqual(await page.locator('.dev-review-controls button[data-role]').allTextContents(),['🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算']);
+  const bounds=await page.locator('.dev-review-controls button[data-role]').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return{label:b.textContent,x:r.x,width:r.width,height:r.height,right:r.right};}));
   for(const b of bounds)assert(b.x>=0&&b.right<=width&&b.width>=44&&b.height>=48,JSON.stringify(b));
   await page.screenshot({path:`${out}/${width}-dev-menu.png`});
   for(const mode of measureOnly||recordOnly?[]:['baseline','experimental','staged','ahead']) for(const level of [7,8,9,10]) {
-    await open();await page.locator(`[data-survival="${mode}"]`).tap();await open();await page.locator(`[data-survival="${level}"]`).tap();
+    await selectDevFixture(page,`survival${level}-${mode}`);
     assert.equal(await page.locator('.tuning-panel').evaluate(e=>e.open),false);
-    assert.deepEqual(await page.locator('.dev-survival-test [aria-pressed="true"]').allTextContents(),[mode.toUpperCase(),`LV${level}`]);
+    assert.equal(await page.evaluate(()=>window.__testApp.devReviewFixture),`survival${level}-${mode}`);
     const row=await page.evaluate(({mode,level})=>{
       const a=window.__testApp;cancelAnimationFrame(a.frameId);const s=a.simulation.getState(),c=a.config;
       if(s.progression.level!==level||s.squad.count!==(level<9?1:level-7))throw Error('Wrong Survival loadout');
@@ -76,7 +74,7 @@ try { for (const width of [350,390]) for(const selectedProfile of profileOnly?[p
   const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
   const mode=selectedProfile;
   for(const temperature of recordOnly?['recording']:process.argv.includes('--fresh-only')?['fresh']:['fresh','warm']) {
-    await open();await page.locator(`[data-survival="${mode}"]`).tap();await open();await page.locator('[data-survival="8"]').tap();
+    await selectDevFixture(page,`survival8-${mode}`);
     await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.fixedStepLoop.reset();a.previousFrameTimestampMs=null;a.perf.reset();if(window.__glCalls)window.__glCalls=[];});
     const requestStart=requests.length;
     const traceDone=trace?new Promise(resolve=>cdp.once('Tracing.tracingComplete',resolve)):null;
@@ -111,7 +109,7 @@ try { for (const width of [350,390]) for(const selectedProfile of profileOnly?[p
       await cdp.send('IO.close',{handle:stream});writeFileSync(`${out}/${width}-${mode}-${temperature}-trace.json`,content);}
     if(measureOnly)continue;
     // Record separately, so capture overhead is excluded from timings.
-    await open();await page.locator('[data-survival="8"]').tap();
+    await selectDevFixture(page,`survival8-${mode}`);
     await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.fixedStepLoop.reset();a.previousFrameTimestampMs=null;});
     const stop=await startGameRecording(page,width);
     await page.evaluate(async()=>{const a=window.__testApp;let start;await new Promise(resolve=>requestAnimationFrame(function frame(ts){start??=ts;window.__pilot();a.renderFrame(ts);cancelAnimationFrame(a.frameId);if(ts-start<45000)requestAnimationFrame(frame);else resolve();}));});

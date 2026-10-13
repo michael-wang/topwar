@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const out = process.argv[2] ?? 'artifacts/p3b6b3b/browser'; mkdirSync(out, { recursive: true });
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ?? 'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
@@ -38,9 +39,7 @@ try { for (const width of [350, 390]) {
   await page.goto('http://127.0.0.1:5175/?perf=1');
   assert.equal(await page.locator('#session-recovery-loading').count(), 0);
   await page.getByRole('button', { name: 'Start game with audio' }).tap(); await stop(); await status('active');
-  await page.locator('.tuning-panel > summary').tap(); await page.locator('.dev-survival-test > summary').tap();
-  await page.locator('[data-survival="ahead"]').tap(); await stop();
-  await page.locator('.tuning-panel > summary').tap(); await page.locator('[data-survival="10"]').tap(); await stop();
+  await selectDevFixture(page, 'survival10-ahead'); await stop();
   assert.equal(await page.evaluate(() => window.__testApp.simulation.getState().progression.level), 10);
   await pause(); const saved = await page.evaluate(() => window.__testApp.simulation.getState());
   let text = await page.evaluate(() => localStorage.getItem('topwar:session:v1:dev'));

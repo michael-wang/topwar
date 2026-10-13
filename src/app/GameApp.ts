@@ -173,8 +173,13 @@ export class GameApp {
     this.devReview = import.meta.env.DEV && this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
         if (this.startup === 'recovering' || this.recovery?.blocking) return;
+        this.exitSleepTest();
         this.devReviewFixture = role;
-        this.devReview?.setSelected(role);
+        this.devReview?.setSelected(role ?? undefined);
+        if (role === null) {
+          this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
+          this.tuningPanel?.setValues(this.runtimeTuning);
+        }
         this.tuningPanel?.close();
         this.retry();
       }) : null;
@@ -191,12 +196,11 @@ export class GameApp {
       }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
     this.fps = import.meta.env.DEV ? new DevFps(viewport) : null;
-    this.wakeStatus = import.meta.env.DEV && this.tuningPanel
-      ? new DevWakeStatus(this.tuningPanel.reviewControlsHost, this.wakeLock) : null;
-    this.qaPanel=!import.meta.env.DEV && this.config.catharsis?.defenseMode ? new QaPanel(viewport,{
+    this.qaPanel=import.meta.env.DEV && this.tuningPanel && this.config.catharsis?.defenseMode ? new QaPanel(this.tuningPanel.advancedControlsHost,{
       sleep:()=>{void this.beginSleepTest();},reload:()=>this.reloadTest(),exit:()=>this.exitSleepTest(),
     }):null;
-    if(this.qaPanel)this.wakeLock.observe(status=>this.qaPanel?.setWake(status));
+    this.wakeStatus = import.meta.env.DEV && this.tuningPanel
+      ? new DevWakeStatus(this.tuningPanel.advancedControlsHost, this.wakeLock, status => this.qaPanel?.setWake(status)) : null;
     if (saved.status === 'valid' || saved.status === 'invalid') {
       this.startup = 'recovering';
       this.recoveryPending = saved.checkpoint ?? null;
@@ -326,6 +330,7 @@ export class GameApp {
     this.hudActions.setPaused(this.paused);
     this.gameOverOverlay.setVisible(false);
     this.tankBossHud.reset(); this.stageClearOverlay.reset(); this.tankDeathAtMs = null; this.tankDeathCue = -1;
+    if (import.meta.env.DEV) this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
     this.stageClearAtMs = null;
     this.tankEntranceHud.reset();
     this.damageFlash.reset();
@@ -540,9 +545,14 @@ export class GameApp {
         this.stageClearAtMs = null;
         this.tankDeathCue = s.defenseTank?.status === 'defeated' ? TANK_EXPLOSION_TIMES_MS.length - 1 : -1;
         this.restored = true; this.startup = 'started'; this.setPaused(true);
-        this.qaSession=!!c.qa;this.qaSleepActive=c.qa?.armed??false;
-        if(c.qa){this.syncWakeLock();if(this.qaSleepActive)this.pauseOverlay.setVisible(false);
-          this.qaPanel?.open();this.qaPanel?.setStatus('已重新載入並恢復測試場景・保持暫停。導覽／Discard 指標僅供參考。');}
+        // Historical release QA saves still restore as ordinary paused Defense.
+        if (import.meta.env.DEV) {
+          this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
+          this.qaSession=!!c.qa;this.qaSleepActive=c.qa?.armed??false;
+          if(c.qa){this.syncWakeLock();if(this.qaSleepActive)this.pauseOverlay.setVisible(false);
+            this.tuningPanel?.openAdvanced();
+            this.qaPanel?.open();this.qaPanel?.setStatus('已重新載入並恢復測試場景・保持暫停。導覽／Discard 指標僅供參考。');}
+        }
         // Early Continue can precede AudioContext creation. Explicit Resume owns audio activation.
         this.renderer.preparePresentation();
         if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-restored', { tick: s.tick });
@@ -569,7 +579,7 @@ export class GameApp {
       mode: 'defense', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
       savedAt: Date.now(), paused: true, hidden: this.hidden, reason,
       fixture: import.meta.env.DEV ? this.devReviewFixture : null,
-      ...(this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
+      ...(import.meta.env.DEV && this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
       config: this.config as GameConfig, level, tuning: this.runtimeTuning, state });
     if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-write', { ...result, totalMilliseconds: performance.now() - started });
     if (!result.ok) this.showCheckpointFailure('無法儲存進度；請保持此分頁開啟');
@@ -615,6 +625,7 @@ export class GameApp {
   };
 
   private async beginSleepTest():Promise<void> {
+    if (import.meta.env.DEV) {
     if(this.disposed||this.qaPreparing||this.recovery?.blocking||this.startup==='recovering')return;
     if(this.hidden||this.contextLost){this.qaPanel?.setStatus('請在可見且可用的遊戲畫面開始測試');return;}
     const generation=++this.qaGeneration;
@@ -661,13 +672,15 @@ export class GameApp {
     }catch(error){if(this.disposed||generation!==this.qaGeneration)return;
       this.qaPreparing=false;this.qaSleepActive=true;this.setPaused(true);
       this.qaPanel?.setStatus(`測試未完成：${error instanceof Error?error.message:'unknown'}`);}
+    }
   }
   private exitSleepTest():void {
-    if(!this.qaSession)return;
+    if(!import.meta.env.DEV || !this.qaSession)return;
     this.qaGeneration++;this.qaPreparing=false;this.qaSleepActive=false;this.qaSession=false;
     this.setPaused(true);this.saveCheckpoint('pause');this.qaPanel?.setStatus('已結束測試・保持暫停，請按 Resume 繼續');
   }
   private reloadTest():void {
+    if (!import.meta.env.DEV) return;
     if(this.startup!=='started'||!this.simulation.getFrameState().squad.count)return;
     this.setPaused(true);this.saveCheckpoint('pause');
     if(readCheckpoint().status==='valid')window.location.reload();

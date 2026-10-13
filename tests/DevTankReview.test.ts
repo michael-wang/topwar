@@ -14,6 +14,15 @@ const options = { seed: 19, level, tiers: config.tiers, startSquad: 1, startRock
   catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } };
 const roles = Object.keys(BOSS_TEST_PRESETS) as TankReviewFixture[];
 const make = (role: TankReviewFixture) => createDevReviewFixture(options, config.weapon.rifle.fireRate, role);
+it('previews a real completed Tank battlefield with fixed DEV results and no manual final hit', () => {
+  const sim = createDevReviewFixture(options, config.weapon.rifle.fireRate, 'victory'), state = sim.getState();
+  expect(state.catharsis!.balance).toEqual(config.catharsis);
+  expect(state.defenseTank).toMatchObject({ status: 'defeated', hp: 0, phase: 3, defeatedAtSeconds: 216.6 });
+  expect(state.combatStats).toEqual({ gruntKills: 65, heavyKills: 234, giantKills: 6,
+    shotsFired: 11410, shotsHit: 11024, grenadesUsed: 8 });
+  expect(state.enemies).toEqual([]); expect(state.projectiles).toEqual([]); expect(state.artillery!.shells).toEqual([]);
+  sim.restoreState(JSON.parse(JSON.stringify(state))); step(sim, 120); expect(sim.getState()).toEqual(state);
+});
 function step(sim: ReturnType<typeof make>, ticks = 1) { for (let i = 0; i < ticks; i++) sim.step(1 / 60, { targetX: 0 }, tuning); }
 
 it.each(roles)('%s is a playable real Boss entry with checkpoint/Resume continuity', role => {

@@ -7,6 +7,7 @@ class ElementStub extends EventTarget {
   readonly children: ElementStub[] = [];
   readonly dataset: Record<string, string> = {};
   className = '';
+  style = { cssText: '' };
   textContent = '';
   type = '';
   min = '';
@@ -181,8 +182,14 @@ it('uses the coastal testing hatch without a retired TUNE entry', () => {
   expect((summary as unknown as HTMLElement).innerHTML).not.toContain('DEV');
   expect((summary as unknown as HTMLElement).ariaLabel).toBe('開發測試工具');
   expect((summary as unknown as HTMLElement).title).toBe('開發測試工具');
-  expect(viewport.children[0].children[1].children[0].textContent).toBe('DEV TOOLS');
+  expect(viewport.children[0].children[1].children[0].textContent).toBe('測試場景');
   expect(viewport.children[0].children[1].children[1]).toBe(defense.reviewControlsHost);
+  const advanced = viewport.children[0].children[1].children[2];
+  expect(advanced.tagName).toBe('details'); expect(advanced.open).toBe(false);
+  expect(advanced.children[0].textContent).toBe('進階調校');
+  expect(advanced.children[1]).toBe(defense.advancedControlsHost);
+  defense.openAdvanced(); expect(advanced.open).toBe(true);
+  defense.close(); expect(advanced.open).toBe(false);
   defense.toggle(); expect(viewport.children[0].open).toBe(true);
   defense.close(); expect(viewport.children[0].open).toBe(false);
   defense.dispose(); vi.unstubAllGlobals();

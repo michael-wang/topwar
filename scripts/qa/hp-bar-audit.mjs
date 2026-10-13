@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { selectDevFixture } from './dev-fixture-controls.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const out = process.argv[2] ?? 'artifacts/p3b6b3a/hp-bars'; mkdirSync(out, { recursive: true });
 const { chromium } = await import(process.env.TOPWAR_PLAYWRIGHT_MODULE ?? 'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
@@ -26,8 +27,7 @@ try { for (const width of [350, 390]) {
   await page.goto('http://127.0.0.1:5175/?perf=1');
   await page.getByRole('button', { name: 'Start game with audio' }).tap(); await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
-  await page.locator('.tuning-panel > summary').tap(); await page.locator('.dev-survival-test > summary').tap();
-  await page.locator('[data-survival="ahead"]').tap(); await page.locator('.tuning-panel > summary').tap(); await page.locator('[data-survival="10"]').tap();
+  await selectDevFixture(page, 'survival10-ahead');
   const setup = await page.evaluate(async () => {
     const a = window.__testApp; cancelAnimationFrame(a.frameId); a.renderer.preparation?.dispose();
     const { projectRenderState } = await import('/src/app/projectRenderState.ts');

@@ -1,4 +1,3 @@
-import { testingHatch } from './TestingHatch';
 import { checkpointPresent } from '../app/SessionCheckpoint';
 import type { WakeStatus } from '../app/ScreenWakeLock';
 
@@ -14,8 +13,10 @@ export class QaPanel {
   private readonly stop=(e:Event)=>e.stopPropagation();
   constructor(host:HTMLElement,actions:{sleep:()=>void;reload:()=>void;exit:()=>void}) {
     this.element.className='qa-panel';
-    const summary=document.createElement('summary');testingHatch(summary);
+    const summary=document.createElement('summary');summary.textContent='熄屏與存檔 QA';
+    summary.style.cssText='min-height:44px;width:100%;box-sizing:border-box;padding:10px;font-size:13px';
     const content=document.createElement('div');content.className='qa-panel-content';
+    content.style.cssText='padding:8px;font:13px/1.45 sans-serif';
     const title=document.createElement('strong');title.textContent='測試工具・非一般遊戲功能';
     const initial=document.createElement('p');
     const nav=performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming|undefined;
@@ -23,6 +24,7 @@ export class QaPanel {
     initial.textContent=`導覽：${nav?.type??'unknown'}・Discard：${discarded===undefined?'unknown':String(discarded)}`;
     content.append(title,this.wake,this.saved,initial,this.status);
     const button=(text:string,fn:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=text;
+      b.style.cssText='min-height:44px;width:100%;margin:4px 0;padding:6px;touch-action:manipulation';
       b.addEventListener('click',()=>{if(!this.locked)fn();});this.buttons.push(b);content.append(b);return b;};
     button('15 秒熄屏 / Resume 測試',()=>this.confirm(()=>{this.locked=true;this.status.textContent='正在準備 AHEAD Lv10 高負載場景…';actions.sleep();}));
     button('重新載入恢復測試',()=>this.confirm(actions.reload));

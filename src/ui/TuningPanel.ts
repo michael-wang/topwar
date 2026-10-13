@@ -18,6 +18,8 @@ const controls: readonly Control[] = [
 
 export class TuningPanel {
   readonly reviewControlsHost = document.createElement('div');
+  readonly advancedControlsHost = document.createElement('div');
+  private readonly advanced = document.createElement('details');
   private readonly element: HTMLDetailsElement;
   private readonly resetButton = document.createElement('button');
   private readonly inputs = new Map<Key, HTMLInputElement>();
@@ -52,11 +54,13 @@ export class TuningPanel {
     content.className = 'tuning-panel-content';
     {
       const heading = document.createElement('strong'); heading.className = 'tuning-heading';
-      heading.textContent = 'DEV TOOLS'; content.append(heading);
+      heading.textContent = '測試場景'; content.append(heading);
       this.reviewControlsHost.className = 'dev-review-host';
       content.append(this.reviewControlsHost);
-      const tuning = document.createElement('strong'); tuning.className = 'tuning-heading';
-      tuning.textContent = 'BALANCE & AUDIO'; content.append(tuning);
+      this.advanced.className = 'dev-advanced';
+      const summary = document.createElement('summary'); summary.textContent = '進階調校';
+      summary.style.cssText = 'width:100%;box-sizing:border-box;min-height:44px;padding:10px;font-size:14px';
+      this.advanced.append(summary, this.advancedControlsHost); content.append(this.advanced);
     }
     this.element.append(summary, content);
     for (const control of controls) {
@@ -69,7 +73,7 @@ export class TuningPanel {
       input.dataset.key = control.key;
       const output = document.createElement('output');
       label.append(input, output);
-      content.append(label);
+      this.advancedControlsHost.append(label);
       this.inputs.set(control.key, input);
       this.outputs.set(control.key, output);
       input.addEventListener('input', this.onInput);
@@ -78,7 +82,7 @@ export class TuningPanel {
     reset.type = 'button';
     reset.textContent = 'Reset Defaults';
     reset.addEventListener('click', this.onReset);
-    content.append(reset);
+    this.advancedControlsHost.append(reset);
     this.element.addEventListener('pointerdown', this.onPointerDown);
     this.element.addEventListener('toggle', this.releaseClosedFocus);
     viewport.append(this.element);
@@ -97,7 +101,8 @@ export class TuningPanel {
     this.releaseClosedFocus();
   }
 
-  close(): void { this.element.open = false; this.releaseClosedFocus(); }
+  close(): void { this.element.open = false; this.advanced.open = false; this.releaseClosedFocus(); }
+  openAdvanced(): void { this.element.open = this.advanced.open = true; }
 
   dispose(): void {
     for (const input of this.inputs.values()) input.removeEventListener('input', this.onInput);

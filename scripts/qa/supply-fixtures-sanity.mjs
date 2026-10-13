@@ -19,9 +19,9 @@ try {for(const width of [390,350]) {
  });
  if(width===350)await page.locator('.beachhead-defense').evaluate(v=>v.style.setProperty('--hud-inset-bottom','34px'));
  await page.locator('.tuning-panel > summary').click();
- const menu=await page.locator('.dev-review-controls button').allTextContents();
- assert.deepEqual(menu,['LATE','CRATE3','CRATE8','NAVAL']);
- for(const role of ['crate3','crate8']) {
+ const menu=await page.locator('.dev-review-controls button[data-role]').allTextContents();
+ assert.deepEqual(menu,['🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算']);
+ for(const role of ['naval','boss-intro','victory']) {
   const rect=await page.locator(`[data-role="${role}"]`).boundingBox();assert(rect&&rect.x>=0&&rect.x+rect.width<=width&&rect.y+rect.height<844);
  }
  await page.screenshot({path:`${out}/${width}-dev-menu.png`});

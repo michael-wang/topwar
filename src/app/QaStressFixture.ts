@@ -14,7 +14,7 @@ export function qaSimulationTuning(c:Readonly<GameConfig>):SimulationTuning {
       tierHitRadiusStep:c.weapon.rifle.tierHitRadiusStep,maxHitRadiusBonus:c.weapon.rifle.maxHitRadiusBonus},rocket:{...c.weapon.rocket}};
 }
 
-// One shipping QA entry, no DEV preset data or balance editing. Preparation runs
+// DEV-only sleep/recovery QA, never bundled in the public game. Preparation runs
 // ordinary fixed-tick combat with the shipping config, then freezes a real frame.
 export function createQaStressFixture(options:SimulationOptions,tuning:SimulationTuning):Simulation {
   const sim=new Simulation({...options,seed:42,startSquad:1,startRocketCount:0});

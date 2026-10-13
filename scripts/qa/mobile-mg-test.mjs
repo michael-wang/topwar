@@ -1,4 +1,5 @@
-// Human touch path, real simulation firing and Retry. Test-side exposure only.
+// Retained MG regression presets, real simulation firing and Retry. Test-side exposure only.
+import {selectDevFixture} from './dev-fixture-controls.mjs';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {startGameRecording,inspectRecordingFrames} from './browser-recording.mjs';
@@ -14,18 +15,13 @@ try{for(const width of [350,390]){
  await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
  if(width===350)await page.locator('.beachhead-defense').evaluate(e=>e.style.setProperty('--hud-inset-bottom','34px'));
  const open=async()=>{if(!await page.locator('.tuning-panel').evaluate(e=>e.open))await page.locator('.tuning-panel > summary').tap();};
- await open();assert.deepEqual(await page.locator('.dev-review-controls button').allTextContents(),['LATE','CRATE3','CRATE8','NAVAL']);
- assert.equal(await page.locator('.dev-mg-test').evaluate(e=>e.open),false);
- await page.screenshot({path:`${out}/${width}-collapsed.png`});await page.locator('.dev-mg-test > summary').tap();
- assert.deepEqual(await page.locator('.dev-mg-test button').allTextContents(),['MG6','MG7','MG8','MG9','MG10']);
- const bounds=await page.locator('.dev-mg-test button').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return{label:b.textContent,x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};}));
+ await open();assert.deepEqual(await page.locator('.dev-review-controls button[data-role]').allTextContents(),['🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算']);
+ const bounds=await page.locator('.dev-review-controls button[data-role]').evaluateAll(bs=>bs.map(b=>{const r=b.getBoundingClientRect();return{label:b.textContent,x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};}));
  for(const b of bounds)assert(b.x>=0&&b.y>=0&&b.right<=width&&b.bottom<=844&&b.width>=44&&b.height>=48,JSON.stringify(b));
- await page.screenshot({path:`${out}/${width}-expanded.png`});
- await page.locator('.dev-mg-test > summary').tap();assert.equal(await page.locator('.dev-mg-test button:visible').count(),0);
- await page.locator('.dev-mg-test > summary').tap();
+ await page.screenshot({path:`${out}/${width}-dev-menu.png`});
  const rows=[];let reference;const stop=await startGameRecording(page,width);
  for(const [level,count,rate,stage]of [[6,1,18,1],[7,1,22.5,2],[8,1,27,3],[9,2,27,3],[10,3,27,3]]){
-  await open();await page.locator(`.dev-mg-test [data-role="mg${level}"]`).tap();
+  await selectDevFixture(page,`mg${level}`);
   assert.equal(await page.locator('.tuning-panel').evaluate(e=>e.open),false);
   const initial=await page.evaluate(()=>window.__testApp.simulation.getState());
   reference??=initial;assert.equal(initial.seed,reference.seed);assert.deepEqual(initial.rngState,reference.rngState);assert.deepEqual(initial.enemies,reference.enemies);
@@ -46,12 +42,12 @@ try{for(const width of [350,390]){
   },{count});
   assert.deepEqual(row.shots,Array(count).fill(rate*10));assert.equal(row.level,level);assert(row.remaining<65);
   await page.getByRole('button',{name:'Retry',exact:true}).tap();assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),initial);
-  assert.equal(await page.locator(`.dev-mg-test [data-role="mg${level}"]`).getAttribute('aria-pressed'),'true');
+  assert.equal(await page.evaluate(()=>window.__testApp.devReviewFixture),`mg${level}`);
   await page.evaluate(async()=>{const a=window.__testApp;a.previousFrameTimestampMs=null;a.fixedStepLoop.reset();let start;await new Promise(resolve=>requestAnimationFrame(function frame(ts){start??=ts;a.renderFrame(ts);cancelAnimationFrame(a.frameId);if(ts-start<3000)requestAnimationFrame(frame);else resolve();}));});
   await page.screenshot({path:`${out}/${width}-mg${level}.png`});rows.push({level,count,perMemberHz:rate,totalHz:rate*count,shots:row.shots,retry:true});
  }
  const recording=await stop();writeFileSync(`${out}/${width}-mg-test.webm`,recording);await inspectRecordingFrames(browser,recording,width,`${out}/${width}-mg-test`,[2,10,20]);
- await open();await page.locator('.dev-review-controls [data-role="late"]').tap();assert.equal(await page.locator('.dev-mg-test button[aria-pressed="true"]').count(),0);
+ await selectDevFixture(page,'late');assert.equal(await page.locator('.dev-review-controls button[aria-pressed="true"]').count(),0);
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().enemies.length),42);
  assert.deepEqual(errors,[]);results.push({width,bounds,rows,mainMenu:true,errors});await page.close();console.log(`Mobile MG TEST passed ${width}`);
 }}finally{writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));await browser.close();}

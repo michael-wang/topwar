@@ -12,6 +12,7 @@ import { progressionDefaults } from '../src/config/progressionConfig';
 import { startDefenseTank } from '../src/simulation/defenseTank';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
 vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
+  constructor() { mock.qaConstructed(); }
   open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}
 } }));
 vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} } }));
@@ -33,6 +34,7 @@ vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...arg
 
 const mock = vi.hoisted(() => ({
   missionIntro: vi.fn(),
+  qaConstructed: vi.fn(),
   victory: vi.fn((_now: number, _paused: boolean) => false),
   constructedWith: vi.fn(),
   reviewConstructed: vi.fn(),
@@ -102,6 +104,7 @@ vi.mock('../src/ui/TankEntranceHud', () => ({ TankEntranceHud: class { update = 
 vi.mock('../src/ui/StageClearOverlay', () => ({ StageClearOverlay: class {
   constructor(_viewport: unknown, replay: () => void) { tankUi.replay = replay; }
   show = tankUi.show; reset = tankUi.reset; dispose = vi.fn();
+  setDevPreview = vi.fn();
 } }));
 
 vi.mock('../src/simulation/Simulation', () => ({
@@ -749,7 +752,7 @@ it('restarts selected development fixtures and clears renderer feedback on every
 });
 
 
-it('omits every DEV review control, including LATE, CRATE3, CRATE8 and NAVAL, outside DEV', () => {
+it('omits all DEV scenarios, tuning and QA launch controls outside DEV', () => {
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
@@ -757,7 +760,7 @@ it('omits every DEV review control, including LATE, CRATE3, CRATE8 and NAVAL, ou
   try {
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
     expect(mock.reviewConstructed).not.toHaveBeenCalled();expect(mock.reviewFixture).not.toHaveBeenCalled();
-    expect(mock.panelConstructedWith).not.toHaveBeenCalled();app.dispose();
+    expect(mock.panelConstructedWith).not.toHaveBeenCalled(); expect(mock.qaConstructed).not.toHaveBeenCalled(); app.dispose();
   } finally { vi.unstubAllEnvs(); }
 });
 

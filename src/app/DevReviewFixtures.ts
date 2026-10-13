@@ -14,17 +14,18 @@ import { createMachineGunReview, type MachineGunReviewFixture } from './DevMachi
 import { createSurvivalReview, type SurvivalReviewFixture } from './DevSurvivalReview';
 import { isolatedReviewOptions } from './DevReviewPolicy';
 import { createNavalBarrageReview, type NavalBarrageReviewFixture } from './DevNavalBarrageReview';
-import { createTankReview, type TankReviewFixture } from './DevTankReview';
+import { createTankReview, createVictoryReview, type TankReviewFixture } from './DevTankReview';
 
-export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval' | MachineGunReviewFixture | SurvivalReviewFixture | NavalBarrageReviewFixture | TankReviewFixture;
+export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | 'naval' | 'victory' | MachineGunReviewFixture | SurvivalReviewFixture | NavalBarrageReviewFixture | TankReviewFixture;
 export const DEV_REVIEW_FIXTURES = {
   late: { level: 10, soldiers: 3 }, crate3: { level: 3, soldiers: 1 },
   crate8: { level: 8, soldiers: 1 }, naval: { level: 10, soldiers: 3 },
 } as const;
 
-// Human DEV entries only. Historical isolated scenarios live in tests/helpers.
+// DEV menu and retained regression presets; historical-only scenarios live in tests/helpers.
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
+  if (role === 'victory') return createVictoryReview(options, baseFireRate);
   if (role.startsWith('boss-')) return createTankReview(options, baseFireRate, role as TankReviewFixture);
   if(role.startsWith('barrage')) return createNavalBarrageReview(options,baseFireRate,role as NavalBarrageReviewFixture);
   options = isolatedReviewOptions(options);

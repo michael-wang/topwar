@@ -13,8 +13,10 @@ const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'
 if (shippingJs.includes('__testApp') || shippingJs.includes('qa:scene-start')) throw Error('QA instrumentation leaked into production');
 if (['dev-fps', 'dev-wake-status', 'vite:beforeFullReload', 'checkpoint-write', '__qaHpMode'].some(marker => shippingJs.includes(marker)))
   throw Error('DEV FPS/lifecycle diagnostics or HP audit controls survived production tree-shaking');
-if(!shippingJs.includes('15 秒熄屏 / Resume 測試')||!shippingJs.includes('開發測試工具'))
-  throw Error('Intended limited shipping QA entry is missing');
+if(['15 秒熄屏 / Resume 測試','開發測試工具','確認開始測試','Bounded QA preparation','QA preparation lost',
+  'QA requires authored Defense naval Survival','QA requires authored Lv10 three MGs',
+  '🚢 驅逐艦進場','🚨 BOSS 進場','🏆 勝利結算','DEV 範例戰績','PLAYTEST_ENTRIES'].some(marker=>shippingJs.includes(marker)))
+  throw Error('DEV playtest menu or sleep fixture survived production tree-shaking');
 if (['SURVIVAL TEST', 'dev-survival-test', 'survival7-baseline', 'survival10-experimental', 'survival10-staged', 'survival10-ahead', 'Invalid SURVIVAL TEST preset', 'ordinarySpeedMultiplier:1.4', 'ordinarySpeedMultiplier:1.6', 'heavyCount:11', 'heavyCount:15', 'heavyCount:19', 'minimumXp:245'].some(marker => shippingJs.includes(marker)))
   throw Error('Survival comparison controls or fixtures survived production tree-shaking');
 if (['NAVAL BARRAGE', 'dev-naval-barrage', 'Invalid NAVAL BARRAGE review', 'BARRAGE ON', 'BARRAGE OFF', 'BOSS TEST', 'dev-boss-test', 'BOSS TEST requires', 'boss-intro', 'boss-phase1', 'boss-phase2', 'boss-phase3', 'boss-finish', 'MG TEST', 'dev-mg-test', 'MG6', 'MG9', 'MG10', 'MG TEST requires', 'MG TEST preset must'].some(marker => shippingJs.includes(marker)))
@@ -90,7 +92,7 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  const evolveLabControls=await page.locator('[data-role="evolve"]').count();
  const grenadeLabControls=await page.locator('[data-role="grenade"]').count();
  await page.keyboard.press('Escape'); await page.keyboard.press('4'); await page.keyboard.press('5'); await page.keyboard.press('6');
- if(await page.locator('.tuning-panel,.dev-review-controls').count())throw Error('Production shortcuts exposed DEV controls');
+ if(await page.locator('.tuning-panel,.dev-review-controls,.qa-panel,[aria-label="開發測試工具"]').count())throw Error('Production exposed DEV/QA launch controls');
  errors.push(...await page.evaluate(()=>window.__qaUnhandled));
  results[`${width}:${query||'default'}`]={level:Number(actual),expected:level,sha,defenseMode:config.catharsis.defenseMode,teachingGrantAmount:config.catharsis.grenade.teachingGrantAmount,xpRequirements:config.catharsis.progression.xpRequirements,runtimeRequests,jsonFetches,devMenu,labControls,grenadeLabControls,mgLabControls,evolveLabControls,errors};if(Number(actual)!==level||devMenu!==0||labControls!==0||grenadeLabControls!==0||mgLabControls!==0||evolveLabControls!==0||errors.length)throw Error(JSON.stringify(results));await page.close();
 }
