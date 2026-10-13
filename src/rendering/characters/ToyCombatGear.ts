@@ -1,11 +1,12 @@
 import * as THREE from 'three';
+import { ART } from '../../art/ArtDirection';
 
 // Rendering-only clothing/field-gear colors. Costume values never enter combat.
 export const COMBAT_COLORS = {
   player: { trousers: '#365973', gear: '#4c6673' },
   grunt: { belt: '#526358', canteen: '#8e9987' },
-  heavy: { shirt: '#59674c', trousers: '#4e6067', helmet: '#626f51', harness: '#989077', pouch: '#7e836a' },
-  giant: { sash: '#85856d', satchel: '#747f66' },
+  heavy: { trousers: '#4e6067', harness: ART.enemyArmory.sand, pouch: ART.enemyArmory.steel },
+  giant: { sash: ART.enemyArmory.copper, satchel: ART.enemyArmory.steel },
 } as const;
 
 // A broad soft strip on an ellipsoid. Tilt happens before scaling so even the

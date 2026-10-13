@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { paintedBlockGeometry } from './art/PaintedGeometry';
 import { illustratedMaterial } from './art/IllustratedMaterial';
+import { ART } from '../art/ArtDirection';
 import { GrenadeExplosion } from './GrenadeExplosion';
 import type { GameRenderState } from './RenderState';
 import { TANK_ENTRANCE_CLEAR_FRACTION, type TankEntranceEvent } from '../simulation/defenseTank';
@@ -17,17 +18,17 @@ export class DefenseTankRenderer {
   private readonly turret = new THREE.Group();
   private readonly block = paintedBlockGeometry();
   private readonly wheelGeometry = new THREE.CylinderGeometry(.47, .47, .25, 10);
-  private readonly barrelGeometry = new THREE.CylinderGeometry(.18, .27, 2.7, 10);
+  private readonly barrelGeometry = new THREE.CylinderGeometry(.22, .32, 2.7, 10);
   private readonly smokeGeometry = new THREE.SphereGeometry(1, 8, 6);
   private readonly flameGeometry = new THREE.ConeGeometry(.3, 1, 7);
   private readonly flameMaterial = new THREE.MeshBasicMaterial({ color: '#ff5f19', transparent: true,
     opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending });
   private readonly flameCoreMaterial = new THREE.MeshBasicMaterial({ color: '#ffd36b', transparent: true,
     opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending });
-  private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#8056ad', roughness: .85 }));
-  private readonly steel = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#ded1b3', roughness: .7 }));
-  private readonly dark = new THREE.MeshStandardMaterial({ color: '#212631', roughness: .85 });
-  private readonly accent = new THREE.MeshStandardMaterial({ color: '#e8a342', roughness: .75 });
+  private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.armor, roughness: .85 }));
+  private readonly steel = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.ivory, roughness: .7 }));
+  private readonly dark = new THREE.MeshStandardMaterial({ color: ART.enemyArmory.iron, roughness: .85 });
+  private readonly accent = new THREE.MeshStandardMaterial({ color: ART.enemyArmory.warning, roughness: .75 });
   private readonly landingArmor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#687049', roughness: .85 }));
   private readonly hitFlash = new THREE.MeshBasicMaterial({ color: '#fff4c4', transparent: true, opacity: 0,
     blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
@@ -68,17 +69,22 @@ export class DefenseTankRenderer {
     };
     part(this.group, [0, .92, 0], [3.6, 1.15, 4.7], this.armor);
     part(this.group, [0, 1.75, -.65], [3.45, 1, 3.4], this.armor).rotation.x = -.12;
-    part(this.group, [0, 1.16, -2.3], [3.5, .35, .3], this.steel);
+    // Broad sloped front wall, spaced cheek armor and huge dark tracks.
+    part(this.group, [0, 1.26, -2.24], [3.8, .88, .55], this.armor).rotation.x = -.18;
+    part(this.group, [0, 1.69, -2.25], [3.55, .18, .56], this.steel);
     part(this.group, [0, 2.02, 1.65], [2.5, .12, 1], this.dark);
     for (const x of [-1.35, 1.35]) {
+      part(this.group, [x, 1.65, -1.35], [.8, .8, 1.35], this.armor).rotation.z = x < 0 ? -.12 : .12;
       part(this.group, [x, 2.2, 1.95], [.24, .65, .3], this.dark);
       part(this.group, [x, 1.5, -2.05], [.32, .18, .14], this.steel);
-      part(this.group, [x, 1.78, -2.12], [.24, .8, .12], this.accent);
+      part(this.group, [x, 1.3, -2.56], [.28, .35, .08], this.accent);
     }
-    part(this.turret, [0, .3, 0], [2.5, 1.1, 2.3], this.armor);
-    part(this.turret, [0, .9, .12], [2.1, .28, 1.9], this.steel);
+    part(this.turret, [0, .3, 0], [2.8, 1.1, 2.4], this.armor);
+    part(this.turret, [0, .9, .12], [2.35, .28, 1.95], this.steel);
     part(this.turret, [0, 1.18, .55], [.9, .22, .8], this.dark);
     part(this.turret, [0, .35, -1.1], [.75, .82, .75], this.steel);
+    part(this.turret, [0, .77, -1.18], [1.9, .26, .18], this.dark);
+    for (const x of [-.63, .63]) part(this.turret, [x, .79, -1.28], [.47, .09, .06], this.accent);
     const barrel = new THREE.Mesh(this.barrelGeometry, this.dark); barrel.rotation.x = Math.PI / 2;
     barrel.position.set(0, .35, -2.25); this.turret.add(barrel);
     this.turret.position.y = 2.4;
@@ -173,7 +179,7 @@ export class DefenseTankRenderer {
       else if (t < .9) { z = 2.4 - (t - .5) / .4 * 4.8; y = .18; }
       else { z = -2.4; y = .18 + (t - .9) / .1 * .9; angle = Math.PI / 2; }
       this.transform.position.set(i < 32 ? -1.8 : 1.8, y, z);
-      this.transform.rotation.set(angle, 0, 0); this.transform.scale.set(.7, .13, .29); this.transform.updateMatrix();
+      this.transform.rotation.set(angle, 0, 0); this.transform.scale.set(.82, .16, .32); this.transform.updateMatrix();
       this.tracks.setMatrixAt(i, this.transform.matrix);
     }
     this.tracks.instanceMatrix.needsUpdate = true;
@@ -227,7 +233,7 @@ export class DefenseTankRenderer {
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
     this.flames.visible = this.flameCores.visible = false;
-    this.armor.color.set('#8056ad');
+    this.armor.color.set(ART.enemyArmory.armor);
     this.shock.visible = false; this.entranceAtMs = -Infinity;
     this.hitAtMs = -Infinity; this.observedHit = null; this.hitFlash.opacity = 0;
     for (const mesh of this.hitMeshes) mesh.visible = false;

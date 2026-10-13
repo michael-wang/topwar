@@ -12,21 +12,21 @@ function region(g:THREE.BufferGeometry,color:string,filter=(x:number,y:number)=>
     box.expandByPoint(new THREE.Vector3().fromBufferAttribute(p,i));
   return box;
 }
-it('owns exactly one grip hand in the single maul mesh, never in any body/run pose',()=>{
+it('owns exactly one mechanical grip in the single ram mesh, with only the shield arm in body/run poses',()=>{
   const family=createChibiGiantFamily(),weapon=family.weapon!.geometry;
   expect(family.weaponGrip).toEqual(GIANT_WEAPON_GRIP);
   for(const mesh of [family.body,...family.runFrames]){
-    expect(region(mesh.geometry,ART.faction.skin,(x,y)=>x>0&&y<.7).isEmpty()).toBe(true);
-    expect(region(mesh.geometry,ART.faction.skin,(x,y)=>x<-.3&&y<.7).isEmpty()).toBe(false);
+    expect(region(mesh.geometry,ART.enemyArmory.iron,(x,y)=>x>.50&&y>.30&&y<.7).isEmpty()).toBe(true);
+    expect(region(mesh.geometry,ART.enemyArmory.steel,(x,y)=>x<-.3&&y>.25&&y<.7).isEmpty()).toBe(false);
   }
-  const hand=region(weapon,ART.faction.skin),shaft=region(weapon,ART.raider.hardware),head=region(weapon,ART.raider.helmet);
+  const hand=region(weapon,ART.enemyArmory.iron),shaft=region(weapon,ART.enemyArmory.copper),head=region(weapon,ART.enemyArmory.armor);
   const center=hand.getCenter(new THREE.Vector3());center.toArray().forEach((v,i)=>expect(v).toBeCloseTo(GIANT_WEAPON_GRIP[i],5));
   expect(shaft.min.y).toBeLessThan(center.y);expect(shaft.max.y).toBeGreaterThan(center.y);
   expect(shaft.getCenter(new THREE.Vector3()).x).toBeCloseTo(center.x);
   expect(shaft.getCenter(new THREE.Vector3()).z).toBeCloseTo(center.z);
   expect(head.min.y-hand.max.y).toBeGreaterThan(.04); // Hand cannot reach the maul head.
   expect(family.weapon!.material).toBe(family.helmet.material);
-  expect(weapon.groups).toHaveLength(0); // Skin region does not create a separate draw.
+  expect(weapon.groups).toHaveLength(0); // Grip region does not create a separate draw.
   family.dispose();
 });
 it('keeps shaft and grip coupled throughout all four poses and through the lethal freeze, while the grip actually moves',()=>{

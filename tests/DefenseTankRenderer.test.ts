@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { DefenseTankRenderer, TANK_DEATH_MS } from '../src/rendering/DefenseTankRenderer';
 import { startDefenseTank } from '../src/simulation/defenseTank';
 import config from './helpers/ShippingConfig';
+import { ART } from '../src/art/ArtDirection';
 
 const c = config.catharsis!.defenseTank!;
-it('keeps purple armor and tall turret while local flash layers pulse; ship doors never flash and Restore/Retry clear feedback', () => {
+it('keeps military-green armor and tall turret while local flash layers pulse; ship doors never flash and Restore/Retry clear feedback', () => {
   const scene = new THREE.Scene(), r = new DefenseTankRenderer(scene), tank = startDefenseTank(0, 17, c);
   tank.status = 'active'; tank.z = c.battleZ;
   const frame = { state: tank, config: c, elapsedSeconds: 3 };
@@ -13,7 +14,7 @@ it('keeps purple armor and tall turret while local flash layers pulse; ship door
   const flashes: THREE.Mesh[] = []; r.group.traverse(o => { if (o.name === 'tank-hit-flash') flashes.push(o as THREE.Mesh); });
   expect(flashes).toHaveLength(4); expect(flashes.every(m => !m.visible)).toBe(true);
   const armor = r.group.children.find(o => o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial
-    && o.material.color.getHexString() === '8056ad') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+    && o.material.color.equals(new THREE.Color(ART.enemyArmory.armor))) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   const door = scene.getObjectByName('tank-landing-ramp')!.children[1] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   const doorColor = door.material.color.clone();
   expect(scene.getObjectByName('defense-tank-turret')!.position.y).toBe(2.4);
@@ -24,7 +25,7 @@ it('keeps purple armor and tall turret while local flash layers pulse; ship door
   r.update(frame, 3045); expect(material.opacity).toBeLessThan(initialOpacity);
   const pausedOpacity = material.opacity; r.update(frame, 3045); expect(material.opacity).toBe(pausedOpacity);
   tank.phase = 3; tank.hp = 1950; tank.lastHitAtSeconds = frame.elapsedSeconds = 3.1; r.update(frame, 3100);
-  expect(flashes.every(m => !m.visible)).toBe(true); expect(armor.material.color.getHexString()).toBe('8056ad');
+  expect(flashes.every(m => !m.visible)).toBe(true); expect(armor.material.color).toEqual(new THREE.Color(ART.enemyArmory.armor));
   expect(door.material.color).toEqual(doorColor); expect(door.material.emissive.getHex()).toBe(0);
   r.presentGrenade([{ kind: 'grenadeDetonated', x: 0, z: 40, radius: 4, victims: [], tankDamage: 9 }], 3100);
   r.update(frame, 3100); expect(material.opacity).toBeGreaterThan(initialOpacity);
@@ -32,7 +33,7 @@ it('keeps purple armor and tall turret while local flash layers pulse; ship door
   r.restore(frame, 3280); r.update(frame, 3280); expect(flashes.every(m => !m.visible)).toBe(true);
   expect(scene.children).toEqual(children);
   tank.status = 'defeated'; tank.hp = 0; r.update(frame, 3500);
-  r.reset(); expect(armor.material.color.getHexString()).toBe('8056ad');
+  r.reset(); expect(armor.material.color).toEqual(new THREE.Color(ART.enemyArmory.armor));
   r.dispose(); expect(scene.children).toHaveLength(0);
 });
 it('shows the landing ramp, doors and articulated tank, and freezes movement and recoil at the same simulation time', () => {

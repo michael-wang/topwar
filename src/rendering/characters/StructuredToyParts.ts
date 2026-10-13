@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { toyClothBand } from './ToyCombatGear';
 
 // Organic padding stays curved; a straight middle gives the jacket structure.
 export function paddedBarrel(rx: number, height: number, rz: number, y: number, capHeight: number,
@@ -12,20 +11,6 @@ export function paddedBarrel(rx: number, height: number, rz: number, y: number, 
   const p = geometry.getAttribute('position');
   for (let i = 0; i < p.count; i++) if (Math.abs(p.getY(i) - y) < .00001) p.setY(i, waistY);
   return geometry;
-}
-
-// Remap only Heavy's diagonal webbing to the capsule surface. Player/Grunt's
-// ellipsoidal cloth helper remains untouched and their rendered pixels stay fixed.
-export function heavyWebHarness(): THREE.BufferGeometry {
-  const geometry = toyClothBand(.34, .24, .275, .35, Math.PI / 2, .18, -.85);
-  const p = geometry.getAttribute('position');
-  for (let i = 0; i < p.count; i++) {
-    const a = Math.atan2(p.getX(i) / .358, p.getZ(i) / .293);
-    const cap = Math.max(0, Math.abs(p.getY(i) - .35) - .14) / .10;
-    const radius = Math.sqrt(Math.max(.02, 1 - cap * cap));
-    p.setXYZ(i, Math.sin(a) * (.34 * radius + .022), p.getY(i), Math.cos(a) * (.275 * radius + .022));
-  }
-  geometry.computeVertexNormals(); return geometry;
 }
 
 function canvasBlock(w: number, h: number, depth: number, radius: number, taper = 1): THREE.BufferGeometry {

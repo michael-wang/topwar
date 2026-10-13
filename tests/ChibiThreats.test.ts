@@ -58,7 +58,7 @@ it('keeps Heavy independent of Grunt and synthetic resources at 650 ms with mode
   expect(width).toBeGreaterThan(1.55); expect(width).toBeLessThan(1.81);
   expect(heavy).not.toHaveProperty('weapon'); heavy.dispose(); grunt.dispose();
 });
-it('uses dedicated Giant body, rounded crest and maul rather than another role family', () => {
+it('uses a dedicated siege-machine body, sensor head and ram rather than another role family', () => {
   const giant = createChibiGiantFamily(), heavy = createChibiHeavyFamily(), grunt = createChibiGruntFamily(), legacy = characterFamilies();
   for (const other of [heavy, grunt, legacy.giant]) {
     expect(giant.body.geometry).not.toBe(other.body.geometry);

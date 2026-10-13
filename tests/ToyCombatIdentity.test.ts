@@ -30,7 +30,7 @@ it('keeps coarse cloth triangles outside the smooth body so straps do not become
   band.dispose();
 });
 
-it('authors trouser lobes and restrained role gear inside the owning reference/run body meshes', () => {
+it('authors lower clothing/leg panels and role equipment inside owning reference/run body meshes', () => {
   for (const [create, trousers, gear] of [
     [createChibiPlayerFamily, COMBAT_COLORS.player.trousers, [COMBAT_COLORS.player.gear]],
     [createChibiGruntFamily, ART.raider.shorts, Object.values(COMBAT_COLORS.grunt)],
@@ -42,7 +42,7 @@ it('authors trouser lobes and restrained role gear inside the owning reference/r
     for (const body of bodies) {
       const pants = region(body.geometry,trousers);
       expect(pants.min.x).toBeLessThan(-.15); expect(pants.max.x).toBeGreaterThan(.15);
-      expect(pants.min.y).toBeLessThan(.20); expect(pants.max.y).toBeLessThan(.42);
+      expect(pants.min.y).toBeLessThan(.20); expect(pants.max.y).toBeLessThan(family.role === 'giant' ? .48 : .42);
       for (const value of gear) expect(region(body.geometry,value).isEmpty()).toBe(false);
     }
     if (family.role === 'player') {
@@ -54,17 +54,18 @@ it('authors trouser lobes and restrained role gear inside the owning reference/r
   }
 });
 
-it('gives Heavy its own broad curved diagonal harness and two hip masses, distinct from Grunt field gear', () => {
+it('gives Heavy a front plate and broad shoulder armor distinct from Grunt field gear', () => {
   const heavy=createChibiHeavyFamily(), grunt=createChibiGruntFamily();
   const harness=region(heavy.body.geometry,COMBAT_COLORS.heavy.harness);
   expect(harness.min.x).toBeLessThan(-.20); expect(harness.max.x).toBeGreaterThan(.20);
-  expect(harness.min.y).toBeLessThan(.20); expect(harness.max.y).toBeGreaterThan(.50);
+  expect(harness.min.y).toBeGreaterThan(.24); expect(harness.max.y).toBeGreaterThan(.50);
   expect(harness.max.y).toBeLessThan(.61);
-  const pouches=region(heavy.body.geometry,COMBAT_COLORS.heavy.pouch);
-  expect(pouches.min.x).toBeLessThan(-.30); expect(pouches.max.x).toBeGreaterThan(.30);
-  expect(pouches.min.x).toBeGreaterThan(-.38); expect(pouches.max.x).toBeLessThan(.38);
-  expect(pouches.min.z).toBeGreaterThan(.16); // Attached lower-front equipment, inside fist width.
-  expect(pouches.max.y).toBeLessThan(.34);
+  const shoulders=region(heavy.body.geometry,ART.enemyArmory.steel);
+  expect(shoulders.min.x).toBeLessThan(-.50); expect(shoulders.max.x).toBeGreaterThan(.50);
+  expect(shoulders.max.y).toBeGreaterThan(.60);
+  expect(harness.max.z).toBeGreaterThan(.30);
+  const visor=region(heavy.helmet.geometry,ART.enemyArmory.warning);
+  expect(visor.getSize(new THREE.Vector3()).x).toBeGreaterThan(.45);
   const canteen=region(grunt.body.geometry,COMBAT_COLORS.grunt.canteen);
   expect(canteen.max.x).toBeLessThan(0);
   expect(region(grunt.body.geometry,COMBAT_COLORS.heavy.harness).isEmpty()).toBe(true);
