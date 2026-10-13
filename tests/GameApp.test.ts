@@ -101,7 +101,7 @@ vi.mock('../src/ui/TankBossHud', () => ({ TankBossHud: class { update = tankUi.u
 vi.mock('../src/ui/TankEntranceHud', () => ({ TankEntranceHud: class { update = vi.fn(); restore = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
 vi.mock('../src/ui/StageClearOverlay', () => ({ StageClearOverlay: class {
   constructor(_viewport: unknown, replay: () => void) { tankUi.replay = replay; }
-  show = tankUi.show; update = vi.fn(); reset = tankUi.reset; dispose = vi.fn();
+  show = tankUi.show; reset = tankUi.reset; dispose = vi.fn();
 } }));
 
 vi.mock('../src/simulation/Simulation', () => ({

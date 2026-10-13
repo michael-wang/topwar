@@ -176,65 +176,63 @@
 }
 .tank-boss-hud[data-phase="3"] .tank-boss-fill { background: #ff2518; }
 .stage-clear-overlay { position:absolute; inset:0; z-index:35; pointer-events:none;
-  color:#fff3dc; font-family:var(--font-combat-display);
-  background:linear-gradient(#1423321a, transparent 28%, transparent 52%, #14233240); }
-.stage-clear-title { position:absolute; top:calc(var(--hud-inset-top, 0px) + 76px);
-  left:var(--hud-safe-left, 18px); right:var(--hud-safe-right, 18px); margin:0; padding:8px 0 12px;
-  overflow:hidden; text-align:center; font-size:clamp(30px, 8.6vw, 40px); line-height:1.15;
-  letter-spacing:.035em; color:#ffdb78; text-shadow:0 3px #142332, 0 0 16px #f7cd7655;
-  animation:stage-clear-pop .5s cubic-bezier(.18,.8,.3,1) both; }
-.stage-clear-title::before { content:''; position:absolute; bottom:0; left:calc(50% - 44px);
-  width:88px; height:3px; background:linear-gradient(90deg,transparent,#ffdb78,transparent); }
+  color:#fff3dc; font-family:var(--font-combat-display); text-shadow:2px 2px 1px #07121c, 0 1px 5px #000;
+  background:linear-gradient(#0006, #0004 18%, #0004 48%, #0007 75%, #0007);
+  animation:stage-clear-dim .35s ease-out both; }
+.stage-clear-title { position:absolute; top:max(6%, calc(var(--hud-inset-top, 0px) + 12px));
+  left:6%; right:6%; margin:0; padding:8px 0 12px; overflow:hidden; text-align:center;
+  font-size:clamp(38px, 11.7vw, 54px); line-height:1.15; letter-spacing:.025em; color:#ffdb78;
+  text-shadow:0 4px #142332, 2px 0 #142332, -2px 0 #142332, 0 0 18px #f7cd7655;
+  animation:stage-clear-pop .45s .08s cubic-bezier(.18,.8,.3,1) both; }
 .stage-clear-title::after { content:''; position:absolute; inset:0;
   background:linear-gradient(110deg,transparent 35%,#fff3dc66 50%,transparent 65%);
-  transform:translateX(-120%); animation:stage-clear-shine .75s .25s ease-out both; }
-.stage-clear-overlay dl { position:absolute; bottom:calc(var(--hud-inset-bottom, 0px) + 102px);
-  left:var(--hud-safe-left, 18px); right:var(--hud-safe-right, 18px);
-  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px;
-  max-width:360px; margin:0 auto; padding:0; }
-.stage-clear-stat { min-width:0; padding:9px 12px; border:1px solid #d7dfd655;
-  border-radius:5px 10px 5px 8px; background:#142c3ebd; box-shadow:inset 0 1px #ffffff14;
-  animation:stage-clear-reveal .3s ease-out both; animation-delay:calc(.3s + var(--result-order) * .065s); }
-.stage-clear-overlay dt { font:700 12px/1.35 var(--font-utility, sans-serif); color:#e0e8e7; }
-.stage-clear-overlay dd { margin:3px 0 0; font-size:20px; line-height:1.15; font-weight:900;
-  font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
-.stage-clear-stat:nth-child(-n+2) dd { font-size:26px; color:#ffdb78; }
-.stage-clear-stat:nth-child(3) { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.stage-clear-stat:nth-child(3) dd { margin:0; font-size:18px; text-align:right; }
-.stage-clear-overlay[data-layout="upper"] dl { top:calc(var(--hud-inset-top, 0px) + 148px); bottom:auto; gap:6px; }
-.stage-clear-overlay[data-layout="upper"] .stage-clear-stat { display:flex; align-items:center;
-  justify-content:space-between; gap:6px; padding:8px; }
-.stage-clear-overlay[data-layout="upper"] dt { font-size:11px; }
-.stage-clear-overlay[data-layout="upper"] dd { margin:0; font-size:18px; text-align:right; }
-.stage-clear-overlay[data-layout="upper"] .stage-clear-stat:nth-child(-n+2) dd { font-size:22px; }
-/* Only the settled victory screen retires combat HUD clutter; Retry restores it. */
+  transform:translateX(-120%); animation:stage-clear-shine .7s .3s ease-out both; }
+.stage-clear-overlay dl { position:absolute; inset:0; margin:0; padding:0; }
+.stage-clear-stat { position:absolute; width:45%; min-width:0; padding:0; margin:0;
+  animation:stage-clear-reveal .35s ease-out both; }
+.stage-clear-overlay dt { font:700 clamp(12px, 3.5vw, 14px)/1.3 var(--font-utility, sans-serif); }
+.stage-clear-overlay dd { margin:1px 0 0; font-size:clamp(38px, 11.5vw, 48px); line-height:1.05;
+  font-weight:900; font-variant-numeric:tabular-nums; letter-spacing:-.025em; overflow-wrap:anywhere; }
+.stage-clear-stat[data-result="0"] { left:8%; top:50.5%; color:#ffdb78; animation-delay:.55s; }
+.stage-clear-stat[data-result="1"] { left:11%; top:60.5%; animation-delay:.85s; }
+.stage-clear-stat[data-result="5"] { left:8%; top:70.5%; color:#ffdb78; animation-delay:1.15s; }
+.stage-clear-stat[data-result="2"] { left:8%; top:79.7%; width:46%; animation-delay:1.45s; }
+.stage-clear-stat[data-result="2"] dt { font-size:clamp(10px, 2.9vw, 12px); white-space:nowrap; }
+.stage-clear-stat[data-result="2"] dd { font-size:18px; margin-top:3px; letter-spacing:0; }
+.stage-clear-stat:is([data-result="3"],[data-result="4"],[data-result="6"]) {
+  top:85.4%; display:flex; gap:4px; align-items:baseline; animation-delay:1.5s; }
+.stage-clear-stat[data-result="3"] { left:8%; width:30%; }
+.stage-clear-stat[data-result="4"] { left:40%; width:30%; }
+.stage-clear-stat[data-result="6"] { left:72%; width:24%; }
+.stage-clear-stat:is([data-result="3"],[data-result="4"],[data-result="6"]) dt { font-size:clamp(10px, 2.9vw, 12px); white-space:nowrap; }
+.stage-clear-stat:is([data-result="3"],[data-result="4"],[data-result="6"]) dd { margin:0; font-size:14px; letter-spacing:0; }
+.stage-clear-illustration { position:absolute; left:55%; top:51%; width:40%; height:30%;
+  object-fit:contain; object-position:right bottom; pointer-events:none; user-select:none;
+  animation:stage-clear-reveal .4s 1.65s ease-out both; }
+/* Only the settled victory poster hides combat HUD clutter; Retry restores it. */
 #game-viewport:has(> .stage-clear-overlay:not([hidden])) :is(.combat-control-strip, .battle-info, .grenade-button) {
   visibility:hidden; pointer-events:none;
 }
-.stage-clear-overlay button { position:absolute; bottom:calc(var(--hud-inset-bottom, 0px) + 24px);
-  left:50%; width:min(230px, 75%); min-height:56px; padding:12px 22px; transform:translateX(-50%);
-  pointer-events:auto; touch-action:manipulation; font:900 21px var(--font-combat-display);
+.stage-clear-overlay button { position:absolute; bottom:max(3%, calc(var(--hud-inset-bottom, 0px) + 6px));
+  left:50%; width:min(250px, 72%); min-height:50px; height:6.5%; padding:8px 20px; transform:translateX(-50%);
+  pointer-events:auto; touch-action:manipulation; font:900 22px var(--font-combat-display);
   color:#142332; background:linear-gradient(#ffe49b,#ffca60); border:2px solid #fff3dc;
   border-radius:6px 13px 6px 11px; box-shadow:0 4px #142332, inset 0 2px #ffffff88; cursor:pointer;
-  animation:stage-clear-cta .35s .65s ease-out both; }
+  animation:stage-clear-cta .35s 2.05s ease-out both; }
 .stage-clear-overlay button:active { background:#ffca60; box-shadow:0 1px #142332; }
 .stage-clear-overlay button:focus-visible { outline:3px solid #fff3dc; outline-offset:4px; }
+@keyframes stage-clear-dim { from { opacity:0; } to { opacity:1; } }
 @keyframes stage-clear-pop {
-  from { opacity:0; transform:translateY(12px) scale(.78); }
-  65% { opacity:1; transform:translateY(0) scale(1.055); }
+  from { opacity:0; transform:translateY(8px) scale(.72); }
+  65% { opacity:1; transform:translateY(0) scale(1.07); }
   to { opacity:1; transform:none; }
 }
 @keyframes stage-clear-shine { from { transform:translateX(-120%); } to { transform:translateX(120%); } }
-@keyframes stage-clear-reveal { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-@keyframes stage-clear-cta { from { opacity:.7; transform:translateX(-50%) translateY(6px); } to { opacity:1; transform:translateX(-50%); } }
-.game-paused .stage-clear-title, .game-paused .stage-clear-title::after,
-.game-paused .stage-clear-stat, .game-paused .stage-clear-overlay button { animation-play-state:paused; }
-@media (max-height: 680px) {
-  .stage-clear-title { top:calc(var(--hud-inset-top, 0px) + 58px); font-size:28px; padding-block:6px 8px; }
-  .stage-clear-stat { padding:6px 10px; }
-  .stage-clear-overlay[data-layout="upper"] dl { top:calc(var(--hud-inset-top, 0px) + 112px); }
-}
+@keyframes stage-clear-reveal { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes stage-clear-cta { from { opacity:0; visibility:hidden; transform:translateX(-50%) translateY(6px); } to { opacity:1; visibility:visible; transform:translateX(-50%); } }
+.game-paused .stage-clear-overlay, .game-paused .stage-clear-title, .game-paused .stage-clear-title::after,
+.game-paused .stage-clear-stat, .game-paused .stage-clear-illustration, .game-paused .stage-clear-overlay button { animation-play-state:paused; }
 @media (prefers-reduced-motion: reduce) {
-  .stage-clear-title, .stage-clear-stat, .stage-clear-overlay button { animation:none; }
+  .stage-clear-overlay, .stage-clear-title, .stage-clear-stat, .stage-clear-illustration, .stage-clear-overlay button { animation:none; }
   .stage-clear-title::after { display:none; }
 }

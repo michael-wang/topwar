@@ -65,6 +65,7 @@ export class GameApp {
   private readonly tankEntranceHud: TankEntranceHud;
   private readonly stageClearOverlay: StageClearOverlay;
   private tankDeathAtMs: number | null = null;
+  private stageClearAtMs: number | null = null;
   private tankDeathCue = -1;
   private readonly damageFlash: DamageFlashOverlay;
   private readonly audio: GameAudio;
@@ -325,6 +326,7 @@ export class GameApp {
     this.hudActions.setPaused(this.paused);
     this.gameOverOverlay.setVisible(false);
     this.tankBossHud.reset(); this.stageClearOverlay.reset(); this.tankDeathAtMs = null; this.tankDeathCue = -1;
+    this.stageClearAtMs = null;
     this.tankEntranceHud.reset();
     this.damageFlash.reset();
     this.fieldObserver?.reset();
@@ -535,6 +537,7 @@ export class GameApp {
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
         this.tankDeathAtMs = s.defenseTank?.status === 'defeated' ? -TANK_DEATH_MS : null;
+        this.stageClearAtMs = null;
         this.tankDeathCue = s.defenseTank?.status === 'defeated' ? TANK_EXPLOSION_TIMES_MS.length - 1 : -1;
         this.restored = true; this.startup = 'started'; this.setPaused(true);
         this.qaSession=!!c.qa;this.qaSleepActive=c.qa?.armed??false;
@@ -763,8 +766,10 @@ export class GameApp {
           this.audio.play(i === times.length - 1 ? 'giantDeath' : 'grenadeExplosion'); this.tankDeathCue = i;
         }
         if (age >= TANK_DEATH_MS && (this.fieldObserver?.updateVictory(this.presentationMs / 1000, this.paused) ?? true)
-          && state.combatStats)
+          && state.combatStats) {
+          this.stageClearAtMs ??= this.presentationMs;
           this.stageClearOverlay.show(state.combatStats, state.defenseTank!.defeatedAtSeconds!);
+        }
       }
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);
@@ -801,6 +806,7 @@ export class GameApp {
         squadCount: state.squad.count,
         paused: this.paused,
         musicVolume: this.runtimeTuning.musicVolume,
+        victorySeconds: this.stageClearAtMs === null ? null : (this.presentationMs - this.stageClearAtMs) / 1000,
         tank: state.defenseTank ? { status: state.defenseTank.status, phase: state.defenseTank.phase,
           elapsedSeconds: cleared ? (this.presentationMs - this.tankDeathAtMs!) / 1000
             : state.elapsedSeconds - state.defenseTank.startedAtSeconds,
@@ -824,7 +830,6 @@ export class GameApp {
       this.renderer.render(renderState, this.presentationMs);
       const tankHealthPosition = this.renderer.projectTankHealthPosition();
       this.tankBossHud.update(state, this.presentationMs, tankHealthPosition);
-      if (cleared) this.stageClearOverlay.update(tankHealthPosition);
       this.supplyTransfer?.update(this.presentationMs);
       const renderFinishedMs = perf ? performance.now() : 0;
       if (perf) {

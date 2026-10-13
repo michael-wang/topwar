@@ -19,6 +19,11 @@ export class DefenseTankRenderer {
   private readonly wheelGeometry = new THREE.CylinderGeometry(.47, .47, .25, 10);
   private readonly barrelGeometry = new THREE.CylinderGeometry(.18, .27, 2.7, 10);
   private readonly smokeGeometry = new THREE.SphereGeometry(1, 8, 6);
+  private readonly flameGeometry = new THREE.ConeGeometry(.3, 1, 7);
+  private readonly flameMaterial = new THREE.MeshBasicMaterial({ color: '#ff5f19', transparent: true,
+    opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending });
+  private readonly flameCoreMaterial = new THREE.MeshBasicMaterial({ color: '#ffd36b', transparent: true,
+    opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending });
   private readonly armor = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#8056ad', roughness: .85 }));
   private readonly steel = illustratedMaterial(new THREE.MeshStandardMaterial({ color: '#ded1b3', roughness: .7 }));
   private readonly dark = new THREE.MeshStandardMaterial({ color: '#212631', roughness: .85 });
@@ -40,6 +45,8 @@ export class DefenseTankRenderer {
   private readonly tracks = new THREE.InstancedMesh(this.block, this.dark, 64);
   private readonly wheels = new THREE.InstancedMesh(this.wheelGeometry, this.steel, 12);
   private readonly smoke = new THREE.InstancedMesh(this.smokeGeometry, this.smokeMaterial, 8);
+  private readonly flames = new THREE.InstancedMesh(this.flameGeometry, this.flameMaterial, 3);
+  private readonly flameCores = new THREE.InstancedMesh(this.flameGeometry, this.flameCoreMaterial, 3);
   private readonly scars = new THREE.InstancedMesh(this.block, this.damage, 6);
   private readonly ramp: THREE.Mesh;
   private readonly leftDoor: THREE.Mesh;
@@ -86,8 +93,9 @@ export class DefenseTankRenderer {
         root.add(flash); this.hitMeshes.push(flash);
       }
     }
-    this.group.add(this.turret, this.tracks, this.wheels, this.smoke, this.scars);
-    for (const batch of [this.tracks, this.wheels, this.smoke, this.scars]) {
+    this.flames.name = 'tank-wreck-flames'; this.flameCores.name = 'tank-wreck-fire-cores';
+    this.group.add(this.turret, this.tracks, this.wheels, this.smoke, this.scars, this.flames, this.flameCores);
+    for (const batch of [this.tracks, this.wheels, this.smoke, this.scars, this.flames, this.flameCores]) {
       batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage); batch.frustumCulled = false;
     }
     for (let i = 0; i < 12; i++) {
@@ -170,19 +178,32 @@ export class DefenseTankRenderer {
     }
     this.tracks.instanceMatrix.needsUpdate = true;
     this.smoke.visible = s.status === 'active' || s.status === 'defeated';
-    this.smokeMaterial.opacity = s.status === 'defeated' ? .42 : .3;
+    this.smokeMaterial.opacity = s.status === 'defeated' ? .56 : .3;
+    this.smokeMaterial.color.set(s.status === 'defeated' ? '#282b2d' : '#454137');
     // Combat time freezes on the lethal tick; victory smoke follows the pause-aware presentation clock.
     const smokeAge = age + (s.status === 'defeated' ? Math.max(0, nowMs - this.deathAtMs) / 1000 : 0);
     for (let i = 0; i < 8; i++) {
-      const t = (smokeAge * (s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
-      this.transform.position.set(i % 2 ? -1.35 : 1.35, 2.4 + t * .8, 2 + t * .6);
+      const t = (smokeAge * (s.status === 'defeated' ? .35 : s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
+      this.transform.position.set(i % 2 ? -1.35 : 1.35, 2.4 + t * (s.status === 'defeated' ? 1.5 : .8), 2 + t * .6);
       this.transform.rotation.set(0, i, 0); this.transform.scale.setScalar((.12 + t * .2) * (s.phase === 3 ? 1.6 : 1)
-        * (s.status === 'defeated' ? 1.2 : 1));
+        * (s.status === 'defeated' ? 1.8 : 1));
       this.transform.updateMatrix(); this.smoke.setMatrixAt(i, this.transform.matrix);
     }
     this.smoke.instanceMatrix.needsUpdate = true;
+    this.flames.visible = this.flameCores.visible = s.status === 'defeated';
     if (s.status === 'defeated') {
       const deathAge = nowMs - this.deathAtMs;
+      const fireSeconds = Math.max(0, deathAge / 1000);
+      for (let i = 0; i < 3; i++) {
+        const flicker = 1 + .12 * Math.sin(fireSeconds * 3.1 + i * 2.4);
+        this.transform.position.set(i === 0 ? -1.4 : i === 1 ? 1.4 : .65, 2.35, i === 2 ? -1.9 : 1.55);
+        this.transform.rotation.set(.08 * Math.sin(fireSeconds + i), 0, -.1 * Math.sin(fireSeconds * 1.7 + i));
+        this.transform.scale.set(.85, 1.1 * flicker, .85); this.transform.updateMatrix();
+        this.flames.setMatrixAt(i, this.transform.matrix);
+        this.transform.position.y -= .16; this.transform.scale.multiplyScalar(.58); this.transform.updateMatrix();
+        this.flameCores.setMatrixAt(i, this.transform.matrix);
+      }
+      this.flames.instanceMatrix.needsUpdate = this.flameCores.instanceMatrix.needsUpdate = true;
       for (let i = this.lastBurst + 1; i < TANK_EXPLOSION_TIMES_MS.length && deathAge >= TANK_EXPLOSION_TIMES_MS[i]; i++) {
         const final = i === TANK_EXPLOSION_TIMES_MS.length - 1;
         this.explosions.present(final ? 0 : (i % 3 - 1) * 1.1, s.z + (i % 2 ? 1 : -1), final ? 7 : 3.2,
@@ -205,6 +226,7 @@ export class DefenseTankRenderer {
     if (frame?.state.status === 'defeated') { this.defeated = true; this.deathAtMs = nowMs - TANK_DEATH_MS; this.lastBurst = TANK_EXPLOSION_TIMES_MS.length - 1; }
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
+    this.flames.visible = this.flameCores.visible = false;
     this.armor.color.set('#8056ad');
     this.shock.visible = false; this.entranceAtMs = -Infinity;
     this.hitAtMs = -Infinity; this.observedHit = null; this.hitFlash.opacity = 0;
@@ -213,8 +235,9 @@ export class DefenseTankRenderer {
   dispose(): void {
     this.scene.remove(this.group, this.landing, this.shock); this.explosions.dispose();
     this.shock.geometry.dispose(); this.shock.material.dispose();
-    for (const batch of [this.tracks, this.wheels, this.smoke, this.scars]) batch.dispose();
-    for (const g of [this.block, this.wheelGeometry, this.barrelGeometry, this.smokeGeometry, ...this.merged]) g.dispose();
-    for (const m of [this.armor, this.steel, this.dark, this.accent, this.landingArmor, this.hitFlash, this.damage, this.smokeMaterial]) m.dispose();
+    for (const batch of [this.tracks, this.wheels, this.smoke, this.scars, this.flames, this.flameCores]) batch.dispose();
+    for (const g of [this.block, this.wheelGeometry, this.barrelGeometry, this.smokeGeometry, this.flameGeometry, ...this.merged]) g.dispose();
+    for (const m of [this.armor, this.steel, this.dark, this.accent, this.landingArmor, this.hitFlash, this.damage, this.smokeMaterial,
+      this.flameMaterial, this.flameCoreMaterial]) m.dispose();
   }
 }

@@ -36,7 +36,7 @@ export class ProceduralMusic {
       return node;
     };
     this.filters = { pad: filter(1200), bass: filter(700),
-      motif: filter(1900), drum: filter(900) };
+      motif: filter(1900), drum: filter(900), brass: filter(2600) };
   }
 
   get activeVoiceCount(): number { return this.active.size; }
@@ -48,12 +48,13 @@ export class ProceduralMusic {
     const changed = this.lastState !== state;
     if (changed && this.lastState !== null) this.releaseVoices(this.context.currentTime);
     this.lastState = state;
-    const musicMs = state === 'VICTORY' && frame.tank ? frame.tank.elapsedSeconds * 1000 : isBossMusic(state) && frame.tank
+    const musicMs = state === 'VICTORY' ? (frame.victorySeconds ?? frame.tank?.elapsedSeconds ?? presentationMs / 1000) * 1000 : isBossMusic(state) && frame.tank
       ? Math.max(0, frame.tank.elapsedSeconds - (state === 'BOSS_INTRO' ? 0 : frame.tank.entrySeconds)) * 1000 : presentationMs;
     const stepMs = musicStepMs(state);
     const volume = Math.max(0, Math.min(MUSIC_MAX_VOLUME, frame.musicVolume));
     const now = this.context.currentTime;
-    const silent = frame.paused || state === 'GAME_OVER' || volume === 0;
+    const silent = frame.paused || state === 'GAME_OVER' || volume === 0
+      || state === 'VICTORY' && frame.victorySeconds === null;
     const target = silent ? 0 : volume * (state === 'BOSS_INTRO' ? .55 : state === 'VICTORY' ? .65 : 1);
     if (volume === 0) {
       this.bus.gain.cancelScheduledValues(now);
@@ -132,10 +133,21 @@ export class ProceduralMusic {
     const elapsedInBarSeconds = (presentationMs - barStartStep * stepMs) / 1000;
     const remaining = Math.max(.4, stepMs * MUSIC_STEPS_PER_BAR / 1000 - elapsedInBarSeconds + .32);
     for (const event of musicEventsForStep(this.seed, barStartStep, state)) {
-      if (event.instrument === 'pad') this.schedule({ ...event, durationSeconds: remaining }, startSeconds);
+      if (event.instrument === 'pad') this.schedule({ ...event, durationSeconds: state === 'VICTORY'
+        ? Math.max(.05, event.durationSeconds - elapsedInBarSeconds) : remaining }, startSeconds);
     }
     if (isBossMusic(state)) for (const event of musicEventsForStep(this.seed, step, state))
       if (event.instrument !== 'pad') this.schedule(event, startSeconds);
+    if (state === 'VICTORY') {
+      // Resume the held brass note at this phrase position instead of leaving a gap at a sustain step.
+      for (let previous = step; previous >= Math.max(0, step - 7); previous--) {
+        const elapsed = (presentationMs - previous * stepMs) / 1000;
+        const events = musicEventsForStep(this.seed, previous, state);
+        for (const event of events) if (event.instrument !== 'pad' && event.durationSeconds > elapsed + .06)
+          this.schedule({ ...event, durationSeconds: event.durationSeconds - elapsed }, startSeconds);
+        if (events.some(event => event.instrument === 'brass')) break;
+      }
+    }
   }
 
   private schedule(event: MusicEvent, start: number): void {
@@ -143,11 +155,13 @@ export class ProceduralMusic {
       ? [[1, 'triangle', .7], [1.004, 'sawtooth', .3]] as const
       : event.instrument === 'bass'
         ? [[1, 'sine', .65], [2, 'triangle', .35]] as const
-        : event.instrument === 'drum' ? [[1, 'sine', 1]] as const : [[1, 'triangle', 1]] as const;
+        : event.instrument === 'drum' ? [[1, 'sine', 1]] as const
+          : event.instrument === 'brass' ? [[1, 'sawtooth', .4], [1.003, 'triangle', .4], [2, 'triangle', .2]] as const
+            : [[1, 'triangle', 1]] as const;
     if (this.active.size + voices.length > MAX_MUSIC_VOICES) return;
     const end = start + event.durationSeconds;
     const attack = event.instrument === 'pad' ? .25
-      : event.instrument === 'bass' ? .016 : event.instrument === 'drum' ? .005 : .012;
+      : event.instrument === 'brass' ? .045 : event.instrument === 'bass' ? .016 : event.instrument === 'drum' ? .005 : .012;
     const release = event.instrument === 'pad' ? .48
       : event.instrument === 'bass' ? .28 : event.instrument === 'drum' ? .12 : .2;
     for (const [ratio, wave, share] of voices) {

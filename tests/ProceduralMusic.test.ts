@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GameAudio } from '../src/audio/GameAudio';
 import { MAX_MUSIC_VOICES, MUSIC_LOOKAHEAD_SECONDS, ProceduralMusic } from '../src/audio/ProceduralMusic';
-import { BOSS_MUSIC_BPM, MUSIC_BAR_SECONDS, MUSIC_BPM, MUSIC_STEP_MS, MUSIC_STEPS_PER_BAR, musicEventsForStep, musicHarmonyForBar, musicMotifVariant, musicPhraseIntensity, musicStateFor, musicStepAt, musicStepMs, type MusicFrame, type MusicState } from '../src/audio/MusicComposition';
+import { BOSS_MUSIC_BPM, VICTORY_MUSIC_BPM, VICTORY_THEME_STEPS, MUSIC_BAR_SECONDS, MUSIC_BPM, MUSIC_STEP_MS, MUSIC_STEPS_PER_BAR, musicEventsForStep, musicHarmonyForBar, musicMotifVariant, musicPhraseIntensity, musicStateFor, musicStepAt, musicStepMs, type MusicFrame, type MusicState } from '../src/audio/MusicComposition';
 
 const normal: MusicFrame = { squadCount: 3,
   paused: false, musicVolume: .22 };
@@ -61,9 +61,9 @@ describe('original procedural battlefield composition', () => {
     expect(phrase('BOSS_INTRO').every(e => e.instrument === 'pad' || e.instrument === 'bass')).toBe(true);
     expect(['BOSS_1', 'BOSS_2', 'BOSS_3'].map(state => phrase(state as MusicState).filter(e => e.instrument === 'drum').length)).toEqual([2, 4, 8]);
     expect(['BOSS_1', 'BOSS_2', 'BOSS_3'].map(state => phrase(state as MusicState).filter(e => e.instrument === 'motif').length)).toEqual([6, 8, 10]);
-    expect(musicEventsForStep(17, 0, 'VICTORY').map(e => e.instrument)).toEqual(['pad', 'pad', 'pad', 'motif']);
+    expect(musicEventsForStep(17, 0, 'VICTORY').map(e => e.instrument)).toEqual(['pad', 'pad', 'pad', 'bass', 'brass']);
   });
-  it('follows the saved Tank clock and phase, freezes on Pause, resumes and changes to a quiet victory salute with bounded voices', () => {
+  it('follows the saved Tank clock and phase, freezes on Pause, resumes and changes to victory with bounded voices', () => {
     const { context, gains, filters, advance } = audioHarness();
     const music = new ProceduralMusic(context as unknown as AudioContext, context.createGain() as unknown as GainNode, 17);
     const boss: MusicFrame = { ...normal, tank: { status: 'entering', phase: 1, elapsedSeconds: 0, entrySeconds: 2.5 } };
@@ -90,7 +90,7 @@ describe('original procedural battlefield composition', () => {
       }
     }
     expect(music.activeVoiceCount).toBeGreaterThan(0);
-    boss.tank!.status = 'defeated'; advance(music, 0, boss, 21.1);
+    boss.tank!.status = 'defeated'; boss.victorySeconds = 0; advance(music, 0, boss, 21.1);
     expect(musicStateFor(boss)).toBe('VICTORY');
     expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22 * .65, 21.1, .05);
     advance(music, 0, boss, 21.3); expect(music.activeVoiceCount).toBeGreaterThan(0);
@@ -174,7 +174,7 @@ describe('original procedural battlefield composition', () => {
     expect(context.createOscillator).not.toHaveBeenCalled();
     expect(music.bus).toBe(gains[1]);
     expect(gains[1].connect).toHaveBeenCalledWith(master);
-    expect(filters.map((filter) => filter.frequency.value)).toEqual([1200, 700, 1900, 900]);
+    expect(filters.map((filter) => filter.frequency.value)).toEqual([1200, 700, 1900, 900, 2600]);
     advance(music, 0);
     expect(gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(.22, 0, .07);
     expect(oscillators).toHaveLength(6); // Three pad tones, two oscillators each.
@@ -244,4 +244,45 @@ describe('original procedural battlefield composition', () => {
       audio.dispose();
     } finally { vi.unstubAllGlobals(); }
   });
+});
+
+it('plays an original twenty-second victory melody with a resolved soft ending, never repeating battle music', () => {
+  expect(VICTORY_MUSIC_BPM).toBe(96);
+  expect(VICTORY_THEME_STEPS * musicStepMs('VICTORY') / 1000).toBe(20);
+  const events = Array.from({ length: VICTORY_THEME_STEPS }, (_, step) => musicEventsForStep(17, step, 'VICTORY')).flat();
+  const melody = events.filter(e => e.instrument === 'brass');
+  expect(melody.length).toBeGreaterThan(30);
+  expect(new Set(melody.map(e => e.frequencyHz)).size).toBeGreaterThan(8);
+  expect(events.some(e => e.instrument === 'drum')).toBe(false);
+  expect(Math.round(69 + 12 * Math.log2(melody.at(-1)!.frequencyHz / 440))).toBe(65); // F-major resolution.
+  expect(musicEventsForStep(17, 64, 'VICTORY').every(e => e.instrument === 'pad' && e.peakGain < .06)).toBe(true);
+  expect(musicEventsForStep(17, 65, 'VICTORY')).toEqual([]);
+  expect(musicEventsForStep(17, 128, 'VICTORY')).toEqual([]);
+});
+
+it('waits for the victory speech to finish, follows the results clock across Pause/Resume, and releases its voices', () => {
+  const { context, oscillators, advance } = audioHarness();
+  const music = new ProceduralMusic(context as unknown as AudioContext, context.createGain() as unknown as GainNode);
+  const frame: MusicFrame = { ...normal, victorySeconds: null,
+    tank: { status: 'defeated', phase: 3, elapsedSeconds: 0, entrySeconds: 2.5 } };
+  advance(music, 0, frame); advance(music, 12000, frame, 12);
+  expect(oscillators).toHaveLength(0);
+  frame.victorySeconds = 0; advance(music, 12000, frame, 12);
+  expect(music.currentStepIndex).toBe(0); expect(oscillators.some(o => o.type === 'sawtooth')).toBe(true);
+  for (let ms = 50; ms <= 25000; ms += 50) {
+    frame.victorySeconds = ms / 1000; advance(music, 12000 + ms, frame, 12 + ms / 1000);
+    expect(music.activeVoiceCount).toBeLessThanOrEqual(MAX_MUSIC_VOICES);
+    if (ms === 3000) {
+      advance(music, 15000, { ...frame, paused: true }, 30);
+      const step = music.currentStepIndex;
+      advance(music, 15000, { ...frame, paused: true }, 32); expect(music.currentStepIndex).toBe(step);
+      const previousVoices = oscillators.length;
+      advance(music, 15000, frame, 32); expect(music.currentStepIndex).toBe(musicStepAt(3000, 'VICTORY'));
+      expect(oscillators.slice(previousVoices).some(o => o.type === 'sawtooth'
+        && Math.abs(o.frequency.setValueAtTime.mock.lastCall![0] - 440 * 2 ** ((74 - 69) / 12)) < .01)).toBe(true);
+    }
+  }
+  expect(music.activeVoiceCount).toBe(0);
+  music.reset(); advance(music, 0, { ...frame, victorySeconds: 0 }, 40);
+  expect(music.currentStepIndex).toBe(0); music.dispose(); expect(music.activeVoiceCount).toBe(0);
 });
