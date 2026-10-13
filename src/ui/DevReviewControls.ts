@@ -1,5 +1,4 @@
 import { PLAYTEST_ENTRIES, type PlaytestScene } from '../app/PlaytestScenarios';
-export { PLAYTEST_ENTRIES } from '../app/PlaytestScenarios';
 
 // Shared closed-playtest menu; engineering presets have no buttons.
 export class DevReviewControls {

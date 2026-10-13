@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const AIRSTRIKE_FX = { slots: 9, durationMs: 5600, radius: 4.8 } as const;
+const AIRSTRIKE_FX = { slots: 9, durationMs: 5600, radius: 4.8 } as const;
 /** Nine reusable impacts: solid fire lobes and eight smoke puffs, no per-victim objects. */
 export class HeavyAirstrikeExplosion {
   private readonly sphere = new THREE.SphereGeometry(1, 9, 6);
@@ -31,14 +31,15 @@ export class HeavyAirstrikeExplosion {
   }
   present(index: number, x: number, z: number, at: number): void { Object.assign(this.slots[index % AIRSTRIKE_FX.slots], { x, z, at }); }
   update(now: number, originZ: number): void {
+    const durationSeconds = AIRSTRIKE_FX.durationMs / 1000;
     for (const s of this.slots) {
       const t = (now - s.at) / 1000, r = AIRSTRIKE_FX.radius, x = -s.x, z = s.z - originZ;
-      for (const m of s.meshes) m.visible = t >= 0 && t < 5.6;
-      if (t < 0 || t >= 5.6) continue;
+      for (const m of s.meshes) m.visible = t >= 0 && t < durationSeconds;
+      if (t < 0 || t >= durationSeconds) continue;
       s.core.visible = t < .45; s.fire.visible = t < 1; s.dust.visible = t < 1.4; s.shock.visible = t < .6;
       s.core.position.set(x, 2.5, z); s.core.scale.setScalar(r * (.22 + .32 * Math.min(1, t / .18)));
       s.mats[0].opacity = Math.max(0, 1 - t / .45); s.mats[1].opacity = Math.max(0, 1 - t);
-      s.mats[2].opacity = Math.min(1, t / .4) * .8 * Math.min(1, (5.6 - t) / 1.5);
+      s.mats[2].opacity = Math.min(1, t / .4) * .8 * Math.min(1, (durationSeconds - t) / 1.5);
       s.mats[3].opacity = .45 * Math.max(0, 1 - t / 1.4); s.mats[4].opacity = .85 * Math.max(0, 1 - t / .6);
       s.shock.position.set(x, .1, z); s.shock.scale.setScalar(r * (1 + t * 2.3));
       for (let i = 0; i < 10; i++) {

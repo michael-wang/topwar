@@ -20,7 +20,9 @@ Local Vite and the GitHub Pages closed-playtest build share one hatch with four 
 
 ## Current game
 
-Rifle levels 1–5 lead to MG levels 6–10. Lv4 introduces the Giant. Lv6 starts the 3.2-second Carnival and persistent Destroyer entrance. AHEAD Survival takes over at +3.2 seconds, with its first mixed wave at +4.2 seconds. At Lv9, the giant Tank Boss lands in 2.5 seconds and takes over with three HP phases, artillery and flank troops. Its own battle theme builds across phases; defeating it leaves a wreck, plays a skippable upper Commander victory communication after the explosions, then shows 第一關通關！, Traditional Chinese combat results and 再玩一次. Golden Grenades accumulate without a gameplay inventory cap.
+Rifle levels 1–5 lead to MG levels 6–10. Lv4 introduces the Giant. Lv6 starts the 3.2-second Carnival and persistent Destroyer entrance. AHEAD Survival takes over at +3.2 seconds, with its first mixed wave at +4.2 seconds. At Lv9, the giant Tank Boss lands in 2.5 seconds and takes over with three HP phases, artillery and flank troops. The user-provided family-original 135.302-second `boss-theme.mp3` starts at INTRO and loops continuously through phases 1/2/3 without restarting; defeating it leaves a wreck, plays a skippable upper Commander victory communication after the explosions, then shows 第一關通關！, Traditional Chinese combat results and 再玩一次. Golden Grenades accumulate without a gameplay inventory cap.
+
+Air support is once per battle, only with an Active Phase 3 Tank: HP ≤ 1000 or either flank Heavy/Giant has actual defense-line ETA ≤ 9.5 seconds. It deals at most one 500-HP Tank hit, preserving at least 150 HP without healing a Tank already below that value. The player lands the final blow.
 
 See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](ARCHITECTURE.md) for contracts and [ART_DIRECTION.md](ART_DIRECTION.md) for current art. Historical prototype gameplay is retired; Git history is its archive.
 

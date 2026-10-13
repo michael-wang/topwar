@@ -2,16 +2,16 @@
 
 ## NOW
 
-Prepare the closed-test candidate with 海防指揮官 opening/victory communications and playtest Stage 1's Lv9 Tank Boss on Pixel 8: 6500 HP, three attack/advance phases, Lane 1/5 flanks, satisfying destruction and clear results. Preserve accumulated Grenades, immediate recovery, existing Defense saves and manual deployment.
+Prepare the Stage 1 closed-test candidate with Commander communications, the continuous family-original Boss MP3, Phase 3 last-stand air support and the same four playtest entries locally and on Pages. Pixel 8 testing confirms the revised air-support timing improves the encounter. Preserve accepted combat, Defense saves and manual deployment.
 
 ## NEXT
 
-1. Review the supplied Commander intro/victory recordings on Pixel 8; supply the Victory portrait.
-2. Verify Tank Pause/Continue and clear results on the HTTPS playtest origin.
-3. Tune the authored Boss parameters from physical-phone gameplay and performance feedback.
+1. Fix the mismatch between flank artillery warnings and actual impact positions; preserve dodge fairness.
+2. Add immediate loading feedback after Continue / New Game.
+3. Investigate and reduce the long first load.
 
 ## LATER
 
-- Further authored encounters and stages.
-- New enemy art/content when explicitly requested.
-- Measured mobile performance and tooling improvements.
+- Heavy readability in Grunt crowds: consider a modest height increase.
+- Pixel 8 heat after prolonged play: measure on the device before targeted optimization.
+- Further authored encounters, stages and art when explicitly requested.
