@@ -200,10 +200,11 @@ export class GiantRenderer {
     if (maulMesh) {
       this.maulContact.copy(this.maulHead).applyMatrix4(maulMesh.matrixWorld);
       const m = maulMesh.matrixWorld.elements;
-      // Analytic rounded-head floor, no physics or per-frame vertex scan.
+      // Y projection of the two authored metal boxes, including their rotated corners.
+      const ax = Math.abs(m[1]), ay = Math.abs(m[5]), az = Math.abs(m[9]);
       const headFloor = Math.min(
-        this.maulContact.y - Math.hypot(m[1]*.23, m[5]*.175, m[9]*.19),
-        this.maulContact.y + m[1]*.155 - Math.hypot(m[1]*.085, m[5]*.155, m[9]*.175));
+        this.maulContact.y - (ax * .21 + ay * .15 + az * .17),
+        this.maulContact.y + m[1] * .155 - (ax * .06 + ay * .135 + az * .175));
       const correction = Math.max(0, .025 - headFloor);
       this.weapon.matrix.elements[13] += correction / Math.max(.001, this.group.matrixWorld.elements[5]);
       this.weapon.matrixWorldNeedsUpdate = true;

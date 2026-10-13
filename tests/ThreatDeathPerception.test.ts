@@ -54,8 +54,22 @@ it.each(['heavy','giant'] as const)('makes %s collapse clear in the 390×844 def
     const p=mesh.geometry.getAttribute('position'),v=new THREE.Vector3();let minY=Infinity;
     for(let i=0;i<p.count;i++)if(p.getY(i)>.6)minY=Math.min(minY,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).y);
     expect(minY).toBeGreaterThanOrEqual(0);expect(minY).toBeLessThan(.10);
+    // The painted boxes have beveled corners, so their vertices clear the conservative box floor slightly.
+    expect(minY).toBeGreaterThanOrEqual(.025 - 1e-6);
+    // Keep the actual head corners above ground throughout the existing swing and hold.
+    for(let age=0;age<=t.holdEndMs;age+=25){
+      r.update([],2010+age,true);holder.updateMatrixWorld(true);
+      let headFloor=Infinity;
+      for(let i=0;i<p.count;i++)if(p.getY(i)>.6)headFloor=Math.min(headFloor,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).y);
+      expect(headFloor).toBeGreaterThanOrEqual(0);
+    }
     expect(aliveHeadY-new THREE.Vector3(.6,.77,.08).applyMatrix4(mesh.matrixWorld).y).toBeGreaterThan(1);
     expect(weapon.children).toHaveLength(1);expect(weapon.parent).toBe(holder);
+    r.reset();r.update([enemy],2000,true);r.update([],2010,true);r.update([],2010+t.peakMs,true);
+    holder.updateMatrixWorld(true);
+    let retriedFloor=Infinity;
+    for(let i=0;i<p.count;i++)if(p.getY(i)>.6)retriedFloor=Math.min(retriedFloor,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).y);
+    expect(retriedFloor).toBeCloseTo(minY,6);
   }
   expect(JSON.stringify(enemy)).toBe(unchanged);r.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);
 });
