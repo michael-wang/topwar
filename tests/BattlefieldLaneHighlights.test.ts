@@ -4,6 +4,8 @@ import { BattlefieldLaneHighlights } from '../src/rendering/BattlefieldLaneHighl
 import { makeArtilleryShell } from '../src/simulation/artillery';
 import { artilleryDefaults } from '../src/config/artilleryConfig';
 import type { GameRenderState } from '../src/rendering/RenderState';
+import { startDefenseTank } from '../src/simulation/defenseTank';
+import config from './helpers/ShippingConfig';
 
 const lanes = [-2.8, -1.4, 0, 1.4, 2.8];
 const shell = (id: number, targetLane: number, type: 'destroyer' | 'defenseTank' = 'destroyer') =>
@@ -50,11 +52,27 @@ it('reconstructs identical highlights from restored data and freezes with paused
   renderer.update(state()); expect(u.dangerCount.value).toBe(0); renderer.dispose();
 });
 
-it('keeps one reusable ground draw and releases resources, with no firing highlight on death or Victory', () => {
-  const { renderer, scene, mesh, u } = setup();
-  renderer.update({ ...state(), squad: { ...state().squad, count: 0 } }); expect(mesh.visible).toBe(false);
-  const s = { ...state(), defenseTank: { state: { status: 'defeated' } } } as GameRenderState;
-  renderer.update(s); expect(u.playerActive.value).toBe(0); expect(mesh.visible).toBe(false);
+it('clears both highlights on Game Over or Victory even when terminal state retains shells', () => {
+  const { renderer, mesh, u } = setup();
+  const active = { ...state(), artillery: { shells: [shell(1, 2)], elapsedSeconds: 1 } };
+  const tankConfig = config.catharsis!.defenseTank!;
+  const tank = startDefenseTank(0, 17, tankConfig); tank.status = 'defeated'; tank.hp = 0;
+  renderer.update(active); expect(u.dangerCount.value).toBe(1);
+  for (const terminal of [
+    { ...active, squad: { ...active.squad, count: 0 } },
+    { ...active, defenseTank: { state: tank, config: tankConfig, elapsedSeconds: 1 } },
+  ]) {
+    const before = structuredClone(terminal);
+    renderer.update(terminal);
+    expect(mesh.visible).toBe(false); expect(u.dangerCount.value).toBe(0); expect(u.playerActive.value).toBe(0);
+    expect(terminal).toEqual(before);
+    renderer.update(active); expect(mesh.visible).toBe(true); expect(u.dangerCount.value).toBe(1);
+  }
+  renderer.dispose();
+});
+
+it('keeps one reusable ground draw and releases resources', () => {
+  const { renderer, scene, mesh } = setup();
   renderer.update(state()); expect(scene.children).toEqual([mesh]); expect(mesh.geometry.attributes.position.count).toBe(4);
   expect(mesh.material.depthWrite).toBe(false); expect(mesh.material.depthTest).toBe(true);
   const geometry = vi.spyOn(mesh.geometry,'dispose'), material = vi.spyOn(mesh.material,'dispose');

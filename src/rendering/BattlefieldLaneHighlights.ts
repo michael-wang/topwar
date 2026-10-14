@@ -55,12 +55,13 @@ export class BattlefieldLaneHighlights {
 
   update(state: GameRenderState): void {
     const lanes = state.track.lanePositions;
-    if (!state.defenseMode || !lanes || lanes.length < 2) { this.reset(); return; }
+    if (!state.defenseMode || !lanes || lanes.length < 2 || state.squad.count === 0
+      || state.defenseTank?.state.status === 'defeated') { this.reset(); return; }
     const spacing = Math.abs(lanes[1] - lanes[0]);
     this.uniforms.spacing.value = spacing;
     this.uniforms.playerX.value = -state.player.x;
     this.uniforms.playerZ.value = state.player.z;
-    this.uniforms.playerActive.value = state.squad.count > 0 && state.defenseTank?.state.status !== 'defeated' ? 1 : 0;
+    this.uniforms.playerActive.value = 1;
     let mask = 0, count = 0;
     const shells = state.artillery?.shells;
     if (shells) for (const shell of shells) {
