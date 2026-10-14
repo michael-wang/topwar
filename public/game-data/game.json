@@ -195,6 +195,7 @@
     "heavyHeightMultiplier": 1.15,
     "heavyDepthMultiplier": 1.15,
     "progression": {
+      "casualtySetback": true,
       "xpRequirements": [
         28,
         60,

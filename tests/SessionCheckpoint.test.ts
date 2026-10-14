@@ -33,6 +33,20 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it('persists reduced combat power and pressure through the real checkpoint path without replaying Boss state', () => {
+    const {c}=checkpoint(),store=storage();
+    const sim=createPlaytestScenario({seed:17,level,startSquad:1,startRocketCount:0,tiers:config.tiers,
+      catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},config.weapon.rifle.fireRate,'boss-intro');
+    const s=sim.getState();s.enemies=[{id:s.enemyStream!.nextEnemyId++,tier:1,lane:4,x:3,z:-10,archetype:'heavy',hp:15}];
+    sim.restoreState(s);sim.step(1/60,{targetX:0},pilotTuning);
+    expect(sim.getState().progression).toEqual({level:8,xp:0,pressure:{level:9,xp:0}});
+    expect(writeCheckpoint({...c,fixture:'boss-intro',state:sim.getState()},store).ok).toBe(true);
+    const loaded=readCheckpoint(store);expect(loaded.status).toBe('valid');if(loaded.status!=='valid')throw Error('Checkpoint rejected');
+    const restored=simulationFromCheckpoint(loaded.checkpoint);expect(restored.getState()).toEqual(sim.getState());
+    expect(restored.consumePresentationEvents()).toEqual([]);expect(restored.consumeArtilleryEvents()).toEqual([]);
+    for(let i=0;i<180;i++){sim.step(1/60,{targetX:0},pilotTuning);restored.step(1/60,{targetX:0},pilotTuning);}
+    expect(restored.getState()).toEqual(sim.getState());
+  });
   it.each([undefined, 'overheadLanes', 'personalEmergency'] as const)('retains saved %s artillery presentation without upgrading historical checkpoints', presentation => {
     const { c } = checkpoint(), saved = structuredClone(c), store = storage();
     saved.config.catharsis!.artillery!.warningPresentation = presentation;

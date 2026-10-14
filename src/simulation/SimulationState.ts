@@ -85,7 +85,7 @@ export interface SimulationState {
   reinforcement?: { startedAtSeconds: number | null; arrived: boolean };
   giantEncounter?: { scheduledAtSeconds: number | null; spawned: boolean };
   machineGunReleaseAtSeconds?: number | null;
-  progression?: { level: number; xp: number };
+  progression?: import('./progression').ProgressionState;
   catharsis?: { balance: CatharsisConfig; trackHalfWidth: number; rewardRowsPerReward?: number };
   tick: number;
   elapsedSeconds: number;

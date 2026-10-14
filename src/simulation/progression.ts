@@ -1,5 +1,16 @@
 import type { CatharsisConfig } from '../config/catharsisConfig';
-export interface ProgressionState { level: number; xp: number }
+export interface ProgressionState { level: number; xp: number; pressure?: {level: number; xp: number} }
+/** Separate, unspendable high-water progression for enemy pressure and encounter milestones. */
+export function encounterProgression(state: Readonly<ProgressionState>): Readonly<{level: number; xp: number}> {
+  return state.pressure ?? state;
+}
+function withPressure(state: Readonly<ProgressionState>, level: number, xp: number): ProgressionState {
+  const old = encounterProgression(state);
+  return {level, xp, pressure: level > old.level || level === old.level && xp > old.xp ? {level, xp} : {level: old.level, xp: old.xp}};
+}
+export function survivingCasualtySetback(state: Readonly<ProgressionState>): ProgressionState {
+  return withPressure(state, Math.max(1, state.level - 1), 0);
+}
 export type ProgressionBalance = Readonly<Omit<CatharsisConfig['progression'], 'xpRequirements' | 'levelPlan' | 'fireRateMultipliers'>>
   & { readonly xpRequirements: readonly number[];
     readonly levelPlan: readonly Readonly<{ weaponFamily: 'rifle' | 'machineGun'; fireRateStage: number; squadStage: number }>[];
@@ -17,7 +28,7 @@ export function requiredXp(level: number, balance: ProgressionBalance): number {
 export function grantXp(state: ProgressionState, amount: number, balance: ProgressionBalance): ProgressionState {
   if (!Number.isSafeInteger(amount) || amount < 0) throw new Error('Invalid XP grant');
   progressionStage(state.level, balance);
-  if (state.level >= maxProgressionLevel(balance)) return { level: state.level, xp: 0 };
+  if (state.level >= maxProgressionLevel(balance)) return state.pressure ? withPressure(state, state.level, 0) : { level: state.level, xp: 0 };
   let { level, xp } = state;
   xp += amount;
   if (!Number.isSafeInteger(xp)) throw new Error('Progression exceeds the supported range');
@@ -26,7 +37,8 @@ export function grantXp(state: ProgressionState, amount: number, balance: Progre
     level++;
   }
   if (!Number.isSafeInteger(level) || !Number.isSafeInteger(xp)) throw new Error('Progression exceeds the supported range');
-  return { level, xp: level === maxProgressionLevel(balance) ? 0 : xp };
+  xp = level === maxProgressionLevel(balance) ? 0 : xp;
+  return state.pressure ? withPressure(state, level, xp) : {level, xp};
 }
 export function effectiveRifleFireRate(base: number, level: number, balance: ProgressionBalance): number {
   const primary = progressionStage(level, balance);

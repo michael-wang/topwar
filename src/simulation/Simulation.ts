@@ -19,7 +19,7 @@ import { teachingGrenadeGrant } from '../config/grenadeConfig';
 import { emptyGrenade, GrenadeStateSchema, grenadeTarget, placeGrenadeSupply, enemiesInBlast, awardGrenades,
   type GrenadeState, type GrenadeEvent } from './grenade';
 import { pressureGroupSize, pressureWaveSettings, enemyApproachSpeed, advanceGiantEncounter } from './enemies/latePressure';
-import { grantXp, requiredXp, effectivePrimaryFireRate, progressionStage, maxProgressionLevel } from './progression';
+import { grantXp, requiredXp, effectivePrimaryFireRate, progressionStage, maxProgressionLevel, encounterProgression, survivingCasualtySetback } from './progression';
 import { SeededRng } from '../core/Rng';
 import { LevelDefinitionSchema, type EnemyStreamDefinition, type LevelDefinition } from '../level/LevelDefinition';
 import { effectiveSeed } from './enemies/effectiveSeed';
@@ -239,12 +239,15 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
         catharsis.trackHalfWidth, catharsis.balance.edgeInset)[grenade.supply.lane]) > 1e-9))))
     throw new Error('Invalid Grenade snapshot');
   const progression = state.progression;
+  const pressure = catharsis?.balance.progression.casualtySetback && isPlainObject(progression)
+    && isPlainObject(progression.pressure) ? progression.pressure : progression;
+  const encounterLevel = isPlainObject(pressure) ? pressure.level as number : 0;
   // Established snapshots predate authored phases: never replay their evolution.
   const carnival = CarnivalStateSchema.parse(state.carnival ?? emptyCarnival(
-    state.machineGunReleaseAtSeconds != null || (isPlainObject(progression) && (progression.level as number) >= 6)));
+    state.machineGunReleaseAtSeconds != null || encounterLevel >= 6));
   if (carnival.startedAtSeconds !== null && (!catharsis?.balance.defenseMode
     || carnival.startedAtSeconds !== state.machineGunReleaseAtSeconds
-    || !isPlainObject(progression) || (progression.level as number) < 6
+    || !isPlainObject(progression) || encounterLevel < 6
     || carnival.startedAtSeconds + carnival.elapsedSeconds > (state.elapsedSeconds as number) + 1e-8
     || (carnival.status === 'active' && Math.abs(carnival.startedAtSeconds + carnival.elapsedSeconds - (state.elapsedSeconds as number)) > 1e-8)))
     throw new Error('Invalid Carnival activation or elapsed time');
@@ -265,7 +268,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const postCapSurvival = catharsis?.balance.defenseMode && catharsis.balance.postCapSurvival.enabled
     ? PostCapSurvivalStateSchema.parse(state.postCapSurvival ?? emptyPostCapSurvival()) : emptyPostCapSurvival();
   if (postCapSurvival.startedAtSeconds !== null && (postCapSurvival.startedAtSeconds > (state.elapsedSeconds as number)
-    || !isPlainObject(progression) || (progression.level as number) < catharsis!.balance.postCapSurvival.startLevel
+    || !isPlainObject(progression) || encounterLevel < catharsis!.balance.postCapSurvival.startLevel
     || (!catharsis?.balance.levelEncounters && state.machineGunReleaseAtSeconds == null))) throw new Error('Invalid post-cap activation');
   if (carnival.status === 'active' && postCapSurvival.startedAtSeconds !== null)
     throw new Error('Carnival and survival cannot own spawning together');
@@ -279,7 +282,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if ((state.levelEncounters !== undefined || state.navalPresence !== undefined) && !encounterConfig)
     throw Error('Modular naval state requires its saved opt-in policy');
   const levelEncounters = encounterConfig ? validateLevelEncounters(state.levelEncounters, encounterConfig,
-    state.elapsedSeconds as number, isPlainObject(progression) ? progression.level as number : 0, state.machineGunReleaseAtSeconds as number | null,
+    state.elapsedSeconds as number, encounterLevel, state.machineGunReleaseAtSeconds as number | null,
     isPlainObject(state.squad) && (state.squad.count as number) > 0) : undefined;
   const navalPresence = encounterConfig ? validateNavalPresence(state.navalPresence, state.elapsedSeconds as number,
     navalConfig, isPlainObject(state.squad) && (state.squad.count as number) > 0) : undefined;
@@ -307,12 +310,23 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
         && postCapSurvival.startedAtSeconds + 1e-8 < destroyer.startedAtSeconds + navalConfig.durationSeconds)))
     throw Error('Survival clock precedes authored encounter completion');
   if (progression !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(progression)
-    || Object.keys(progression).length !== 2 || !Number.isSafeInteger(progression.level)
+    || Object.keys(progression).some(k => !['level', 'xp', 'pressure'].includes(k)) || !Number.isSafeInteger(progression.level)
     || (progression.level as number) < 1 || (progression.level as number) > maxProgressionLevel(catharsis.balance.progression) || !Number.isSafeInteger(progression.xp)
     || (progression.xp as number) < 0
     || ((progression.level as number) >= maxProgressionLevel(catharsis.balance.progression) && progression.xp !== 0)
     || (progression.xp as number) >= requiredXp(progression.level as number, catharsis.balance.progression))) {
     throw new Error('Simulation progression must have a valid level and current-level XP');
+  }
+  if (isPlainObject(progression) && Object.hasOwn(progression, 'pressure')) {
+    const peak = progression.pressure;
+    if (!catharsis?.balance.progression.casualtySetback || !isPlainObject(peak)
+      || Object.keys(peak).length !== 2 || !Number.isSafeInteger(peak.level) || !Number.isSafeInteger(peak.xp)
+      || (peak.level as number) < (progression.level as number)
+      || (peak.level as number) > maxProgressionLevel(catharsis.balance.progression)
+      || (peak.xp as number) < 0 || (peak.xp as number) >= requiredXp(peak.level as number, catharsis.balance.progression)
+      || ((peak.level as number) === maxProgressionLevel(catharsis.balance.progression) && peak.xp !== 0)
+      || (peak.level === progression.level && (peak.xp as number) < (progression.xp as number)))
+      throw Error('Invalid encounter pressure high-water progression');
   }
   // Released Defense snapshots carried these inert prototype fields. Accept only
   // their unused shapes; an active retired experiment is never reinterpreted.
@@ -333,14 +347,14 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   if (releaseAt !== undefined && releaseAt !== null && (!catharsis?.balance.defenseMode
     || typeof releaseAt !== 'number' || !Number.isFinite(releaseAt) || releaseAt < 0
     || releaseAt > (state.elapsedSeconds as number) || !isPlainObject(progression)
-    || (progression.level as number) < 6)) throw new Error('Invalid Machine Gun release state');
+    || encounterLevel < 6)) throw new Error('Invalid Machine Gun release state');
   if (giantEncounter !== undefined && (!catharsis?.balance.defenseMode || !isPlainObject(giantEncounter)
     || Object.keys(giantEncounter).length !== 2 || typeof giantEncounter.spawned !== 'boolean'
     || !(giantEncounter.scheduledAtSeconds === null || (typeof giantEncounter.scheduledAtSeconds === 'number'
       && Number.isFinite(giantEncounter.scheduledAtSeconds) && giantEncounter.scheduledAtSeconds >= 0))
     || (giantEncounter.spawned && giantEncounter.scheduledAtSeconds === null)
     || (giantEncounter.scheduledAtSeconds !== null && (!isPlainObject(progression)
-      || (!giantEncounter.spawned && (progression.level as number) < catharsis.balance.giant.unlockLevel))))) {
+      || (!giantEncounter.spawned && encounterLevel < catharsis.balance.giant.unlockLevel))))) {
     throw new Error('Invalid first Giant encounter state');
   }
   if (!Number.isSafeInteger(state.tick) || (state.tick as number) < 0) {
@@ -548,7 +562,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
   const defenseTank = state.defenseTank === undefined ? undefined : validateDefenseTank(state.defenseTank,
     catharsis.balance.defenseTank!, state.elapsedSeconds as number, artillery?.shells ?? []);
   const combatStats = state.combatStats === undefined ? undefined : CombatStatsSchema.parse(state.combatStats);
-  if (defenseTank && ((progression?.level as number) < 9 || !combatStats || navalBarrage?.enabled
+  if (defenseTank && (encounterLevel < 9 || !combatStats || navalBarrage?.enabled
     || defenseTank.status === 'defeated' && (enemies.length || projectiles.length || artillery?.shells.length)
     || defenseTank.status === 'breached' && (squad.count as number) !== 0)) throw Error('Invalid tank encounter ownership or outcome');
   const commanderSupport = state.commanderSupport === undefined ? undefined
@@ -569,7 +583,7 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       ...(state.defenseWaves !== undefined ? { defenseWaves: DefenseWaveStateSchema.parse(state.defenseWaves) } : {}),
       // Older Lv6 snapshots already represent an established MG run; never inject a retroactive wave.
       ...(catharsis?.balance.defenseMode ? { machineGunReleaseAtSeconds: releaseAt === undefined
-        ? ((progression?.level as number) >= 6 ? 0 : null) : releaseAt as number | null } : {}),
+        ? (encounterLevel >= 6 ? 0 : null) : releaseAt as number | null } : {}),
       ...(catharsis?.balance.defenseMode ? { landingAssault: landingAssault ? { ...landingAssault } as unknown as NonNullable<SimulationState['landingAssault']> : emptyLandingAssault() } : {}),
       ...(catharsis?.balance.defenseMode ? { reinforcement: reinforcement
         ? { startedAtSeconds: reinforcement.startedAtSeconds as number | null, arrived: reinforcement.arrived as boolean }
@@ -577,7 +591,8 @@ function validateState(value: unknown, mergeCount: number): { state: SimulationS
       ...(catharsis?.balance.defenseMode ? { giantEncounter: giantEncounter
         ? { scheduledAtSeconds: giantEncounter.scheduledAtSeconds as number | null, spawned: giantEncounter.spawned as boolean }
         : { scheduledAtSeconds: null, spawned: false } } : {}),
-      ...(catharsis?.balance.defenseMode ? { progression: progression ? { level: progression.level as number, xp: progression.xp as number } : { level: 1, xp: 0 } } : {}),
+      ...(catharsis?.balance.defenseMode ? { progression: progression ? { level: progression.level as number, xp: progression.xp as number,
+        ...(isPlainObject(progression.pressure) ? { pressure: { level: progression.pressure.level as number, xp: progression.pressure.xp as number } } : {}) } : { level: 1, xp: 0 } } : {}),
       tick: state.tick as number,
       elapsedSeconds: state.elapsedSeconds,
       levelId: state.levelId,
@@ -833,7 +848,7 @@ export class Simulation {
     const combatStats = { ...(this.state.combatStats ?? { ...emptyCombatStats(), shotsFired: this.state.weapons.nextProjectileId - 1 }) };
     const tankConfig = catharsis?.balance.defenseTank;
     let defenseTank = this.state.defenseTank ? { ...this.state.defenseTank } : undefined;
-    if (!defenseTank && tankConfig && this.state.progression!.level >= tankConfig.triggerLevel)
+    if (!defenseTank && tankConfig && encounterProgression(this.state.progression!).level >= tankConfig.triggerLevel)
       defenseTank = startDefenseTank(this.state.elapsedSeconds, this.state.seed, tankConfig);
     const grenade = this.state.grenade ? structuredClone(this.state.grenade) : undefined;
     const grenadeConfig = catharsis?.balance.grenade;
@@ -1141,10 +1156,11 @@ export class Simulation {
     if (squad.count === 0 && defenseTank) {
       defenseTank.nextAttackAtSeconds = null; defenseTank.pendingImpactAtSeconds = null;
     }
-    // MG casualties consume the front of the Tier-1 roster. Keep each survivor's
+    // Casualties consume the front of the Tier-1 roster. Keep each survivor's
     // shot phase when its index shifts; do not inherit a removed member's clock.
     if (memberCooldowns && this.state.progression && catharsis
-      && progressionStage(this.state.progression.level, catharsis.balance.progression).weaponFamily === 'machineGun') {
+      && (catharsis.balance.progression.casualtySetback
+        || progressionStage(this.state.progression.level, catharsis.balance.progression).weaponFamily === 'machineGun')) {
       const lost = this.state.squad.count - squad.count;
       if (lost > 0) {
         memberCooldowns.splice(0, lost);
@@ -1181,7 +1197,7 @@ export class Simulation {
           memberCooldowns?.forEach((clock, index) => memberCooldowns[index] = Math.min(clock, interval));
         }
         const delta = stage.squadStage - previous.squadStage;
-        if (delta > 0 && (stage.weaponFamily === 'rifle' || squad.count > 0)) {
+        if (delta > 0 && (squad.count > 0 || stage.weaponFamily === 'rifle' && !catharsis.balance.progression.casualtySetback)) {
           const before = squad.count - squad.rocketCount;
           squad = addRifleSoldiers(squad, delta, 1, this.tiers.mergeCount);
           const interval = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, level, catharsis.balance);
@@ -1192,15 +1208,37 @@ export class Simulation {
         }
       }
     }
-    if (grenade && grenade.lv3EnteredAtSeconds === null && this.state.progression!.level < 3 && progression!.level >= 3)
+    // Kill rewards use the existing tick order. Each surviving casualty then
+    // spends one combat level and all XP, retaining the earned encounter peak.
+    if (progression && catharsis?.balance.progression.casualtySetback) {
+      const earnedLevel = progression.level;
+      for (const event of stepEvents) {
+        if ((event.kind === 'normalEnemyContact' || event.kind === 'artilleryContact')
+          && event.after.count > 0 && event.after.count < event.before.count)
+          progression = survivingCasualtySetback(progression);
+      }
+      if (progression.level !== earnedLevel) {
+        const stage = progressionStage(progression.level, catharsis.balance.progression);
+        // Overflow through evolution can award members after physical contact.
+        // Keep the resulting MG roster valid for its reduced combat stage.
+        if (stage.weaponFamily === 'machineGun' && squad.count > stage.squadStage)
+          squad = { ...squad, count: stage.squadStage, rifleCounts: [stage.squadStage] };
+        const interval = 1 / effectivePrimaryFireRate(tuning.rifle.fireRate, progression.level, catharsis.balance);
+        nextCooldowns.rifle = Math.min(nextCooldowns.rifle, interval);
+        memberCooldowns?.forEach((clock, i) => memberCooldowns[i] = Math.min(clock, interval));
+      }
+    }
+    const pressureLevel = progression ? encounterProgression(progression).level : 0;
+    if (grenade && grenade.lv3EnteredAtSeconds === null && pressureLevel >= 3
+      && (catharsis?.balance.progression.casualtySetback || this.state.progression!.level < 3))
       grenade.lv3EnteredAtSeconds = nextElapsedSeconds;
     if (memberCooldowns) memberCooldowns.length = squad.count - squad.rocketCount;
     if (giantEncounter && catharsis && enemyStream && squad.count > 0 && !carnivalSpawning && !ordinarySuppressed
-      && !(catharsis.balance.carnival.enabled && this.state.carnival?.status === 'pending' && progression!.level >= 6))
-      giantEncounter = advanceGiantEncounter(giantEncounter, progression!.level, nextElapsedSeconds, nextZ,
+      && !(catharsis.balance.carnival.enabled && this.state.carnival?.status === 'pending' && pressureLevel >= 6))
+      giantEncounter = advanceGiantEncounter(giantEncounter, pressureLevel, nextElapsedSeconds, nextZ,
         catharsis.balance, catharsis.trackHalfWidth, enemies, enemyStream);
     let machineGunReleaseAtSeconds = this.state.machineGunReleaseAtSeconds;
-    if (machineGunReleaseAtSeconds === null && progression && progression.level >= 6 && squad.count > 0
+    if (machineGunReleaseAtSeconds === null && progression && pressureLevel >= 6 && squad.count > 0
       && catharsis?.balance.pressureRamp?.lv6 && enemyStream && this.enemyStreamDefinition) {
       const balance = catharsis.balance;
       // Consume the next group row, even when evolution occurs between stream rows.
@@ -1214,14 +1252,14 @@ export class Simulation {
       if (defenseWaves) defenseWaves.nextAtSeconds += balance.defenseWaves.intervalSeconds;
       machineGunReleaseAtSeconds = nextElapsedSeconds;
     }
-    if (!defenseTank && tankConfig && progression!.level >= tankConfig.triggerLevel && squad.count > 0)
+    if (!defenseTank && tankConfig && pressureLevel >= tankConfig.triggerLevel && squad.count > 0)
       defenseTank = startDefenseTank(nextElapsedSeconds, this.state.seed, tankConfig);
     const phaseFrame: SimulationState = { ...this.state, elapsedSeconds: nextElapsedSeconds, progression, machineGunReleaseAtSeconds,
       defenseTank, player: { ...this.state.player, x: nextX, z: nextZ }, squad, enemies, enemyStream, grenade };
     const carnival = advanceCarnival(this.state.carnival, phaseFrame, this.enemyStreamDefinition?.seed ?? this.state.seed);
     if (phaseFrame.levelEncounters && catharsis?.balance.levelEncounters && squad.count > 0) {
       const triggers = advanceLevelEncounters(phaseFrame.levelEncounters, catharsis.balance.levelEncounters,
-        nextElapsedSeconds, progression?.level ?? 0, machineGunReleaseAtSeconds ?? null);
+        nextElapsedSeconds, pressureLevel, machineGunReleaseAtSeconds ?? null);
       phaseFrame.levelEncounters = triggers.state === this.state.levelEncounters ? { ...triggers.state } : triggers.state;
       for (const action of triggers.actions ?? []) applyEncounterAction(phaseFrame, action);
       if (phaseFrame.navalPresence && catharsis.balance.destroyer)
@@ -1334,7 +1372,8 @@ export class Simulation {
       ...(this.state.navalPresence ? { navalPresence: { ...this.state.navalPresence } } : {}),
       ...(this.state.navalBarrage ? { navalBarrage:structuredClone(this.state.navalBarrage) } : {}),
       ...(this.state.defenseWaves ? { defenseWaves: { ...this.state.defenseWaves } } : {}),
-      ...(this.state.progression ? { progression: { ...this.state.progression } } : {}),
+      ...(this.state.progression ? { progression: { ...this.state.progression,
+        ...(this.state.progression.pressure ? { pressure: { ...this.state.progression.pressure } } : {}) } } : {}),
       ...(this.state.reinforcement ? { reinforcement: { ...this.state.reinforcement } } : {}),
       ...(this.state.giantEncounter ? { giantEncounter: { ...this.state.giantEncounter } } : {}),
       ...(this.state.landingAssault ? { landingAssault: { ...this.state.landingAssault } } : {}),

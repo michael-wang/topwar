@@ -40,6 +40,9 @@ export class XpHud {
     this.startedAtMs = nowMs;
   }
   update(state: Readonly<ProgressionState>, balance: ProgressionBalance, nowMs: number): void {
+    const setback = this.previousProgress !== null && (state.level < this.previousProgress.level
+      || state.level === this.previousProgress.level && state.xp < this.previousProgress.xp);
+    if (setback) { this.event = null; this.gainUntilMs = -Infinity; }
     const age = nowMs - this.startedAtMs;
     const active = this.event !== null && age >= 0 && age < LEVEL_UP_MS;
     const flashing = active && age < LEVEL_BAR_FLASH_MS;
@@ -59,10 +62,10 @@ export class XpHud {
     this.element.classList.toggle('xp-imminent', !complete && !active && progress >= .9);
     this.element.classList.toggle('xp-complete', complete);
     // Reset instantly after the full flash; interpolate only forward XP acquisition.
-    this.fill.style.transition = firstUpdate || flashing || this.wasFlashing ? 'none' : `clip-path ${gainMs}ms ease-out`;
+    this.fill.style.transition = setback || firstUpdate || flashing || this.wasFlashing ? 'none' : `clip-path ${gainMs}ms ease-out`;
     const revealed = flashing ? 1 : progress;
     this.fill.style.clipPath = `inset(0 ${(1 - revealed) * 100}% 0 0 round .45rem)`;
-    this.edge.style.transition = firstUpdate || flashing || this.wasFlashing ? 'none' : `left ${gainMs}ms ease-out`;
+    this.edge.style.transition = setback || firstUpdate || flashing || this.wasFlashing ? 'none' : `left ${gainMs}ms ease-out`;
     this.edge.style.left = `${revealed * 100}%`;
     this.edge.style.visibility = revealed > 0 && !complete ? 'visible' : 'hidden';
     this.edge.style.color = xpEdgeColor(revealed);

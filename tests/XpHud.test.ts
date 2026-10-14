@@ -15,6 +15,15 @@ function make() {
   return { hud, root: viewport.children[0] };
 }
 afterEach(() => vi.unstubAllGlobals());
+it('immediately clears a pending level-up flash and XP when combat progression falls', () => {
+  const {hud,root}=make();hud.update({level:10,xp:20},balance,0);
+  hud.presentLevelUp({kind:'progressionLevelUp',fromLevel:9,toLevel:10},0);
+  hud.update({level:9,xp:0,pressure:{level:10,xp:20}},balance,50);
+  expect(root.children[0].children.map(c=>c.textContent).join(' ')).toBe('LV 9');
+  expect(root.classes.has('level-up')).toBe(false);expect(root.classes.has('xp-complete')).toBe(false);
+  expect(root.children[1].children[0].style.transition).toBe('none');
+  expect(root.children[1].children[0].style.clipPath).toBe('inset(0 100% 0 0 round .45rem)');
+});
 it('shows only the level and truthful fill percentage, with anticipation at 70/90 percent', () => {
   const { hud, root } = make();
   hud.update({ level: 1, xp: 14 }, balance, 0);

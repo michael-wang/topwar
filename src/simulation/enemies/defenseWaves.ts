@@ -3,6 +3,7 @@ import type { SimulationState } from '../SimulationState';
 import { admitDefenseGroup } from './defenseGroup';
 import { pressureGroupSize, pressureWaveSettings } from './latePressure';
 import { postCapOrdinarySettings } from '../postCapSurvival';
+import { encounterProgression } from '../progression';
 
 export const DefenseWaveStateSchema = z.strictObject({ nextAtSeconds: z.number().finite().nonnegative() });
 export type DefenseWaveState = z.infer<typeof DefenseWaveStateSchema>;
@@ -14,7 +15,8 @@ export function advanceDefenseWaves(previous: DefenseWaveState, frame: Simulatio
   const { balance, trackHalfWidth } = frame.catharsis!;
   const cursor = frame.enemyStream!;
   if (nowSeconds + 1e-9 < previous.nextAtSeconds) return { ...previous };
-  const survival = postCapOrdinarySettings(balance, frame.postCapSurvival, frame.progression!.level, frame.progression!.xp);
+  const pressure = encounterProgression(frame.progression!);
+  const survival = postCapOrdinarySettings(balance, frame.postCapSurvival, pressure.level, pressure.xp);
   const interval = survival ? survival.waveIntervalSeconds ?? balance.postCapSurvival.waveIntervalSeconds ?? balance.defenseWaves.intervalSeconds
     : balance.defenseWaves.intervalSeconds;
   const slots = Math.floor((nowSeconds - previous.nextAtSeconds + 1e-9) / interval) + 1;
@@ -27,7 +29,7 @@ export function advanceDefenseWaves(previous: DefenseWaveState, frame: Simulatio
   if (admit && (cap === undefined || frame.enemies.filter(e => e.hp > 0).length + survival!.groupSize <= cap))
     admitDefenseGroup(frame.enemies, cursor, row, seed,
     { ...balance, ...pressureWaveSettings(balance, frame.progression!),
-      groupSize: pressureGroupSize(balance, frame.progression!.level),
+      groupSize: pressureGroupSize(balance, pressure.level),
       ...survival }, trackHalfWidth, balance.defenseSpawnAheadDistance);
   cursor.nextRowIndex = row + 1;
   return { nextAtSeconds };

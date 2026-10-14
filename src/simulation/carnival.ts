@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { encounterProgression } from './progression';
 import type { SimulationState } from './SimulationState';
 import { admitDefenseGroup } from './enemies/defenseGroup';
 
@@ -17,7 +18,7 @@ export const emptyCarnival = (skipped = false): CarnivalState => ({
 
 export function carnivalOwnsSpawning(frame: SimulationState): boolean {
   return frame.carnival?.status === 'active' || (!!frame.catharsis?.balance.carnival.enabled
-    && frame.carnival?.status === 'pending' && (frame.progression?.level ?? 0) >= 6);
+    && frame.carnival?.status === 'pending' && (frame.progression ? encounterProgression(frame.progression).level : 0) >= 6);
 }
 
 // A single authored phase. Its end is the handoff boundary for future Stage 1

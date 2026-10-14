@@ -25,6 +25,7 @@ export function createQaStressFixture(options:SimulationOptions,tuning:Simulatio
   // This existing sleep/recovery workload remains Lv10 with three MGs.
   balance.progression.levelPlan = balance.progression.levelPlan.slice(0, 10);
   balance.progression.xpRequirements = balance.progression.xpRequirements.slice(0, 9);
+  delete balance.progression.casualtySetback;
   const stage=progressionStage(10,balance.progression);
   if(stage.weaponFamily!=='machineGun'||stage.squadStage!==3)throw Error('QA requires authored Lv10 three MGs');
   balance.levelEncounters={version:1,initialOrdinaryEnabled:true,triggers:[]};

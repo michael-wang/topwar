@@ -19,6 +19,8 @@ export const progressionDefaults = {
 };
 
 export const ProgressionConfigSchema = z.strictObject({
+  // Absent in published plans: retain their original casualty/XP behavior.
+  casualtySetback: z.literal(true).optional(),
   xpRequirements: z.array(z.number().int().positive()).min(1).default(progressionDefaults.xpRequirements),
   levelPlan: z.array(z.strictObject({
     // Older Rifle-only snapshot plans remain valid with their original cap.

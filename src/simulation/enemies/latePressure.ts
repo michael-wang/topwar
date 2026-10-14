@@ -1,11 +1,13 @@
 import type { CatharsisConfig } from '../../config/catharsisConfig';
 import type { EnemySimulationState, EnemyStreamSimulationState, SimulationState } from '../SimulationState';
 import { attackLanePositions } from './laneComposition';
-import { requiredXp, type ProgressionState } from '../progression';
+import { encounterProgression, requiredXp, type ProgressionState } from '../progression';
 
-// Derived only when admitting future groups; no latch, extra RNG or enemy edits.
+// Derived only when admitting future groups from the saved pressure peak;
+// no extra RNG or edits to existing enemies.
 export function pressureWaveSettings(balance: CatharsisConfig, progression: ProgressionState):
   Pick<CatharsisConfig, 'pressureLaneCount' | 'heavyChance'> & { heavyCount?: number } {
+  progression = encounterProgression(progression);
   if (progression.level === 6 && balance.pressureRamp?.lv6) return {
     pressureLaneCount: balance.pressureRamp.lv6.pressureLaneCount,
     heavyChance: balance.heavyChance, heavyCount: balance.pressureRamp.lv6.heavyCount };
@@ -17,7 +19,7 @@ export function pressureWaveSettings(balance: CatharsisConfig, progression: Prog
     : { pressureLaneCount: balance.pressureLaneCount, heavyChance: balance.heavyChance };
 }
 
-// Quantity only; future groups use the current level, existing enemies stay untouched.
+// Quantity only; callers supply the encounter level. Existing enemies stay untouched.
 export function pressureGroupSize(balance: CatharsisConfig, level: number): number {
   if (level === 6 && balance.pressureRamp?.lv6) return balance.pressureRamp.lv6.groupSize;
   const multiplier = balance.pressureMultipliers[Math.min(level - 1, balance.pressureMultipliers.length - 1)];
