@@ -1,11 +1,16 @@
 import { expect, it } from 'vitest';
 import * as THREE from 'three';
 import { EnemyArtilleryRenderer } from '../src/rendering/EnemyArtilleryRenderer';
-import { makeArtilleryShell, sampleArtillery } from '../src/simulation/artillery';
+import { makeArtilleryShell, sampleArtillery, artilleryHits } from '../src/simulation/artillery';
 import { artilleryDefaults } from '../src/config/artilleryConfig';
 import { warningInnerRadius } from '../src/presentation/ArtilleryWarning';
 import { GrenadeExplosion } from '../src/rendering/GrenadeExplosion';
 import { coastalCameraFov } from '../src/rendering/renderSize';
+
+function warningCamera(width=390) {
+  const camera=new THREE.PerspectiveCamera(coastalCameraFov(width/844),width/844,.1,180);
+  camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld();return camera;
+}
 
 const shell = makeArtilleryShell(1, { source: { id: 'test', type: 'offshore', position: { x: -3, y: 1.2, z: 52 } } },
   2, [-2.8, -1.4, 0, 1.4, 2.8], 0, 0, artilleryDefaults, .588);
@@ -76,26 +81,27 @@ it('omits persistent enemy-shell stains while preserving player Grenade stains',
 });
 
 it('shows continuously visible lane-locked overhead warnings for the complete flight without any ground/global warning',()=>{
-  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),rotation=new THREE.Quaternion();
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=warningCamera();
   const pair=[makeArtilleryShell(1,{source:shell.source},1,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588),
     makeArtilleryShell(2,{source:shell.source},3,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588)];
   const danger=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
   const matrix=new THREE.Matrix4();
   for(const time of [0,.45,1,Math.min(...pair.map(s=>s.impactAtSeconds))-.001]){
-    r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000,{x:2.8,z:0},rotation);
+    r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000,{x:2.8,z:0},camera);
     expect(danger.visible).toBe(true);expect(danger.count).toBe(2);expect(danger.material).toMatchObject({opacity:1,transparent:true});
     const fill=danger.geometry.getAttribute('warningFillProgress');
     expect(fill.getX(0)).toBeCloseTo(time/pair[0].flightSeconds);
     expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
     expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
-    for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);expect(matrix.elements[12]).toBeCloseTo(-pair[i].target.x*.72);
-      expect(matrix.elements[13]).toBeCloseTo(2.05);}
+    for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);
+      const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
+      expect(tip.x).toBeCloseTo(-pair[i].target.x);expect(tip.y).toBeCloseTo(pair[i].target.y);expect(tip.z).toBeCloseTo(pair[i].target.z);}
     expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(false);
     for(let i=0;i<8;i++)expect(scene.getObjectByName(`enemy-shell-warning-${i}`)!.visible).toBe(false);
   }
-  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:2.8,z:0},rotation);
+  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:2.8,z:0},camera);
   danger.getMatrixAt(0,matrix);const fixed=matrix.toArray(),fill=danger.geometry.getAttribute('warningFillProgress').getX(0);
-  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},9000,{x:-2.8,z:0},rotation);
+  r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},9000,{x:-2.8,z:0},camera);
   danger.getMatrixAt(0,matrix);expect(matrix.toArray()).toEqual(fixed); // Paused simulation freezes the pulse too.
   expect(danger.geometry.getAttribute('warningFillProgress').getX(0)).toBe(fill);
   r.update({shells:[],elapsedSeconds:3,warningPresentation:'overheadLanes'},9001);expect(danger.count).toBe(0);r.dispose();
@@ -103,16 +109,19 @@ it('shows continuously visible lane-locked overhead warnings for the complete fl
 });
 
 it('coalesces same-lane shells until the final resolution; cancellation/restore neither leaves markers nor replays flashes',()=>{
-  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
-  const first={...shell},second={...shell,id:2,launchedAtSeconds:.3,impactAtSeconds:shell.impactAtSeconds+.3};
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=warningCamera();
+  const first={...shell,radius:.3},second={...shell,id:2,launchedAtSeconds:.3,impactAtSeconds:shell.impactAtSeconds+.3};
   const state={shells:[first,second],elapsedSeconds:.31,warningPresentation:'overheadLanes' as const};
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
   const fill=mesh.geometry.getAttribute('warningFillProgress');
-  r.restore(state);r.update(state,0);expect(r.getDebugStats().warnings).toBe(1);
+  r.restore(state);r.update(state,0,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
+  const matrix=new THREE.Matrix4();mesh.getMatrixAt(0,matrix);
+  expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(.75); // Earliest shell also owns its radius.
   expect(fill.getX(0)).toBeCloseTo(.31/first.flightSeconds);
   expect(scene.getObjectByName('enemy-cannon-flash-1')!.visible).toBe(false);
-  r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000);expect(r.getDebugStats().warnings).toBe(1);
+  r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
   expect(fill.getX(0)).toBeCloseTo((first.impactAtSeconds-second.launchedAtSeconds)/second.flightSeconds);
+  mesh.getMatrixAt(0,matrix);expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(1);
   r.update({...state,shells:[],elapsedSeconds:first.impactAtSeconds+.1},1000);expect(r.getDebugStats().warnings).toBe(0);
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
@@ -123,14 +132,23 @@ it.each([350,390])('fits every overhead lane including its directional edge insi
   const all=Array.from({length:5},(_,lane)=>makeArtilleryShell(lane+1,{source:shell.source},lane,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588));
   const ink=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
   for (const seconds of [0, 1, all[0].impactAtSeconds - .1291666667]) {
-    r.update({shells:all,elapsedSeconds:seconds,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera.quaternion);
+    r.update({shells:all,elapsedSeconds:seconds,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera);
     expect(ink.count).toBe(5);
     for(let i=0;i<ink.count;i++){
       ink.getMatrixAt(i,matrix);
+      const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
+      expect(tip.x).toBeCloseTo(-all[i].target.x);expect(tip.y).toBeCloseTo(all[i].target.y);expect(tip.z).toBeCloseTo(all[i].target.z);
+      for(const x of [-2.8,-1.4,0,1.4,2.8])expect(artilleryHits(all[i],x,0)).toBe(x===all[i].target.x);
       for(let v=0;v<ink.geometry.attributes.position.count;v++){
-        point.fromBufferAttribute(ink.geometry.attributes.position,v).applyMatrix4(matrix).project(camera);
+        point.fromBufferAttribute(ink.geometry.attributes.position,v);
+        const lean=ink.geometry.getAttribute('warningLean').getX(i),accent=ink.geometry.getAttribute('warningAccent');
+        point.x+=lean*(accent.getY(v)>.5?.55:(point.y+.42)/.78);point.applyMatrix4(matrix).project(camera);
         expect((point.x*.5+.5)*width).toBeGreaterThan(0);expect((point.x*.5+.5)*width).toBeLessThan(width);
-        expect((.5-point.y*.5)*844).toBeGreaterThan(450);expect((.5-point.y*.5)*844).toBeLessThan(600);
+        const target=new THREE.Vector3(-all[i].target.x,all[i].target.y,all[i].target.z).project(camera);
+        expect((.5-point.y*.5)*844).toBeGreaterThan(550);expect(point.y).toBeGreaterThanOrEqual(target.y-1e-6);
+        const a=new THREE.Vector3(-all[i].target.x-all[i].radius,0,0).project(camera).x;
+        const b=new THREE.Vector3(-all[i].target.x+all[i].radius,0,0).project(camera).x;
+        expect(point.x).toBeGreaterThanOrEqual(Math.min(a,b)-1e-6);expect(point.x).toBeLessThanOrEqual(Math.max(a,b)+1e-6);
       }
     }
   }

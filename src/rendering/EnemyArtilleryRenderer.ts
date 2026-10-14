@@ -74,16 +74,16 @@ export class EnemyArtilleryRenderer {
       else this.alertAtMs = nowMs;
     }
   }
-  update(state: GameRenderState['artillery'], nowMs: number, player = { x: 0, z: 0 }, cameraRotation?: THREE.Quaternion): void {
+  update(state: GameRenderState['artillery'], nowMs: number, player = { x: 0, z: 0 }, camera?: THREE.Camera): void {
     if (!state || state.elapsedSeconds < this.lastSimulationSeconds) this.reset();
     this.lastSimulationSeconds = state?.elapsedSeconds ?? -Infinity;
     this.impacts.update(nowMs, 0);
     const alertAge = nowMs - this.alertAtMs;
     const overhead = state?.warningPresentation === 'overheadLanes';
-    if(overhead)this.overhead.update(state!.shells,state!.elapsedSeconds,cameraRotation);else this.overhead.reset();
+    if(overhead)this.overhead.update(state!.shells,state!.elapsedSeconds,camera);else this.overhead.reset();
     this.alert.visible = !overhead && !!state?.shells.length && alertAge >= 0 && alertAge < LOCK_ON_ALERT_MS;
     this.alert.position.set(-player.x, 1.7, player.z);
-    if (cameraRotation) this.alert.quaternion.copy(cameraRotation);
+    if (camera) this.alert.quaternion.copy(camera.quaternion);
     this.alert.scale.setScalar(.7 + .18 * Math.sin(Math.max(0, alertAge) / 45) ** 2);
     this.alertMaterial.opacity = Math.min(1, Math.max(0, (LOCK_ON_ALERT_MS - alertAge) / 110));
     for (let i = 0; i < this.slots.length; i++) {

@@ -186,11 +186,11 @@ export class GameRenderer {
     if (state.defenseTank) for (const shell of state.artillery?.shells ?? [])
       if (shell.source.type === 'defenseTank') this.tankRenderer?.recoil(shell.launchedAtSeconds, state.defenseTank.elapsedSeconds);
     if (state.artillery) this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
-    this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera.quaternion);
     if (state.commanderSupport?.state.airstrike?.triggeredAtSeconds !== null && state.commanderSupport?.state.airstrike?.triggeredAtSeconds !== undefined)
       this.supportRenderer ??= new SupportAirstrikeRenderer(this.scene);
     const shake = this.supportRenderer?.update(nowMs, state) ?? 0;
     this.camera.position.x += shake;
+    this.artilleryRenderer?.update(state.artillery, nowMs, state.player, this.camera);
     this.renderer.render(this.scene, this.camera);
     this.camera.position.x -= shake;
   }

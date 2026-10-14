@@ -39,7 +39,9 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
       if(!mesh)return;
       const m=mesh.matrixWorld.clone(),centers=[];
       for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,m);const p=mesh.position.clone().setFromMatrixPosition(m).project(a.renderer.camera);
-        centers.push({x:(p.x*.5+.5)*innerWidth,y:(.5-p.y*.5)*innerHeight});}
+        const tip=mesh.position.clone().set(0,-.42,0).applyMatrix4(m).project(a.renderer.camera),locked=s.artillery.shells.find(shell=>shell.targetLane===targets[i]);
+        const target=mesh.position.clone().set(-locked.target.x,locked.target.y,locked.target.z).project(a.renderer.camera);
+        centers.push({x:(p.x*.5+.5)*innerWidth,y:(.5-p.y*.5)*innerHeight,tipX:(tip.x*.5+.5)*innerWidth,tipY:(.5-tip.y*.5)*innerHeight,targetX:(target.x*.5+.5)*innerWidth,targetY:(.5-target.y*.5)*innerHeight});}
       window.__checks.push({at:s.elapsedSeconds,targets,count:mesh.count,visible:mesh.visible,opacity:mesh.material.opacity,fills:Array.from(mesh.geometry.getAttribute('warningFillProgress').array.slice(0,mesh.count)),
         selected:s.player.selectedLane,centers,ground:scene.children.filter(e=>e.name.startsWith('enemy-shell-warning-')&&e.visible).length,
         global:scene.getObjectByName('artillery-lock-on').visible,shells:(s.artillery?.shells??[]).map(e=>({id:e.id,lane:e.targetLane,launched:e.launchedAtSeconds,impact:e.impactAtSeconds}))});
@@ -53,7 +55,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
   });
   await page.getByRole('button',{name:'Pause game',exact:true}).tap();
   const before=await page.evaluate(()=>{const a=window.__testApp;return {state:a.simulation.getState(),warning:window.__checks.at(-1)};});
-  assert.equal(before.warning.count,2);assert(before.warning.centers.every(p=>p.x>=30&&p.x<=width-30));
+  assert.equal(before.warning.count,2);assert(before.warning.centers.every(p=>Math.abs(p.tipX-p.targetX)<.1&&Math.abs(p.tipY-p.targetY)<.1&&p.tipX>=0&&p.tipX<=width));
   await page.screenshot({path:`${out}/${width}-lv${level}-two-lanes.png`});
   await page.waitForTimeout(300);
   assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),before.state);
