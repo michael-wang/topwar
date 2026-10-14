@@ -42,6 +42,28 @@ try{for(const width of [350,390]){
     const cost=await page.evaluate(()=>{const r=window.__testApp.renderer,m=r.scene.getObjectByName('battlefield-lane-highlights');r.renderer.render(r.scene,r.camera);const withOverlay=r.renderer.info.render.calls;m.visible=false;r.renderer.render(r.scene,r.camera);const withoutOverlay=r.renderer.info.render.calls;m.visible=true;return withOverlay-withoutOverlay;});
     assert.equal(cost,1);results.push({width,label,count:r.count,extraDrawCalls:cost});
     const frozen=await draw();assert.deepEqual(frozen.state,r.state);assert.deepEqual(frozen.centers,r.centers);
+    if(label==='boss-phase3'){
+      for(const lanes of [[0,1],[0,1,2],[2,3,4]]){
+        await page.evaluate(lanes=>{const a=window.__testApp,source=a.simulation.getFrameState().artillery.shells[0].source;
+          for(const s of a.simulation.getState().artillery.shells)a.simulation.cancelArtillery(s.id);
+          for(const targetLane of lanes)a.simulation.launchArtillery({source,targetLane});
+        },lanes);
+        assert.equal((await draw()).count,lanes.length);await shot(`adjacent-${lanes.join('')}`);
+        const coverage=await page.evaluate(xs=>{const r=window.__testApp.renderer,m=r.scene.getObjectByName('battlefield-lane-highlights'),gl=r.renderer.getContext();
+          const sample=()=>{r.renderer.render(r.scene,r.camera);return xs.map(x=>{const p=r.supplyProjection.set(-x,.03,8).project(r.camera),pixel=new Uint8Array(4);
+            gl.readPixels(Math.round((p.x+1)*gl.drawingBufferWidth/2),Math.round((p.y+1)*gl.drawingBufferHeight/2),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);return Array.from(pixel);});};
+          const on=sample();m.visible=false;const off=sample();m.visible=true;
+          const u=m.material.uniforms,count=u.dangerCount.value,centers=Array.from(u.dangerCenters.value);
+          // Compare each pixel with a lane centered on that exact ground point: identical sand/lighting.
+          const reference=xs.map((x,i)=>{u.dangerCount.value=1;u.dangerCenters.value[0]=-x;return sample()[i];});
+          u.dangerCount.value=count;u.dangerCenters.value.set(centers);
+          return {tint:on.map((pixel,i)=>pixel.map((v,c)=>v-off[i][c])),error:on.map((pixel,i)=>pixel.map((v,c)=>v-reference[i][c]))};
+        },[lanePositions[lanes[0]],(lanePositions[lanes[0]]+lanePositions[lanes[1]])/2,lanePositions[lanes[1]]]);
+        // Compare ground tint at lane centers and their shared boundary, not the underlying sand color.
+        for(const pixel of coverage.tint){assert(pixel[0]>0);assert(pixel[2]<0);}
+        for(const pixel of coverage.error)for(const channel of pixel)assert(Math.abs(channel)<=1);
+      }
+    }
     if(label==='lv1'){
       for(const lane of [0,1,2,3,4]){
         await page.evaluate(lane=>{const a=window.__testApp;

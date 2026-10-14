@@ -32,7 +32,9 @@ export class BattlefieldLaneHighlights {
         float danger=0.;
         for(int i=0;i<${ARTILLERY_CAPACITY};i++) {
           if(float(i)>=dangerCount) break;
-          danger=max(danger,corridor(dangerCenters[i],spacing*${look.dangerWidthFraction}));
+          // Full coverage to both lane boundaries; only the outside edge feathers.
+          // The maximum forms a seamless union when neighboring lanes are threatened.
+          danger=max(danger,1.-smoothstep(spacing*.5,spacing*${.5 + look.dangerFeatherFraction},abs(ground.x-dangerCenters[i])));
         }
         float cyan=corridor(playerX,spacing*${look.playerWidthFraction})*playerActive;
         // Danger removes cyan through the threatened corridor. A short, narrow near-player cue

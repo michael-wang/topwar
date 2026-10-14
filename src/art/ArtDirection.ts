@@ -10,7 +10,7 @@ export const ART = {
     rust: '#985e49', charcoal: '#3a4348', fire: '#f58a48', scorch: '#53606a',
     camera: { verticalFov: 48, referenceAspect: 9 / 16 }, // Pre-dolly reference; CoastalCamera derives the final FOV.
     laneHighlights: { playerColor: '#39bdd3', dangerColor: '#ed343c', playerOpacity: .18, dangerOpacity: .22,
-      startZ: -.4, endZ: 42, fadeFromZ: 24, playerWidthFraction: .72, dangerWidthFraction: .86 },
+      startZ: -.4, endZ: 42, fadeFromZ: 24, playerWidthFraction: 1.12, dangerFeatherFraction: .12 },
     fogNear: 105, fogFar: 168, shorelineZ: 45,
     lighting: { sky: '#c5e5f2', ground: '#405a6d', sun: '#fff0d5',
       hemisphereIntensity: 1.65, sunIntensity: 2.2, exposure: 1.35, sunPosition: [-8, 12, -6] },
