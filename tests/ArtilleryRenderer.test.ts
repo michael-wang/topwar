@@ -116,43 +116,60 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   const fill=mesh.geometry.getAttribute('warningFillProgress');
   r.restore(state);r.update(state,0,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
   const matrix=new THREE.Matrix4();mesh.getMatrixAt(0,matrix);
-  expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(.75); // Earliest shell also owns its radius.
+  expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(1); // Collision radius never resizes the marker.
   expect(fill.getX(0)).toBeCloseTo(.31/first.flightSeconds);
   expect(scene.getObjectByName('enemy-cannon-flash-1')!.visible).toBe(false);
   r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
   expect(fill.getX(0)).toBeCloseTo((first.impactAtSeconds-second.launchedAtSeconds)/second.flightSeconds);
   mesh.getMatrixAt(0,matrix);const scale=new THREE.Vector3().setFromMatrixScale(matrix);
-  expect(scale.x).toBeCloseTo(scale.y); // The later shell restores its full-width body, including pulse.
+  expect(scale.x).toBeCloseTo(scale.y); // The later shell keeps its full-width body, including pulse.
   r.update({...state,shells:[],elapsedSeconds:first.impactAtSeconds+.1},1000);expect(r.getDebugStats().warnings).toBe(0);
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
 
-it.each([350,390])('fits every overhead lane including its directional edge inside the %ipx mobile frame',width=>{
-  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=new THREE.PerspectiveCamera(coastalCameraFov(width/844),width/844,.1,180);
-  camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld();
-  const all=Array.from({length:5},(_,lane)=>makeArtilleryShell(lane+1,{source:shell.source},lane,[-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588));
+it.each([350,390])('keeps complete lane-aligned triangles with natural viewport clipping at %ipx',width=>{
+  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=warningCamera(width);
+  const cameraPose=camera.matrixWorld.toArray(),projection=camera.projectionMatrix.toArray();
+  const all=Array.from({length:5},(_,lane)=>({...makeArtilleryShell(lane+1,{source:shell.source},lane,
+    [-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588),flightSeconds:2.4,impactAtSeconds:2.4}));
   const ink=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
-  for (const seconds of [0, 1, all[0].impactAtSeconds - .1291666667]) {
-    r.update({shells:all,elapsedSeconds:seconds,warningPresentation:'overheadLanes'},1000,{x:0,z:0},camera);
-    expect(ink.count).toBe(5);
+  const geometry=ink.geometry,positions=geometry.attributes.position,vertices=Array.from(positions.array);
+  expect(Math.min(...vertices.filter((_,i)=>i%3===0))).toBeCloseTo(-.4);
+  expect(Math.max(...vertices.filter((_,i)=>i%3===0))).toBeCloseTo(.4);
+  expect(geometry.getAttribute('warningLean')).toBeUndefined();
+  for(const seconds of [0,1,2.4-.1291666667]){
+    const state={shells:all,elapsedSeconds:seconds,warningPresentation:'overheadLanes' as const};
+    r.update(state,seconds*1000,{x:0,z:0},camera);expect(ink.count).toBe(5);
+    const matrices=[] as number[][];
     for(let i=0;i<ink.count;i++){
-      ink.getMatrixAt(i,matrix);
+      ink.getMatrixAt(i,matrix);matrices.push(matrix.toArray());
       const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
       expect(tip.x).toBeCloseTo(-all[i].target.x);expect(tip.y).toBeCloseTo(all[i].target.y);expect(tip.z).toBeCloseTo(all[i].target.z);
+      const scale=new THREE.Vector3().setFromMatrixScale(matrix);
+      expect(scale.x).toBeCloseTo(scale.y);expect(scale.x).toBeCloseTo(scale.z);
+      if(i>0)expect(scale.x).toBeCloseTo(new THREE.Vector3().setFromMatrixScale(new THREE.Matrix4().fromArray(matrices[0])).x);
+      expect(new THREE.Vector3().setFromMatrixPosition(matrix).x).toBeCloseTo(-all[i].target.x);
       for(const x of [-2.8,-1.4,0,1.4,2.8])expect(artilleryHits(all[i],x,0)).toBe(x===all[i].target.x);
-      for(let v=0;v<ink.geometry.attributes.position.count;v++){
-        point.fromBufferAttribute(ink.geometry.attributes.position,v);
-        const lean=ink.geometry.getAttribute('warningLean').getX(i),accent=ink.geometry.getAttribute('warningAccent');
-        point.x+=lean*(accent.getW(v)>.5&&accent.getX(v)<.01?.55:(point.y+.42)/.78);point.applyMatrix4(matrix).project(camera);
-        expect((point.x*.5+.5)*width).toBeGreaterThan(0);expect((point.x*.5+.5)*width).toBeLessThan(width);
-        const target=new THREE.Vector3(-all[i].target.x,all[i].target.y,all[i].target.z).project(camera);
-        expect((.5-point.y*.5)*844).toBeGreaterThan(550);expect(point.y).toBeGreaterThanOrEqual(target.y-1e-6);
-        const a=new THREE.Vector3(-all[i].target.x-all[i].radius,0,0).project(camera).x;
-        const b=new THREE.Vector3(-all[i].target.x+all[i].radius,0,0).project(camera).x;
-        expect(point.x).toBeGreaterThanOrEqual(Math.min(a,b)-1e-6);expect(point.x).toBeLessThanOrEqual(Math.max(a,b)+1e-6);
+      let left=Infinity,right=-Infinity;
+      for(let v=0;v<positions.count;v++){
+        point.fromBufferAttribute(positions,v).applyMatrix4(matrix).project(camera);
+        left=Math.min(left,point.x);right=Math.max(right,point.x);
       }
+      if(i===0)expect(left).toBeLessThan(-1);
+      if(i===4)expect(right).toBeGreaterThan(1); // Complete outer triangles extend outside the camera frame.
     }
+    r.update(state,9000,{x:2.8,z:0},camera);
+    for(let i=0;i<5;i++){ink.getMatrixAt(i,matrix);expect(matrix.toArray()).toEqual(matrices[i]);}
+    r.restore(state);r.update(state,0,{x:0,z:0},camera);
+    for(let i=0;i<5;i++){ink.getMatrixAt(i,matrix);expect(matrix.toArray()).toEqual(matrices[i]);}
+    r.update({...state,elapsedSeconds:seconds+.02},20,{x:0,z:0},camera);
+    for(let i=0;i<5;i++){
+      ink.getMatrixAt(i,matrix);const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
+      expect(tip.toArray()).toEqual([expect.closeTo(-all[i].target.x,5),expect.closeTo(all[i].target.y,5),expect.closeTo(all[i].target.z,5)]);
+    }
+    expect(ink.geometry).toBe(geometry);expect(Array.from(positions.array)).toEqual(vertices);
   }
+  expect(camera.matrixWorld.toArray()).toEqual(cameraPose);expect(camera.projectionMatrix.toArray()).toEqual(projection);
   r.dispose();
 });
 
@@ -191,6 +208,8 @@ it('preallocates one inward-fill shader and keeps red and black fully visible th
   expect(shader.vertexShader).toContain('vWarningFillProgress = warningFillProgress');
   expect(shader.vertexShader).toContain('vWarningAccent = warningAccent');
   expect(shader.vertexShader).toContain('vWarningBarycentric = warningBarycentric');
+  expect(shader.vertexShader).not.toContain('warningLean');
+  expect(shader.vertexShader).not.toContain('transformed.x');
   expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a)');
   expect(shader.fragmentShader).toContain('(1.0 - sqrt(1.0 - vWarningFillProgress)) / 3.0');
   expect(shader.fragmentShader).toContain('if (vWarningAccent.a < 0.5 && edgeDistance > inset) discard');

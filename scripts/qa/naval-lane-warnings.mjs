@@ -55,7 +55,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
   });
   await page.getByRole('button',{name:'Pause game',exact:true}).tap();
   const before=await page.evaluate(()=>{const a=window.__testApp;return {state:a.simulation.getState(),warning:window.__checks.at(-1)};});
-  assert.equal(before.warning.count,2);assert(before.warning.centers.every(p=>Math.abs(p.tipX-p.targetX)<.1&&Math.abs(p.tipY-p.targetY)<.1&&p.tipX>=0&&p.tipX<=width));
+  assert.equal(before.warning.count,2);assert(before.warning.centers.every(p=>Math.abs(p.tipX-p.targetX)<.1&&Math.abs(p.tipY-p.targetY)<.1));
   await page.screenshot({path:`${out}/${width}-lv${level}-two-lanes.png`});
   await page.waitForTimeout(300);
   assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),before.state);
