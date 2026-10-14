@@ -72,6 +72,18 @@ try{for(const width of [350,390]){
       },escape);await draw();assert((await emergency()).visible);await shot(`${label}-reentered`);
       await resumePaused();
       if(label==='tank'){
+        // Rendering-only overlap diagnostic on an identical paused artillery-risk state.
+        // Three bomb bands, three lane impacts each, separated by the authored .65s cadence.
+        const unchanged=(await draw()).state;
+        for(const age of [.2,1.2]){
+          await page.evaluate(age=>{const a=window.__testApp;a.renderer.presentSupport([{kind:'supportFlyover'}],a.presentationMs-2000);
+            const fx=a.renderer.supportRenderer.explosions;
+            for(let i=0;i<9;i++)fx.present(i,(i%3-1)*2.8,7+Math.floor(i/3)*14,a.presentationMs-(age+(2-Math.floor(i/3))*.65)*1000);
+          },age);
+          assert.deepEqual((await draw()).state,unchanged);assert((await emergency()).visible);await shot(`smoke-overlap-${age}`);
+          const paused=await emergency();await draw();assert.deepEqual(await emergency(),paused);
+        }
+        await page.evaluate(()=>window.__testApp.renderer.supportRenderer.explosions.reset());await draw();
         await page.evaluate(()=>window.__testApp.saveCheckpoint('pause'));const saved=await draw(),presentation=await emergency();
         await page.reload();await page.getByRole('button',{name:'繼續上次遊戲',exact:true}).tap();await page.waitForFunction(()=>window.__testApp?.startup==='started');
         await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);a.pauseOverlay.setVisible(false);});

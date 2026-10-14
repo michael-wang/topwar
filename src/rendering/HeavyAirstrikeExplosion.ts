@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const AIRSTRIKE_FX = { slots: 9, durationMs: 5600, radius: 4.8 } as const;
+const AIRSTRIKE_FX = { slots: 9, durationMs: 5600, radius: 4.8, smokeOpacity: .07 } as const;
 /** Nine reusable impacts: solid fire lobes and eight smoke puffs, no per-victim objects. */
 export class HeavyAirstrikeExplosion {
   private readonly sphere = new THREE.SphereGeometry(1, 9, 6);
@@ -14,7 +14,7 @@ export class HeavyAirstrikeExplosion {
     const mats = [
       new THREE.MeshBasicMaterial({ color: '#fff5d1', transparent: true, depthWrite: false }),
       new THREE.MeshBasicMaterial({ color: '#f95f13', transparent: true, depthWrite: false }),
-      new THREE.MeshBasicMaterial({ color: '#292c30', transparent: true, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: '#929395', transparent: true, depthWrite: false }),
       new THREE.MeshBasicMaterial({ color: '#9f8767', transparent: true, depthWrite: false }),
       new THREE.MeshBasicMaterial({ color: '#ffc271', transparent: true, depthWrite: false, side: THREE.DoubleSide }),
     ];
@@ -22,7 +22,7 @@ export class HeavyAirstrikeExplosion {
       smoke = new THREE.InstancedMesh(this.sphere, mats[2], 8), dust = new THREE.InstancedMesh(this.sphere, mats[3], 10),
       shock = new THREE.Mesh(this.ring, mats[4]);
     const meshes = [core, fire, smoke, dust, shock];
-    for (const m of meshes) { m.name = `airstrike-${index}-${m === core ? 'core' : m === fire ? 'fire' : m === smoke ? 'black-smoke' : m === dust ? 'dust' : 'shockwave'}`; m.visible = false; m.frustumCulled = false; }
+    for (const m of meshes) { m.name = `airstrike-${index}-${m === core ? 'core' : m === fire ? 'fire' : m === smoke ? 'smoke' : m === dust ? 'dust' : 'shockwave'}`; m.visible = false; m.frustumCulled = false; }
     for (const m of [fire, smoke, dust]) m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     for (let i = 0; i < 5; i++) fire.setColorAt(i, new THREE.Color(i % 2 ? '#ff941c' : '#f44e10'));
     core.renderOrder = 3; fire.renderOrder = 2; shock.rotation.x = -Math.PI / 2;
@@ -39,7 +39,9 @@ export class HeavyAirstrikeExplosion {
       s.core.visible = t < .45; s.fire.visible = t < 1; s.dust.visible = t < 1.4; s.shock.visible = t < .6;
       s.core.position.set(x, 2.5, z); s.core.scale.setScalar(r * (.22 + .32 * Math.min(1, t / .18)));
       s.mats[0].opacity = Math.max(0, 1 - t / .45); s.mats[1].opacity = Math.max(0, 1 - t);
-      s.mats[2].opacity = Math.min(1, t / .4) * .8 * Math.min(1, (durationSeconds - t) / 1.5);
+      // Eight layered puffs compound opacity: .07 each stays below .45 for one
+      // fully overlapped plume, leaving room for neighboring impacts to overlap.
+      s.mats[2].opacity = Math.min(1, t / .4) * AIRSTRIKE_FX.smokeOpacity * Math.min(1, (durationSeconds - t) / 1.5);
       s.mats[3].opacity = .45 * Math.max(0, 1 - t / 1.4); s.mats[4].opacity = .85 * Math.max(0, 1 - t / .6);
       s.shock.position.set(x, .1, z); s.shock.scale.setScalar(r * (1 + t * 2.3));
       for (let i = 0; i < 10; i++) {
