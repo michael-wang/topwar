@@ -16,7 +16,7 @@ export const CommanderSupportConfigSchema = z.strictObject({
   heavyRaid: z.strictObject({ bossDamage: z.number().finite().positive(), giantDamageFraction: z.number().finite().gt(0).lte(1), bandDepthUnits: z.number().finite().positive(),
     // Missing in released six-round raids: retain their original trigger and three Tank hits.
     lastStand: z.strictObject({ bossHpThreshold: z.number().finite().positive(), etaSafetySeconds: clock,
-      minimumBossHp: clock }).optional(),
+      minimumBossHp: clock, triggerPolicy: z.literal('bossHpOnly').optional() }).optional(),
   }).optional(),
 });
 export type CommanderSupportConfig = z.infer<typeof CommanderSupportConfigSchema>;
@@ -76,7 +76,8 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
       const speed = enemyApproachSpeed(enemy, frame.catharsis!.balance);
       return speed > 0 && (enemy.z - defenseLineZ) / speed <= c.warningSeconds + lastStand!.etaSafetySeconds;
     };
-    if (lastStand ? tank.hp <= lastStand.bossHpThreshold || left.some(imminentBreach) || right.some(imminentBreach) : danger(left) && danger(right)) {
+    if (lastStand ? tank.hp <= lastStand.bossHpThreshold
+      || lastStand.triggerPolicy !== 'bossHpOnly' && (left.some(imminentBreach) || right.some(imminentBreach)) : danger(left) && danger(right)) {
       if (c.heavyRaid) { air.targets = []; air.impacts = []; air.tankZAtWarning = tank.z; }
       else {
         // Released checkpoints retain their fixed nearest-first quota.

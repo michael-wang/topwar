@@ -11,7 +11,7 @@ import { postCapOrdinarySettings } from '../simulation/postCapSurvival';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 
 export function createAirSupportPlaytest(options: SimulationOptions, rate: number): Simulation {
-  const sim = createTankPlaytest(options, rate, false, 950 / options.catharsis!.balance.defenseTank!.hp), s = sim.getState();
+  const sim = createTankPlaytest(options, rate, false, 750 / options.catharsis!.balance.defenseTank!.hp), s = sim.getState();
   const b = s.catharsis!.balance, c = b.defenseTank!, now = s.elapsedSeconds;
   Object.assign(s.defenseTank!, { startedAtSeconds: now - c.entrySeconds - 6,
     activeAtSeconds: now - 6, entranceCleared: true });
