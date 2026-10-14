@@ -40,7 +40,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
       const m=mesh.matrixWorld.clone(),centers=[];
       for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,m);const p=mesh.position.clone().setFromMatrixPosition(m).project(a.renderer.camera);
         const locked=s.artillery.shells.find(shell=>shell.targetLane===targets[i]);
-        const target=mesh.position.clone().set(-locked.target.x,2.05,locked.target.z).project(a.renderer.camera);
+        const target=mesh.position.clone().set(-locked.target.x,2.05,locked.target.z+1.2).project(a.renderer.camera);
         centers.push({x:(p.x*.5+.5)*innerWidth,y:(.5-p.y*.5)*innerHeight,targetX:(target.x*.5+.5)*innerWidth,targetY:(.5-target.y*.5)*innerHeight});}
       window.__checks.push({at:s.elapsedSeconds,targets,count:mesh.count,visible:mesh.visible,opacity:mesh.material.opacity,scales:Array.from({length:mesh.count},(_,i)=>{const m=mesh.matrixWorld.clone();mesh.getMatrixAt(i,m);return mesh.position.clone().setFromMatrixScale(m).x;}),
         selected:s.player.selectedLane,centers,ground:scene.children.filter(e=>e.name.startsWith('enemy-shell-warning-')&&e.visible).length,

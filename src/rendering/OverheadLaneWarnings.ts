@@ -3,6 +3,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ARTILLERY_CAPACITY } from '../config/artilleryConfig';
 import type { ArtilleryShell } from '../simulation/artillery';
 
+const WARNING_FORWARD_OFFSET = 1.2;
+const WARNING_WIDTH_SCALE = .75;
+
 // One bounded billboard batch; each lane uses its earliest authoritative impact.
 export class OverheadLaneWarnings {
   private readonly geometry: THREE.BufferGeometry;
@@ -27,6 +30,7 @@ export class OverheadLaneWarnings {
     const dot=new THREE.Shape();dot.absarc(0,-.11,.075,0,Math.PI*2,false);
     const parts = [new THREE.ShapeGeometry(rim), new THREE.ShapeGeometry([stem,dot])];
     this.geometry = mergeGeometries(parts)!;
+    this.geometry.scale(WARNING_WIDTH_SCALE,1,1);
     for (const part of parts) part.dispose();
     this.batch=new THREE.InstancedMesh(this.geometry,this.material,ARTILLERY_CAPACITY);
     this.batch.name='artillery-lane-danger';this.batch.frustumCulled=false;this.batch.renderOrder=14;
@@ -53,8 +57,9 @@ export class OverheadLaneWarnings {
       const urgency=Math.max(0,Math.min(1,1-remaining));
       const finalEmphasis=Math.max(0,Math.min(1,1-remaining/.15));
       const scale=1+urgency*(.08+.25*urgency)*Math.sin(Math.PI*(2*urgency+urgency*urgency))**2+.10*finalEmphasis**2;
-      // This is a locked lane cue above the squad, not a ground-impact marker.
-      this.transform.position.set(this.xs[lane],2.05,this.zs[lane]);
+      // All lanes share this rendering-only depth offset; damage stays at shell.target.
+      // Keep the original lane X and overhead height, without any edge-specific fitting.
+      this.transform.position.set(this.xs[lane],2.05,this.zs[lane]+WARNING_FORWARD_OFFSET);
       this.transform.scale.setScalar(scale);this.transform.updateMatrix();
       this.batch.setMatrixAt(count++,this.transform.matrix);
     }

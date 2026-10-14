@@ -93,7 +93,7 @@ it('shows continuously visible lane-locked overhead warnings for the complete fl
     expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
     for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);
       const center=new THREE.Vector3().setFromMatrixPosition(matrix);
-      expect(center.x).toBeCloseTo(-pair[i].target.x);expect(center.y).toBeCloseTo(2.05);expect(center.z).toBeCloseTo(pair[i].target.z);}
+      expect(center.x).toBeCloseTo(-pair[i].target.x);expect(center.y).toBeCloseTo(2.05);expect(center.z).toBeCloseTo(pair[i].target.z+1.2);}
     expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(false);
     for(let i=0;i<8;i++)expect(scene.getObjectByName(`enemy-shell-warning-${i}`)!.visible).toBe(false);
   }
@@ -121,15 +121,15 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
 
-it.each([350,390])('keeps complete lane-aligned triangles with natural viewport clipping at %ipx',width=>{
+it.each([350,390])('keeps all five overhead warnings readable with uniform rendering-only depth/width at %ipx',width=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene),camera=warningCamera(width);
   const cameraPose=camera.matrixWorld.toArray(),projection=camera.projectionMatrix.toArray();
   const all=Array.from({length:5},(_,lane)=>({...makeArtilleryShell(lane+1,{source:shell.source},lane,
     [-2.8,-1.4,0,1.4,2.8],0,0,artilleryDefaults,.588),flightSeconds:2.4,impactAtSeconds:2.4}));
   const ink=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),point=new THREE.Vector3();
   const geometry=ink.geometry,positions=geometry.attributes.position,vertices=Array.from(positions.array);
-  expect(Math.min(...vertices.filter((_,i)=>i%3===0))).toBeCloseTo(-.4);
-  expect(Math.max(...vertices.filter((_,i)=>i%3===0))).toBeCloseTo(.4);
+  expect(Math.min(...vertices.filter((_,i)=>i%3===0))).toBeCloseTo(-.3);
+  expect(Math.max(...vertices.filter((_,i)=>i%3===0))).toBeCloseTo(.3);
   expect(geometry.getAttribute('warningLean')).toBeUndefined();
   for(const seconds of [0,1,2.4-.1291666667]){
     const state={shells:all,elapsedSeconds:seconds,warningPresentation:'overheadLanes' as const};
@@ -138,20 +138,25 @@ it.each([350,390])('keeps complete lane-aligned triangles with natural viewport 
     for(let i=0;i<ink.count;i++){
       ink.getMatrixAt(i,matrix);matrices.push(matrix.toArray());
       const center=new THREE.Vector3().setFromMatrixPosition(matrix);
-      expect(center.x).toBeCloseTo(-all[i].target.x);expect(center.y).toBeCloseTo(2.05);expect(center.z).toBeCloseTo(all[i].target.z);
+      expect(center.x).toBeCloseTo(-all[i].target.x);expect(center.y).toBeCloseTo(2.05);expect(center.z).toBeCloseTo(all[i].target.z+1.2);
       const scale=new THREE.Vector3().setFromMatrixScale(matrix);
       expect(scale.x).toBeCloseTo(scale.y);expect(scale.x).toBeCloseTo(scale.z);
       if(i>0)expect(scale.x).toBeCloseTo(new THREE.Vector3().setFromMatrixScale(new THREE.Matrix4().fromArray(matrices[0])).x);
       expect(new THREE.Vector3().setFromMatrixPosition(matrix).x).toBeCloseTo(-all[i].target.x);
       for(const x of [-2.8,-1.4,0,1.4,2.8])expect(artilleryHits(all[i],x,0)).toBe(x===all[i].target.x);
-      let left=Infinity,right=-Infinity;
+      let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
       for(let v=0;v<positions.count;v++){
-        point.fromBufferAttribute(positions,v).applyMatrix4(matrix).project(camera);
-        left=Math.min(left,point.x);right=Math.max(right,point.x);
-        expect((.5-point.y*.5)*844).toBeLessThan(650); // Above weapon/Grenade HUD.
+        point.fromBufferAttribute(positions,v);
+        const glyph=Math.abs(point.x)<=.075+1e-6 && point.y>-.20 && point.y<=.29+1e-6;
+        point.applyMatrix4(matrix).project(camera);
+        const x=(point.x*.5+.5)*width,y=(.5-point.y*.5)*844;
+        left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);
+        if(glyph){expect(x).toBeGreaterThan(2);expect(x).toBeLessThan(width-2);} // Entire red stem/dot, including pulse.
+        expect(y).toBeLessThan(650); // Above weapon/Grenade HUD.
       }
-      if(i===0)expect(left).toBeLessThan(-1);
-      if(i===4)expect(right).toBeGreaterThan(1); // Complete outer triangles extend outside the camera frame.
+      const visibleWidth=Math.min(width,right)-Math.max(0,left);
+      expect(visibleWidth/(right-left)).toBeGreaterThan(.75); // Most of even the outer silhouette stays visible.
+      if(i===2){expect(right-left).toBeGreaterThan(30);expect(bottom-top).toBeGreaterThan(40);} // Center remains substantial.
     }
     r.update(state,9000,{x:2.8,z:0},camera);
     for(let i=0;i<5;i++){ink.getMatrixAt(i,matrix);expect(matrix.toArray()).toEqual(matrices[i]);}
@@ -160,7 +165,7 @@ it.each([350,390])('keeps complete lane-aligned triangles with natural viewport 
     r.update({...state,elapsedSeconds:seconds+.02},20,{x:0,z:0},camera);
     for(let i=0;i<5;i++){
       ink.getMatrixAt(i,matrix);const center=new THREE.Vector3().setFromMatrixPosition(matrix);
-      expect(center.toArray()).toEqual([expect.closeTo(-all[i].target.x,5),expect.closeTo(2.05,5),expect.closeTo(all[i].target.z,5)]);
+      expect(center.toArray()).toEqual([expect.closeTo(-all[i].target.x,5),expect.closeTo(2.05,5),expect.closeTo(all[i].target.z+1.2,5)]);
     }
     expect(ink.geometry).toBe(geometry);expect(Array.from(positions.array)).toEqual(vertices);
   }
@@ -210,9 +215,9 @@ it('keeps a transparent interior and matching solid-red glyph without fill geome
   const shader={vertexShader:'#include <common>\n#include <begin_vertex>',fragmentShader:'#include <common>\n#include <color_fragment>'};
   const original={...shader};material.onBeforeCompile(shader as any,{} as any);expect(shader).toEqual(original);
   const points=Array.from({length:positions.count},(_,i)=>new THREE.Vector3().fromBufferAttribute(positions,i));
-  expect(points.find(p=>Math.abs(p.x+.40)<1e-6)!.y).toBeCloseTo(.35);
-  expect(points.find(p=>Math.abs(p.x-.40)<1e-6)!.y).toBeCloseTo(.36);
-  expect(points.find(p=>Math.abs(p.x-.225)<1e-6)!.y).toBeCloseTo(-.01); // Approved irregular outline.
+  expect(points.find(p=>Math.abs(p.x+.30)<1e-6)!.y).toBeCloseTo(.35);
+  expect(points.find(p=>Math.abs(p.x-.30)<1e-6)!.y).toBeCloseTo(.36);
+  expect(points.find(p=>Math.abs(p.x-.225*.75)<1e-6)!.y).toBeCloseTo(-.01); // Approved irregular outline.
   expect(points.reduce((a,b)=>a.y<b.y?a:b).toArray()).toEqual([0,expect.closeTo(-.42),0]);
   let disposed=0;geometry.addEventListener('dispose',()=>disposed++);
   r.dispose();expect(disposed).toBe(1);expect(scene.children).toHaveLength(0);
