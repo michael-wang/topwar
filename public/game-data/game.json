@@ -59,7 +59,7 @@
       "minimumFlightSeconds": 0.5,
       "impactLaneFraction": 0.42,
       "maxActive": 8,
-      "warningPresentation": "overheadLanes"
+      "warningPresentation": "personalEmergency"
     },
     "defenseMotionVersion": 2,
     "defenseWaves": {

@@ -14,6 +14,18 @@ function warningCamera(width=390) {
 
 const shell = makeArtilleryShell(1, { source: { id: 'test', type: 'offshore', position: { x: -3, y: 1.2, z: 52 } } },
   2, [-2.8, -1.4, 0, 1.4, 2.8], 0, 0, artilleryDefaults, .588);
+it('removes triangles, rings and launch alerts only for the new personal presentation, preserving shell flight', () => {
+  const scene = new THREE.Scene(), r = new EnemyArtilleryRenderer(scene);
+  r.present([{ kind: 'artilleryLaunch', shell }], 0);
+  r.update({ shells: [shell], elapsedSeconds: .1, warningPresentation: 'personalEmergency' }, 100);
+  expect(r.getDebugStats().shells).toBe(1); expect(r.getDebugStats().warnings).toBe(0);
+  expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(false);
+  r.update({ shells: [shell], elapsedSeconds: .1, warningPresentation: 'overheadLanes' }, 100);
+  expect(r.getDebugStats().warnings).toBe(1);
+  r.update({ shells: [shell], elapsedSeconds: .1 }, 100);
+  expect(r.getDebugStats().warnings).toBe(1); expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(true);
+  r.dispose();
+});
 it('keeps shell/warning positions tied to authoritative flight and exact collision radius', () => {
   const scene = new THREE.Scene(), r = new EnemyArtilleryRenderer(scene);
   r.update({ shells: [shell], elapsedSeconds: 1 }, 1000);

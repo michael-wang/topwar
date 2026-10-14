@@ -80,15 +80,16 @@ export class EnemyArtilleryRenderer {
     this.impacts.update(nowMs, 0);
     const alertAge = nowMs - this.alertAtMs;
     const overhead = state?.warningPresentation === 'overheadLanes';
+    const groundWarnings = state?.warningPresentation === undefined;
     if(overhead)this.overhead.update(state!.shells,state!.elapsedSeconds,camera);else this.overhead.reset();
-    this.alert.visible = !overhead && !!state?.shells.length && alertAge >= 0 && alertAge < LOCK_ON_ALERT_MS;
+    this.alert.visible = groundWarnings && !!state?.shells.length && alertAge >= 0 && alertAge < LOCK_ON_ALERT_MS;
     this.alert.position.set(-player.x, 1.7, player.z);
     if (camera) this.alert.quaternion.copy(camera.quaternion);
     this.alert.scale.setScalar(.7 + .18 * Math.sin(Math.max(0, alertAge) / 45) ** 2);
     this.alertMaterial.opacity = Math.min(1, Math.max(0, (LOCK_ON_ALERT_MS - alertAge) / 110));
     for (let i = 0; i < this.slots.length; i++) {
       const s = this.slots[i], shell = state?.shells[i];
-      s.shell.visible = !!shell; s.warning.visible = !!shell && !overhead; s.flash.visible = false;
+      s.shell.visible = !!shell; s.warning.visible = !!shell && groundWarnings; s.flash.visible = false;
       for (const trail of s.trail) trail.visible = false;
       if (!shell || !state) continue;
       const age = Math.max(0, state.elapsedSeconds - shell.launchedAtSeconds), progress = Math.min(1, age / shell.flightSeconds);
@@ -101,7 +102,7 @@ export class EnemyArtilleryRenderer {
       s.shell.quaternion.setFromUnitVectors(this.up, this.direction);
       // Outer edge is fixed at the collision radius. Only the interior closes/pulses.
       s.warning.position.set(-shell.target.x, .035, shell.target.z); s.warning.scale.setScalar(shell.radius);
-      if (!overhead) {
+      if (groundWarnings) {
         const inner = warningInnerRadius(progress), positions = s.progressGeometry.attributes.position;
         for (let j = 0; j <= 32; j++) positions.setXY(j, Math.cos(j / 32 * Math.PI * 2) * inner, Math.sin(j / 32 * Math.PI * 2) * inner);
         positions.needsUpdate = true;

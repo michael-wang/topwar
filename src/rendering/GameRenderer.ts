@@ -62,6 +62,7 @@ export class GameRenderer {
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private viewportCssHeight = 1;
   private readonly supplyProjection = new THREE.Vector3();
+  private readonly playerWarningPoint = { x: 0, y: 0 };
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
   private readonly enemyRenderer: EnemyRenderer;
@@ -228,6 +229,12 @@ export class GameRenderer {
     this.tankHealthPoint.x = (this.tankHealthVector.x + 1) * this.viewport.clientWidth / 2;
     this.tankHealthPoint.y = (1 - this.tankHealthVector.y) * this.viewport.clientHeight / 2;
     return this.tankHealthPoint;
+  }
+  projectPlayerWarningPosition(x: number): { x: number; y: number } {
+    this.supplyProjection.set(-x, 1.45, 0).project(this.camera);
+    this.playerWarningPoint.x = (this.supplyProjection.x + 1) * this.viewport.clientWidth / 2;
+    this.playerWarningPoint.y = (1 - this.supplyProjection.y) * this.viewport.clientHeight / 2;
+    return this.playerWarningPoint;
   }
   presentSupport(events: readonly SupportEvent[], nowMs: number): void {
     if (!events.length) return;

@@ -106,6 +106,7 @@ const stripDom = vi.hoisted(() => ({ progressionHost: {} as HTMLElement }));
 const tankUi = vi.hoisted(() => ({ update: vi.fn(), show: vi.fn(), reset: vi.fn(), replay: null as (() => void) | null }));
 vi.mock('../src/ui/TankBossHud', () => ({ TankBossHud: class { update = tankUi.update; presentGrenade = vi.fn(); presentSupport = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
 vi.mock('../src/ui/TankEntranceHud', () => ({ TankEntranceHud: class { update = vi.fn(); restore = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
+vi.mock('../src/ui/ArtilleryEmergencyHud', () => ({ ArtilleryEmergencyHud: class { update = vi.fn(); reset = vi.fn(); dispose = vi.fn(); } }));
 vi.mock('../src/ui/StageClearOverlay', () => ({ StageClearOverlay: class {
   constructor(_viewport: unknown, replay: () => void) { tankUi.replay = replay; }
   show = tankUi.show; reset = tankUi.reset; dispose = vi.fn();
@@ -692,6 +693,21 @@ it('dispatches one shared progression beat per gain, coalesces overflow and rese
   raf.frame(200);
   expect(mock.presentLevelUp.mock.lastCall?.[0]).toEqual({ kind: 'progressionLevelUp', fromLevel: 1, toLevel: 2 });
   expect(mock.presentLevelUp).toHaveBeenCalledTimes(3);
+  app.dispose(); play.mockRestore();
+});
+
+it.each(['personalEmergency', 'overheadLanes', undefined] as const)('keeps cannon/impact cues and gates launch lock-on for %s', warningPresentation => {
+  const raf = createRaf(), app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+  const play = vi.spyOn(GameAudio.prototype, 'play').mockImplementation(() => {});
+  const base = mock.getState(), balance = CatharsisConfigSchema.parse(gameData.catharsis);
+  balance.artillery!.warningPresentation = warningPresentation;
+  mock.getState.mockReturnValue({ ...base, elapsedSeconds: 0, catharsis: { balance, trackHalfWidth: 3.2 } });
+  const internal = app as unknown as { startup: string; simulation: { consumeArtilleryEvents: ReturnType<typeof vi.fn> } };
+  internal.startup = 'started';
+  internal.simulation.consumeArtilleryEvents.mockReturnValueOnce([{ kind: 'artilleryLaunch' }, { kind: 'artilleryImpact' }]);
+  app.start(); raf.frame(100);
+  expect(play).toHaveBeenCalledWith('enemyCannon'); expect(play).toHaveBeenCalledWith('enemyShellImpact');
+  expect(play.mock.calls.filter(([cue]) => cue === 'enemyLockOn')).toHaveLength(warningPresentation === 'personalEmergency' ? 0 : 1);
   app.dispose(); play.mockRestore();
 });
 

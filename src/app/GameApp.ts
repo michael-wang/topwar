@@ -18,6 +18,8 @@ import { DamageFlashOverlay } from '../ui/DamageFlashOverlay';
 import { GameOverOverlay } from '../ui/GameOverOverlay';
 import { TankBossHud } from '../ui/TankBossHud';
 import { TankEntranceHud } from '../ui/TankEntranceHud';
+import { ArtilleryEmergencyHud } from '../ui/ArtilleryEmergencyHud';
+import { personalArtilleryThreat } from '../presentation/ArtilleryEmergency';
 import { StageClearOverlay } from '../ui/StageClearOverlay';
 import { TANK_DEATH_MS, TANK_EXPLOSION_TIMES_MS } from '../rendering/DefenseTankRenderer';
 import { GameAudio } from '../audio/GameAudio';
@@ -64,6 +66,7 @@ export class GameApp {
   private readonly gameOverOverlay: GameOverOverlay;
   private readonly tankBossHud: TankBossHud;
   private readonly tankEntranceHud: TankEntranceHud;
+  private readonly artilleryEmergencyHud: ArtilleryEmergencyHud;
   private readonly stageClearOverlay: StageClearOverlay;
   private tankDeathAtMs: number | null = null;
   private stageClearAtMs: number | null = null;
@@ -190,6 +193,7 @@ export class GameApp {
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
     this.tankBossHud = new TankBossHud(viewport);
     this.tankEntranceHud = new TankEntranceHud(viewport, () => this.audio.play('bossAlarm'));
+    this.artilleryEmergencyHud = new ArtilleryEmergencyHud(viewport, x => this.renderer.projectPlayerWarningPosition(x));
     this.stageClearOverlay = new StageClearOverlay(viewport, () => this.retry());
     this.laneInput = this.config.catharsis?.defenseMode ? new LaneStepInput(viewport, window,
       (direction) => {
@@ -271,6 +275,8 @@ export class GameApp {
     this.viewport.classList?.remove('game-paused');
     this.renderer.stopResizeHandling();
     this.fieldObserver?.reset();
+    this.artilleryEmergencyHud.reset();
+    this.audio.syncArtilleryEmergency(null, true);
     this.audio.silenceMusic();
   }
 
@@ -286,6 +292,7 @@ export class GameApp {
     this.gameOverOverlay.dispose();
     this.tankBossHud.dispose(); this.stageClearOverlay.dispose();
     this.tankEntranceHud.dispose();
+    this.artilleryEmergencyHud.dispose();
     this.tuningPanel?.dispose();
     this.hudActions.dispose();
     this.devReview?.dispose();
@@ -335,6 +342,7 @@ export class GameApp {
     this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
     this.stageClearAtMs = null;
     this.tankEntranceHud.reset();
+    this.artilleryEmergencyHud.reset();
     this.damageFlash.reset();
     this.fieldObserver?.reset();
     this.audio.resetObservation();
@@ -751,6 +759,10 @@ export class GameApp {
       const state = this.simulation.getFrameState();
       const cleared = state.defenseTank?.status === 'defeated';
       this.tankEntranceHud.update(state, this.paused);
+      const emergency = personalArtilleryThreat(state);
+      const emergencyRemaining = emergency ? emergency.impactAtSeconds - state.elapsedSeconds : null;
+      this.artilleryEmergencyHud.update(emergencyRemaining, state.player.x);
+      this.audio.syncArtilleryEmergency(emergencyRemaining, this.paused || this.hidden || this.contextLost);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
         if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
@@ -793,7 +805,8 @@ export class GameApp {
       const artilleryEvents = this.simulation.consumeArtilleryEvents();
       for (const event of artilleryEvents) {
         this.audio.play(event.kind === 'artilleryLaunch' ? 'enemyCannon' : 'enemyShellImpact');
-        if (event.kind === 'artilleryLaunch') this.audio.play('enemyLockOn');
+        if (event.kind === 'artilleryLaunch' && state.catharsis?.balance.artillery?.warningPresentation !== 'personalEmergency')
+          this.audio.play('enemyLockOn');
       }
       this.renderer.presentArtillery(artilleryEvents, this.presentationMs);
       if (cleared) {

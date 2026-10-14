@@ -33,6 +33,18 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it.each([undefined, 'overheadLanes', 'personalEmergency'] as const)('retains saved %s artillery presentation without upgrading historical checkpoints', presentation => {
+    const { c } = checkpoint(), saved = structuredClone(c), store = storage();
+    saved.config.catharsis!.artillery!.warningPresentation = presentation;
+    saved.state.catharsis!.balance.artillery!.warningPresentation = presentation;
+    expect(writeCheckpoint(saved, store).ok).toBe(true);
+    const loaded = readCheckpoint(store); expect(loaded.status).toBe('valid');
+    if (loaded.status !== 'valid') throw Error('Checkpoint rejected');
+    const sim = simulationFromCheckpoint(loaded.checkpoint);
+    expect(sim.getState().catharsis!.balance.artillery!.warningPresentation).toBe(presentation);
+    expect(sim.getState()).toEqual(JSON.parse(JSON.stringify(saved.state)));
+    expect(sim.consumeArtilleryEvents()).toEqual([]);
+  });
   it.each(['naval','boss-intro','victory'] as const)('accepts the approved %s scene in Production with exact Simulation state', role => {
     const { c } = checkpoint(), store = storage();
     const sim = createPlaytestScenario({ seed:17, level, startSquad:1, startRocketCount:0, tiers:config.tiers,
