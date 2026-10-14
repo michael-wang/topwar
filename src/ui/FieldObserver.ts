@@ -28,6 +28,8 @@ export class FieldObserver {
   private readonly victoryTimeline = new MissionObserverTimeline(victoryTiming);
   private victoryStarted = false;
   private victoryFinished = false;
+  private victoryPresented = false;
+  get victoryPresentationStarted(): boolean { return this.victoryPresented; }
   private readonly text = document.createElement('p');
   private readonly lamp = document.createElement('span');
   private readonly timeline = new ObserverTimeline();
@@ -125,6 +127,7 @@ export class FieldObserver {
   }
   restoreVictory(checkpoint: VictoryCommunicationCheckpoint, now: number): void {
     this.reset(); this.victoryStarted = true; this.victoryFinished = checkpoint.finished; this.finaleClock = true;
+    this.victoryPresented = checkpoint.finished || checkpoint.offsetSeconds !== null;
     if (!checkpoint.finished) this.victoryTimeline.restore(checkpoint, now);
   }
   updateVictory(now: number, paused: boolean): boolean {
@@ -139,6 +142,7 @@ export class FieldObserver {
     return this.victoryFinished;
   }
   private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
+    if (message === 'victory' && frame.visible) this.victoryPresented = true;
     const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
     const phrase = message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
       ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * frame.duration / timing.durationSeconds ? i : index, 0) : 0;
@@ -175,6 +179,7 @@ export class FieldObserver {
   reset(): void {
     this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
     this.victoryTimeline.reset(); this.victoryStarted = false; this.victoryFinished = false; this.skip.hidden = true;
+    this.victoryPresented = false;
     this.comms.reset(); this.observedSupport = false; this.giantAt = this.airAt = null; this.finaleClock = false;
     this.presented = false;
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);

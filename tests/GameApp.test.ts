@@ -665,6 +665,7 @@ describe('GameApp config and frame lifecycle', () => {
 
   it('lets fatal knockout feedback finish before showing Game Over', async () => {
     const raf = createRaf();
+    const base = mock.getState();
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level,
       {} as CharacterAssets);
     const zero = { player: { x: 0, z: 0 },
@@ -675,15 +676,15 @@ describe('GameApp config and frame lifecycle', () => {
       before: { count: 1, rocketCount: 0, rifleCounts: [1], rifleRemainder: 0 },
       after: zero.squad }]);
     await startGame(app);
-    mock.getState.mockReturnValueOnce(zero);
+    mock.getState.mockReturnValue(zero);
     raf.frame(100);
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
     for (let frame = 1; frame <= 23; frame++) {
-      mock.getState.mockReturnValueOnce(zero);
       raf.frame(100 + frame * (1000 / 60));
     }
     expect(mock.overlayVisible).toHaveBeenLastCalledWith(true);
     app.dispose();
+    mock.getState.mockReturnValue(base);
   });
 });
 
@@ -1101,6 +1102,7 @@ vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
 
 it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset the same app', async () => {
   const raf = createRaf(), base = mock.getState();
+  const silenceWeapons = vi.spyOn(GameAudio.prototype, 'silenceWeapons');
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
@@ -1110,12 +1112,16 @@ it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset 
   Object.assign(tank, { status: 'defeated', hp: 0, phase: 3, defeatedAtSeconds: 90 });
   const stats = { gruntKills: 5, heavyKills: 3, giantKills: 1, shotsFired: 100, shotsHit: 35, grenadesUsed: 2 };
   mock.getState.mockReturnValue({ ...base, catharsis: { balance: gameData.catharsis!, trackHalfWidth: 3.2 },
+    player: { ...base.player, selectedLane: 2 }, projectiles: [],
+    weapons: {nextProjectileId: 1, rifleMemberCooldowns: [0,0,0], rifleCooldownRemainingSeconds: 0, rocketCooldownRemainingSeconds: 0},
     progression: { level: 9, xp: 0 }, defenseTank: tank, combatStats: stats });
   raf.frame(100); expect(tankUi.show).not.toHaveBeenCalled();
+  const lethalSteps = mock.step.mock.calls.length;
   raf.key('p'); raf.frame(10000); expect(tankUi.show).not.toHaveBeenCalled();
   raf.key('p'); raf.frame(10250);
   for (let i = 1; i <= 14; i++) raf.frame(10250 + i * 250);
   expect(mock.victory).toHaveBeenCalled(); expect(tankUi.show).not.toHaveBeenCalled();
+  expect(silenceWeapons).toHaveBeenCalledOnce(); expect(mock.step).toHaveBeenCalledTimes(lethalSteps);
   raf.key('p'); expect(mock.victory).toHaveBeenLastCalledWith(expect.any(Number), true);
   raf.frame(20000); expect(tankUi.show).not.toHaveBeenCalled();
   raf.key('p'); raf.frame(20250);
@@ -1123,4 +1129,5 @@ it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset 
   expect(tankUi.show).toHaveBeenCalledWith(stats, 90); expect(mock.overlayVisible).toHaveBeenLastCalledWith(false);
   mock.getState.mockReturnValue(base); tankUi.replay!(); expect(tankUi.reset).toHaveBeenCalled();
   expect(mock.constructedWith).toHaveBeenCalledTimes(2); app.dispose();
+  silenceWeapons.mockRestore();
 });

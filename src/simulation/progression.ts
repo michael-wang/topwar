@@ -35,7 +35,8 @@ export function effectiveRifleFireRate(base: number, level: number, balance: Pro
   const stage = stages.filter(s => s.weaponFamily === 'rifle').at(-1)!;
   return base * balance.fireRateMultipliers[stage.fireRateStage - 1];
 }
-export function effectivePrimaryFireRate(base: number, level: number, balance: Readonly<CatharsisConfig>): number {
+export function effectivePrimaryFireRate(base: number, level: number,
+  balance: {readonly progression: ProgressionBalance; readonly machineGun: Readonly<CatharsisConfig['machineGun']>}): number {
   const stage = progressionStage(level, balance.progression);
   return stage.weaponFamily === 'machineGun'
     // Stage I retains its authored base rate, including historical plans whose

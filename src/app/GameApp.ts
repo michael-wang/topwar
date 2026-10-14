@@ -20,6 +20,8 @@ import { TankBossHud } from '../ui/TankBossHud';
 import { TankEntranceHud } from '../ui/TankEntranceHud';
 import { ArtilleryEmergencyHud } from '../ui/ArtilleryEmergencyHud';
 import { personalArtilleryThreat } from '../presentation/ArtilleryEmergency';
+import { VictoryCelebration } from '../presentation/VictoryCelebration';
+import type { SimulationFrameState } from '../simulation/SimulationState';
 import { StageClearOverlay } from '../ui/StageClearOverlay';
 import { TANK_DEATH_MS, TANK_EXPLOSION_TIMES_MS } from '../rendering/DefenseTankRenderer';
 import { GameAudio } from '../audio/GameAudio';
@@ -70,6 +72,8 @@ export class GameApp {
   private readonly stageClearOverlay: StageClearOverlay;
   private tankDeathAtMs: number | null = null;
   private stageClearAtMs: number | null = null;
+  private celebration: VictoryCelebration | null = null;
+  private lastCombatProjectiles: SimulationFrameState['projectiles'] | undefined;
   private tankDeathCue = -1;
   private readonly damageFlash: DamageFlashOverlay;
   private readonly audio: GameAudio;
@@ -198,7 +202,8 @@ export class GameApp {
     this.laneInput = this.config.catharsis?.defenseMode ? new LaneStepInput(viewport, window,
       (direction) => {
         if (!this.running || this.startup !== 'started' || this.paused || this.simulation.getFrameState().squad.count === 0) return false;
-        return this.simulation.stepLane(direction);
+        if (this.stageClearAtMs !== null) return false;
+        return this.celebration ? this.celebration.stepLane(direction) : this.simulation.stepLane(direction);
       }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
     this.fps = import.meta.env.DEV ? new DevFps(viewport) : null;
@@ -304,6 +309,7 @@ export class GameApp {
     this.qaGeneration++;this.qaPanel?.dispose();
     this.perfHud?.dispose();
     this.renderer.dispose();
+    this.celebration = null; this.lastCombatProjectiles = undefined;
     this.disposed = true;
   }
 
@@ -314,6 +320,7 @@ export class GameApp {
     this.qaSession=false;
     clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
+    this.celebration = null; this.lastCombatProjectiles = undefined; this.stageClearAtMs = null;
     this.restored = false;
     this.fps?.reset();
     this.laneInput?.stop();
@@ -384,7 +391,7 @@ export class GameApp {
   }
 
   private startInputs(): void {
-    if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost || this.recovery?.blocking) return;
+    if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost || this.recovery?.blocking || this.stageClearAtMs !== null) return;
     if (this.laneInput) {
       if (this.simulation.getFrameState().squad.count > 0) this.laneInput.start();
     }
@@ -552,6 +559,7 @@ export class GameApp {
         this.xpHud?.reset(); this.battleInfo?.reset();
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
+        this.celebration = null; this.lastCombatProjectiles = undefined;
         this.tankDeathAtMs = s.defenseTank?.status === 'defeated' ? -(c.playtestVictory?.elapsedMs ?? TANK_DEATH_MS) : null;
         this.stageClearAtMs = null;
         this.tankDeathCue = s.defenseTank?.status === 'defeated'
@@ -732,7 +740,11 @@ export class GameApp {
       if (!this.paused && !this.hidden && !this.contextLost) {
         this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
         const stepStartedMs = perf ? performance.now() : 0;
-        const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => this.simulation.step(
+        const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => {
+        const before = this.simulation.getFrameState();
+        if (before.defenseTank?.status === 'defeated') return;
+        if (before.defenseTank) this.lastCombatProjectiles = before.projectiles;
+        this.simulation.step(
         dtSeconds,
         { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}) },
         {
@@ -750,7 +762,8 @@ export class GameApp {
             maxHitRadiusBonus: this.config.weapon.rifle.maxHitRadiusBonus },
           rocket: { ...this.config.weapon.rocket },
         },
-        ));
+        );
+        });
         if (perf) stepCpuMs = performance.now() - stepStartedMs;
         perf?.recordSteps(advance.steps);
       }
@@ -762,7 +775,8 @@ export class GameApp {
       const emergencyRemaining = emergency ? emergency.impactAtSeconds - state.elapsedSeconds : null;
       this.artilleryEmergencyHud.update(emergencyRemaining, state.player.x);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
-      if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
+      if (state.squad.count === 0 || this.stageClearAtMs !== null) this.laneInput?.stop();
+      if (state.squad.count === 0 || cleared) {
         if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
       if (!cleared)
         this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank, state.commanderSupport, state.catharsis?.balance.commanderSupport);
@@ -808,6 +822,9 @@ export class GameApp {
       }
       this.renderer.presentArtillery(artilleryEvents, this.presentationMs);
       if (cleared) {
+        if (!this.celebration && state.catharsis?.balance.defenseMode && state.squad.count > 0)
+          this.celebration = new VictoryCelebration(state, this.presentationMs,
+            { ...this.runtimeTuning, formationSpacing: this.config.player.formationSpacing }, this.lastCombatProjectiles);
         this.tankDeathAtMs ??= this.presentationMs;
         const age = this.presentationMs - this.tankDeathAtMs;
         const times = TANK_EXPLOSION_TIMES_MS;
@@ -818,7 +835,12 @@ export class GameApp {
           && state.combatStats) {
           this.stageClearAtMs ??= this.presentationMs;
           this.stageClearOverlay.show(state.combatStats, state.defenseTank!.defeatedAtSeconds!);
+          this.laneInput?.stop();
         }
+        const wasFiring = this.celebration?.firingEnabled;
+        this.celebration?.update(this.presentationMs, this.paused,
+          this.fieldObserver?.victoryPresentationStarted ?? age >= TANK_DEATH_MS, this.stageClearAtMs !== null);
+        if (wasFiring && !this.celebration?.firingEnabled) this.audio.silenceWeapons();
       }
       if (state.progression && state.catharsis) {
         const levelUp = this.progressionObserver.observe(state.progression.level);
@@ -850,7 +872,7 @@ export class GameApp {
       if (feedback) this.damageFlash.flash(feedback === 'fatal');
       const audioStartedMs = perf ? performance.now() : 0;
       this.audio.observe(feedbackBefore, currentDefenseValue,
-        state.enemies, this.presentationMs, state.projectiles);
+        state.enemies, this.presentationMs, this.celebration?.projectiles ?? state.projectiles);
       this.audio.updateMusic(this.presentationMs, {
         squadCount: state.squad.count,
         paused: this.paused,
@@ -865,12 +887,14 @@ export class GameApp {
       this.previousDefenseValue = currentDefenseValue;
       this.previousWeaponFamily = weaponFamily;
       const renderStartedMs = perf ? performance.now() : 0;
-      const renderState: GameRenderState = projectRenderState(state, {
+      const baseRenderState: GameRenderState = projectRenderState(state, {
         formationSpacing: this.config.player.formationSpacing,
         trackHalfWidth: this.config.track.halfWidth,
         defenseLineOffset: this.config.track.defenseLineOffset,
         catharsis: state.catharsis,
       });
+      const renderState: GameRenderState = this.celebration
+        ? { ...baseRenderState, player: this.celebration.player, projectiles: this.celebration.projectiles } : baseRenderState;
       const mapFinishedMs = perf ? performance.now() : 0;
       const renderEvents = state.catharsis?.balance.defenseMode ? presentationEvents.map((event) => ({ ...event,
         attackerZ: event.attackerZ - state.player.z, playerZ: 0 })) : presentationEvents;

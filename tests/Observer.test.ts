@@ -410,6 +410,7 @@ it('completes all Victory phrases without media, freezes during Pause, and lets 
   const lastTick=Math.ceil(victoryTiming.durationSeconds*60);
   for(let tick=0;tick<=lastTick;tick++){
     const done=ui.updateVictory(10+tick/60,false);
+    expect(ui.victoryPresentationStarted).toBe(true);
     if(!ui.element.hidden)shown.add(text());
     if(tick===60){
       for(let n=0;n<20;n++)expect(ui.updateVictory(11,true)).toBe(false);
@@ -426,6 +427,16 @@ it('completes all Victory phrases without media, freezes during Pause, and lets 
   expect(ui.updateVictory(.1,false)).toBe(true);expect(ui.element.hidden).toBe(true);
   ui.startMission(0);ui.update(undefined,undefined,0,true,false);ui.update(undefined,undefined,.2,true,false);
   expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);expect((ui as any).skip.hidden).toBe(true);ui.dispose();
+});
+
+it('latches the presentation cease-fire boundary at visible subtitle start even when voice is late or unavailable',()=>{
+  const {ui,audio}=missionUi();audio.prepareRadio.mockReturnValue('pending' as any);
+  for(let tick=0;tick<150;tick++){ui.updateVictory(tick/60,false);expect(ui.victoryPresentationStarted).toBe(false);}
+  ui.updateVictory(2.5,false);expect(ui.element.hidden).toBe(false);expect(ui.victoryPresentationStarted).toBe(true);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeNull();
+  (ui as any).skip.onclick();expect(ui.victoryPresentationStarted).toBe(true);
+  const saved=ui.victoryCheckpoint(2.5)!;ui.reset();expect(ui.victoryPresentationStarted).toBe(false);
+  ui.restoreVictory(saved,0);expect(ui.victoryPresentationStarted).toBe(true);ui.dispose();
 });
 it('uses actual Commander audio length for subtitle progression and completion, including recordings longer than fallback',()=>{
   for(const message of ['missionIntro','victory'] as const){

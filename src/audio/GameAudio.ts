@@ -305,6 +305,13 @@ export class GameAudio {
 
   silenceMusic(): void { this.music?.silence(); this.bossTheme?.silence(); this.victoryTheme?.silence(); }
 
+  silenceWeapons(): void {
+    if (!this.weaponBus || !this.context) return;
+    const now = this.context.currentTime;
+    this.weaponBus.gain.cancelScheduledValues(now);
+    this.weaponBus.gain.setTargetAtTime(0, now, .01);
+  }
+
   syncSupportFlyover(offset: number | null, paused: boolean, duration = 1.2, firstImpactSeconds = 7.5, strikeSpacing = .65): void {
     const context = this.context;
     if (paused || offset === null || offset < 0 || offset >= duration) {
