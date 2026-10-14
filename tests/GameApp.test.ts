@@ -11,6 +11,7 @@ import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
 import { startDefenseTank } from '../src/simulation/defenseTank';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
+vi.mock('../src/ui/DevCameraSwitch', () => ({ DevCameraSwitch: class { setActive() {} dispose() {} } }));
 vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
   constructor() { mock.qaConstructed(); }
   open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}

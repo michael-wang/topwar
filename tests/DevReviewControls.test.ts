@@ -13,8 +13,9 @@ class ElementStub extends EventTarget {
   setAttribute(key: string, value: string) { this.attrs[key] = value; }
   append(...children: ElementStub[]) { this.children.push(...children); }
 }
-afterEach(() => vi.unstubAllGlobals());
-function setup() {
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+function setup(dev = false) {
+  vi.stubEnv('DEV', dev);
   vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag.toUpperCase()) });
   const select = vi.fn(), controls = new DevReviewControls(new ElementStub() as unknown as HTMLElement, select);
   const root = controls.element as unknown as ElementStub;
@@ -36,6 +37,14 @@ it('offers exactly four Traditional Chinese one-tap scenarios with selection and
   }
   controls.setSelected('mg8'); expect(buttons.every(b => b.attrs['aria-pressed'] === 'false')).toBe(true);
   controls.dispose(); expect(root.remove).toHaveBeenCalledOnce();
+});
+it('adds the temporary camera entry only in DEV, outside the four approved scenes', () => {
+  const { buttons, select } = setup(true);
+  expect(buttons).toHaveLength(5);
+  const button = buttons.find(b => b.dataset.role === 'camera-ab')!;
+  expect(button.textContent).toBe('🎥 鏡頭 A/B 測試');
+  button.dispatchEvent(new Event('click'));
+  expect(select).toHaveBeenCalledWith('camera-ab');
 });
 it('returns to normal play separately from the four scenarios and stops battlefield pointer propagation', () => {
   const { controls, root, select } = setup(), back = root.children.find(b => b.dataset.action === 'normal')!;

@@ -32,6 +32,7 @@ import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
 import { createDevReviewFixture, type DevReviewFixture } from './DevReviewFixtures';
 import { DevReviewControls } from '../ui/DevReviewControls';
+import { DevCameraSwitch } from '../ui/DevCameraSwitch';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
@@ -104,6 +105,7 @@ export class GameApp {
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
   private readonly devReview: DevReviewControls | null;
+  private readonly devCameraSwitch: DevCameraSwitch | null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
   private readonly fps: DevFps | null;
@@ -149,6 +151,8 @@ export class GameApp {
     this.previousWeaponFamily = initialState.progression && initialState.catharsis
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
+    this.devCameraSwitch = import.meta.env.DEV
+      ? new DevCameraSwitch(viewport, mode => this.renderer.setDevCameraMode(mode)) : null;
     this.audio = audio;
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
     this.startOverlay = new GameStartOverlay(viewport);
@@ -177,7 +181,7 @@ export class GameApp {
         this.exitSleepTest();
         this.devReviewFixture = role;
         this.devReview?.setSelected(role ?? undefined);
-        if (role === null || this.restored) {
+        if (role === null || role === 'camera-ab' || this.restored) {
           // An explicit new scene uses current authored data; Continue keeps the saved data intact.
           this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
           this.tuningPanel?.setValues(this.runtimeTuning);
@@ -289,6 +293,7 @@ export class GameApp {
     this.tuningPanel?.dispose();
     this.hudActions.dispose();
     this.devReview?.dispose();
+    this.devCameraSwitch?.dispose();
     this.pauseOverlay.dispose();
     this.damageFlash.dispose();
     this.fieldObserver?.dispose();
@@ -306,6 +311,7 @@ export class GameApp {
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if(this.qaSleepActive||this.qaPreparing)return;
     this.qaSession=false;
+    if (import.meta.env.DEV) this.devCameraSwitch?.setActive(this.devReviewFixture === 'camera-ab');
     clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
     this.restored = false;
@@ -585,7 +591,8 @@ export class GameApp {
     const result = writeCheckpoint({ version: 1, simulationContract: 1, game: 'topwar',
       mode: 'defense', build: typeof __TOPWAR_SHA__ === 'string' ? __TOPWAR_SHA__ : 'unknown',
       savedAt: Date.now(), paused: true, hidden: this.hidden, reason,
-      fixture: this.devReviewFixture,
+      // Save the existing Survival fixture only; the temporary camera experiment is session-local.
+      fixture: import.meta.env.DEV && this.devReviewFixture === 'camera-ab' ? 'survival8-ahead' : this.devReviewFixture,
       ...(victoryPreview ? { playtestVictory: { elapsedMs: this.tankDeathAtMs === null ? 0 : this.presentationMs - this.tankDeathAtMs,
         communication: this.fieldObserver?.victoryCheckpoint(this.presentationMs / 1000) } } : {}),
       ...(import.meta.env.DEV && this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
@@ -643,6 +650,7 @@ export class GameApp {
       if(this.disposed||generation!==this.qaGeneration)return;
       this.qaPreparing=true;this.qaSleepActive=false;this.qaSession=true;
       clearCheckpoint();this.devReviewFixture=null;this.config=this.authoredConfig;this.sessionLevel=this.level;
+      this.devCameraSwitch?.setActive(false);
       this.runtimeTuning=defaultRuntimeTuning(this.config,this.level);
       const tuning=qaSimulationTuning(this.config);
       this.simulation=createQaStressFixture({seed:42,level:this.level,startSquad:1,startRocketCount:0,

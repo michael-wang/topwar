@@ -10,6 +10,8 @@ DEV checks require a separate Vite server; use `npm run dev -- --host 127.0.0.1 
 
 Local Vite and closed-playtest Pages share 驅逐艦進場, BOSS 進場, 勝利結算 and 空中支援, plus 返回一般遊戲. Selection closes the menu. DEV-only 進階調校 starts folded and contains balance/audio and sleep/checkpoint QA. Victory uses the real Tank finale and marked sample results. MG/Supply/Survival/phase presets still support regression checks through `selectDevFixture`; they are not visible controls. Only the four approved initializers ship in Production; engineering QA and other presets do not. Switching scenes replaces the current run, as the menu explains.
 
+Temporary P4.2: local Vite's first-level **🎥 鏡頭 A/B 測試** starts the unchanged Lv8 AHEAD fixture (seed 17) in A. The top-center 44px A/B buttons also work while paused. B dollies back 4 units toward `(0, 7.61, -13.84)`, keeps the original target, and matches the near soldier's body projection with an approximately 36.3° reference FOV; the existing tall-phone FOV adaptation remains active. Leaving or Retry resets A. Checkpoints retain only the underlying Survival fixture; reload restores gameplay with the original camera and no experiment controls. B is unaccepted: compare distant lanes, near soldier, horizon and coast on Pixel 8 before any production decision. `node scripts/qa/camera-perspective.mjs` (fresh build + DEV server above) captures identical-state A/B at 350×844 and 390×844, including existing Boss/barrage fixtures through test-only access, and checks production exclusion. Captures hide the Pause veil for readability; separate captures verify the visible Pause switch.
+
 ## Regression commands
 
 | Tool | Current purpose |

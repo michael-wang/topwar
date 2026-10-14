@@ -1,11 +1,11 @@
 import { PLAYTEST_ENTRIES, type PlaytestScene } from '../app/PlaytestScenarios';
 
-// Shared closed-playtest menu; engineering presets have no buttons.
+// Shared closed-playtest menu plus the temporary, compile-time DEV camera entry.
 export class DevReviewControls {
   readonly element = document.createElement('div');
   private readonly buttons: HTMLButtonElement[] = [];
   private readonly stopPointer = (event: Event) => event.stopPropagation();
-  constructor(host: HTMLElement, select: (role: PlaytestScene | null) => void) {
+  constructor(host: HTMLElement, select: (role: PlaytestScene | 'camera-ab' | null) => void) {
     this.element.className = 'dev-review-controls';
     this.element.setAttribute('aria-label', '測試場景');
     this.element.style.cssText = 'display:grid;gap:10px;margin:0 0 8px';
@@ -20,6 +20,12 @@ export class DevReviewControls {
       const button = document.createElement('button');
       button.type = 'button'; button.textContent = label; button.dataset.role = role;
       button.addEventListener('click', () => { select(role); button.blur(); });
+      this.buttons.push(button); this.element.append(button);
+    }
+    if (import.meta.env.DEV) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = '🎥 鏡頭 A/B 測試'; button.dataset.role = 'camera-ab';
+      button.addEventListener('click', () => { select('camera-ab'); button.blur(); });
       this.buttons.push(button); this.element.append(button);
     }
     const back = document.createElement('button');

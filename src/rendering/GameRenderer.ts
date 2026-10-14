@@ -1,4 +1,5 @@
 import { SupportAirstrikeRenderer } from './SupportAirstrikeRenderer';
+import { applyDevCameraPerspective, type DevCameraMode } from './DevCameraPerspective';
 import type { SupportEvent } from '../simulation/commanderSupport';
 import { ART } from '../art/ArtDirection';
 import { GIANT_REVEAL_MS } from '../presentation/GiantDrama';
@@ -57,6 +58,7 @@ export class GameRenderer {
   private tankRenderer: DefenseTankRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
+  private devCameraMode: DevCameraMode = 'A';
   private viewportCssHeight = 1;
   private readonly supplyProjection = new THREE.Vector3();
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -159,6 +161,13 @@ export class GameRenderer {
     this.resizeObserver.observe(this.viewport);
     window.addEventListener('resize', this.resize);
     this.resize();
+  }
+
+  setDevCameraMode(mode: DevCameraMode): void {
+    if (import.meta.env.DEV) {
+      this.devCameraMode = mode;
+      applyDevCameraPerspective(this.camera, mode);
+    }
   }
 
   stopResizeHandling(): void {
@@ -313,6 +322,7 @@ export class GameRenderer {
     this.camera.aspect = size.aspect;
     this.camera.fov = coastalCameraFov(size.aspect);
     this.camera.updateProjectionMatrix();
+    if (import.meta.env.DEV && this.devCameraMode === 'B') applyDevCameraPerspective(this.camera, 'B');
     this.renderer.setSize(size.width, size.height, false);
   };
 }
