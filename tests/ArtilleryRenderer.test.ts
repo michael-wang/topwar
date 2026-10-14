@@ -5,11 +5,11 @@ import { makeArtilleryShell, sampleArtillery, artilleryHits } from '../src/simul
 import { artilleryDefaults } from '../src/config/artilleryConfig';
 import { warningInnerRadius } from '../src/presentation/ArtilleryWarning';
 import { GrenadeExplosion } from '../src/rendering/GrenadeExplosion';
-import { coastalCameraFov } from '../src/rendering/renderSize';
+import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 
 function warningCamera(width=390) {
-  const camera=new THREE.PerspectiveCamera(coastalCameraFov(width/844),width/844,.1,180);
-  camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld();return camera;
+  const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
+  applyCoastalCamera(camera);return camera;
 }
 
 const shell = makeArtilleryShell(1, { source: { id: 'test', type: 'offshore', position: { x: -3, y: 1.2, z: 52 } } },
@@ -155,7 +155,7 @@ it.each([350,390])('keeps all five overhead warnings readable with uniform rende
         expect(y).toBeLessThan(650); // Above weapon/Grenade HUD.
       }
       const visibleWidth=Math.min(width,right)-Math.max(0,left);
-      expect(visibleWidth/(right-left)).toBeGreaterThan(.75); // Most of even the outer silhouette stays visible.
+      expect(visibleWidth/(right-left)).toBeGreaterThan(.69); // Exact accepted B: ~69.94% at peak pulse; full glyph remains visible.
       if(i===2){expect(right-left).toBeGreaterThan(30);expect(bottom-top).toBeGreaterThan(40);} // Center remains substantial.
     }
     r.update(state,9000,{x:2.8,z:0},camera);

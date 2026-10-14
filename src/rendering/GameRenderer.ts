@@ -1,5 +1,5 @@
 import { SupportAirstrikeRenderer } from './SupportAirstrikeRenderer';
-import { applyDevCameraPerspective, type DevCameraMode } from './DevCameraPerspective';
+import { applyCoastalCamera } from './CoastalCamera';
 import type { SupportEvent } from '../simulation/commanderSupport';
 import { ART } from '../art/ArtDirection';
 import { GIANT_REVEAL_MS } from '../presentation/GiantDrama';
@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { AttackLaneRenderer } from './AttackLaneRenderer';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
-import { coastalCameraFov, renderSize } from './renderSize';
+import { renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
 import { BridgeEnvironment } from './environment/BridgeEnvironment';
@@ -58,7 +58,6 @@ export class GameRenderer {
   private tankRenderer: DefenseTankRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
-  private devCameraMode: DevCameraMode = 'A';
   private viewportCssHeight = 1;
   private readonly supplyProjection = new THREE.Vector3();
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -88,8 +87,7 @@ export class GameRenderer {
     this.scene.add(this.skyFill, this.sunlight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    this.camera.position.set(0, 6.5, -10);
-    this.camera.lookAt(0, 0, 12.5);
+    applyCoastalCamera(this.camera);
     this.resize();
     this.renderer.domElement.addEventListener('webglcontextrestored', this.restartPreparation);
     this.renderer.domElement.addEventListener('webglcontextlost', this.suspendPreparation);
@@ -161,13 +159,6 @@ export class GameRenderer {
     this.resizeObserver.observe(this.viewport);
     window.addEventListener('resize', this.resize);
     this.resize();
-  }
-
-  setDevCameraMode(mode: DevCameraMode): void {
-    if (import.meta.env.DEV) {
-      this.devCameraMode = mode;
-      applyDevCameraPerspective(this.camera, mode);
-    }
   }
 
   stopResizeHandling(): void {
@@ -320,9 +311,7 @@ export class GameRenderer {
     const size = renderSize(this.viewport.clientWidth, this.viewport.clientHeight);
     this.viewportCssHeight = size.height;
     this.camera.aspect = size.aspect;
-    this.camera.fov = coastalCameraFov(size.aspect);
-    this.camera.updateProjectionMatrix();
-    if (import.meta.env.DEV && this.devCameraMode === 'B') applyDevCameraPerspective(this.camera, 'B');
+    applyCoastalCamera(this.camera);
     this.renderer.setSize(size.width, size.height, false);
   };
 }

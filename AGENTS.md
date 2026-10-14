@@ -58,6 +58,8 @@ Avoid new large simulation batches, benchmark suites, golden traces, one-off QA 
 
 The current accepted contracts are in `GAME_SPEC.md` and `ARCHITECTURE.md`. When a new instruction intentionally changes one of them, update the affected contract rather than retaining contradictory text.
 
+When product requirements are materially ambiguous or conflict with existing specifications without clearly superseding them, ask the user rather than invent behavior. Update explicitly superseded requirements directly, without unnecessary clarification.
+
 ## End-of-day lightweight cleanup
 
 When the user asks to wrap up the day's work, **check for and perform a small, safe cleanup** around what changed that day:

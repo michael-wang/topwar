@@ -11,7 +11,8 @@ export function renderSize(width: number, height: number): {
   return { width, height, aspect: width / height };
 }
 
-// Taller phones gain vertical world coverage while retaining the authored lane width.
+// Reference FOV before CoastalCamera applies the accepted dolly compensation.
+// Taller phones gain vertical world coverage while retaining horizontal coverage.
 export function coastalCameraFov(aspect: number): number {
   if (!Number.isFinite(aspect) || aspect <= 0) throw new Error('Camera aspect must be positive');
   const { verticalFov, referenceAspect } = ART.coastalDefense.camera;

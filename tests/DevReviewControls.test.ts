@@ -21,8 +21,8 @@ function setup(dev = false) {
   const root = controls.element as unknown as ElementStub;
   return { controls, root, select, buttons: root.children.filter(b => b.dataset.role) };
 }
-it('offers exactly four Traditional Chinese one-tap scenarios with selection and pressed feedback', () => {
-  const { controls, root, buttons, select } = setup();
+it.each([true, false])('offers exactly four Traditional Chinese one-tap scenarios with selection and pressed feedback (DEV=%s)', dev => {
+  const { controls, root, buttons, select } = setup(dev);
   expect(buttons.map(b => b.textContent)).toEqual(['🚢 驅逐艦進場', '🚨 BOSS 進場', '🏆 勝利結算', '✈️ 空中支援']);
   expect(root.children[0].textContent).toContain('min-height:52px');
   expect(root.children[0].textContent).toContain(':active');
@@ -37,14 +37,6 @@ it('offers exactly four Traditional Chinese one-tap scenarios with selection and
   }
   controls.setSelected('mg8'); expect(buttons.every(b => b.attrs['aria-pressed'] === 'false')).toBe(true);
   controls.dispose(); expect(root.remove).toHaveBeenCalledOnce();
-});
-it('adds the temporary camera entry only in DEV, outside the four approved scenes', () => {
-  const { buttons, select } = setup(true);
-  expect(buttons).toHaveLength(5);
-  const button = buttons.find(b => b.dataset.role === 'camera-ab')!;
-  expect(button.textContent).toBe('🎥 鏡頭 A/B 測試');
-  button.dispatchEvent(new Event('click'));
-  expect(select).toHaveBeenCalledWith('camera-ab');
 });
 it('returns to normal play separately from the four scenarios and stops battlefield pointer propagation', () => {
   const { controls, root, select } = setup(), back = root.children.find(b => b.dataset.action === 'normal')!;
