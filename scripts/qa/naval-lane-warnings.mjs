@@ -39,10 +39,10 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
       if(!mesh)return;
       const m=mesh.matrixWorld.clone(),centers=[];
       for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,m);const p=mesh.position.clone().setFromMatrixPosition(m).project(a.renderer.camera);
-        const tip=mesh.position.clone().set(0,-.42,0).applyMatrix4(m).project(a.renderer.camera),locked=s.artillery.shells.find(shell=>shell.targetLane===targets[i]);
-        const target=mesh.position.clone().set(-locked.target.x,locked.target.y,locked.target.z).project(a.renderer.camera);
-        centers.push({x:(p.x*.5+.5)*innerWidth,y:(.5-p.y*.5)*innerHeight,tipX:(tip.x*.5+.5)*innerWidth,tipY:(.5-tip.y*.5)*innerHeight,targetX:(target.x*.5+.5)*innerWidth,targetY:(.5-target.y*.5)*innerHeight});}
-      window.__checks.push({at:s.elapsedSeconds,targets,count:mesh.count,visible:mesh.visible,opacity:mesh.material.opacity,fills:Array.from(mesh.geometry.getAttribute('warningFillProgress').array.slice(0,mesh.count)),
+        const locked=s.artillery.shells.find(shell=>shell.targetLane===targets[i]);
+        const target=mesh.position.clone().set(-locked.target.x,2.05,locked.target.z).project(a.renderer.camera);
+        centers.push({x:(p.x*.5+.5)*innerWidth,y:(.5-p.y*.5)*innerHeight,targetX:(target.x*.5+.5)*innerWidth,targetY:(.5-target.y*.5)*innerHeight});}
+      window.__checks.push({at:s.elapsedSeconds,targets,count:mesh.count,visible:mesh.visible,opacity:mesh.material.opacity,scales:Array.from({length:mesh.count},(_,i)=>{const m=mesh.matrixWorld.clone();mesh.getMatrixAt(i,m);return mesh.position.clone().setFromMatrixScale(m).x;}),
         selected:s.player.selectedLane,centers,ground:scene.children.filter(e=>e.name.startsWith('enemy-shell-warning-')&&e.visible).length,
         global:scene.getObjectByName('artillery-lock-on').visible,shells:(s.artillery?.shells??[]).map(e=>({id:e.id,lane:e.targetLane,launched:e.launchedAtSeconds,impact:e.impactAtSeconds}))});
       window.__stamps.push(stamp);
@@ -55,7 +55,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
   });
   await page.getByRole('button',{name:'Pause game',exact:true}).tap();
   const before=await page.evaluate(()=>{const a=window.__testApp;return {state:a.simulation.getState(),warning:window.__checks.at(-1)};});
-  assert.equal(before.warning.count,2);assert(before.warning.centers.every(p=>Math.abs(p.tipX-p.targetX)<.1&&Math.abs(p.tipY-p.targetY)<.1));
+  assert.equal(before.warning.count,2);assert(before.warning.centers.every(p=>Math.abs(p.x-p.targetX)<.1&&Math.abs(p.y-p.targetY)<.1));
   await page.screenshot({path:`${out}/${width}-lv${level}-two-lanes.png`});
   await page.waitForTimeout(300);
   assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),before.state);
@@ -84,7 +84,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
       a.previousFrameTimestampMs=null;a.fixedStepLoop.reset();a.presentationMs=0;a.renderFrame(0);cancelAnimationFrame(a.frameId);
       window.__lifetime=[];const native=a.renderFrame;a.renderFrame=stamp=>{native(stamp);const s=a.simulation.getFrameState(),scene=a.renderer.scene,mesh=scene.getObjectByName('artillery-lane-danger');
         window.__lifetime.push({at:s.elapsedSeconds,ids:(s.artillery?.shells??[]).map(e=>e.id),lanes:(s.artillery?.shells??[]).map(e=>e.targetLane),
-          count:mesh.count,visible:mesh.visible,opacity:mesh.material.opacity,fills:Array.from(mesh.geometry.getAttribute('warningFillProgress').array.slice(0,mesh.count)),ground:scene.children.filter(e=>e.name.startsWith('enemy-shell-warning-')&&e.visible).length,
+          count:mesh.count,visible:mesh.visible,opacity:mesh.material.opacity,scales:Array.from({length:mesh.count},(_,i)=>{const m=mesh.matrixWorld.clone();mesh.getMatrixAt(i,m);return mesh.position.clone().setFromMatrixScale(m).x;}),ground:scene.children.filter(e=>e.name.startsWith('enemy-shell-warning-')&&e.visible).length,
           x:Array.from({length:mesh.count},(_,i)=>{const m=mesh.matrixWorld.clone();mesh.getMatrixAt(i,m);return m.elements[12];})});};
       a.frameId=requestAnimationFrame(a.renderFrame);
     },states[level]);
@@ -96,7 +96,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
     await page.waitForFunction(ids=>ids.every(id=>!window.__testApp.simulation.getFrameState().artillery.shells.some(s=>s.id===id)),ids,{timeout:15000});
     const bytes=await stop();writeFileSync(`${out}/${width}-warning-lifetime.webm`,bytes);
     await inspectRecordingFrames(browser,bytes,width,`${out}/${width}-warning-lifetime`,[1,2.8,4.2]);
-    const lifetime=await page.evaluate(()=>window.__lifetime);for(const frame of lifetime){assert.equal(frame.count,new Set(frame.lanes).size);assert.equal(frame.ground,0);if(frame.count){assert(frame.visible);assert.equal(frame.opacity,1);assert(frame.fills.every(a=>a>=0&&a<=1));}}
+    const lifetime=await page.evaluate(()=>window.__lifetime);for(const frame of lifetime){assert.equal(frame.count,new Set(frame.lanes).size);assert.equal(frame.ground,0);if(frame.count){assert(frame.visible);assert.equal(frame.opacity,1);assert(frame.scales.every(a=>a>=1&&a<1.5));}}
     writeFileSync(`${out}/${width}-warning-lifetime.json`,JSON.stringify(lifetime,null,2));
     // Independent authoritative launches are a QA-only future-component scenario,
     // not extra Stage 1 salvos. Exercise materially different lane deadlines.
@@ -119,8 +119,8 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
       a.renderFrame(0);cancelAnimationFrame(a.frameId);
       const mesh=a.renderer.scene.getObjectByName('artillery-lane-danger');
       return {seconds,shells:saved.artillery.shells,color:mesh.material.color.getHexString(),
-        fills:Array.from(mesh.geometry.getAttribute('warningFillProgress').array.slice(0,2))};
-    },states[level]);assert(independent.fills[0]>independent.fills[1]);assert(independent.fills[0]<1);
+        scales:Array.from({length:mesh.count},(_,i)=>{const m=mesh.matrixWorld.clone();mesh.getMatrixAt(i,m);return mesh.position.clone().setFromMatrixScale(m).x;})};
+    },states[level]);assert(independent.scales[0]>independent.scales[1]);assert(independent.scales[0]<1.5);
     await page.screenshot({path:`${out}/${width}-independent-deadlines.png`});
     writeFileSync(`${out}/${width}-independent-deadlines.json`,JSON.stringify(independent,null,2));
   }

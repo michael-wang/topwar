@@ -50,7 +50,7 @@ it('keeps all resources bounded across repeated overlapping impacts, rewinds and
   r.dispose(); expect(scene.children).toHaveLength(0);
 });
 
-it('fills the true elapsed proportion inward while retaining the collision boundary', () => {
+it('preserves historical ground-ring fill and its exact collision boundary', () => {
   for (const progress of [0, .25, .5, .9, 1]) expect(1 - warningInnerRadius(progress) ** 2).toBeCloseTo(progress);
   const scene = new THREE.Scene(), r = new EnemyArtilleryRenderer(scene);
   r.update({ shells: [shell], elapsedSeconds: shell.flightSeconds / 2 }, 500);
@@ -89,21 +89,18 @@ it('shows continuously visible lane-locked overhead warnings for the complete fl
   for(const time of [0,.45,1,Math.min(...pair.map(s=>s.impactAtSeconds))-.001]){
     r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000,{x:2.8,z:0},camera);
     expect(danger.visible).toBe(true);expect(danger.count).toBe(2);expect(danger.material).toMatchObject({opacity:1,transparent:true});
-    const fill=danger.geometry.getAttribute('warningFillProgress');
-    expect(fill.getX(0)).toBeCloseTo(time/pair[0].flightSeconds);
     expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
     expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
     for(let i=0;i<2;i++){danger.getMatrixAt(i,matrix);
-      const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
-      expect(tip.x).toBeCloseTo(-pair[i].target.x);expect(tip.y).toBeCloseTo(pair[i].target.y);expect(tip.z).toBeCloseTo(pair[i].target.z);}
+      const center=new THREE.Vector3().setFromMatrixPosition(matrix);
+      expect(center.x).toBeCloseTo(-pair[i].target.x);expect(center.y).toBeCloseTo(2.05);expect(center.z).toBeCloseTo(pair[i].target.z);}
     expect(scene.getObjectByName('artillery-lock-on')!.visible).toBe(false);
     for(let i=0;i<8;i++)expect(scene.getObjectByName(`enemy-shell-warning-${i}`)!.visible).toBe(false);
   }
   r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},1000,{x:2.8,z:0},camera);
-  danger.getMatrixAt(0,matrix);const fixed=matrix.toArray(),fill=danger.geometry.getAttribute('warningFillProgress').getX(0);
+  danger.getMatrixAt(0,matrix);const fixed=matrix.toArray();
   r.update({shells:pair,elapsedSeconds:1,warningPresentation:'overheadLanes'},9000,{x:-2.8,z:0},camera);
   danger.getMatrixAt(0,matrix);expect(matrix.toArray()).toEqual(fixed); // Paused simulation freezes the pulse too.
-  expect(danger.geometry.getAttribute('warningFillProgress').getX(0)).toBe(fill);
   r.update({shells:[],elapsedSeconds:3,warningPresentation:'overheadLanes'},9001);expect(danger.count).toBe(0);r.dispose();
   expect(scene.children).toHaveLength(0);
 });
@@ -113,14 +110,11 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   const first={...shell,radius:.3},second={...shell,id:2,launchedAtSeconds:.3,impactAtSeconds:shell.impactAtSeconds+.3};
   const state={shells:[first,second],elapsedSeconds:.31,warningPresentation:'overheadLanes' as const};
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
-  const fill=mesh.geometry.getAttribute('warningFillProgress');
   r.restore(state);r.update(state,0,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
   const matrix=new THREE.Matrix4();mesh.getMatrixAt(0,matrix);
   expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(1); // Collision radius never resizes the marker.
-  expect(fill.getX(0)).toBeCloseTo(.31/first.flightSeconds);
   expect(scene.getObjectByName('enemy-cannon-flash-1')!.visible).toBe(false);
   r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
-  expect(fill.getX(0)).toBeCloseTo((first.impactAtSeconds-second.launchedAtSeconds)/second.flightSeconds);
   mesh.getMatrixAt(0,matrix);const scale=new THREE.Vector3().setFromMatrixScale(matrix);
   expect(scale.x).toBeCloseTo(scale.y); // The later shell keeps its full-width body, including pulse.
   r.update({...state,shells:[],elapsedSeconds:first.impactAtSeconds+.1},1000);expect(r.getDebugStats().warnings).toBe(0);
@@ -143,8 +137,8 @@ it.each([350,390])('keeps complete lane-aligned triangles with natural viewport 
     const matrices=[] as number[][];
     for(let i=0;i<ink.count;i++){
       ink.getMatrixAt(i,matrix);matrices.push(matrix.toArray());
-      const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
-      expect(tip.x).toBeCloseTo(-all[i].target.x);expect(tip.y).toBeCloseTo(all[i].target.y);expect(tip.z).toBeCloseTo(all[i].target.z);
+      const center=new THREE.Vector3().setFromMatrixPosition(matrix);
+      expect(center.x).toBeCloseTo(-all[i].target.x);expect(center.y).toBeCloseTo(2.05);expect(center.z).toBeCloseTo(all[i].target.z);
       const scale=new THREE.Vector3().setFromMatrixScale(matrix);
       expect(scale.x).toBeCloseTo(scale.y);expect(scale.x).toBeCloseTo(scale.z);
       if(i>0)expect(scale.x).toBeCloseTo(new THREE.Vector3().setFromMatrixScale(new THREE.Matrix4().fromArray(matrices[0])).x);
@@ -154,6 +148,7 @@ it.each([350,390])('keeps complete lane-aligned triangles with natural viewport 
       for(let v=0;v<positions.count;v++){
         point.fromBufferAttribute(positions,v).applyMatrix4(matrix).project(camera);
         left=Math.min(left,point.x);right=Math.max(right,point.x);
+        expect((.5-point.y*.5)*844).toBeLessThan(650); // Above weapon/Grenade HUD.
       }
       if(i===0)expect(left).toBeLessThan(-1);
       if(i===4)expect(right).toBeGreaterThan(1); // Complete outer triangles extend outside the camera frame.
@@ -164,8 +159,8 @@ it.each([350,390])('keeps complete lane-aligned triangles with natural viewport 
     for(let i=0;i<5;i++){ink.getMatrixAt(i,matrix);expect(matrix.toArray()).toEqual(matrices[i]);}
     r.update({...state,elapsedSeconds:seconds+.02},20,{x:0,z:0},camera);
     for(let i=0;i<5;i++){
-      ink.getMatrixAt(i,matrix);const tip=new THREE.Vector3(0,-.42,0).applyMatrix4(matrix);
-      expect(tip.toArray()).toEqual([expect.closeTo(-all[i].target.x,5),expect.closeTo(all[i].target.y,5),expect.closeTo(all[i].target.z,5)]);
+      ink.getMatrixAt(i,matrix);const center=new THREE.Vector3().setFromMatrixPosition(matrix);
+      expect(center.toArray()).toEqual([expect.closeTo(-all[i].target.x,5),expect.closeTo(2.05,5),expect.closeTo(all[i].target.z,5)]);
     }
     expect(ink.geometry).toBe(geometry);expect(Array.from(positions.array)).toEqual(vertices);
   }
@@ -178,15 +173,14 @@ it('escalates independent lane pulses near impact and freezes/restores them with
   const pair=[{...shell,targetLane:0,target:{...shell.target,x:-2.8},launchedAtSeconds:0,impactAtSeconds:2},
     {...shell,id:2,targetLane:1,target:{...shell.target,x:-1.4},launchedAtSeconds:1,impactAtSeconds:3}];
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
-  const matrix=new THREE.Matrix4(),fill=mesh.geometry.getAttribute('warningFillProgress');
+  const matrix=new THREE.Matrix4();
   r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},1900);
-  expect(fill.getX(0)).toBeCloseTo(.95);expect(fill.getX(1)).toBeCloseTo(.45);
+  mesh.getMatrixAt(1,matrix);const laterPulse=new THREE.Vector3().setFromMatrixScale(matrix).x;
   mesh.getMatrixAt(0,matrix);const punch=new THREE.Vector3().setFromMatrixScale(matrix).x;
-  const pausedMatrix=matrix.toArray();
+  const pausedMatrix=matrix.toArray();expect(punch).toBeGreaterThan(laterPulse);
   r.update({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'},9000);mesh.getMatrixAt(0,matrix);
-  expect(matrix.toArray()).toEqual(pausedMatrix);expect(fill.getX(0)).toBeCloseTo(.95);
+  expect(matrix.toArray()).toEqual(pausedMatrix);
   r.update({shells:pair,elapsedSeconds:1.95,warningPresentation:'overheadLanes'},9050);
-  expect(fill.getX(0)).toBeCloseTo(.975);
   const scaleAt=(time:number)=>{r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000);
     mesh.getMatrixAt(0,matrix);return new THREE.Vector3().setFromMatrixScale(matrix).x;};
   expect(scaleAt(.9)).toBe(1); // More than one second remaining: quiet outline.
@@ -198,59 +192,28 @@ it('escalates independent lane pulses near impact and freezes/restores them with
   expect(mesh.material).toMatchObject({opacity:1,transparent:true});r.dispose();
 });
 
-it('preallocates one inward-fill shader and keeps red and black fully visible throughout flight',()=>{
+it('keeps a transparent interior and matching solid-red glyph without fill geometry or custom shaders',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
-  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
-  const attribute=mesh.geometry.getAttribute('warningFillProgress'),material=mesh.material as THREE.MeshBasicMaterial;
-  expect(attribute.count).toBe(8);expect(mesh.instanceColor).toBeNull();
+  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh,geometry=mesh.geometry;
+  const material=mesh.material as THREE.MeshBasicMaterial,positions=geometry.getAttribute('position');
+  const vertices=Array.from(positions.array),flat=new THREE.Mesh(geometry,material);
+  const ray=(x:number,y:number)=>new THREE.Raycaster(new THREE.Vector3(x,y,1),new THREE.Vector3(0,0,-1)).intersectObject(flat);
+  for(const time of [0,.5,1,shell.impactAtSeconds-.05]){
+    r.update({shells:[shell],elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000);
+    expect(ray(-.15,.1)).toHaveLength(0); // Open interior beside the glyph.
+    expect(ray(0,.15).length).toBeGreaterThan(0);expect(ray(0,-.11).length).toBeGreaterThan(0); // Solid stem/dot.
+    expect(geometry.getAttribute('warningFillProgress')).toBeUndefined();
+    expect(geometry.getAttribute('warningAccent')).toBeUndefined();expect(geometry.getAttribute('warningBarycentric')).toBeUndefined();
+    expect(Array.from(positions.array)).toEqual(vertices);
+    expect(material.color.getHexString()).toBe('ff1000');expect(material.opacity).toBe(1);expect(mesh.instanceColor).toBeNull();
+  }
   const shader={vertexShader:'#include <common>\n#include <begin_vertex>',fragmentShader:'#include <common>\n#include <color_fragment>'};
-  material.onBeforeCompile(shader as any,{} as any);
-  expect(shader.vertexShader).toContain('vWarningFillProgress = warningFillProgress');
-  expect(shader.vertexShader).toContain('vWarningAccent = warningAccent');
-  expect(shader.vertexShader).toContain('vWarningBarycentric = warningBarycentric');
-  expect(shader.vertexShader).not.toContain('warningLean');
-  expect(shader.vertexShader).not.toContain('transformed.x');
-  expect(shader.fragmentShader).toContain('mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a)');
-  expect(shader.fragmentShader).toContain('(1.0 - sqrt(1.0 - vWarningFillProgress)) / 3.0');
-  expect(shader.fragmentShader).toContain('if (vWarningAccent.a < 0.5 && edgeDistance > inset) discard');
-  for(const progress of [0,.25,.5,.9,.99,1]){
-    const time=shell.launchedAtSeconds+(shell.impactAtSeconds-shell.launchedAtSeconds)*progress;
-    r.update({shells:[shell],elapsedSeconds:time,warningPresentation:'overheadLanes'},0);
-    expect(attribute.getX(0)).toBeCloseTo(progress);
-    expect(mesh.geometry.getAttribute('warningFillProgress')).toBe(attribute);
-    expect(material.color.getHexString()).toBe('ff1000');expect(material.opacity).toBe(1);
-  }
-  r.dispose();
-});
-
-it('merges the downward triangle, thin rim and solid black exclamation into one owned lane batch',()=>{
-  const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
-  const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
-  const positions=mesh.geometry.getAttribute('position'),accents=mesh.geometry.getAttribute('warningAccent');
-  const barycentric=mesh.geometry.getAttribute('warningBarycentric');
-  expect(accents.count).toBe(positions.count);
-  const body=[] as THREE.Vector3[],rim=[] as THREE.Vector3[],glyph=[] as THREE.Vector3[];
-  for(let i=0;i<positions.count;i++) {
-    const p=new THREE.Vector3().fromBufferAttribute(positions,i);
-    if(accents.getW(i)===0){
-      const bary=new THREE.Vector3().fromBufferAttribute(barycentric,i);
-      expect(bary.toArray().sort()).toEqual([0,0,1]);
-    }else{
-      const accent=new THREE.Color(accents.getX(i),accents.getY(i),accents.getZ(i));
-      expect(['ff1000','000000']).toContain(accent.getHexString());
-    }
-    (accents.getW(i)===0?body:accents.getX(i)===0?glyph:rim).push(p);
-  }
-  expect(body).toHaveLength(3);expect(glyph.length).toBeGreaterThan(3);expect(rim.length).toBeGreaterThan(3);
-  const tip=body.reduce((a,b)=>a.y<b.y?a:b);
-  expect(tip.x).toBe(0);expect(tip.y).toBeCloseTo(-.385);
-  expect(Math.max(...body.map(p=>p.x))).toBeCloseTo(.375);
-  expect(Math.max(...rim.map(p=>p.x))).toBeCloseTo(.40);
-  expect(rim.find(p=>Math.abs(p.x+.40)<1e-6)!.y).toBeCloseTo(.35);
-  expect(rim.find(p=>Math.abs(p.x-.40)<1e-6)!.y).toBeCloseTo(.36); // Authored uneven upper corners.
-  expect(rim.find(p=>Math.abs(p.x-.225)<1e-6)!.y).toBeCloseTo(-.01); // Slightly bowed edge, same footprint.
-  expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
-  expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
-  let disposed=0;mesh.geometry.addEventListener('dispose',()=>disposed++);
+  const original={...shader};material.onBeforeCompile(shader as any,{} as any);expect(shader).toEqual(original);
+  const points=Array.from({length:positions.count},(_,i)=>new THREE.Vector3().fromBufferAttribute(positions,i));
+  expect(points.find(p=>Math.abs(p.x+.40)<1e-6)!.y).toBeCloseTo(.35);
+  expect(points.find(p=>Math.abs(p.x-.40)<1e-6)!.y).toBeCloseTo(.36);
+  expect(points.find(p=>Math.abs(p.x-.225)<1e-6)!.y).toBeCloseTo(-.01); // Approved irregular outline.
+  expect(points.reduce((a,b)=>a.y<b.y?a:b).toArray()).toEqual([0,expect.closeTo(-.42),0]);
+  let disposed=0;geometry.addEventListener('dispose',()=>disposed++);
   r.dispose();expect(disposed).toBe(1);expect(scene.children).toHaveLength(0);
 });
