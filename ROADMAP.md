@@ -2,7 +2,7 @@
 
 ## NOW
 
-Camera B is the approved default after Pixel 8 preference testing. Full-width cyan/red lane highlights are accepted on Pixel 8. P4.3C polishes the silent, chunky personal warning in the final 0.8 seconds; P4.4 softens overlapping bomber smoke to translucent neutral gray. Emergency and smoke polish still require Pixel 8 visual acceptance. Preserve accepted combat, Defense saves, the four quick-test entries and manual deployment. Physical Boss gameplay acceptance remains pending.
+Camera B is the approved default after Pixel 8 preference testing. Full-width cyan/red lane highlights are accepted on Pixel 8. P4.3C polishes the silent, chunky personal warning in the final 0.8 seconds; P4.4 softens overlapping bomber smoke to translucent neutral gray. Emergency and smoke polish still require Pixel 8 visual acceptance. P4.5 Stage1 Complete results music is implemented for Pixel 8 listening acceptance. Preserve accepted combat, Defense saves, the four quick-test entries and manual deployment. Physical Boss gameplay acceptance remains pending.
 
 ## NEXT
 

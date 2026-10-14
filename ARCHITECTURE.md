@@ -40,7 +40,7 @@ Artillery warningPresentation is an optional saved presentation selector: new St
 
 GameAudio uses one browser-activated AudioContext and prepared procedural buffers. Voice readiness is independent of optional portrait success. Pause and lifecycle suspension preserve synchronization; explicit Resume handles browser autoplay restrictions.
 
-Boss music uses one lazy streaming HTMLAudioElement connected once to the existing master bus. No PCM song buffer or new checkpoint field is allocated. Its position derives from the saved Tank encounter age; phase changes do not restart it. The browser handles Xing delay/padding at the loop boundary. Pausing/background silences both media and procedural sources, and Retry/Dispose cancel pending playback/fade cleanup. Procedural Boss music is exclusively the pending/error fallback; ordinary and Victory compositions retain their existing clocks.
+Boss and Victory results recordings reuse StreamedMusic, each with one lazy streaming HTMLAudioElement connected once to the existing master bus. No PCM song buffer or new checkpoint field is allocated. Boss position derives from the saved Tank encounter age; phase changes do not restart it. Stage1 Complete starts only with a non-null results clock and loops against that clock, after explosions and Commander speech. The browser handles Xing delay/padding at the loop boundary. Pausing/background silences both media and procedural sources, and Retry/Dispose cancel pending playback/fade cleanup. Procedural Boss and Victory music are exclusively pending/error fallbacks, suppressed while their recordings play. Existing presentation clocks, music volume and radio ducking are retained.
 
 ## Browser lifecycle and tools
 

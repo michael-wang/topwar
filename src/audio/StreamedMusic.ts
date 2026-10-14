@@ -1,8 +1,8 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
 import { isBossMusic, musicStateFor, MUSIC_MAX_VOLUME, type MusicFrame } from './MusicComposition';
 
-/** One streaming media source; the saved Boss clock also anchors delayed starts and restores. */
-export class BossTheme {
+/** One reusable streaming source per recording, anchored to the existing presentation clock. */
+export class StreamedMusic {
   private readonly media: HTMLAudioElement;
   private readonly source: MediaElementAudioSourceNode;
   private readonly bus: GainNode;
@@ -15,7 +15,8 @@ export class BossTheme {
   private fadeTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
 
-  constructor(private readonly context: AudioContext, master: GainNode) {
+  constructor(private readonly context: AudioContext, master: GainNode,
+    private readonly track: 'boss' | 'victory' = 'boss') {
     this.media = new Audio();
     this.media.preload = 'none';
     this.media.loop = true; // Chromium honours the supplied Xing encoder delay/padding.
@@ -39,7 +40,10 @@ export class BossTheme {
       this.silence();
       return false;
     }
-    if (!isBossMusic(musicStateFor(frame))) {
+    const state = musicStateFor(frame);
+    const eligible = this.track === 'boss' ? isBossMusic(state)
+      : state === 'VICTORY' && frame.victorySeconds != null;
+    if (!eligible) {
       if (this.engaged) {
         this.engaged = false;
         this.setGain(0, .06);
@@ -51,12 +55,12 @@ export class BossTheme {
     this.cancelFade();
     if (this.failed) return false;
     if (!this.media.src) {
-      this.media.src = publicAssetUrl('audio/boss-theme.mp3');
+      this.media.src = publicAssetUrl(this.track === 'boss' ? 'audio/boss-theme.mp3' : 'audio/stage1-complete.mp3');
       this.media.preload = 'auto';
     }
     const duration = this.media.duration;
     if (Number.isFinite(duration) && duration > 0) {
-      const offset = Math.max(0, frame.tank!.elapsedSeconds) % duration;
+      const offset = Math.max(0, this.track === 'boss' ? frame.tank!.elapsedSeconds : frame.victorySeconds!) % duration;
       const drift = Math.abs(this.media.currentTime - offset);
       // Wrap-aware comparison avoids seeking across a natural gapless loop boundary.
       if (!this.pending && (!this.playing || Math.min(drift, duration - drift) > .75)) {
@@ -73,7 +77,7 @@ export class BossTheme {
       });
     }
     const volume = Math.max(0, Math.min(MUSIC_MAX_VOLUME, frame.musicVolume));
-    this.setGain(this.playing ? volume * .7 * (radioActive ? .3 : frame.tank!.status === 'entering' ? .55 : 1) : 0, .05);
+    this.setGain(this.playing ? volume * .7 * (radioActive ? .3 : this.track === 'boss' && frame.tank!.status === 'entering' ? .55 : 1) : 0, .05);
     return this.playing;
   }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BossTheme } from '../src/audio/BossTheme';
+import { StreamedMusic } from '../src/audio/StreamedMusic';
 import type { MusicFrame } from '../src/audio/MusicComposition';
 import * as assets from '../src/core/publicAssetUrl';
 
@@ -8,18 +8,66 @@ const boss = (elapsedSeconds = 0, phase: 1 | 2 | 3 = 1): MusicFrame => ({
   squadCount: 3, paused: false, musicVolume: .22,
   tank: { status: elapsedSeconds < 2.5 ? 'entering' : 'active', phase, elapsedSeconds, entrySeconds: 2.5 },
 });
-function harness() {
+
+const victory = (seconds: number | null = null): MusicFrame => ({
+  ...boss(40), tank: { ...boss(40).tank!, status: 'defeated' }, victorySeconds: seconds,
+});
+describe('Stage1 Complete results recording', () => {
+  it('does not request during combat, explosions or Commander speech; starts only on results', () => {
+    const h = harness('victory');
+    for (const frame of [boss(), victory(), { ...victory(), victorySeconds: undefined }]) {
+      expect(h.music.update(frame, false)).toBe(false);
+    }
+    expect(h.media.src).toBe(''); expect(h.media.play).not.toHaveBeenCalled();
+    h.music.update(victory(0), false);
+    expect(h.media.src).toBe('/topwar/audio/stage1-complete.hash.mp3'); expect(h.media.loop).toBe(true);
+    h.ready(); expect(h.music.update(victory(.1), false)).toBe(true); h.music.dispose();
+  });
+  it('keeps one source/play through three loops and follows results age rather than Tank age', () => {
+    const h = harness('victory'); h.music.update(victory(0), false); h.ready();
+    for (let loop = 0; loop <= 3; loop++) {
+      h.media.currentTime = .02;
+      expect(h.music.update(victory(loop * 8.571), false)).toBe(true);
+      expect(h.media.currentTime).toBe(.02);
+    }
+    expect(h.media.play).toHaveBeenCalledOnce();
+    h.music.silence(); h.music.update(victory(30), false);
+    expect(h.media.currentTime).toBeCloseTo(30 % 8.571); h.music.dispose();
+  });
+  it('freezes on Pause/background, resumes the results clock, respects volume and resets on Retry', () => {
+    const h = harness('victory'); h.music.update(victory(4), false); h.ready(); h.music.update(victory(4), false);
+    expect(h.gain.gain.setTargetAtTime).toHaveBeenLastCalledWith(.22 * .7, 0, .05);
+    h.music.update({ ...victory(4), paused: true }, false); expect(h.media.paused).toBe(true);
+    h.context.state = 'suspended'; h.music.update(victory(4), false); expect(h.media.currentTime).toBe(4);
+    h.context.state = 'running'; h.music.update(victory(4), false); h.ready();
+    expect(h.media.currentTime).toBe(4);
+    h.music.update({ ...victory(4), musicVolume: 0 }, false); expect(h.media.paused).toBe(true);
+    h.music.reset(); h.music.update(victory(), false); expect(h.media.paused).toBe(true);
+    h.music.update(victory(0), false); expect(h.media.currentTime).toBe(0); h.music.dispose();
+  });
+  it('enables the procedural fallback on playback/load failure and releases media on disposal', async () => {
+    const h = harness('victory'); h.media.play.mockRejectedValueOnce(new Error('unavailable'));
+    h.music.update(victory(0), false); await Promise.resolve();
+    expect(h.music.update(victory(1), false)).toBe(false); expect(h.media.paused).toBe(true);
+    h.music.reset(); h.music.update(victory(2), false); h.ready();
+    expect(h.music.update(victory(2), false)).toBe(true);
+    h.media.onerror!(); expect(h.music.update(victory(3), false)).toBe(false);
+    h.music.dispose(); expect(h.media.removeAttribute).toHaveBeenCalledWith('src');
+    expect(h.node.disconnect).toHaveBeenCalledOnce();
+  });
+});
+function harness(track: 'boss' | 'victory' = 'boss') {
   const media = { src: '', preload: '', loop: false, paused: true, duration: NaN, currentTime: 0,
     onplaying: null as null | (() => void), onwaiting: null as null | (() => void), onerror: null as null | (() => void),
     play: vi.fn(async () => { media.paused = false; }), pause: vi.fn(() => { media.paused = true; }),
     load: vi.fn(), removeAttribute: vi.fn() };
   vi.stubGlobal('Audio', vi.fn(function () { return media; }));
-  vi.spyOn(assets, 'publicAssetUrl').mockReturnValue('/topwar/audio/boss-theme.hash.mp3');
+  vi.spyOn(assets, 'publicAssetUrl').mockImplementation(path => '/topwar/' + path.replace('.mp3', '.hash.mp3'));
   const node = { connect: vi.fn(), disconnect: vi.fn() };
   const gain = { connect: vi.fn(), disconnect: vi.fn(), gain: { value: 0, cancelScheduledValues: vi.fn(), setTargetAtTime: vi.fn() } };
   const context = { currentTime: 0, state: 'running', createMediaElementSource: vi.fn(() => node), createGain: vi.fn(() => gain) };
-  const music = new BossTheme(context as unknown as AudioContext, {} as GainNode);
-  const ready = () => { media.duration = 135.302; media.paused = false; media.onplaying!(); };
+  const music = new StreamedMusic(context as unknown as AudioContext, {} as GainNode, track);
+  const ready = () => { media.duration = track === 'boss' ? 135.302 : 8.571; media.paused = false; media.onplaying!(); };
   return { media, context, gain, node, music, ready };
 }
 

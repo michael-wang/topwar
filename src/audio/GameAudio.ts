@@ -1,6 +1,6 @@
 import { ObserverVoice, ObserverVoiceFiles, observerVoiceAsset, type ObserverAudioReadiness } from './ObserverVoice';
 import { hasPublicAsset, publicAssetUrl } from '../core/publicAssetUrl';
-import { BossTheme } from './BossTheme';
+import { StreamedMusic } from './StreamedMusic';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import type { GrenadeEvent } from '../simulation/grenade';
@@ -168,7 +168,8 @@ export class GameAudio {
   private lastLockOnSeconds = -Infinity;
   private readonly observer = new AudioCueObserver();
   private music: ProceduralMusic | null = null;
-  private bossTheme: BossTheme | null = null;
+  private bossTheme: StreamedMusic | null = null;
+  private victoryTheme: StreamedMusic | null = null;
   private musicPresentationMs = 0;
   private unlocked = false;
   private disposed = false;
@@ -211,8 +212,12 @@ export class GameAudio {
       this.activationDenied = false;
       // Create the media bus in the Start/Resume gesture, without requesting the song yet.
       if (!this.bossTheme && globalThis.Audio && hasPublicAsset('audio/boss-theme.mp3')) {
-        try { this.bossTheme = new BossTheme(context, this.master); }
+        try { this.bossTheme = new StreamedMusic(context, this.master); }
         catch { /* Keep existing music/voice when media routing is unavailable. */ }
+      }
+      if (!this.victoryTheme && globalThis.Audio && hasPublicAsset('audio/stage1-complete.mp3')) {
+        try { this.victoryTheme = new StreamedMusic(context, this.master, 'victory'); }
+        catch { /* Retain the procedural results fallback. */ }
       }
       this.voice ??= new ObserverVoice(context, this.master, undefined, this.voiceFiles.load);
       for (const {locale, message} of this.preparedRadio.values()) this.voice.prepare(locale, message);
@@ -256,6 +261,7 @@ export class GameAudio {
     this.musicPresentationMs = 0;
     this.music?.reset();
     this.bossTheme?.reset();
+    this.victoryTheme?.reset();
     if(this.weaponBus&&this.context){this.weaponBus.gain.cancelScheduledValues(this.context.currentTime);this.weaponBus.gain.value=1;}
   }
 
@@ -270,11 +276,13 @@ export class GameAudio {
     this.musicPresentationMs = presentationMs;
     if (!this.unlocked || !this.context || this.context.state !== 'running' || !this.master) {
       this.bossTheme?.silence();
+      this.victoryTheme?.silence();
       return;
     }
     this.music ??= new ProceduralMusic(this.context, this.master);
     const recordedBoss = this.bossTheme?.update(frame, this.radioActive) ?? false;
-    this.music.update(presentationMs, { ...frame, musicVolume: recordedBoss ? 0 : frame.musicVolume * (this.radioActive ? .65 : 1) });
+    const recordedVictory = this.victoryTheme?.update(frame, this.radioActive) ?? false;
+    this.music.update(presentationMs, { ...frame, musicVolume: recordedBoss || recordedVictory ? 0 : frame.musicVolume * (this.radioActive ? .65 : 1) });
   }
 
   syncRadio(locale: ObserverLocale, offset: number | null, paused: boolean, windowSeconds = Infinity,
@@ -295,7 +303,7 @@ export class GameAudio {
     this.voice.sync(locale, offset, paused || this.context.state !== 'running', windowSeconds, message);
   }
 
-  silenceMusic(): void { this.music?.silence(); this.bossTheme?.silence(); }
+  silenceMusic(): void { this.music?.silence(); this.bossTheme?.silence(); this.victoryTheme?.silence(); }
 
   syncSupportFlyover(offset: number | null, paused: boolean, duration = 1.2, firstImpactSeconds = 7.5, strikeSpacing = .65): void {
     const context = this.context;
@@ -519,6 +527,7 @@ export class GameAudio {
     this.radioDuckBus?.disconnect(); this.radioDuckBus = null;
     this.music?.dispose();
     this.bossTheme?.dispose(); this.bossTheme = null;
+    this.victoryTheme?.dispose(); this.victoryTheme = null;
     this.music = null;
     this.master?.disconnect();
     this.weaponBus?.disconnect();this.weaponBus=null;
