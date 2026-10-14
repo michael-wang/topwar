@@ -155,7 +155,7 @@ export class GameApp {
     this.audio = audio;
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
     this.startOverlay = new GameStartOverlay(viewport);
-    this.pauseOverlay = new PauseOverlay(viewport);
+    this.pauseOverlay = new PauseOverlay(viewport, () => { if (this.paused) this.togglePaused(); });
     this.controlStrip = this.config.catharsis?.defenseMode ? new CombatControlStrip(viewport) : null;
     this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;
     this.battleInfo = this.config.catharsis?.defenseMode ? new BattleInfoHud(viewport) : null;

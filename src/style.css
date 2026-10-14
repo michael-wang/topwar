@@ -77,13 +77,13 @@ body {
 .pause-overlay:not([hidden]) {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 40;
   display: grid;
   place-items: center;
   background: rgb(18 24 30 / 45%);
   color: white;
   font: 900 2rem "Trebuchet MS", sans-serif; letter-spacing: .08em;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 #game-viewport[data-recovery-pending] > * { visibility:hidden; }
@@ -100,7 +100,7 @@ body {
 
 .hud-actions {
   position: absolute;
-  z-index: 3;
+  z-index: 41;
   top: max(0.5rem, env(safe-area-inset-top));
   right: max(0.5rem, env(safe-area-inset-right));
   display: flex;

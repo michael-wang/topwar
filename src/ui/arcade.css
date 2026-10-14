@@ -86,21 +86,27 @@
 .beachhead-defense .pause-overlay:not([hidden]), .beachhead-defense .game-over-overlay:not([hidden]) {
   background: color-mix(in srgb, var(--ui-ink) 38%, transparent);
 }
-.beachhead-defense .pause-overlay > span, .beachhead-defense .game-over-overlay h1 {
+.beachhead-defense .pause-overlay > button, .beachhead-defense .game-over-overlay h1 {
   position: relative; isolation: isolate; margin: 0; padding: 9px 18px 13px;
   font: 900 clamp(44px, 13vw, 58px)/1 var(--font-combat-display);
   letter-spacing: .025em; color: var(--ui-paper); transform: rotate(-2deg);
   text-shadow: var(--ui-offset) 3px 0 #07121c; filter: drop-shadow(2px 4px 0 #07121c);
 }
-.beachhead-defense .pause-overlay > span::before, .beachhead-defense .game-over-overlay h1::before {
+.beachhead-defense .pause-overlay > button::before, .beachhead-defense .game-over-overlay h1::before {
   content: ''; position: absolute; z-index: -1; inset: 0;
   background: var(--ui-deep); clip-path: var(--ui-plaque);
   border-top: 2px solid var(--ui-edge); border-bottom: 4px solid var(--ui-gold);
 }
-.beachhead-defense .pause-overlay > span::after, .beachhead-defense .game-over-overlay h1::after {
+.beachhead-defense .pause-overlay > button::after, .beachhead-defense .game-over-overlay h1::after {
   content: ''; position: absolute; width: 10px; height: 3px; right: 8px; top: 7px;
   background: var(--ui-paper);
 }
+.beachhead-defense .pause-overlay > button {
+  min-width: min(270px, 85vw); min-height: 88px; padding: 16px 24px;
+  border: 0; background: transparent; cursor: pointer; touch-action: manipulation;
+}
+.beachhead-defense .pause-overlay > button:focus-visible { outline: 3px solid var(--ui-paper); outline-offset: 6px; }
+.beachhead-defense .pause-overlay > button:active { transform: rotate(-2deg) scale(.97); }
 .beachhead-defense .game-over-overlay h1 { font-size: clamp(40px, 12vw, 54px); transform: rotate(1deg); }
 .beachhead-defense .game-over-overlay h1::before { border-bottom-color: var(--ui-danger); }
 .beachhead-defense .game-over-overlay button {

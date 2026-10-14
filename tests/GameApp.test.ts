@@ -75,6 +75,7 @@ const mock = vi.hoisted(() => ({
   damageReset: vi.fn(),
   damageDispose: vi.fn(),
   pauseVisible: vi.fn(),
+  pauseConstructedWith: vi.fn(),
   pauseDispose: vi.fn(),
   hintDispose: vi.fn(),
   xpConstructed: vi.fn(),
@@ -166,6 +167,7 @@ vi.mock('../src/ui/GameOverOverlay', () => ({
 
 
 vi.mock('../src/ui/PauseOverlay', () => ({ PauseOverlay: class {
+  constructor(_viewport: HTMLElement, resume: () => void) { mock.pauseConstructedWith(resume); }
   setVisible = mock.pauseVisible;
   dispose = mock.pauseDispose;
 } }));
@@ -585,6 +587,22 @@ describe('GameApp config and frame lifecycle', () => {
     raf.frame(300 + 1000 / 60);
     expect(mock.step.mock.lastCall![1]).toEqual({ targetX: 2 });
     app.dispose();
+  });
+
+  it('central Resume uses the guarded gesture path and cannot toggle twice or resume hidden/lost contexts', async () => {
+    createRaf(); const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
+    await startGame(app);
+    const resume = mock.pauseConstructedWith.mock.calls[0][0] as () => void;
+    const toggle = mock.hudConstructedWith.mock.calls[0][0] as () => void;
+    const internals = app as unknown as {paused: boolean; hidden: boolean; contextLost: boolean};
+    const activate = vi.spyOn(GameAudio.prototype, 'activate');
+    activate.mockClear();
+    resume(); expect(internals.paused).toBe(false); expect(activate).not.toHaveBeenCalled();
+    toggle(); expect(internals.paused).toBe(true);
+    internals.hidden = true; resume(); expect(internals.paused).toBe(true);
+    internals.hidden = false; internals.contextLost = true; resume(); expect(internals.paused).toBe(true);
+    internals.contextLost = false; resume(); resume(); expect(internals.paused).toBe(false);
+    expect(activate).toHaveBeenCalledOnce(); app.dispose(); activate.mockRestore();
   });
 
   it('derives Game Over from zero squad and retries with current config in the same RAF loop', async () => {
