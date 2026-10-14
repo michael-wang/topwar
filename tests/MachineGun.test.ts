@@ -86,7 +86,7 @@ it('keeps reinforcement deferred and isolated no-stream MG measurements free of 
 
 it('evolves coherently if a live XP threshold edit crosses the family boundary',()=>{
  const sim=controlledSimulation(5),s=sim.getState();s.progression!.xp=210;sim.restoreState(s);
- sim.setCatharsisBalance({...s.catharsis!.balance,progression:{...s.catharsis!.balance.progression,xpRequirements:[28,60,110,180,200,200,300,350,450]}});
+ sim.setCatharsisBalance({...s.catharsis!.balance,progression:{...s.catharsis!.balance.progression,xpRequirements:s.catharsis!.balance.progression.xpRequirements.map((xp,i)=>i===4?200:xp)}});
  expect(sim.getState().progression).toEqual({level:6,xp:10});expect(sim.getState().squad.count).toBe(1);
  expect(sim.getState().weapons.rifleMemberCooldowns).toEqual([1/18]);expect(sim.consumePresentationEvents()).toEqual([]);
  expect(()=>sim.restoreState(JSON.parse(JSON.stringify(sim.getState())))).not.toThrow();

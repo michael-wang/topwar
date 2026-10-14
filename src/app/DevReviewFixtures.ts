@@ -33,7 +33,7 @@ export function createDevReviewFixture(options: SimulationOptions, baseFireRate:
   if (role === 'mg6' || role === 'mg7' || role === 'mg8' || role === 'mg9' || role === 'mg10')
     return createMachineGunReview(options, baseFireRate, role);
   if (role === 'crate3' || role === 'crate8') return createSupplyReview(options, baseFireRate, role);
-  const level = maxProgressionLevel(options.catharsis!.balance.progression);
+  const level = Math.min(10, maxProgressionLevel(options.catharsis!.balance.progression));
   const fixture = { level, soldiers: progressionStage(level, options.catharsis!.balance.progression).squadStage };
   const simulation = new Simulation({ ...options, seed: 0x21b100 + fixture.level,
     startSquad: 1, startRocketCount: 0 });

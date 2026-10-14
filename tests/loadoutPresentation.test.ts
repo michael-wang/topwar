@@ -11,5 +11,5 @@ it('derives permanent stages from the authored plan, independent of XP and live 
   expect(loadoutPresentation({level:4,xp:10},balance)).toEqual(loadoutPresentation({level:4,xp:179},balance));
   const plan={...balance,levelPlan:balance.levelPlan.map(stage=>({...stage,squadStage:1}))};
   expect(loadoutPresentation({level:4,xp:0},plan)).toEqual({weapon:'rifle',weaponStage:3,squadStage:null});
-  expect(loadoutPresentation({level:100,xp:0},balance)).toEqual({weapon:'machineGun',weaponStage:3,squadStage:3});
+  expect(loadoutPresentation({level:100,xp:0},balance)).toEqual({weapon:'machineGun',weaponStage:3,squadStage:5});
 });

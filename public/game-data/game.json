@@ -204,7 +204,9 @@
         200,
         300,
         350,
-        450
+        450,
+        900,
+        1800
       ],
       "levelPlan": [
         {
@@ -256,6 +258,16 @@
           "weaponFamily": "machineGun",
           "fireRateStage": 3,
           "squadStage": 3
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 3,
+          "squadStage": 4
+        },
+        {
+          "weaponFamily": "machineGun",
+          "fireRateStage": 3,
+          "squadStage": 5
         }
       ],
       "fireRateMultipliers": [

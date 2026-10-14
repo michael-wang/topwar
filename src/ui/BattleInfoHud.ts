@@ -10,12 +10,13 @@ export class BattleInfoHud {
   readonly element = document.createElement('div');
   private readonly weaponIcon = gameIcon('rifle');
   private readonly weaponPips = Array.from({ length: 3 }, () => document.createElement('span'));
-  private readonly squadPips = Array.from({ length: 3 }, () => document.createElement('span'));
+  private readonly squadPips = Array.from({ length: 5 }, () => document.createElement('span'));
   private readonly weaponRow = document.createElement('div');
   private readonly squadRow = document.createElement('div');
   private previous: Loadout | null = null;
   private readonly weaponPulseUntil = [-Infinity, -Infinity, -Infinity];
-  private readonly squadPulseUntil = [-Infinity, -Infinity, -Infinity];
+  private readonly squadPulseUntil = Array(5).fill(-Infinity) as number[];
+  private previousSquadMax = 0;
   private familyPulseUntil = -Infinity;
 
   constructor(viewport: HTMLElement) {
@@ -31,27 +32,31 @@ export class BattleInfoHud {
 
   update(state: Readonly<ProgressionState>, balance: ProgressionBalance, nowMs: number): void {
     const model = loadoutPresentation(state, balance), previous = this.previous;
+    let squadMax = 1;
+    for (const stage of balance.levelPlan) if (stage.weaponFamily === model.weapon) squadMax = Math.max(squadMax, stage.squadStage);
     const familyChanged = previous !== null && model.weapon !== previous.weapon;
-    if (!previous || familyChanged || model.weaponStage !== previous.weaponStage || model.squadStage !== previous.squadStage) {
+    if (!previous || familyChanged || squadMax !== this.previousSquadMax || model.weaponStage !== previous.weaponStage || model.squadStage !== previous.squadStage) {
       if (!previous || familyChanged) {
         this.weaponIcon.innerHTML = iconMarkup(model.weapon);
         this.element.dataset.weaponFamily = model.weapon;
       }
       this.familyPulseUntil = familyChanged ? nowMs + UPGRADE_PULSE_MS : -Infinity;
       this.weaponRow.ariaLabel = `Weapon stage ${model.weaponStage} of 3`;
-      this.squadRow.ariaLabel = `Unlocked squad stage ${model.squadStage ?? 1} of 3`;
-      this.element.setAttribute('aria-label', `${model.weapon === 'rifle' ? 'Rifle' : 'Machine Gun'}, weapon stage ${model.weaponStage} of 3${model.squadStage ? `, unlocked squad stage ${model.squadStage} of 3` : ''}`);
+      this.squadRow.ariaLabel = `Unlocked squad stage ${model.squadStage ?? 1} of ${squadMax}`;
+      this.element.setAttribute('aria-label', `${model.weapon === 'rifle' ? 'Rifle' : 'Machine Gun'}, weapon stage ${model.weaponStage} of 3${model.squadStage ? `, unlocked squad stage ${model.squadStage} of ${squadMax}` : ''}`);
       this.weaponPips.forEach((pip, index) => {
         const filled = index < model.weaponStage;
         pip.innerHTML = iconMarkup('cartridge', filled); pip.ariaHidden = 'true';
         this.weaponPulseUntil[index] = previous && !familyChanged && filled && index >= previous.weaponStage ? nowMs + UPGRADE_PULSE_MS : -Infinity;
       });
       this.squadPips.forEach((pip, index) => {
+        pip.hidden = index >= squadMax;
         const filled = index < (model.squadStage ?? 1);
         pip.innerHTML = iconMarkup('soldier', filled); pip.ariaHidden = 'true';
         this.squadPulseUntil[index] = previous && !familyChanged && model.squadStage && filled && index >= (previous.squadStage ?? 1) ? nowMs + UPGRADE_PULSE_MS : -Infinity;
       });
       this.previous = model;
+      this.previousSquadMax = squadMax;
     }
     // Presentation clock freezes on Pause; no timers or simulation state are added.
     this.weaponIcon.classList.toggle('weapon-evolution', nowMs < this.familyPulseUntil);

@@ -11,7 +11,7 @@ export function createNavalReview(options: SimulationOptions): Simulation {
   if (!balance?.defenseMode || balance.progression.levelPlan.length < 8)
     throw Error('NAVAL review requires Lv8 Defense progression');
   balance.carnival.enabled = false; balance.postCapSurvival.enabled = false;
-  const level = maxProgressionLevel(balance.progression);
+  const level = Math.min(10, maxProgressionLevel(balance.progression));
   if (progressionStage(level, balance.progression).squadStage !== 3) throw Error('NAVAL review requires a three-MG cap');
   state.carnival = emptyCarnival(true); state.progression = { level, xp: 0 };
   state.machineGunReleaseAtSeconds = 0; state.giantEncounter = { scheduledAtSeconds: 0, spawned: true };
