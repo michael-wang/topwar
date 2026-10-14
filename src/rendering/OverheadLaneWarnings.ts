@@ -28,20 +28,23 @@ export class OverheadLaneWarnings {
   constructor(private readonly scene: THREE.Scene) {
     const triangle = (width: number, top: number, tip: number) => {
       const shape = new THREE.Shape();
-      shape.moveTo(-width, top); shape.lineTo(width, top); shape.lineTo(0, tip); shape.closePath();
+      shape.moveTo(-width, top-.01); shape.lineTo(width, top); shape.lineTo(0, tip); shape.closePath();
       return shape;
     };
-    const rim = triangle(.40, .36, -.42);
+    // A few authored uneven edges, without moving the authoritative bottom tip.
+    const rim = new THREE.Shape();
+    rim.moveTo(-.40,.35);rim.lineTo(-.025,.345);rim.lineTo(.40,.36);
+    rim.lineTo(.225,-.01);rim.lineTo(0,-.42);rim.lineTo(-.215,-.015);rim.closePath();
     const hole = new THREE.Path();
-    hole.moveTo(-.375, .335); hole.lineTo(0, -.385); hole.lineTo(.375, .335); hole.closePath();
+    hole.moveTo(-.375, .325); hole.lineTo(0, -.385); hole.lineTo(.375, .335); hole.closePath();
     rim.holes.push(hole);
     const stem=new THREE.Shape();stem.moveTo(-.075,.06);stem.lineTo(-.10,.29);stem.lineTo(.10,.29);stem.lineTo(.075,.06);stem.closePath();
     const dot=new THREE.Shape();dot.absarc(0,-.11,.075,0,Math.PI*2,false);
     const parts = [new THREE.ShapeGeometry(rim), new THREE.ShapeGeometry(triangle(.375, .335, -.385)),
       new THREE.ShapeGeometry([stem,dot])];
     // Static accents bypass the inward fill mask. Merge all regions into one
-    // batch: a thin rim, directional fill and ivory glyph need no extra draw calls.
-    const accents = [this.material.color, null, new THREE.Color('#fff3dc')];
+    // batch: a thin rim, directional fill and solid black glyph need no extra draw calls.
+    const accents = [this.material.color, null, new THREE.Color('#000000')];
     parts.forEach((part, index) => {
       const accent = accents[index], values = new Float32Array(part.attributes.position.count * 4);
       if (accent) for (let v = 0; v < values.length; v += 4) {
@@ -68,8 +71,8 @@ export class OverheadLaneWarnings {
         .replace('#include <begin_vertex>',`#include <begin_vertex>
           vWarningFillProgress = warningFillProgress; vWarningAccent = warningAccent; vWarningBarycentric = warningBarycentric;
           // Tip stays on the impact. Only the body leans inward at screen edges;
-          // the ivory glyph stays upright within the tilted triangle.
-          transformed.x += warningLean * (warningAccent.g > 0.5 ? 0.55 : (position.y + 0.42) / 0.78);`);
+          // the black glyph stays upright within the tilted triangle.
+          transformed.x += warningLean * (warningAccent.a > 0.5 && warningAccent.r < 0.01 ? 0.55 : (position.y + 0.42) / 0.78);`);
       shader.fragmentShader=shader.fragmentShader.replace('#include <common>',
         '#include <common>\nvarying float vWarningFillProgress;\nvarying vec4 vWarningAccent;\nvarying vec3 vWarningBarycentric;')
         .replace('#include <color_fragment>',`#include <color_fragment>
@@ -80,7 +83,7 @@ export class OverheadLaneWarnings {
           if (vWarningAccent.a < 0.5 && edgeDistance > inset) discard;
           diffuseColor.rgb = mix(diffuseColor.rgb, vWarningAccent.rgb, vWarningAccent.a);`);
     };
-    this.material.customProgramCacheKey=()=> 'overhead-warning-impact-aligned-v4';
+    this.material.customProgramCacheKey=()=> 'overhead-warning-impact-aligned-v5';
     this.batch=new THREE.InstancedMesh(this.geometry,this.material,ARTILLERY_CAPACITY);
     this.batch.name='artillery-lane-danger';this.batch.frustumCulled=false;this.batch.renderOrder=14;
     this.batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(this.batch);
@@ -105,9 +108,12 @@ export class OverheadLaneWarnings {
       if(!Number.isFinite(this.deadlines[lane]))continue;
       const remaining=this.deadlines[lane]-nowSeconds;
       const progress=Math.max(0,Math.min(1,(nowSeconds-this.starts[lane])/(this.deadlines[lane]-this.starts[lane])));
-      const final=remaining<=.15;
       this.fillProgress.setX(count,progress);
-      const scale=final ? 1.10+.28*Math.sin(Math.max(0,.15-remaining)*Math.PI*24)**2 : 1;
+      // Last second: smooth pulses grow stronger and faster (2 to 4 beats/s).
+      // The final 150ms adds a small emphasis; colour and opacity stay constant.
+      const urgency=Math.max(0,Math.min(1,1-remaining));
+      const finalEmphasis=Math.max(0,Math.min(1,1-remaining/.15));
+      const scale=1+urgency*(.08+.25*urgency)*Math.sin(Math.PI*(2*urgency+urgency*urgency))**2+.10*finalEmphasis**2;
       this.anchor.set(this.xs[lane],this.ys[lane],this.zs[lane]);
       let widthScale=scale, lean=0;
       if(camera){

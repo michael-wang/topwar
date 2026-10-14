@@ -121,7 +121,8 @@ it('coalesces same-lane shells until the final resolution; cancellation/restore 
   expect(scene.getObjectByName('enemy-cannon-flash-1')!.visible).toBe(false);
   r.update({...state,shells:[second],elapsedSeconds:first.impactAtSeconds},1000,{x:0,z:0},camera);expect(r.getDebugStats().warnings).toBe(1);
   expect(fill.getX(0)).toBeCloseTo((first.impactAtSeconds-second.launchedAtSeconds)/second.flightSeconds);
-  mesh.getMatrixAt(0,matrix);expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeCloseTo(1);
+  mesh.getMatrixAt(0,matrix);const scale=new THREE.Vector3().setFromMatrixScale(matrix);
+  expect(scale.x).toBeCloseTo(scale.y); // The later shell restores its full-width body, including pulse.
   r.update({...state,shells:[],elapsedSeconds:first.impactAtSeconds+.1},1000);expect(r.getDebugStats().warnings).toBe(0);
   r.reset();expect(r.getDebugStats().warnings).toBe(0);r.dispose();
 });
@@ -142,7 +143,7 @@ it.each([350,390])('fits every overhead lane including its directional edge insi
       for(let v=0;v<ink.geometry.attributes.position.count;v++){
         point.fromBufferAttribute(ink.geometry.attributes.position,v);
         const lean=ink.geometry.getAttribute('warningLean').getX(i),accent=ink.geometry.getAttribute('warningAccent');
-        point.x+=lean*(accent.getY(v)>.5?.55:(point.y+.42)/.78);point.applyMatrix4(matrix).project(camera);
+        point.x+=lean*(accent.getW(v)>.5&&accent.getX(v)<.01?.55:(point.y+.42)/.78);point.applyMatrix4(matrix).project(camera);
         expect((point.x*.5+.5)*width).toBeGreaterThan(0);expect((point.x*.5+.5)*width).toBeLessThan(width);
         const target=new THREE.Vector3(-all[i].target.x,all[i].target.y,all[i].target.z).project(camera);
         expect((.5-point.y*.5)*844).toBeGreaterThan(550);expect(point.y).toBeGreaterThanOrEqual(target.y-1e-6);
@@ -155,7 +156,7 @@ it.each([350,390])('fits every overhead lane including its directional edge insi
   r.dispose();
 });
 
-it('uses independent per-lane fill and a final-150ms pulse that freezes and resumes with simulation time',()=>{
+it('escalates independent lane pulses near impact and freezes/restores them with simulation time',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const pair=[{...shell,targetLane:0,target:{...shell.target,x:-2.8},launchedAtSeconds:0,impactAtSeconds:2},
     {...shell,id:2,targetLane:1,target:{...shell.target,x:-1.4},launchedAtSeconds:1,impactAtSeconds:3}];
@@ -169,12 +170,18 @@ it('uses independent per-lane fill and a final-150ms pulse that freezes and resu
   expect(matrix.toArray()).toEqual(pausedMatrix);expect(fill.getX(0)).toBeCloseTo(.95);
   r.update({shells:pair,elapsedSeconds:1.95,warningPresentation:'overheadLanes'},9050);
   expect(fill.getX(0)).toBeCloseTo(.975);
-  r.update({shells:pair,elapsedSeconds:1.849,warningPresentation:'overheadLanes'},1000);mesh.getMatrixAt(0,matrix);
-  expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBe(1);expect(punch).toBeGreaterThan(1);
+  const scaleAt=(time:number)=>{r.update({shells:pair,elapsedSeconds:time,warningPresentation:'overheadLanes'},time*1000);
+    mesh.getMatrixAt(0,matrix);return new THREE.Vector3().setFromMatrixScale(matrix).x;};
+  expect(scaleAt(.9)).toBe(1); // More than one second remaining: quiet outline.
+  const earlyPeak=scaleAt(Math.sqrt(1.5)),latePeak=scaleAt(Math.sqrt(3.5));
+  expect(earlyPeak).toBeGreaterThan(1);expect(latePeak).toBeGreaterThan(earlyPeak+.2);
+  expect(punch).toBeGreaterThan(earlyPeak);expect(scaleAt(2)).toBeCloseTo(1.1); // Final 150ms emphasis.
+  r.restore({shells:pair,elapsedSeconds:1.9,warningPresentation:'overheadLanes'});
+  scaleAt(1.9);expect(matrix.toArray()).toEqual(pausedMatrix);
   expect(mesh.material).toMatchObject({opacity:1,transparent:true});r.dispose();
 });
 
-it('preallocates one inward-fill shader and keeps red and ivory fully visible throughout flight',()=>{
+it('preallocates one inward-fill shader and keeps red and black fully visible throughout flight',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
   const attribute=mesh.geometry.getAttribute('warningFillProgress'),material=mesh.material as THREE.MeshBasicMaterial;
@@ -197,14 +204,13 @@ it('preallocates one inward-fill shader and keeps red and ivory fully visible th
   r.dispose();
 });
 
-it('merges the downward triangle, thin rim and ivory exclamation into one owned lane batch',()=>{
+it('merges the downward triangle, thin rim and solid black exclamation into one owned lane batch',()=>{
   const scene=new THREE.Scene(),r=new EnemyArtilleryRenderer(scene);
   const mesh=scene.getObjectByName('artillery-lane-danger') as THREE.InstancedMesh;
   const positions=mesh.geometry.getAttribute('position'),accents=mesh.geometry.getAttribute('warningAccent');
   const barycentric=mesh.geometry.getAttribute('warningBarycentric');
   expect(accents.count).toBe(positions.count);
   const body=[] as THREE.Vector3[],rim=[] as THREE.Vector3[],glyph=[] as THREE.Vector3[];
-  const ivory=new THREE.Color('#fff3dc');
   for(let i=0;i<positions.count;i++) {
     const p=new THREE.Vector3().fromBufferAttribute(positions,i);
     if(accents.getW(i)===0){
@@ -212,15 +218,18 @@ it('merges the downward triangle, thin rim and ivory exclamation into one owned 
       expect(bary.toArray().sort()).toEqual([0,0,1]);
     }else{
       const accent=new THREE.Color(accents.getX(i),accents.getY(i),accents.getZ(i));
-      expect(['ff1000','fff3dc']).toContain(accent.getHexString());
+      expect(['ff1000','000000']).toContain(accent.getHexString());
     }
-    (accents.getW(i)===0?body:Math.abs(accents.getY(i)-ivory.g)<1e-6?glyph:rim).push(p);
+    (accents.getW(i)===0?body:accents.getX(i)===0?glyph:rim).push(p);
   }
   expect(body).toHaveLength(3);expect(glyph.length).toBeGreaterThan(3);expect(rim.length).toBeGreaterThan(3);
   const tip=body.reduce((a,b)=>a.y<b.y?a:b);
   expect(tip.x).toBe(0);expect(tip.y).toBeCloseTo(-.385);
   expect(Math.max(...body.map(p=>p.x))).toBeCloseTo(.375);
-  expect(Math.max(...rim.map(p=>p.x))).toBeCloseTo(.40); // Narrow .025-unit rim, not the old heavy backing.
+  expect(Math.max(...rim.map(p=>p.x))).toBeCloseTo(.40);
+  expect(rim.find(p=>Math.abs(p.x+.40)<1e-6)!.y).toBeCloseTo(.35);
+  expect(rim.find(p=>Math.abs(p.x-.40)<1e-6)!.y).toBeCloseTo(.36); // Authored uneven upper corners.
+  expect(rim.find(p=>Math.abs(p.x-.225)<1e-6)!.y).toBeCloseTo(-.01); // Slightly bowed edge, same footprint.
   expect(scene.getObjectByName('artillery-lane-outline')).toBeUndefined();
   expect(scene.getObjectByName('artillery-lane-glyph')).toBeUndefined();
   let disposed=0;mesh.geometry.addEventListener('dispose',()=>disposed++);
