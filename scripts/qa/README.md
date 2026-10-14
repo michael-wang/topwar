@@ -16,6 +16,7 @@ Camera B is the approved default in every scene. After a fresh build, `node scri
 
 | Tool | Current purpose |
 |---|---|
+| lane-highlights.mjs | Production Lv1/Lv8, physical-X transitions, Destroyer/Tank threats, red/cyan overlap, cancellation and Pause/Continue/Retry at both phone widths |
 | production-sanity.mjs | Shipping /topwar/ assets, startup, current AHEAD policy and approved four-scene playback/voice/music/checkpoint recovery, plus exclusion of engineering QA; both widths |
 | production-resume.mjs | Real production Pause → reload → Continue, identical state/continuation, Retry |
 | instant-recovery.mjs | DEV delayed-config recovery choice before assets, blocked inputs, repeated reloads |

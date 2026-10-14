@@ -2,11 +2,11 @@
 
 ## NOW
 
-Prepare the Stage 1 closed-test candidate with Commander communications, the continuous family-original Boss MP3, Phase 3 last-stand air support and the same four playtest entries locally and on Pages. Pixel 8 testing confirms the revised air-support timing improves the encounter. Preserve accepted combat, Defense saves and manual deployment.
+Camera B is the approved default after Pixel 8 preference testing. P4.3 adds a subtle player firing-corridor highlight and active-artillery danger highlights, with visual acceptance pending Pixel 8 playtesting. Preserve accepted combat, Defense saves, the four quick-test entries and manual deployment. Physical Boss gameplay acceptance remains pending.
 
 ## NEXT
 
-1. Verify overhead lane warnings and aimed Tank salvos on Pixel 8.
+1. Playtest P4.3 highlights, Camera B Boss combat and overhead warnings on Pixel 8.
 2. Add immediate loading feedback after Continue / New Game.
 3. Investigate and reduce the long first load.
 

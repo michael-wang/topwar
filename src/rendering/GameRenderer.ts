@@ -15,6 +15,7 @@ import { BattlefieldAir } from './environment/BattlefieldAir';
 import type { ProgressionLevelUpEvent } from '../presentation/ProgressionLevelUp';
 import * as THREE from 'three';
 import { AttackLaneRenderer } from './AttackLaneRenderer';
+import { BattlefieldLaneHighlights } from './BattlefieldLaneHighlights';
 import { EnemyRenderer } from './enemies/EnemyRenderer';
 import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
 import { renderSize } from './renderSize';
@@ -57,6 +58,7 @@ export class GameRenderer {
   private supportRenderer: SupportAirstrikeRenderer | null = null;
   private tankRenderer: DefenseTankRenderer | null = null;
   private readonly attackLanes = new AttackLaneRenderer(this.scene);
+  private readonly laneHighlights = new BattlefieldLaneHighlights(this.scene);
   private readonly camera = new THREE.PerspectiveCamera(48, 9 / 16, 0.1, 180);
   private viewportCssHeight = 1;
   private readonly supplyProjection = new THREE.Vector3();
@@ -172,6 +174,7 @@ export class GameRenderer {
     this.air.update(state.enemies, nowMs, !!state.defenseMode);
     this.environment.update(state.player.z, state.track.halfWidth, nowMs);
     this.attackLanes.update(state.track.lanePositions, state.player.z);
+    this.laneHighlights.update(state);
     this.squadRenderer.update(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs, !!state.defenseMode, -state.player.x, state.player.z);
     this.contactShadows.update(state, this.squadRenderer, nowMs);
@@ -259,6 +262,7 @@ export class GameRenderer {
   }
 
   resetFeedback(visualSalt=0): void {
+    this.laneHighlights.reset();
     this.air.reset();
     this.grenadeRenderer.reset();
     this.artilleryRenderer?.reset();
@@ -285,6 +289,7 @@ export class GameRenderer {
     this.supportRenderer?.dispose();
     this.environment.dispose();
     this.attackLanes.dispose();
+    this.laneHighlights.dispose();
     this.contactShadows.dispose();
     this.squadRenderer.dispose();
     this.enemyRenderer.dispose();
