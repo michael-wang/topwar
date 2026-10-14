@@ -1276,7 +1276,7 @@ export class Simulation {
     if (defenseTank && tankConfig && squad.count > 0) {
       const shells = this.state.artillery?.shells ?? [];
       const lanes = tankSalvo(defenseTank, tankConfig, nextElapsedSeconds, shells,
-        (catharsis!.balance.artillery?.maxActive ?? artilleryDefaults.maxActive) - shells.length);
+        (catharsis!.balance.artillery?.maxActive ?? artilleryDefaults.maxActive) - shells.length, lanePositions!, this.state.player.x);
       if (lanes.length) {
         const source = { id: 'stage1-tank', type: 'defenseTank', position: { x: 0, y: 2.3, z: defenseTank.z - tankConfig.halfDepth - 1.1 } };
         const ids = lanes.map(targetLane => this.launchArtillery({ source, targetLane, flight: tankConfig.flight }));

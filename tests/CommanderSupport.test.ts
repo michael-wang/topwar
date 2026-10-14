@@ -107,6 +107,9 @@ it.each([1, 80, 101, 120])('restores after %i ticks and executes only remaining 
 it('naturally triggers from the accepted phase-2 spawn distance, interval and speed before troops reach the line', () => {
   const sim = boss(); let warnedAt: number | null = null;
   for (let tick = 0; tick < 11 * 60; tick++) {
+    const state=sim.getState(),shells=state.artillery?.shells??[];
+    if(shells.length){const safe=[0,1,2,3,4].find(lane=>!shells.some(s=>s.targetLane===lane))!;
+      if(state.player.selectedLane!==safe)sim.stepLane(safe<state.player.selectedLane!?-1:1);}
     step(sim, 1); const s = sim.getState();
     if (s.commanderSupport!.airstrike!.status === 'waiting') { warnedAt = s.elapsedSeconds; break; }
   }

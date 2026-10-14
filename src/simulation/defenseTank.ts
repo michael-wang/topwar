@@ -99,7 +99,7 @@ export function admitTankFlanks(frame: SimulationState, tank: DefenseTankState, 
   }
 }
 export function tankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: number,
-  shells: readonly ArtilleryShell[], available: number): number[] {
+  shells: readonly ArtilleryShell[], available: number, lanePositions: readonly number[], playerX: number): number[] {
   if (tank.status !== 'active') return [];
   if (tank.pendingImpactAtSeconds !== null) {
     if (shells.some(s => s.source.type === 'defenseTank')) return [];
@@ -108,8 +108,12 @@ export function tankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: num
   }
   const count = c.phases[tank.phase - 1].shells;
   if (tank.nextAttackAtSeconds === null || now + 1e-9 < tank.nextAttackAtSeconds || available < count) return [];
-  const rng = new SeededRng(tank.rngState), pool = [0, 1, 2, 3, 4], lanes: number[] = [];
-  for (let i = 0; i < count; i++) lanes.push(pool.splice(rng.nextInt(pool.length), 1)[0]);
+  // Aim at the physical position at launch, even during a lane transition.
+  // Equal distances choose the lower lane index deterministically.
+  const aimed = lanePositions.reduce((nearest, x, lane) =>
+    Math.abs(x - playerX) < Math.abs(lanePositions[nearest] - playerX) ? lane : nearest, 0);
+  const rng = new SeededRng(tank.rngState), pool = lanePositions.map((_, lane) => lane).filter(lane => lane !== aimed), lanes = [aimed];
+  for (let i = 1; i < count; i++) lanes.push(pool.splice(rng.nextInt(pool.length), 1)[0]);
   tank.rngState = rng.getState(); tank.nextAttackAtSeconds = null;
   return lanes;
 }

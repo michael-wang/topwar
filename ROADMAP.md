@@ -6,7 +6,7 @@ Prepare the Stage 1 closed-test candidate with Commander communications, the con
 
 ## NEXT
 
-1. Verify impact-aligned flank artillery warnings on Pixel 8.
+1. Verify overhead lane warnings and aimed Tank salvos on Pixel 8.
 2. Add immediate loading feedback after Continue / New Game.
 3. Investigate and reduce the long first load.
 

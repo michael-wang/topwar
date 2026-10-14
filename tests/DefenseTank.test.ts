@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { SeededRng } from '../src/core/Rng';
+import { attackLanePositions } from '../src/simulation/enemies/laneComposition';
+import { makeArtilleryShell } from '../src/simulation/artillery';
 import config from './helpers/ShippingConfig';
 import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
@@ -157,15 +160,64 @@ describe('Stage 1 Defense tank', () => {
     const sim = active(phase); suppressFire(sim); step(sim);
     const first = sim.getState().artillery!.shells;
     expect(first).toHaveLength(phase); expect(new Set(first.map(s => s.targetLane)).size).toBe(phase);
+    // This checks cooldowns, so dodge the aimed salvo using real lane movement.
+    const safeLane=[0,1,2,3,4].find(lane=>!first.some(s=>s.targetLane===lane))!;
+    while(sim.getState().player.selectedLane!==safeLane)sim.stepLane(safeLane<sim.getState().player.selectedLane!?-1:1);
     const finalImpact = Math.max(...first.map(s => s.impactAtSeconds)), count = tankConfig.phases[phase - 1].shells;
-    while (sim.getState().elapsedSeconds + 1 / 60 < finalImpact) step(sim);
+    while (sim.getState().elapsedSeconds + 1 / 60 < finalImpact && sim.getState().squad.count) step(sim);
     expect(sim.getState().artillery!.nextId).toBe(count + 1);
     step(sim, 2); const cooldown = sim.getState().defenseTank!;
     expect(cooldown.nextAttackAtSeconds).toBeCloseTo(finalImpact + tankConfig.phases[phase - 1].cooldownSeconds);
     const deadline = cooldown.nextAttackAtSeconds!;
-    while (sim.getState().elapsedSeconds + 1 / 60 < deadline - 1e-9) step(sim);
+    while (sim.getState().elapsedSeconds + 1 / 60 < deadline - 1e-9 && sim.getState().squad.count) step(sim);
     expect(sim.getState().artillery!.shells).toHaveLength(0); step(sim);
     expect(sim.getState().artillery!.shells).toHaveLength(count);
+  });
+  it.each([1,2,3] as const)('phase %i aims first at physical X in all five lanes, then draws distinct dedicated-RNG lanes', phase=>{
+    for(let lane=0;lane<5;lane++){
+      const sim=active(phase);suppressFire(sim);const before=sim.getState();
+      const positions=attackLanePositions(before.catharsis!.balance.laneCount,before.catharsis!.trackHalfWidth,before.catharsis!.balance.edgeInset);
+      before.player.x=positions[lane];before.player.selectedLane=(lane+1)%5;sim.restoreState(before);
+      const replay=active(phase);replay.restoreState(before);step(sim);step(replay);
+      const after=sim.getState(),shells=after.artillery!.shells;
+      expect(replay.getState()).toEqual(after);expect(shells).toHaveLength(phase);
+      expect(shells[0].targetLane).toBe(lane);expect(shells[0].target.x).toBe(positions[lane]);
+      expect(shells[0].targetLane).not.toBe(after.player.selectedLane);
+      expect(new Set(shells.map(s=>s.targetLane)).size).toBe(phase);
+      expect(shells.every(s=>s.flightSeconds>=2.4)).toBe(true);
+      const rng=new SeededRng(before.defenseTank!.rngState);
+      for(let i=1;i<phase;i++)rng.nextInt(5-i);
+      expect(after.defenseTank!.rngState).toBe(rng.getState()); // Exactly one draw per random shell; none for aiming.
+      expect(after.rngState).toBe(before.rngState);
+      expect(after.navalBarrage).toEqual(before.navalBarrage);
+    }
+  });
+  it('aims using physical X after this launch tick moves the player across a nearest-lane boundary',()=>{
+    const sim=active();suppressFire(sim);const before=sim.getState();
+    before.player.x=2;before.player.selectedLane=4;sim.restoreState(before);step(sim);
+    const after=sim.getState();expect(after.player.x).toBeGreaterThan(2.1);
+    expect(after.artillery!.shells[0].targetLane).toBe(4); // Previous X=2 was nearest lane 3.
+  });
+  it('retains historical in-flight targets through steering and checkpoint restore, then deterministically aims the next salvo',()=>{
+    const sim=active(3);suppressFire(sim);step(sim);const historical=sim.getState();
+    // Previously launched random-only salvo: a legal first lane unrelated to current physical X.
+    const shells=historical.artillery!.shells;
+    const positions=attackLanePositions(historical.catharsis!.balance.laneCount,historical.catharsis!.trackHalfWidth,historical.catharsis!.balance.edgeInset);
+    for(let i=0;i<shells.length;i++)shells[i]=makeArtilleryShell(shells[i].id,{source:shells[i].source},i,
+      positions,historical.player.z,shells[i].launchedAtSeconds,shells[i].flight,shells[i].radius);
+    historical.defenseTank!.pendingImpactAtSeconds=Math.max(...shells.map(s=>s.impactAtSeconds));
+    sim.restoreState(historical);sim.stepLane(1);sim.stepLane(1);step(sim,30);
+    const checkpoint=sim.getState();expect(checkpoint.player.x).toBeCloseTo(2.8);
+    expect(checkpoint.artillery!.shells).toEqual(shells);
+    const replay=active(3);replay.restoreState(JSON.parse(JSON.stringify(checkpoint)));
+    expect(replay.getState()).toEqual(checkpoint);expect(replay.consumeArtilleryEvents()).toEqual([]);
+    sim.consumeArtilleryEvents();
+    for(let tick=0;tick<360 && sim.getState().artillery!.nextId===checkpoint.artillery!.nextId;tick++){
+      step(sim);step(replay);expect(replay.consumeArtilleryEvents()).toEqual(sim.consumeArtilleryEvents());
+    }
+    expect(replay.getState()).toEqual(sim.getState());
+    expect(sim.getState().artillery!.nextId).toBeGreaterThan(checkpoint.artillery!.nextId);
+    expect(sim.getState().artillery!.shells[0].targetLane).toBe(4);
   });
   it('keeps a paused checkpoint valid when a tank shell or the whole salvo is cancelled', () => {
     const sim = active(3); suppressFire(sim); step(sim);
@@ -224,7 +276,12 @@ describe('Stage 1 Defense tank', () => {
     let s = sim.getState(); expect(s.enemies.every(e => e.lane === 0 || e.lane === 4)).toBe(true);
     expect(s.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(6);
     const giantAt = s.defenseTank!.nextGiantAtSeconds!;
-    while (sim.getState().elapsedSeconds < giantAt + .01) step(sim);
+    while (sim.getState().elapsedSeconds < giantAt + .01 && sim.getState().squad.count) {
+      const state=sim.getState(),shells=state.artillery?.shells??[];
+      if(shells.length){const safe=[0,1,2,3,4].find(lane=>!shells.some(s=>s.targetLane===lane))!;
+        if(state.player.selectedLane!==safe)sim.stepLane(safe<state.player.selectedLane!?-1:1);}
+      step(sim);
+    }
     s = sim.getState(); expect(s.enemies.some(e => e.archetype === 'giant' && [0, 4].includes(e.lane!))).toBe(true);
     expect(s.enemies.filter(e => e.archetype === 'giant')).toHaveLength(1);
     s.progression!.xp = 449; s.grenade!.flight = { startX: 0, startZ: 0, targetX: -2.8, targetZ: 10,
