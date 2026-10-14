@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { personalArtilleryThreat, emergencyPulse } from '../src/presentation/ArtilleryEmergency';
+import { personalArtilleryThreat, emergencyPulse, emergencyScreenPulse } from '../src/presentation/ArtilleryEmergency';
 import { ArtilleryEmergencyHud } from '../src/ui/ArtilleryEmergencyHud';
 import { makeArtilleryShell } from '../src/simulation/artillery';
 import { artilleryDefaults } from '../src/config/artilleryConfig';
@@ -20,10 +20,23 @@ function state() {
 }
 afterEach(() => vi.unstubAllGlobals());
 
-it('uses inclusive final-half-second deadlines and exact physical X/Z radial risk, independently of selectedLane', () => {
+it('pulses the glyph faster than the full-screen feedback through the warning window', () => {
+  const peaks = (pulse: (remaining: number) => number) => {
+    let count = 0;
+    for (let i = 1; i < 800; i++) {
+      const t = .8 - i / 1000;
+      if (pulse(t) > pulse(t + .001) && pulse(t) >= pulse(t - .001)) count++;
+    }
+    return count;
+  };
+  expect(peaks(emergencyPulse)).toBeGreaterThanOrEqual(3);
+  expect(peaks(emergencyScreenPulse)).toBe(1);
+});
+
+it('uses inclusive final-0.8-second deadlines and exact physical X/Z radial risk, independently of selectedLane', () => {
   const s = state(), first = s.artillery!.shells[0];
-  s.elapsedSeconds = 1.499; expect(personalArtilleryThreat(s)).toBeUndefined();
-  s.elapsedSeconds = 1.5; s.player.selectedLane = 4; expect(personalArtilleryThreat(s)).toBe(first);
+  s.elapsedSeconds = 1.199; expect(personalArtilleryThreat(s)).toBeUndefined();
+  s.elapsedSeconds = 1.2; s.player.selectedLane = 4; expect(personalArtilleryThreat(s)).toBe(first);
   s.player.x = .588; expect(personalArtilleryThreat(s)).toBe(first);
   s.player.z = .01; expect(personalArtilleryThreat(s)).toBeUndefined();
   s.player.x = .3; s.player.z = .3; expect(personalArtilleryThreat(s)).toBe(first);
@@ -56,12 +69,12 @@ it('fits the personal glyph on both outer lanes, freezes at a fixed simulation t
   const media = { matches: false }; vi.stubGlobal('matchMedia', () => media); vi.stubGlobal('document', { createElement: make });
   const host = make(), point = { x: -10, y: 550 }, hud = new ArtilleryEmergencyHud(host as any, () => point);
   const glyph = (hud.element as any).children[0];
-  hud.update(.2, 2.8); expect(glyph.style.left).toBe('38px'); expect(glyph.style.top).toBe('550px');
+  hud.update(.2, 2.8); expect(glyph.style.left).toBe('48px'); expect(glyph.style.top).toBe('550px');
   const transform = glyph.style.transform, glow = (hud.element.style as any)['--emergency-glow'];
   for (let i = 0; i < 30; i++) hud.update(.2, 2.8);
   expect(glyph.style.transform).toBe(transform); expect((hud.element.style as any)['--emergency-glow']).toBe(glow);
-  point.x = 370; hud.update(.1, -2.8); expect(glyph.style.left).toBe('312px');
-  host.clientWidth = 390; hud.update(.1, -2.8); expect(glyph.style.left).toBe('352px');
+  point.x = 370; hud.update(.1, -2.8); expect(glyph.style.left).toBe('302px');
+  host.clientWidth = 390; hud.update(.1, -2.8); expect(glyph.style.left).toBe('342px');
   media.matches = true; hud.update(.1, 0); expect(glyph.style.transform).toContain('scale(1)');
   expect((hud.element.style as any)['--emergency-glow']).toBe('0.09');
   hud.update(null, 0); expect(hud.element.hidden).toBe(true);

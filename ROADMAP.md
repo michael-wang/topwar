@@ -2,11 +2,11 @@
 
 ## NOW
 
-Camera B is the approved default after Pixel 8 preference testing. P4.3B widens player and artillery lane highlights and adds a personal emergency warning in the final half-second, with visual acceptance pending Pixel 8 playtesting. Preserve accepted combat, Defense saves, the four quick-test entries and manual deployment. Physical Boss gameplay acceptance remains pending.
+Camera B is the approved default after Pixel 8 preference testing. Full-width cyan/red lane highlights are accepted on Pixel 8. P4.3C polishes the silent, chunky personal warning in the final 0.8 seconds; P4.4 smoke readability is in progress. Emergency and smoke polish still require Pixel 8 visual acceptance. Preserve accepted combat, Defense saves, the four quick-test entries and manual deployment. Physical Boss gameplay acceptance remains pending.
 
 ## NEXT
 
-1. Playtest P4.3B full-width highlights, personal emergency visuals/audio and Camera B Boss combat on Pixel 8.
+1. Playtest P4.3C emergency and P4.4 smoke readability, alongside Camera B Boss combat, on Pixel 8.
 2. Add immediate loading feedback after Continue / New Game.
 3. Investigate and reduce the long first load.
 

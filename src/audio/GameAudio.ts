@@ -5,7 +5,6 @@ import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { ProceduralMusic, type MusicFrame } from './ProceduralMusic';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { LOCK_ON_AUDIO_GAP_SECONDS } from '../presentation/ArtilleryWarning';
-import { emergencyPulse } from '../presentation/ArtilleryEmergency';
 import { IdlePreparation } from '../presentation/IdlePreparation';
 
 // Existing audio cue delay is independent of the removed visual crash system.
@@ -167,7 +166,6 @@ export class GameAudio {
   private readonly artillerySources = new Set<AudioScheduledSourceNode>();
   private lastGrenadeAudioSeconds = -Infinity;
   private lastLockOnSeconds = -Infinity;
-  private emergencyVoice: { source: OscillatorNode; gain: GainNode } | null = null;
   private readonly observer = new AudioCueObserver();
   private music: ProceduralMusic | null = null;
   private bossTheme: BossTheme | null = null;
@@ -362,43 +360,10 @@ export class GameAudio {
   }
 
   silenceArtillery(): void {
-    this.stopArtilleryEmergency();
     this.lastLockOnSeconds = -Infinity;
     for (const source of this.artillerySources) { try { source.stop(); } catch { /* already ended */ }
       this.active.delete(source); }
     this.artillerySources.clear();
-  }
-
-  // One seekable siren voice for all current threats, not a launch cue or per-frame one-shot.
-  // Resume/Restore use the remaining simulation window and never replay the start of an alarm.
-  syncArtilleryEmergency(remaining: number | null, paused: boolean): void {
-    const c = this.context;
-    if (paused || remaining === null || remaining < 0 || remaining > .5
-      || !this.unlocked || !c || c.state !== 'running' || !this.master) {
-      this.stopArtilleryEmergency(); return;
-    }
-    if (!this.emergencyVoice) {
-      const source = c.createOscillator(), gain = c.createGain(); source.type = 'sawtooth';
-      source.connect(gain); gain.connect(this.master);
-      source.onended = () => {
-        source.disconnect(); gain.disconnect(); this.active.delete(source);
-        if (this.emergencyVoice?.source === source) this.emergencyVoice = null;
-      };
-      this.emergencyVoice = { source, gain }; this.active.add(source); source.start();
-    }
-    const pulse = emergencyPulse(remaining), voice = this.emergencyVoice;
-    voice.source.frequency.setValueAtTime(950 + 850 * pulse, c.currentTime);
-    voice.gain.gain.setValueAtTime(.065 + .045 * pulse, c.currentTime);
-    // Self-expire even if the next browser frame is delayed. Repeated syncs reuse this voice.
-    voice.source.stop(c.currentTime + Math.max(.001, remaining));
-  }
-
-  private stopArtilleryEmergency(): void {
-    const voice = this.emergencyVoice;
-    if (!voice) return;
-    this.emergencyVoice = null;
-    try { voice.source.stop(); } catch { /* already ended */ }
-    voice.source.disconnect(); voice.gain.disconnect(); this.active.delete(voice.source);
   }
 
   presentSupply(events: readonly GrenadeEvent[],nowMs:number):void {
@@ -539,7 +504,6 @@ export class GameAudio {
   }
 
   dispose(): void {
-    this.stopArtilleryEmergency();
     this.syncSupportFlyover(null, true);
     this.preparation?.dispose(); this.preparation = null;
     if (this.disposed) return;

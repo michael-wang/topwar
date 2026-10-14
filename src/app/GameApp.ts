@@ -276,7 +276,6 @@ export class GameApp {
     this.renderer.stopResizeHandling();
     this.fieldObserver?.reset();
     this.artilleryEmergencyHud.reset();
-    this.audio.syncArtilleryEmergency(null, true);
     this.audio.silenceMusic();
   }
 
@@ -762,7 +761,6 @@ export class GameApp {
       const emergency = personalArtilleryThreat(state);
       const emergencyRemaining = emergency ? emergency.impactAtSeconds - state.elapsedSeconds : null;
       this.artilleryEmergencyHud.update(emergencyRemaining, state.player.x);
-      this.audio.syncArtilleryEmergency(emergencyRemaining, this.paused || this.hidden || this.contextLost);
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || cleared) { this.laneInput?.stop();
         if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
