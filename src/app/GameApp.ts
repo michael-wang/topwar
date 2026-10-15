@@ -795,7 +795,7 @@ export class GameApp {
         supportConfig?.warningSeconds, supportConfig?.strikeSpacingSeconds);
       const tankEntranceEvents = this.simulation.consumeTankEntranceEvents();
       this.renderer.presentTankEntrance(tankEntranceEvents, this.presentationMs);
-      if (tankEntranceEvents.length) this.audio.play('supplyImpact');
+      if (tankEntranceEvents.some(event => event.shockwave)) this.audio.play('supplyImpact');
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !cleared && !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight

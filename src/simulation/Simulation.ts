@@ -868,7 +868,8 @@ export class Simulation {
       z: enemy.z - (catharsis && enemy.archetype
         ? enemyApproachSpeed(enemy, catharsis.balance) * dtSeconds : 0) }));
     if (defenseTank && tankConfig) {
-      const entrance = clearTankEntrance(defenseTank, enemies, nextElapsedSeconds);
+      const entrance = clearTankEntrance(defenseTank, tankConfig, enemies, this.state.enemies,
+        nextElapsedSeconds, dtSeconds, tuning.normalEnemyRadius);
       if (entrance) this.tankEntranceEvents.push(entrance);
       advanceTankPosition(defenseTank, tankConfig, nextElapsedSeconds, dtSeconds);
     }

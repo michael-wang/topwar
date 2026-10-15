@@ -9,6 +9,7 @@ const clock = z.number().finite().nonnegative();
 export const TANK_ENTRANCE_CLEAR_FRACTION = .2;
 export interface TankEntranceEvent {
   z: number;
+  shockwave: boolean;
   victims: Pick<EnemySimulationState, 'id' | 'x' | 'z' | 'archetype'>[];
 }
 const schema = z.strictObject({ version: z.literal(1), status: z.enum(['entering', 'active', 'defeated', 'breached']),
@@ -30,25 +31,45 @@ export function startDefenseTank(now: number, seed: number, c: DefenseTankConfig
     pendingImpactAtSeconds: null, nextFlankAtSeconds: active, nextGiantAtSeconds: null,
     giantLane: 0, rngState: (seed ^ c.streamSeed) >>> 0, defeatedAtSeconds: null, lastHitAtSeconds: null };
 }
-export function clearTankEntrance(tank: DefenseTankState, enemies: EnemySimulationState[], now: number): TankEntranceEvent | null {
-  if (tank.entranceCleared || tank.status !== 'entering'
-    || now + 1e-9 < tank.startedAtSeconds + (tank.activeAtSeconds - tank.startedAtSeconds) * TANK_ENTRANCE_CLEAR_FRACTION) return null;
-  tank.entranceCleared = true;
-  const victims: TankEntranceEvent['victims'] = [];
+function entranceZ(tank: Readonly<DefenseTankState>, c: DefenseTankConfig, now: number): number {
+  const t = Math.min(1, Math.max(0, (now - tank.startedAtSeconds) / c.entrySeconds));
+  return c.startZ + (c.battleZ - c.startZ) * t;
+}
+export function clearTankEntrance(tank: DefenseTankState, c: DefenseTankConfig,
+  enemies: EnemySimulationState[], previousEnemies: readonly EnemySimulationState[],
+  now: number, dt: number, enemyRadius: number): TankEntranceEvent | null {
+  if (tank.status !== 'entering') return null;
+  const shockwave = !tank.entranceCleared
+    && now + 1e-9 >= tank.startedAtSeconds + c.entrySeconds * TANK_ENTRANCE_CLEAR_FRACTION;
+  if (shockwave) tank.entranceCleared = true;
+  // Only sweep this step's remaining entrance, never the future route or active
+  // combat motion. Both arrays still share indices before any admission/removal.
+  const fraction = Math.max(0, Math.min(1, (tank.activeAtSeconds - (now - dt)) / dt));
+  const endZ = entranceZ(tank, c, now - dt + dt * fraction);
+  let victims: TankEntranceEvent['victims'] | undefined;
   for (let i = enemies.length - 1; i >= 0; i--) {
-    const enemy = enemies[i];
-    if (enemy.lane !== undefined && enemy.lane >= 1 && enemy.lane <= 3) {
-      victims.push({ id: enemy.id, x: enemy.x, z: enemy.z, archetype: enemy.archetype });
-      enemies.splice(i, 1); // Tank impact is not a player kill; no XP or combat-stat award.
-    }
+    const enemy = enemies[i], previous = previousEnemies[i];
+    // The Tank is centered at world X=0. Use circle/rectangle contact, including
+    // rounded corners, rather than lane membership or an inflated square zone.
+    const dx = Math.max(0, Math.abs(enemy.x) - c.halfWidth);
+    if (dx > enemyRadius) continue;
+    const depth = c.halfDepth + Math.sqrt(Math.max(0, enemyRadius * enemyRadius - dx * dx));
+    const from = previous.z - tank.z;
+    const enemyEndZ = previous.z + (enemy.z - previous.z) * fraction;
+    const to = enemyEndZ - endZ;
+    if (Math.min(from, to) > depth || Math.max(from, to) < -depth) continue;
+    const contact = from > depth ? (from - depth) / (from - to)
+      : from < -depth ? (-depth - from) / (to - from) : 0;
+    (victims ??= []).push({ id: enemy.id, x: enemy.x,
+      z: previous.z + (enemyEndZ - previous.z) * contact, archetype: enemy.archetype });
+    enemies.splice(i, 1); // Tank contact grants no player XP or kill credit.
   }
-  return { z: tank.z, victims };
+  return shockwave || victims ? { z: tank.z, shockwave, victims: victims ?? [] } : null;
 }
 export function advanceTankPosition(tank: DefenseTankState, c: DefenseTankConfig, now: number, dt: number): void {
   if (tank.status === 'defeated' || tank.status === 'breached') return;
   if (now + 1e-9 < tank.activeAtSeconds) {
-    const t = Math.max(0, (now - tank.startedAtSeconds) / c.entrySeconds);
-    tank.z = c.startZ + (c.battleZ - c.startZ) * t;
+    tank.z = entranceZ(tank, c, now);
   } else {
     const movingSeconds = Math.max(0, Math.min(dt, now - tank.activeAtSeconds));
     if (tank.status === 'entering') { tank.status = 'active'; tank.z = c.battleZ; }

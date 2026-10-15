@@ -15,7 +15,9 @@ it('reuses bounded airborne deaths and dust for the Tank clearing, including Hea
     tier: 1, hp: 15, x: (i % 3 - 1) * 1.4, z: 30 + i * .25, visualScale: 1.8 }));
   const flank: EnemyRenderState = { ...victims[0], id: 20, x: 2.8 };
   r.update([...victims, flank], 0, true); r.update([...victims, flank], 2000, true);
-  r.presentTankEntrance({ z: 51.2, victims }, 2100); r.update([flank], 2100, true);
+  r.presentTankEntrance({ z: 51.2, shockwave: true, victims: victims.slice(0,6) }, 2100);
+  r.presentTankEntrance({ z: 48, shockwave: false, victims: victims.slice(6) }, 2100);
+  r.update([flank], 2100, true);
   r.update([flank], 2350, true);
   expect(r.getDebugStats().airborneDeaths).toBe(8); expect(r.getDebugStats().deathVisuals).toBe(12);
   expect(r.getDebugStats().blastReactions).toBe(0);

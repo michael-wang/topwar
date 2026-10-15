@@ -42,7 +42,7 @@ it('shows the landing ramp, doors and articulated tank, and freezes movement and
   const landing = scene.getObjectByName('tank-landing-ramp')!;
   expect(landing.visible).toBe(true); expect(r.group.position.y).toBeGreaterThan(0);
   expect(r.group.visible).toBe(false);
-  r.presentEntrance({ z: 51.2, victims: [{ id: 1, x: 0, z: 32, archetype: 'heavy' }] }, 500);
+  r.presentEntrance({ z: 51.2, shockwave: true, victims: [{ id: 1, x: 0, z: 50, archetype: 'heavy' }] }, 500);
   r.update({ state: tank, config: c, elapsedSeconds: .5 }, 500);
   expect(r.group.visible).toBe(true);
   const shock = scene.getObjectByName('tank-entrance-shockwave')!;
@@ -50,6 +50,9 @@ it('shows the landing ramp, doors and articulated tank, and freezes movement and
   expect(shock.visible).toBe(true); const scale = shock.scale.clone();
   r.update({ state: tank, config: c, elapsedSeconds: .7 }, 700);
   expect(shock.scale).toEqual(scale);
+  r.presentEntrance({z:48,shockwave:false,victims:[{id:2,x:0,z:46,archetype:'heavy'}]},800);
+  r.update({state:tank,config:c,elapsedSeconds:1.3},1300);
+  expect(shock.visible).toBe(false); // Later body contact must not restart the wave.
   expect(scene.getObjectByName('tank-tracks')).toBeInstanceOf(THREE.InstancedMesh);
   const tracks = scene.getObjectByName('tank-tracks') as THREE.InstancedMesh;
   const first = Array.from(tracks.instanceMatrix.array);

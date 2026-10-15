@@ -8,7 +8,7 @@ import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 import { Simulation } from '../src/simulation/Simulation';
 import { emptyCarnival } from '../src/simulation/carnival';
 import { emptyDestroyer } from '../src/simulation/destroyer';
-import { tankPhase, startDefenseTank, admitTankFlanks } from '../src/simulation/defenseTank';
+import { tankPhase, startDefenseTank, admitTankFlanks, clearTankEntrance, advanceTankPosition } from '../src/simulation/defenseTank';
 import { enemyApproachSpeed } from '../src/simulation/enemies/latePressure';
 import { qaSimulationTuning } from '../src/app/QaStressFixture';
 import { CHECKPOINT_KEY, readCheckpoint, writeCheckpoint, simulationFromCheckpoint, type SessionCheckpoint } from '../src/app/SessionCheckpoint';
@@ -120,28 +120,95 @@ describe('Stage 1 Defense tank', () => {
     const replay = new Simulation({ seed: old.seed, level, startSquad: 2, startRocketCount: 0, tiers: config.tiers, catharsis: old.catharsis });
     replay.restoreState(old); expect(replay.getState().enemies).toEqual(old.enemies);
   });
-  it('clears the middle lanes once at 0.5s without XP or direct kills, including across entry checkpoints', () => {
+  it('crushes only reached bodies throughout entry, with one shockwave and no XP or direct kills', () => {
     const sim = fixture(); suppressFire(sim);
     const initial = sim.getState();
     initial.enemies = Array.from({ length: 5 }, (_, lane) => ({ id: lane + 1, tier: 1,
       archetype: 'heavy' as const, lane, x: (lane - 2) * 1.4, z: 32, hp: 15 }));
-    initial.enemyStream!.nextEnemyId = 6; sim.restoreState(initial); step(sim, 16);
-    expect(sim.getState().enemies).toHaveLength(5);
+    initial.enemies.push(...initial.enemies.map(e=>({...e,id:e.id+5,z:tankConfig.startZ})),
+      {id:11,tier:1,archetype:'heavy',lane:2,x:0,z:44,hp:15},
+      {id:12,tier:1,archetype:'heavy',lane:2,x:0,z:60,hp:15});
+    initial.enemyStream!.nextEnemyId = 13; sim.restoreState(initial); step(sim, 16);
+    const first=sim.consumeTankEntranceEvents();expect(first).toHaveLength(1);
+    expect(first[0].shockwave).toBe(false);expect(first[0].victims.map(e=>e.id).sort()).toEqual([7,8,9]);
+    expect(sim.getState().enemies.map(e=>e.id)).toEqual([1,2,3,4,5,6,10,11,12]);
     const before = sim.getState(), replay = fixture(); replay.restoreState(before);
     step(sim, 16); step(replay, 16);
     expect(replay.getState()).toEqual(sim.getState());
     const cleared = sim.getState(), event = sim.consumeTankEntranceEvents();
-    expect(event).toHaveLength(1); expect(event[0].victims.map(e => e.id).sort()).toEqual([2, 3, 4]);
-    expect(cleared.enemies.map(e => e.lane)).toEqual([0, 4]);
+    expect(event).toHaveLength(1); expect(event[0].shockwave).toBe(true);expect(event[0].victims).toEqual([]);
     expect(cleared.progression).toEqual(before.progression); expect(cleared.combatStats).toEqual(before.combatStats);
     expect(cleared.defenseTank!.entranceCleared).toBe(true);
     expect(replay.consumeTankEntranceEvents()).toEqual(event);
-    cleared.enemies.push({ id: 6, tier: 1, archetype: 'heavy', lane: 2, x: 0, z: 32, hp: 15 });
-    cleared.enemyStream!.nextEnemyId = 7; sim.restoreState(cleared);
-    expect(sim.consumeTankEntranceEvents()).toEqual([]); step(sim, 120);
-    expect(sim.consumeTankEntranceEvents()).toEqual([]); expect(sim.getState().enemies.some(e => e.id === 6)).toBe(true);
+    sim.restoreState(cleared);expect(sim.consumeTankEntranceEvents()).toEqual([]);step(sim,100);
+    const later=sim.consumeTankEntranceEvents();expect(later).toHaveLength(1);
+    expect(later[0].shockwave).toBe(false);expect(later[0].victims.map(e=>e.id)).toEqual([11]);
+    expect(sim.getState().enemies.map(e=>e.id)).toEqual([1,2,3,4,5,6,10,12]);
+    expect(sim.getState().progression).toEqual(initial.progression);expect(sim.getState().combatStats).toEqual(initial.combatStats);
     const old = active().getState(); delete old.defenseTank!.entranceCleared;
     sim.restoreState(old); expect(sim.getState().defenseTank!.entranceCleared).toBe(true);
+  });
+  it.each([0,1,2,3,4])('uses world X/Z rather than membership of lane %i',lane=>{
+    const tank=startDefenseTank(0,17,tankConfig),x=(lane-2)*1.4;
+    const previous=[{id:1,tier:1,lane,x,z:tankConfig.startZ,hp:15,archetype:'heavy' as const},
+      {id:2,tier:1,lane,x,z:32,hp:15,archetype:'heavy' as const},
+      {id:3,tier:1,lane,x,z:60,hp:15,archetype:'heavy' as const}];
+    const enemies=previous.map(e=>({...e}));clearTankEntrance(tank,tankConfig,enemies,previous,1/60,1/60,tuning.normalEnemyRadius);
+    expect(enemies.map(e=>e.id)).toEqual(lane>=1&&lane<=3?[2,3]:[1,2,3]);
+    const offLane=[{...previous[0],x:0,lane:0}];
+    expect(clearTankEntrance(tank,tankConfig,[...offLane],offLane,1/60,1/60,tuning.normalEnemyRadius)!.victims).toHaveLength(1);
+  });
+  it.each([-1,1])('uses existing enemy radius at the lateral edge (%i), including rounded corners',sign=>{
+    for(const [dx,dz,hit] of [[.299,0,true],[.301,0,false],[.2,2.9,true],[.25,2.95,false]] as const){
+      const tank=startDefenseTank(0,17,tankConfig),previous=[{id:1,tier:1,lane:2,
+        x:sign*(tankConfig.halfWidth+dx),z:tankConfig.startZ+dz,hp:15,archetype:'heavy' as const}],enemies=[...previous];
+      clearTankEntrance(tank,tankConfig,enemies,previous,.001,.001,tuning.normalEnemyRadius);
+      expect(enemies.length,JSON.stringify({dx,dz,sign})).toBe(hit?0:1);
+    }
+  });
+  it('sweeps relative movement, clips the entrance at landing and never checks the future route',()=>{
+    const tank=startDefenseTank(0,17,tankConfig),enemy={id:1,tier:1,lane:2,x:0,z:44,hp:15,archetype:'heavy' as const};
+    let enemies=[{...enemy}];expect(clearTankEntrance(tank,tankConfig,enemies,[enemy],.5,.5,.3)!.victims).toEqual([]);
+    expect(enemies).toHaveLength(1);advanceTankPosition(tank,tankConfig,.5,.5);
+    const event=clearTankEntrance(tank,tankConfig,enemies,[enemy],2,1.5,.3);
+    expect(event!.victims).toHaveLength(1);expect(event!.shockwave).toBe(false);
+    // An enemy beyond the rear can catch the moving body, but isn't removed early.
+    const fast=startDefenseTank(0,17,tankConfig),rear={...enemy,z:58};enemies=[{...rear,z:50}];
+    expect(clearTankEntrance(fast,tankConfig,enemies,[rear],1,1,.3)!.victims).toHaveLength(1);
+    // Crossing a large step's entry/active boundary must not crush an enemy that
+    // only approaches the rear after the entrance has already ended.
+    const end=startDefenseTank(0,17,tankConfig);advanceTankPosition(end,tankConfig,2,2);
+    const behind={...enemy,z:50};enemies=[{...behind,z:40}];
+    clearTankEntrance(end,tankConfig,enemies,[behind],4,2,.3);expect(enemies).toHaveLength(1);
+  });
+  it.each([0,20,60,145,160])('restores entrance tick %i without replay, changed RNG or encounter/attack schedules',ticks=>{
+    const sim=fixture();suppressFire(sim);const s=sim.getState();
+    s.enemies=[{id:1,tier:1,lane:2,x:0,z:44,hp:15,archetype:'heavy'},
+      {id:2,tier:1,lane:2,x:0,z:32,hp:15,archetype:'heavy'}];s.enemyStream!.nextEnemyId=3;sim.restoreState(s);
+    step(sim,ticks);sim.consumeTankEntranceEvents();const saved=sim.getState(),copy=fixture();copy.restoreState(saved);
+    expect(copy.consumeTankEntranceEvents()).toEqual([]);expect(copy.getState()).toEqual(saved);
+    step(sim,180);step(copy,180);expect(copy.getState()).toEqual(sim.getState());
+    expect(copy.consumeTankEntranceEvents()).toEqual(sim.consumeTankEntranceEvents());
+    const control=fixture();suppressFire(control);const untouched={...s,enemies:[s.enemies[1]]};control.restoreState(untouched);step(control,ticks+180);
+    const a=sim.getState(),b=control.getState();
+    for(const key of ['defenseTank','levelEncounters','defenseWaves','machineGunReleaseAtSeconds','rngState','postCapSurvival','carnival','enemyStream'] as const)
+      expect(a[key]).toEqual(b[key]);
+    expect(a.combatStats).toEqual(b.combatStats);expect(a.progression).toEqual(b.progression);
+  });
+  it('keeps front-of-Tank enemies moving and intercepting bullets for normal XP, with normal casualty setbacks',()=>{
+    const sim=fixture();suppressFire(sim);const s=sim.getState();
+    s.enemies=[{id:1,tier:1,lane:2,x:0,z:32,hp:1,archetype:'heavy'}];s.enemyStream!.nextEnemyId=2;
+    sim.restoreState(s);step(sim,151);const survivor=sim.getState();
+    expect(survivor.enemies.find(e=>e.id===1)!.z).toBeLessThan(32);expect(survivor.defenseTank!.status).toBe('active');
+    const hp=survivor.defenseTank!.hp;
+    survivor.projectiles=[{id:survivor.weapons.nextProjectileId++,kind:'machineGun',tier:1,x:0,z:28,speed:900,lane:2,
+      slopeX:0,memberIndex:0,damage:config.tiers.tier1Power,remainingRange:80,blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0}];
+    survivor.combatStats!.shotsFired++;sim.restoreState(survivor);step(sim);
+    expect(sim.getState().defenseTank!.hp).toBe(hp);expect(sim.getState().combatStats!.heavyKills).toBe(1);
+    expect(sim.getState().progression!.xp).toBe(10);
+    const breach=sim.getState();breach.enemies=[{id:breach.enemyStream!.nextEnemyId++,tier:1,lane:2,x:0,z:-10,hp:15,archetype:'heavy'}];
+    sim.restoreState(breach);step(sim);expect(sim.getState().squad.count).toBe(1);
+    expect(sim.getState().progression).toEqual({level:8,xp:0,pressure:{level:9,xp:10}});sim.restoreState(sim.getState());
   });
   it('starts exactly on earned Lv9, stops new naval fire and preserves incoming shells', () => {
     const sim = fixture(8), s = sim.getState(); s.progression!.xp = 349;

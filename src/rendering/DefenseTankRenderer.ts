@@ -123,6 +123,7 @@ export class DefenseTankRenderer {
     scene.add(this.group, this.landing, this.shock); this.reset();
   }
   presentEntrance(event: TankEntranceEvent, nowMs: number): void {
+    if (!event.shockwave) return;
     this.entranceAtMs = nowMs;
     this.shock.position.set(0, .09, event.z);
     this.shockDepth = event.z - event.victims.reduce((z, v) => Math.min(z, v.z), event.z - 8) + 3;

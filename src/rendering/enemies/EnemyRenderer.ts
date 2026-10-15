@@ -232,6 +232,7 @@ export class EnemyRenderer {
   }
   presentTankEntrance(event: TankEntranceEvent, nowMs: number): void {
     this.presentPushDeaths(event.victims, nowMs);
+    if (!event.shockwave) return;
     const front = event.victims.reduce((z, v) => Math.min(z, v.z), event.z);
     for (const x of [-1.4, 0, 1.4]) this.giantImpactDust.spawn(x, front, nowMs);
   }
