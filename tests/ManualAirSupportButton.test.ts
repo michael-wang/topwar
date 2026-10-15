@@ -6,7 +6,7 @@ import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
 class ElementStub extends EventTarget {
   type = ''; className = ''; title = ''; innerHTML = ''; hidden = true; disabled = true;
-  style = { cssText: '', display: '', opacity: '', transform: '', boxShadow: '' }; attrs: Record<string, string> = {}; remove = vi.fn(); append = vi.fn();
+  style = { cssText: '', display: '', opacity: '', transform: '', boxShadow: '', filter: '' }; attrs: Record<string, string> = {}; remove = vi.fn(); append = vi.fn();
   setAttribute(k: string, v: string) { this.attrs[k] = v; }
   children = new Map<string, ElementStub>();
   querySelector(key: string) { if (!this.children.has(key)) this.children.set(key, new ElementStub()); return this.children.get(key)!; }
@@ -37,14 +37,15 @@ it.each([false,true])('bounds the READY cue on the pause-aware clock, suppresses
     const control=new ManualAirSupportButton(new ElementStub() as unknown as HTMLElement,()=>true),button=control.element as unknown as ElementStub;
     const s=createDevReviewFixture({seed:17,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,tiers:config.tiers,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},27,'manual-air-3').getState();
     control.update(s,true,100);s.commanderSupport!.airstrike!.manual={availableAtSeconds:60,announcementAtSeconds:60,ready:true};
-    control.update(s,true,200);const ring=button.querySelector('i'),cue=button.querySelector('em');expect(Number(cue.style.opacity)).toBe(1);
-    control.update(s,true,600);const paused={...ring.style};control.update(s,false,600);expect(ring.style).toEqual(paused);expect(button.disabled).toBe(true);
-    if(reduced)expect(ring.style.transform).toBe('scale(1)');else expect(ring.style.transform).not.toBe('scale(1)');
-    control.update(s,true,1550);expect(cue.style.opacity).toBe('0');expect(ring.style.opacity).toBe('0');
-    control.update(s,true,2000);expect(cue.style.opacity).toBe('0');
-    control.restore(s);control.update(s,true,0);expect(button.hidden).toBe(false);expect(cue.style.opacity).toBe('0');expect(ring.style.opacity).toBe('0');
-    control.reset();control.update(s,true,0);expect(cue.style.opacity).toBe('1');
-    s.commanderSupport!.airstrike!.status='waiting';control.update(s,true,10);expect(button.hidden).toBe(true);expect(cue.style.opacity).toBe('0');
+    control.update(s,true,200);const ring=button.querySelector('i'),icon=button.querySelector('svg');expect(Number(ring.style.opacity)).toBe(.95);expect(icon.style.filter).toContain('brightness(2)');expect(button.innerHTML).not.toContain('空襲就緒');expect(button.innerHTML).not.toContain('<em');
+    const motes=button.append.mock.calls.map(([mote])=>mote as ElementStub);expect(motes).toHaveLength(8);const initialMotes=motes.map(m=>m.style.transform);
+    control.update(s,true,600);if(reduced)expect(motes.map(m=>m.style.transform)).toEqual(initialMotes);else expect(motes.map(m=>m.style.transform)).not.toEqual(initialMotes);const paused={...ring.style};control.update(s,false,600);expect(ring.style).toEqual(paused);expect(button.disabled).toBe(true);
+    if(reduced)expect(ring.style.transform).toBe('scale(1.15)');else expect(ring.style.transform).not.toBe('scale(1.15)');
+    control.update(s,true,1000);expect(ring.style.opacity).toBe('0');
+    control.update(s,true,2000);expect(ring.style.opacity).toBe('0');
+    control.restore(s);control.update(s,true,0);expect(button.hidden).toBe(false);expect(ring.style.opacity).toBe('0');expect(ring.style.opacity).toBe('0');
+    control.reset();control.update(s,true,0);expect(ring.style.opacity).toBe('0.95');
+    s.commanderSupport!.airstrike!.status='waiting';control.update(s,true,10);expect(button.hidden).toBe(true);expect(ring.style.opacity).toBe('0');
     expect(button.innerHTML).toContain('>1</strong>');control.dispose();
   }finally{vi.unstubAllGlobals();}
 });
