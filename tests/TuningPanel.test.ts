@@ -89,7 +89,9 @@ describe('temporary tuning panel', () => {
     slider.value = '6';
     slider.dispatchEvent(new Event('input'));
     panel.toggle();
-    expect(document.activeElement).toBeNull();
+    expect(document.activeElement).toBe(viewport.children[0].children[0]);
+    expect(keyDown('ArrowRight').defaultPrevented).toBe(false);
+    viewport.children[0].children[0].blur();
     expect(keyDown('ArrowRight').defaultPrevented).toBe(true);
     expect(step).toHaveBeenCalledWith(1);
     expect(keyDown('a').defaultPrevented).toBe(true);
@@ -110,12 +112,23 @@ describe('temporary tuning panel', () => {
     expect(document.activeElement).toBe(select);
     root.open = false;
     root.dispatchEvent(new Event('toggle'));
-    expect(document.activeElement).toBeNull();
+    expect(document.activeElement).toBe(root.children[0]);
     const outside = new ElementStub('input');
     outside.focus();
     root.dispatchEvent(new Event('toggle'));
     expect(document.activeElement).toBe(outside);
     panel.dispose();
+  });
+  it('notifies native and Escape-style changes once and does not replay queued toggle events',()=>{
+    vi.stubGlobal('document',{createElement:(tag:string)=>new ElementStub(tag),activeElement:null});
+    const viewport=new ElementStub('div'),change=vi.fn();
+    const panel=new TuningPanel(viewport as unknown as HTMLElement,defaults,vi.fn(),change),root=viewport.children[0];
+    root.open=true;root.dispatchEvent(new Event('toggle'));expect(change.mock.calls).toEqual([[true]]);
+    root.dispatchEvent(new Event('toggle'));expect(change).toHaveBeenCalledOnce();
+    panel.close();root.dispatchEvent(new Event('toggle'));expect(change.mock.calls).toEqual([[true],[false]]);
+    panel.toggle();root.dispatchEvent(new Event('toggle'));expect(change.mock.calls).toEqual([[true],[false],[true]]);
+    expect(document.activeElement).toBe(root.children[0]);
+    panel.close();panel.close();expect(change.mock.calls).toEqual([[true],[false],[true],[false]]);panel.dispose();
   });
   it('applies each live Catharsis control and restores all experiment defaults', () => {
     vi.stubGlobal('document', { createElement: (tag: string) => new ElementStub(tag) });

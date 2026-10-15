@@ -14,11 +14,15 @@ afterEach(()=>vi.unstubAllGlobals());
 it('resumes only through the native button, blocks underlying UI and restores its previous inert state',()=>{
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   const viewport=new ElementStub(),results=new ElementStub(),hud=new ElementStub(),alreadyBlocked=new ElementStub();
-  hud.className='hud-actions'; alreadyBlocked.inert=true;viewport.append(results,hud,alreadyBlocked);
+  const menu=new ElementStub();menu.className='tuning-panel';
+  hud.className='hud-actions'; alreadyBlocked.inert=true;viewport.append(results,hud,alreadyBlocked,menu);
   const resume=vi.fn(),overlay=new PauseOverlay(viewport as unknown as HTMLElement,resume);
-  const root=viewport.children[3],button=root.children[0];
+  const root=viewport.children[4],button=root.children[0];
   expect(button.type).toBe('button');expect(button.attributes.get('aria-label')).toContain('Resume');
   overlay.setVisible(true);expect(results.inert).toBe(true);expect(hud.inert).toBe(false);
+  expect(menu.inert).toBe(false);overlay.setMenuOpen(true);
+  expect(button.hidden).toBe(true);expect(root.hidden).toBe(false);expect(results.inert).toBe(true);
+  button.dispatchEvent(new Event('click'));expect(resume).not.toHaveBeenCalled();overlay.setMenuOpen(false);
   root.dispatchEvent(new Event('click'));root.dispatchEvent(new Event('pointerdown'));expect(resume).not.toHaveBeenCalled();
   button.dispatchEvent(new Event('click'));expect(resume).toHaveBeenCalledOnce();
   overlay.setVisible(false);expect(results.inert).toBe(false);expect(alreadyBlocked.inert).toBe(true);

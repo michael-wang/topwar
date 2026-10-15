@@ -89,6 +89,7 @@ const mock = vi.hoisted(() => ({
   panelSetValues: vi.fn(),
   panelToggle: vi.fn(),
   panelClose: vi.fn(),
+  pauseMenuOpen: vi.fn(),
   panelDispose: vi.fn(),
   inputConstructedWith: vi.fn(),
   inputStart: vi.fn(),
@@ -169,6 +170,7 @@ vi.mock('../src/ui/GameOverOverlay', () => ({
 vi.mock('../src/ui/PauseOverlay', () => ({ PauseOverlay: class {
   constructor(_viewport: HTMLElement, resume: () => void) { mock.pauseConstructedWith(resume); }
   setVisible = mock.pauseVisible;
+  setMenuOpen = mock.pauseMenuOpen;
   dispose = mock.pauseDispose;
 } }));
 
@@ -510,7 +512,7 @@ describe('GameApp config and frame lifecycle', () => {
     app.dispose();
   });
 
-  it('pauses on P or Space and toggles TUNE with Escape without pausing', async () => {
+  it('pauses on P/Space and opens the testing menu with Escape while remaining paused on close', async () => {
     const raf = createRaf();
     const updateMusic = vi.spyOn(GameAudio.prototype, 'updateMusic');
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
@@ -544,6 +546,10 @@ describe('GameApp config and frame lifecycle', () => {
     expect(raf.key(' ', false, { tagName: 'INPUT' })).toBe(false);
     expect(raf.key('Escape')).toBe(true);
     expect(mock.panelToggle).toHaveBeenCalledTimes(2);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    expect(raf.key('Escape')).toBe(true);
+    expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
+    raf.key('p');
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(false);
     raf.key('p');
     expect(mock.pauseVisible).toHaveBeenLastCalledWith(true);
@@ -603,6 +609,24 @@ describe('GameApp config and frame lifecycle', () => {
     internals.hidden = false; internals.contextLost = true; resume(); expect(internals.paused).toBe(true);
     internals.contextLost = false; resume(); resume(); expect(internals.paused).toBe(false);
     expect(activate).toHaveBeenCalledOnce(); app.dispose(); activate.mockRestore();
+  });
+
+  it('auto-pauses a native menu change once, leaves close paused, and closes before guarded Resume',async()=>{
+    const raf=createRaf(),app=new GameApp({} as HTMLElement,createConfigStore().store,level,{} as CharacterAssets);
+    await startGame(app);raf.frame(0);raf.frame(20);
+    const a=app as any,steps=mock.step.mock.calls.length,clock=mock.render.mock.lastCall![1];a.grenadeRequested=true;
+    a.tuningPanel.toggle();expect(a.paused).toBe(true);expect(mock.pauseMenuOpen).toHaveBeenLastCalledWith(true);
+    expect(a.grenadeRequested).toBe(false);raf.frame(500);expect(mock.step).toHaveBeenCalledTimes(steps);
+    expect(mock.render.mock.lastCall![1]).toBe(clock);
+    a.tuningPanel.close();expect(a.paused).toBe(true);expect(mock.pauseMenuOpen).toHaveBeenLastCalledWith(false);
+    a.tuningPanel.toggle();expect(a.paused).toBe(true);
+    const resume=mock.hudConstructedWith.mock.lastCall![0] as ()=>void;
+    for(const guard of ['hidden','contextLost','qaSleepActive','qaPreparing']){
+      a[guard]=true;resume();expect(a.paused).toBe(true);expect(mock.pauseMenuOpen).toHaveBeenLastCalledWith(true);a[guard]=false;
+    }
+    resume();expect(a.paused).toBe(false);expect(mock.pauseMenuOpen).toHaveBeenLastCalledWith(false);
+    expect(mock.panelClose.mock.invocationCallOrder.at(-1)).toBeLessThan(mock.hudSetPaused.mock.invocationCallOrder.at(-1)!);
+    app.dispose();
   });
 
   it('derives Game Over from zero squad and retries with current config in the same RAF loop', async () => {
@@ -1091,12 +1115,14 @@ vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
 
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   reviewControlsHost = {} as HTMLElement;
-  close = mock.panelClose;
-  constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown) {
-    mock.panelAnchor(_viewport); mock.panelConstructedWith(defaults, onChange);
+  private open = false;
+  close() {mock.panelClose();if(this.open){this.open=false;this.onOpenChange(false);}}
+  constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown, private onOpenChange:(open:boolean)=>void) {
+    mock.panelAnchor(_viewport); mock.panelConstructedWith(defaults, onChange,onOpenChange);
   }
   setValues = mock.panelSetValues;
-  toggle = mock.panelToggle;
+  toggle() {mock.panelToggle();this.open=!this.open;this.onOpenChange(this.open);}
+  openAdvanced() {if(!this.open){this.open=true;this.onOpenChange(true);}}
   dispose = mock.panelDispose;
 } }));
 

@@ -5,7 +5,7 @@ export class PauseOverlay {
   private readonly stopPointer = (event: Event): void => { event.stopPropagation(); };
   private readonly onClick = (event: Event): void => {
     event.stopPropagation();
-    if (!this.element.hidden) this.resume();
+    if (!this.element.hidden && !this.button.hidden) this.resume();
   };
 
   constructor(private readonly viewport: HTMLElement, private readonly resume: () => void) {
@@ -26,7 +26,8 @@ export class PauseOverlay {
     this.element.hidden = !visible;
     if (visible) {
       for (const child of Array.from(this.viewport.children) as HTMLElement[]) {
-        if (child === this.element || child.classList.contains('hud-actions') || this.blocked.has(child)) continue;
+        if (child === this.element || child.classList.contains('hud-actions')
+          || child.classList.contains('tuning-panel') || this.blocked.has(child)) continue;
         this.blocked.set(child, child.inert); child.inert = true;
       }
     } else {
@@ -34,6 +35,11 @@ export class PauseOverlay {
       this.blocked.clear();
       this.button.blur(); // A hidden button must not swallow the next keyboard shortcut.
     }
+  }
+
+  setMenuOpen(open: boolean): void {
+    this.button.hidden = open;
+    if (open) this.button.blur();
   }
 
   dispose(): void {

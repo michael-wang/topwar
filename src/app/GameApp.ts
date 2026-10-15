@@ -177,6 +177,9 @@ export class GameApp {
         groupSize: values.groupSize ?? balance.groupSize,
         enemyVisualScale: values.enemyVisualScale!, gruntSpeed: values.gruntSpeed!,
         heavyHp: values.heavyHp!, heavySpeed: values.heavySpeed!, heavyChance: values.heavyChance! });
+    }, open => {
+      this.pauseOverlay.setMenuOpen(open);
+      if (open && !this.paused) this.togglePaused();
     });
     this.devReview = this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
@@ -189,7 +192,6 @@ export class GameApp {
           this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
           this.tuningPanel?.setValues(this.runtimeTuning);
         }
-        this.tuningPanel?.close();
         this.retry();
       }) : null;
 
@@ -317,6 +319,7 @@ export class GameApp {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if(this.qaSleepActive||this.qaPreparing)return;
+    this.tuningPanel?.close();
     this.qaSession=false;
     clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
@@ -501,6 +504,7 @@ export class GameApp {
   }
 
   private setPaused(paused: boolean): void {
+    if (!paused) this.tuningPanel?.close();
     this.paused = paused;
     this.fps?.reset(paused ? 'PAUSED' : '—');
     this.viewport.classList?.toggle('game-paused', this.paused);

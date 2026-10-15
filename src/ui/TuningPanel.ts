@@ -21,6 +21,8 @@ export class TuningPanel {
   readonly advancedControlsHost = document.createElement('div');
   private readonly advanced = document.createElement('details');
   private readonly element: HTMLDetailsElement;
+  private readonly summary = document.createElement('summary');
+  private notifiedOpen = false;
   private readonly resetButton = document.createElement('button');
   private readonly inputs = new Map<Key, HTMLInputElement>();
   private readonly outputs = new Map<Key, HTMLOutputElement>();
@@ -40,15 +42,22 @@ export class TuningPanel {
   private readonly releaseClosedFocus = (): void => {
     if (this.element.open) return;
     const focused = this.element.ownerDocument?.activeElement as HTMLElement | null;
-    if (focused && this.element.contains(focused)) focused.blur();
+    if (focused && focused !== this.summary && this.element.contains(focused)) this.summary.focus();
+  };
+  private readonly syncOpen = (): void => {
+    this.releaseClosedFocus();
+    if (this.notifiedOpen === this.element.open) return;
+    this.notifiedOpen = this.element.open;
+    this.onOpenChange(this.element.open);
   };
 
   constructor(viewport: HTMLElement, private readonly defaults: RuntimeTuning,
-    private readonly onChange: (values: RuntimeTuning) => void) {
+    private readonly onChange: (values: RuntimeTuning) => void,
+    private readonly onOpenChange: (open: boolean) => void = () => {}) {
     this.values = { ...defaults };
     this.element = document.createElement('details');
     this.element.className = 'tuning-panel tuning-panel--coastal-anchor';
-    const summary = document.createElement('summary');
+    const summary = this.summary;
     testingHatch(summary);
     const content = document.createElement('div');
     content.className = 'tuning-panel-content';
@@ -88,7 +97,7 @@ export class TuningPanel {
       this.advancedControlsHost.append(reset);
     }
     this.element.addEventListener('pointerdown', this.onPointerDown);
-    this.element.addEventListener('toggle', this.releaseClosedFocus);
+    this.element.addEventListener('toggle', this.syncOpen);
     viewport.append(this.element);
     this.setValues(defaults);
   }
@@ -101,17 +110,18 @@ export class TuningPanel {
 
   toggle(): void {
     this.element.open = !this.element.open;
-    // Escape must release hidden slider focus synchronously, before the next key press.
-    this.releaseClosedFocus();
+    // Notify synchronously for Escape; the later native toggle event is deduplicated.
+    this.syncOpen();
+    if (this.element.open) this.summary.focus();
   }
 
-  close(): void { this.element.open = false; this.advanced.open = false; this.releaseClosedFocus(); }
-  openAdvanced(): void { this.element.open = this.advanced.open = true; }
+  close(): void { this.element.open = false; this.advanced.open = false; this.syncOpen(); }
+  openAdvanced(): void { this.element.open = this.advanced.open = true; this.syncOpen(); }
 
   dispose(): void {
     for (const input of this.inputs.values()) input.removeEventListener('input', this.onInput);
     this.element.removeEventListener('pointerdown', this.onPointerDown);
-    this.element.removeEventListener('toggle', this.releaseClosedFocus);
+    this.element.removeEventListener('toggle', this.syncOpen);
     this.resetButton.removeEventListener('click', this.onReset);
     this.element.remove();
   }
