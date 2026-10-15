@@ -86,6 +86,10 @@ it.each([350,390])('keeps a constant-altitude/speed flight, aligned shadows and 
     track:{halfWidth:3.2,defenseLineZ:0,lanePositions:[-2.8,-1.4,0,1.4,2.8]},enemies:[],projectiles:[]};
   const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
   const shadows=[0,1,2].map(i=>scene.getObjectByName('support-bomber-shadow-'+i) as THREE.Mesh<THREE.PlaneGeometry,THREE.ShaderMaterial>);
+  const shadow=shadows[0],uv=shadow.geometry.getAttribute('uv'),position=shadow.geometry.getAttribute('position');
+  expect(shadow.material.vertexShader).toContain('vec2(7.,-6.)');
+  for(let i=0;i<uv.count;i++)expect((uv.getY(i)-.5)*-6).toBeCloseTo(position.getZ(i));
+  // The shader's tail at local +Z shares the real aircraft's aft direction.
   const at=(age:number)=>{state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:60+age}};const saved=structuredClone(state);r.update(age*1000,state);expect(state).toEqual(saved);};
   for(const age of [0,3,5.5,6.5,6.8999,6.9,6.9001,7.5,8.8,9.45,10.75,13.5,16]){
     at(age);
@@ -93,7 +97,7 @@ it.each([350,390])('keeps a constant-altitude/speed flight, aligned shadows and 
       expect(plane.position.y).toBe(8.5);expect(plane.position.z).toBeCloseTo(11+(age-7.5)*18);
       expect(plane.scale.toArray()).toEqual([.5,.5,.5]);expect(plane.rotation.toArray()).toEqual([0,Math.PI,0,'XYZ']);
       expect(shadows[i].position.x).toBe(plane.position.x);expect(shadows[i].position.z).toBe(plane.position.z);
-      expect(shadows[i].position.y).toBe(.018);expect(shadows[i].renderOrder).toBeLessThan(0);
+      expect(shadows[i].position.y).toBe(.018);expect(shadows[i].rotation.y).toBe(plane.rotation.y);expect(shadows[i].renderOrder).toBeLessThan(0);
       expect(shadows[i].material.uniforms.opacity.value).toBe(.2);
       expect((plane.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.opacity).toBe(1);
       if(age>=6.5){const bounds=new THREE.Box3().setFromObject(plane);

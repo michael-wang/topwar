@@ -22,7 +22,9 @@ export class SupportAirstrikeRenderer {
   private readonly shadowGeometry = new THREE.PlaneGeometry(7, 6).rotateX(-Math.PI / 2);
   private readonly shadowMaterial = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, uniforms: { opacity: { value: 0 } },
-    vertexShader: 'varying vec2 v; void main(){v=(uv-.5)*vec2(7.,6.);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    // PlaneGeometry's +V becomes -Z after rotateX(-PI/2). Match the aircraft's
+    // local +Z tail/-Z nose before applying their shared forward heading.
+    vertexShader: 'varying vec2 v; void main(){v=(uv-.5)*vec2(7.,-6.);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader: `varying vec2 v; uniform float opacity;
       float box(vec2 p,vec2 b){vec2 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,q.y),0.);}
       void main(){
