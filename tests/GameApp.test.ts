@@ -236,7 +236,8 @@ function createRaf() {
   vi.stubGlobal('localStorage', { getItem: (key: string) => saved.get(key) ?? null,
     setItem: (key: string, value: string) => saved.set(key, value), removeItem: (key: string) => saved.delete(key) });
   vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible',
-    createElement: () => Object.assign(new EventTarget(), { className: '', textContent: '', setAttribute: vi.fn(), remove: vi.fn(), blur: vi.fn() }) }));
+    createElement: () => Object.assign(new EventTarget(), { className: '', textContent: '', style: { cssText: '' }, append: vi.fn(),
+      value: '', setAttribute: vi.fn(), remove: vi.fn(), blur: vi.fn() }) }));
   vi.spyOn(GameAudio.prototype, 'activate').mockResolvedValue('running');
   const windowTarget = new EventTarget();
   vi.stubGlobal('window', windowTarget);

@@ -35,6 +35,8 @@ import { PerfHud } from '../ui/PerfHud';
 import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
 import { createDevReviewFixture, type DevReviewFixture } from './DevReviewFixtures';
+import { AIR_SUPPORT_THRESHOLD_COUNTS, type AirSupportThresholdFixture } from './DevAirSupportReview';
+import { supportBossHpThreshold } from '../simulation/commanderSupport';
 import { DevReviewControls } from '../ui/DevReviewControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
@@ -111,6 +113,7 @@ export class GameApp {
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
   private readonly devReview: DevReviewControls | null;
+  private readonly airSupportThresholdSelect: HTMLSelectElement | null = null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
   private readonly fps: DevFps | null;
@@ -186,6 +189,8 @@ export class GameApp {
       this.exitSleepTest();
       this.devReviewFixture = role;
       this.devReview?.setSelected(role ?? undefined);
+      if (import.meta.env.DEV && this.airSupportThresholdSelect && role?.startsWith('air-threshold-'))
+        this.airSupportThresholdSelect.value = role;
       if (role === null || this.restored) {
         // An explicit new scene uses current authored data; Continue keeps the saved data intact.
         this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
@@ -200,6 +205,24 @@ export class GameApp {
       dense.type = 'button'; dense.textContent = 'BOSS 密集輾壓'; dense.className = 'dev-dense-tank';
       dense.addEventListener('click', () => { selectReview('boss-dense'); dense.blur(); });
       this.tuningPanel.advancedControlsHost.prepend(dense);
+      const supportConfig = this.authoredConfig.catharsis?.commanderSupport;
+      if (supportConfig?.heavyRaid?.lastStand?.triggerPolicy === 'bossHpBySquad') {
+        const section = document.createElement('div'), label = document.createElement('label');
+        section.className = 'dev-air-threshold'; section.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end;margin-bottom:10px';
+        label.textContent = '空襲門檻測試'; label.style.cssText = 'display:grid;gap:6px;font-weight:700';
+        const select = this.airSupportThresholdSelect = document.createElement('select');
+        select.setAttribute('aria-label', '空襲門檻測試');
+        select.style.cssText = 'width:100%;min-height:44px;box-sizing:border-box;font:14px sans-serif;background:#263444;color:#fff3dc;border:1px solid #8997a4';
+        for (const count of AIR_SUPPORT_THRESHOLD_COUNTS) {
+          const option = document.createElement('option'); option.value = `air-threshold-${count}`;
+          option.textContent = `${count} MG — ${supportBossHpThreshold(supportConfig, count)} HP`;
+          select.append(option);
+        }
+        const start = document.createElement('button'); start.type = 'button'; start.textContent = '開始測試';
+        start.style.cssText = 'min-height:44px;padding:8px;font:700 14px sans-serif;touch-action:manipulation';
+        start.addEventListener('click', () => { selectReview(select.value as AirSupportThresholdFixture); start.blur(); });
+        label.append(select); section.append(label, start); this.tuningPanel.advancedControlsHost.prepend(section);
+      }
     }
 
     this.damageFlash = new DamageFlashOverlay(viewport);
@@ -553,6 +576,8 @@ export class GameApp {
         this.config = c.config; this.sessionLevel = c.level; this.runtimeTuning = { ...c.tuning };
         this.devReviewFixture = c.fixture as DevReviewFixture | null;
         this.devReview?.setSelected(this.devReviewFixture ?? undefined); this.tuningPanel?.setValues(this.runtimeTuning);
+        if (import.meta.env.DEV && this.airSupportThresholdSelect && c.fixture?.startsWith('air-threshold-'))
+          this.airSupportThresholdSelect.value = c.fixture;
         const s = this.simulation.getFrameState();
         this.tankEntranceHud.restore(s);
         this.targetX = s.player.x; this.lastRunSeed = s.seed;
