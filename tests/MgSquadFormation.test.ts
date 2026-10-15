@@ -5,7 +5,7 @@ import levelData from '../public/game-data/levels/level-001.json';
 import {LevelDefinitionSchema} from '../src/level/LevelDefinition';
 import {createTankPlaytest} from '../src/app/TankPlaytest';
 import {qaSimulationTuning} from '../src/app/QaStressFixture';
-import {createDefenseSquadFormation,createSquadFormation,defenseSquadInwardShift} from '../src/simulation/squad/formation';
+import {createDefenseSquadFormation,createSquadFormation} from '../src/simulation/squad/formation';
 import {createChibiPlayerFamily} from '../src/rendering/squad/ChibiPlayerFamily';
 import {SquadRenderer} from '../src/rendering/squad/SquadRenderer';
 import {projectRenderState} from '../src/app/projectRenderState';
@@ -79,46 +79,39 @@ it('reforms five to four to three after real casualties, preserving survivor coo
 it.each([-2.8,0,2.8])('uses the shared large-MG casualty anchor even before the first soldier draw at X=%i',playerX=>{
   const sim=make(5),s=sim.getState(),family=createChibiPlayerFamily(),scene=new THREE.Scene(),renderer=new SquadRenderer(scene,family);
   renderer.present([{kind:'normalEnemyContact',enemyId:1,enemyTier:1,attackerX:0,attackerZ:0,playerX,playerZ:0,
-    before:s.squad,after:{...s.squad,count:4,rifleCounts:[4]},affectedMembers:[{index:4,tier:1,rocket:false}]}],1000,3.2,.45,curve);
+    before:s.squad,after:{...s.squad,count:4,rifleCounts:[4]},affectedMembers:[{index:4,tier:1,rocket:false}]}],1000,3.2,.45,curve,2.8);
   const body=scene.getObjectByName('player-casualty')!,offset=createDefenseSquadFormation(5,.45,curve,playerX,2.8)[4];
   expect(body.position.x).toBeCloseTo(-(playerX+offset.x));expect(body.position.z).toBeCloseTo(offset.z);
   renderer.dispose();family.dispose();
 });
-it.each([4,5])('translates all %i anchors rigidly with a continuous eased edge correction and unchanged center lanes',count=>{
-  const base=createDefenseSquadFormation(count,.45,curve),radius=base.at(-1)!.x;
-  for(const playerX of [-1.4,0,1.4])expect(createDefenseSquadFormation(count,.45,curve,playerX,2.8)).toEqual(base);
-  let prior=-Infinity;
-  for(let step=0;step<=560;step++){
-    const x=-2.8+step*.01,offsets=createDefenseSquadFormation(count,.45,curve,x,2.8),shift=defenseSquadInwardShift(count,curve,x,2.8);
-    offsets.forEach((p,i)=>{expect(p.x-base[i].x).toBeCloseTo(shift);expect(p.z).toBe(base[i].z);expect(Math.abs(x+p.x)).toBeLessThanOrEqual(2.1500001);});
-    const center=x+shift;expect(center).toBeGreaterThanOrEqual(prior-1e-10);if(Number.isFinite(prior))expect(center-prior).toBeLessThanOrEqual(.0100001);prior=center;
+it.each([4,5])('keeps %i MGs anchored in their real lane with smooth asymmetric edge poses',count=>{
+  const base=createDefenseSquadFormation(count,.45,curve);
+  for(const x of [-1.4,0,1.4])expect(createDefenseSquadFormation(count,.45,curve,x,2.8)).toEqual(base);
+  for(const side of [-1,1]){
+    const edge=createDefenseSquadFormation(count,.45,curve,side*2.8,2.8);
+    expect(edge.some(p=>p.x===0)).toBe(true);
+    expect(Math.abs(edge.reduce((sum,p)=>sum+p.x,0)/count)).toBeLessThan(.15);
+    expect(edge.every(p=>Math.abs(p.x)<.7)).toBe(true);
+    expect(new Set(edge.map(p=>p.z)).size).toBe(count);
   }
-  for(const x of [2.15-radius-.1,2.15-radius+.1]){
-    const d=.00001,f=(x:number)=>defenseSquadInwardShift(count,curve,x,2.8);
-    expect((f(x+d)-f(x))/d).toBeCloseTo((f(x)-f(x-d))/d,3);
+  let prior=createDefenseSquadFormation(count,.45,curve,-2.8,2.8);
+  for(let step=1;step<=560;step++){
+    const x=-2.8+step*.01,offsets=createDefenseSquadFormation(count,.45,curve,x,2.8);
+    offsets.forEach((p,i)=>expect(Math.hypot(p.x-prior[i].x,p.z-prior[i].z)).toBeLessThan(.04));prior=offsets;
   }
-  for(const smaller of [1,2,3])for(const x of [-2.8,2.8])expect(createDefenseSquadFormation(smaller,.45,curve,x,2.8)).toEqual(createDefenseSquadFormation(smaller,.45,curve));
 });
-it.each([350,390])('keeps complete four/five MG silhouettes inside Camera B at every lane and during transitions at %ipx',width=>{
+it.each([350,390])('keeps visible edge squad anchors co-located with physical artillery risk at %ipx',width=>{
   const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
-  for(const count of [4,5]){
-    const sim=make(count),s=sim.getState(),scene=new THREE.Scene(),family=createChibiPlayerFamily(),renderer=new SquadRenderer(scene,family);
-    const base=projectRenderState(s,{catharsis:s.catharsis,formationSpacing:.45,trackHalfWidth:3.2,defenseLineOffset:1.5});
-    for(let step=0;step<=28;step++){
-      const x=-2.8+step*.2,frame={...base,player:{...base.player,x}};
-      renderer.update(frame,step*200);scene.updateMatrixWorld(true);
-      const groups=scene.children.filter(p=>p instanceof THREE.Group&&p.visible&&p.getObjectByName('toy-soldier-helmet'));
-      expect(groups).toHaveLength(count);
-      for(const group of groups){const box=new THREE.Box3().setFromObject(group);
-        for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){
-          const p=new THREE.Vector3(x,y,z).project(camera);expect(Math.abs(p.x)).toBeLessThan(1);expect(p.y).toBeGreaterThan(-.72);expect(p.y).toBeLessThan(1);
-        }
-      }
-    }
-    renderer.dispose();family.dispose();
+  for(const count of [4,5])for(const side of [-1,1]){
+    const x=side*2.8,offsets=createDefenseSquadFormation(count,.45,curve,x,2.8);
+    const physical=new THREE.Vector3(-x,.8,0).project(camera);
+    const center=offsets.reduce<THREE.Vector3>((v,p)=>v.add(new THREE.Vector3(-(x+p.x),.8,p.z)),new THREE.Vector3()).divideScalar(count).project(camera);
+    // Accurate occupied lane, not the old roughly 1.2-world-unit translation.
+    expect(Math.abs(center.x-physical.x)*width/2).toBeLessThan(30);
+    expect(Math.abs(physical.x)).toBeLessThan(1);
   }
 });
-it.each([0,1,2,3,4])('keeps actual shifted bullet/renderer/Victory anchors aligned without changing physical lane %i',lane=>{
+it.each([0,1,2,3,4])('keeps actual edge bullet/renderer/Victory anchors aligned without changing physical lane %i',lane=>{
   const sim=make(5),s=sim.getState(),playerX=(lane-2)*1.4;
   s.player.x=playerX;s.player.selectedLane=lane;sim.restoreState(s);sim.step(1/60,{targetX:playerX},tuning);
   const next=sim.getState(),offsets=createDefenseSquadFormation(5,.45,curve,playerX,2.8);
@@ -128,15 +121,12 @@ it.each([0,1,2,3,4])('keeps actual shifted bullet/renderer/Victory anchors align
   celebration.update(1000/60,false,false,false);
   for(const p of celebration.projectiles)expect(p.x).toBeCloseTo(playerX+offsets[p.memberIndex!].x);
 });
-it.each([-1,1])('tests contacts at the shifted physical body, with no invisible body left at its old edge (side %i)',side=>{
-  for(const shifted of [false,true]){
-    const sim=make(5),s=sim.getState(),x=side*2.8;
-    s.player.x=x;s.player.selectedLane=side<0?0:4;s.weapons.rifleCooldownRemainingSeconds=100;s.weapons.rifleMemberCooldowns!.fill(100);
-    const offsets=createDefenseSquadFormation(5,.45,curve,shifted?x:0,2.8),index=side<0?0:4,body=offsets[index];
-    s.enemies=[{id:s.enemyStream!.nextEnemyId++,tier:1,lane:s.player.selectedLane,x:x+body.x,z:body.z,archetype:'heavy',hp:15}];
-    sim.restoreState(s);sim.step(1/60,{targetX:x},tuning);
-    expect(sim.getState().squad.count).toBe(shifted?4:5);
-  }
+it.each([-1,1])('tests contacts at the actual edge body (side %i)',side=>{
+  const sim=make(5),s=sim.getState(),x=side*2.8;
+  s.player.x=x;s.player.selectedLane=side<0?0:4;s.weapons.rifleCooldownRemainingSeconds=100;s.weapons.rifleMemberCooldowns!.fill(100);
+  const body=createDefenseSquadFormation(5,.45,curve,x,2.8)[2];
+  s.enemies=[{id:s.enemyStream!.nextEnemyId++,tier:1,lane:s.player.selectedLane,x:x+body.x,z:body.z,archetype:'heavy',hp:15}];
+  sim.restoreState(s);sim.step(1/60,{targetX:x},tuning);expect(sim.getState().squad.count).toBe(4);
 });
 it('sweeps only the real group path while entering the edge bound and restores that transition deterministically',()=>{
   const sim=make(5),s=sim.getState();s.player.x=1.4;s.player.selectedLane=4;
@@ -148,7 +138,7 @@ it('sweeps only the real group path while entering the edge bound and restores t
   expect(sim.getState()).toEqual(copy.getState());expect(sim.getState().squad.count).toBe(5);
   const next=sim.getState();expect(next.player.x).toBeCloseTo(2.8);expect(next.enemies).toHaveLength(1);
 });
-it.each([-1,1])('retains selected outer-lane hits at close/far range with inward-shifted origins (side %i)',side=>{
+it.each([-1,1])('retains selected outer-lane hits at close/far range with edge origins (side %i)',side=>{
   for(const z of [3,12,30]){
     const sim=make(5),s=sim.getState(),lane=side<0?0:4,x=side*2.8;
     s.player.x=x;s.player.selectedLane=lane;s.enemies=[
@@ -158,5 +148,23 @@ it.each([-1,1])('retains selected outer-lane hits at close/far range with inward
     for(const p of next.projectiles){expect(p.lane).toBe(lane);const enemy=next.enemies[0];expect(p.x+p.slopeX!*(enemy.z-p.z)).toBeCloseTo(x);}
     for(let i=0;i<45;i++)sim.step(1/60,{targetX:x},tuning);
     expect(sim.getState().enemies.find(e=>e.lane!==lane)!.hp).toBe(15);expect(sim.getState().combatStats!.heavyKills).toBe(1);
+  }
+});
+
+it.each([4,5])('keeps physical artillery hits/dodges unchanged for %i edge MGs and after Restore',count=>{
+  for(const side of [-1,1])for(const dodge of [false,true]){
+    const sim=make(count),s=sim.getState(),lane=side<0?0:4,x=side*2.8;
+    s.player.x=x;s.player.selectedLane=lane;sim.restoreState(s);
+    sim.launchArtillery({source:{id:'tank',type:'defenseTank',position:{x:0,y:2,z:38}},targetLane:lane});
+    const launched=sim.getState();launched.defenseTank!.nextAttackAtSeconds=null;
+    launched.defenseTank!.pendingImpactAtSeconds=launched.artillery!.shells[0].impactAtSeconds;
+    sim.restoreState(launched);const copy=make(count);copy.restoreState(launched);
+    for(const runner of [sim,copy]){
+      if(dodge)runner.stepLane(side<0?1:-1);
+      for(let tick=0;tick<110;tick++)runner.step(1/60,{targetX:x},tuning);
+    }
+    expect(copy.getState()).toEqual(sim.getState());
+    expect(sim.getState().squad.count).toBe(dodge?count:count-1);
+    if(!dodge)expect(sim.getState().progression).toMatchObject({level:count+6,xp:0});
   }
 });

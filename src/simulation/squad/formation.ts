@@ -5,19 +5,25 @@ export interface FormationOffset {
 
 type DefenseFormation = { reinforcementSpacing: number; reinforcementStagger: number };
 
-// Camera B's portrait horizontal coverage is constant. Leave room for the toy
-// silhouette/weapon (including spawn scale), without moving the physical player.
-const MG_VISIBLE_EDGE_X = 2.15, MG_EDGE_BODY_MARGIN = .35, MG_EDGE_BLEND = .1;
-export function defenseSquadInwardShift(count: number, formation: DefenseFormation | undefined,
-  playerX: number, laneEdgeX = Infinity): number {
-  if (!formation || (count !== 4 && count !== 5)) return 0;
-  const radius = formation.reinforcementSpacing * (count === 4 ? .75 : .9);
-  const edge = Math.min(MG_VISIBLE_EDGE_X, laneEdgeX - MG_EDGE_BODY_MARGIN);
-  const overrun = Math.abs(playerX) + radius - edge;
-  // A short C1 blend eases into the bound; outside it, shift only the overrun.
-  const shift = overrun <= -MG_EDGE_BLEND ? 0 : overrun >= MG_EDGE_BLEND ? overrun
-    : (overrun + MG_EDGE_BLEND) ** 2 / (4 * MG_EDGE_BLEND);
-  return shift === 0 ? 0 : -Math.sign(playerX) * shift;
+// Compact asymmetric edge poses retain a soldier at physical X, rather than
+// moving the squad into the neighboring lane. Cropping outranks false safety.
+const EDGE_FOUR = [[-.45,.35],[-.15,-.35],[0,.6],[.18,1.2]];
+const EDGE_FIVE = [[-.5,.6],[-.25,-.15],[0,.5],[.18,1.25],[.3,-.65]];
+/** Rewrites the existing pool too (Victory), with no accumulated deformation. */
+export function adjustDefenseSquadEdges(offsets: FormationOffset[], formation: DefenseFormation | undefined,
+  playerX: number, laneEdgeX = Infinity): void {
+  const count = offsets.length;
+  if (!formation || (count !== 4 && count !== 5)) return;
+  const t = Number.isFinite(laneEdgeX) ? Math.max(0, Math.min(1, (Math.abs(playerX) / laneEdgeX - .5) * 2)) : 0;
+  const blend = t * t * (3 - 2 * t), side = Math.sign(playerX);
+  const edge = count === 4 ? EDGE_FOUR : EDGE_FIVE;
+  for (let i = 0; i < count; i++) {
+    const baseX = formation.reinforcementSpacing * (count === 4 ? (i - 1.5) * .5 : (i - 2) * .45);
+    const baseZ = formation.reinforcementStagger * (count === 4 ? (i === 0 || i === 3 ? 3 : -1.5) : (i === 0 || i === 4 ? 4 : i === 2 ? -4 : 0));
+    const pose = edge[side < 0 ? count - 1 - i : i];
+    offsets[i].x = baseX + (side * pose[0] - baseX) * blend;
+    offsets[i].z = baseZ + (pose[1] - baseZ) * blend;
+  }
 }
 
 // Local offsets use +X to the right and +Z forward.
@@ -52,20 +58,11 @@ export function createSquadFormation(count: number, spacing: number): FormationO
 // physical anchors; extra width never grants independent lane targets.
 export function createDefenseSquadFormation(count: number, spacing: number,
   pair?: DefenseFormation, playerX = 0, laneEdgeX = Infinity): FormationOffset[] {
-  const shift = defenseSquadInwardShift(count, pair, playerX, laneEdgeX);
-  if (count === 4 && pair) return [
-    { x: shift - pair.reinforcementSpacing * .75, z: pair.reinforcementStagger * 3 },
-    { x: shift - pair.reinforcementSpacing * .25, z: -pair.reinforcementStagger * 1.5 },
-    { x: shift + pair.reinforcementSpacing * .25, z: -pair.reinforcementStagger * 1.5 },
-    { x: shift + pair.reinforcementSpacing * .75, z: pair.reinforcementStagger * 3 },
-  ];
-  if (count === 5 && pair) return [
-    { x: shift - pair.reinforcementSpacing * .9, z: pair.reinforcementStagger * 4 },
-    { x: shift - pair.reinforcementSpacing * .45, z: 0 },
-    { x: shift, z: -pair.reinforcementStagger * 4 },
-    { x: shift + pair.reinforcementSpacing * .45, z: 0 },
-    { x: shift + pair.reinforcementSpacing * .9, z: pair.reinforcementStagger * 4 },
-  ];
+  if ((count === 4 || count === 5) && pair) {
+    const offsets = Array.from({length: count}, () => ({x: 0, z: 0}));
+    adjustDefenseSquadEdges(offsets, pair, playerX, laneEdgeX);
+    return offsets;
+  }
   if (count === 3 && pair) return [
     { x: -pair.reinforcementSpacing / 2, z: pair.reinforcementStagger * 2 },
     { x: 0, z: -pair.reinforcementStagger * 4 },
