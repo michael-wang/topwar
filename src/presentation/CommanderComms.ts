@@ -3,16 +3,18 @@ import type { ObserverTimeline } from './ObserverTimeline';
 
 type Frame = ReturnType<ObserverTimeline['updateWindow']>;
 type Request = { message: ObserverMessage; frame: Frame };
-const priority: Record<ObserverMessage, number> = { victory: 6, tankBoss: 5, airSupport: 4, destroyer: 3, giant: 2, missionIntro: 1 };
+const priority: Record<ObserverMessage, number> = { victory: 6, tankBoss: 5, airSupport: 4, airSupportReady: 4, airSupportCalled: 4, destroyer: 3, giant: 2, missionIntro: 1 };
 const hidden: Frame = { visible: false, begin: false, end: false, offset: 0, duration: 0, audible: false };
 
 /** A small per-attempt radio queue. A recorded transmission always finishes first. */
 export class CommanderComms {
   private seen = new Set<ObserverMessage>();
+  private completed = new Set<ObserverMessage>();
+  hasCompleted(message: ObserverMessage): boolean { return this.completed.has(message); }
   private pending: Request[] = [];
   private current: Request | null = null;
   private currentAt: number | null = null;
-  reset(): void { this.seen.clear(); this.pending = []; this.current = null; this.currentAt = null; }
+  reset(): void { this.seen.clear(); this.completed.clear(); this.pending = []; this.current = null; this.currentAt = null; }
   rebase(): void { this.currentAt = null; }
   finishBattle(): void { this.pending = []; if (this.current && !this.current.frame.audible) this.current = null; }
   get busy(): boolean { return this.current !== null || this.pending.length > 0; }
@@ -29,7 +31,7 @@ export class CommanderComms {
     const closing = this.current;
     if (this.current) {
       this.current.frame.offset = Math.max(0, now - this.currentAt!);
-      if (this.current.frame.offset >= this.current.frame.duration) { end = this.current.frame.begin; this.current = null; }
+      if (this.current.frame.offset >= this.current.frame.duration) { this.completed.add(this.current.message); end = this.current.frame.begin; this.current = null; }
       else if (!this.current.frame.audible && this.pending.some(r => priority[r.message] > priority[this.current!.message])) {
         end = this.current.frame.begin; this.current = null;
       }

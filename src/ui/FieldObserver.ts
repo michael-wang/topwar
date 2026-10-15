@@ -37,6 +37,10 @@ export class FieldObserver {
   private observedSupport = false;
   private giantAt: number | null = null;
   private airAt: number | null = null;
+  private manualNoticePresented = false;
+  private manualNoticeElapsed = false;
+  get supportNoticeStarted(): boolean { return this.manualNoticePresented; }
+  get supportNoticeComplete(): boolean { return this.manualNoticeElapsed || this.comms.hasCompleted('airSupportReady'); }
   private finaleClock = false;
   private readonly tankTimeline = new ObserverTimeline();
   private readonly missionTimeline = new MissionObserverTimeline();
@@ -69,7 +73,8 @@ export class FieldObserver {
     this.updateText(); host.append(this.element);
   }
   private updateText(): void {
-    this.text.textContent = this.message === 'airSupport' ? observerAirSupportDialogue[this.locale][this.phrase] : this.message === 'giant'
+    this.text.textContent = this.message === 'airSupport' || this.message === 'airSupportReady' || this.message === 'airSupportCalled'
+      ? observerAirSupportDialogue[this.locale][this.phrase] : this.message === 'giant'
       ? observerSupportDialogue[this.message][this.locale] : this.message === 'missionIntro'
       ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'victory'
         ? observerVictoryDialogue[this.locale][this.phrase] : this.message === 'tankBoss'
@@ -103,14 +108,25 @@ export class FieldObserver {
     requests.push({ frame: navalFrame, message: 'destroyer' }, { frame: tankFrame, message: 'tankBoss' });
     const giantAt = support?.giantAtSeconds ?? null, airAt = support?.airstrike?.triggeredAtSeconds ?? null;
     const notice = { visible: true, begin: true, end: false, offset: 0, duration: 3.8, audible: false };
+    const manual = support?.airstrike?.manual;
+    const manualPolicy = supportConfig?.heavyRaid?.lastStand?.triggerPolicy === 'manualPlayerCall';
+    if (alive && manualPolicy && manual && support?.airstrike?.status === 'ready' && !manual.ready) {
+      const offset = manual.announcementAtSeconds === null ? 0 : Math.max(0, now - manual.announcementAtSeconds);
+      if (offset >= airSupportTiming.phraseAtSeconds) {
+        this.manualNoticePresented = this.manualNoticeElapsed = true;
+      } else requests.push({ message: 'airSupportReady', frame: { ...notice, begin: this.observedSupport,
+        offset, duration: airSupportTiming.phraseAtSeconds, audible: true } });
+    }
     if (this.observedSupport && alive) {
       if (giantAt !== null && giantAt !== this.giantAt) requests.push({ frame: notice, message: 'giant' });
     }
     if (alive && airAt !== null && support?.airstrike?.status !== 'cancelled'
-      && (this.observedSupport ? airAt !== this.airAt : !!supportConfig?.heavyRaid && now - airAt < airSupportTiming.durationSeconds)) {
+      && (this.observedSupport ? airAt !== this.airAt : !!supportConfig?.heavyRaid && now - airAt
+        < (manualPolicy ? airSupportTiming.durationSeconds - airSupportTiming.phraseAtSeconds : airSupportTiming.durationSeconds))) {
       const modern = !!supportConfig?.heavyRaid;
       requests.push({ frame: { ...notice, begin: this.observedSupport, offset: Math.max(0, now - airAt),
-        duration: modern ? airSupportTiming.durationSeconds : 3.8, audible: modern }, message: 'airSupport' });
+        duration: manualPolicy ? airSupportTiming.durationSeconds - airSupportTiming.phraseAtSeconds : modern ? airSupportTiming.durationSeconds : 3.8,
+        audible: modern }, message: manualPolicy ? 'airSupportCalled' : 'airSupport' });
     }
     this.observedSupport = true; this.giantAt = giantAt; this.airAt = airAt;
     const selected = this.comms.update(requests, now, paused, alive);
@@ -143,8 +159,9 @@ export class FieldObserver {
   }
   private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
     if (message === 'victory' && frame.visible) this.victoryPresented = true;
+    if (message === 'airSupportReady' && frame.visible) this.manualNoticePresented = true;
     const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
-    const phrase = message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
+    const phrase = message === 'airSupportCalled' ? 1 : message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
       ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * frame.duration / timing.durationSeconds ? i : index, 0) : 0;
     if (message !== this.message) this.presented = false;
     if (message !== this.message || phrase !== this.phrase) {
@@ -159,7 +176,7 @@ export class FieldObserver {
     this.element.hidden = !frame.visible;
     this.skip.hidden = message !== 'victory' || !frame.visible; this.skip.disabled = paused;
     if (frame.visible) {
-      const expression = message === 'victory' ? 'victory' : message === 'tankBoss' || message === 'giant' || message === 'airSupport' ? 'alert'
+      const expression = message === 'victory' ? 'victory' : message === 'tankBoss' || message === 'giant' || message.startsWith('airSupport') ? 'alert'
         : message === 'missionIntro' || frame.offset < .32 || frame.offset > frame.duration - .45 ? 'neutral' : 'alert';
       const prepared = this.attemptPortraits[expression] ?? this.fallback;
       if (prepared !== this.portrait) { this.portrait.replaceWith(prepared); this.portrait = prepared; }
@@ -181,6 +198,7 @@ export class FieldObserver {
     this.victoryTimeline.reset(); this.victoryStarted = false; this.victoryFinished = false; this.skip.hidden = true;
     this.victoryPresented = false;
     this.comms.reset(); this.observedSupport = false; this.giantAt = this.airAt = null; this.finaleClock = false;
+    this.manualNoticePresented = this.manualNoticeElapsed = false;
     this.presented = false;
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
   }

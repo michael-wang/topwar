@@ -1,5 +1,6 @@
 import { publicAssetUrl, hasPublicAsset } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
+import { airSupportVoiceSegment } from '../ui/observerLocale';
 
 // User-approved provisional Mandarin recording; English awaits an approved asset.
 export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
@@ -20,7 +21,7 @@ export const observerAirSupportVoiceAssets: Readonly<Record<ObserverLocale, stri
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
   if (message === 'giant') return null;
-  if (message === 'airSupport') return hasPublicAsset(observerAirSupportVoiceAssets[locale] ?? '') ? observerAirSupportVoiceAssets[locale] : null;
+  if (message === 'airSupport' || airSupportVoiceSegment(message)) return hasPublicAsset(observerAirSupportVoiceAssets[locale] ?? '') ? observerAirSupportVoiceAssets[locale] : null;
   const asset = (message === 'victory' ? observerVictoryVoiceAssets : message === 'tankBoss' ? observerTankVoiceAssets
     : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
   return asset && (message === 'missionIntro' || message === 'victory') && !hasPublicAsset(asset) ? null : asset;
@@ -78,7 +79,7 @@ export class ObserverVoice {
 
   private asset(locale: ObserverLocale, message: ObserverMessage): string | null {
     if (message === 'giant') return null;
-    if (message === 'airSupport') return observerVoiceAsset(locale, message);
+    if (message === 'airSupport' || airSupportVoiceSegment(message)) return observerVoiceAsset(locale, message);
     if (message === 'victory' || message === 'missionIntro' && this.missionAssets === observerMissionVoiceAssets)
       return observerVoiceAsset(locale, message);
     return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
@@ -124,11 +125,13 @@ export class ObserverVoice {
     this.started = true;
     const generation = this.generation;
     void pending.then(buffer => {
+      const segment = airSupportVoiceSegment(message);
       if (!buffer || this.disposed || generation !== this.generation || this.paused
         || this.context.state !== 'running' || this.offset >= buffer.duration
         // Historical snapshots keep their old authoritative attack clocks. Use
         // subtitles rather than cutting a newly approved, longer recording short.
-        || buffer.duration > this.windowSeconds) return;
+        || (!segment && buffer.duration > this.windowSeconds)
+        || segment && (this.offset >= this.windowSeconds || segment.start + this.offset >= Math.min(segment.end, buffer.duration))) return;
       try {
         const source = this.context.createBufferSource();
         const filter = this.context.createBiquadFilter();
@@ -139,7 +142,9 @@ export class ObserverVoice {
         source.buffer = buffer; source.connect(filter); filter.connect(gain); gain.connect(this.output);
         this.source = source; this.filter = filter; this.gain = gain;
         source.onended = () => { if (this.source === source) this.stop(); };
-        source.start(0, this.offset);
+        if (segment) source.start(0, segment.start + this.offset,
+          Math.min(segment.end, buffer.duration, segment.start + this.windowSeconds) - segment.start - this.offset);
+        else source.start(0, this.offset);
       } catch { this.stop(); }
     });
   }

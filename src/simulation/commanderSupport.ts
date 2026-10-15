@@ -7,6 +7,7 @@ import { progressionStage } from './progression';
 const clock = z.number().finite().nonnegative();
 export const HEAVY_RAID_LANES = [0, 2, 4] as const;
 export const HEAVY_RAID_ROUNDS = 6;
+export const MANUAL_SUPPORT_NOTICE_SECONDS = 3.05;
 export const CommanderSupportConfigSchema = z.strictObject({
   dangerDistance: z.number().finite().positive(),
   earliestBossSeconds: clock,
@@ -17,7 +18,7 @@ export const CommanderSupportConfigSchema = z.strictObject({
   heavyRaid: z.strictObject({ bossDamage: z.number().finite().positive(), giantDamageFraction: z.number().finite().gt(0).lte(1), bandDepthUnits: z.number().finite().positive(),
     // Missing in released six-round raids: retain their original trigger and three Tank hits.
     lastStand: z.strictObject({ bossHpThreshold: z.number().finite().positive(), etaSafetySeconds: clock,
-      minimumBossHp: clock, triggerPolicy: z.enum(['bossHpOnly', 'bossHpBySquad']).optional(),
+      minimumBossHp: clock, triggerPolicy: z.enum(['bossHpOnly', 'bossHpBySquad', 'manualPlayerCall']).optional(),
       livingMgHpThresholds: z.array(z.number().finite().positive()).length(5).readonly().optional(),
     }).refine(v => (v.triggerPolicy === 'bossHpBySquad') === (v.livingMgHpThresholds !== undefined),
       'Living MG thresholds require the explicit bossHpBySquad policy').optional(),
@@ -32,6 +33,7 @@ const airSchema = z.strictObject({
   targets: z.array(z.number().int().positive().max(Number.MAX_SAFE_INTEGER)),
   tankZAtWarning: z.number().finite().positive().optional(),
   impacts: z.array(z.strictObject({ x: z.number().finite(), z: z.number().finite(), atSeconds: clock })).max(12).optional(),
+  manual: z.strictObject({ availableAtSeconds: clock, announcementAtSeconds: clock.nullable(), ready: z.boolean() }).optional(),
 });
 const schema = z.strictObject({ giantSeen: z.boolean(), giantAtSeconds: clock.nullable(), airstrike: airSchema.nullable() });
 export type CommanderSupportState = z.infer<typeof schema>;
@@ -47,18 +49,21 @@ export const emptyCommanderSupport = (enabled: boolean, giantSeen = false): Comm
 
 export function supportBossHpThreshold(c: CommanderSupportConfig, livingMgCount: number): number | undefined {
   const lastStand = c.heavyRaid?.lastStand;
+  if (lastStand?.triggerPolicy === 'manualPlayerCall') return undefined;
   return lastStand?.triggerPolicy === 'bossHpBySquad'
     ? lastStand.livingMgHpThresholds![livingMgCount - 1] : lastStand?.bossHpThreshold;
 }
 
 /** Later bombs advance beyond the Tank; a Tank already at the HP floor is also bypassed. */
 export function supportTankBombZ(round: number, tankZ: number, bossHp: number, c: CommanderSupportConfig): number {
-  if (!c.heavyRaid?.lastStand || round === 3 && bossHp > c.heavyRaid.lastStand.minimumBossHp) return tankZ;
+  if (!c.heavyRaid?.lastStand || round === 3 && (c.heavyRaid.lastStand.triggerPolicy === 'manualPlayerCall'
+    || bossHp > c.heavyRaid.lastStand.minimumBossHp)) return tankZ;
   return tankZ + (round === 3 ? .5 : round - 3) * c.heavyRaid.bandDepthUnits;
 }
 
+export interface ManualSupportInput { supportNoticeStarted?: boolean; supportNoticeComplete?: boolean; callAirSupport?: boolean }
 export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupportConfig | undefined,
-  state: CommanderSupportState, defenseLineZ: number): SupportEvent[] {
+  state: CommanderSupportState, defenseLineZ: number, input: ManualSupportInput = {}): SupportEvent[] {
   const events: SupportEvent[] = [], now = frame.elapsedSeconds, tank = frame.defenseTank;
   // The authoritative spawn, including a Boss flank Giant, is the announcement source.
   if (!state.giantSeen && frame.enemies.some(e => e.hp > 0 && e.archetype === 'giant')) {
@@ -75,6 +80,14 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
     ? frame.destroyer.startedAtSeconds + (frame.catharsis?.balance.destroyer?.radioAtSeconds ?? 0)
       + (frame.catharsis?.balance.destroyer?.radioDurationSeconds ?? 0) : -Infinity;
   const lastStand = c.heavyRaid?.lastStand;
+  const manual = lastStand?.triggerPolicy === 'manualPlayerCall';
+  if (manual && air.status === 'ready' && tank?.status === 'active' && tank.phase === 3
+    && now >= Math.max(tank.startedAtSeconds, navalEnd) + c.earliestBossSeconds) {
+    air.manual ??= { availableAtSeconds: now, announcementAtSeconds: null, ready: false };
+    if (input.supportNoticeStarted) air.manual.announcementAtSeconds ??= now;
+    if (input.supportNoticeComplete && air.manual.announcementAtSeconds !== null
+      && now + 1e-9 >= air.manual.announcementAtSeconds + MANUAL_SUPPORT_NOTICE_SECONDS) air.manual.ready = true;
+  }
   if (air.status === 'ready' && tank?.status === 'active' && (lastStand ? tank.phase === 3 : tank.phase >= 2)
     && now >= Math.max(tank.startedAtSeconds, navalEnd) + c.earliestBossSeconds) {
     const flank = (lane: number) => frame.enemies.filter(e => e.lane === lane && e.hp > 0);
@@ -92,7 +105,7 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
       && progressionStage(frame.progression.level, frame.catharsis.balance.progression).weaponFamily === 'machineGun'
       ? frame.squad.count : 0;
     const hpThreshold = supportBossHpThreshold(c, livingMgCount);
-    if (lastStand ? tank.hp <= (hpThreshold ?? -Infinity)
+    if (manual ? air.manual?.ready && input.callAirSupport : lastStand ? tank.hp <= (hpThreshold ?? -Infinity)
       || lastStand.triggerPolicy === undefined && (left.some(imminentBreach) || right.some(imminentBreach)) : danger(left) && danger(right)) {
       if (c.heavyRaid) { air.targets = []; air.impacts = []; air.tankZAtWarning = tank.z; }
       else {
@@ -129,7 +142,7 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
           }
         }
       }
-      const tankDamage = lastStand ? index === 3 ? Math.min(c.heavyRaid.bossDamage, Math.max(0, tank!.hp - lastStand.minimumBossHp)) : 0
+      const tankDamage = lastStand ? index === 3 ? Math.min(c.heavyRaid.bossDamage, manual ? tank!.hp : Math.max(0, tank!.hp - lastStand.minimumBossHp)) : 0
         : index >= 3 ? Math.min(tank!.hp, c.heavyRaid.bossDamage) : 0;
       if (tankDamage) { tank!.hp -= tankDamage; tank!.lastHitAtSeconds = now; }
       events.push({ kind: 'supportBomb', heavy: true, index, victims, blasts, tankDamage });
@@ -161,8 +174,13 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
 export function validateCommanderSupport(value: unknown, config: CommanderSupportConfig | undefined, now: number): CommanderSupportState {
   const s = schema.parse(value), a = s.airstrike;
   const rounds = config?.heavyRaid ? HEAVY_RAID_ROUNDS : 3;
+  const manual = config?.heavyRaid?.lastStand?.triggerPolicy === 'manualPlayerCall';
   if (s.giantAtSeconds !== null && (!s.giantSeen || s.giantAtSeconds > now)
     || a && (!config || a.strikesCompleted > rounds || config.heavyRaid && a.targets.length > 0
+      || a.manual && (!manual || a.manual.availableAtSeconds > now
+        || a.manual.announcementAtSeconds !== null && (a.manual.announcementAtSeconds < a.manual.availableAtSeconds || a.manual.announcementAtSeconds > now)
+        || a.manual.ready && (a.manual.announcementAtSeconds === null || now + 1e-9 < a.manual.announcementAtSeconds + MANUAL_SUPPORT_NOTICE_SECONDS))
+      || manual && a.status !== 'ready' && (!a.manual?.ready || a.triggeredAtSeconds! + 1e-9 < a.manual.announcementAtSeconds! + MANUAL_SUPPORT_NOTICE_SECONDS)
       || config.heavyRaid && a.status !== 'ready' && (a.tankZAtWarning === undefined || a.impacts === undefined)
       || a.tankZAtWarning !== undefined && !config.heavyRaid
       || a.impacts && (!config.heavyRaid || a.impacts.length !== 3 * Math.min(3, a.strikesCompleted) + Math.max(0, a.strikesCompleted - 3)

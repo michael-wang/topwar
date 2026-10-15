@@ -1,4 +1,4 @@
-import { emptyCommanderSupport, advanceCommanderSupport, validateCommanderSupport, type SupportEvent } from './commanderSupport';
+import { emptyCommanderSupport, advanceCommanderSupport, validateCommanderSupport, type SupportEvent, type ManualSupportInput } from './commanderSupport';
 import { advanceLevelEncounters, applyEncounterAction, emptyLevelEncounters, validateLevelEncounters } from './levelEncounters';
 import { advanceNavalPresence, emptyNavalPresence, validateNavalPresence } from './navalPresence';
 import { advanceNavalBarrage, emptyNavalBarrage, validateNavalBarrage, hasUnresolvedDestroyerSalvo,
@@ -53,7 +53,7 @@ export interface CollisionDiagnostics {
   projectilePasses: number;
 }
 
-export interface SimulationInput {
+export interface SimulationInput extends ManualSupportInput {
   artilleryLaunches?: readonly ArtilleryLaunch[];
   targetX: number;
   throwGrenade?: boolean;
@@ -1052,12 +1052,13 @@ export class Simulation {
       grenade.flight = null;
     }
     const commanderSupport = this.state.commanderSupport ? { ...this.state.commanderSupport,
-      airstrike: this.state.commanderSupport.airstrike ? { ...this.state.commanderSupport.airstrike } : null } : undefined;
+      airstrike: this.state.commanderSupport.airstrike ? { ...this.state.commanderSupport.airstrike,
+        ...(this.state.commanderSupport.airstrike.manual ? { manual: { ...this.state.commanderSupport.airstrike.manual } } : {}) } : null } : undefined;
     // Heavy raids share the ordinary Tank defeat boundary; external kills never award XP/stats.
     if (commanderSupport && catharsis?.balance.commanderSupport?.heavyRaid && defenseTank?.hp !== 0)
       this.supportEvents.push(...advanceCommanderSupport({ ...this.state, elapsedSeconds: nextElapsedSeconds,
         defenseTank, squad, enemies, player: { ...this.state.player, x: nextX, z: nextZ } }, catharsis.balance.commanderSupport, commanderSupport,
-        nextZ - tuning.defenseLineOffset));
+        nextZ - tuning.defenseLineOffset, input));
     const tankDefeated = !!defenseTank && defenseTank.hp === 0;
     if (defenseTank && tankConfig) {
       defenseTank.phase = tankPhase(defenseTank.hp, tankConfig);

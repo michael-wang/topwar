@@ -530,6 +530,41 @@ it('plays the original support recording, pauses/seeks without restarting, and r
   voice.reset(); voice.sync('zh-TW', 0, false, 3.8, 'airSupport'); await Promise.resolve();
   expect(nodes).toHaveLength(2); expect(loader).toHaveBeenCalledOnce(); voice.dispose();
 });
+it('bounds the manual phrases to their recording segments, sharing one asset and seeking correctly after Pause', async () => {
+  const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 6.765708 } as AudioBuffer));
+  const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
+  voice.prepare('zh-TW', 'airSupportReady'); await Promise.resolve(); await Promise.resolve();
+  voice.sync('zh-TW', 0, false, 3.05, 'airSupportReady'); await Promise.resolve();
+  expect(nodes[0].start).toHaveBeenCalledWith(0, 0, 3.05);
+  voice.sync('zh-TW', 1, true, 3.05, 'airSupportReady'); expect(nodes[0].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW', 1, false, 3.05, 'airSupportReady'); await Promise.resolve();
+  expect(nodes[1].start).toHaveBeenCalledWith(0, 1, 2.05);
+  voice.sync('zh-TW', null, false); voice.sync('zh-TW', 0, false, 3.9, 'airSupportCalled'); await Promise.resolve();
+  expect(nodes[2].start.mock.calls[0][1]).toBe(3.05); expect(nodes[2].start.mock.calls[0][2]).toBeCloseTo(3.715708);
+  voice.sync('zh-TW', .7, true, 3.9, 'airSupportCalled'); voice.sync('zh-TW', .7, false, 3.9, 'airSupportCalled'); await Promise.resolve();
+  expect(nodes[3].start.mock.calls[0][1]).toBe(3.75); expect(loader).toHaveBeenCalledOnce(); voice.dispose();
+});
+it.each(['ready', 'unavailable'] as const)('keeps manual readiness and call dialogue separate with %s audio, and restores without reopening radio', readiness => {
+  const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = structuredClone(shipping.catharsis!.commanderSupport!);
+  c.heavyRaid!.lastStand!.triggerPolicy = 'manualPlayerCall'; delete c.heavyRaid!.lastStand!.livingMgHpThresholds;
+  audio.prepareRadio.mockReturnValue(readiness as 'ready');
+  ui.update(undefined, undefined, 60, true, false, undefined, s, c);
+  s.airstrike!.manual = { availableAtSeconds: 60.1, announcementAtSeconds: null, ready: false };
+  ui.update(undefined, undefined, 60.1, true, false, undefined, s, c);
+  expect(text()).toBe('各位！我剛爭取到空中轟炸支援！'); expect(ui.supportNoticeStarted).toBe(true);
+  s.airstrike!.manual.announcementAtSeconds = 60.1;
+  ui.update(undefined, undefined, 61.1, true, true, undefined, s, c); expect(text()).not.toContain('馬上');
+  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 61.1, true, true, undefined, s, c);
+  ui.update(undefined, undefined, 61.1, true, false, undefined, s, c);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBe(1); expect(audio.play).not.toHaveBeenCalled();
+  ui.update(undefined, undefined, 63.2, true, false, undefined, s, c); expect(ui.supportNoticeComplete).toBe(true);
+  s.airstrike!.manual.ready = true; ui.update(undefined, undefined, 64, true, false, undefined, s, c); expect(ui.element.hidden).toBe(true);
+  s.airstrike!.status = 'waiting'; s.airstrike!.triggeredAtSeconds = 64.1;
+  ui.update(undefined, undefined, 64.1, true, false, undefined, s, c); expect(text()).toBe('轟炸機馬上抵達現場！注意！轟炸即將開始！！');
+  expect(audio.syncRadio.mock.lastCall?.slice(1)).toEqual([0, false, 3.9000000000000004, 'airSupportCalled']);
+  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 65, true, false, undefined, s, c);
+  expect(text()).not.toContain('爭取'); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
+});
 it('shows two support phrases through the entire voice and restores only its remaining portion without an opening cue', () => {
   const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = shipping.catharsis!.commanderSupport!;
   ui.update(undefined, undefined, 60, true, false, undefined, s, c);

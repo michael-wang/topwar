@@ -782,7 +782,9 @@ export class GameApp {
         if (before.defenseTank) this.lastCombatProjectiles = before.projectiles;
         this.simulation.step(
         dtSeconds,
-        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}) },
+        { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}),
+          ...(import.meta.env.DEV ? { supportNoticeStarted: this.fieldObserver?.supportNoticeStarted,
+            supportNoticeComplete: this.fieldObserver?.supportNoticeComplete } : {}) },
         {
           moveSpeed: this.runtimeTuning.moveSpeed,
           forwardSpeed: this.runtimeTuning.forwardSpeed,
