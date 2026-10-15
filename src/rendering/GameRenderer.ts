@@ -200,8 +200,8 @@ export class GameRenderer {
   }
 
   present(events: readonly PresentationEvent[], nowMs: number,
-    trackHalfWidth: number, formationSpacing: number): void {
-    this.squadRenderer.present(events, nowMs, trackHalfWidth, formationSpacing);
+    trackHalfWidth: number, formationSpacing: number, defenseFormation?: GameRenderState['squad']['defenseFormation'], laneEdgeX?: number): void {
+    this.squadRenderer.present(events, nowMs, trackHalfWidth, formationSpacing, defenseFormation, laneEdgeX);
     this.enemyRenderer.present(events, nowMs);
   }
 

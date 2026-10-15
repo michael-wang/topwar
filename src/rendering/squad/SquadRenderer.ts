@@ -135,18 +135,20 @@ export class SquadRenderer {
   }
 
   present(events: readonly PresentationEvent[], nowMs: number,
-    trackHalfWidth: number, formationSpacing: number): void {
+    trackHalfWidth: number, formationSpacing: number, defenseFormation?: GameRenderState['squad']['defenseFormation'], laneEdgeX = Infinity): void {
     for (const event of events) {
       const removed = event.affectedMembers ?? removedVisualMembers(event.before, event.after);
-      const offsets = createSquadFormation(event.before.count, formationSpacing);
+      const largeMG = !!defenseFormation && (event.before.count === 4 || event.before.count === 5);
+      const offsets = largeMG ? createDefenseSquadFormation(event.before.count, formationSpacing, defenseFormation, event.playerX, laneEdgeX)
+        : createSquadFormation(event.before.count, formationSpacing);
       const maxOffsetX = offsets.reduce((max, offset) => Math.max(max, Math.abs(offset.x)), 0);
-      const visualSpread = maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
+      const visualSpread = largeMG || maxOffsetX === 0 ? 1 : Math.max(1, Math.min(VISUAL_FORMATION_SPREAD,
         (trackHalfWidth - .4) / maxOffsetX));
       for (const affected of removed) {
         const offset = offsets[affected.index];
         if (!offset) continue;
         const prior = this.members[affected.index];
-        const useRendered = this.lastRenderedSquadCount === event.before.count && prior?.group.visible;
+        const useRendered = !largeMG && this.lastRenderedSquadCount === event.before.count && prior?.group.visible;
         const x = useRendered ? prior.group.position.x
           : -(event.playerX + offset.x * visualSpread);
         const z = useRendered ? prior.group.position.z
@@ -192,7 +194,7 @@ export class SquadRenderer {
     this.levelWeaponMaterial.emissiveIntensity = 1.6 * levelStrength
       + .45 * Math.max(0, 1 - levelAge / WEAPON_AFTERGLOW_MS);
     const offsets = createDefenseSquadFormation(state.squad.count,
-      state.squad.formationSpacing, state.squad.defenseFormation);
+      state.squad.formationSpacing, state.squad.defenseFormation, state.player.x, state.track.lanePositions?.at(-1));
     while (this.members.length < offsets.length) this.addMember();
 
     for (let index = 0; index < this.members.length; index++) {

@@ -910,7 +910,8 @@ export class GameApp {
       const renderEvents = state.catharsis?.balance.defenseMode ? presentationEvents.map((event) => ({ ...event,
         attackerZ: event.attackerZ - state.player.z, playerZ: 0 })) : presentationEvents;
       if (renderEvents.length > 0) this.renderer.present(renderEvents,
-        this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing);
+        this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing,
+        renderState.squad.defenseFormation, renderState.track.lanePositions?.at(-1));
       this.renderer.render(renderState, this.presentationMs);
       const tankHealthPosition = this.renderer.projectTankHealthPosition();
       this.tankBossHud.update(state, this.presentationMs, tankHealthPosition);

@@ -1,6 +1,6 @@
 import type {SimulationFrameState, ProjectileSimulationState} from '../simulation/SimulationState';
 import {attackLanePositions} from '../simulation/enemies/laneComposition';
-import {createDefenseSquadFormation} from '../simulation/squad/formation';
+import {createDefenseSquadFormation,defenseSquadInwardShift} from '../simulation/squad/formation';
 import {effectivePrimaryFireRate, progressionStage} from '../simulation/progression';
 
 type VisualShot = Omit<ProjectileSimulationState, 'damage' | 'blastRadius' | 'penetrationRemaining' | 'lane'>;
@@ -11,6 +11,7 @@ export class VictoryCelebration {
   private readonly free: VisualShot[] = [];
   private readonly lanes: number[];
   private readonly offsets: {x: number; z: number}[];
+  private readonly formation: NonNullable<SimulationFrameState['catharsis']>['balance']['progression'];
   private readonly cooldowns: number[];
   private readonly interval: number;
   private readonly speed: number;
@@ -31,6 +32,7 @@ export class VictoryCelebration {
     this.lanes = attackLanePositions(c.balance.laneCount, c.trackHalfWidth, c.balance.edgeInset);
     this.switchSeconds = c.balance.laneSwitchSeconds;
     this.offsets = createDefenseSquadFormation(state.squad.count, tuning.formationSpacing, c.balance.progression);
+    this.formation = c.balance.progression;
     this.kind = progressionStage(state.progression!.level, c.balance.progression).weaponFamily;
     this.interval = 1 / effectivePrimaryFireRate(tuning.fireRate, state.progression!.level, c.balance);
     this.speed = this.kind === 'machineGun' ? c.balance.machineGun.projectileSpeed : tuning.bulletSpeed;
@@ -73,6 +75,7 @@ export class VictoryCelebration {
       if (shot.remainingRange <= 1e-8) { this.projectiles.splice(i, 1); this.free.push(shot); }
     }
     if (this.ceaseFire) return;
+    const shift = defenseSquadInwardShift(this.offsets.length, this.formation, this.player.x, this.lanes.at(-1));
     for (let i = 0; i < this.cooldowns.length; i++) {
       let cooldown = this.cooldowns[i] - dt;
       while (cooldown <= 0) {
@@ -80,7 +83,7 @@ export class VictoryCelebration {
         if (shot) {
           const travel = Math.min(this.speed * -cooldown, this.range);
           Object.assign(shot, {id: this.nextId++, kind: this.kind, tier: 1, memberIndex: i, slopeX: 0,
-            x: this.player.x + this.offsets[i].x, z: this.offsets[i].z + travel,
+            x: this.player.x + this.offsets[i].x + shift, z: this.offsets[i].z + travel,
             speed: this.speed, remainingRange: this.range - travel, hitRadiusBonus: 0});
           this.projectiles.push(shot);
         }

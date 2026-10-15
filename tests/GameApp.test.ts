@@ -678,7 +678,7 @@ describe('GameApp config and frame lifecycle', () => {
     mock.consumePresentationEvents.mockReturnValueOnce([event]);
     await startGame(app);
     raf.frame(100);
-    expect(mock.present).toHaveBeenCalledExactlyOnceWith([event], 0, 2.5, .45);
+    expect(mock.present).toHaveBeenCalledExactlyOnceWith([event], 0, 2.5, .45, undefined, undefined);
     raf.frame(100 + 1000 / 60);
     expect(mock.present).toHaveBeenCalledTimes(1);
     const retry = mock.overlayConstructedWith.mock.calls[0][0] as () => void;

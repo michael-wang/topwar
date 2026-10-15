@@ -25,7 +25,7 @@ import { LevelDefinitionSchema, type EnemyStreamDefinition, type LevelDefinition
 import { effectiveSeed } from './enemies/effectiveSeed';
 import { EnemyCollisionIndex, type EnemyCandidateSource } from './enemies/EnemyCollisionIndex';
 import { addRifleSoldiers, normalizeRifleSquad, validateSquad } from './squad/composition';
-import { createDefenseSquadFormation } from './squad/formation';
+import { createDefenseSquadFormation, defenseSquadInwardShift } from './squad/formation';
 import type { GameConfig } from '../config/configSchema';
 const validTier = (tier: number): boolean => tier === 1;
 import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimulationState, SimulationState, SimulationFrameState,  } from './SimulationState';
@@ -839,7 +839,7 @@ export class Simulation {
     const nextX = Math.abs(difference) <= maxHorizontalDelta
       ? targetX
       : currentX + Math.sign(difference) * maxHorizontalDelta;
-    const offsets = createDefenseSquadFormation(this.state.squad.count, tuning.formationSpacing, this.state.catharsis!.balance.progression);
+    const offsets = createDefenseSquadFormation(this.state.squad.count, tuning.formationSpacing, this.state.catharsis!.balance.progression, nextX, halfWidth);
     const nextZ = 0;
     if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) {
       throw new Error('Simulation movement exceeds the supported range');
@@ -1069,8 +1069,11 @@ export class Simulation {
     let contactOffsets = offsets;
     if (squad.count > 0 && squad.count !== contactFormationCount) {
       contactFormationCount = squad.count;
-      contactOffsets = createDefenseSquadFormation(squad.count, tuning.formationSpacing, catharsis?.balance.defenseMode ? catharsis.balance.progression : undefined);
+      contactOffsets = createDefenseSquadFormation(squad.count, tuning.formationSpacing, catharsis?.balance.defenseMode ? catharsis.balance.progression : undefined, nextX, halfWidth);
     }
+    // Sweep the group's actual start/end anchors as its edge adjustment changes.
+    let contactStartShift = defenseSquadInwardShift(squad.count, catharsis?.balance.progression, this.state.player.x, halfWidth)
+      - defenseSquadInwardShift(squad.count, catharsis?.balance.progression, nextX, halfWidth);
     for (const enemy of [...enemies].sort((first, second) => first.id - second.id)) {
       if (squad.count === 0) break;
       const contactRadius = tuning.memberRadius + tuning.normalEnemyRadius;
@@ -1080,7 +1083,7 @@ export class Simulation {
       // Sweep in the enemy's final coordinate space, accounting for its approach.
       let contact = false;
       for (const offset of contactOffsets) {
-        const startX = this.state.player.x + offset.x;
+        const startX = this.state.player.x + offset.x + contactStartShift;
         const startZ = this.state.player.z + offset.z - enemyTravel;
         const endX = nextX + offset.x;
         const endZ = nextZ + offset.z;
@@ -1105,7 +1108,9 @@ export class Simulation {
           contactFormationCount = squad.count;
           // Contact can only reduce the count; reuse the pre-contact formation if it returns there.
           contactOffsets = squad.count === this.state.squad.count ? offsets
-            : createDefenseSquadFormation(squad.count, tuning.formationSpacing, catharsis?.balance.defenseMode ? catharsis.balance.progression : undefined);
+            : createDefenseSquadFormation(squad.count, tuning.formationSpacing, catharsis?.balance.defenseMode ? catharsis.balance.progression : undefined, nextX, halfWidth);
+          contactStartShift = defenseSquadInwardShift(squad.count, catharsis?.balance.progression, this.state.player.x, halfWidth)
+            - defenseSquadInwardShift(squad.count, catharsis?.balance.progression, nextX, halfWidth);
         }
       }
     }
