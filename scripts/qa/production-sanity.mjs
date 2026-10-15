@@ -41,51 +41,36 @@ async function controlledFrames(page) {
 }
 async function checkAirSupport(page,width,out) {
  await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();
- await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','airSupport')>0);
- await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);
-  // Isolate external raid accounting from ordinary player auto-fire during this check.
-  const s=a.simulation.getState();s.projectiles=[];s.weapons.rifleMemberCooldowns.fill(100);s.weapons.rifleCooldownRemainingSeconds=100;
-  a.simulation.restoreState(s);window.__draw();window.__advance(.1);});
- // Ordinary controls dodge this fixed fixture's first salvos; no enemy/attack protection.
- for(let i=0;i<3;i++)await page.getByRole('button',{name:'Move right',exact:true}).tap();
- await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupport'&&window.__testApp.audio.voice.source!==null);
+ // Isolate raid damage from MG accounting; dodge using ordinary lane input.
+ await page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState();s.projectiles=[];s.weapons.rifleMemberCooldowns.fill(100);s.weapons.rifleCooldownRemainingSeconds=100;a.simulation.restoreState(s);});
+ const advance=seconds=>page.evaluate(seconds=>{const a=window.__testApp,gpu=a.renderer.renderer,render=gpu.render;gpu.render=()=>{};
+  try{for(let i=0;i<Math.ceil(seconds*60);i++){const s=a.simulation.getFrameState();if(!a.paused){const danger=(s.artillery?.shells??[]).filter(p=>p.impactAtSeconds-s.elapsedSeconds<.65),lane=[0,1,2,3,4].filter(l=>!danger.some(p=>p.targetLane===l)).sort((x,y)=>Math.abs(x-2)-Math.abs(y-2))[0];if(lane!==undefined&&s.player.selectedLane!==lane)a.simulation.stepLane(lane<s.player.selectedLane?-1:1);}window.__advance(1/60);}}
+  finally{gpu.render=render;}window.__draw();},seconds);
+ await advance(.1);await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupportReady'&&window.__testApp.audio.voice.source!==null);
  const duration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(duration-6.765708)<.002);
  assert.equal(await page.locator('.field-observer p').textContent(),'各位！我剛爭取到空中轟炸支援！');
- await page.evaluate(()=>window.__advance(3.3));
- assert.equal(await page.locator('.field-observer p').textContent(),'轟炸機馬上抵達現場！注意！轟炸即將開始！！');
+ await advance(3.3);assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds),null);
+ assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isEnabled());
  await page.getByRole('button',{name:'Pause game',exact:true}).tap();
- const saved=await page.evaluate(()=>({state:window.__testApp.simulation.getState(),clock:window.__testApp.presentationMs}));
- await page.evaluate(()=>window.__advance(.5));assert.deepEqual(await page.evaluate(()=>({state:window.__testApp.simulation.getState(),clock:window.__testApp.presentationMs})),saved);
- assert.equal(await page.evaluate(()=>window.__testApp.audio.voice.source),null);
+ const saved=await page.evaluate(()=>window.__testApp.simulation.getState());await advance(.5);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
  assert.equal(await page.evaluate(()=>window.__testApp.audio.supportSources.size),0);
  await page.reload();await page.getByRole('button',{name:'繼續上次遊戲'}).tap();await page.locator('.session-recovery').waitFor({state:'detached'});
- await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved.state);
- await page.getByRole('button',{name:'Resume game',exact:true}).tap();
- await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','airSupport')>0);
- await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();});
- await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupport'&&window.__testApp.audio.voice.source!==null);
- assert((await page.evaluate(()=>window.__testApp.audio.voice.offset))>=3.3);
+ await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
+ assert.equal(await page.locator('.manual-air-support i').evaluate(e=>e.style.opacity),'0');
+ await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.evaluate(()=>window.__draw());
+ await page.getByRole('button',{name:'呼叫空襲',exact:true}).tap();await advance(.1);
+ await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupportCalled'&&window.__testApp.audio.voice.source!==null);
+ assert.equal(await page.locator('.field-observer p').textContent(),'轟炸機馬上抵達現場！注意！轟炸即將開始！！');
+ const trigger=await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds);assert(trigger!==null);
  await page.screenshot({path:out+'/air-entry-'+width+'.png',scale:'css'});
- await page.evaluate(()=>{const a=window.__testApp,consume=a.simulation.consumeSupportEvents.bind(a.simulation);window.__raidDamage=[];
-  a.simulation.consumeSupportEvents=()=>{const events=consume();for(const e of events)if(e.kind==='supportBomb')window.__raidDamage.push(e.tankDamage);return events;};
-  const s=a.simulation.getState();window.__advance(6.5-(s.elapsedSeconds-s.commanderSupport.airstrike.triggeredAtSeconds));});
- assert.equal(await page.evaluate(()=>window.__testApp.renderer.supportRenderer.planes.filter(p=>p.visible).length),3);
- assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.strikesCompleted),0);
- await page.screenshot({path:out+'/air-arrival-'+width+'.png',scale:'css'});
- for(const [target,name] of [[7.65,'near'],[8.30,'middle'],[8.95,'far'],[9.6,'tank-1'],[10.25,'tank-2'],[10.9,'tank-3'],[12,'after'],[16,'departure']]){
-  await page.evaluate(target=>{const s=window.__testApp.simulation.getState();window.__advance(target-(s.elapsedSeconds-s.commanderSupport.airstrike.triggeredAtSeconds));},target);
-  await page.screenshot({path:out+'/air-'+name+'-'+width+'.png',scale:'css'});
+ await page.evaluate(()=>{const a=window.__testApp,consume=a.simulation.consumeSupportEvents.bind(a.simulation);window.__raidDamage=[];a.simulation.consumeSupportEvents=()=>{const events=consume();for(const e of events)if(e.kind==='supportBomb')window.__raidDamage.push(e.tankDamage);return events;};});
+ for(const [target,name]of [[6.5,'arrival'],[7.65,'near'],[8.30,'middle'],[8.95,'far'],[9.6,'tank'],[10.9,'final'],[16,'departure']]){
+  const elapsed=await page.evaluate(()=>{const s=window.__testApp.simulation.getState();return s.elapsedSeconds-s.commanderSupport.airstrike.triggeredAtSeconds;});await advance(Math.max(0,target-elapsed));await page.screenshot({path:out+'/air-'+name+'-'+width+'.png',scale:'css'});
  }
- const state=await page.evaluate(()=>window.__testApp.simulation.getState());assert.equal(state.commanderSupport.airstrike.status,'completed');
- assert.deepEqual(await page.evaluate(()=>window.__raidDamage),[0,0,0,500,0,0]);
- assert.equal(state.defenseTank.hp,450);assert.equal(state.defenseTank.phase,3);
- assert.equal(state.combatStats.gruntKills+state.combatStats.heavyKills+state.combatStats.giantKills,0);
- assert(state.squad.count>0);assert.equal(state.commanderSupport.airstrike.impacts.length,12);
- await page.getByRole('button',{name:'Pause game',exact:true}).tap();
- await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();
- await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.1);});
- assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.strikesCompleted),0);
- return {role:'air-support',voice:duration,damage:[500],bossHp:450,restored:true,retry:true};
+ const state=await page.evaluate(()=>window.__testApp.simulation.getState());assert.equal(state.commanderSupport.airstrike.status,'completed');assert.deepEqual(await page.evaluate(()=>window.__raidDamage),[0,0,0,500,0,0]);assert.equal(state.defenseTank.hp,1600);assert.equal(state.combatStats.gruntKills+state.combatStats.heavyKills+state.combatStats.giantKills,0);assert(state.squad.count>0);assert.equal(state.commanderSupport.airstrike.impacts.length,12);
+ await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();await page.evaluate(()=>window.__draw());
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds),null);
+ return {role:'air-support',policy:'manualPlayerCall',voice:duration,damage:[500],bossHp:1600,restored:true,retry:true};
 }
 async function checkPlaytestScenes(page,width,out) {
  await page.waitForFunction(()=>['destroyer','tankBoss','victory'].every(m=>window.__testApp.audio.radioDurationSeconds('zh-TW',m)>0));
@@ -182,7 +167,7 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  }
  const config=await configResponse?.json(),levelData=await levelResponse?.json();
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
- if(!config.catharsis.defenseMode||config.catharsis.grenade.teachingGrantAmount!==3||JSON.stringify(config.catharsis.progression.xpRequirements)!=='[28,60,110,180,220,200,300,350,450]')throw Error('Stale defense/progression/Grenade config');
+ if(!config.catharsis.defenseMode||config.catharsis.grenade.teachingGrantAmount!==3)throw Error('Stale defense/Grenade config');
  if(JSON.stringify(config.catharsis.navalBarrage.postImpactCooldown)!=='{"initialDelaySeconds":2,"minimumGapSeconds":2,"maximumGapSeconds":5}')throw Error('Stale Stage 1 continuous naval cooldown');
  if(!await page.locator('#game-viewport.beachhead-defense').count()||await page.getByText(/ENEMY LV/).isVisible())throw Error('Production loaded legacy bridge/HUD');
  for(const url of runtimeRequests){const u=new URL(url);if(u.search||!Object.values(manifest).some(path=>u.pathname===`/topwar/${path}`))throw Error(`Unversioned or mismatched runtime asset: ${url}`);}

@@ -1,6 +1,6 @@
 import type { SimulationOptions } from '../simulation/Simulation';
 import { createNavalReview } from './NavalReview';
-import { createAirSupportPlaytest, createTankPlaytest, createVictoryReview } from './TankPlaytest';
+import { createManualAirSupportPlaytest, createTankPlaytest, createVictoryReview } from './TankPlaytest';
 
 export const PLAYTEST_ENTRIES = [
   { role: 'naval', label: '🚢 驅逐艦進場' },
@@ -15,6 +15,6 @@ export function isPlaytestScene(role: unknown): role is PlaytestScene {
 export function createPlaytestScenario(options: SimulationOptions, rate: number, role: PlaytestScene) {
   if (role === 'naval') return createNavalReview(options);
   if (role === 'victory') return createVictoryReview(options, rate);
-  if (role === 'air-support') return createAirSupportPlaytest(options, rate);
+  if (role === 'air-support') return createManualAirSupportPlaytest(options, rate);
   return createTankPlaytest(options, rate, true);
 }

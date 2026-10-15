@@ -15,10 +15,8 @@ import { createSurvivalReview, type SurvivalReviewFixture } from './DevSurvivalR
 import { isolatedReviewOptions } from './DevReviewPolicy';
 import { createNavalBarrageReview, type NavalBarrageReviewFixture } from './DevNavalBarrageReview';
 import { createTankReview, type TankReviewFixture } from './DevTankReview';
-import { createAirSupportThresholdReview, type AirSupportThresholdFixture } from './DevAirSupportReview';
-import { createManualAirSupportReview, type ManualAirSupportFixture } from './DevManualAirSupportReview';
 
-export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | import('./PlaytestScenarios').PlaytestScene | MachineGunReviewFixture | SurvivalReviewFixture | NavalBarrageReviewFixture | TankReviewFixture | AirSupportThresholdFixture | ManualAirSupportFixture;
+export type DevReviewFixture = 'late' | 'crate3' | 'crate8' | import('./PlaytestScenarios').PlaytestScene | MachineGunReviewFixture | SurvivalReviewFixture | NavalBarrageReviewFixture | TankReviewFixture;
 export const DEV_REVIEW_FIXTURES = {
   late: { level: 10, soldiers: 3 }, crate3: { level: 3, soldiers: 1 },
   crate8: { level: 8, soldiers: 1 }, naval: { level: 10, soldiers: 3 },
@@ -28,8 +26,6 @@ export const DEV_REVIEW_FIXTURES = {
 export function createDevReviewFixture(options: SimulationOptions, baseFireRate: number,
   role: DevReviewFixture): Simulation {
   if (isPlaytestScene(role)) return createPlaytestScenario(options, baseFireRate, role);
-  if (role.startsWith('manual-air-')) return createManualAirSupportReview(options, baseFireRate, role as ManualAirSupportFixture);
-  if (role.startsWith('air-threshold-')) return createAirSupportThresholdReview(options, baseFireRate, role as AirSupportThresholdFixture);
   if (role.startsWith('boss-')) return createTankReview(options, baseFireRate, role as TankReviewFixture);
   if(role.startsWith('barrage')) return createNavalBarrageReview(options,baseFireRate,role as NavalBarrageReviewFixture);
   options = isolatedReviewOptions(options);

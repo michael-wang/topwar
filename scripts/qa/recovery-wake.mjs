@@ -79,11 +79,13 @@ try { for (const width of [350, 390]) {
       checkpoint: localStorage.getItem('topwar:session:v1:dev'), requests: window.__wakeQA.requests };
   }); assert.deepEqual(callbackCount.state, saved); assert(callbackCount.paused && callbackCount.restored);
   assert.equal(callbackCount.fixture, 'survival10-ahead'); assert.equal(callbackCount.checkpoint, text); assert.equal(callbackCount.requests, 0);
-  await page.touchscreen.tap(width / 2, 405); assert(await page.evaluate(() => window.__testApp.paused));
+  await page.touchscreen.tap(width / 2, 250); assert(await page.evaluate(() => window.__testApp.paused));
   await page.locator('.session-recovery').waitFor({ state: 'detached' });
   await page.screenshot({ path: `${out}/${width}-recovered-paused.png` });
-  await resume(); await page.locator('.tuning-panel > summary').tap(); assert.match(await page.locator('.dev-wake-status').textContent(), /ACTIVE/);
-  await page.screenshot({ path: `${out}/${width}-wake-active.png` }); await page.locator('.tuning-panel > summary').tap();
+  await resume(); await page.locator('.tuning-panel > summary').tap(); await status('released');
+  await page.getByText('進階調校',{exact:true}).tap(); await page.getByText('熄屏與存檔 QA',{exact:true}).tap();
+  assert.match(await page.locator('.qa-panel-content').textContent(), /Wake Lock: RELEASED/);
+  await page.screenshot({ path: `${out}/${width}-wake-paused.png` }); await page.locator('.tuning-panel > summary').tap(); await resume();
   await pause(); await page.evaluate(() => { window.__wakeQA.defer = true; });
   await page.getByRole('button', { name: 'Resume game', exact: true }).tap(); await stop(); await status('requesting');
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap(); await stop();
@@ -124,9 +126,10 @@ try { for (const width of [350, 390]) {
   for (const mode of ['denied', 'unsupported', 'insecure']) {
     const c = await browser.newContext({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true }); await c.addInitScript(mockWake, { mode });
     const p = await c.newPage(); await p.goto('http://127.0.0.1:5175/'); await p.getByRole('button', { name: 'Start game with audio' }).tap();
-    await p.locator('.tuning-panel > summary').tap(); const label = await p.locator('.dev-wake-status').textContent();
+    await p.locator('.tuning-panel > summary').tap(); await p.getByText('進階調校',{exact:true}).tap(); await p.getByText('熄屏與存檔 QA',{exact:true}).tap();
+    const label = await p.locator('.qa-panel-content').textContent();
     assert.match(label, mode === 'denied' ? /DENIED/ : mode === 'unsupported' ? /UNSUPPORTED/ : /INSECURE/);
-    await p.getByRole('button', { name: 'Pause game', exact: true }).tap(); results.push({ width, mode, label, harmless: true }); await c.close();
+    assert(await p.getByRole('button',{name:'Resume game',exact:true}).isVisible()); results.push({ width, mode, label, harmless: true }); await c.close();
   }
   console.log(`Recovery/Wake mobile QA passed ${width}`);
 }

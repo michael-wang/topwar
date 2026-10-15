@@ -2,7 +2,7 @@ import type { SimulationFrameState } from '../simulation/SimulationState';
 import { ART } from '../art/ArtDirection';
 import { LEVEL_UP_MS } from '../presentation/ProgressionLevelUp';
 
-// Created only by local DEV. Placement is provisional pending phone review.
+// Policy-gated one-use control, including the shared manual Air Support scene.
 export class ManualAirSupportButton {
   readonly element = document.createElement('button');
   private readonly ring: HTMLElement;

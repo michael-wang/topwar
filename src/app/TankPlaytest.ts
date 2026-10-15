@@ -10,6 +10,25 @@ import { pressureWaveSettings } from '../simulation/enemies/latePressure';
 import { postCapOrdinarySettings } from '../simulation/postCapSurvival';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 
+// Canonical shared manual review. Ordinary Stage 1 and historical saved rules
+// never opt in merely because manual presentation is available in this build.
+export function createManualAirSupportPlaytest(options: SimulationOptions, rate: number): Simulation {
+  const balance = structuredClone(options.catharsis?.balance);
+  if (!balance?.commanderSupport?.heavyRaid?.lastStand) throw Error('Manual support review requires Stage 1 support');
+  const last = balance.commanderSupport.heavyRaid.lastStand;
+  last.triggerPolicy = 'manualPlayerCall'; delete last.livingMgHpThresholds;
+  const sim = createAirSupportPlaytest({...options, catharsis: {...options.catharsis!, balance}}, rate), s = sim.getState();
+  if (progressionStage(10, balance.progression).squadStage !== 3) throw Error('Manual review requires the authored 3-MG stage');
+  s.progression = {level: 10, xp: 0}; s.squad = {count: 3, rifleCounts: [3], rifleRemainder: 0, rocketCount: 0};
+  s.defenseTank!.hp = 2100;
+  const lanes = attackLanePositions(5, options.catharsis!.trackHalfWidth, balance.edgeInset);
+  s.player.x = lanes[2]; s.player.selectedLane = 2;
+  const interval = 1 / effectivePrimaryFireRate(rate, 10, balance);
+  s.weapons.rifleCooldownRemainingSeconds = 0;
+  s.weapons.rifleMemberCooldowns = Array.from({length: 3}, (_, i) => i * interval / 3);
+  sim.restoreState(s); return sim;
+}
+
 export function createAirSupportPlaytest(options: SimulationOptions, rate: number): Simulation {
   const sim = createTankPlaytest(options, rate, false, 750 / options.catharsis!.balance.defenseTank!.hp), s = sim.getState();
   const b = s.catharsis!.balance, c = b.defenseTank!, now = s.elapsedSeconds;

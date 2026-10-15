@@ -19,7 +19,6 @@ vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
   constructor() { mock.qaConstructed(); }
   open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}
 } }));
-vi.mock('../src/ui/DevWakeStatus', () => ({ DevWakeStatus: class { dispose() {} } }));
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   updateVictory(now: number, paused: boolean) { return mock.victory(now, paused); }
@@ -833,13 +832,13 @@ it('shares the approved playtest menu outside DEV while omitting engineering QA'
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
     expect(mock.reviewConstructed).toHaveBeenCalledOnce();expect(mock.reviewFixture).not.toHaveBeenCalled();
     expect(mock.panelConstructedWith).toHaveBeenCalledOnce(); expect(mock.qaConstructed).not.toHaveBeenCalled();
-    expect(mock.manualSupportConstructed).not.toHaveBeenCalled(); app.dispose();
+    expect(mock.manualSupportConstructed).toHaveBeenCalledOnce(); app.dispose();
   } finally { vi.unstubAllEnvs(); }
 });
 
-it('guards manual support across lifecycle/menu states and consumes one request at a fixed tick', async () => {
+it.each([true,false])('guards manual support across lifecycle/menu states and consumes one request at a fixed tick (DEV %s)', async dev => {
   const raf = createRaf(), base = mock.getState(), config = structuredClone(gameData);
-  vi.stubEnv('DEV', true);
+  vi.stubEnv('DEV', dev);
   const balance = structuredClone(config.catharsis!);
   balance.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy = 'manualPlayerCall';
   delete balance.commanderSupport!.heavyRaid!.lastStand!.livingMgHpThresholds;

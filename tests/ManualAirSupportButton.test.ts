@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import { ManualAirSupportButton } from '../src/ui/ManualAirSupportButton';
-import { createDevReviewFixture } from '../src/app/DevReviewFixtures';
+import { createPlaytestScenario } from '../src/app/PlaytestScenarios';
 import config from './helpers/ShippingConfig';
 import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
@@ -16,8 +16,8 @@ it('uses native click activation, gates readiness/playing state and latches repe
   try {
     const call = vi.fn(() => true), control = new ManualAirSupportButton(new ElementStub() as unknown as HTMLElement, call);
     const button = control.element as unknown as ElementStub;
-    const sim = createDevReviewFixture({ seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1, startRocketCount: 0, tiers: config.tiers,
-      catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } }, 27, 'manual-air-3');
+    const sim = createPlaytestScenario({ seed: 17, level: LevelDefinitionSchema.parse(levelData), startSquad: 1, startRocketCount: 0, tiers: config.tiers,
+      catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } }, 27, 'air-support');
     const s = sim.getState(); control.update(s, true); expect(button.hidden).toBe(true);
     s.commanderSupport!.airstrike!.manual = { availableAtSeconds: 60, announcementAtSeconds: 60, ready: true };
     control.update(s, false); expect(button.hidden).toBe(false); expect(button.disabled).toBe(true);
@@ -35,7 +35,7 @@ it.each([false,true])('bounds the READY cue on the pause-aware clock, suppresses
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});vi.stubGlobal('matchMedia',()=>({matches:reduced}));
   try{
     const control=new ManualAirSupportButton(new ElementStub() as unknown as HTMLElement,()=>true),button=control.element as unknown as ElementStub;
-    const s=createDevReviewFixture({seed:17,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,tiers:config.tiers,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},27,'manual-air-3').getState();
+    const s=createPlaytestScenario({seed:17,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,tiers:config.tiers,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},27,'air-support').getState();
     control.update(s,true,100);s.commanderSupport!.airstrike!.manual={availableAtSeconds:60,announcementAtSeconds:60,ready:true};
     control.update(s,true,200);const ring=button.querySelector('i'),icon=button.querySelector('svg');expect(Number(ring.style.opacity)).toBe(.95);expect(icon.style.filter).toContain('brightness(2)');expect(button.innerHTML).not.toContain('空襲就緒');expect(button.innerHTML).not.toContain('<em');
     const motes=button.append.mock.calls.map(([mote])=>mote as ElementStub);expect(motes).toHaveLength(8);const initialMotes=motes.map(m=>m.style.transform);

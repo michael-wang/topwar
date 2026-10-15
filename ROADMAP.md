@@ -2,11 +2,13 @@
 
 ## NOW
 
-P4.14 local DEV → 進階調校 offers 手動空襲原型 (3-MG combat / 5-MG lethal test) and a provisional 呼叫空襲 button aligned 10px above Grenade with a one-use badge and bounded READY cue (P4.15B); optional use, split Commander speech, lethal player-called bombing and button placement await Pixel 8 acceptance. Accepted automatic production thresholds and the 150-HP floor remain unchanged. Randomized staggered Tank artillery is the accepted default Stage 1 behavior after Pixel 8 Phase 2/3 approval (P4.13). New games use independent 0.30–0.60-second shot gaps and random post-final-impact cooldowns; historical simultaneous/fixed saves retain their embedded rules. Pixel 8 acceptance remains pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, four/five-MG formations with compact, physical-lane-anchored edge poses (P4.15A fairness correction; replaces P4.11C whole-group shifting), Boss combat, Pause/Victory continuity, silent emergency warnings, layered bomber smoke/persistent scorches (P4.11B), continuous constant-altitude/speed bomber flyover with aircraft-aligned shadows and real release origins (P4.15C, superseding P4.11A reveal/route), cannon muzzle/powder feedback (P4.10B), the 0.35-second three-hit Supply recovery trial (P4.10C) and Stage1 Complete music. P4.12 living-MG air-support thresholds/DEV selector, Camera B, full-width lane highlights, P4.9A testing-menu Pause/accessibility and P4.9B dense Tank entrance review are accepted. Preserve one HP-only Phase-3 raid, historical fixed-750/HP-or-ETA policies, released Defense saves, the four quick-test entries and manual deployment.
+P4.16 finishes the shared Air Support review and scoped nightly cleanup. Exactly four shared entries remain; Air Support now uses the canonical manual 3-MG scene in DEV and production. Ordinary Stage 1 keeps accepted automatic 750/1200/1600/2000 thresholds and the 150-HP floor. The manual lethal strike, four/five-MG outer-lane position versus artillery risk, continuous bomber flight/matching shadow motion, randomized staggered Tank artillery, Camera B, lane highlights and P4.9 menu/dense-review behavior are accepted on Pixel 8 and remain unchanged.
+
+Pending Pixel 8: corrected shadow facing, stronger engine audio, text-free Level Up-style support READY effect and the revised shared manual preview/button UX. Other pending tuning/presentation reviews include Lv11/Lv12 XP and casualty recovery, Boss/Victory continuity, emergency warnings, smoke/scorches, cannon feedback, Supply recovery and results music. Preserve released Defense saves, historical shared automatic previews and manual deployment.
 
 ## NEXT
 
-1. Review Lv11/Lv12 growth, casualty recovery and pending four/five-MG spacing alongside Boss combat and pending presentation/music polish.
+1. Review Lv11/Lv12 growth, casualty recovery and accepted four/five-MG edge positioning alongside Boss combat and pending presentation/music polish.
 2. Add immediate loading feedback after Continue / New Game.
 3. Investigate and reduce the long first load.
 
