@@ -149,7 +149,7 @@
       "supplyHitsRequired": 10,
       "supplyDestruction": {
         "mode": "staged",
-        "recoverySeconds": 0.7
+        "recoverySeconds": 0.35
       },
       "supplyDepth": 14,
       "supplyMinDepth": 6,

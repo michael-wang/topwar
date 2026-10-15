@@ -36,7 +36,7 @@ it.each(['crate3', 'crate8'] as const)('%s starts an intact, aligned real Supply
   expect(initial.grenade).toMatchObject({ inventory: recurring ? 1 : 0, supplySpawnedAtSeconds: 0,
     acquiredAtSeconds: recurring ? 0 : null, flight: null, supply: {
       lane: initial.player.selectedLane, x: initial.player.x,
-      destruction: { mode: 'staged', stage: 0, recoverySeconds: .7, recoverAtSeconds: 0 } } });
+      destruction: { mode: 'staged', stage: 0, recoverySeconds: .35, recoverAtSeconds: 0 } } });
   expect(initial.grenade!.supply!.depth).toBeLessThan(config.weapon.rifle.range);
   expect(initial.grenade!.supply!.rewardAmount).toBe(recurring ? 1 : undefined);
   expect(make(role).getState()).toEqual(initial);
@@ -55,7 +55,7 @@ it.each(['crate3', 'crate8'] as const)('%s uses three real damage events with re
       events.push(event.kind); times.push(state.elapsedSeconds);
       if (event.kind === 'grenadeSupplyDamaged') {
         expect(state.grenade!.supply!.destruction!.stage).toBe(times.length);
-        expect(state.grenade!.supply!.destruction!.recoverAtSeconds).toBeCloseTo(state.elapsedSeconds + .7, 10);
+        expect(state.grenade!.supply!.destruction!.recoverAtSeconds).toBeCloseTo(state.elapsedSeconds + .35, 10);
       } else expect(event).toMatchObject({ kind: 'grenadeSupplyOpened', amount: role === 'crate3' ? 3 : 1 });
     }
     // Snapshot midway through the first recovery, not at an event boundary.
@@ -65,8 +65,8 @@ it.each(['crate3', 'crate8'] as const)('%s uses three real damage events with re
     }
   }
   expect(events).toEqual(['grenadeSupplyDamaged', 'grenadeSupplyDamaged', 'grenadeSupplyOpened']);
-  expect(times[1] - times[0]).toBeGreaterThanOrEqual(.7 - 1e-8);
-  expect(times[2] - times[1]).toBeGreaterThanOrEqual(.7 - 1e-8);
+  expect(times[1] - times[0]).toBeGreaterThanOrEqual(.35 - 1e-8);
+  expect(times[2] - times[1]).toBeGreaterThanOrEqual(.35 - 1e-8);
   expect(times[2] - times[0]).toBeLessThanOrEqual(2);
   expect(sim.getState().grenade!.inventory).toBe(role === 'crate3' ? 3 : 2);
   const shots = sim.getState().weapons.nextProjectileId - initial.weapons.nextProjectileId;

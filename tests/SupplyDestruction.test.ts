@@ -4,14 +4,58 @@ import {emptyGrenade,placeGrenadeSupply} from '../src/simulation/grenade';
 import {carnivalOptions} from '../scripts/qa/carnivalPilot';
 import {pilotTuning} from '../scripts/qa/DefensePilot';
 import {GameAudio} from '../src/audio/GameAudio';
-const make=(level=3,members=1,inventory=0,recurring=false)=>{
+// Keep the published 0.70-second cases as historical regression coverage.
+const make=(level=3,members=1,inventory=0,recurring=false,recoverySeconds=.7)=>{
   const sim=new Simulation({...carnivalOptions,startSquad:members,level:{id:'supply',length:100,enemyGroups:[],upgradeGates:[]}});
   const s=sim.getState();s.progression={level,xp:0};
+  s.catharsis!.balance.grenade.supplyDestruction={mode:'staged',recoverySeconds};
   s.grenade={...emptyGrenade(),lv3EnteredAtSeconds:0,supplySpawnedAtSeconds:0,acquiredAtSeconds:recurring?0:null,inventory,
     supply:{...placeGrenadeSupply(s,s.catharsis!.balance.grenade),...(recurring?{rewardAmount:1 as const}:{})}};
   s.weapons.rifleCooldownRemainingSeconds=1000;s.weapons.rifleMemberCooldowns=Array(members).fill(1000);
   sim.restoreState(s);return sim;
 };
+it.each([false,true])('new 0.35s supplies still require exactly three successful hits (recurring=%s)',recurring=>{
+  expect(carnivalOptions.catharsis.balance.grenade.supplyDestruction!.recoverySeconds).toBe(.35);
+  const inventory=recurring?100:0,sim=make(8,1,inventory,recurring,.35);hit(sim,8);
+  expect(sim.getState().grenade!.supply!.destruction).toMatchObject({stage:1,recoverySeconds:.35});
+  const at=sim.getState().grenade!.supply!.destruction!.recoverAtSeconds;
+  for(let i=0;i<20;i++)hit(sim,3);
+  expect(sim.getState().elapsedSeconds).toBeLessThan(at);expect(sim.getState().grenade!.supply!.destruction!.stage).toBe(1);
+  hit(sim,3);expect(sim.getState().elapsedSeconds).toBeCloseTo(at);expect(sim.getState().grenade!.supply!.destruction!.stage).toBe(2);
+  const saved=sim.getState(),copy=make();copy.restoreState(JSON.parse(JSON.stringify(saved)));
+  expect(copy.getState()).toEqual(saved);expect(copy.consumeGrenadeEvents()).toEqual([]);
+  for(let i=0;i<20;i++){hit(sim,3);hit(copy,3);}expect(sim.getState().grenade!.supply).not.toBeNull();
+  hit(sim,3);hit(copy,3);expect(sim.getState()).toEqual(copy.getState());
+  expect(sim.getState().grenade!.supply).toBeNull();expect(sim.getState().grenade!.inventory).toBe(inventory+(recurring?1:3));
+  expect(sim.getState().progression!.xp).toBe(0);
+});
+it('retains an already-spawned 0.70s recovery and deadline even alongside a 0.35s authored plan',()=>{
+  const sim=make(8);hit(sim);const deadline=sim.getState().grenade!.supply!.destruction!.recoverAtSeconds;
+  const b=sim.getState().catharsis!.balance;sim.setCatharsisBalance({...b,grenade:{...b.grenade,supplyDestruction:{mode:'staged',recoverySeconds:.35}}});
+  const saved=sim.getState(),copy=make();copy.restoreState(JSON.parse(JSON.stringify(saved)));
+  expect(copy.getState().grenade!.supply!.destruction).toMatchObject({recoverySeconds:.7,recoverAtSeconds:deadline});
+  for(let i=0;i<21;i++){hit(sim);hit(copy);}expect(copy.getState().grenade!.supply!.destruction!.stage).toBe(1);
+  for(let i=0;i<21;i++){hit(sim);hit(copy);}expect(copy.getState().grenade!.supply!.destruction!.stage).toBe(2);
+  expect(copy.getState()).toEqual(sim.getState());
+});
+it.each([[8,1],[9,2],[12,5]])('measures the recovery delay reduction without altering %i-level / %i-MG cadence',(level,members)=>{
+  const run=(recovery:number)=>{
+    const sim=make(level,members,0,false,recovery),s=sim.getState();
+    s.weapons.rifleCooldownRemainingSeconds=0;s.weapons.rifleMemberCooldowns=Array.from({length:members},(_,i)=>i/(27*members));sim.restoreState(s);
+    const times:number[]=[];let intercepted=0;
+    for(let i=0;i<240&&sim.getState().grenade!.supply;i++){
+      const before=sim.getState();step(sim);const after=sim.getState();
+      intercepted+=before.projectiles.length+after.weapons.nextProjectileId-before.weapons.nextProjectileId-after.projectiles.length;
+      for(const e of sim.consumeGrenadeEvents())if(e.kind==='grenadeSupplyDamaged'||e.kind==='grenadeSupplyOpened')times.push(after.elapsedSeconds);
+    }
+    expect(times).toHaveLength(3);expect(sim.getState().grenade!.inventory).toBe(3);
+    expect(sim.getState().progression!.xp).toBe(0);
+    return {delay:times[2]-times[0],intercepted};
+  };
+  const old=run(.7),trial=run(.35);expect(trial.delay).toBeGreaterThanOrEqual(.7-1e-8);expect(trial.delay).toBeLessThanOrEqual(.8);
+  expect(trial.delay).toBeLessThan(old.delay-.6);expect(trial.intercepted).toBeLessThan(old.intercepted);
+  console.info(`Supply ${members} MG: ${old.delay.toFixed(3)}s/${old.intercepted} intercepted → ${trial.delay.toFixed(3)}s/${trial.intercepted}`);
+});
 const step=(s:Simulation,n=1)=>{for(let i=0;i<n;i++)s.step(1/60,{targetX:0},pilotTuning);};
 const hit=(sim:Simulation,count=1)=>{
   const s=sim.getState();s.projectiles=Array.from({length:count},()=>({id:s.weapons.nextProjectileId++,kind:'machineGun' as const,tier:1,
