@@ -33,6 +33,17 @@ function checkpoint(fixture: 'survival10-ahead' | 'survival10-staged' | 'surviva
   return { sim, c };
 }
 describe('durable checkpoint', () => {
+  it('expires retired DEV artillery reviews through normal invalid-checkpoint handling', () => {
+    const { c } = checkpoint('naval'), store = storage();
+    vi.stubEnv('DEV', true);
+    try {
+      for (const phase of [2, 3]) for (const mode of ['a', 'b']) {
+        writeCheckpoint({ ...c, fixture: `boss-rhythm-${phase}-${mode}` }, store);
+        expect(readCheckpoint(store).status).toBe('invalid');
+      }
+      writeCheckpoint(c, store); expect(readCheckpoint(store).status).toBe('valid');
+    } finally { vi.unstubAllEnvs(); }
+  });
   it('persists reduced combat power and pressure through the real checkpoint path without replaying Boss state', () => {
     const {c}=checkpoint(),store=storage();
     const sim=createPlaytestScenario({seed:17,level,startSquad:1,startRocketCount:0,tiers:config.tiers,

@@ -155,7 +155,7 @@ export function tankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: num
   const rng = new SeededRng(tank.rngState), pool = lanePositions.map((_, lane) => lane).filter(lane => lane !== aimed), lanes = [aimed];
   for (let i = 1; i < count; i++) lanes.push(pool.splice(rng.nextInt(pool.length), 1)[0]);
   tank.rngState = rng.getState(); tank.nextAttackAtSeconds = null;
-  if (c.salvoPolicy?.mode === 'randomStaggered') {
+  if (c.salvoPolicy) {
     const gapRng = new SeededRng(tank.rhythm!.gapRngState), range = c.salvoPolicy.gapSeconds;
     let launchAtSeconds = now;
     tank.rhythm!.pendingShots = lanes.slice(1).map(targetLane => {
@@ -195,7 +195,7 @@ export function validateDefenseTank(value: unknown, c: DefenseTankConfig, now: n
     || tank.status === 'active' && now + 1e-9 < tank.activeAtSeconds
     || tank.z > c.startZ || tank.nextFlankAtSeconds < tank.activeAtSeconds
     || !!tank.rhythm !== !!c.salvoPolicy
-    || shots.length > 0 && (c.salvoPolicy?.mode !== 'randomStaggered' || tank.status !== 'active'
+    || shots.length > 0 && (!c.salvoPolicy || tank.status !== 'active'
       || tank.nextAttackAtSeconds !== null || tank.pendingImpactAtSeconds === null
       || shots.length + active.length > 3
       || new Set([...shots.map(s => s.targetLane), ...active.map(s => s.targetLane)]).size !== shots.length + active.length

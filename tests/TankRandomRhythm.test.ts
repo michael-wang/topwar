@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import config from './helpers/ShippingConfig';
 import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
-import { DefenseTankConfigSchema, type DefenseTankConfig } from '../src/config/defenseTankConfig';
 import { startDefenseTank, tankSalvo, tankPhase, validateDefenseTank } from '../src/simulation/defenseTank';
 import { makeArtilleryShell, type ArtilleryShell } from '../src/simulation/artillery';
 import { SeededRng } from '../src/core/Rng';
@@ -13,15 +12,14 @@ import { personalArtilleryThreat } from '../src/presentation/ArtilleryEmergency'
 
 const level = LevelDefinitionSchema.parse(levelData), tuning = qaSimulationTuning(config);
 const lanes = [-2.8, -1.4, 0, 1.4, 2.8];
-type Mode = NonNullable<DefenseTankConfig['salvoPolicy']>['mode'];
-const policy = (mode: Mode): NonNullable<DefenseTankConfig['salvoPolicy']> => ({ mode,
-  cooldownSeconds: [{ min: 3.5, max: 5.5 }, { min: 2.5, max: 4.5 }, { min: 2.5, max: 6 }],
-  gapSeconds: { min: .3, max: .6 } });
-const tankConfig = (mode?: Mode) => DefenseTankConfigSchema.parse({ ...config.catharsis!.defenseTank,
-  salvoPolicy: mode ? policy(mode) : undefined });
+const tankConfig = (historical = false) => {
+  const c = structuredClone(config.catharsis!.defenseTank!);
+  if (historical) delete c.salvoPolicy;
+  return c;
+};
 
-function fixture(mode: Mode = 'randomStaggered', phase: 1 | 2 | 3 = 3) {
-  const balance = structuredClone(config.catharsis!); balance.defenseTank = tankConfig(mode);
+function fixture(phase: 1 | 2 | 3 = 3) {
+  const balance = structuredClone(config.catharsis!); balance.defenseTank = tankConfig();
   const sim = createTankPlaytest({ seed: 17, level, tiers: config.tiers, startSquad: 1, startRocketCount: 0,
     catharsis: { balance, trackHalfWidth: config.track.halfWidth } }, config.weapon.rifle.fireRate, false,
   phase === 1 ? 1 : phase === 2 ? .65 : .3);
@@ -33,9 +31,9 @@ function fixture(mode: Mode = 'randomStaggered', phase: 1 | 2 | 3 = 3) {
 }
 function step(sim: Simulation, count = 1) { for (let i = 0; i < count; i++) sim.step(1 / 60, { targetX: 0 }, tuning); }
 
-// A small scheduler harness keeps player damage/phase changes out of the RNG comparison.
-function schedule(mode: Mode | undefined, phase: 1 | 2 | 3, seed = 17) {
-  const c = tankConfig(mode), tank = startDefenseTank(0, seed, c);
+// Isolate cadence/target determinism from player damage and phase changes.
+function schedule(phase: 1 | 2 | 3, historical = false, seed = 17) {
+  const c = tankConfig(historical), tank = startDefenseTank(0, seed, c);
   tank.status = 'active'; tank.phase = phase; tank.hp = phase === 1 ? c.hp : phase === 2 ? c.hp * .65 : c.hp * .3;
   let now = c.entrySeconds, active: ArtilleryShell[] = [], nextId = 1;
   const launches: ArtilleryShell[][] = [], cooldowns: number[] = [], cooldownRng = new SeededRng(tank.rhythm?.cooldownRngState ?? 0);
@@ -64,26 +62,31 @@ function schedule(mode: Mode | undefined, phase: 1 | 2 | 3, seed = 17) {
   return { launches, cooldowns, tank };
 }
 
-describe('opt-in random Tank rhythm', () => {
-  it.each([1, 2, 3] as const)('phase %i preserves target draws and cooldown samples across A/B with no overlap', phase => {
-    const a = schedule('randomSimultaneous', phase), b = schedule('randomStaggered', phase);
-    expect(b.launches.map(v => v.map(s => s.targetLane))).toEqual(a.launches.map(v => v.map(s => s.targetLane)));
-    b.cooldowns.forEach((d, i) => expect(d).toBeCloseTo(a.cooldowns[i], 8));
-    expect(b.tank.rngState).toBe(a.tank.rngState);
-    expect(b.tank.rhythm!.cooldownRngState).toBe(a.tank.rhythm!.cooldownRngState);
+describe('production staggered Tank artillery', () => {
+  it('authors the accepted Stage 1 cadence without changing shell counts', () => {
+    expect(config.catharsis!.defenseTank!.salvoPolicy).toEqual({ mode: 'randomStaggered',
+      cooldownSeconds: [{ min: 3.5, max: 5.5 }, { min: 2.5, max: 4.5 }, { min: 2.5, max: 6 }],
+      gapSeconds: { min: .3, max: .6 } });
+    expect(config.catharsis!.defenseTank!.phases.map(p => p.shells)).toEqual([1, 2, 3]);
+  });
+  it.each([1, 2, 3] as const)('phase %i preserves seeded target/cadence draws with no overlap', phase => {
+    const b = schedule(phase), targetRng = new SeededRng(startDefenseTank(0, 17, tankConfig()).rngState);
     for (const volley of b.launches) {
+      const pool = [0, 1, 3, 4], expected = [2];
+      for (let i = 1; i < phase; i++) expected.push(pool.splice(targetRng.nextInt(pool.length), 1)[0]);
+      expect(volley.map(s => s.targetLane)).toEqual(expected);
       expect(volley).toHaveLength(phase); expect(volley[0].targetLane).toBe(2);
       expect(new Set(volley.map(s => s.targetLane)).size).toBe(phase);
       for (let i = 1; i < phase; i++) {
         const gap = volley[i].launchedAtSeconds - volley[i - 1].launchedAtSeconds;
-        expect(gap).toBeGreaterThanOrEqual(.3 - 1e-8); expect(gap).toBeLessThan(.6 + 1 / 60);
+        expect(gap).toBeGreaterThanOrEqual(.3 - 1e-8); expect(gap).toBeLessThanOrEqual(.6 + 1e-8);
       }
     }
-    expect(a.launches.every(v => v.every(s => s.launchedAtSeconds === v[0].launchedAtSeconds))).toBe(true);
-    expect(schedule('randomStaggered', phase)).toEqual(b);
+    expect(b.tank.rngState).toBe(targetRng.getState());
+    expect(schedule(phase)).toEqual(b);
   });
   it('samples each gap independently, locks physical aim/count, and never catches up a delayed burst', () => {
-    const c = tankConfig('randomStaggered'), tank = startDefenseTank(0, 17, c);
+    const c = tankConfig(), tank = startDefenseTank(0, 17, c);
     tank.status = 'active'; tank.phase = 3;
     const gaps = new SeededRng(tank.rhythm!.gapRngState), first = .3 + gaps.nextFloat() * .3, second = .3 + gaps.nextFloat() * .3;
     expect(first).not.toBe(second);
@@ -100,15 +103,15 @@ describe('opt-in random Tank rhythm', () => {
     expect(tankSalvo(tank, c, 20 + second, [], 1, lanes, -2.8)).toEqual([planned[1].targetLane]);
   });
   it('uses phase at final resolution for cooldown, preserving historical fixed policies', () => {
-    const c = tankConfig('randomStaggered'), tank = startDefenseTank(0, 17, c);
+    const c = tankConfig(), tank = startDefenseTank(0, 17, c);
     tank.status = 'active'; tank.phase = 1;
     expect(tankSalvo(tank, c, 3, [], 3, lanes, 0)).toEqual([2]); tank.pendingImpactAtSeconds = 6;
     tank.phase = 3; const rng = new SeededRng(tank.rhythm!.cooldownRngState);
     expect(tankSalvo(tank, c, 6, [], 3, lanes, 0)).toEqual([]);
     expect(tank.nextAttackAtSeconds).toBeCloseTo(6 + 2.5 + rng.nextFloat() * 3.5);
-    expect(config.catharsis!.defenseTank!.salvoPolicy).toEqual(policy('randomStaggered'));
+    expect(config.catharsis!.defenseTank!.salvoPolicy!.mode).toBe('randomStaggered');
     for (const phase of [1, 2, 3] as const) {
-      const old = schedule(undefined, phase);
+      const old = schedule(phase, true);
       expect(old.tank.rhythm).toBeUndefined();
       old.cooldowns.forEach(d => expect(d).toBeCloseTo([4, 3, 2][phase - 1]));
       expect(old.launches.every(v => v.length === phase && v.every(s => s.launchedAtSeconds === v[0].launchedAtSeconds))).toBe(true);
@@ -150,7 +153,7 @@ describe('opt-in random Tank rhythm', () => {
     expect(copy.getState()).toEqual(sim.getState());
   });
   it('retains locked targets across a mid-volley phase change, and samples the new phase only at resolution', () => {
-    const sim = fixture('randomStaggered', 2); step(sim); const s = sim.getState();
+    const sim = fixture(2); step(sim); const s = sim.getState();
     const locked = s.defenseTank!.rhythm!.pendingShots[0].targetLane;
     s.defenseTank!.hp = 1950; s.defenseTank!.phase = 3; sim.restoreState(s);
     sim.stepLane(-1); sim.stepLane(-1); step(sim, 50);
@@ -161,7 +164,7 @@ describe('opt-in random Tank rhythm', () => {
     expect(tank.nextAttackAtSeconds! - after.defenseTank!.pendingImpactAtSeconds!).toBeCloseTo(2.5 + rng.nextFloat() * 3.5);
   });
   it('keeps capacity-blocked pending shots restorable even after earlier shells resolve', () => {
-    const c = tankConfig('randomStaggered'), tank = startDefenseTank(0, 17, c);
+    const c = tankConfig(), tank = startDefenseTank(0, 17, c);
     tank.status = 'active'; tank.phase = 3; tank.hp = c.hp * .3;
     tankSalvo(tank, c, 3, [], 3, lanes, 0); tank.pendingImpactAtSeconds = 5.4;
     expect(tankSalvo(tank, c, 6, [], 0, lanes, 0)).toEqual([]);

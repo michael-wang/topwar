@@ -18,9 +18,9 @@ export const DefenseTankConfigSchema = z.strictObject({
   flankSpawnAheadDistance: positive.optional(),
   phase2HpFraction: positive.lt(1), phase3HpFraction: positive.lt(1),
   streamSeed: z.number().int().min(0).max(0xffffffff),
-  // Explicit DEV opt-in; absent in shipping plans and historical checkpoints.
+  // Authored for new games; absence preserves released simultaneous/fixed plans.
   salvoPolicy: z.strictObject({
-    mode: z.enum(['randomSimultaneous', 'randomStaggered']),
+    mode: z.literal('randomStaggered'),
     cooldownSeconds: z.array(range).length(3).readonly(), gapSeconds: range,
   }).optional(),
   phases: z.tuple([phase, phase, phase]),
