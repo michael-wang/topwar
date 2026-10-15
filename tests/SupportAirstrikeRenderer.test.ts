@@ -78,39 +78,45 @@ it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes,
   r.dispose(); expect(scene.children).toEqual([]); releases.forEach(release => expect(release).toHaveBeenCalledOnce());
 });
 
-it.each([350,390])('keeps approach above view, readable shadows beneath danger paint, and first bombing at mid-height at %ipx',width=>{
+it.each([350,390])('keeps a constant-altitude/speed flight, aligned shadows and real release anchors at %ipx',width=>{
   const scene=new THREE.Scene(),r=new SupportAirstrikeRenderer(scene),support=emptyCommanderSupport(true,true);
   Object.assign(support.airstrike!,{status:'waiting',triggeredAtSeconds:60,bombAtSeconds:67.5,tankZAtWarning:38});
-  let state:GameRenderState={commanderSupport:{state:support,config:config.catharsis!.commanderSupport!,elapsedSeconds:64},
+  let state:GameRenderState={commanderSupport:{state:support,config:config.catharsis!.commanderSupport!,elapsedSeconds:60},
     player:{x:0,z:0},squad:{count:2,rocketCount:0,rifleCounts:[2],formationSpacing:1},
     track:{halfWidth:3.2,defenseLineZ:0,lanePositions:[-2.8,-1.4,0,1.4,2.8]},enemies:[],projectiles:[]};
-  const snapshot=structuredClone(state);r.update(1000,state);expect(state).toEqual(snapshot);
-  expect(r.planes.every(p=>!p.visible&&p.position.y>=23.9)).toBe(true);
-  const shadows=[0,1,2].map(i=>scene.getObjectByName(`support-bomber-shadow-${i}`) as THREE.Mesh<THREE.PlaneGeometry,THREE.ShaderMaterial>);
-  expect(shadows.every(s=>s.visible&&s.renderOrder<0&&s.position.y<.03)).toBe(true);
-  expect(shadows[0].material.uniforms.opacity.value).toBeCloseTo(.2);expect(shadows[0].material.depthWrite).toBe(false);
-  expect(shadows[0].scale.x).toBe(.5);
-  const previous=shadows.map(s=>s.position.z);state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:65}};r.update(2000,state);
-  expect(shadows.every((s,i)=>s.position.z>previous[i])).toBe(true);
-  state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:67.5}};r.update(3000,state);
   const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
-  for(const p of r.planes){expect(p.visible).toBe(true);const point=p.position.clone().project(camera);
-    expect(p.children[0].renderOrder).toBeGreaterThan(3);
-    expect((p.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.depthTest).toBe(false);
-    expect((1-point.y)/2).toBeGreaterThan(.45);expect((1-point.y)/2).toBeLessThan(.55);expect(Math.abs(point.x)).toBeLessThan(.7);
-    // Even the tail/wing envelope stays well above the squad and bottom controls.
-    const bounds=new THREE.Box3().setFromObject(p);
-    for(const x of [bounds.min.x,bounds.max.x]) for(const y of [bounds.min.y,bounds.max.y]) for(const z of [bounds.min.z,bounds.max.z]){
-      const corner=new THREE.Vector3(x,y,z).project(camera);expect(corner.y).toBeGreaterThan(-.28);
-    }}
-  state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:66.9}};r.update(3000,state);
-  for(const [i,index] of [0,1,2].entries()){
-    const bomb=scene.getObjectByName(`support-falling-bomb-${index}`)!;
-    expect(bomb.visible).toBe(true);expect(bomb.position.x).toBeCloseTo(r.planes[i].position.x);
-    expect(bomb.position.z).toBeCloseTo(r.planes[i].position.z);
-    expect(Math.abs(bomb.position.y-r.planes[i].position.y)).toBeLessThan(.2);
+  const shadows=[0,1,2].map(i=>scene.getObjectByName('support-bomber-shadow-'+i) as THREE.Mesh<THREE.PlaneGeometry,THREE.ShaderMaterial>);
+  const at=(age:number)=>{state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:60+age}};const saved=structuredClone(state);r.update(age*1000,state);expect(state).toEqual(saved);};
+  for(const age of [0,3,5.5,6.5,6.8999,6.9,6.9001,7.5,8.8,9.45,10.75,13.5,16]){
+    at(age);
+    r.planes.forEach((plane,i)=>{
+      expect(plane.position.y).toBe(8.5);expect(plane.position.z).toBeCloseTo(11+(age-7.5)*18);
+      expect(plane.scale.toArray()).toEqual([.5,.5,.5]);expect(plane.rotation.toArray()).toEqual([0,Math.PI,0,'XYZ']);
+      expect(shadows[i].position.x).toBe(plane.position.x);expect(shadows[i].position.z).toBe(plane.position.z);
+      expect(shadows[i].position.y).toBe(.018);expect(shadows[i].renderOrder).toBeLessThan(0);
+      expect(shadows[i].material.uniforms.opacity.value).toBe(.2);
+      expect((plane.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.opacity).toBe(1);
+      if(age>=6.5){const bounds=new THREE.Box3().setFromObject(plane);
+        for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z])
+          expect(new THREE.Vector3(x,y,z).project(camera).y).toBeGreaterThan(0);
+      }
+    });
   }
-  state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:71}};r.update(4000,state);expect(shadows.every(s=>!s.visible)).toBe(true);
-  state={...state,squad:{...state.squad,count:0}};r.update(4000,state);expect(r.planes.every(p=>!p.visible)).toBe(true);
-  r.dispose();expect(scene.children).toHaveLength(0);
+  for(let index=0;index<12;index++){
+    const round=index<9?Math.floor(index/3):index-6,lane=index<9?[0,2,4][index%3]:2;
+    const impact=7.5+round*.65;at(impact-.6+1e-10);
+    const bomb=scene.getObjectByName('support-falling-bomb-'+index)!,plane=r.planes[lane/2];
+    expect(bomb.visible).toBe(true);expect(bomb.position.x).toBeCloseTo(plane.position.x);expect(bomb.position.z).toBeCloseTo(plane.position.z);
+    expect(bomb.position.y).toBeCloseTo(plane.position.y-.15);
+    at(impact-1e-7);expect(bomb.visible).toBe(true);expect(bomb.position.x).toBeCloseTo(-state.track.lanePositions![lane]);
+    const z=round<3?(round+.5)*(lane===2?38/3:14):38+(round-3)*14;
+    expect(bomb.position.z).toBeCloseTo(z,4);expect(bomb.position.y).toBeCloseTo(0,4);
+  }
+  at(8.65);const saved=r.planes.map(p=>p.position.toArray());r.reset();at(8.65);expect(r.planes.map(p=>p.position.toArray())).toEqual(saved);
+  at(8.65);expect(r.planes.map(p=>p.position.toArray())).toEqual(saved);
+  support.airstrike!.status='cancelled';at(8.65);const prior=r.plane.position.z;
+  r.update(9150,state);expect(r.plane.position.z-prior).toBeCloseTo(9); // pause-aware departure continues at 18 units/s
+  r.update(9150,state);expect(r.plane.position.z-prior).toBeCloseTo(9);
+  state={...state,squad:{...state.squad,count:0}};r.update(9150,state);expect(r.planes.every(p=>!p.visible)).toBe(true);expect(shadows.every(p=>!p.visible)).toBe(true);
+  r.reset();r.dispose();expect(scene.children).toHaveLength(0);
 });
