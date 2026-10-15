@@ -236,7 +236,7 @@ function createRaf() {
   vi.stubGlobal('localStorage', { getItem: (key: string) => saved.get(key) ?? null,
     setItem: (key: string, value: string) => saved.set(key, value), removeItem: (key: string) => saved.delete(key) });
   vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible',
-    createElement: () => ({ className: '', textContent: '', setAttribute: vi.fn(), remove: vi.fn() }) }));
+    createElement: () => Object.assign(new EventTarget(), { className: '', textContent: '', setAttribute: vi.fn(), remove: vi.fn(), blur: vi.fn() }) }));
   vi.spyOn(GameAudio.prototype, 'activate').mockResolvedValue('running');
   const windowTarget = new EventTarget();
   vi.stubGlobal('window', windowTarget);
@@ -1115,6 +1115,7 @@ vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
 
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   reviewControlsHost = {} as HTMLElement;
+  advancedControlsHost = {prepend:vi.fn()} as unknown as HTMLElement;
   private open = false;
   close() {mock.panelClose();if(this.open){this.open=false;this.onOpenChange(false);}}
   constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown, private onOpenChange:(open:boolean)=>void) {

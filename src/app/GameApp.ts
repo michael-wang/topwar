@@ -181,19 +181,26 @@ export class GameApp {
       this.pauseOverlay.setMenuOpen(open);
       if (open && !this.paused) this.togglePaused();
     });
+    const selectReview = (role: DevReviewFixture | null): void => {
+      if (this.startup === 'recovering' || this.recovery?.blocking) return;
+      this.exitSleepTest();
+      this.devReviewFixture = role;
+      this.devReview?.setSelected(role ?? undefined);
+      if (role === null || this.restored) {
+        // An explicit new scene uses current authored data; Continue keeps the saved data intact.
+        this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
+        this.tuningPanel?.setValues(this.runtimeTuning);
+      }
+      this.retry();
+    };
     this.devReview = this.config.catharsis?.defenseMode
-      ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, (role) => {
-        if (this.startup === 'recovering' || this.recovery?.blocking) return;
-        this.exitSleepTest();
-        this.devReviewFixture = role;
-        this.devReview?.setSelected(role ?? undefined);
-        if (role === null || this.restored) {
-          // An explicit new scene uses current authored data; Continue keeps the saved data intact.
-          this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
-          this.tuningPanel?.setValues(this.runtimeTuning);
-        }
-        this.retry();
-      }) : null;
+      ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, selectReview) : null;
+    if (import.meta.env.DEV && this.config.catharsis?.defenseMode) {
+      const dense = document.createElement('button');
+      dense.type = 'button'; dense.textContent = 'BOSS 密集輾壓'; dense.className = 'dev-dense-tank';
+      dense.addEventListener('click', () => { selectReview('boss-dense'); dense.blur(); });
+      this.tuningPanel.advancedControlsHost.prepend(dense);
+    }
 
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());

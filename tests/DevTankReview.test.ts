@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import config from './helpers/ShippingConfig';
 import levelData from '../public/game-data/levels/level-001.json';
 import { LevelDefinitionSchema } from '../src/level/LevelDefinition';
@@ -12,8 +12,44 @@ import type { DefenseTankConfig } from '../src/config/defenseTankConfig';
 const level = LevelDefinitionSchema.parse(levelData), tuning = qaSimulationTuning(config);
 const options = { seed: 19, level, tiers: config.tiers, startSquad: 1, startRocketCount: 0,
   catharsis: { balance: config.catharsis!, trackHalfWidth: config.track.halfWidth } };
-const roles = Object.keys(BOSS_TEST_PRESETS) as TankReviewFixture[];
+const roles = Object.keys(BOSS_TEST_PRESETS) as (keyof typeof BOSS_TEST_PRESETS)[];
 const make = (role: TankReviewFixture) => createDevReviewFixture(options, config.weapon.rifle.fireRate, role);
+it('authors one fixed 67-member dense review without modifying the real Boss config, RNG or loadout',()=>{
+  const a=make('boss-dense').getState(),b=make('boss-dense').getState(),original=make('boss-intro').getState();
+  expect(a).toEqual(b);expect(a.catharsis).toEqual(original.catharsis);expect(a.rngState).toBe(original.rngState);
+  expect(a.progression).toEqual(original.progression);expect(a.squad).toEqual(original.squad);expect(a.defenseTank).toBeUndefined();
+  expect(a.enemies).toHaveLength(67);expect(new Set(a.enemies.map(e=>e.lane)).size).toBe(5);
+  expect(new Set(a.enemies.map(e=>e.archetype))).toEqual(new Set(['heavy','grunt']));
+  expect(a.enemies.map(e=>e.id)).toEqual(Array.from({length:67},(_,i)=>i+1));
+});
+it('crushes exactly the body-path and touching-edge IDs, sparing every other review enemy without awards',()=>{
+  const sim=make('boss-dense'),s=sim.getState();s.weapons.rifleCooldownRemainingSeconds=100;s.weapons.rifleMemberCooldowns=[100,100];sim.restoreState(s);
+  const events=[] as ReturnType<typeof sim.consumeTankEntranceEvents>;
+  for(let i=0;i<150;i++){step(sim);events.push(...sim.consumeTankEntranceEvents());}
+  const crushed=[31,32,33,34,35,36,37,38,39,60,62,64,66],after=sim.getState();
+  expect(events.flatMap(e=>e.victims.map(v=>v.id)).sort((a,b)=>a-b)).toEqual(crushed);
+  expect(events.filter(e=>e.shockwave)).toHaveLength(1);
+  expect(after.enemies.filter(e=>e.id<=67).map(e=>e.id)).toEqual(s.enemies.filter(e=>!crushed.includes(e.id)).map(e=>e.id));
+  expect(after.enemies.filter(e=>e.id<=67).every(e=>e.z<s.enemies[e.id-1].z)).toBe(true);
+  expect(after.progression).toEqual(s.progression);expect(after.combatStats).toEqual(s.combatStats);
+  expect(after.defenseTank).toMatchObject({status:'active',hp:6500,phase:1,startedAtSeconds:60,activeAtSeconds:62.5});
+});
+it('awards ordinary XP for player kills in the dense review',()=>{
+  const sim=make('boss-dense');step(sim,120);const s=sim.getState(),stats=s.combatStats!;
+  expect(stats.gruntKills+stats.heavyKills).toBeGreaterThan(0);
+  expect(s.progression!.xp).toBe(stats.gruntKills+10*stats.heavyKills);
+});
+it.each([20,75,160])('dense review checkpoint at tick %i restores exact state and remains DEV-only',ticks=>{
+  const sim=make('boss-dense');step(sim,ticks);const c:SessionCheckpoint={version:1,simulationContract:1,game:'topwar',mode:'defense',
+    savedAt:1,build:'test',paused:true,hidden:false,reason:'pause',fixture:'boss-dense',config,level,
+    tuning:defaultRuntimeTuning(config,level),state:sim.getState()};
+  const entries=new Map<string,string>(),storage={getItem:(k:string)=>entries.get(k)??null,setItem:(k:string,v:string)=>{entries.set(k,v);},removeItem:(k:string)=>{entries.delete(k);}};
+  expect(writeCheckpoint(c,storage).ok).toBe(true);const loaded=readCheckpoint(storage);expect(loaded.status).toBe('valid');
+  if(loaded.status!=='valid')throw Error('Rejected dense checkpoint');const copy=simulationFromCheckpoint(loaded.checkpoint);
+  expect(copy.getState()).toEqual(sim.getState());expect(copy.consumeTankEntranceEvents()).toEqual([]);
+  step(sim,60);step(copy,60);expect(copy.getState()).toEqual(sim.getState());
+  vi.stubEnv('DEV',false);try{expect(readCheckpoint(storage).status).toBe('invalid');}finally{vi.unstubAllEnvs();}
+});
 it('previews a real completed Tank battlefield with fixed DEV results and no manual final hit', () => {
   const sim = createDevReviewFixture(options, config.weapon.rifle.fireRate, 'victory'), state = sim.getState();
   expect(state.catharsis!.balance).toEqual(config.catharsis);
