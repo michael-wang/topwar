@@ -32,7 +32,7 @@ import type { EnemySimulationState, EnemyStreamSimulationState, ProjectileSimula
 import { copySquadForPresentation, type PresentationEvent } from './PresentationEvent';
 import { CatharsisConfigSchema, type CatharsisConfig } from '../config/catharsisConfig';
 import { attackLanePositions } from './enemies/laneComposition';
-import { startDefenseTank, advanceTankPosition, tankPhase, tankHitZ, tankInBlast, admitTankFlanks,
+import { copyDefenseTank, cancelTankSalvo, startDefenseTank, advanceTankPosition, tankPhase, tankHitZ, tankInBlast, admitTankFlanks,
   tankSalvo, validateDefenseTank, clearTankEntrance, type TankEntranceEvent } from './defenseTank';
 import { CombatStatsSchema, emptyCombatStats } from './combatStats';
 
@@ -777,13 +777,18 @@ export class Simulation {
   commandEncounter(action: EncounterAction): void { applyEncounterAction(this.state, action); }
 
   cancelArtillery(id?: number): void {
+    const cancelTank = id === undefined || this.state.artillery?.shells.some(s => s.id === id && s.source.type === 'defenseTank');
     if (this.state.artillery) this.state = { ...this.state, artillery: { ...this.state.artillery,
       shells: id === undefined ? [] : this.state.artillery.shells.filter(shell => shell.id !== id) } };
     const c=this.state.catharsis?.balance.navalBarrage;
     if(c&&this.state.navalBarrage)this.state.navalBarrage=cancelNavalSalvo(this.state.navalBarrage,c,
       this.state.artillery?.shells??[],this.state.elapsedSeconds);
     const tank = this.state.defenseTank, tankConfig = this.state.catharsis?.balance.defenseTank;
-    if (tank?.pendingImpactAtSeconds != null && tankConfig) {
+    if (tank?.rhythm && tankConfig && cancelTank) {
+      const next = copyDefenseTank(tank);
+      cancelTankSalvo(next, tankConfig, this.state.elapsedSeconds, this.state.artillery?.shells ?? []);
+      this.state.defenseTank = next;
+    } else if (!tank?.rhythm && tank?.pendingImpactAtSeconds != null && tankConfig) {
       const pending = this.state.artillery?.shells.filter(s => s.source.type === 'defenseTank') ?? [];
       this.state.defenseTank = { ...tank, pendingImpactAtSeconds: pending.length ? Math.max(...pending.map(s => s.impactAtSeconds)) : null,
         nextAttackAtSeconds: pending.length ? null : this.state.elapsedSeconds + tankConfig.phases[tank.phase - 1].cooldownSeconds };
@@ -847,7 +852,7 @@ export class Simulation {
     const catharsis = this.state.catharsis;
     const combatStats = { ...(this.state.combatStats ?? { ...emptyCombatStats(), shotsFired: this.state.weapons.nextProjectileId - 1 }) };
     const tankConfig = catharsis?.balance.defenseTank;
-    let defenseTank = this.state.defenseTank ? { ...this.state.defenseTank } : undefined;
+    let defenseTank = this.state.defenseTank ? copyDefenseTank(this.state.defenseTank) : undefined;
     if (!defenseTank && tankConfig && encounterProgression(this.state.progression!).level >= tankConfig.triggerLevel)
       defenseTank = startDefenseTank(this.state.elapsedSeconds, this.state.seed, tankConfig);
     const grenade = this.state.grenade ? structuredClone(this.state.grenade) : undefined;
@@ -1059,6 +1064,7 @@ export class Simulation {
       if (tankDefeated) {
         defenseTank.status = 'defeated'; defenseTank.defeatedAtSeconds = nextElapsedSeconds;
         defenseTank.nextAttackAtSeconds = null; defenseTank.pendingImpactAtSeconds = null;
+        if (defenseTank.rhythm) defenseTank.rhythm.pendingShots = [];
         enemies.length = 0; survivingProjectiles.length = 0;
         if (grenade) grenade.flight = null;
         this.artilleryEvents = []; // No unresolved launch/impact feedback after the clear.
@@ -1161,6 +1167,7 @@ export class Simulation {
     }
     if (squad.count === 0 && defenseTank) {
       defenseTank.nextAttackAtSeconds = null; defenseTank.pendingImpactAtSeconds = null;
+      if (defenseTank.rhythm) defenseTank.rhythm.pendingShots = [];
     }
     // Casualties consume the front of the Tier-1 roster. Keep each survivor's
     // shot phase when its index shifts; do not inherit a removed member's clock.
@@ -1324,7 +1331,7 @@ export class Simulation {
       if (lanes.length) {
         const source = { id: 'stage1-tank', type: 'defenseTank', position: { x: 0, y: 2.3, z: defenseTank.z - tankConfig.halfDepth - 1.1 } };
         const ids = lanes.map(targetLane => this.launchArtillery({ source, targetLane, flight: tankConfig.flight }));
-        defenseTank.pendingImpactAtSeconds = Math.max(...this.state.artillery!.shells.filter(s => ids.includes(s.id)).map(s => s.impactAtSeconds));
+        defenseTank.pendingImpactAtSeconds = Math.max(defenseTank.pendingImpactAtSeconds ?? 0, ...this.state.artillery!.shells.filter(s => ids.includes(s.id)).map(s => s.impactAtSeconds));
       }
     }
     if (stepEvents.length > 0) {
@@ -1365,7 +1372,7 @@ export class Simulation {
     return {
       ...this.state,
       ...(this.state.commanderSupport ? { commanderSupport: structuredClone(this.state.commanderSupport) } : {}),
-      ...(this.state.defenseTank ? { defenseTank: { ...this.state.defenseTank } } : {}),
+      ...(this.state.defenseTank ? { defenseTank: copyDefenseTank(this.state.defenseTank) } : {}),
       ...(this.state.combatStats ? { combatStats: { ...this.state.combatStats } } : {}),
       ...(this.state.artillery ? { artillery: structuredClone(this.state.artillery) } : {}),
       ...(this.state.catharsis ? { catharsis: structuredClone(this.state.catharsis) } : {}),

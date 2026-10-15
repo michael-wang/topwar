@@ -6,6 +6,9 @@ import type { ArtilleryShell } from './artillery';
 import { attackLanePositions } from './enemies/laneComposition';
 
 const clock = z.number().finite().nonnegative();
+const rngState = z.number().int().min(0).max(0xffffffff);
+const rhythm = z.strictObject({ cooldownRngState: rngState, gapRngState: rngState,
+  pendingShots: z.array(z.strictObject({ targetLane: z.number().int().min(0).max(4), launchAtSeconds: clock })).max(2).readonly() });
 export const TANK_ENTRANCE_CLEAR_FRACTION = .2;
 export interface TankEntranceEvent {
   z: number;
@@ -17,11 +20,16 @@ const schema = z.strictObject({ version: z.literal(1), status: z.enum(['entering
   hp: z.number().finite().nonnegative(), phase: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   z: z.number().finite(), startedAtSeconds: clock, activeAtSeconds: clock,
   nextAttackAtSeconds: clock.nullable(), pendingImpactAtSeconds: clock.nullable(),
+  rhythm: rhythm.optional(),
   nextFlankAtSeconds: clock, nextGiantAtSeconds: clock.nullable(),
   giantLane: z.union([z.literal(0), z.literal(4)]), rngState: z.number().int().min(0).max(0xffffffff),
   defeatedAtSeconds: clock.nullable(), lastHitAtSeconds: clock.nullable(),
 });
 export type DefenseTankState = z.infer<typeof schema>;
+export function copyDefenseTank(tank: DefenseTankState): DefenseTankState {
+  return { ...tank, ...(tank.rhythm ? { rhythm: { ...tank.rhythm,
+    pendingShots: tank.rhythm.pendingShots.map(s => ({ ...s })) } } : {}) };
+}
 export const tankPhase = (hp: number, c: DefenseTankConfig): 1 | 2 | 3 =>
   hp / c.hp > c.phase2HpFraction ? 1 : hp / c.hp > c.phase3HpFraction ? 2 : 3;
 export function startDefenseTank(now: number, seed: number, c: DefenseTankConfig): DefenseTankState {
@@ -29,6 +37,8 @@ export function startDefenseTank(now: number, seed: number, c: DefenseTankConfig
   return { version: 1, status: 'entering', entranceCleared: false, hp: c.hp, phase: 1, z: c.startZ,
     startedAtSeconds: now, activeAtSeconds: active, nextAttackAtSeconds: active,
     pendingImpactAtSeconds: null, nextFlankAtSeconds: active, nextGiantAtSeconds: null,
+    ...(c.salvoPolicy ? { rhythm: { cooldownRngState: (seed ^ c.streamSeed ^ 0x434f4f4c) >>> 0,
+      gapRngState: (seed ^ c.streamSeed ^ 0x47415053) >>> 0, pendingShots: [] } } : {}),
     giantLane: 0, rngState: (seed ^ c.streamSeed) >>> 0, defeatedAtSeconds: null, lastHitAtSeconds: null };
 }
 function entranceZ(tank: Readonly<DefenseTankState>, c: DefenseTankConfig, now: number): number {
@@ -122,9 +132,18 @@ export function admitTankFlanks(frame: SimulationState, tank: DefenseTankState, 
 export function tankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: number,
   shells: readonly ArtilleryShell[], available: number, lanePositions: readonly number[], playerX: number): number[] {
   if (tank.status !== 'active') return [];
+  const pending = tank.rhythm?.pendingShots;
+  if (pending?.length) {
+    if (available < 1 || now + 1e-9 < pending[0].launchAtSeconds) return [];
+    const shot = pending[0];
+    // One actual shot per step, never catch up a burst after a long/blocked step.
+    const delay = Math.max(0, now - shot.launchAtSeconds);
+    tank.rhythm!.pendingShots = pending.slice(1).map(next => ({ ...next, launchAtSeconds: next.launchAtSeconds + delay }));
+    return [shot.targetLane];
+  }
   if (tank.pendingImpactAtSeconds !== null) {
     if (shells.some(s => s.source.type === 'defenseTank')) return [];
-    tank.nextAttackAtSeconds = tank.pendingImpactAtSeconds + c.phases[tank.phase - 1].cooldownSeconds;
+    tank.nextAttackAtSeconds = tank.pendingImpactAtSeconds + tankCooldown(tank, c);
     tank.pendingImpactAtSeconds = null;
   }
   const count = c.phases[tank.phase - 1].shells;
@@ -136,11 +155,37 @@ export function tankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: num
   const rng = new SeededRng(tank.rngState), pool = lanePositions.map((_, lane) => lane).filter(lane => lane !== aimed), lanes = [aimed];
   for (let i = 1; i < count; i++) lanes.push(pool.splice(rng.nextInt(pool.length), 1)[0]);
   tank.rngState = rng.getState(); tank.nextAttackAtSeconds = null;
+  if (c.salvoPolicy?.mode === 'randomStaggered') {
+    const gapRng = new SeededRng(tank.rhythm!.gapRngState), range = c.salvoPolicy.gapSeconds;
+    let launchAtSeconds = now;
+    tank.rhythm!.pendingShots = lanes.slice(1).map(targetLane => {
+      launchAtSeconds += range.min + gapRng.nextFloat() * (range.max - range.min);
+      return { targetLane, launchAtSeconds };
+    });
+    tank.rhythm!.gapRngState = gapRng.getState();
+    return [lanes[0]];
+  }
   return lanes;
+}
+function tankCooldown(tank: DefenseTankState, c: DefenseTankConfig): number {
+  if (!c.salvoPolicy) return c.phases[tank.phase - 1].cooldownSeconds;
+  const rng = new SeededRng(tank.rhythm!.cooldownRngState), range = c.salvoPolicy.cooldownSeconds[tank.phase - 1];
+  const seconds = range.min + rng.nextFloat() * (range.max - range.min);
+  tank.rhythm!.cooldownRngState = rng.getState();
+  return seconds;
+}
+export function cancelTankSalvo(tank: DefenseTankState, c: DefenseTankConfig, now: number,
+  shells: readonly ArtilleryShell[]): void {
+  const hadVolley = tank.pendingImpactAtSeconds !== null || !!tank.rhythm?.pendingShots.length;
+  if (tank.rhythm) tank.rhythm.pendingShots = [];
+  const active = shells.filter(s => s.source.type === 'defenseTank');
+  tank.pendingImpactAtSeconds = active.length ? Math.max(...active.map(s => s.impactAtSeconds)) : null;
+  if (hadVolley) tank.nextAttackAtSeconds = active.length ? null : now + tankCooldown(tank, c);
 }
 export function validateDefenseTank(value: unknown, c: DefenseTankConfig, now: number, shells: readonly ArtilleryShell[]): DefenseTankState {
   const tank = schema.parse(value), active = shells.filter(s => s.source.type === 'defenseTank');
   tank.entranceCleared ??= tank.status !== 'entering';
+  const shots = tank.rhythm?.pendingShots ?? [];
   if (tank.hp > c.hp || tank.phase !== tankPhase(tank.hp, c) || tank.startedAtSeconds > now
     || Math.abs(tank.activeAtSeconds - tank.startedAtSeconds - c.entrySeconds) > 1e-8
     || (tank.status === 'defeated') !== (tank.hp === 0) || (tank.status === 'defeated') !== (tank.defeatedAtSeconds !== null)
@@ -149,8 +194,16 @@ export function validateDefenseTank(value: unknown, c: DefenseTankConfig, now: n
     || tank.status === 'entering' && now + 1e-9 >= tank.activeAtSeconds
     || tank.status === 'active' && now + 1e-9 < tank.activeAtSeconds
     || tank.z > c.startZ || tank.nextFlankAtSeconds < tank.activeAtSeconds
-    || (tank.pendingImpactAtSeconds !== null ? tank.nextAttackAtSeconds !== null || !active.length
-      || Math.abs(tank.pendingImpactAtSeconds - Math.max(...active.map(s => s.impactAtSeconds))) > 1e-8 : active.length > 0))
+    || !!tank.rhythm !== !!c.salvoPolicy
+    || shots.length > 0 && (c.salvoPolicy?.mode !== 'randomStaggered' || tank.status !== 'active'
+      || tank.nextAttackAtSeconds !== null || tank.pendingImpactAtSeconds === null
+      || shots.length + active.length > 3
+      || new Set([...shots.map(s => s.targetLane), ...active.map(s => s.targetLane)]).size !== shots.length + active.length
+      || shots.some((s, i) => s.launchAtSeconds < tank.activeAtSeconds
+        || i > 0 && s.launchAtSeconds <= shots[i - 1].launchAtSeconds))
+    || (tank.pendingImpactAtSeconds !== null ? tank.nextAttackAtSeconds !== null
+      || (!active.length ? !shots.length || tank.pendingImpactAtSeconds > now
+        : Math.abs(tank.pendingImpactAtSeconds - Math.max(...active.map(s => s.impactAtSeconds))) > 1e-8) : active.length > 0))
     throw Error('Invalid Defense tank checkpoint');
   return tank;
 }

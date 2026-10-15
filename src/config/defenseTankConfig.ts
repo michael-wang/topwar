@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ArtilleryFlightSchema, artilleryDefaults } from './artilleryConfig';
 
 const positive = z.number().finite().positive();
+const range = z.strictObject({ min: positive, max: positive }).refine(r => r.max >= r.min);
 const phase = z.strictObject({
   shells: z.number().int().min(1).max(3), cooldownSeconds: positive,
   speedUnitsPerSecond: positive, flankIntervalSeconds: positive,
@@ -17,6 +18,11 @@ export const DefenseTankConfigSchema = z.strictObject({
   flankSpawnAheadDistance: positive.optional(),
   phase2HpFraction: positive.lt(1), phase3HpFraction: positive.lt(1),
   streamSeed: z.number().int().min(0).max(0xffffffff),
+  // Explicit DEV opt-in; absent in shipping plans and historical checkpoints.
+  salvoPolicy: z.strictObject({
+    mode: z.enum(['randomSimultaneous', 'randomStaggered']),
+    cooldownSeconds: z.array(range).length(3).readonly(), gapSeconds: range,
+  }).optional(),
   phases: z.tuple([phase, phase, phase]),
 }).refine(c => c.phase3HpFraction < c.phase2HpFraction && c.startZ > c.battleZ && c.battleZ > c.halfDepth,
   'Invalid tank phase thresholds or entrance');
