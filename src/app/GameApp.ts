@@ -36,6 +36,7 @@ import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
 import { createDevReviewFixture, type DevReviewFixture } from './DevReviewFixtures';
 import { AIR_SUPPORT_THRESHOLD_COUNTS, type AirSupportThresholdFixture } from './DevAirSupportReview';
+import { TANK_ARTILLERY_REVIEWS, type TankArtilleryReviewFixture } from './DevTankArtilleryReview';
 import { supportBossHpThreshold } from '../simulation/commanderSupport';
 import { DevReviewControls } from '../ui/DevReviewControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
@@ -114,6 +115,7 @@ export class GameApp {
   private readonly perfHud: PerfHud | null;
   private readonly devReview: DevReviewControls | null;
   private readonly airSupportThresholdSelect: HTMLSelectElement | null = null;
+  private readonly tankArtillerySelect: HTMLSelectElement | null = null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
   private readonly fps: DevFps | null;
@@ -191,6 +193,8 @@ export class GameApp {
       this.devReview?.setSelected(role ?? undefined);
       if (import.meta.env.DEV && this.airSupportThresholdSelect && role?.startsWith('air-threshold-'))
         this.airSupportThresholdSelect.value = role;
+      if (import.meta.env.DEV && this.tankArtillerySelect && role?.startsWith('boss-rhythm-'))
+        this.tankArtillerySelect.value = role;
       if (role === null || this.restored) {
         // An explicit new scene uses current authored data; Continue keeps the saved data intact.
         this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
@@ -201,6 +205,20 @@ export class GameApp {
     this.devReview = this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, selectReview) : null;
     if (import.meta.env.DEV && this.config.catharsis?.defenseMode) {
+      const section = document.createElement('div'), label = document.createElement('label');
+      section.className = 'dev-tank-rhythm'; section.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end;margin-bottom:10px';
+      label.textContent = 'BOSS 砲擊 A/B 測試'; label.style.cssText = 'display:grid;gap:6px;font-weight:700';
+      const select = this.tankArtillerySelect = document.createElement('select');
+      select.setAttribute('aria-label', 'BOSS 砲擊 A/B 測試');
+      select.style.cssText = 'width:100%;min-height:44px;box-sizing:border-box;font:14px sans-serif;background:#263444;color:#fff3dc;border:1px solid #8997a4';
+      for (const review of TANK_ARTILLERY_REVIEWS) {
+        const option = document.createElement('option'); option.value = review.role; option.textContent = review.label; select.append(option);
+      }
+      const start = document.createElement('button'); start.type = 'button'; start.textContent = '開始';
+      start.setAttribute('aria-label', '開始砲擊測試');
+      start.style.cssText = 'min-height:44px;padding:8px;font:700 14px sans-serif;touch-action:manipulation';
+      start.addEventListener('click', () => { selectReview(select.value as TankArtilleryReviewFixture); start.blur(); });
+      label.append(select); section.append(label, start); this.tuningPanel.advancedControlsHost.prepend(section);
       const dense = document.createElement('button');
       dense.type = 'button'; dense.textContent = 'BOSS 密集輾壓'; dense.className = 'dev-dense-tank';
       dense.addEventListener('click', () => { selectReview('boss-dense'); dense.blur(); });
@@ -578,6 +596,8 @@ export class GameApp {
         this.devReview?.setSelected(this.devReviewFixture ?? undefined); this.tuningPanel?.setValues(this.runtimeTuning);
         if (import.meta.env.DEV && this.airSupportThresholdSelect && c.fixture?.startsWith('air-threshold-'))
           this.airSupportThresholdSelect.value = c.fixture;
+        if (import.meta.env.DEV && this.tankArtillerySelect && c.fixture?.startsWith('boss-rhythm-'))
+          this.tankArtillerySelect.value = c.fixture;
         const s = this.simulation.getFrameState();
         this.tankEntranceHud.restore(s);
         this.targetX = s.player.x; this.lastRunSeed = s.seed;
