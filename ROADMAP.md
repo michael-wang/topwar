@@ -2,11 +2,11 @@
 
 ## NOW
 
-Pixel 8 acceptance is pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, the DEV dense Tank entrance review (nearby outside-footprint survival is confirmed), Boss combat, Pause/Victory continuity, silent emergency warnings, bomber smoke, high bomber approach/sky departure with beach shadows (P4.10A), cannon muzzle/powder feedback (P4.10B), the 0.35-second three-hit Supply recovery trial (P4.10C) and Stage1 Complete music. Camera B and full-width lane highlights remain accepted. Preserve HP-only Boss air support at ≤750, released Defense saves, the four quick-test entries and manual deployment.
+Pixel 8 acceptance is pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, Boss combat, Pause/Victory continuity, silent emergency warnings, bomber smoke, revised mid-view bomber release/sea departure with stronger beach shadows (P4.11A), cannon muzzle/powder feedback (P4.10B), the 0.35-second three-hit Supply recovery trial (P4.10C) and Stage1 Complete music. Camera B, full-width lane highlights, P4.9A testing-menu Pause/accessibility and P4.9B dense Tank entrance review are accepted. Preserve HP-only Boss air support at ≤750, released Defense saves, the four quick-test entries and manual deployment.
 
 ## NEXT
 
-1. Review Lv11/Lv12 growth, casualty recovery and localized Tank entrance crushing on Pixel 8 alongside Boss combat and pending presentation/music polish.
+1. Review Lv11/Lv12 growth, casualty recovery and pending four/five-MG spacing alongside Boss combat and pending presentation/music polish.
 2. Add immediate loading feedback after Continue / New Game.
 3. Investigate and reduce the long first load.
 

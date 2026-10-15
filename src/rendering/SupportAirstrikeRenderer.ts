@@ -21,11 +21,11 @@ function bomberZ(age: number, c: CommanderSupportConfig, tankZ: number, lane: nu
 }
 function bomberY(age: number, c: CommanderSupportConfig, index: number): number {
   const flight = age - (c.warningSeconds - .6);
-  return (flight < 0 ? 24 : 7.5 + flight * .15) + HEIGHT_OFFSET[index];
+  return (flight < 0 ? 24 : 1.35 + flight * .12) + HEIGHT_OFFSET[index];
 }
 function skyZ(age: number, c: CommanderSupportConfig, tankZ: number, lane: number): number {
   const flight = age - (c.warningSeconds - .6);
-  return flight < 0 ? bomberZ(age + .6, c, tankZ, lane) : 52 + flight * 9 + (lane === 2 ? 5 : 0);
+  return flight < 0 ? bomberZ(age + .6, c, tankZ, lane) : 5 + flight * 6 + (lane === 2 ? .5 : 0);
 }
 
 /** Three shared-geometry four-engine bombers. Saved clocks drive the whole formation. */
@@ -49,9 +49,10 @@ export class SupportAirstrikeRenderer {
         gl_FragColor=vec4(.035,.045,.05,a);
       }`,
   });
-  private readonly metal = new THREE.MeshStandardMaterial({ color: '#3c4856', roughness: .75, transparent: true });
-  private readonly detail = new THREE.MeshStandardMaterial({ color: '#99937d', roughness: .8, transparent: true });
-  private readonly glass = new THREE.MeshStandardMaterial({ color: '#203744', roughness: .3, transparent: true });
+  // The low release pass reads above the stylized oversized ground fireballs.
+  private readonly metal = new THREE.MeshStandardMaterial({ color: '#3c4856', roughness: .75, transparent: true, depthTest: false, depthWrite: false });
+  private readonly detail = new THREE.MeshStandardMaterial({ color: '#99937d', roughness: .8, transparent: true, depthTest: false, depthWrite: false });
+  private readonly glass = new THREE.MeshStandardMaterial({ color: '#203744', roughness: .3, transparent: true, depthTest: false, depthWrite: false });
   private readonly geometry: THREE.BufferGeometry;
   private readonly trimGeometry: THREE.BufferGeometry;
   private readonly cockpitGeometry = new THREE.SphereGeometry(1, 8, 6);
@@ -90,10 +91,11 @@ export class SupportAirstrikeRenderer {
       for (const x of [-2.45, -1.25, 1.25, 2.45]) {
         const prop = new THREE.Mesh(this.propGeometry, this.detail); prop.position.set(x, -.12, -1.39); root.add(prop); this.propellers.push(prop);
       }
+      root.traverse(child => { child.renderOrder = 4; });
       root.visible = false; root.scale.setScalar(.85); this.planes.push(root); scene.add(root);
       const shadow = new THREE.Mesh(this.shadowGeometry, this.shadowMaterial);
       shadow.name = `support-bomber-shadow-${i}`; shadow.visible = false;
-      shadow.scale.set(.38, 1, .55); shadow.renderOrder = -1; scene.add(shadow); this.shadows.push(shadow);
+      shadow.scale.set(.5, 1, .65); shadow.renderOrder = -1; scene.add(shadow); this.shadows.push(shadow);
     }
     this.plane = this.planes[0]; this.legacy = new GrenadeExplosion(scene, 4, false); this.explosions = new HeavyAirstrikeExplosion(scene);
     for (let i = 0; i < 12; i++) {
@@ -116,7 +118,7 @@ export class SupportAirstrikeRenderer {
       const age = frame.elapsedSeconds - a.triggeredAtSeconds + (a.status === 'cancelled' || state.defenseTank?.state.status === 'defeated' ? (now - this.clockAtMs) / 1000 : 0);
       const departure = c.warningSeconds + (HEAVY_RAID_ROUNDS - 1) * c.strikeSpacingSeconds, exit = Math.max(0, age - departure) / 10;
       const reveal = Math.max(0, Math.min(1, (age - (c.warningSeconds - .6)) / .45));
-      this.shadowMaterial.uniforms.opacity.value = .085 * Math.min(1, Math.max(0, age / .6))
+      this.shadowMaterial.uniforms.opacity.value = .2 * Math.min(1, Math.max(0, age / .6))
         * Math.max(0, Math.min(1, (c.warningSeconds + .2 - age) / .8));
       // Aircraft lead their falling bombs by the visible 0.6-second drop.
       const tankZ = a.tankZAtWarning ?? state.defenseTank?.state.z ?? 38;
@@ -126,7 +128,10 @@ export class SupportAirstrikeRenderer {
           && (a.status !== 'cancelled' || frame.elapsedSeconds - a.triggeredAtSeconds >= c.warningSeconds - .6);
         const laneX = -(state.track.lanePositions?.[lane] ?? FALLBACK_X[i]);
         const innerX = laneX - Math.sign(laneX) * .55;
-        p.position.set(innerX * 2.1,
+        // The lower release pass is large on screen without reaching the squad.
+        // Shared model proportions stay intact; the sea route naturally shrinks it.
+        p.scale.setScalar(.5);
+        p.position.set(innerX * 1.1,
           bomberY(age, c, i) + Math.sin(age * .8 + i) * .04,
           skyZ(age, c, tankZ, lane) - originZ);
         p.rotation.set(.08 + Math.min(1, age / c.warningSeconds) * .2, Math.PI + HEADING[i], Math.sin(age * .5 + i) * .025);
@@ -148,7 +153,7 @@ export class SupportAirstrikeRenderer {
         const startZ = skyZ(impactAge - .6, c, tankZ, lane);
         const laneX = -(state.track.lanePositions?.[lane] ?? 0), planeIndex = lane === 0 ? 0 : lane === 2 ? 1 : 2;
         const startY = bomberY(impactAge - .6, c, planeIndex) - .15;
-        const planeX = (laneX - Math.sign(laneX) * .55) * 2.1;
+        const planeX = (laneX - Math.sign(laneX) * .55) * 1.1;
         bomb.position.set(planeX + (laneX - planeX) * t, startY * (1 - t * t), startZ + (z - startZ) * t - originZ);
         bomb.rotation.z = .1 * Math.sin(t * 6);
       }
@@ -162,6 +167,7 @@ export class SupportAirstrikeRenderer {
       this.bombs.forEach(p => p.visible = false);
       const t = (now - this.flyoverAt) / 1100;
       this.planes.forEach((p, i) => p.visible = i === 0 && !ended && t >= 0 && t < 1);
+      this.plane.scale.setScalar(.85);
       this.plane.position.set(0, 1.2 + t * 4, -7 + t * 50 - originZ); this.plane.rotation.set(0, Math.PI, -.05);
     }
     this.explosions.update(now, originZ); this.legacy.update(now, originZ);
