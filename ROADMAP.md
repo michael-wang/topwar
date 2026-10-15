@@ -2,7 +2,7 @@
 
 ## NOW
 
-Pixel 8 acceptance is pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, the DEV dense Tank entrance review (nearby outside-footprint survival is confirmed), Boss combat, Pause/Victory continuity, silent emergency warnings, bomber smoke and Stage1 Complete music. Camera B and full-width lane highlights remain accepted. Preserve HP-only Boss air support at ≤750, released Defense saves, the four quick-test entries and manual deployment.
+Pixel 8 acceptance is pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, the DEV dense Tank entrance review (nearby outside-footprint survival is confirmed), Boss combat, Pause/Victory continuity, silent emergency warnings, bomber smoke, high bomber approach/sky departure with beach shadows (P4.10A) and Stage1 Complete music. Camera B and full-width lane highlights remain accepted. Preserve HP-only Boss air support at ≤750, released Defense saves, the four quick-test entries and manual deployment.
 
 ## NEXT
 

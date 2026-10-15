@@ -5,6 +5,7 @@ import { HeavyAirstrikeExplosion } from '../src/rendering/HeavyAirstrikeExplosio
 import type { GameRenderState } from '../src/rendering/RenderState';
 import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
 import config from './helpers/ShippingConfig';
+import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
 
 it('budgets compounded neutral smoke opacity while retaining the pooled 5.6-second lifetime and impact layers', () => {
   const scene = new THREE.Scene(), fx = new HeavyAirstrikeExplosion(scene);
@@ -31,7 +32,8 @@ it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes,
     player: { x: 0, z: 0 }, squad: { count: 2, rocketCount: 0, rifleCounts: [2], formationSpacing: 1 },
     track: { halfWidth: 5, defenseLineZ: 0, lanePositions: [-4, -2, 0, 2, 4] }, enemies: [], projectiles: [] };
   const objects = [...scene.children]; r.update(1000, state);
-  expect(r.planes.map(p => p.visible)).toEqual([true, true, true]); expect(r.planes.map(p => p.position.x)).toEqual([3.45, 0, -3.45]);
+  expect(r.planes.map(p => p.visible)).toEqual([true, true, true]);
+  expect(r.planes[0].position.x).toBeCloseTo(3.45*2.1);expect(r.planes[1].position.x).toBe(0);expect(r.planes[2].position.x).toBeCloseTo(-3.45*2.1);
   expect(r.planes[0].children[0]).toBeInstanceOf(THREE.Mesh);
   expect((r.planes[0].children[0] as THREE.Mesh).geometry).toBe((r.planes[2].children[0] as THREE.Mesh).geometry);
   expect(scene.getObjectByName('airstrike-0-smoke')!.visible).toBe(true);
@@ -51,4 +53,26 @@ it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes,
   scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); for (const m of Array.isArray(o.material) ? o.material : [o.material]) materials.add(m); } });
   const releases = [...geometries, ...materials].map(resource => vi.spyOn(resource, 'dispose'));
   r.dispose(); expect(scene.children).toEqual([]); releases.forEach(release => expect(release).toHaveBeenCalledOnce());
+});
+
+it.each([350,390])('keeps approach above view, shadows beneath danger paint, and revealed aircraft in the upper %ipx sky',width=>{
+  const scene=new THREE.Scene(),r=new SupportAirstrikeRenderer(scene),support=emptyCommanderSupport(true,true);
+  Object.assign(support.airstrike!,{status:'waiting',triggeredAtSeconds:60,bombAtSeconds:67.5,tankZAtWarning:38});
+  let state:GameRenderState={commanderSupport:{state:support,config:config.catharsis!.commanderSupport!,elapsedSeconds:64},
+    player:{x:0,z:0},squad:{count:2,rocketCount:0,rifleCounts:[2],formationSpacing:1},
+    track:{halfWidth:3.2,defenseLineZ:0,lanePositions:[-2.8,-1.4,0,1.4,2.8]},enemies:[],projectiles:[]};
+  const snapshot=structuredClone(state);r.update(1000,state);expect(state).toEqual(snapshot);
+  expect(r.planes.every(p=>!p.visible&&p.position.y>=23.9)).toBe(true);
+  const shadows=[0,1,2].map(i=>scene.getObjectByName(`support-bomber-shadow-${i}`) as THREE.Mesh<THREE.PlaneGeometry,THREE.ShaderMaterial>);
+  expect(shadows.every(s=>s.visible&&s.renderOrder<0&&s.position.y<.03)).toBe(true);
+  expect(shadows[0].material.uniforms.opacity.value).toBeLessThan(.1);expect(shadows[0].material.depthWrite).toBe(false);
+  const previous=shadows.map(s=>s.position.z);state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:65}};r.update(2000,state);
+  expect(shadows.every((s,i)=>s.position.z>previous[i])).toBe(true);
+  state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:67.5}};r.update(3000,state);
+  const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
+  for(const p of r.planes){expect(p.visible).toBe(true);const point=p.position.clone().project(camera);
+    expect(point.y).toBeGreaterThan(.55);expect(point.y).toBeLessThan(1.05);expect(Math.abs(point.x)).toBeLessThan(1);}
+  state={...state,commanderSupport:{...state.commanderSupport!,elapsedSeconds:71}};r.update(4000,state);expect(shadows.every(s=>!s.visible)).toBe(true);
+  state={...state,squad:{...state.squad,count:0}};r.update(4000,state);expect(r.planes.every(p=>!p.visible)).toBe(true);
+  r.dispose();expect(scene.children).toHaveLength(0);
 });
