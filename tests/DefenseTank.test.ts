@@ -16,9 +16,11 @@ import { defaultRuntimeTuning } from '../src/app/runtimeTuning';
 import { clearResultRows } from '../src/ui/StageClearOverlay';
 import { combatResults } from '../src/simulation/combatStats';
 
-const level = LevelDefinitionSchema.parse(levelData), tuning = qaSimulationTuning(config), tankConfig = config.catharsis!.defenseTank!;
+const level = LevelDefinitionSchema.parse(levelData), tuning = qaSimulationTuning(config), tankConfig = structuredClone(config.catharsis!.defenseTank!);
+// Released snapshots keep the original simultaneous/fixed scheduler.
+delete tankConfig.salvoPolicy;
 function fixture(playerLevel = 9) {
-  const balance = structuredClone(config.catharsis!);
+  const balance = structuredClone(config.catharsis!); balance.defenseTank = structuredClone(tankConfig);
   balance.levelEncounters!.triggers = []; balance.carnival.enabled = false;
   const sim = new Simulation({ seed: 17, level, startSquad: 2, startRocketCount: 0,
     tiers: config.tiers, catharsis: { balance, trackHalfWidth: config.track.halfWidth } });
@@ -44,7 +46,7 @@ function suppressFire(sim: Simulation) {
   s.weapons.rifleMemberCooldowns = [100, 100]; sim.restoreState(s);
 }
 
-describe('Stage 1 Defense tank', () => {
+describe('Stage 1 Defense tank and released fixed-policy checkpoints', () => {
   it('uses 3 Heavy per lane / 4s flank / 12s Giant phase-2 slots without backlog, retaining old embedded settings', () => {
     const s = active(2).getState(), tank = s.defenseTank!;
     expect(tankConfig.phases.map(p => p.heaviesPerLane)).toEqual([3, 3, 5]);
@@ -382,6 +384,7 @@ describe('Stage 1 Defense tank', () => {
   });
   it.each(['entering', 'active', 'cooldown', 'previous-phase2', 'previous-phase3'] as const)('checkpoints %s with deterministic continuation and rejects malformed tank data transactionally', stage => {
     const sim = stage === 'entering' ? fixture() : active(stage === 'previous-phase3' ? 3 : 2), savedConfig = structuredClone(config);
+    savedConfig.catharsis!.defenseTank = structuredClone(tankConfig);
     if (stage === 'previous-phase2') {
       const old = sim.getState(), phase = old.catharsis!.balance.defenseTank!.phases[1];
       Object.assign(phase, { heaviesPerLane: 4, flankIntervalSeconds: 3.5, giantIntervalSeconds: 9 });
@@ -403,6 +406,8 @@ describe('Stage 1 Defense tank', () => {
     expect(writeCheckpoint(c, storage).ok).toBe(true); expect(map.has(CHECKPOINT_KEY)).toBe(true);
     const found = readCheckpoint(storage); expect(found.status).toBe('valid'); if (found.status !== 'valid') throw Error('Invalid checkpoint');
     const replay = simulationFromCheckpoint(found.checkpoint); expect(replay.getState()).toEqual(s);
+    expect(replay.getState().catharsis!.balance.defenseTank!.salvoPolicy).toBeUndefined();
+    expect(replay.getState().defenseTank!.rhythm).toBeUndefined();
     expect(replay.getState().catharsis!.balance.defenseTank!.phases[1]).toEqual(savedConfig.catharsis!.defenseTank!.phases[1]);
     if (stage === 'previous-phase2') {
       expect(replay.getState().enemies.filter(e => e.archetype === 'heavy')).toHaveLength(8);

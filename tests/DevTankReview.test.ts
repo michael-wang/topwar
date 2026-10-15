@@ -7,6 +7,7 @@ import { BOSS_TEST_PRESETS, type TankReviewFixture } from '../src/app/DevTankRev
 import { qaSimulationTuning } from '../src/app/QaStressFixture';
 import { readCheckpoint, simulationFromCheckpoint, writeCheckpoint, type SessionCheckpoint } from '../src/app/SessionCheckpoint';
 import { defaultRuntimeTuning } from '../src/app/runtimeTuning';
+import { SeededRng } from '../src/core/Rng';
 import type { DefenseTankConfig } from '../src/config/defenseTankConfig';
 
 const level = LevelDefinitionSchema.parse(levelData), tuning = qaSimulationTuning(config);
@@ -92,11 +93,15 @@ it.each(roles)('%s is a playable real Boss entry with checkpoint/Resume continui
 it.each(['boss-phase1', 'boss-phase2', 'boss-phase3'] as const)('%s uses its real salvo, cooldown and Giant schedule with at least 2.4s flight near the defense line', role => {
   const sim = make(role), s = sim.getState(); s.defenseTank!.z = 6;
   s.weapons.rifleCooldownRemainingSeconds = 100; s.weapons.rifleMemberCooldowns = [100, 100]; sim.restoreState(s);
-  step(sim); const shells = sim.getState().artillery!.shells, phase = s.defenseTank!.phase;
+  step(sim); const first = sim.getState(), phase = s.defenseTank!.phase;
+  expect(first.artillery!.shells).toHaveLength(1);
+  expect(first.defenseTank!.rhythm!.pendingShots).toHaveLength(phase - 1);
   expect(s.defenseTank!.z - sim.getState().defenseTank!.z).toBeCloseTo([.12, .16, .16][phase - 1] / 60, 7);
+  const nextGiant = sim.getState().defenseTank!.nextGiantAtSeconds;
+  step(sim, 75); const shells = sim.getState().artillery!.shells;
   expect(shells).toHaveLength(phase); expect(new Set(shells.map(s => s.targetLane)).size).toBe(phase);
   for (const shell of shells) expect(shell.flightSeconds).toBeGreaterThanOrEqual(2.4);
-  expect(sim.getState().defenseTank!.nextGiantAtSeconds).toBe(phase === 1 ? null : sim.getState().elapsedSeconds + 12);
+  expect(nextGiant).toBe(phase === 1 ? null : first.elapsedSeconds + 12);
   const deadline = Math.max(...shells.map(s => s.impactAtSeconds));
   // Use each shell's safe adjacent corridor through normal input rather than changing hit rules.
   const safe = [0, 1, 2, 3, 4].find(lane => !shells.some(s => s.targetLane === lane))!;
@@ -105,7 +110,9 @@ it.each(['boss-phase1', 'boss-phase2', 'boss-phase3'] as const)('%s uses its rea
     const st = sim.getState(); if (st.player.selectedLane !== safe) sim.stepLane(st.player.selectedLane! < safe ? 1 : -1);
     sim.step(1 / 60, { targetX: 0 }, tuning);
   }
-  expect(sim.getState().defenseTank!.nextAttackAtSeconds).toBeCloseTo(deadline + [4, 3, 2][phase - 1]);
+  const range = config.catharsis!.defenseTank!.salvoPolicy!.cooldownSeconds[phase - 1];
+  const rng = new SeededRng(s.defenseTank!.rhythm!.cooldownRngState);
+  expect(sim.getState().defenseTank!.nextAttackAtSeconds).toBeCloseTo(deadline + range.min + rng.nextFloat() * (range.max - range.min));
 });
 
 it('keeps Destroyer timing and restores Tank saves authored before the flight override', () => {
@@ -114,7 +121,7 @@ it('keeps Destroyer timing and restores Tank saves authored before the flight ov
   sim.launchArtillery({ source: { id: 'tank', type: 'defenseTank', position: { x: 0, y: 2, z: 8 } }, targetLane: 0,
     flight: { horizontalSpeed: 24, gravity: 8, minimumFlightSeconds: .5 } });
   const old = sim.getState(), oldConfig: Partial<DefenseTankConfig> = old.catharsis!.balance.defenseTank!;
-  delete oldConfig.flight; old.defenseTank!.pendingImpactAtSeconds = old.artillery!.shells[1].impactAtSeconds;
+  delete oldConfig.flight; delete oldConfig.salvoPolicy; delete old.defenseTank!.rhythm; old.defenseTank!.pendingImpactAtSeconds = old.artillery!.shells[1].impactAtSeconds;
   old.defenseTank!.nextAttackAtSeconds = null; sim.restoreState(old);
   expect(sim.getState().artillery!.shells).toEqual(old.artillery!.shells);
   expect(sim.getState().catharsis!.balance.defenseTank!.flight.minimumFlightSeconds).toBe(2.4);

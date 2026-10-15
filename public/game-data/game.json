@@ -359,6 +359,15 @@
       "phase2HpFraction": 0.7,
       "phase3HpFraction": 0.35,
       "streamSeed": 94731,
+      "salvoPolicy": {
+        "mode": "randomStaggered",
+        "cooldownSeconds": [
+          { "min": 3.5, "max": 5.5 },
+          { "min": 2.5, "max": 4.5 },
+          { "min": 2.5, "max": 6.0 }
+        ],
+        "gapSeconds": { "min": 0.30, "max": 0.60 }
+      },
       "phases": [
         {
           "shells": 1,

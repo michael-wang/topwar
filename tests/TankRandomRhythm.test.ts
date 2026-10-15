@@ -18,7 +18,7 @@ const policy = (mode: Mode): NonNullable<DefenseTankConfig['salvoPolicy']> => ({
   cooldownSeconds: [{ min: 3.5, max: 5.5 }, { min: 2.5, max: 4.5 }, { min: 2.5, max: 6 }],
   gapSeconds: { min: .3, max: .6 } });
 const tankConfig = (mode?: Mode) => DefenseTankConfigSchema.parse({ ...config.catharsis!.defenseTank,
-  ...(mode ? { salvoPolicy: policy(mode) } : {}) });
+  salvoPolicy: mode ? policy(mode) : undefined });
 
 function fixture(mode: Mode = 'randomStaggered', phase: 1 | 2 | 3 = 3) {
   const balance = structuredClone(config.catharsis!); balance.defenseTank = tankConfig(mode);
@@ -99,14 +99,14 @@ describe('opt-in random Tank rhythm', () => {
     expect(tank.rhythm!.pendingShots[0].launchAtSeconds).toBeCloseTo(20 + second);
     expect(tankSalvo(tank, c, 20 + second, [], 1, lanes, -2.8)).toEqual([planned[1].targetLane]);
   });
-  it('uses phase at final resolution for cooldown, keeping the production fixed policy untouched', () => {
+  it('uses phase at final resolution for cooldown, preserving historical fixed policies', () => {
     const c = tankConfig('randomStaggered'), tank = startDefenseTank(0, 17, c);
     tank.status = 'active'; tank.phase = 1;
     expect(tankSalvo(tank, c, 3, [], 3, lanes, 0)).toEqual([2]); tank.pendingImpactAtSeconds = 6;
     tank.phase = 3; const rng = new SeededRng(tank.rhythm!.cooldownRngState);
     expect(tankSalvo(tank, c, 6, [], 3, lanes, 0)).toEqual([]);
     expect(tank.nextAttackAtSeconds).toBeCloseTo(6 + 2.5 + rng.nextFloat() * 3.5);
-    expect(config.catharsis!.defenseTank!.salvoPolicy).toBeUndefined();
+    expect(config.catharsis!.defenseTank!.salvoPolicy).toEqual(policy('randomStaggered'));
     for (const phase of [1, 2, 3] as const) {
       const old = schedule(undefined, phase);
       expect(old.tank.rhythm).toBeUndefined();

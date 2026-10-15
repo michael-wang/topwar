@@ -19,14 +19,14 @@ it.each([2, 3] as const)('Phase %i A/B fixtures differ only by policy mode and r
   expect(a.catharsis!.balance.defenseTank!.salvoPolicy!.mode).toBe('randomSimultaneous');
   expect(b.catharsis!.balance.defenseTank!.salvoPolicy!.mode).toBe('randomStaggered');
   b.catharsis!.balance.defenseTank!.salvoPolicy!.mode = 'randomSimultaneous'; expect(b).toEqual(a);
-  expect(options).toEqual(original); expect(config.catharsis!.defenseTank!.salvoPolicy).toBeUndefined();
+  expect(options).toEqual(original); expect(config.catharsis!.defenseTank!.salvoPolicy!.mode).toBe('randomStaggered');
   expect(a.progression).toEqual({ level: 9, xp: 0 }); expect(a.squad.count).toBe(2);
   expect(a.player).toEqual({ x: 0, z: 0, selectedLane: 2 });
   expect(a.defenseTank).toMatchObject({ status: 'active', phase, nextAttackAtSeconds: a.elapsedSeconds + 1 });
   expect(a.enemies).toHaveLength(phase === 2 ? 8 : 12);
   expect(a.enemies.every(e => e.lane === 0 || e.lane === 4)).toBe(true);
   expect(new Set(a.enemies.map(e => e.archetype))).toEqual(new Set(['heavy', 'grunt']));
-  const real = structuredClone(a.catharsis!.balance.defenseTank!); delete real.salvoPolicy;
+  const real = structuredClone(a.catharsis!.balance.defenseTank!); real.salvoPolicy!.mode = 'randomStaggered';
   expect(real).toEqual(config.catharsis!.defenseTank);
   expect(a.catharsis!.balance.commanderSupport).toEqual(config.catharsis!.commanderSupport);
 });
