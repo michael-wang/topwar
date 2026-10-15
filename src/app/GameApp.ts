@@ -36,6 +36,8 @@ import { projectRenderState } from './projectRenderState';
 import { LaneStepInput } from '../input/LaneStepInput';
 import { createDevReviewFixture, type DevReviewFixture } from './DevReviewFixtures';
 import { AIR_SUPPORT_THRESHOLD_COUNTS, type AirSupportThresholdFixture } from './DevAirSupportReview';
+import { ManualAirSupportButton } from '../ui/ManualAirSupportButton';
+import { MANUAL_AIR_SUPPORT_REVIEWS, type ManualAirSupportFixture } from './DevManualAirSupportReview';
 import { supportBossHpThreshold } from '../simulation/commanderSupport';
 import { DevReviewControls } from '../ui/DevReviewControls';
 import { GameStartOverlay } from '../ui/GameStartOverlay';
@@ -92,6 +94,9 @@ export class GameApp {
   private readonly fieldObserver: FieldObserver | null;
   private readonly supplyTransfer: SupplyRewardTransfer | null;
   private grenadeRequested = false;
+  private airSupportRequested = false;
+  private readonly manualSupportButton: ManualAirSupportButton | null;
+  private readonly manualSupportSelect: HTMLSelectElement | null = null;
   private readonly unsubscribeConfig: () => void;
   private config: Readonly<GameConfig>;
   private targetX: number;
@@ -167,6 +172,8 @@ export class GameApp {
     this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;
     this.battleInfo = this.config.catharsis?.defenseMode ? new BattleInfoHud(viewport) : null;
     this.grenadeButton = this.config.catharsis?.defenseMode ? new GrenadeButton(viewport, this.requestGrenade) : null;
+    this.manualSupportButton = import.meta.env.DEV && this.config.catharsis?.defenseMode
+      ? new ManualAirSupportButton(viewport, this.requestAirSupport) : null;
     this.supplyTransfer=this.grenadeButton ? new SupplyRewardTransfer(viewport,this.grenadeButton,
       (x,z,now)=>this.renderer.projectSupplyPosition(x,z,now)) : null;
     this.hudActions = new HudActions(viewport, () => this.togglePaused());
@@ -191,6 +198,7 @@ export class GameApp {
       this.devReview?.setSelected(role ?? undefined);
       if (import.meta.env.DEV && this.airSupportThresholdSelect && role?.startsWith('air-threshold-'))
         this.airSupportThresholdSelect.value = role;
+      if (import.meta.env.DEV && this.manualSupportSelect && role?.startsWith('manual-air-')) this.manualSupportSelect.value = role;
       if (role === null || this.restored) {
         // An explicit new scene uses current authored data; Continue keeps the saved data intact.
         this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
@@ -201,6 +209,16 @@ export class GameApp {
     this.devReview = this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, selectReview) : null;
     if (import.meta.env.DEV && this.config.catharsis?.defenseMode) {
+      const section = document.createElement('div'), label = document.createElement('label');
+      section.className = 'dev-manual-support'; section.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:end;margin-bottom:10px';
+      label.textContent = '手動空襲原型'; label.style.cssText = 'display:grid;gap:6px;font-weight:700';
+      const select = this.manualSupportSelect = document.createElement('select'); select.setAttribute('aria-label', '手動空襲原型');
+      select.style.cssText = 'width:100%;min-height:44px;box-sizing:border-box;font:13px sans-serif;background:#263444;color:#fff3dc;border:1px solid #8997a4';
+      for (const review of MANUAL_AIR_SUPPORT_REVIEWS) { const option = document.createElement('option'); option.value = review.role; option.textContent = review.label; select.append(option); }
+      const start = document.createElement('button'); start.type = 'button'; start.textContent = '開始'; start.setAttribute('aria-label', '開始手動空襲測試');
+      start.style.cssText = 'min-height:44px;padding:8px;font:700 14px sans-serif;touch-action:manipulation';
+      start.addEventListener('click', () => { selectReview(select.value as ManualAirSupportFixture); start.blur(); });
+      label.append(select); section.append(label, start); this.tuningPanel.advancedControlsHost.prepend(section);
       const dense = document.createElement('button');
       dense.type = 'button'; dense.textContent = 'BOSS 密集輾壓'; dense.className = 'dev-dense-tank';
       dense.addEventListener('click', () => { selectReview('boss-dense'); dense.blur(); });
@@ -292,7 +310,7 @@ export class GameApp {
     const canvas = this.viewport.querySelector?.('canvas');
     canvas?.removeEventListener('webglcontextlost', this.onContextLost);
     canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
-    this.grenadeRequested = false;
+    this.grenadeRequested = false; this.airSupportRequested = false;
     this.startOverlay.dispose();
     this.startGeneration++;
     if (this.startup === 'activating') this.startup = 'awaiting-start';
@@ -324,7 +342,7 @@ export class GameApp {
     this.xpHud?.dispose();
     this.controlStrip?.dispose();
     this.battleInfo?.dispose();
-    this.supplyTransfer?.dispose();this.grenadeButton?.dispose();
+    this.supplyTransfer?.dispose();this.grenadeButton?.dispose(); this.manualSupportButton?.dispose();
     this.gameOverOverlay.dispose();
     this.tankBossHud.dispose(); this.stageClearOverlay.dispose();
     this.tankEntranceHud.dispose();
@@ -388,8 +406,8 @@ export class GameApp {
     if (!this.devReviewFixture) this.fieldObserver?.startMission(initialState.elapsedSeconds);
     this.xpHud?.reset();
     this.battleInfo?.reset();
-    this.supplyTransfer?.reset();this.grenadeButton?.reset();
-    this.grenadeRequested = false;
+    this.supplyTransfer?.reset();this.grenadeButton?.reset(); this.manualSupportButton?.reset();
+    this.grenadeRequested = false; this.airSupportRequested = false;
     this.progressionObserver.reset();
     if (this.devReviewFixture && initialState.progression && initialState.catharsis) {
       // Selecting a QA loadout is initialization, not an earned level-up.
@@ -435,6 +453,16 @@ export class GameApp {
     this.grenadeRequested = false;
     return requested;
   }
+
+  private takeAirSupportRequest(): boolean { const requested = this.airSupportRequested; this.airSupportRequested = false; return requested; }
+  private readonly requestAirSupport = (): boolean => {
+    if (!import.meta.env.DEV || !this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost
+      || this.recovery?.blocking || this.tuningPanel?.isOpen || this.airSupportRequested) return false;
+    const s = this.simulation.getFrameState(), air = s.commanderSupport?.airstrike;
+    if (s.catharsis?.balance.commanderSupport?.heavyRaid?.lastStand?.triggerPolicy !== 'manualPlayerCall'
+      || !air?.manual?.ready || air.status !== 'ready' || !s.squad.count || s.defenseTank?.status !== 'active' || s.defenseTank.phase !== 3) return false;
+    this.airSupportRequested = true; void this.audio.activate(); return true;
+  };
 
   private readonly requestGrenade = (): void => {
     if (!this.running || this.startup !== 'started' || this.paused || this.grenadeRequested) return;
@@ -542,7 +570,7 @@ export class GameApp {
     this.fixedStepLoop.reset();
     if (this.paused) {
       this.audio.silenceArtillery(); this.audio.syncSupportFlyover(null, true);
-      this.grenadeRequested = false;
+      this.grenadeRequested = false; this.airSupportRequested = false;
       this.laneInput?.stop();
       const s = this.simulation.getState();
       this.targetX = s.player.x;
@@ -578,6 +606,7 @@ export class GameApp {
         this.devReview?.setSelected(this.devReviewFixture ?? undefined); this.tuningPanel?.setValues(this.runtimeTuning);
         if (import.meta.env.DEV && this.airSupportThresholdSelect && c.fixture?.startsWith('air-threshold-'))
           this.airSupportThresholdSelect.value = c.fixture;
+        if (import.meta.env.DEV && this.manualSupportSelect && c.fixture?.startsWith('manual-air-')) this.manualSupportSelect.value = c.fixture;
         const s = this.simulation.getFrameState();
         this.tankEntranceHud.restore(s);
         this.targetX = s.player.x; this.lastRunSeed = s.seed;
@@ -783,8 +812,9 @@ export class GameApp {
         this.simulation.step(
         dtSeconds,
         { targetX: this.targetX, ...(this.takeGrenadeRequest() ? { throwGrenade: true } : {}),
-          ...(import.meta.env.DEV ? { supportNoticeStarted: this.fieldObserver?.supportNoticeStarted,
-            supportNoticeComplete: this.fieldObserver?.supportNoticeComplete } : {}) },
+          ...(import.meta.env.DEV && before.catharsis?.balance.commanderSupport?.heavyRaid?.lastStand?.triggerPolicy === 'manualPlayerCall'
+            ? { supportNoticeStarted: this.fieldObserver?.supportNoticeStarted,
+            supportNoticeComplete: this.fieldObserver?.supportNoticeComplete, callAirSupport: this.takeAirSupportRequest() } : {}) },
         {
           moveSpeed: this.runtimeTuning.moveSpeed,
           forwardSpeed: this.runtimeTuning.forwardSpeed,
@@ -834,6 +864,8 @@ export class GameApp {
       const tankEntranceEvents = this.simulation.consumeTankEntranceEvents();
       this.renderer.presentTankEntrance(tankEntranceEvents, this.presentationMs);
       if (tankEntranceEvents.some(event => event.shockwave)) this.audio.play('supplyImpact');
+      if (import.meta.env.DEV) this.manualSupportButton?.update(state, !this.paused && !this.hidden && !this.contextLost
+        && !this.tuningPanel?.isOpen && !this.airSupportRequested && !this.recovery?.blocking && this.startup === 'started');
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !cleared && !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight

@@ -17,6 +17,7 @@ const controls: readonly Control[] = [
 ];
 
 export class TuningPanel {
+  get isOpen(): boolean { return this.element.open; }
   readonly reviewControlsHost = document.createElement('div');
   readonly advancedControlsHost = document.createElement('div');
   private readonly advanced = document.createElement('details');

@@ -11,6 +11,10 @@ import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
 import { startDefenseTank } from '../src/simulation/defenseTank';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
+vi.mock('../src/ui/ManualAirSupportButton', () => ({ ManualAirSupportButton: class {
+  constructor(_viewport: unknown, activate: unknown) { mock.manualSupportConstructed(activate); }
+  update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
+} }));
 vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
   constructor() { mock.qaConstructed(); }
   open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}
@@ -45,6 +49,7 @@ const mock = vi.hoisted(() => ({
   reviewConstructed: vi.fn(),
   reviewFixture: vi.fn(),
   grenadeConstructed: vi.fn(),
+  manualSupportConstructed: vi.fn(),
   grenadeUpdate: vi.fn(),
   step: vi.fn(),
   stepLane: vi.fn(),
@@ -827,8 +832,37 @@ it('shares the approved playtest menu outside DEV while omitting engineering QA'
   try {
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
     expect(mock.reviewConstructed).toHaveBeenCalledOnce();expect(mock.reviewFixture).not.toHaveBeenCalled();
-    expect(mock.panelConstructedWith).toHaveBeenCalledOnce(); expect(mock.qaConstructed).not.toHaveBeenCalled(); app.dispose();
+    expect(mock.panelConstructedWith).toHaveBeenCalledOnce(); expect(mock.qaConstructed).not.toHaveBeenCalled();
+    expect(mock.manualSupportConstructed).not.toHaveBeenCalled(); app.dispose();
   } finally { vi.unstubAllEnvs(); }
+});
+
+it('guards manual support across lifecycle/menu states and consumes one request at a fixed tick', async () => {
+  const raf = createRaf(), base = mock.getState(), config = structuredClone(gameData);
+  vi.stubEnv('DEV', true);
+  const balance = structuredClone(config.catharsis!);
+  balance.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy = 'manualPlayerCall';
+  delete balance.commanderSupport!.heavyRaid!.lastStand!.livingMgHpThresholds;
+  const state = { ...base, elapsedSeconds: 60, tick: 3600, catharsis: { balance, trackHalfWidth: config.track.halfWidth },
+    defenseTank: { ...startDefenseTank(50, 17, balance.defenseTank!), status: 'active', phase: 3, hp: 1000 },
+    commanderSupport: { giantSeen: true, giantAtSeconds: null, airstrike: { status: 'ready', triggeredAtSeconds: null,
+      bombAtSeconds: null, strikesCompleted: 0, targets: [], manual: { availableAtSeconds: 55, announcementAtSeconds: 55, ready: true } } } };
+  mock.getState.mockReturnValue(state);
+  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
+  const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
+  const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets), internal = app as any;
+  const press = mock.manualSupportConstructed.mock.lastCall![0] as () => boolean;
+  expect(press()).toBe(false); await startGame(app); raf.frame(0);
+  for (const flag of ['paused', 'hidden', 'contextLost']) { internal[flag] = true; expect(press()).toBe(false); internal[flag] = false; }
+  Object.defineProperty(internal.tuningPanel, 'isOpen', { value: true, writable: true }); expect(press()).toBe(false); internal.tuningPanel.isOpen = false;
+  state.squad.count = 0; expect(press()).toBe(false); state.squad.count = 3;
+  state.defenseTank.status = 'defeated'; expect(press()).toBe(false); state.defenseTank.status = 'active';
+  state.commanderSupport.airstrike.manual.ready = false; expect(press()).toBe(false); state.commanderSupport.airstrike.manual.ready = true;
+  expect(press()).toBe(true); expect(press()).toBe(false); expect(mock.step).not.toHaveBeenCalled();
+  raf.frame(1000 / 60); expect(mock.step.mock.lastCall![1].callAirSupport).toBe(true);
+  state.commanderSupport.airstrike.status = 'waiting'; expect(press()).toBe(false);
+  raf.frame(2000 / 60); expect(mock.step.mock.lastCall![1].callAirSupport).toBe(false);
+  app.dispose(); mock.getState.mockReturnValue(base);
 });
 
 describe('Q primary active item', () => {
