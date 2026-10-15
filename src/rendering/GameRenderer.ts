@@ -184,7 +184,7 @@ export class GameRenderer {
     this.grenadeRenderer.update(state.grenade, nowMs);
     if (state.destroyer && (state.destroyer.state.status === 'active' || state.destroyer.presence && state.destroyer.presence.status !== 'absent'))
       this.destroyerRenderer ??= new DestroyerRenderer(this.scene);
-    this.destroyerRenderer?.update(state.destroyer);
+    this.destroyerRenderer?.update(state.destroyer, nowMs);
     if (state.defenseTank) this.tankRenderer ??= new DefenseTankRenderer(this.scene);
     this.tankRenderer?.update(state.defenseTank, nowMs);
     if (state.defenseTank) for (const shell of state.artillery?.shells ?? [])
@@ -209,6 +209,15 @@ export class GameRenderer {
     if (!events.length) return;
     this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);
     this.artilleryRenderer.present(events, nowMs);
+    for(const event of events)if(event.kind==='artilleryLaunch'){
+      if(event.shell.source.type==='defenseTank'){
+        this.tankRenderer??=new DefenseTankRenderer(this.scene);
+        this.tankRenderer.presentCannon(event.shell.launchedAtSeconds,nowMs);
+      }else if(event.shell.source.type==='destroyer'){
+        this.destroyerRenderer??=new DestroyerRenderer(this.scene);
+        this.destroyerRenderer.presentCannon(event.shell.launchedAtSeconds,nowMs);
+      }
+    }
   }
 
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {

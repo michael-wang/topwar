@@ -7,6 +7,7 @@ import { GrenadeExplosion } from './GrenadeExplosion';
 import type { GameRenderState } from './RenderState';
 import { TANK_ENTRANCE_CLEAR_FRACTION, type TankEntranceEvent } from '../simulation/defenseTank';
 import type { GrenadeEvent } from '../simulation/grenade';
+import { CannonMuzzleFeedback } from './CannonMuzzleFeedback';
 
 export const TANK_DEATH_MS = 3200;
 export const TANK_EXPLOSION_TIMES_MS = [0, 350, 700, 1050, 1400, 1800, 2200] as const;
@@ -14,6 +15,8 @@ export const TANK_EXPLOSION_TIMES_MS = [0, 350, 700, 1050, 1400, 1800, 2200] as 
 // One vehicle, merged armor and bounded moving track/smoke batches.
 export class DefenseTankRenderer {
   readonly group = new THREE.Group();
+  readonly muzzle = new THREE.Object3D();
+  private readonly cannon: CannonMuzzleFeedback;
   private readonly landing = new THREE.Group();
   private readonly turret = new THREE.Group();
   private readonly block = paintedBlockGeometry();
@@ -87,6 +90,9 @@ export class DefenseTankRenderer {
     for (const x of [-.63, .63]) part(this.turret, [x, .79, -1.28], [.47, .09, .06], this.accent);
     const barrel = new THREE.Mesh(this.barrelGeometry, this.dark); barrel.rotation.x = Math.PI / 2;
     barrel.position.set(0, .35, -2.25); this.turret.add(barrel);
+    this.muzzle.name = 'tank-muzzle'; this.muzzle.position.set(0,.35,-3.6);
+    this.muzzle.rotation.x = -Math.PI/2; this.turret.add(this.muzzle);
+    this.cannon = new CannonMuzzleFeedback(this.muzzle,'tank');
     this.turret.position.y = 2.4;
     for (const root of [this.group, this.turret]) for (const material of [this.armor, this.steel, this.dark, this.accent]) {
       const parts = root.children.filter(o => o instanceof THREE.Mesh && o.geometry === this.block && o.material === material) as THREE.Mesh[];
@@ -128,6 +134,7 @@ export class DefenseTankRenderer {
     this.shock.position.set(0, .09, event.z);
     this.shockDepth = event.z - event.victims.reduce((z, v) => Math.min(z, v.z), event.z - 8) + 3;
   }
+  presentCannon(atSeconds:number,nowMs:number):void {this.cannon.present(atSeconds,nowMs);}
   healthBarPosition(target: THREE.Vector3): THREE.Vector3 {
     return this.turret.localToWorld(target.set(0, 1.5, 0));
   }
@@ -144,6 +151,7 @@ export class DefenseTankRenderer {
     }
     update(frame: GameRenderState['defenseTank'], nowMs: number): void {
     this.group.visible = !!frame; this.landing.visible = !!frame;
+    if(frame?.state.status==='active')this.cannon.update(nowMs);else this.cannon.reset();
     const shockProgress = (nowMs - this.entranceAtMs) / 700;
     this.shock.visible = !!frame && shockProgress >= 0 && shockProgress < 1;
     if (this.shock.visible) {
@@ -239,6 +247,7 @@ export class DefenseTankRenderer {
       this.lastBurst = TANK_EXPLOSION_TIMES_MS.filter(at => at <= victoryElapsedMs).length - 1; }
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
+    this.cannon.reset();
     this.flames.visible = this.flameCores.visible = false;
     this.armor.color.set(ART.enemyArmory.vehicle);
     this.shock.visible = false; this.entranceAtMs = -Infinity;
@@ -246,6 +255,7 @@ export class DefenseTankRenderer {
     for (const mesh of this.hitMeshes) mesh.visible = false;
     this.deathAtMs = -Infinity; this.lastBurst = -1; this.defeated = false; this.explosions.reset(); }
   dispose(): void {
+    this.cannon.dispose();
     this.scene.remove(this.group, this.landing, this.shock); this.explosions.dispose();
     this.shock.geometry.dispose(); this.shock.material.dispose();
     for (const batch of [this.tracks, this.wheels, this.smoke, this.scars, this.flames, this.flameCores]) batch.dispose();

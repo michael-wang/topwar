@@ -1,0 +1,37 @@
+import {expect,it,vi} from 'vitest';
+import * as THREE from 'three';
+import {DefenseTankRenderer} from '../src/rendering/DefenseTankRenderer';
+import {DestroyerRenderer} from '../src/rendering/DestroyerRenderer';
+import {startDefenseTank} from '../src/simulation/defenseTank';
+import config from './helpers/ShippingConfig';
+const c=config.catharsis!.defenseTank!;
+it.each([1,2,3] as const)('anchors one Phase %i salvo burst to the visible recoiling barrel, then only smoke',phase=>{
+  const scene=new THREE.Scene(),r=new DefenseTankRenderer(scene),tank=startDefenseTank(0,17,c);
+  Object.assign(tank,{status:'active',z:c.battleZ,phase,hp:[6500,4550,2275][phase-1]});
+  const frame={state:tank,config:c,elapsedSeconds:3};
+  r.presentCannon(3,1000);r.presentCannon(3,1020);r.presentCannon(3,1040);r.update(frame,1040);r.recoil(3,3.04);
+  const flame=scene.getObjectByName('tank-muzzle-flame') as THREE.Mesh,smoke=scene.getObjectByName('tank-muzzle-smoke') as THREE.Mesh;
+  expect(flame.visible).toBe(true);expect(scene.getObjectByName('tank-muzzle-core')!.visible).toBe(true);
+  let barrel:THREE.Mesh|undefined;r.group.traverse(o=>{if(o instanceof THREE.Mesh&&o.geometry instanceof THREE.CylinderGeometry&&o.geometry.parameters.height===2.7)barrel=o;});
+  scene.updateMatrixWorld(true);const tip=barrel!.localToWorld(new THREE.Vector3(0,-1.35,0)),mouth=r.muzzle.getWorldPosition(new THREE.Vector3());
+  expect(tip.distanceTo(mouth)).toBeLessThan(1e-8);
+  const pose=smoke.scale.toArray();r.update(frame,1040);expect(smoke.scale.toArray()).toEqual(pose);
+  r.presentCannon(3,1150);r.update(frame,1180);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(true);
+  r.update(frame,1651);expect(smoke.visible).toBe(false);
+  r.presentCannon(7,2000);r.update(frame,2040);expect(flame.visible).toBe(true);
+  r.restore(frame,2040);r.update(frame,2040);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(false);
+  r.dispose();expect(scene.children).toHaveLength(0);
+});
+it('follows the mirrored moving Destroyer mouth, freezes powder smoke and clears absent/Retry resources',()=>{
+  const scene=new THREE.Scene(),r=new DestroyerRenderer(scene),frame={state:{status:'active' as const,startedAtSeconds:0,nextShotIndex:1},config:config.catharsis!.destroyer!,elapsedSeconds:1};
+  r.presentCannon(1,1000);r.update(frame,1040);const flame=scene.getObjectByName('destroyer-muzzle-flame') as THREE.Mesh;
+  expect(flame.visible).toBe(true);const before=r.muzzle.getWorldPosition(new THREE.Vector3());
+  r.update({...frame,elapsedSeconds:2},1100);const after=r.muzzle.getWorldPosition(new THREE.Vector3());expect(after.distanceTo(before)).toBeGreaterThan(1);
+  const smoke=scene.getObjectByName('destroyer-muzzle-smoke') as THREE.Mesh;const pose=smoke.scale.toArray();
+  r.update({...frame,elapsedSeconds:2},1100);expect(smoke.scale.toArray()).toEqual(pose);
+  r.update(undefined,1120);r.update(frame,1140);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(false);
+  r.presentCannon(3,2000);r.update(frame,2040);expect(flame.visible).toBe(true);r.reset();expect(flame.visible).toBe(false);
+  const resources=new Set<THREE.BufferGeometry|THREE.Material>();scene.traverse(o=>{if(o instanceof THREE.Mesh){resources.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])resources.add(m);}});
+  const releases=[...resources].map(o=>vi.spyOn(o,'dispose'));r.dispose();releases.forEach(spy=>expect(spy).toHaveBeenCalledOnce());
+  expect(scene.children).toHaveLength(0);
+});

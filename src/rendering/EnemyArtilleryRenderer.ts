@@ -109,7 +109,8 @@ export class EnemyArtilleryRenderer {
       }
       s.redMat.opacity = .72 + .28 * Math.sin(age * (10 + progress * 12)) ** 2;
       s.fillMat.opacity = .22 + progress * .18;
-      s.flash.visible = age < .18 && !this.restoredShellIds.includes(shell.id);
+      s.flash.visible = shell.source.type !== 'defenseTank' && shell.source.type !== 'destroyer'
+        && age < .18 && !this.restoredShellIds.includes(shell.id);
       s.flash.position.set(-source.x, source.y, source.z); s.flash.scale.setScalar(.25 + .8 * Math.sin(Math.min(1, age / .18) * Math.PI));
       for (let j = 0; j < s.trail.length; j++) {
         const lag = (j + 2) * .035, trail = s.trail[j]; trail.visible = age > lag;

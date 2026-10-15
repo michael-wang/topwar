@@ -6,10 +6,12 @@ import { ART } from '../art/ArtDirection';
 import { DESTROYER_MUZZLE, destroyerPose } from '../simulation/destroyer';
 import { navalPresencePose } from '../simulation/navalPresence';
 import type { GameRenderState } from './RenderState';
+import { CannonMuzzleFeedback } from './CannonMuzzleFeedback';
 
 export class DestroyerRenderer {
   readonly group = new THREE.Group();
   readonly muzzle = new THREE.Object3D();
+  private readonly cannon: CannonMuzzleFeedback;
   private readonly block = paintedBlockGeometry();
   private readonly hull = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.vehicle, roughness: .85 }));
   private readonly ivory = illustratedMaterial(new THREE.MeshStandardMaterial({ color: ART.enemyArmory.sand, roughness: .85 }));
@@ -45,6 +47,8 @@ export class DestroyerRenderer {
     const barrel = new THREE.Mesh(barrelGeometry, this.ink); barrel.position.copy(base).add(end).multiplyScalar(.5);
     barrel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); this.group.add(barrel);
     this.muzzle.position.copy(end); this.group.add(this.muzzle);
+    this.muzzle.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction);
+    this.cannon = new CannonMuzzleFeedback(this.muzzle,'destroyer',1.7);
     // Bake the static ship to four material batches, rather than per-detail draw calls.
     for (const material of [this.hull, this.ivory, this.ink, this.gold]) {
       const parts = this.group.children.filter(o => o instanceof THREE.Mesh && o.material === material) as THREE.Mesh[];
@@ -55,9 +59,11 @@ export class DestroyerRenderer {
     this.wake.rotation.x = -Math.PI / 2; this.wake.position.y = .005; this.group.add(this.wake);
     this.scene.add(this.group); this.group.visible = false;
   }
-  update(frame: GameRenderState['destroyer']): void {
+  presentCannon(atSeconds:number,nowMs:number):void {this.cannon.present(atSeconds,nowMs);}
+  update(frame: GameRenderState['destroyer'],nowMs=0): void {
     this.group.visible = !!frame && (frame.presence ? frame.presence.status !== 'absent' : frame.state.status === 'active');
-    if (!frame || !this.group.visible) return;
+    if (!frame || !this.group.visible) {this.cannon.reset();return;}
+    this.cannon.update(nowMs);
     const age = frame.elapsedSeconds - (frame.presence?.enteredAtSeconds ?? frame.state.startedAtSeconds!);
     const p = frame.presence ? navalPresencePose(frame.presence, frame.elapsedSeconds, frame.config) : destroyerPose(age, frame.config);
     this.group.position.set(-p.x, p.y, p.z);
@@ -67,7 +73,8 @@ export class DestroyerRenderer {
       && introAge < frame.config.radioAtSeconds + frame.config.radioDurationSeconds;
     this.hull.emissive.set(identifying ? '#5b4924' : '#000000'); this.hull.emissiveIntensity = identifying ? .12 + .07 * Math.sin(age * 4) ** 2 : 0;
   }
-  reset(): void { this.group.visible = false; }
+  reset(): void { this.group.visible = false; this.cannon.reset(); }
   dispose(): void { this.scene.remove(this.group); this.block.dispose(); this.wake.geometry.dispose();
+    this.cannon.dispose();
     this.geometries.forEach(g => g.dispose()); [this.hull, this.ivory, this.ink, this.gold, this.wakeMaterial].forEach(m => m.dispose()); }
 }
