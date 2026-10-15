@@ -4,14 +4,14 @@ import { GrenadeExplosion } from './GrenadeExplosion';
 import { HeavyAirstrikeExplosion } from './HeavyAirstrikeExplosion';
 import { GroundScorchMarks } from './GroundScorchMarks';
 import { HEAVY_RAID_LANES, HEAVY_RAID_ROUNDS, supportTankBombZ, type CommanderSupportConfig, type SupportEvent } from '../simulation/commanderSupport';
+import { SUPPORT_BOMBER_ALTITUDE as BOMBER_ALTITUDE, supportFlightZ } from '../presentation/SupportFlyover';
 import type { GameRenderState } from './RenderState';
 const BOMBER_LANES = HEAVY_RAID_LANES;
 const FALLBACK_X = [-4.5, 0, 4.5];
 // One continuous overhead pass: behind the squad -> enemy front -> distant sea.
 // Keep the entire aircraft above Camera B's eye, so ingress enters from above.
-const BOMBER_ALTITUDE = 8.5, BOMBER_SPEED = 18, FIRST_IMPACT_PLANE_Z = 11;
 function bomberZ(age: number, c: CommanderSupportConfig): number {
-  return FIRST_IMPACT_PLANE_Z + (age - c.warningSeconds) * BOMBER_SPEED;
+  return supportFlightZ(age, c.warningSeconds);
 }
 
 /** Three shared-geometry four-engine bombers. Saved clocks drive the whole formation. */

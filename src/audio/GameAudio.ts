@@ -1,3 +1,4 @@
+import { supportEngineEnvelope } from '../presentation/SupportFlyover';
 import { ObserverVoice, ObserverVoiceFiles, observerVoiceAsset, type ObserverAudioReadiness } from './ObserverVoice';
 import { hasPublicAsset, publicAssetUrl } from '../core/publicAssetUrl';
 import { StreamedMusic } from './StreamedMusic';
@@ -159,6 +160,8 @@ export class GameAudio {
   private supplyRewardAtMs: number | null = null;
   private readonly active = new Set<AudioScheduledSourceNode>();
   private readonly supportSources = new Set<OscillatorNode>();
+  private supportEngineBus: GainNode | null = null;
+  private supportEngineFilter: BiquadFilterNode | null = null;
   private readonly supportImpactSources = new Set<AudioScheduledSourceNode>();
   private rumbleBuffer: AudioBuffer | null = null;
   private grenadeBuffer: AudioBuffer | null = null;
@@ -292,10 +295,13 @@ export class GameAudio {
       this.radioSources.clear();
     }
     const active = offset !== null && !paused;
-    if (active !== this.radioActive && this.radioDuckBus && this.context) {
-      const gain = this.radioDuckBus.gain, now = this.context.currentTime;
-      gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now);
-      gain.exponentialRampToValueAtTime(active ? .6 : 1, now + .15);
+    if (active !== this.radioActive && this.context) {
+      for (const [bus, duck] of [[this.radioDuckBus, .6], [this.supportEngineBus, .38]] as const) {
+        if (!bus) continue;
+        const gain = bus.gain, now = this.context.currentTime;
+        gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now);
+        gain.exponentialRampToValueAtTime(active ? duck : 1, now + .15);
+      }
     }
     this.radioActive = active;
     if (!this.unlocked || !this.context || !this.master) return;
@@ -326,21 +332,32 @@ export class GameAudio {
       const source = context.createOscillator(), gain = context.createGain(); source.type = wave;
       const start = now + delay;
       source.frequency.setValueAtTime(from, start); source.frequency.exponentialRampToValueAtTime(to, start + seconds);
-      const curve = new Float32Array(48);
+      const curve = new Float32Array(heavy && !whistle ? 256 : 48);
       for (let i = 0; i < curve.length; i++) {
         const t = offset + remaining * i / (curve.length - 1);
-        curve[i] = Math.max(.001, volume * (whistle ? Math.sin(Math.PI * i / (curve.length - 1))
-          : heavy ? (.12 + .88 * Math.min(1, t / firstImpactSeconds)) * Math.min(1, (duration - t) / 8) * (this.radioActive && t < 6.95 ? .38 : 1)
+        curve[i] = Math.max(heavy && !whistle ? 0 : .001, volume * (whistle ? Math.sin(Math.PI * i / (curve.length - 1))
+          : heavy ? supportEngineEnvelope(t, firstImpactSeconds, duration) * Math.min(1, i / 2, (curve.length - 1 - i) / 2)
           : Math.sin(Math.PI * t / duration)));
       }
       gain.gain.setValueCurveAtTime(curve, start, seconds);
-      source.connect(gain); gain.connect(this.master!);
+      source.connect(gain); gain.connect(heavy && !whistle ? this.supportEngineFilter! : this.master!);
       source.onended = () => { source.disconnect(); gain.disconnect(); this.active.delete(source); this.supportSources.delete(source); };
       this.active.add(source); this.supportSources.add(source); source.start(start); source.stop(start + seconds);
     };
     if (heavy) {
-      const pitch = (112 / 144) ** (offset / duration);
-      tone(72 * pitch, 56, .085, 'triangle'); tone(144 * pitch, 112, .035, 'sawtooth'); tone(216 * pitch, 168, .025, 'sine');
+      if (!this.supportEngineBus) {
+        this.supportEngineBus = context.createGain(); this.supportEngineBus.gain.value = this.radioActive ? .38 : 1;
+        this.supportEngineFilter = context.createBiquadFilter(); this.supportEngineFilter.type = 'lowpass';
+        this.supportEngineFilter.frequency.value = 520;
+        this.supportEngineFilter.connect(this.supportEngineBus); this.supportEngineBus.connect(this.master!);
+      }
+      // Three detuned engines: deep fundamentals, propeller mid-bass, soft upper body.
+      // Their combined un-ducked peak is bounded below .405 before master volume.
+      for (let engine = 0; engine < 3; engine++) for (const [base, detune, volume, wave] of
+        [[52, 3, .065, 'triangle'], [112, 6, .045, 'sawtooth'], [196, 12, .025, 'sine']] as const) {
+        const frequency = base + engine * detune;
+        tone(frequency * (.8 ** (offset / duration)), frequency * .8, volume, wave);
+      }
       for (let i = 0; i < 6; i++) {
         const end = firstImpactSeconds + i * strikeSpacing, begin = end - .6;
         if (offset < end) { const skipped = Math.max(0, offset - begin);
@@ -532,6 +549,8 @@ export class GameAudio {
     this.voice?.dispose(); this.voice = null;
     this.voiceFiles.clear(); this.preparedRadio.clear();
     this.radioDuckBus?.disconnect(); this.radioDuckBus = null;
+    this.supportEngineFilter?.disconnect(); this.supportEngineFilter = null;
+    this.supportEngineBus?.disconnect(); this.supportEngineBus = null;
     this.music?.dispose();
     this.bossTheme?.dispose(); this.bossTheme = null;
     this.victoryTheme?.dispose(); this.victoryTheme = null;
