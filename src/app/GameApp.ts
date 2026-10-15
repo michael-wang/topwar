@@ -623,6 +623,7 @@ export class GameApp {
         }), 0, c.playtestVictory?.elapsedMs);
         this.xpHud?.reset(); this.battleInfo?.reset();
         this.grenadeButton?.restore(s.grenade?.inventory ?? 0, s.grenade?.acquiredAtSeconds != null);
+        this.manualSupportButton?.restore(s);
         this.presentationMs = 0; this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
         this.celebration = null; this.lastCombatProjectiles = undefined;
         this.tankDeathAtMs = s.defenseTank?.status === 'defeated' ? -(c.playtestVictory?.elapsedMs ?? TANK_DEATH_MS) : null;
@@ -865,7 +866,7 @@ export class GameApp {
       this.renderer.presentTankEntrance(tankEntranceEvents, this.presentationMs);
       if (tankEntranceEvents.some(event => event.shockwave)) this.audio.play('supplyImpact');
       if (import.meta.env.DEV) this.manualSupportButton?.update(state, !this.paused && !this.hidden && !this.contextLost
-        && !this.tuningPanel?.isOpen && !this.airSupportRequested && !this.recovery?.blocking && this.startup === 'started');
+        && !this.tuningPanel?.isOpen && !this.airSupportRequested && !this.recovery?.blocking && this.startup === 'started', this.presentationMs);
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !cleared && !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight

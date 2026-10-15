@@ -13,7 +13,7 @@ import { startDefenseTank } from '../src/simulation/defenseTank';
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
 vi.mock('../src/ui/ManualAirSupportButton', () => ({ ManualAirSupportButton: class {
   constructor(_viewport: unknown, activate: unknown) { mock.manualSupportConstructed(activate); }
-  update = vi.fn(); reset = vi.fn(); dispose = vi.fn();
+  update = vi.fn(); reset = vi.fn(); restore = vi.fn(); dispose = vi.fn();
 } }));
 vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
   constructor() { mock.qaConstructed(); }
@@ -24,7 +24,7 @@ vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} di
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   updateVictory(now: number, paused: boolean) { return mock.victory(now, paused); }
   finishCombat() {} victoryCheckpoint() { return undefined; } restoreVictory() {}
-  update() {} reset() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
+  update() {} reset() {} restore() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   show() {} setActivating() {} finish() {} dispose() {}
