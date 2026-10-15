@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GrenadeExplosion } from './GrenadeExplosion';
 import { HeavyAirstrikeExplosion } from './HeavyAirstrikeExplosion';
+import { GroundScorchMarks } from './GroundScorchMarks';
 import { HEAVY_RAID_LANES, HEAVY_RAID_ROUNDS, supportTankBombZ, type CommanderSupportConfig, type SupportEvent } from '../simulation/commanderSupport';
 import type { GameRenderState } from './RenderState';
 const BOMBER_LANES = HEAVY_RAID_LANES;
@@ -58,6 +59,7 @@ export class SupportAirstrikeRenderer {
   private readonly cockpitGeometry = new THREE.SphereGeometry(1, 8, 6);
   private readonly legacy: GrenadeExplosion;
   private readonly explosions: HeavyAirstrikeExplosion;
+  private readonly scorches: GroundScorchMarks;
   private readonly propellers: THREE.Mesh[] = [];
   private readonly bombs: THREE.Group[] = [];
   private readonly propGeometry = new THREE.BoxGeometry(.8, .07, .05);
@@ -98,6 +100,7 @@ export class SupportAirstrikeRenderer {
       shadow.scale.set(.5, 1, .65); shadow.renderOrder = -1; scene.add(shadow); this.shadows.push(shadow);
     }
     this.plane = this.planes[0]; this.legacy = new GrenadeExplosion(scene, 4, false); this.explosions = new HeavyAirstrikeExplosion(scene);
+    this.scorches = new GroundScorchMarks(scene, true);
     for (let i = 0; i < 12; i++) {
       const bomb = new THREE.Group(), body = new THREE.Mesh(this.propGeometry, this.metal), fins = new THREE.Mesh(this.propGeometry, this.detail);
       body.scale.set(.25, 9, 4); fins.scale.set(.65, 1, 9); fins.position.y = .2;
@@ -161,8 +164,10 @@ export class SupportAirstrikeRenderer {
       while (this.seenImpacts < impacts.length) {
         const i = this.seenImpacts++, p = impacts[i], at = now - (frame.elapsedSeconds - p.atSeconds) * 1000;
         this.explosions.present(i, p.x, p.z, at);
+        this.scorches.present(p.x, p.z, 4.8, at);
       }
     } else {
+      this.scorches.reset();
       this.shadows.forEach(p => p.visible = false);
       this.bombs.forEach(p => p.visible = false);
       const t = (now - this.flyoverAt) / 1100;
@@ -170,7 +175,7 @@ export class SupportAirstrikeRenderer {
       this.plane.scale.setScalar(.85);
       this.plane.position.set(0, 1.2 + t * 4, -7 + t * 50 - originZ); this.plane.rotation.set(0, Math.PI, -.05);
     }
-    this.explosions.update(now, originZ); this.legacy.update(now, originZ);
+    this.explosions.update(now, originZ); this.legacy.update(now, originZ); this.scorches.update(now, originZ);
     const age = now - this.impactAt;
     return !ended && age >= 0 && age < 420 ? Math.sin(age / 21) * .14 * (1 - age / 420) : 0;
   }
@@ -178,10 +183,10 @@ export class SupportAirstrikeRenderer {
     this.flyoverAt = this.impactAt = -Infinity; this.seenImpacts = 0; this.clockSeconds = -Infinity;
     for (const m of [this.metal, this.detail, this.glass]) m.opacity = 1;
     this.planes.forEach(p => p.visible = false); this.shadows.forEach(p => p.visible = false);
-    this.bombs.forEach(p => p.visible = false); this.explosions.reset(); this.legacy.reset();
+    this.bombs.forEach(p => p.visible = false); this.explosions.reset(); this.legacy.reset(); this.scorches.reset();
   }
   dispose(): void {
-    this.explosions.dispose(); this.legacy.dispose(); this.scene.remove(...this.planes, ...this.bombs, ...this.shadows);
+    this.explosions.dispose(); this.legacy.dispose(); this.scorches.dispose(); this.scene.remove(...this.planes, ...this.bombs, ...this.shadows);
     for (const g of [this.geometry, this.trimGeometry, this.cockpitGeometry, this.propGeometry, this.shadowGeometry]) g.dispose();
     for (const m of [this.metal, this.detail, this.glass, this.shadowMaterial]) m.dispose();
   }

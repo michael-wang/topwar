@@ -2,7 +2,7 @@
 
 ## NOW
 
-Pixel 8 acceptance is pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, Boss combat, Pause/Victory continuity, silent emergency warnings, bomber smoke, revised mid-view bomber release/sea departure with stronger beach shadows (P4.11A), cannon muzzle/powder feedback (P4.10B), the 0.35-second three-hit Supply recovery trial (P4.10C) and Stage1 Complete music. Camera B, full-width lane highlights, P4.9A testing-menu Pause/accessibility and P4.9B dense Tank entrance review are accepted. Preserve HP-only Boss air support at ≤750, released Defense saves, the four quick-test entries and manual deployment.
+Pixel 8 acceptance is pending for Lv11/Lv12 progression and casualty recovery with retained encounter pressure, Boss combat, Pause/Victory continuity, silent emergency warnings, layered bomber smoke/persistent scorches (P4.11B), revised mid-view bomber release/sea departure with stronger beach shadows (P4.11A), cannon muzzle/powder feedback (P4.10B), the 0.35-second three-hit Supply recovery trial (P4.10C) and Stage1 Complete music. Camera B, full-width lane highlights, P4.9A testing-menu Pause/accessibility and P4.9B dense Tank entrance review are accepted. Preserve HP-only Boss air support at ≤750, released Defense saves, the four quick-test entries and manual deployment.
 
 ## NEXT
 

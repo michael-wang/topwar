@@ -5,15 +5,18 @@ export const SCORCH = { capacity: 8, holdMs: 12000, durationMs: 18000 } as const
 // One shared procedural soot stamp; fixed CPU/GPU storage, no per-blast textures.
 export class GroundScorchMarks {
   private readonly geometry = new THREE.PlaneGeometry(1, 1);
-  private readonly opacity = new THREE.InstancedBufferAttribute(new Float32Array(SCORCH.capacity), 1);
+  private readonly opacity: THREE.InstancedBufferAttribute;
   private readonly texture = createScorchTexture();
   private readonly material = new THREE.MeshBasicMaterial({ map: this.texture, color: '#302c28',
     transparent: true, depthWrite: false, toneMapped: false });
   private readonly mesh: THREE.InstancedMesh;
   private readonly transform = new THREE.Object3D();
-  private readonly slots = Array.from({ length: SCORCH.capacity }, () => ({ atMs: -Infinity, x: 0, z: 0, diameter: 0, angle: 0 }));
+  private readonly slots: { atMs: number; x: number; z: number; diameter: number; angle: number }[];
   private cursor = 0;
-  constructor(private readonly scene: THREE.Scene) {
+  constructor(private readonly scene: THREE.Scene, private readonly airstrike = false) {
+    const capacity = airstrike ? 12 : SCORCH.capacity;
+    this.slots = Array.from({ length: capacity }, () => ({ atMs: -Infinity, x: 0, z: 0, diameter: 0, angle: 0 }));
+    this.opacity = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
     this.geometry.setAttribute('scorchOpacity', this.opacity);
     this.material.onBeforeCompile = shader => {
       shader.vertexShader = `attribute float scorchOpacity; varying float vScorchOpacity;\n${shader.vertexShader}`
@@ -22,25 +25,28 @@ export class GroundScorchMarks {
         .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= vScorchOpacity;');
     };
     this.material.customProgramCacheKey = () => 'grenade-ground-scorch';
-    this.mesh = new THREE.InstancedMesh(this.geometry, this.material, SCORCH.capacity);
-    this.mesh.name = 'grenade-ground-scorch'; this.mesh.frustumCulled = false; this.mesh.renderOrder = 1;
+    this.mesh = new THREE.InstancedMesh(this.geometry, this.material, capacity);
+    this.mesh.name = airstrike ? 'airstrike-ground-scorch' : 'grenade-ground-scorch';
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = airstrike ? -1 : 1;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.opacity.setUsage(THREE.DynamicDrawUsage);
     scene.add(this.mesh); this.reset();
   }
   present(x: number, z: number, radius: number, nowMs: number): void {
-    const index = this.cursor++ % SCORCH.capacity;
+    // Repeated saved anchors darken the same terrain only once.
+    if (this.airstrike && this.slots.some(s => Number.isFinite(s.atMs) && s.x === x && s.z === z)) return;
+    const index = this.cursor++ % this.slots.length;
     Object.assign(this.slots[index], { atMs: nowMs, x, z, diameter: radius * 1.25, angle: this.cursor * 2.3999632297 });
   }
   update(nowMs: number, originZ: number): void {
     let count = 0;
     for (const slot of this.slots) {
       const age = nowMs - slot.atMs;
-      if (age < 0 || age >= SCORCH.durationMs) continue;
-      this.transform.position.set(-slot.x, .046, slot.z - originZ);
+      if (!Number.isFinite(slot.atMs) || age < 0 || !this.airstrike && age >= SCORCH.durationMs) continue;
+      this.transform.position.set(-slot.x, this.airstrike ? .022 : .046, slot.z - originZ);
       this.transform.rotation.set(-Math.PI / 2, 0, slot.angle);
       this.transform.scale.set(slot.diameter, slot.diameter, 1); this.transform.updateMatrix();
       this.mesh.setMatrixAt(count, this.transform.matrix);
-      this.opacity.setX(count++, .72 * Math.min(1, (SCORCH.durationMs - age) / (SCORCH.durationMs - SCORCH.holdMs)));
+      this.opacity.setX(count++, this.airstrike ? .78 : .72 * Math.min(1, (SCORCH.durationMs - age) / (SCORCH.durationMs - SCORCH.holdMs)));
     }
     this.mesh.count = count; this.mesh.visible = count > 0;
     this.mesh.instanceMatrix.needsUpdate = this.opacity.needsUpdate = true;

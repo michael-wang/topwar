@@ -7,7 +7,7 @@ import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
 import config from './helpers/ShippingConfig';
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
 
-it('budgets compounded neutral smoke opacity while retaining the pooled 5.6-second lifetime and impact layers', () => {
+it('layers compact dark smoke inside airy gray puffs in the same bounded draw and 5.6-second lifetime', () => {
   const scene = new THREE.Scene(), fx = new HeavyAirstrikeExplosion(scene);
   for (let i = 0; i < 9; i++) fx.present(i, (i % 3 - 1) * 2.8, 7 + Math.floor(i / 3) * 14, 0);
   const meshes = [...scene.children]; fx.update(150, 0);
@@ -15,13 +15,36 @@ it('budgets compounded neutral smoke opacity while retaining the pooled 5.6-seco
   fx.update(600, 0);
   const smoke = scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   expect(smoke.count).toBe(8); expect(smoke.material.depthWrite).toBe(false);
-  expect(1 - (1 - smoke.material.opacity) ** smoke.count).toBeLessThan(.45);
-  const { r, g, b } = smoke.material.color;
-  expect(Math.min(r, g, b)).toBeGreaterThan(.25); expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThan(.025);
+  const weights=smoke.geometry.getAttribute('smokeWeight');
+  expect(Array.from(weights.array)).toEqual([1,1,1,...Array(5).fill(Math.fround(.28))]);
+  expect(1-(1-smoke.material.opacity*.28)**5).toBeLessThan(.27);
+  expect(1-(1-smoke.material.opacity)**3).toBeGreaterThan(.45);
+  const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(0,inner);smoke.getColorAt(3,outer);
+  expect(inner.r).toBeLessThan(outer.r*.3);expect(Math.max(outer.r,outer.g,outer.b)-Math.min(outer.r,outer.g,outer.b)).toBeLessThan(.025);
+  const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(0,innerPose);smoke.getMatrixAt(3,outerPose);
+  expect(new THREE.Vector3().setFromMatrixScale(innerPose).x).toBeLessThan(new THREE.Vector3().setFromMatrixScale(outerPose).x*.6);
   const pose = Array.from(smoke.instanceMatrix.array); fx.update(600, 0);
   expect(Array.from(smoke.instanceMatrix.array)).toEqual(pose); expect(scene.children).toEqual(meshes);
   fx.update(5599, 0); expect(smoke.visible).toBe(true); fx.update(5600, 0); expect(smoke.visible).toBe(false);
   fx.reset(); expect(scene.children.every(m => !m.visible)).toBe(true); fx.dispose(); expect(scene.children).toHaveLength(0);
+});
+
+it('reconstructs persistent impact scorches once, beneath lane paint, without replaying expired explosions',()=>{
+  const scene=new THREE.Scene(),r=new SupportAirstrikeRenderer(scene),support=emptyCommanderSupport(true,true);
+  Object.assign(support.airstrike!,{status:'completed',triggeredAtSeconds:60,bombAtSeconds:67.5,strikesCompleted:6,tankZAtWarning:38,
+    impacts:Array.from({length:12},(_,i)=>({x:i%3-1,z:7+(i%4)*14,atSeconds:67.5+Math.floor(i/3)*.65}))});
+  // Include repeated coordinates: they must not stack a second decal.
+  support.airstrike!.impacts![11]={...support.airstrike!.impacts![0],atSeconds:70.75};
+  const state:GameRenderState={commanderSupport:{state:support,config:config.catharsis!.commanderSupport!,elapsedSeconds:100},
+    player:{x:0,z:0},squad:{count:2,rocketCount:0,rifleCounts:[2],formationSpacing:1},track:{halfWidth:3.2,defenseLineZ:0},enemies:[],projectiles:[]};
+  const saved=structuredClone(state);r.update(0,state);
+  const marks=scene.getObjectByName('airstrike-ground-scorch') as THREE.InstancedMesh;
+  expect(marks.count).toBe(11);expect(marks.instanceMatrix.count).toBe(12);expect(marks.renderOrder).toBeLessThan(0);
+  expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(false);
+  const pose=Array.from(marks.instanceMatrix.array);r.update(0,state);expect(marks.count).toBe(11);expect(Array.from(marks.instanceMatrix.array)).toEqual(pose);
+  r.update(120000,state);expect(marks.count).toBe(11);expect(state).toEqual(saved);
+  r.reset();expect(marks.count).toBe(0);r.update(120000,state);expect(marks.count).toBe(11);expect(Array.from(marks.instanceMatrix.array)).toEqual(pose);
+  r.dispose();expect(scene.children).toHaveLength(0);
 });
 
 it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes, resets and disposes its fixed resources once', () => {
