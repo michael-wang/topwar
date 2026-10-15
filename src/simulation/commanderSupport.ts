@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { SimulationState, EnemySimulationState } from './SimulationState';
 import { enemyApproachSpeed } from './enemies/latePressure';
 import { attackLanePositions } from './enemies/laneComposition';
+import { progressionStage } from './progression';
 
 const clock = z.number().finite().nonnegative();
 export const HEAVY_RAID_LANES = [0, 2, 4] as const;
@@ -16,7 +17,10 @@ export const CommanderSupportConfigSchema = z.strictObject({
   heavyRaid: z.strictObject({ bossDamage: z.number().finite().positive(), giantDamageFraction: z.number().finite().gt(0).lte(1), bandDepthUnits: z.number().finite().positive(),
     // Missing in released six-round raids: retain their original trigger and three Tank hits.
     lastStand: z.strictObject({ bossHpThreshold: z.number().finite().positive(), etaSafetySeconds: clock,
-      minimumBossHp: clock, triggerPolicy: z.literal('bossHpOnly').optional() }).optional(),
+      minimumBossHp: clock, triggerPolicy: z.enum(['bossHpOnly', 'bossHpBySquad']).optional(),
+      livingMgHpThresholds: z.array(z.number().finite().positive()).length(5).readonly().optional(),
+    }).refine(v => (v.triggerPolicy === 'bossHpBySquad') === (v.livingMgHpThresholds !== undefined),
+      'Living MG thresholds require the explicit bossHpBySquad policy').optional(),
   }).optional(),
 });
 export type CommanderSupportConfig = z.infer<typeof CommanderSupportConfigSchema>;
@@ -40,6 +44,12 @@ export const emptyCommanderSupport = (enabled: boolean, giantSeen = false): Comm
   giantSeen, giantAtSeconds: null, airstrike: enabled ? { status: 'ready', triggeredAtSeconds: null,
     bombAtSeconds: null, strikesCompleted: 0, targets: [] } : null,
 });
+
+export function supportBossHpThreshold(c: CommanderSupportConfig, livingMgCount: number): number | undefined {
+  const lastStand = c.heavyRaid?.lastStand;
+  return lastStand?.triggerPolicy === 'bossHpBySquad'
+    ? lastStand.livingMgHpThresholds![livingMgCount - 1] : lastStand?.bossHpThreshold;
+}
 
 /** Later bombs advance beyond the Tank; a Tank already at the HP floor is also bypassed. */
 export function supportTankBombZ(round: number, tankZ: number, bossHp: number, c: CommanderSupportConfig): number {
@@ -76,8 +86,14 @@ export function advanceCommanderSupport(frame: SimulationState, c: CommanderSupp
       const speed = enemyApproachSpeed(enemy, frame.catharsis!.balance);
       return speed > 0 && (enemy.z - defenseLineZ) / speed <= c.warningSeconds + lastStand!.etaSafetySeconds;
     };
-    if (lastStand ? tank.hp <= lastStand.bossHpThreshold
-      || lastStand.triggerPolicy !== 'bossHpOnly' && (left.some(imminentBreach) || right.some(imminentBreach)) : danger(left) && danger(right)) {
+    // Level identifies the weapon family only. The threshold indexes actual
+    // living MGs, never authored squad capacity or the encounter-pressure peak.
+    const livingMgCount = frame.progression && frame.catharsis
+      && progressionStage(frame.progression.level, frame.catharsis.balance.progression).weaponFamily === 'machineGun'
+      ? frame.squad.count : 0;
+    const hpThreshold = supportBossHpThreshold(c, livingMgCount);
+    if (lastStand ? tank.hp <= (hpThreshold ?? -Infinity)
+      || lastStand.triggerPolicy === undefined && (left.some(imminentBreach) || right.some(imminentBreach)) : danger(left) && danger(right)) {
       if (c.heavyRaid) { air.targets = []; air.impacts = []; air.tankZAtWarning = tank.z; }
       else {
         // Released checkpoints retain their fixed nearest-first quota.

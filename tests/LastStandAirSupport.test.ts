@@ -38,7 +38,8 @@ function recover(sim: Simulation) {
   return simulationFromCheckpoint(result.checkpoint);
 }
 it('authors the last stand in configuration and shares a playable Phase 3 fixture', () => {
-  expect(config.catharsis!.commanderSupport!.heavyRaid!.lastStand).toEqual({ bossHpThreshold: 750, etaSafetySeconds: 2, minimumBossHp: 150, triggerPolicy: 'bossHpOnly' });
+  expect(config.catharsis!.commanderSupport!.heavyRaid!.lastStand).toEqual({ bossHpThreshold: 750, etaSafetySeconds: 2, minimumBossHp: 150,
+    triggerPolicy: 'bossHpBySquad', livingMgHpThresholds: [750,750,1200,1600,2000] });
   const sim = createAirSupportPlaytest(options, config.weapon.rifle.fireRate), s = sim.getState();
   expect(s.defenseTank).toMatchObject({ hp: 750, phase: 3, status: 'active' });
   expect(s.player.selectedLane).toBe(0); expect(s.enemies.filter(e => e.archetype === 'heavy')).toHaveLength(6);
@@ -74,6 +75,7 @@ it.each(['intro', 'naval'] as const)('preserves the %s radio guard at 750 HP', g
 it('restores the historical HP-or-flank policy without injecting the new policy', () => {
   const sim = raid(2000), s = sim.getState();
   delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy;
+  delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.livingMgHpThresholds;
   s.enemies.forEach(e => e.z = 10); sim.restoreState(s);
   const copy = recover(sim);
   step(sim, 1); step(copy, 1); expect(copy.getState()).toEqual(sim.getState());
@@ -82,7 +84,8 @@ it('restores the historical HP-or-flank policy without injecting the new policy'
 });
 it.each([{ lane: 0, archetype: 'heavy' as const, speed: 1.4 }, { lane: 4, archetype: 'giant' as const, speed: 1.1 }])(
   'uses the actual defense line and stamped speed for a single $archetype on lane $lane', ({ lane, archetype, speed }) => {
-    const sim = raid(2000, 3, false), s = sim.getState(); delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy; const t = { ...tuning, defenseLineOffset: 5 };
+    const sim = raid(2000, 3, false), s = sim.getState(); delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy;
+    delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.livingMgHpThresholds; const t = { ...tuning, defenseLineOffset: 5 };
     s.enemies = [{ id: s.enemyStream!.nextEnemyId++, tier: 1, lane, x: lane === 0 ? -2.85 : 2.85,
       archetype, hp: archetype === 'giant' ? config.catharsis!.giant.hp : config.catharsis!.heavyHp,
       z: s.player.z - t.defenseLineOffset + speed * 9.55, bossFlankSpeedUnitsPerSecond: speed }];
@@ -93,6 +96,7 @@ it.each([{ lane: 0, archetype: 'heavy' as const, speed: 1.4 }, { lane: 4, archet
 it('also uses ordinary/survival speed, and ignores Grunts and central lanes', () => {
   const sim = raid(2000, 3, false), s = sim.getState();
   delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy;
+  delete s.catharsis!.balance.commanderSupport!.heavyRaid!.lastStand!.livingMgHpThresholds;
   s.enemies = [{ id: s.enemyStream!.nextEnemyId++, tier: 1, lane: 4, x: 2.85, archetype: 'heavy', hp: config.catharsis!.heavyHp,
     survivalSpeedMultiplier: 2, z: 30 }];
   const speed = enemyApproachSpeed(s.enemies[0], config.catharsis!);
