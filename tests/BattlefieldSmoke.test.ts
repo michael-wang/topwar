@@ -11,6 +11,27 @@ it('uses one size-independent world wind, with screen-right light and charcoal d
  expect(smokeWindX(-1)).toBe(0);expect(smokeWindX(1)).toBe(-2.2);expect(smokeWindX(1,true)).toBe(-3.4);
 });
 
+it.each([350,390])('starts central fire, surrounding charcoal and a larger gray envelope together at %ipx',width=>{
+ const scene=new THREE.Scene(),fx=new GrenadeExplosion(scene,1,false,'artillery'),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
+ applyCoastalCamera(camera);fx.present(0,0,.588,0);
+ const smoke=scene.getObjectByName('grenade-smoke') as THREE.InstancedMesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
+ expect(Array.from(smoke.geometry.getAttribute('smokeWeight').array)).toEqual([...Array(8).fill(Math.fround(.34)),...Array(4).fill(1)]);
+ const matrix=new THREE.Matrix4(),dark=new THREE.Color(),light=new THREE.Color();
+ smoke.getColorAt(8,dark);smoke.getColorAt(0,light);expect(dark.r).toBeLessThan(light.r*.2);
+ for(const age of [0,30,100]){
+  fx.update(age,0);expect(smoke.visible).toBe(true);expect(smoke.material.opacity).toBeGreaterThanOrEqual(.34);
+  expect(scene.getObjectByName('grenade-fire')!.visible).toBe(true);
+  let inner=0,outer=0;
+  for(let i=0;i<smoke.count;i++){
+   smoke.getMatrixAt(i,matrix);const size=new THREE.Vector3().setFromMatrixScale(matrix);
+   expect(size.length()).toBeGreaterThan(.5);
+   if(i===8)inner=size.length();if(i===0)outer=size.length();
+  }
+  expect(outer).toBeGreaterThan(inner);
+ }
+ fx.dispose();expect(scene.children).toHaveLength(0);
+});
+
 it('preserves the approved grenade profile, debris, sparks and fire while excluding artillery-only box fragments',()=>{
  expect(EXPLOSION_SMOKE.grenade).toEqual({count:16,dark:5,seconds:1.9,opacity:.30,airyWeight:.09});
  for(const tier of ['grenade','artillery'] as const){
@@ -37,7 +58,7 @@ it('orders actual smoke footprint, quantity and persistence airstrike > grenade 
   const profile=EXPLOSION_SMOKE[tier],matrix=new THREE.Matrix4();smoke.getMatrixAt(profile.dark,matrix);
   sizes.push(new THREE.Vector3().setFromMatrixScale(matrix).length());counts.push(smoke.count);durations.push(profile.seconds);
   const outerAlpha=1-(1-smoke.material.opacity*profile.airyWeight)**(profile.count-profile.dark);
-  if(tier==='artillery') {expect(outerAlpha).toBeGreaterThan(.35);expect(outerAlpha).toBeLessThan(.65);}
+  if(tier==='artillery') {expect(outerAlpha).toBeGreaterThan(.75);}
   else if(tier==='grenade')expect(outerAlpha).toBeLessThan(.27);
   else expect(outerAlpha).toBeGreaterThan(.9);
   if(tier==='artillery')expect(scene.getObjectByName('grenade-shock-ring')!.scale.x).toBeCloseTo(.588);
@@ -70,7 +91,7 @@ it.each([350,390])('drifts grenade and real artillery-impact smoke screen-right 
   update(30);expect(scene.getObjectByName('grenade-flash')!.position.x).toBe(-1.4);
   const smoke=scene.getObjectByName('grenade-smoke') as THREE.InstancedMesh,objects=scene.children.slice(),matrix=new THREE.Matrix4();
   const projected=()=>Array.from({length:smoke.count},(_,i)=>{smoke.getMatrixAt(i,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;});
-  update(350);const before=projected(),dark=new THREE.Color(),light=new THREE.Color();smoke.getColorAt(0,dark);smoke.getColorAt(artillery?4:5,light);
+  update(350);const before=projected(),dark=new THREE.Color(),light=new THREE.Color();smoke.getColorAt(artillery?8:0,dark);smoke.getColorAt(artillery?0:5,light);
   expect(dark.r).toBeLessThan(light.r*.4);expect(smoke.count).toBe(artillery?12:16);
   update(850);expect(smoke.visible).toBe(true);expect(scene.getObjectByName('grenade-fire')!.visible).toBe(false);
   projected().forEach((x,i)=>expect(x).toBeGreaterThan(before[i]));

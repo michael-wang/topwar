@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GRENADE_FX, GRENADE_DEBRIS_COUNT, grenadeDebrisPose } from '../presentation/GrenadeMotion';
 import { GroundScorchMarks } from './GroundScorchMarks';
-import {EXPLOSION_SMOKE, explosionSmokeGeometry, prepareExplosionSmoke, poseExplosionSmoke, explosionSmokeOpacity} from './ExplosionSmoke';
+import {EXPLOSION_SMOKE, explosionSmokeGeometry, prepareExplosionSmoke, poseExplosionSmoke, explosionSmokeOpacity, smokeIsDark} from './ExplosionSmoke';
 
 // Three reusable grenade slots cover the 0.65s flight cadence and 1.9s smoke tail.
 export class GrenadeExplosion {
@@ -60,11 +60,11 @@ export class GrenadeExplosion {
       const age = nowMs - s.atMs, t = age / 1000, r = s.radius, x = -s.x, z = s.z - originZ;
       const active = age >= 0 && age < EXPLOSION_SMOKE[this.smokeTier].seconds * 1000;
       s.meshes.forEach(m => { m.visible = active; }); if (!active) continue;
-      s.core.visible = t < .12; s.fire.visible = t < .28; s.smoke.visible = t >= .08;
+      s.core.visible = t < .12; s.fire.visible = t < .28; s.smoke.visible = this.smokeTier === 'artillery' || t >= .08;
       // Artillery reuses the plume pool, not grenade shrapnel or yellow box sparks.
       s.debris.visible = this.smokeTier === 'grenade' && age < GRENADE_FX.durationMs;
       s.dust.visible = t >= .08 && t < .8; s.sparks.visible = this.smokeTier === 'grenade' && t < .65; s.ring.visible = t >= .08 && t < .36;
-      const burstRadius = this.smokeTier === 'artillery' ? Math.max(1.2, r) : r;
+      const burstRadius = this.smokeTier === 'artillery' ? Math.max(1.8, r) : r;
       s.core.position.set(x, .6, z); s.core.scale.setScalar(burstRadius * (.1 + Math.min(t, .12) * .8));
       s.materials[0].opacity = Math.max(0, 1 - t / .12);
       s.materials[1].opacity = Math.max(0, 1 - Math.max(0, t - .12) / .16);
@@ -104,11 +104,9 @@ export class GrenadeExplosion {
       // Tiny artillery damage radii must not shrink the post-blast visual plume.
       const smokeRadius = this.smokeTier === 'artillery' ? Math.max(3.6, r) : r;
       for(let i=0;i<profile.count;i++) {
-        const delay = this.smokeTier === 'artillery' ? i % 4 * .24 : 0;
-        poseExplosionSmoke(this.transform,i,i<profile.dark,Math.max(0,t-delay),smokeRadius,x,z);
-        if(this.smokeTier === 'artillery' && t < delay+.08) {
-          this.transform.scale.setScalar(0);this.transform.updateMatrix();
-        }
+        // Fire and both smoke layers start together, then the complete plume catches the wind.
+        const smokeAge=this.smokeTier === 'artillery'?Math.max(0,t-.12):t;
+        poseExplosionSmoke(this.transform,i,smokeIsDark(i,profile),smokeAge,smokeRadius,x,z,profile);
         s.smoke.setMatrixAt(i,this.transform.matrix);
       }
       for (const mesh of [s.fire, s.smoke, s.dust, s.sparks]) mesh.instanceMatrix.needsUpdate = true;

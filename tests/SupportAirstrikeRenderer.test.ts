@@ -10,7 +10,7 @@ import {EXPLOSION_SMOKE} from '../src/rendering/ExplosionSmoke';
 
 it.each([350,390])('builds dense overlapping projected smoke banks at %ipx while leaving other profiles alone',width=>{
  expect(EXPLOSION_SMOKE.grenade).toEqual({count:16,dark:5,seconds:1.9,opacity:.30,airyWeight:.09});
- expect(EXPLOSION_SMOKE.artillery).toEqual({count:12,dark:4,seconds:1.8,opacity:.40,airyWeight:.24,darkFadeEnd:.95});
+ expect(EXPLOSION_SMOKE.artillery).toEqual({count:12,dark:4,seconds:1.8,opacity:.58,airyWeight:.34,darkFadeEnd:.95,darkLast:true,darkColor:'#252b2d',lightColor:'#9b9f9c',darkScale:1.5,startSeconds:0,fadeInSeconds:.08,initialOpacity:.6});
  const scene=new THREE.Scene(),fx=new HeavyAirstrikeExplosion(scene),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
  applyCoastalCamera(camera);
  for(let i=0;i<3;i++)fx.present(i,(i-1)*2.8,14,0);
