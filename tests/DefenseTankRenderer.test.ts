@@ -4,8 +4,43 @@ import { DefenseTankRenderer, TANK_DEATH_MS } from '../src/rendering/DefenseTank
 import { startDefenseTank } from '../src/simulation/defenseTank';
 import config from './helpers/ShippingConfig';
 import { ART } from '../src/art/ArtDirection';
+import { smokeWindX } from '../src/presentation/BattlefieldWind';
+import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 
 const c = config.catharsis!.defenseTank!;
+it('recycles eight fading wreck puffs with world-right wind through scaled/tilted wrecks and exact restored presentation ages', () => {
+  const scene = new THREE.Scene(), r = new DefenseTankRenderer(scene), tank = startDefenseTank(0, 17, c);
+  tank.status = 'defeated'; tank.phase = 3; tank.hp = 0; tank.z = c.battleZ;
+  const frame = { state: tank, config: c, elapsedSeconds: 0 };
+  r.restore(frame, 0, 4000); r.update(frame, 0);
+  const smoke = r.group.getObjectByName('tank-smoke') as THREE.InstancedMesh;
+  const matrix = new THREE.Matrix4(), from = new THREE.Vector3(), to = new THREE.Vector3();
+  const alpha = smoke.geometry.getAttribute('wreckOpacity');
+  smoke.getMatrixAt(0, matrix); from.setFromMatrixPosition(matrix).applyMatrix4(r.group.matrixWorld);
+  const beforeAlpha = alpha.getX(3), beforeScale = new THREE.Vector3().setFromMatrixScale(matrix).x;
+  r.update(frame, 300);
+  smoke.getMatrixAt(0, matrix); to.setFromMatrixPosition(matrix).applyMatrix4(r.group.matrixWorld);
+  expect(to.x - from.x).toBeCloseTo(smokeWindX(.3), 5);
+  for (const width of [350, 390]) {
+    const camera = new THREE.PerspectiveCamera(48, width / 844, .1, 180); applyCoastalCamera(camera);
+    expect(to.clone().project(camera).x).toBeGreaterThan(from.clone().project(camera).x);
+  }
+  expect(to.y).toBeGreaterThan(from.y);
+  expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeGreaterThan(beforeScale);
+  expect(alpha.getX(3)).toBeLessThan(beforeAlpha);
+  const pose = Array.from(smoke.instanceMatrix.array), opacities = Array.from(alpha.array);
+  r.update(frame, 300); expect(Array.from(smoke.instanceMatrix.array)).toEqual(pose);
+  r.restore(frame, 20000, 4300); r.update(frame, 20000);
+  expect(Array.from(smoke.instanceMatrix.array)).toEqual(pose);
+  expect(Array.from(alpha.array)).toEqual(opacities);
+  const count = scene.children.length, geometry = smoke.geometry, attribute = alpha.array;
+  for (let ms = 0; ms < 10000; ms += 16) r.update(frame, 20000 + ms);
+  expect(smoke.count).toBe(8); expect(scene.children.length).toBe(count);
+  expect(smoke.geometry).toBe(geometry); expect(alpha.array).toBe(attribute);
+  expect(Array.from(alpha.array).every(a => a >= 0 && a <= 1)).toBe(true);
+  r.reset(); expect(smoke.visible).toBe(false);
+  r.dispose(); expect(scene.children).toHaveLength(0);
+});
 it('keeps navy-gray armor and tall turret while local flash layers pulse; ship doors never flash and Restore/Retry clear feedback', () => {
   const scene = new THREE.Scene(), r = new DefenseTankRenderer(scene), tank = startDefenseTank(0, 17, c);
   tank.status = 'active'; tank.z = c.battleZ;

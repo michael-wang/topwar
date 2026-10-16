@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.24 promotes the Pixel 8-approved B-fast and Hybrid D designs in two independent changes. B-fast drives real Tank/Destroyer impacts with bounded batching and 1.5s expiry; Hybrid D drives real airstrike impacts with preserved white flash/ring and independent 1.5–2s smoke fade. Keep the DEV Explosion Lab as a comparison/reference tool.
+P4.25: wreck smoke (#29) rises and drifts screen-right using the shared battlefield wind, retaining eight pooled puffs and three small fires. Owner Pixel 8 acceptance is pending.
 
-Owner final production Pixel 8 acceptance is pending. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints, gameplay and manual deployment. No additional feature implementation is included.
+P4.24 Tank/Destroyer B-fast production impacts are physically accepted. Preserve Hybrid D, approved Grenade/cannon visuals, four shared entries, historical checkpoints, gameplay and manual deployment. Keep the DEV Explosion Lab as a comparison/reference tool.
 
 ## NEXT
 

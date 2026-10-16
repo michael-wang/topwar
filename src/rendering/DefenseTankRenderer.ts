@@ -8,6 +8,7 @@ import type { GameRenderState } from './RenderState';
 import { TANK_ENTRANCE_CLEAR_FRACTION, type TankEntranceEvent } from '../simulation/defenseTank';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { CannonMuzzleFeedback } from './CannonMuzzleFeedback';
+import { smokeWindX } from '../presentation/BattlefieldWind';
 
 export const TANK_DEATH_MS = 3200;
 export const TANK_EXPLOSION_TIMES_MS = [0, 350, 700, 1050, 1400, 1800, 2200] as const;
@@ -23,6 +24,11 @@ export class DefenseTankRenderer {
   private readonly wheelGeometry = new THREE.CylinderGeometry(.47, .47, .25, 10);
   private readonly barrelGeometry = new THREE.CylinderGeometry(.22, .32, 2.7, 10);
   private readonly smokeGeometry = new THREE.SphereGeometry(1, 8, 6);
+  private readonly smokeOpacity = new THREE.InstancedBufferAttribute(new Float32Array(8).fill(1), 1);
+  private readonly smokeColor = new THREE.Color();
+  private readonly smokeGray = new THREE.Color('#777f80');
+  private readonly inverseSmokeBasis = new THREE.Matrix3();
+  private readonly smokeOffset = new THREE.Vector3();
   private readonly flameGeometry = new THREE.ConeGeometry(.3, 1, 7);
   private readonly flameMaterial = new THREE.MeshBasicMaterial({ color: '#ff5f19', transparent: true,
     opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -106,6 +112,17 @@ export class DefenseTankRenderer {
       }
     }
     this.flames.name = 'tank-wreck-flames'; this.flameCores.name = 'tank-wreck-fire-cores';
+    this.smoke.name = 'tank-smoke';
+    this.smokeGeometry.setAttribute('wreckOpacity', this.smokeOpacity);
+    this.smokeOpacity.setUsage(THREE.DynamicDrawUsage);
+    this.smokeMaterial.onBeforeCompile = shader => {
+      shader.vertexShader = `attribute float wreckOpacity; varying float vWreckOpacity;\n${shader.vertexShader}`
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWreckOpacity = wreckOpacity;');
+      shader.fragmentShader = `varying float vWreckOpacity;\n${shader.fragmentShader}`
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= vWreckOpacity;');
+    };
+    this.smokeMaterial.customProgramCacheKey = () => 'tank-wreck-smoke-opacity';
+    for (let i = 0; i < 8; i++) this.smoke.setColorAt(i, this.smokeColor.set('#ffffff'));
     this.group.add(this.turret, this.tracks, this.wheels, this.smoke, this.scars, this.flames, this.flameCores);
     for (const batch of [this.tracks, this.wheels, this.smoke, this.scars, this.flames, this.flameCores]) {
       batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage); batch.frustumCulled = false;
@@ -197,19 +214,44 @@ export class DefenseTankRenderer {
       this.tracks.setMatrixAt(i, this.transform.matrix);
     }
     this.tracks.instanceMatrix.needsUpdate = true;
+    if (s.status === 'defeated') {
+      const deathAge = nowMs - this.deathAtMs;
+      this.group.rotation.z = Math.min(.09, deathAge / TANK_DEATH_MS * .09);
+      this.group.position.y = -Math.min(.22, deathAge / TANK_DEATH_MS * .22);
+      this.group.updateWorldMatrix(true, false);
+      this.inverseSmokeBasis.setFromMatrix4(this.group.matrixWorld).invert();
+    }
     this.smoke.visible = s.status === 'active' || s.status === 'defeated';
-    this.smokeMaterial.opacity = s.status === 'defeated' ? .56 : .3;
-    this.smokeMaterial.color.set(s.status === 'defeated' ? '#282b2d' : '#454137');
+    this.smokeMaterial.opacity = s.status === 'defeated' ? .72 : .3;
+    this.smokeMaterial.color.set(s.status === 'defeated' ? '#ffffff' : '#454137');
     // Combat time freezes on the lethal tick; victory smoke follows the pause-aware presentation clock.
     const smokeAge = age + (s.status === 'defeated' ? Math.max(0, nowMs - this.deathAtMs) / 1000 : 0);
     for (let i = 0; i < 8; i++) {
-      const t = (smokeAge * (s.status === 'defeated' ? .35 : s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
-      this.transform.position.set(i % 2 ? -1.35 : 1.35, 2.4 + t * (s.status === 'defeated' ? 1.5 : .8), 2 + t * .6);
-      this.transform.rotation.set(0, i, 0); this.transform.scale.setScalar((.12 + t * .2) * (s.phase === 3 ? 1.6 : 1)
-        * (s.status === 'defeated' ? 1.8 : 1));
+      if (s.status === 'defeated') {
+        // Each slot recycles at the wreck; invert the full scaled/rotated basis so
+        // shared render-world -X stays screen-right, rather than tilting with armor.
+        const life = 3.4, t = (smokeAge + i * life / 8) % life, p = t / life;
+        this.smokeOffset.set(smokeWindX(Math.max(0, t - .25)), t * 1.15, .12 * t)
+          .applyMatrix3(this.inverseSmokeBasis);
+        const source = i % 3;
+        this.transform.position.set(source === 0 ? -1.4 : source === 1 ? 1.4 : .65, 2.35, source === 2 ? -1.9 : 1.55)
+          .add(this.smokeOffset);
+        this.transform.rotation.set(.12 * t, i, .1 * t);
+        const size = .24 + .40 * t;
+        this.transform.scale.set(size * (1 + .25 * p), size, size * .85);
+        this.smokeOpacity.setX(i, Math.min(1, t / .16) * Math.min(1, (life - t) / 1.8) ** 1.2);
+        this.smokeColor.set('#303739').lerp(this.smokeGray, p);
+        this.smoke.setColorAt(i, this.smokeColor);
+      } else {
+        const t = (smokeAge * (s.phase === 3 ? 1.4 : .6) + i / 4) % 2;
+        this.transform.position.set(i % 2 ? -1.35 : 1.35, 2.4 + t * .8, 2 + t * .6);
+        this.transform.rotation.set(0, i, 0); this.transform.scale.setScalar((.12 + t * .2) * (s.phase === 3 ? 1.6 : 1));
+        this.smokeOpacity.setX(i, 1); this.smoke.setColorAt(i, this.smokeColor.set('#ffffff'));
+      }
       this.transform.updateMatrix(); this.smoke.setMatrixAt(i, this.transform.matrix);
     }
     this.smoke.instanceMatrix.needsUpdate = true;
+    this.smokeOpacity.needsUpdate = true; this.smoke.instanceColor!.needsUpdate = true;
     this.flames.visible = this.flameCores.visible = s.status === 'defeated';
     if (s.status === 'defeated') {
       const deathAge = nowMs - this.deathAtMs;
@@ -229,9 +271,7 @@ export class DefenseTankRenderer {
         this.explosions.present(final ? 0 : (i % 3 - 1) * 1.1, s.z + (i % 2 ? 1 : -1), final ? 7 : 3.2,
           this.deathAtMs + TANK_EXPLOSION_TIMES_MS[i]); this.lastBurst = i;
       }
-      this.group.rotation.z = Math.min(.09, deathAge / TANK_DEATH_MS * .09);
       this.turret.rotation.x = -Math.min(.3, deathAge / TANK_DEATH_MS * .3);
-      this.group.position.y = -Math.min(.22, deathAge / TANK_DEATH_MS * .22);
       this.armor.color.set('#292c27'); // Keep an armored wreck after the final explosion.
     }
     this.explosions.update(nowMs, 0);
@@ -248,6 +288,7 @@ export class DefenseTankRenderer {
       this.lastBurst = TANK_EXPLOSION_TIMES_MS.filter(at => at <= victoryElapsedMs).length - 1; }
   }
   reset(): void { this.group.visible = this.landing.visible = false; this.group.rotation.set(0, 0, 0);
+    this.smoke.visible = false;
     this.cannon.reset();
     this.flames.visible = this.flameCores.visible = false;
     this.armor.color.set(ART.enemyArmory.vehicle);
