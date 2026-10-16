@@ -32,11 +32,13 @@ it('loses vertical support, reaches a held peak with no depth retreat, then sepa
   expect(THREAT_DEATH_COLLAPSE.giant.sinkUnits).toBeGreaterThan(THREAT_DEATH_COLLAPSE.heavy.sinkUnits);
   expect(THREAT_DEATH_COLLAPSE.giant.holdEndMs-THREAT_DEATH_COLLAPSE.giant.peakMs).toBe(300);
 });
-it('plants Heavy shoes in the existing bounded batch without changing simulation or borrowed geometry', () => {
+it('retains grenade-killed Heavy collapse and planted shoes without changing simulation or borrowed geometry', () => {
   const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()},scene=new THREE.Scene(),r=new EnemyRenderer(scene,families);
   const e={id:3,archetype:'heavy' as const,hp:1,tier:1,x:0,z:8},before=JSON.stringify(e),geometry=families.heavy.lethalReaction!.final.geometry;
   const positions=Array.from(geometry.getAttribute('position').array);
-  r.update([e],2000,true);r.update([],2010,true);r.update([],2360,true);
+  r.update([e],2000,true);
+  r.presentGrenade([{kind:'grenadeDetonated',x:0,z:8,radius:4,victims:[{...e,damage:1,killXp:10,killed:true}]}],2010);
+  r.update([],2010,true);r.update([],2360,true);
   const body=scene.children.find(o=>o.name==='enemy-frozen-body-batch'&&o.visible&&(o as THREE.Mesh).geometry.getAttribute('deathPieceId').array.includes(8))as THREE.InstancedMesh;
   expect(body.count).toBe(1);expect(body.geometry.getAttribute('deathSink').getX(0)).toBeCloseTo(.26);
   const shader={uniforms:{},vertexShader:'#include <begin_vertex>\n#include <project_vertex>',fragmentShader:'#include <color_fragment>'}as Parameters<THREE.Material['onBeforeCompile']>[0];

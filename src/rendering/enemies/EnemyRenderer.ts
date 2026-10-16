@@ -39,6 +39,7 @@ export const ENEMY_VISUAL_SCALE = 0.82;
 const PALETTES = ENEMY_PALETTE.map((_, index) => index);
 
 interface DeathVisual {
+  grenadeDeath: boolean;
   blast: { x: number; z: number; heavyRaid?: boolean } | null;
   frozenRoot: THREE.Matrix4;
   recoilDirection: THREE.Vector2;
@@ -136,10 +137,11 @@ export class EnemyRenderer {
   private readonly hitBlood: BloodSplat;
   private readonly hitImpulse = new EnemyHitImpulse();
   private readonly blastDeaths = new Map<number, { x: number; z: number; heavyRaid?: boolean }>();
+  private readonly grenadeDeaths = new Set<number>();
   private readonly blastReactions = new Map<number, { x: number; z: number; atMs: number }>();
   private readonly blastAxis = new THREE.Vector3();
   private readonly blastRotation = new THREE.Matrix4();
-  // Grunt retains its captured pose; Giant owns its matrices in GiantRenderer.
+  // Ordinary Grunt/Heavy retain captured poses; explosion-killed Heavy still uses these reactions.
   private readonly heavyReactionMatrices?: readonly [THREE.Matrix4, THREE.Matrix4];
   private readonly deathBatches: CrowdDeathBatches;
   private readonly healthBars: { backing: THREE.Sprite; fill: THREE.Sprite; clip: ReturnType<typeof prepareGiantBarFill> }[] = [];
@@ -210,6 +212,7 @@ export class EnemyRenderer {
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
     for (const event of events) {
       if (event.kind !== 'grenadeDetonated') continue;
+      for (const victim of event.victims) if (victim.killed && victim.archetype === 'heavy') this.grenadeDeaths.add(victim.id);
       const available = Math.max(0, GRENADE_FX.airborneLimit - this.deathVisuals.filter(v => v.group.visible && v.blast).length - this.blastDeaths.size);
       const launched = event.victims.filter(v => v.killed && v.archetype === 'grunt')
         .sort((a, b) => (Math.imul(a.id, 2654435761) >>> 0) - (Math.imul(b.id, 2654435761) >>> 0)).slice(0, available);
@@ -271,7 +274,7 @@ export class EnemyRenderer {
       this.previousEnemies.set(enemy.id, { ...enemy });
     }
     for (const id of this.previousEnemies.keys()) if (!currentIds.has(id)) this.previousEnemies.delete(id);
-    this.blastDeaths.clear();
+    this.blastDeaths.clear(); this.grenadeDeaths.clear();
     for (const [id, reaction] of this.blastReactions) if (!currentIds.has(id) || nowMs - reaction.atMs >= GRENADE_FX.reactionMs) this.blastReactions.delete(id);
     this.hitImpulse.prune(currentIds);
     this.contactIds.clear();
@@ -440,7 +443,7 @@ export class EnemyRenderer {
   }
 
   reset(visualSalt=0): void {
-    this.blastDeaths.clear(); this.blastReactions.clear();
+    this.blastDeaths.clear(); this.grenadeDeaths.clear(); this.blastReactions.clear();
     this.deathSequence.reset(visualSalt);
     this.previousEnemies.clear();
     this.liveIds.clear();
@@ -627,7 +630,7 @@ export class EnemyRenderer {
       group.children.forEach(part => part.layers.set(31));
       this.scene.add(group);
       group.visible = false;
-      this.deathVisuals.push({ blast: null, frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, heavy: false, role });
+      this.deathVisuals.push({ grenadeDeath: false, blast: null, frozenRoot: new THREE.Matrix4(), recoilDirection: new THREE.Vector2(), variant:0, gearFreeze: [new THREE.Matrix4(), new THREE.Matrix4()], parts, group, bodyMaterial, gearMaterial, startedAtMs: -Infinity, heavy: false, role });
   }
 
   private spawnDeath(enemy: EnemyRenderState, nowMs: number, variant:number, attackerX?: number, attackerZ?: number): THREE.Group | undefined {
@@ -657,6 +660,7 @@ export class EnemyRenderer {
     visual.startedAtMs = nowMs;
     visual.variant=variant;
     visual.blast = this.blastDeaths.get(enemy.id) ?? null;
+    visual.grenadeDeath = this.grenadeDeaths.has(enemy.id);
     visual.role = role;
     visual.heavy = enemy.archetype === 'heavy';
     // Keep depth writes during the intact fade so a hollow helmet shell
@@ -700,9 +704,11 @@ export class EnemyRenderer {
     for (const visual of this.deathVisuals) {
       if (!visual.group.visible) continue;
       const elapsed = nowMs - visual.startedAtMs;
-      if (visual.role === 'grunt' || visual.blast?.heavyRaid) {
+      if (visual.role === 'grunt' || (visual.role === 'heavy' && !visual.blast && !visual.grenadeDeath) || visual.blast?.heavyRaid) {
         const air = visual.blast ? airborneGrenadePose(elapsed) : null;
         const pose = air ?? gruntDeathBody(elapsed);
+        // Ordinary Heavy joins Grunt's compact intact lift/fade. Explosion victims
+        // retain their existing reaction path. Blood keeps its independent clock.
         // World Y only: captured gait, helmet lag, rotation and scale stay exact.
         // Blood owns its separate captured ground-space clock and never inherits lift.
         visual.group.matrix.copy(visual.frozenRoot);

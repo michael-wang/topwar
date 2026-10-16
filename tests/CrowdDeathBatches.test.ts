@@ -17,12 +17,13 @@ it('batches dense intact deaths by pose, keeps per-instance pale state and fade 
   for(const mesh of batches.filter(c=>c.visible)){
     expect(mesh.geometry).not.toBe(heavy.helmet.geometry);
     expect(heavy.runFrames.some(frame=>frame.geometry===mesh.geometry)).toBe(false);
-    expect(mesh.geometry.getAttribute('deathGray')).toBeUndefined();expect(mesh.geometry.getAttribute('deathPale').getX(0)).toBeCloseTo(enemyDeathPale(70, 'heavy'));
+    expect(mesh.geometry.getAttribute('deathGray')).toBeUndefined();expect(mesh.geometry.getAttribute('deathPale').getX(0)).toBeCloseTo(enemyDeathPale(70, 'grunt'));
     expect(mesh.geometry.getAttribute('deathOpacity').getX(0)).toBe(1);
-    expect(mesh.geometry.getAttribute('deathRed')).toBeUndefined();expect(mesh.geometry.getAttribute('deathBreakup').getX(0)).toBe(0);
+    expect(mesh.geometry.getAttribute('deathRed')).toBeUndefined();expect(mesh.geometry.getAttribute('deathBreakup')).toBeUndefined();
   }
-  renderer.update([],900);
-  for(const mesh of batches.filter(c=>c.visible)){expect(mesh.geometry.getAttribute('deathGray')).toBeUndefined();expect(mesh.geometry.getAttribute('deathPale').getX(0)).toBe(1);expect(mesh.geometry.getAttribute('deathBreakup').getX(0)).toBe(0);expect(mesh.geometry.getAttribute('deathOpacity').getX(0)).toBeLessThan(1);}
+  renderer.update([],400);
+  for(const mesh of batches.filter(c=>c.visible)){expect(mesh.geometry.getAttribute('deathGray')).toBeUndefined();expect(mesh.geometry.getAttribute('deathPale').getX(0)).toBe(1);expect(mesh.geometry.getAttribute('deathBreakup')).toBeUndefined();expect(mesh.geometry.getAttribute('deathOpacity').getX(0)).toBeLessThan(1);}
+  renderer.update([],530);expect(batches.every(m=>!m.visible&&m.count===0)).toBe(true);
   const borrowed=vi.spyOn(heavy.helmet.geometry,'dispose');
   const owned=batches.flatMap(mesh=>[vi.spyOn(mesh.geometry,'dispose'),vi.spyOn(mesh.material as THREE.Material,'dispose')]);
   renderer.reset();expect(batches.every(mesh=>!mesh.visible&&mesh.count===0)).toBe(true);

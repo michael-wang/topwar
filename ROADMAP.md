@@ -4,6 +4,8 @@
 
 P4.25: wreck smoke (#29) rises and drifts screen-right using the shared battlefield wind, retaining eight pooled puffs and three small fires. Owner Pixel 8 acceptance is pending.
 
+Heavy ordinary death (#27) now matches Grunt's compact intact pale lift/fade over 520ms. Alive visuals, explosion reactions, blood/stains and gameplay remain unchanged. Owner Pixel 8 acceptance is pending.
+
 P4.24 Tank/Destroyer B-fast production impacts are physically accepted. Preserve Hybrid D, approved Grenade/cannon visuals, four shared entries, historical checkpoints, gameplay and manual deployment. Keep the DEV Explosion Lab as a comparison/reference tool.
 
 ## NEXT
@@ -16,7 +18,7 @@ P4.24 Tank/Destroyer B-fast production impacts are physically accepted. Preserve
 
 - Required before public playtest: mobile fullscreen (#28), coordinated with arcade 「開始遊戲」 and startup/audio activation UX. Separate future task; no fullscreen/PWA/startup implementation in this batch.
 
-- Tracking only, outside P4.23: Heavy death (#27) should match Grunt with a compact rising smoke puff; Giant death (#14) should use robotic disassembly/explosion treatment. No death-renderer implementation in this batch.
+- Tracking only: Giant death (#14) should use robotic disassembly/explosion treatment. No Giant death changes in this batch.
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.

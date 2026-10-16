@@ -33,7 +33,7 @@ it('has zero lethal retreat, role-weighted topple, an away direction, a low pivo
     const held = new THREE.Matrix4(); writeLethalRecoil(held, captured, ENEMY_DEATH_TIMING[role].totalMs, role, direction.x, direction.y); closeMatrix(held, matrix);
   }
 });
-it('shares threat root and blood recoil, keeps Grunt blood separate from body lift and leaves simulation untouched', () => {
+it('keeps Grunt/Heavy blood separate from intact body lift, retains Giant recoil and leaves simulation untouched', () => {
   for (const role of ['grunt', 'heavy', 'giant'] as const) {
     const families = { grunt: createChibiGruntFamily(), heavy: createChibiHeavyFamily(), giant: createChibiGiantFamily() };
     const scene = new THREE.Scene(), r = new EnemyRenderer(scene, families), enemy = { id: 5, archetype: role, tier: 1, hp: 1, x: .4, z: 8, visualScale: 1.8 };
@@ -42,11 +42,11 @@ it('shares threat root and blood recoil, keeps Grunt blood separate from body li
     const direction = new THREE.Vector2(); writeLethalDirection(direction, captured, 0, 0);
     const age = BLOOD_RIBBON_START_MS[role] + 10;
     r.update([], 2010 + age, true, 0, 0);
-    const expected = new THREE.Matrix4(); writeLethalRecoil(expected, captured, age, role, direction.x, direction.y); if(role==='grunt'){const body=captured.clone();body.elements[13]+=gruntDeathBody(age).lift;closeMatrix(group.matrix,body);}else closeMatrix(group.matrix, expected);
+    const expected = new THREE.Matrix4(); writeLethalRecoil(expected, captured, age, role, direction.x, direction.y); if(role!=='giant'){const body=captured.clone();body.elements[13]+=gruntDeathBody(age).lift;closeMatrix(group.matrix,body);}else closeMatrix(group.matrix, expected);
     const ribbons = scene.getObjectByName(`enemy-blood-ribbons-${role}`) as THREE.InstancedMesh, matrix = new THREE.Matrix4(); ribbons.getMatrixAt(0, matrix); closeMatrix(matrix, expected);
     r.update([], 2010 + LETHAL_RECOIL[role].peakMs + 300, true, 0, 0);
     const slots = (r as unknown as { blood: { slots: { startedAt: number; matrix: THREE.Matrix4 }[] } }).blood.slots;
-    if(role==='grunt'){const launch=new THREE.Matrix4();writeLethalRecoil(launch,captured,190,role,direction.x,direction.y);closeMatrix(slots.find(s=>Number.isFinite(s.startedAt))!.matrix,launch);}else closeMatrix(slots.find(s => Number.isFinite(s.startedAt))!.matrix, group.matrix);
+    if(role!=='giant'){const launch=new THREE.Matrix4();writeLethalRecoil(launch,captured,role==='grunt'?190:380,role,direction.x,direction.y);closeMatrix(slots.find(s=>Number.isFinite(s.startedAt))!.matrix,launch);}else closeMatrix(slots.find(s => Number.isFinite(s.startedAt))!.matrix, group.matrix);
     expect(enemy).toEqual({ id: 5, archetype: role, tier: 1, hp: 1, x: .4, z: 8, visualScale: 1.8 });
     r.dispose(); Object.values(families).forEach(f => f.dispose()); expect(scene.children).toHaveLength(0);
   }

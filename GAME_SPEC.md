@@ -47,6 +47,8 @@ The dangerous Lv3→4 transition is retained. At Lv4 XP≥35%, ordinary waves co
 
 Grunts have 1 HP; Heavies have 15 HP. Existing approach rules, lane cursors and stamped Survival speed multipliers are preserved.
 
+Ordinary gunfire kills keep both Grunt and Heavy silhouettes intact, turn them pale/gray, lift them .26 units and fade them over 520ms. Heavy alive armor, size, gait and hit feedback remain unchanged. Grenade, Airstrike and Tank-entry victims keep their existing explosion reactions, while biological blood and ground stains keep their independent role-specific clocks. Giant death is unchanged. Heavy's compact death awaits owner Pixel 8 acceptance; no gameplay or checkpoint fields change.
+
 ## Carnival, naval presence and Survival
 
 Lv6 Evolution admits the one-time 60-enemy release (one Heavy), starts Carnival and introduces the Destroyer without clearing existing enemies. Carnival owns ordinary admissions for 3.2 seconds, retaining its +2-second Grunt opportunity (up to 36, maximum 80 active enemies for Carnival admissions) and accepted lane patterns. There is no parallel ordinary wave stream.

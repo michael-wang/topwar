@@ -1,6 +1,6 @@
 import { GRUNT_DEATH_BODY } from './GruntDeathBody';
 // Presentation only. Gameplay removal is independent of these clocks.
-// Grunt has no body breakup clocks; its lift uses GruntDeathBody.
+// Grunt/ordinary Heavy lift uses GruntDeathBody; Heavy breakup below is for blast reactions.
 export const ENEMY_DEATH_TIMING = {
   grunt: { fadeStartMs: GRUNT_DEATH_BODY.fadeStartMs, totalMs: GRUNT_DEATH_BODY.totalMs, stainDiameter: .34 },
   heavy: { breakupEndMs: 900, breakupStartMs: 515, breakupDistance: .15, fadeStartMs: 650, totalMs: 1100, stainDiameter: .64 },

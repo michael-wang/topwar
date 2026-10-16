@@ -22,7 +22,7 @@ function crown(mesh:THREE.Mesh,camera:THREE.Camera):number {
   for(let i=0;i<p.count;i++)y=Math.min(y,(1-v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).project(camera).y)*422);
   return y;
 }
-it.each(['heavy','giant'] as const)('makes %s collapse clear in the 390×844 defense camera with ordinary enemy state',role=>{
+it.each(['heavy','giant'] as const)('keeps %s grenade collapse clear in the 390×844 defense camera',role=>{
   const state=new Simulation(options).getState();
   state.enemies=[{id:1,tier:1,archetype:role,lane:2,x:0,z:role==='giant'?14:10,hp:role==='giant'?c.catharsis!.giant.hp:c.catharsis!.heavyHp}];
   const f=projectRenderState(state,{catharsis:state.catharsis,trackHalfWidth:c.track.halfWidth,
@@ -31,7 +31,9 @@ it.each(['heavy','giant'] as const)('makes %s collapse clear in the 390×844 def
   const camera=new THREE.PerspectiveCamera(coastalCameraFov(390/844),390/844,.1,180);
   camera.position.set(0,6.5,-10);camera.lookAt(0,0,12.5);camera.updateMatrixWorld(true);
   const enemy=f.enemies[0],unchanged=JSON.stringify(enemy),t=THREAT_DEATH_COLLAPSE[role];
-  r.update([enemy],0,true);r.update([enemy],2000,true);r.update([],2010,true);
+  r.update([enemy],0,true);r.update([enemy],2000,true);
+  r.presentGrenade([{kind:'grenadeDetonated',x:0,z:enemy.z,radius:4,victims:[{...enemy,archetype:role,damage:enemy.hp,killXp:10,killed:true}]}],2010);
+  r.update([],2010,true);
   const holder=scene.children.find(o=>o.visible&&o.name===(role==='heavy'?'enemy-pale-death-body':'giant-assault-soldier'))as THREE.Group;
   holder.updateMatrixWorld(true); const aliveCrown=crown(holder.children[1]as THREE.Mesh,camera);
   let aliveHeadY=0;

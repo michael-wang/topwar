@@ -35,16 +35,16 @@ it('captures one bounded non-following Grunt contact before fluid release and le
   expect(e.hp).toBe(1); r.dispose(); Object.values(families).forEach(f => f.dispose());
 });
 
-it('fades every role body, helmet and gear smoothly to zero on unchanged clocks, including the Giant maul', () => {
+it('fades every role body, helmet and gear to zero on its approved clock, including the unchanged Giant maul', () => {
   for (const role of ['grunt', 'heavy', 'giant'] as const) {
     const families = { grunt: createChibiGruntFamily(), heavy: createChibiHeavyFamily(), giant: createChibiGiantFamily() };
-    const scene = new THREE.Scene(), r = new EnemyRenderer(scene, families), timing = ENEMY_DEATH_TIMING[role];
+    const scene = new THREE.Scene(), r = new EnemyRenderer(scene, families), timing = ENEMY_DEATH_TIMING[role==='heavy'?'grunt':role];
     const e = { id: 12, tier: 1, archetype: role, hp: 1, x: 0, z: 8 };
     r.update([e], 0, true); r.update([e], 2000, true); r.update([], 2010, true);
     const group = scene.getObjectByName(role === 'giant' ? 'giant-assault-soldier' : 'enemy-pale-death-body')!;
     let previous = 1;
     for (const age of [0, timing.fadeStartMs, timing.fadeStartMs + 10, (timing.fadeStartMs + timing.totalMs) / 2, timing.totalMs - 10, timing.totalMs - 1]) {
-      r.update([], 2010 + age, true); const opacity = role==='grunt'?gruntDeathBody(age).opacity:enemyDeathPose(age, ENEMY_DEATH_TIMING[role]).bodyOpacity;
+      r.update([], 2010 + age, true); const opacity = role!=='giant'?gruntDeathBody(age).opacity:enemyDeathPose(age, ENEMY_DEATH_TIMING[role]).bodyOpacity;
       expect(group.visible).toBe(true); expect(opacity).toBeLessThanOrEqual(previous); previous = opacity;
       group.traverse(o => { if (o instanceof THREE.Mesh) {
         for (const m of Array.isArray(o.material) ? o.material : [o.material]) expect(m.opacity).toBeCloseTo(opacity, 8);
@@ -53,7 +53,7 @@ it('fades every role body, helmet and gear smoothly to zero on unchanged clocks,
     }
     expect(previous).toBeLessThan(.0001);
     r.update([], 2010 + timing.totalMs, true); expect(group.visible).toBe(false);
-    expect(role==='grunt'?gruntDeathBody(timing.totalMs).opacity:enemyDeathPose(timing.totalMs, ENEMY_DEATH_TIMING[role]).bodyOpacity).toBe(0);
+    expect(role!=='giant'?gruntDeathBody(timing.totalMs).opacity:enemyDeathPose(timing.totalMs, ENEMY_DEATH_TIMING[role]).bodyOpacity).toBe(0);
     group.traverse(o => { if (o instanceof THREE.Mesh) {
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) expect(m.opacity).toBe(0);
     }});

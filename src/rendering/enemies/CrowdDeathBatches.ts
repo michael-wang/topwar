@@ -13,7 +13,7 @@ interface DeathBatch {
 }
 
 // Frozen lethal slots own pose state, while shared per-geometry batches own the draws.
-// Only Heavy uses the assembly path; Grunt stays intact and Giant owns its hierarchy.
+// Only blast-killed Heavy uses assembly; ordinary Grunt/Heavy stay intact, Giant owns its hierarchy.
 // Only cloned geometry carries instance attributes; family resources stay intact.
 export class CrowdDeathBatches {
   private readonly batches = new Map<string, DeathBatch>();

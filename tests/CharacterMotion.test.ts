@@ -63,8 +63,9 @@ import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRend
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
 import { writeLethalRecoil } from '../src/rendering/enemies/EnemyLethalRecoil';
+import { gruntDeathBody } from '../src/presentation/GruntDeathBody';
 import { grayBodyModel, runFrames } from './characterModel';
-it('keeps Heavy locomotion underneath additive hits and captures its lethal pose before a held backward reaction', () => {
+it('keeps Heavy locomotion underneath additive hits and captures its lethal pose before the compact upward fade', () => {
   const scene=new THREE.Scene(), renderer=new EnemyRenderer(scene,enemyFamilies(bodyModel(),helmetModel(),vestModel(),runFrames(),grayBodyModel()));
   const enemy={id:1,tier:1,archetype:'heavy' as const,x:0,z:14,hp:15,maxHp:15};
   renderer.update([enemy],100);renderer.update([{...enemy,hp:14}],120);
@@ -77,10 +78,11 @@ it('keeps Heavy locomotion underneath additive hits and captures its lethal pose
   const corpse=scene.getObjectByName('enemy-pale-death-body')!;
   const frozen=corpse.matrix.clone();
   const expected = new THREE.Matrix4();
-  renderer.update([],260);writeLethalRecoil(expected,frozen,60,'heavy');
+  renderer.update([],260);expected.copy(frozen);expected.elements[13]+=gruntDeathBody(60).lift;
   expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(expected)).toBe(true);
-  renderer.update([],900);writeLethalRecoil(expected,frozen,700,'heavy');
+  renderer.update([],600);expected.copy(frozen);expected.elements[13]+=gruntDeathBody(400).lift;
   expect(corpse.visible).toBe(true);expect(corpse.matrix.equals(expected)).toBe(true);
+  renderer.update([],720);expect(corpse.visible).toBe(false);
   // The earlier ballistic release now reaches sand before this late fade sample.
   renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
   renderer.update([],1300);expect(corpse.visible).toBe(false);renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();

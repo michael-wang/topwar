@@ -1,4 +1,4 @@
-// Mass casualties keep the exact captured pose; priority threats retain physical breakup.
+// Grunt and ordinary Heavy keep the exact captured pose; blast reactions own their clocks.
 export const GRUNT_DEATH_BODY = { totalMs: 520, liftStartMs: 50, liftEndMs: 350,
   liftUnits: .26, fadeStartMs: 140 } as const;
 const clamp = (p: number) => Math.max(0, Math.min(1, p));
