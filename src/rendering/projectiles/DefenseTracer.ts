@@ -3,11 +3,11 @@ import { ART } from '../../art/ArtDirection';
 
 // Thin arcade streak: shared by both batches, head at the unchanged shot anchor.
 export function defenseTracerGeometry(): THREE.BufferGeometry {
-  // Pointed head at the authoritative anchor; the entire spear trails behind it.
-  // A short tapered tip and long slim body avoid the old broad spear shoulders.
+  // Pointed head at the authoritative anchor; the entire streak trails behind it.
+  // The longer pointed nose keeps the wider V4 shoulders behind the projected head on diagonal shots.
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-    0, 0, 0, -.5, 0, -.08, -.42, 0, -.72, 0, 0, -1, .42, 0, -.72, .5, 0, -.08,
+    0, 0, 0, -.5, 0, -.18, -.42, 0, -.72, 0, 0, -1, .42, 0, -.72, .5, 0, -.18,
   ], 3));
   geometry.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5]);
   geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere();

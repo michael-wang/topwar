@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.21 corrects artillery impact readability with stronger layered smoke and no inherited grenade box fragments/sparks. Approved Grenade explosion parameters and cannon muzzle effects remain unchanged. Airstrike now emphasizes dense overlapping smoke banks after a reduced orange fire phase, preserving its blast and saved clocks. Golden Tracer V4 is the remaining scoped visual trial. Preserve Destroyer firing, manual Air Support, progression and Grenade balance.
+P4.21 corrects artillery impact readability with stronger layered smoke and no inherited grenade box fragments/sparks. Approved Grenade explosion parameters and cannon muzzle effects remain unchanged. Airstrike now emphasizes dense overlapping smoke banks after a reduced orange fire phase, preserving its blast and saved clocks. Golden Tracer V4 trials a 1.75px visible gold core, a meaningful burnt-amber tail and a longer pointed nose, with matched 1.5/2.0px comparisons. All three focused changes await owner Pixel 8 review. Preserve Destroyer firing, manual Air Support, progression and Grenade balance.
 
 Physical Pixel 8 acceptance is pending for artillery impact smoke, airstrike density and Golden Tracer V4. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
 
