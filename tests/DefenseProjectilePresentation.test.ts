@@ -31,7 +31,27 @@ function setup(width = 350, height = 844) {
   return { scene, bullet, renderer, camera, shot, update, core, edge, pixels, vertices };
 }
 
-describe('Golden arcade Defense tracer V4', () => {
+describe('White arcade Defense tracer V5', () => {
+  it('confines dark contrast to the head of the existing outer batch, leaving a white body and quiet amber tail',()=>{
+    const s=setup();s.update();
+    const outer=s.edge().material as THREE.MeshBasicMaterial;
+    const shader={uniforms:{} as Record<string,{value:THREE.Color}>,vertexShader:'#include <begin_vertex>',fragmentShader:'#include <color_fragment>'};
+    outer.onBeforeCompile(shader as unknown as THREE.WebGLProgramParametersWithUniforms,{} as THREE.WebGLRenderer);
+    expect(shader.uniforms.tracerInk.value.getHexString()).toBe('11181e');
+    expect(shader.vertexShader).toContain('vTracerTail = -position.z');
+    const transition=shader.fragmentShader.match(/smoothstep\(([\d.]+), ([\d.]+), vTracerTail\)/)!;
+    expect(Number(transition[1])).toBeGreaterThan(.18);expect(Number(transition[2])).toBeLessThan(.35);
+    expect(shader.fragmentShader).toContain('mix(tracerInk, diffuseColor.rgb, tail)');
+    expect(shader.fragmentShader).toContain('mix(1., 0.65, tail)');
+    const body=s.core().material as THREE.MeshBasicMaterial;
+    expect(body.color.getHexString()).toBe('fffaf3');
+    shader.vertexShader='#include <begin_vertex>';shader.fragmentShader='#include <color_fragment>';
+    body.onBeforeCompile(shader as unknown as THREE.WebGLProgramParametersWithUniforms,{} as THREE.WebGLRenderer);
+    const nose=shader.fragmentShader.match(/smoothstep\(([\d.]+), ([\d.]+), vTracerTail\)/g)!.at(-1)!;
+    expect(nose).toContain('0.12, vTracerTail');
+    expect(s.scene.children).toHaveLength(2);expect(s.core().geometry).toBe(s.edge().geometry);
+    s.renderer.dispose();
+  });
   it('preserves the previous tracer anchors and orientations with the newly approved visible width trial across mobile sizes, slopes, depths and muzzle ages', () => {
     for (const row of acceptedMatrices) {
       const s = setup(row.width);
@@ -50,14 +70,14 @@ describe('Golden arcade Defense tracer V4', () => {
 
   it('uses the exact selected colors, geometry and size constants without a DEV override', () => {
     const s = setup(); s.update(0); s.update();
-    expect(ART.defenseTracer).toEqual({ core: '#ffe15a', outline: '#b87522', coreLengthRatio: .65,
-      corePixels: 1.75, outlinePixels: .25, lengthPixels: 12, minCoreWidth: .014, maxCoreWidth: .14, maxOutlineWidth: .022, maxLength: 1.1 });
+    expect(ART.defenseTracer).toEqual({ core: '#fffaf3', outline: '#b87522', headInk: '#11181e', headLengthRatio: .32, noseLengthRatio: .12, tailOpacity: .65, coreLengthRatio: .8,
+      corePixels: 1.75, outlinePixels: .6, lengthPixels: 12, minCoreWidth: .014, maxCoreWidth: .14, maxOutlineWidth: .05, maxLength: 1.1 });
     expect(Array.from(s.core().geometry.getAttribute('position').array)).toEqual(Array.from(new Float32Array([
       0,0,0, -.5,0,-.18, -.42,0,-.72, 0,0,-1, .42,0,-.72, .5,0,-.18,
     ])));
     expect(Array.from(s.core().geometry.index!.array)).toEqual([0,1,2,0,2,3,0,3,4,0,4,5]);
     const core = s.core().material as THREE.MeshBasicMaterial, edge = s.edge().material as THREE.MeshBasicMaterial;
-    expect(core.color.getHexString()).toBe('ffe15a'); expect(edge.color.getHexString()).toBe('b87522');
+    expect(core.color.getHexString()).toBe('fffaf3'); expect(edge.color.getHexString()).toBe('b87522');
     expect(core.transparent).toBe(true); expect(core.opacity).toBe(1); expect(edge.opacity).toBe(1);
     expect(edge.depthWrite).toBe(false); expect(core.depthTest).toBe(true);
     expect(s.core().renderOrder).toBeGreaterThan(s.edge().renderOrder);
@@ -65,15 +85,15 @@ describe('Golden arcade Defense tracer V4', () => {
     s.renderer.dispose();
   });
 
-  it.each([350,390])('measures the visible gold body, meaningful amber tail and grounded bounds at %i px', width => {
+  it.each([350,390])('measures the visible white body, restrained amber tail and grounded bounds at %i px', width => {
     const s = setup(width); s.update(0);
     for (const z of [8,20,30,40,60]) {
       s.shot.z=z;s.update();
       expect(s.pixels(s.core()).width).toBeGreaterThanOrEqual(1.5);
       expect(s.pixels(s.core()).width).toBeLessThan(2.0);
-      const goldFraction=s.pixels(s.core()).length/s.pixels(s.edge()).length;
-      expect(goldFraction).toBeGreaterThan(.55);expect(goldFraction).toBeLessThan(.75);
-      expect(s.pixels(s.edge()).width).toBeLessThan(2.2);
+      const bodyFraction=s.pixels(s.core()).length/s.pixels(s.edge()).length;
+      expect(bodyFraction).toBeGreaterThan(.7);expect(bodyFraction).toBeLessThan(.85);
+      expect(s.pixels(s.edge()).width).toBeLessThan(2.6);
       // The accepted eight-unit ground-length cap shortens the far-horizon tail.
       expect(s.pixels(s.edge()).length).toBeGreaterThan(z===60?11:12);
       expect(s.pixels(s.edge()).length).toBeLessThan(15);
@@ -81,7 +101,7 @@ describe('Golden arcade Defense tracer V4', () => {
     }
     s.shot.z=150;s.update();
     const matrix=new THREE.Matrix4(),scale=new THREE.Vector3();s.core().getMatrixAt(0,matrix);scale.setFromMatrixScale(matrix);
-    expect(scale.x).toBeCloseTo(.14);expect(scale.z).toBeLessThanOrEqual(8*.65+1e-6);
+    expect(scale.x).toBeCloseTo(.14);expect(scale.z).toBeLessThanOrEqual(8*.8+1e-6);
     s.renderer.dispose();
   });
 

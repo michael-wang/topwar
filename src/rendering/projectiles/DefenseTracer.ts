@@ -1,6 +1,22 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 
+/** Local head contrast in the existing two batches; no extra geometry or draw. */
+export function prepareTracerContrast(material: THREE.MeshBasicMaterial, body = false): void {
+  const art=ART.defenseTracer, headEnd=body?art.noseLengthRatio:art.headLengthRatio, ink={value:new THREE.Color(art.headInk)};
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.tracerInk=ink;
+    shader.vertexShader=`varying float vTracerTail;\n${shader.vertexShader}`
+      .replace('#include <begin_vertex>','#include <begin_vertex>\nvTracerTail = -position.z;');
+    shader.fragmentShader=`uniform vec3 tracerInk; varying float vTracerTail;\n${shader.fragmentShader}`
+      .replace('#include <color_fragment>',`#include <color_fragment>
+        float tail = smoothstep(${headEnd*.65}, ${headEnd}, vTracerTail);
+        diffuseColor.rgb = mix(tracerInk, diffuseColor.rgb, tail);
+        ${body?'':`diffuseColor.a *= mix(1., ${art.tailOpacity}, tail);`}`);
+  };
+  material.customProgramCacheKey=()=> `tracer-local-${body?'nose':'rim'}-v5`;
+}
+
 // Thin arcade streak: shared by both batches, head at the unchanged shot anchor.
 export function defenseTracerGeometry(): THREE.BufferGeometry {
   // Pointed head at the authoritative anchor; the entire streak trails behind it.

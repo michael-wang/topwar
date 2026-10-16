@@ -1,7 +1,7 @@
 import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
-import { defenseTracerGeometry, DefenseTracerTransform } from './DefenseTracer';
+import { defenseTracerGeometry, DefenseTracerTransform, prepareTracerContrast } from './DefenseTracer';
 
 export function projectilePulseScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / 65);
@@ -41,6 +41,8 @@ export class ProjectileRenderer {
   constructor(private readonly scene: THREE.Scene,
     private readonly rifleOrigin = { height: .64, offsetX: 0 }) {
     this.defenseGeometry = defenseTracerGeometry();
+    prepareTracerContrast(this.tracerMaterial, true);
+    prepareTracerContrast(this.glowMaterial);
     this.body = this.createBatch('rifle-tracers', this.tracerMaterial, this.capacity);
     this.glow = this.createBatch('tracer-glows', this.glowMaterial, this.capacity);
   }
