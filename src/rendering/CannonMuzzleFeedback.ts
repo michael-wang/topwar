@@ -3,11 +3,11 @@ import * as THREE from 'three';
 /** One reusable burst per physical cannon; a multi-shell salvo shares a deadline. */
 export class CannonMuzzleFeedback {
   private readonly group = new THREE.Group();
-  private readonly cone = new THREE.ConeGeometry(.85, 1.6, 7);
+  private readonly cone = new THREE.ConeGeometry(1.0, 2.0, 7);
   private readonly sphere = new THREE.SphereGeometry(1, 8, 6);
   private readonly flameMaterial = new THREE.MeshBasicMaterial({color:'#ffad28',transparent:true,depthWrite:false,toneMapped:false});
   private readonly coreMaterial = new THREE.MeshBasicMaterial({color:'#fff1c7',transparent:true,depthWrite:false,toneMapped:false});
-  private readonly smokeMaterial = new THREE.MeshBasicMaterial({color:'#93999b',transparent:true,depthWrite:false});
+  private readonly smokeMaterial = new THREE.MeshBasicMaterial({color:'#727a7d',transparent:true,depthWrite:false});
   private readonly flame = new THREE.Mesh(this.cone,this.flameMaterial);
   private readonly core = new THREE.Mesh(this.sphere,this.coreMaterial);
   private readonly smoke = new THREE.Mesh(this.sphere,this.smokeMaterial);
@@ -23,18 +23,18 @@ export class CannonMuzzleFeedback {
     this.lastLaunch=launchSeconds;this.startedAt=nowMs;
   }
   update(nowMs:number):void{
-    const age=(nowMs-this.startedAt)/1000,flash=age>=0&&age<.16;
-    this.flame.visible=this.core.visible=flash;this.smoke.visible=age>=0&&age<.65;
+    const age=(nowMs-this.startedAt)/1000,flash=age>=0&&age<.20;
+    this.flame.visible=this.core.visible=flash;this.smoke.visible=age>=0&&age<.95;
     if(flash){
-      const t=age/.16,pulse=(1-t)*Math.min(1,.3+t*8);
-      this.flame.scale.set(.5+pulse*.65,.55+pulse*.65,.5+pulse*.65);this.flame.position.y=.65;
-      this.core.scale.set(.3,.3,.3);this.core.position.y=1.45;
+      const t=age/.20,pulse=(1-t)*Math.min(1,.3+t*8);
+      this.flame.scale.set(.65+pulse*1.0,.65+pulse*1.0,.65+pulse*1.0);this.flame.position.y=.9;
+      this.core.scale.set(.42,.42,.42);this.core.position.y=1.9;
       this.flameMaterial.opacity=1-t;this.coreMaterial.opacity=1-t;
     }
     if(this.smoke.visible){
-      const t=age/.65,size=.3+t;
-      this.smoke.scale.set(size,size*.8,size);this.smoke.position.set(0,.4+t*1.4,t*.2);
-      this.smokeMaterial.opacity=.42*(1-t)*Math.min(1,age/.045);
+      const t=age/.95,size=.55+t*1.55;
+      this.smoke.scale.set(size,size*.9,size);this.smoke.position.set(0,.5+t*1.8,t*.3);
+      this.smokeMaterial.opacity=.82*Math.pow(1-t,.9)*Math.min(1,age/.045);
     }
   }
   reset():void{this.startedAt=this.lastLaunch=-Infinity;this.flame.visible=this.core.visible=this.smoke.visible=false;}

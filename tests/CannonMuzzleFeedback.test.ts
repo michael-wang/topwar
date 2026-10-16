@@ -12,12 +12,14 @@ it.each([1,2,3] as const)('anchors one Phase %i salvo burst to the visible recoi
   r.presentCannon(3,1000);r.presentCannon(3,1020);r.presentCannon(3,1040);r.update(frame,1040);r.recoil(3,3.04);
   const flame=scene.getObjectByName('tank-muzzle-flame') as THREE.Mesh,smoke=scene.getObjectByName('tank-muzzle-smoke') as THREE.Mesh;
   expect(flame.visible).toBe(true);expect(scene.getObjectByName('tank-muzzle-core')!.visible).toBe(true);
+  expect(flame.scale.x).toBeGreaterThan(1); expect((smoke.material as THREE.MeshBasicMaterial).opacity).toBeGreaterThan(.5);
   let barrel:THREE.Mesh|undefined;r.group.traverse(o=>{if(o instanceof THREE.Mesh&&o.geometry instanceof THREE.CylinderGeometry&&o.geometry.parameters.height===2.7)barrel=o;});
   scene.updateMatrixWorld(true);const tip=barrel!.localToWorld(new THREE.Vector3(0,-1.35,0)),mouth=r.muzzle.getWorldPosition(new THREE.Vector3());
   expect(tip.distanceTo(mouth)).toBeLessThan(1e-8);
   const pose=smoke.scale.toArray();r.update(frame,1040);expect(smoke.scale.toArray()).toEqual(pose);
   r.presentCannon(3,1150);r.update(frame,1180);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(true);
-  r.update(frame,1651);expect(smoke.visible).toBe(false);
+  r.update(frame,1651);expect(smoke.visible).toBe(true);
+  r.update(frame,1951);expect(smoke.visible).toBe(false);
   r.presentCannon(7,2000);r.update(frame,2040);expect(flame.visible).toBe(true);
   r.restore(frame,2040);r.update(frame,2040);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(false);
   r.dispose();expect(scene.children).toHaveLength(0);
