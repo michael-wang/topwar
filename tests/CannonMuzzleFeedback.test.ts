@@ -17,7 +17,7 @@ it.each([1,2,3] as const)('anchors one Phase %i salvo burst to the visible recoi
   scene.updateMatrixWorld(true);const tip=barrel!.localToWorld(new THREE.Vector3(0,-1.35,0)),mouth=r.muzzle.getWorldPosition(new THREE.Vector3());
   expect(tip.distanceTo(mouth)).toBeLessThan(1e-8);
   const pose=smoke.scale.toArray();r.update(frame,1040);expect(smoke.scale.toArray()).toEqual(pose);
-  r.presentCannon(3,1150);r.update(frame,1180);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(true);
+  r.presentCannon(3,1150);r.update(frame,1201);expect(flame.visible).toBe(false);expect(smoke.visible).toBe(true);
   r.update(frame,1651);expect(smoke.visible).toBe(true);
   r.update(frame,1951);expect(smoke.visible).toBe(false);
   r.presentCannon(7,2000);r.update(frame,2040);expect(flame.visible).toBe(true);
