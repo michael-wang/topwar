@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GRENADE_FX, GRENADE_DEBRIS_COUNT, grenadeDebrisPose } from '../presentation/GrenadeMotion';
 import { GroundScorchMarks } from './GroundScorchMarks';
+import {smokeWindX} from '../presentation/BattlefieldWind';
 
 // Two reusable slots cover the accepted 0.65s flight cadence and 1.2s tail.
 export class GrenadeExplosion {
@@ -20,7 +21,7 @@ export class GrenadeExplosion {
   private createSlot(index: number) {
     const coreMat = new THREE.MeshBasicMaterial({ color: '#fff1bb', transparent: true, depthWrite: false });
     const fireMat = new THREE.MeshBasicMaterial({ color: '#ff6320', transparent: true, depthWrite: false });
-    const smokeMat = new THREE.MeshBasicMaterial({ color: '#56524b', transparent: true, depthWrite: false });
+    const smokeMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, depthWrite: false });
     const dustMat = new THREE.MeshBasicMaterial({ color: '#bcaa84', transparent: true, depthWrite: false });
     const sparkMat = new THREE.MeshBasicMaterial({ color: '#ffd384', transparent: true, depthWrite: false });
     const ringMat = new THREE.MeshBasicMaterial({ color: '#ffd6a0', transparent: true, depthWrite: false, side: THREE.DoubleSide });
@@ -31,6 +32,7 @@ export class GrenadeExplosion {
     const debris = new THREE.InstancedMesh(this.box, debrisMat, GRENADE_DEBRIS_COUNT);
     // The first render needs the same instancing-color shader as idle preparation.
     for (let i = 0; i < 7; i++) fire.setColorAt(i, this.color.set(i % 3 === 0 ? '#ffe299' : i % 3 === 1 ? '#ffac3d' : '#ee4820'));
+    for (let i = 0; i < 10; i++) smoke.setColorAt(i, this.color.set(i < 4 ? '#4c5153' : '#b6bbb8'));
     for (let i = 0; i < GRENADE_DEBRIS_COUNT; i++) debris.setColorAt(i, this.color.set(['#393029', '#736047', '#c29a5b', '#ed9e42'][i % 4]));
     // The compact hot core must remain visible inside the overlapping fire lobes.
     fire.renderOrder = 1; core.renderOrder = 2;
@@ -61,8 +63,7 @@ export class GrenadeExplosion {
       s.core.position.set(x, .6, z); s.core.scale.setScalar(r * (.1 + Math.min(t, .12) * .8));
       s.materials[0].opacity = Math.max(0, 1 - t / .12);
       s.materials[1].opacity = Math.max(0, 1 - Math.max(0, t - .12) / .26);
-      s.materials[2].opacity = Math.max(0, Math.min(1, (t - .2) / .15)) * .55 * Math.max(0, (1.2 - t) / .85);
-      s.materials[2].color.set(t < .35 ? '#895437' : '#56524b');
+      s.materials[2].opacity = Math.max(0, Math.min(1, (t - .2) / .15)) * .38 * Math.max(0, (1.2 - t) / .85);
       s.materials[3].opacity = .4 * Math.max(0, 1 - t / .8);
       s.materials[4].opacity = Math.max(0, 1 - t / .65);
       s.materials[5].opacity = .7 * Math.max(0, 1 - Math.max(0, t - .12) / .24);
@@ -85,9 +86,13 @@ export class GrenadeExplosion {
           s.fire.setColorAt(i, this.color.set(i % 3 === 0 ? '#ffe299' : i % 3 === 1 ? '#ffac3d' : '#ee4820'));
         }
         if (i < 10) {
-          const grow = Math.max(0, t - .2), distance = r * (.14 + grow * .24);
-          this.transform.position.set(x + dx * distance, .5 + i % 3 * .35 + grow * (1.1 + i % 2 * .6), z + dz * distance);
-          this.transform.rotation.set(0, angle, 0); this.transform.scale.setScalar(r * (.12 + grow * .19));
+          const grow = Math.max(0, t - .2), dark=i<4;
+          const distance = r * (dark ? .08 + grow*.13 : .14 + grow*.24);
+          this.transform.position.set(x + smokeWindX(grow,dark) + dx * distance,
+            .5 + i % 3 * .25 + grow * (dark?.65:1.1), z + dz * distance);
+          this.transform.rotation.set(0, angle, grow*.1);
+          const size=r*(dark?.1+grow*.13:.12+grow*.19);
+          this.transform.scale.set(size*(1+i%3*.1),size*(dark?.9:1.15),size);
           this.transform.updateMatrix(); s.smoke.setMatrixAt(i, this.transform.matrix);
         }
         const distance = r * (.18 + Math.min(t, .65) * 1.35);

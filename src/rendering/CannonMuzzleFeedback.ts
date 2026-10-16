@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {smokeWindX} from '../presentation/BattlefieldWind';
 
 const SMOKE_SLOTS=4, LIGHT_SECONDS=1.5, DARK_SECONDS=1.25;
 /** One deduplicated flash per cannon; bounded detached plumes retain sequential shots. */
@@ -57,9 +58,8 @@ export class CannonMuzzleFeedback {
       const fadeIn=Math.min(1,t/.055),size=this.scale;
       slot.lightMaterial.opacity=.52*fadeIn*Math.pow(Math.max(0,1-t/LIGHT_SECONDS),1.15);
       slot.darkMaterial.opacity=.48*fadeIn*Math.pow(Math.max(0,1-t/DARK_SECONDS),1.35);
-      // Camera B faces +Z: render-world -X is screen-right, independent of ship mirroring.
-      slot.light.position.set(slot.origin.x-t*2.2*size,slot.origin.y+t*.75*size,slot.origin.z+t*.12*size);
-      slot.dark.position.set(slot.origin.x-t*3.4*size,slot.origin.y+t*.45*size,slot.origin.z-t*.08*size);
+      slot.light.position.set(slot.origin.x+smokeWindX(t),slot.origin.y+t*.75*size,slot.origin.z+t*.12*size);
+      slot.dark.position.set(slot.origin.x+smokeWindX(t,true),slot.origin.y+t*.45*size,slot.origin.z-t*.08*size);
       for(let i=0;i<3;i++){
         this.pose.rotation.set(i*.7,t*.3+i,0);
         this.pose.position.set((i-1)*(.27+t*.2)*size,(i%2)*(.16+t*.18)*size,(i-1)*.13*size);

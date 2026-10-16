@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.18 delivers three separate changes: phased Destroyer salvos, layered wind-driven cannon smoke, and a reversible white/ivory tracer trial. The Destroyer now opens with three successful single-shell salvos, then staggered pairs until Tank introduction; historical saves retain their policy. Ordinary newly authored Stage 1 uses approved manual Air Support. The one-use glowing READY button, two-part Commander dialogue and optionally lethal player-called raid become normal gameplay, with no automatic fallback. The four shared test entries remain, including the manual 3-MG review. Historical checkpoints retain their original automatic living-MG thresholds and 150-HP floor.
+P4.19 unifies battlefield smoke wind across cannon, artillery impacts and Grenades, then clarifies the airstrike blast → smoke → dispersal sequence and trials a thin, understated white bullet streak. These are separate visual changes; accepted Destroyer singles/staggered pairs, cannon flame/core, manual Air Support, progression and Grenade balance remain unchanged.
 
-Pending Pixel 8: ordinary New Game manual no-call/call/lethal finish, Pause/Continue/Retry and saved historical automatic support. The shared manual preview remains available. Task B retains the accepted flame/core and light smoke, adding detached charcoal lobes with screen-right wind in both layers. Task C trials white/ivory tracers with the original pointed shape, dimensions, motion and pooling. Smoke and tracer acceptance await Pixel 8; the dark palette remains reversible through Git history. Later tasks include #14 Giant mechanical visuals, Commander targeting, loading/opening, credits and performance. Preserve release saves, manual deployment and the frozen tag.
+Physical Pixel 8 acceptance is pending for impact/Grenade smoke cohesion, airstrike smoke readability and thin tracers. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
 
 ## NEXT
 
