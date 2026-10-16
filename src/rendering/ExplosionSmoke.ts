@@ -3,7 +3,7 @@ import {smokeWindX} from '../presentation/BattlefieldWind';
 
 // Presentation tiers only: never use these footprints for damage or warnings.
 export const EXPLOSION_SMOKE = {
-  artillery: {count:12, dark:4, seconds:1.6, opacity:.28, airyWeight:.12},
+  artillery: {count:12, dark:4, seconds:1.8, opacity:.40, airyWeight:.24, darkFadeEnd:.95},
   grenade: {count:16, dark:5, seconds:1.9, opacity:.30, airyWeight:.09},
   airstrike: {count:20, dark:6, seconds:5.6, opacity:.21, airyWeight:.10},
 } as const;
@@ -18,13 +18,14 @@ export function explosionSmokeGeometry(sphere: THREE.SphereGeometry, profile: Sm
 }
 export function prepareExplosionSmoke(mesh: THREE.InstancedMesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>, profile: SmokeProfile) {
   const age={value:0},color=new THREE.Color();
+  const darkFadeEnd = 'darkFadeEnd' in profile ? profile.darkFadeEnd : .72;
   for(let i=0;i<profile.count;i++)mesh.setColorAt(i,color.set(i<profile.dark?'#45494c':'#b8bab9'));
   mesh.material.onBeforeCompile=shader=>{
     shader.uniforms.smokeAge=age;
     shader.vertexShader=`attribute float smokeWeight; varying float vSmokeWeight;\n${shader.vertexShader}`
       .replace('#include <begin_vertex>','#include <begin_vertex>\nvSmokeWeight = smokeWeight;');
     shader.fragmentShader=`uniform float smokeAge; varying float vSmokeWeight;\n${shader.fragmentShader}`
-      .replace('#include <map_fragment>',`#include <map_fragment>\ndiffuseColor.a *= vSmokeWeight * mix(1., clamp((${profile.seconds*.72}-smokeAge)/${profile.seconds*.36},0.,1.), step(.5,vSmokeWeight));`);
+      .replace('#include <map_fragment>',`#include <map_fragment>\ndiffuseColor.a *= vSmokeWeight * mix(1., clamp((${profile.seconds*darkFadeEnd}-smokeAge)/${profile.seconds*.36},0.,1.), step(.5,vSmokeWeight));`);
   };
   mesh.material.customProgramCacheKey=()=>`explosion-smoke-${profile.seconds}`;
   return age;

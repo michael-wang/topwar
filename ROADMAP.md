@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.20 unifies the explosion family: airstrike > Grenade > artillery/Tank shell impacts, with layered light/charcoal smoke and shared screen-right dispersal. Impacts have a larger visual smoke footprint; Grenades have more persistent smoke and less fire emphasis; airstrike remains the largest tier. A separately committed golden/yellow tracer palette with a restrained orange tail supersedes the thin white trial while retaining its slim dimensions and pooling. Accepted Destroyer salvos, cannon flame/core, manual Air Support, progression and Grenade balance remain unchanged.
+P4.21 corrects artillery impact readability with stronger layered smoke and no inherited grenade box fragments/sparks. Approved Grenade explosion parameters and cannon muzzle effects remain unchanged. Airstrike density and Golden Tracer V4 are the remaining scoped visual trials. Preserve Destroyer firing, manual Air Support, progression and Grenade balance.
 
-Physical Pixel 8 acceptance is pending for the unified explosion family and golden tracer readability/attention. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
+Physical Pixel 8 acceptance is pending for artillery impact smoke, airstrike density and Golden Tracer V4. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
 
 ## NEXT
 

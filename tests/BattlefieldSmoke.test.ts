@@ -11,6 +11,22 @@ it('uses one size-independent world wind, with screen-right light and charcoal d
  expect(smokeWindX(-1)).toBe(0);expect(smokeWindX(1)).toBe(-2.2);expect(smokeWindX(1,true)).toBe(-3.4);
 });
 
+it('preserves the approved grenade profile, debris, sparks and fire while excluding artillery-only box fragments',()=>{
+ expect(EXPLOSION_SMOKE.grenade).toEqual({count:16,dark:5,seconds:1.9,opacity:.30,airyWeight:.09});
+ for(const tier of ['grenade','artillery'] as const){
+  const scene=new THREE.Scene(),fx=new GrenadeExplosion(scene,1,false,tier);
+  fx.present(0,14,tier==='grenade'?4:.588,0);
+  for(const ms of [30,300,800,1300]){
+   fx.update(ms,0);
+   expect(scene.getObjectByName('grenade-debris')!.visible).toBe(tier==='grenade'&&ms<1200);
+   expect(scene.getObjectByName('grenade-sparks')!.visible).toBe(tier==='grenade'&&ms<650);
+   expect(scene.getObjectByName('grenade-fire')!.visible).toBe(ms<280);
+   if(ms>=300)expect(scene.getObjectByName('grenade-smoke')!.visible).toBe(true);
+  }
+  fx.dispose();expect(scene.children).toHaveLength(0);
+ }
+});
+
 it('orders actual smoke footprint, quantity and persistence airstrike > grenade > artillery without enlarging damage rings',()=>{
  const sizes:number[]=[],counts:number[]=[],durations:number[]=[];
  for(const tier of ['artillery','grenade','airstrike'] as const){
@@ -20,8 +36,9 @@ it('orders actual smoke footprint, quantity and persistence airstrike > grenade 
   const smoke=scene.getObjectByName(tier==='airstrike'?'airstrike-0-smoke':'grenade-smoke') as THREE.InstancedMesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
   const profile=EXPLOSION_SMOKE[tier],matrix=new THREE.Matrix4();smoke.getMatrixAt(profile.dark,matrix);
   sizes.push(new THREE.Vector3().setFromMatrixScale(matrix).length());counts.push(smoke.count);durations.push(profile.seconds);
-  // Even all outer lobes compounded remain translucent; dark centers carry contrast.
-  expect(1-(1-smoke.material.opacity*profile.airyWeight)**(profile.count-profile.dark)).toBeLessThan(.27);
+  const outerAlpha=1-(1-smoke.material.opacity*profile.airyWeight)**(profile.count-profile.dark);
+  if(tier==='artillery') {expect(outerAlpha).toBeGreaterThan(.35);expect(outerAlpha).toBeLessThan(.65);}
+  else expect(outerAlpha).toBeLessThan(.27);
   if(tier==='artillery')expect(scene.getObjectByName('grenade-shock-ring')!.scale.x).toBeCloseTo(.588);
   fx.update(profile.seconds*1000-1,0);expect(smoke.visible).toBe(true);
   fx.update(profile.seconds*1000,0);expect(smoke.visible).toBe(false);
@@ -57,7 +74,7 @@ it.each([350,390])('drifts grenade and real artillery-impact smoke screen-right 
   update(850);expect(smoke.visible).toBe(true);expect(scene.getObjectByName('grenade-fire')!.visible).toBe(false);
   projected().forEach((x,i)=>expect(x).toBeGreaterThan(before[i]));
   const frozen=Array.from(smoke.instanceMatrix.array);update(850);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);
-  expect(scene.children).toEqual(objects);update(artillery?1600:1900);expect(smoke.visible).toBe(false);
+  expect(scene.children).toEqual(objects);update(artillery?1800:1900);expect(smoke.visible).toBe(false);
   if(fx instanceof EnemyArtilleryRenderer)fx.restore(state);else fx.reset();update(850);expect(smoke.visible).toBe(false);
   fx.dispose();expect(scene.children).toHaveLength(0);
  }
