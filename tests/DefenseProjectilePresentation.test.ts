@@ -28,7 +28,7 @@ function setup(width = 350, height = 844) {
   return { scene, bullet, renderer, camera, shot, update, core, edge, pixels, vertices };
 }
 
-describe('Permanent Defense Ink Spear', () => {
+describe('White/ivory Defense tracer trial with accepted Ink Spear geometry', () => {
   it('matches the accepted 2081abe P3 matrices exactly at both mobile sizes, slopes, depths and muzzle ages', () => {
     for (const row of acceptedMatrices) {
       const s = setup(row.width);
@@ -45,14 +45,14 @@ describe('Permanent Defense Ink Spear', () => {
 
   it('uses the exact selected colors, geometry and size constants without a DEV override', () => {
     const s = setup(); s.update(0); s.update();
-    expect(ART.defenseTracer).toEqual({ core: '#fff2ce', outline: '#080b10', coreLengthRatio: .68,
+    expect(ART.defenseTracer).toEqual({ core: '#fffaf0', outline: '#e7e8e2', coreLengthRatio: .68,
       corePixels: 1.8, outlinePixels: 4, lengthPixels: 17, maxCoreWidth: .16, maxOutlineWidth: .35, maxLength: 1.5 });
     expect(Array.from(s.core().geometry.getAttribute('position').array)).toEqual(Array.from(new Float32Array([
       0,0,0, -.5,0,-.22, -.34,0,-.65, 0,0,-1, .34,0,-.65, .5,0,-.22,
     ])));
     expect(Array.from(s.core().geometry.index!.array)).toEqual([0,1,2,0,2,3,0,3,4,0,4,5]);
     const core = s.core().material as THREE.MeshBasicMaterial, edge = s.edge().material as THREE.MeshBasicMaterial;
-    expect(core.color.getHexString()).toBe('fff2ce'); expect(edge.color.getHexString()).toBe('080b10');
+    expect(core.color.getHexString()).toBe('fffaf0'); expect(edge.color.getHexString()).toBe('e7e8e2');
     expect(core.transparent).toBe(true); expect(core.opacity).toBe(1); expect(edge.opacity).toBe(1);
     expect(edge.depthWrite).toBe(false); expect(core.depthTest).toBe(true);
     expect(s.core().renderOrder).toBeGreaterThan(s.edge().renderOrder);
@@ -97,7 +97,7 @@ describe('Permanent Defense Ink Spear', () => {
     expect(s.pixels(s.edge()).width).toBeCloseTo(ordinary);
     expect((s.edge().material as THREE.MeshBasicMaterial).blending).toBe(THREE.NormalBlending);
     s.renderer.reset(); s.update(300);
-    expect((s.edge().material as THREE.MeshBasicMaterial).color.getHexString()).toBe('080b10');
+    expect((s.edge().material as THREE.MeshBasicMaterial).color.getHexString()).toBe('e7e8e2');
     s.renderer.dispose();
   });
 

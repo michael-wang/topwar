@@ -28,7 +28,7 @@ export const ART = {
     heavy: '#7c888c', giant: '#73564a', vehicle: '#3c4d54' },
   fx: { core: '#fff7e8', gold: '#f7cd76', impact: '#ff734b', ember: '#d74848',
     dust: '#cfb994', gray: '#a2b2b8' },
-  defenseTracer: { core: '#fff2ce', outline: '#080b10', coreLengthRatio: .68,
+  defenseTracer: { core: '#fffaf0', outline: '#e7e8e2', coreLengthRatio: .68,
     corePixels: 1.8, outlinePixels: 4, lengthPixels: 17,
     maxCoreWidth: .16, maxOutlineWidth: .35, maxLength: 1.5 },
   bar: { ink: '#293e4c', deep: '#1c2d39', frame: '#ac865a', highlight: '#e3c596',
