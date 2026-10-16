@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 
-// Thin cinematic streak: shared by both batches, head at the unchanged shot anchor.
+// Thin arcade streak: shared by both batches, head at the unchanged shot anchor.
 export function defenseTracerGeometry(): THREE.BufferGeometry {
   // Pointed head at the authoritative anchor; the entire spear trails behind it.
   // A short tapered tip and long slim body avoid the old broad spear shoulders.
