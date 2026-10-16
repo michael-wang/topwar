@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 
-// Accepted Ink Spear: shared by both batches, head at z=0, pointed tail behind.
+// Thin cinematic streak: shared by both batches, head at the unchanged shot anchor.
 export function defenseTracerGeometry(): THREE.BufferGeometry {
   // Pointed head at the authoritative anchor; the entire spear trails behind it.
-  // Two shoulders distinguish the short head from the longer, narrowing tail.
+  // A short tapered tip and long slim body avoid the old broad spear shoulders.
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-    0, 0, 0, -.5, 0, -.22, -.34, 0, -.65, 0, 0, -1, .34, 0, -.65, .5, 0, -.22,
+    0, 0, 0, -.5, 0, -.08, -.42, 0, -.72, 0, 0, -1, .42, 0, -.72, .5, 0, -.08,
   ], 3));
   geometry.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5]);
   geometry.computeVertexNormals(); geometry.computeBoundingBox(); geometry.computeBoundingSphere();
@@ -34,7 +34,7 @@ export class DefenseTracerTransform {
     const dx = this.next.x * camera.aspect, dy = this.next.y;
     const magnitude = Math.hypot(dx, dy);
     const naturalLength = .52 * tierLength * magnitude * cssHeight / 2 * unitsPerPixel;
-    const width = Math.max(.052 * (1 + .45 * radiusBonus), Math.min(art.maxCoreWidth, art.corePixels * unitsPerPixel));
+    const width = Math.max(art.minCoreWidth * (1 + .45 * radiusBonus), Math.min(art.maxCoreWidth, art.corePixels * unitsPerPixel));
     const length = Math.max(naturalLength, Math.min(art.maxLength, art.lengthPixels * unitsPerPixel)) * pulse;
     transform.scale.set(width, 1, length);
     // Longer camera-plane tails dip below the sand. Keep the spear at

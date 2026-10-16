@@ -28,16 +28,18 @@ function setup(width = 350, height = 844) {
   return { scene, bullet, renderer, camera, shot, update, core, edge, pixels, vertices };
 }
 
-describe('White/ivory Defense tracer trial with accepted Ink Spear geometry', () => {
-  it('matches the accepted 2081abe P3 matrices exactly at both mobile sizes, slopes, depths and muzzle ages', () => {
+describe('Thin cinematic white/ivory Defense tracer trial', () => {
+  it('preserves the previous tracer anchors and orientations while reducing width across mobile sizes, slopes, depths and muzzle ages', () => {
     for (const row of acceptedMatrices) {
       const s = setup(row.width);
       s.shot.z = row.z; s.shot.slopeX = row.slope;
       s.update(0); s.update(row.time);
       for (const [mesh, expected] of [[s.core(), row.core], [s.edge(), row.edge]] as const) {
         const matrix = new THREE.Matrix4(); mesh.getMatrixAt(0, matrix);
-        // JSON baseline normalizes signed zero.
-        expect(matrix.elements.map(n => n === 0 ? 0 : n)).toEqual(expected);
+        expect(matrix.elements.slice(12,15)).toEqual(expected.slice(12,15));
+        const old=new THREE.Matrix4().fromArray(expected),scale=new THREE.Vector3().setFromMatrixScale(matrix),previous=new THREE.Vector3().setFromMatrixScale(old);
+        expect(scale.x).toBeLessThan(previous.x*.6);
+        for(const column of [0,2])expect(new THREE.Vector3().setFromMatrixColumn(matrix,column).normalize().distanceTo(new THREE.Vector3().setFromMatrixColumn(old,column).normalize())).toBeLessThan(1e-6);
       }
       s.renderer.dispose();
     }
@@ -45,10 +47,10 @@ describe('White/ivory Defense tracer trial with accepted Ink Spear geometry', ()
 
   it('uses the exact selected colors, geometry and size constants without a DEV override', () => {
     const s = setup(); s.update(0); s.update();
-    expect(ART.defenseTracer).toEqual({ core: '#fffaf0', outline: '#e7e8e2', coreLengthRatio: .68,
-      corePixels: 1.8, outlinePixels: 4, lengthPixels: 17, maxCoreWidth: .16, maxOutlineWidth: .35, maxLength: 1.5 });
+    expect(ART.defenseTracer).toEqual({ core: '#fffaf0', outline: '#e7e8e2', coreLengthRatio: .9,
+      corePixels: .85, outlinePixels: .2, lengthPixels: 12, minCoreWidth: .014, maxCoreWidth: .07, maxOutlineWidth: .016, maxLength: 1.1 });
     expect(Array.from(s.core().geometry.getAttribute('position').array)).toEqual(Array.from(new Float32Array([
-      0,0,0, -.5,0,-.22, -.34,0,-.65, 0,0,-1, .34,0,-.65, .5,0,-.22,
+      0,0,0, -.5,0,-.08, -.42,0,-.72, 0,0,-1, .42,0,-.72, .5,0,-.08,
     ])));
     expect(Array.from(s.core().geometry.index!.array)).toEqual([0,1,2,0,2,3,0,3,4,0,4,5]);
     const core = s.core().material as THREE.MeshBasicMaterial, edge = s.edge().material as THREE.MeshBasicMaterial;
@@ -64,15 +66,15 @@ describe('White/ivory Defense tracer trial with accepted Ink Spear geometry', ()
     const s = setup(width); s.update(0);
     for (const z of [20,30,40]) {
       s.shot.z=z;s.update();
-      expect(s.pixels(s.core()).width).toBeGreaterThanOrEqual(1.8);
-      expect(s.pixels(s.edge()).width).toBeLessThan(7);
-      expect(s.pixels(s.edge()).length).toBeGreaterThan(17);
-      expect(s.pixels(s.edge()).length).toBeLessThan(21);
+      expect(s.pixels(s.core()).width).toBeGreaterThanOrEqual(.85-1e-5);
+      expect(s.pixels(s.edge()).width).toBeLessThan(1.2);
+      expect(s.pixels(s.edge()).length).toBeGreaterThan(12);
+      expect(s.pixels(s.edge()).length).toBeLessThan(15);
       for(const mesh of [s.core(),s.edge()]) for(const v of s.vertices(mesh)) expect(v.y).toBeCloseTo(.37145,5);
     }
     s.shot.z=150;s.update();
     const matrix=new THREE.Matrix4(),scale=new THREE.Vector3();s.core().getMatrixAt(0,matrix);scale.setFromMatrixScale(matrix);
-    expect(scale.x).toBeCloseTo(.16);expect(scale.z).toBeLessThanOrEqual(8*.68+1e-6);
+    expect(scale.x).toBeCloseTo(.07);expect(scale.z).toBeLessThanOrEqual(8*.9+1e-6);
     s.renderer.dispose();
   });
 
@@ -93,7 +95,7 @@ describe('White/ivory Defense tracer trial with accepted Ink Spear geometry', ()
   it('retains stable colors/blending, resets for Retry, and keeps the accepted materials/geometry', () => {
     const s = setup(); s.update(0); s.update(); const ordinary = s.pixels(s.edge()).width;
     s.update(200);
-    expect(s.pixels(s.core()).width).toBeGreaterThanOrEqual(1.8);
+    expect(s.pixels(s.core()).width).toBeGreaterThanOrEqual(.85-1e-5);
     expect(s.pixels(s.edge()).width).toBeCloseTo(ordinary);
     expect((s.edge().material as THREE.MeshBasicMaterial).blending).toBe(THREE.NormalBlending);
     s.renderer.reset(); s.update(300);
