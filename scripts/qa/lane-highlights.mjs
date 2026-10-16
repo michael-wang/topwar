@@ -48,7 +48,7 @@ try{for(const width of [350,390]){
       a.presentationMs=a.simulation.getFrameState().elapsedSeconds*1000;a.setPaused(true);a.pauseOverlay.setVisible(false);
     },{state:states[role]??null,role});
     const r=await draw();assert.equal(r.playerX,-r.state.player.x);assert(r.visible);assert.equal(r.count,new Set(r.state.artillery?.shells.map(s=>s.targetLane)??[]).size);
-    if(label==='destroyer')assert.equal(r.count,2);
+    if(label==='destroyer')assert.equal(r.count,1); // First successful phased salvo.
     if(label==='lv8'){assert.equal(r.state.progression.level,8);assert(r.state.enemies.length>=40);}
     if(role?.startsWith('boss-phase'))assert.equal(r.count,Number(role.at(-1)));
     await shot(label);
@@ -149,7 +149,7 @@ try{for(const width of [350,390]){
     if(label==='destroyer'){
       const lane=r.state.artillery.shells[0].targetLane;
       await page.evaluate(lane=>{const a=window.__testApp;for(const s of a.simulation.getState().artillery.shells)if(s.targetLane===lane)a.simulation.cancelArtillery(s.id);},lane);
-      assert.equal((await draw()).count,1);await shot('destroyer-one-lane');
+      assert.equal((await draw()).count,r.count-1);await shot('destroyer-cancelled-lane');
     }
     if(label==='lv8'){
       await page.evaluate(()=>{const a=window.__testApp;a.simulation.stepLane(1);for(let i=0;i<3;i++)a.simulation.step(1/60,{targetX:0},window.__highlightTuning);});

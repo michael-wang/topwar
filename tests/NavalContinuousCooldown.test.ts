@@ -6,7 +6,9 @@ import { SeededRng } from '../src/core/Rng';
 import { advanceNavalBarrage, emptyNavalBarrage, recordNavalSalvo, resolveNavalSalvo, setNavalBarrage, validateNavalBarrage } from '../src/simulation/navalBarrage';
 import { makeArtilleryShell } from '../src/simulation/artillery';
 import { artilleryDefaults } from '../src/config/artilleryConfig';
+// Retain exact coverage of the released continuous-gap/simultaneous policy.
 const cfg=GameConfigSchema.parse(data).catharsis!.navalBarrage!;
+delete cfg.salvoPolicy;
 it('preserves a sampled continuous deadline through cancellation, waiting, stop/restart and capacity skips',()=>{
   let s=setNavalBarrage(emptyNavalBarrage(42,cfg),cfg,0,true);
   s=advanceNavalBarrage(s,cfg,2,8,true,true);

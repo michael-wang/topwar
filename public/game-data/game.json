@@ -314,6 +314,7 @@
       "minimumIntervalSeconds": 2,
       "maximumIntervalSeconds": 3,
       "overlapPolicy": "waitForImpact",
+      "salvoPolicy": { "mode": "threeSinglesThenPairs", "singleSalvos": 3, "gapSeconds": { "minimum": 0.30, "maximum": 0.60 } },
       "postImpactCooldown": {
         "initialDelaySeconds": 2,
         "minimumGapSeconds": 2,

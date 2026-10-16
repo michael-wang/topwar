@@ -7,6 +7,12 @@ export const NavalBarrageConfigSchema = z.strictObject({
   targetLanes: z.array(z.number().int().min(0).max(15)).min(1).max(16),
   // Missing in historical snapshots: their salvos may overlap.
   overlapPolicy: z.literal('waitForImpact').optional(),
+  salvoPolicy: z.strictObject({
+    mode: z.literal('threeSinglesThenPairs'),
+    singleSalvos: z.number().int().min(1).max(100),
+    gapSeconds: z.strictObject({ minimum: z.number().finite().min(.1).max(2), maximum: z.number().finite().min(.1).max(2) })
+      .refine(v => v.minimum <= v.maximum, 'Shot gaps must be ordered'),
+  }).optional(),
   postImpactCooldown: z.strictObject({
     initialDelaySeconds: z.number().finite().min(0).max(60),
     // Historical discrete distributions remain serialized exactly as authored.
@@ -23,5 +29,7 @@ export const NavalBarrageConfigSchema = z.strictObject({
   && c.maximumShells <= c.targetLanes.length && new Set(c.targetLanes).size === c.targetLanes.length,
   'Barrage bounds must be ordered and permit distinct lanes within each salvo')
   .refine(c => !c.postImpactCooldown || c.overlapPolicy === 'waitForImpact',
-  'Post-impact cooldown requires non-overlap');
+  'Post-impact cooldown requires non-overlap')
+  .refine(c => !c.salvoPolicy || !!c.postImpactCooldown && c.minimumShells === 1 && c.maximumShells === 2,
+    'Phased salvos require post-impact cooldown and one/two-shell bounds');
 export type NavalBarrageConfig = z.infer<typeof NavalBarrageConfigSchema>;

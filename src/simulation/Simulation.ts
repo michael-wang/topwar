@@ -778,11 +778,12 @@ export class Simulation {
 
   cancelArtillery(id?: number): void {
     const cancelTank = id === undefined || this.state.artillery?.shells.some(s => s.id === id && s.source.type === 'defenseTank');
+    const cancelNaval = id === undefined || this.state.navalBarrage?.pendingImpact?.shellIds.includes(id);
     if (this.state.artillery) this.state = { ...this.state, artillery: { ...this.state.artillery,
       shells: id === undefined ? [] : this.state.artillery.shells.filter(shell => shell.id !== id) } };
     const c=this.state.catharsis?.balance.navalBarrage;
     if(c&&this.state.navalBarrage)this.state.navalBarrage=cancelNavalSalvo(this.state.navalBarrage,c,
-      this.state.artillery?.shells??[],this.state.elapsedSeconds);
+      this.state.artillery?.shells??[],this.state.elapsedSeconds,!!cancelNaval);
     const tank = this.state.defenseTank, tankConfig = this.state.catharsis?.balance.defenseTank;
     if (tank?.rhythm && tankConfig && cancelTank) {
       const next = copyDefenseTank(tank);
@@ -1320,10 +1321,16 @@ export class Simulation {
         (catharsis.balance.artillery?.maxActive ?? artilleryDefaults.maxActive)-(this.state.artillery?.shells.length ?? 0),
         !!presence && presence.status!=='absent',squad.count>0,hasUnresolvedDestroyerSalvo(this.state.artillery?.shells ?? []));
       this.state.navalBarrage=next;
-      if(next.opportunities!==previous.opportunities && next.lastSalvo!.outcome==='launched') {
+      const pending=previous.rhythm?.pendingShot;
+      const delayed=pending && next.enabled && nextElapsedSeconds+1e-9>=pending.launchAtSeconds
+        && presence?.status!=='absent' && squad.count>0
+        && (this.state.artillery?.shells.length ?? 0)<(catharsis.balance.artillery?.maxActive ?? artilleryDefaults.maxActive);
+      if(delayed || next.opportunities!==previous.opportunities && next.lastSalvo!.outcome==='launched') {
         const source=navalPresenceMuzzle(presence!,nextElapsedSeconds,catharsis.balance.destroyer!);
-        const ids=next.lastSalvo!.lanes.map(lane=>this.launchArtillery({source,targetLane:lane}));
-        this.state.navalBarrage=recordNavalSalvo(next,catharsis.balance.navalBarrage,
+        const lanes=delayed ? [pending.targetLane] : next.rhythm?.pendingShot ? next.lastSalvo!.lanes.slice(0,1) : next.lastSalvo!.lanes;
+        const launched=delayed ? {...next,rhythm:{gapRngState:next.rhythm!.gapRngState}} : next;
+        const ids=lanes.map(lane=>this.launchArtillery({source,targetLane:lane}));
+        this.state.navalBarrage=recordNavalSalvo(launched,catharsis.balance.navalBarrage,
           this.state.artillery!.shells.filter(shell=>ids.includes(shell.id)));
       }
     }
