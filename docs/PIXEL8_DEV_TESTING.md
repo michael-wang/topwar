@@ -1,6 +1,6 @@
 # Pixel 8 secure development testing
 
-Screen Wake Lock is optional and requires a secure context. HTTP on a LAN IP such as `http://192.168.1.20:5173` normally is insecure. DEV → SCREEN shows **UNAVAILABLE — INSECURE ORIGIN** there. Combat still works; no lock is attempted. HTTPS and Chrome's trustworthy localhost origin support the API when the browser/system grants it. [API requirements and system release](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API).
+Screen Wake Lock is optional and requires a secure context. HTTP on a LAN IP such as `http://192.168.1.20:5173` normally is insecure. DEV → 進階調校 → 熄屏與存檔 QA shows **Wake Lock: UNSUPPORTED — INSECURE ORIGIN** there. Combat still works; no lock is attempted. HTTPS and Chrome's trustworthy localhost origin support the API when the browser/system grants it. [API requirements and system release](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API).
 
 ## Preferred: USB localhost forwarding
 
@@ -11,7 +11,7 @@ Use Android SDK [Platform Tools](https://developer.android.com/tools/releases/pl
 3. Run `adb devices`; confirm the phone is listed as `device`, then `adb reverse tcp:5173 tcp:5173`. With multiple devices, use `adb -s <serial> reverse tcp:5173 tcp:5173`.
 4. Open **http://localhost:5173** in Pixel Chrome. Open `chrome://inspect/#devices` on desktop Chrome and inspect that phone tab. Confirm `window.isSecureContext === true` and `'wakeLock' in navigator`.
 5. Tap to Start, or Resume a restored paused game. Open DEV → 進階調校 → 熄屏與存檔 QA and inspect **Wake Lock: RELEASED**: opening the testing hatch pauses gameplay and releases the lock. Explicit Resume closes the menu and requests the lock again. ACTIVE reflects a granted, unreleased sentinel. REQUESTING is not a grant. DENIED / ERROR can occur under battery saver, Permissions Policy or system refusal.
-6. Select 驅逐艦進場 or BOSS 進場 (the menu closes), and leave the phone untouched for more than 30 seconds with its display timeout set to 15 seconds. The screen should remain awake while SCREEN is ACTIVE. Pause; SCREEN should become RELEASED / PAUSED. Sleep/reopen; Continue restores paused progress. Resume requests a new lock. 勝利結算 previews the full Tank finale and marked sample results; 空中支援 immediately previews the real bomber raid in phase 2; 返回一般遊戲 starts an authored normal run.
+6. Select 驅逐艦進場 or BOSS 進場 (the menu closes), and leave the phone untouched for more than 30 seconds with its display timeout set to 15 seconds. The screen should remain awake while Wake Lock is ACTIVE. Pause; Wake Lock should become RELEASED. Sleep/reopen; Continue restores paused progress. Resume requests a new lock. 勝利結算 previews the full Tank finale and marked sample results; 空中支援 opens the manual Phase-3 review: wait for Commander readiness, then optionally call once with the aircraft button; 返回一般遊戲 starts an authored normal run.
 7. In remote DevTools Network, confirm config/portrait/audio requests (characters and scenery are procedural; no GLB request is expected) succeed and Vite's WebSocket connects. To verify HMR without changing game logic, temporarily edit an existing CSS color in DevTools Sources/workspace or make a harmless source comment, observe the Vite update/reload, then revert that edit. A full reload must preserve a paused checkpoint. USB disconnect or failed reverse forwarding prevents asset/HMR connections; rerun the reverse command after reconnecting.
 8. Remove forwarding when finished with `adb reverse --remove tcp:5173`. Disable USB debugging if it is no longer needed.
 
@@ -32,6 +32,12 @@ node scripts/dev/https.mjs
 Open `https://<certificate LAN host>:5173` on the phone, with no certificate error. Verify secure context, API availability, SCREEN ACTIVE, asset responses and the `wss` HMR connection as above. The helper does not install certificates, change default Vite settings or deploy anything. A certificate that Chrome does not trust is not a usable test setup.
 
 **Storage origin changes:** LAN-IP HTTP, localhost HTTP and LAN HTTPS are different origins. Checkpoints/config localStorage do not automatically move between them. Start a new test on the secure URL or finish the saved run on its original URL; absence of Continue on a new origin is expected. DEV and release also use separate checkpoint slots.
+
+## Startup and fullscreen review
+
+Fresh visits should show loading feedback immediately, then the existing Tap-to-Start. Check delayed/failing resources and Reload, valid/invalid Continue/New Game and repeated input. Loading (#21) is implemented but physical startup feel remains pending.
+
+The optional DEV fullscreen control is in 進階調校 → 熄屏與存檔 QA. Follow the [fullscreen checklist](FULLSCREEN_TRIAL.md) for the current LAN URL, entry/exit/Android Back, layout and lifecycle checks. This trial does not change public Start/Continue. LAN and loopback desktop automation passed; physical Pixel 8 and HTTPS remain unverified.
 
 ## DEV advanced QA sleep test
 

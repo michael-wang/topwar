@@ -6,7 +6,7 @@ Immediate first-load feedback (#21) now appears before modules and data, handing
 
 Fullscreen (#28) has an optional DEV QA enter/exit/re-entry trial only. Run the [physical Pixel 8 checklist](docs/FULLSCREEN_TRIAL.md); public startup integration and HTTPS validation remain deferred.
 
-P4.25 wreck smoke (#29) and Heavy death (#27), plus P4.24 Tank/Destroyer B-fast impacts, are physically accepted. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
+Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; Tank/Destroyer B-fast impacts are also physically accepted. Hybrid D production acceptance (#12) and Tracer V5 acceptance (#25) remain open. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
 
 ## NEXT
 
