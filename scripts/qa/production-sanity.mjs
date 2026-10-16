@@ -12,6 +12,8 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
+if (['dev-fullscreen-trial', '進入全螢幕（DEV）', '離開全螢幕（DEV）'].some(marker => shippingJs.includes(marker)))
+  throw Error('DEV fullscreen trial survived production tree-shaking');
 if (['explosion-lab', 'Explosion Lab', 'Flash inside black core', 'Billowing layered cloud',
   'Dirty bombardment bank', 'Invalid explosion comparison', 'B-fast', 'Hybrid D'].some(marker => shippingJs.includes(marker)))
   throw Error('DEV explosion experiments survived production tree-shaking');

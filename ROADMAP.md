@@ -4,6 +4,8 @@
 
 Immediate first-load feedback (#21) now appears before modules and data, handing over to the existing protected recovery choice or single Tap-to-Start gesture. Slow/failing resources have Reload recovery. Owner Pixel 8 startup feel review remains pending.
 
+Fullscreen (#28) has an optional DEV QA enter/exit/re-entry trial only. Run the [physical Pixel 8 checklist](docs/FULLSCREEN_TRIAL.md); public startup integration and HTTPS validation remain deferred.
+
 P4.25 wreck smoke (#29) and Heavy death (#27), plus P4.24 Tank/Destroyer B-fast impacts, are physically accepted. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
 
 ## NEXT
@@ -14,7 +16,7 @@ P4.25 wreck smoke (#29) and Heavy death (#27), plus P4.24 Tank/Destroyer B-fast 
 
 ## LATER
 
-- Required before public playtest: mobile fullscreen (#28), coordinated with arcade 「開始遊戲」 and startup/audio activation UX. Separate future task; no fullscreen/PWA/startup implementation in this batch.
+- Required before public playtest: production mobile fullscreen (#28), coordinated with arcade 「開始遊戲」 and startup/audio activation UX after the DEV technical trial. PWA/installed mode remains a separate future decision.
 
 - Tracking only: Giant death (#14) should use robotic disassembly/explosion treatment. No Giant death changes in this batch.
 

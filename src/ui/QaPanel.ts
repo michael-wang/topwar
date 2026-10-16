@@ -1,5 +1,6 @@
 import { checkpointPresent } from '../app/SessionCheckpoint';
 import type { WakeStatus } from '../app/ScreenWakeLock';
+import { FullscreenTrial } from '../dev/FullscreenTrial';
 
 export class QaPanel {
   readonly element=document.createElement('details');
@@ -10,8 +11,9 @@ export class QaPanel {
   private pending:(()=>void)|null=null;
   private locked=false;
   private readonly buttons:HTMLButtonElement[]=[];
+  private readonly fullscreen:FullscreenTrial|null;
   private readonly stop=(e:Event)=>e.stopPropagation();
-  constructor(host:HTMLElement,actions:{sleep:()=>void;reload:()=>void;exit:()=>void}) {
+  constructor(host:HTMLElement,actions:{sleep:()=>void;reload:()=>void;exit:()=>void},fullscreenViewport?:HTMLElement) {
     this.element.className='qa-panel';
     const summary=document.createElement('summary');summary.textContent='熄屏與存檔 QA';
     summary.style.cssText='min-height:44px;width:100%;box-sizing:border-box;padding:10px;font-size:13px';
@@ -23,6 +25,7 @@ export class QaPanel {
     const discarded=(document as Document&{wasDiscarded?:boolean}).wasDiscarded;
     initial.textContent=`導覽：${nav?.type??'unknown'}・Discard：${discarded===undefined?'unknown':String(discarded)}`;
     content.append(title,this.wake,this.saved,initial,this.status);
+    this.fullscreen=fullscreenViewport?new FullscreenTrial(content,fullscreenViewport):null;
     const button=(text:string,fn:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=text;
       b.style.cssText='min-height:44px;width:100%;margin:4px 0;padding:6px;touch-action:manipulation';
       b.addEventListener('click',()=>{if(!this.locked)fn();});this.buttons.push(b);content.append(b);return b;};
@@ -46,5 +49,5 @@ export class QaPanel {
   setWake(status:WakeStatus):void {this.wake.textContent=`Wake Lock: ${{active:'ACTIVE',released:'RELEASED',requesting:'REQUESTING',releasing:'RELEASING',insecure:'UNSUPPORTED — INSECURE ORIGIN',unsupported:'UNSUPPORTED',error:'DENIED / ERROR'}[status]}`;}
   refreshCheckpoint():void {this.saved.textContent=`儲存進度：${checkpointPresent()?'AVAILABLE':'EMPTY / UNAVAILABLE'}`;}
   open():void {this.element.open=true;this.refreshCheckpoint();}
-  dispose():void {this.element.remove();}
+  dispose():void {this.fullscreen?.dispose();this.element.remove();}
 }

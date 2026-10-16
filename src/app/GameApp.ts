@@ -230,7 +230,7 @@ export class GameApp {
     this.fps = import.meta.env.DEV ? new DevFps(viewport) : null;
     this.qaPanel=import.meta.env.DEV && this.tuningPanel && this.config.catharsis?.defenseMode ? new QaPanel(this.tuningPanel.advancedControlsHost,{
       sleep:()=>{void this.beginSleepTest();},reload:()=>this.reloadTest(),exit:()=>this.exitSleepTest(),
-    }):null;
+    },viewport):null;
     if (this.qaPanel) this.wakeLock.observe(status => this.qaPanel?.setWake(status));
     if (saved.status === 'valid' || saved.status === 'invalid') {
       this.startup = 'recovering';

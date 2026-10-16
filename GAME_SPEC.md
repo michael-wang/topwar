@@ -47,7 +47,7 @@ The dangerous Lv3→4 transition is retained. At Lv4 XP≥35%, ordinary waves co
 
 Grunts have 1 HP; Heavies have 15 HP. Existing approach rules, lane cursors and stamped Survival speed multipliers are preserved.
 
-Ordinary gunfire kills keep both Grunt and Heavy silhouettes intact, turn them pale/gray, lift them .26 units and fade them over 520ms. Heavy alive armor, size, gait and hit feedback remain unchanged. Grenade, Airstrike and Tank-entry victims keep their existing explosion reactions, while biological blood and ground stains keep their independent role-specific clocks. Giant death is unchanged. Heavy's compact death awaits owner Pixel 8 acceptance; no gameplay or checkpoint fields change.
+Ordinary gunfire kills keep both Grunt and Heavy silhouettes intact, turn them pale/gray, lift them .26 units and fade them over 520ms. Heavy alive armor, size, gait and hit feedback remain unchanged. Grenade, Airstrike and Tank-entry victims keep their existing explosion reactions, while biological blood and ground stains keep their independent role-specific clocks. Giant death is unchanged. Heavy's compact death is accepted on Pixel 8; no gameplay or checkpoint fields change.
 
 ## Carnival, naval presence and Survival
 
@@ -117,6 +117,8 @@ Accepted Blue Squad, Grunt/Heavy/Giant, coastal scene, Golden Grenade and Destro
 Tap-to-Start and Resume are real audio activation gestures. Pause/hidden/freeze/context loss suspend simulation, clear held inputs and release Wake Lock. Visibility return never automatically resumes. Full authoritative checkpoints preserve RNG, weapon clocks, enemy HP/positions, projectiles, Grenades, progression and encounter schedules. Continue remains paused and does not replay one-shot feedback.
 
 First visits immediately show a lightweight navy/gold HTML loading cover before modules or game data initialize. Real preparation status replaces fake percentage progress. Existing checkpoints still receive the protected Continue/New Game chooser; a selection waits for initialization without passing repeated input into Start/Resume. Fresh/New Game keeps the single existing Tap-to-Start gesture and no simulation runs early. Slow loads offer Reload; failed or stalled required resources show a recoverable error without silently clearing saves. Optional portrait/audio fallbacks remain independent. The isolated DEV Explosion Lab dismisses the cover without consuming a checkpoint.
+
+Fullscreen remains a DEV-only technical trial inside advanced 熄屏與存檔 QA. An explicit tap can enter/exit/re-enter; rejection or unsupported browsers retain ordinary play. It neither requests automatically nor changes production Start/Continue, shared entries or gameplay. Physical Pixel 8 and HTTPS verification remain pending; see [trial steps](docs/FULLSCREEN_TRIAL.md). Public fullscreen/arcade startup integration is a separate future task.
 
 Opening the shared native testing hatch or pressing Escape to open it pauses through the guarded Pause path. Its menu/hatch and upper-right Resume stay interactive above the dimmed battlefield; the central PAUSED button hides only while the menu is open. Movement, Grenade and results Replay remain blocked. Closing the menu leaves play paused and restores PAUSED; explicit Resume closes the menu before resuming. Scenario selection closes the menu and retains the existing scene/Retry behavior. Hidden-page, context-loss, recovery and DEV sleep guards still apply.
 
