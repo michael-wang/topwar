@@ -2,13 +2,13 @@
 
 ## NOW
 
-P4.17 promotes accepted manual air support into ordinary newly authored Stage 1. The one-use glowing READY button, two-part Commander dialogue and optionally lethal player-called raid become normal gameplay, with no automatic fallback. The four shared test entries remain, including the manual 3-MG review. Historical checkpoints retain their original automatic living-MG thresholds and 150-HP floor.
+P4.17 audits and validates the manual Air Support promotion and amplified Tank/Destroyer muzzle feedback. Ordinary newly authored Stage 1 uses approved manual Air Support. The one-use glowing READY button, two-part Commander dialogue and optionally lethal player-called raid become normal gameplay, with no automatic fallback. The four shared test entries remain, including the manual 3-MG review. Historical checkpoints retain their original automatic living-MG thresholds and 150-HP floor.
 
-Pending Pixel 8: ordinary New Game manual no-call/call/lethal finish, Pause/Continue/Retry and saved historical automatic support. The shared manual preview remains available. Later tasks include #19 naval phases, stronger #10 muzzle feedback, #14 Giant mechanical visuals, Commander targeting, loading/opening, credits and performance. Preserve release saves, manual deployment and the frozen tag.
+Pending Pixel 8: ordinary New Game manual no-call/call/lethal finish, Pause/Continue/Retry and saved historical automatic support. The shared manual preview remains available. The amplified #10 muzzle feedback also awaits Pixel 8 acceptance. Later tasks include #19 naval phases, #14 Giant mechanical visuals, Commander targeting, loading/opening, credits and performance. Preserve release saves, manual deployment and the frozen tag.
 
 ## NEXT
 
-1. Review Lv11/Lv12 growth, casualty recovery and accepted four/five-MG edge positioning alongside Boss combat and pending presentation/music polish.
+1. Review Boss/Victory continuity and pending cannon, emergency-warning and music polish on Pixel 8. Preserve accepted Lv12 casualty behavior, the 1,800 XP recovery cost and 0.35-second Supply recovery.
 2. Add immediate loading feedback after Continue / New Game.
 3. Investigate and reduce the long first load.
 

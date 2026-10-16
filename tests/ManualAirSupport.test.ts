@@ -11,8 +11,7 @@ import { defaultRuntimeTuning } from '../src/app/runtimeTuning';
 
 const level = LevelDefinitionSchema.parse(levelData), tuning = qaSimulationTuning(config);
 function fixture(hp = 100) {
-  const balance = structuredClone(config.catharsis!), last = balance.commanderSupport!.heavyRaid!.lastStand!;
-  last.triggerPolicy = 'manualPlayerCall'; delete last.livingMgHpThresholds;
+  const balance = structuredClone(config.catharsis!);
   const sim = createAirSupportPlaytest({ seed: 17, level, tiers: config.tiers, startSquad: 1, startRocketCount: 0,
     catharsis: { balance, trackHalfWidth: config.track.halfWidth } }, config.weapon.rifle.fireRate);
   const s = sim.getState(); s.defenseTank!.hp = hp; s.enemies = [];

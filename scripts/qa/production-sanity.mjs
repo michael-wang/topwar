@@ -132,6 +132,7 @@ async function checkPlaytestScenes(page,width,out) {
  await page.locator('.tuning-panel > summary').tap();await page.locator('[data-action="normal"]').tap();
  await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();});
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().progression.level),1);
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().catharsis.balance.commanderSupport.heavyRaid.lastStand.triggerPolicy),'manualPlayerCall');
  results[`${width}:playtest`]=scenes;
 }
 try {
@@ -168,6 +169,8 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  const config=await configResponse?.json(),levelData=await levelResponse?.json();
  if(JSON.stringify(config)!==JSON.stringify(authoredConfig)||JSON.stringify(levelData)!==JSON.stringify(authoredLevel))throw Error('Production runtime data differs from authored data');
  if(!config.catharsis.defenseMode||config.catharsis.grenade.teachingGrantAmount!==3)throw Error('Stale defense/Grenade config');
+ assert.equal(config.catharsis.commanderSupport.heavyRaid.lastStand.triggerPolicy,'manualPlayerCall');
+ assert.equal(config.catharsis.commanderSupport.heavyRaid.lastStand.livingMgHpThresholds,undefined);
  if(JSON.stringify(config.catharsis.navalBarrage.postImpactCooldown)!=='{"initialDelaySeconds":2,"minimumGapSeconds":2,"maximumGapSeconds":5}')throw Error('Stale Stage 1 continuous naval cooldown');
  if(!await page.locator('#game-viewport.beachhead-defense').count()||await page.getByText(/ENEMY LV/).isVisible())throw Error('Production loaded legacy bridge/HUD');
  for(const url of runtimeRequests){const u=new URL(url);if(u.search||!Object.values(manifest).some(path=>u.pathname===`/topwar/${path}`))throw Error(`Unversioned or mismatched runtime asset: ${url}`);}

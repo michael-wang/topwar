@@ -40,6 +40,11 @@ try{for(const width of [350,390]){
       const c=a.config,t=a.runtimeTuning;window.__highlightTuning={...c.player,moveSpeed:t.moveSpeed,forwardSpeed:t.forwardSpeed,trackHalfWidth:c.track.halfWidth,defenseLineOffset:c.track.defenseLineOffset,normalEnemyRadius:c.tiers.normalEnemyRadius,bossRadius:c.bosses.basic.radius,rifle:{...c.weapon.rifle,fireRate:t.fireRate,projectileSpeed:t.bulletSpeed,range:t.bulletRange},rocket:c.weapon.rocket};
       const minimumTicks=role==='survival8-ahead'?390:30; // Include the next naturally admitted Lv8 wave.
       let tick=0;while(tick<minimumTicks||((role==='barrage8-on'||role?.startsWith('boss-phase'))&&!a.simulation.getFrameState().artillery?.shells.length&&tick<900)){a.simulation.step(1/60,{targetX:0},window.__highlightTuning);tick++;}
+      // Current Tank volleys launch sequentially; inspect all lanes only after
+      // the authored pending shots have fired, before the first shell impacts.
+      for(let n=0;n<90&&a.simulation.getFrameState().defenseTank?.rhythm?.pendingShots.length;n++)
+        a.simulation.step(1/60,{targetX:0},window.__highlightTuning);
+      if(a.simulation.getFrameState().defenseTank?.rhythm?.pendingShots.length)throw Error('Tank volley did not finish launching');
       a.presentationMs=a.simulation.getFrameState().elapsedSeconds*1000;a.setPaused(true);a.pauseOverlay.setVisible(false);
     },{state:states[role]??null,role});
     const r=await draw();assert.equal(r.playerX,-r.state.player.x);assert(r.visible);assert.equal(r.count,new Set(r.state.artillery?.shells.map(s=>s.targetLane)??[]).size);

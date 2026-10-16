@@ -10,8 +10,8 @@ import { pressureWaveSettings } from '../simulation/enemies/latePressure';
 import { postCapOrdinarySettings } from '../simulation/postCapSurvival';
 import { attackLanePositions } from '../simulation/enemies/laneComposition';
 
-// Canonical shared manual review. Ordinary Stage 1 and historical saved rules
-// never opt in merely because manual presentation is available in this build.
+// Canonical shared manual review, independent of historical saved policies.
+// Ordinary Stage 1 selects its support policy through authored configuration.
 export function createManualAirSupportPlaytest(options: SimulationOptions, rate: number): Simulation {
   const balance = structuredClone(options.catharsis?.balance);
   if (!balance?.commanderSupport?.heavyRaid?.lastStand) throw Error('Manual support review requires Stage 1 support');
