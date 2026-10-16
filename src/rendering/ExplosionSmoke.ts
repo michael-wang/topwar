@@ -5,7 +5,7 @@ import {smokeWindX} from '../presentation/BattlefieldWind';
 export const EXPLOSION_SMOKE = {
   artillery: {count:12, dark:4, seconds:1.8, opacity:.40, airyWeight:.24, darkFadeEnd:.95},
   grenade: {count:16, dark:5, seconds:1.9, opacity:.30, airyWeight:.09},
-  airstrike: {count:20, dark:6, seconds:5.6, opacity:.21, airyWeight:.10},
+  airstrike: {count:20, dark:6, seconds:5.6, opacity:.52, airyWeight:.32},
 } as const;
 type SmokeProfile = typeof EXPLOSION_SMOKE[keyof typeof EXPLOSION_SMOKE];
 

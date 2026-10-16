@@ -38,7 +38,8 @@ it('orders actual smoke footprint, quantity and persistence airstrike > grenade 
   sizes.push(new THREE.Vector3().setFromMatrixScale(matrix).length());counts.push(smoke.count);durations.push(profile.seconds);
   const outerAlpha=1-(1-smoke.material.opacity*profile.airyWeight)**(profile.count-profile.dark);
   if(tier==='artillery') {expect(outerAlpha).toBeGreaterThan(.35);expect(outerAlpha).toBeLessThan(.65);}
-  else expect(outerAlpha).toBeLessThan(.27);
+  else if(tier==='grenade')expect(outerAlpha).toBeLessThan(.27);
+  else expect(outerAlpha).toBeGreaterThan(.9);
   if(tier==='artillery')expect(scene.getObjectByName('grenade-shock-ring')!.scale.x).toBeCloseTo(.588);
   fx.update(profile.seconds*1000-1,0);expect(smoke.visible).toBe(true);
   fx.update(profile.seconds*1000,0);expect(smoke.visible).toBe(false);

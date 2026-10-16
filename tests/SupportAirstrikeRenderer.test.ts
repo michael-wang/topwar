@@ -6,6 +6,35 @@ import type { GameRenderState } from '../src/rendering/RenderState';
 import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
 import config from './helpers/ShippingConfig';
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
+import {EXPLOSION_SMOKE} from '../src/rendering/ExplosionSmoke';
+
+it.each([350,390])('builds dense overlapping projected smoke banks at %ipx while leaving other profiles alone',width=>{
+ expect(EXPLOSION_SMOKE.grenade).toEqual({count:16,dark:5,seconds:1.9,opacity:.30,airyWeight:.09});
+ expect(EXPLOSION_SMOKE.artillery).toEqual({count:12,dark:4,seconds:1.8,opacity:.40,airyWeight:.24,darkFadeEnd:.95});
+ const scene=new THREE.Scene(),fx=new HeavyAirstrikeExplosion(scene),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
+ applyCoastalCamera(camera);
+ for(let i=0;i<3;i++)fx.present(i,(i-1)*2.8,14,0);
+ fx.update(150,0);expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(true);
+ fx.update(450,0);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(false);
+ for(const age of [1000,2000,3000,4000]){
+  fx.update(age,0);
+  const bounds=[0,1,2].map(i=>{
+   const smoke=scene.getObjectByName(`airstrike-${i}-smoke`) as THREE.InstancedMesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
+   expect(smoke.visible).toBe(true);
+   expect(1-(1-smoke.material.opacity*.32)**14).toBeGreaterThan(.8);
+   const matrix=new THREE.Matrix4();smoke.getMatrixAt(6,matrix);
+   expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeGreaterThan(2.2);
+   const xs:number[]=[];
+   for(let j=0;j<smoke.count;j++){
+    smoke.getMatrixAt(j,matrix);
+    for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1])xs.push(new THREE.Vector3(x,y,z).applyMatrix4(matrix).project(camera).x);
+   }
+   return {min:Math.min(...xs),max:Math.max(...xs)};
+  });
+  for(let i=1;i<bounds.length;i++)expect(Math.min(bounds[i-1].max,bounds[i].max)-Math.max(bounds[i-1].min,bounds[i].min)).toBeGreaterThan(.3);
+ }
+ fx.update(5600,0);expect(scene.children.every(m=>!m.visible)).toBe(true);fx.dispose();expect(scene.children).toHaveLength(0);
+});
 
 it('layers compact dark smoke inside airy gray puffs in the same bounded draw and 5.6-second lifetime', () => {
   const scene = new THREE.Scene(), fx = new HeavyAirstrikeExplosion(scene);
@@ -16,9 +45,9 @@ it('layers compact dark smoke inside airy gray puffs in the same bounded draw an
   const smoke = scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   expect(smoke.count).toBe(20); expect(smoke.material.depthWrite).toBe(false);
   const weights=smoke.geometry.getAttribute('smokeWeight');
-  expect(Array.from(weights.array)).toEqual([...Array(6).fill(1),...Array(14).fill(Math.fround(.10))]);
-  expect(1-(1-smoke.material.opacity*.10)**14).toBeLessThan(.27);
-  expect(1-(1-smoke.material.opacity)**6).toBeGreaterThan(.45);
+  expect(Array.from(weights.array)).toEqual([...Array(6).fill(1),...Array(14).fill(Math.fround(.32))]);
+  expect(1-(1-smoke.material.opacity*.32)**14).toBeGreaterThan(.9);
+  expect(1-(1-smoke.material.opacity)**6).toBeGreaterThan(.98);
   const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(0,inner);smoke.getColorAt(6,outer);
   expect(inner.r).toBeLessThan(outer.r*.3);expect(Math.max(outer.r,outer.g,outer.b)-Math.min(outer.r,outer.g,outer.b)).toBeLessThan(.025);
   const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(0,innerPose);smoke.getMatrixAt(6,outerPose);
