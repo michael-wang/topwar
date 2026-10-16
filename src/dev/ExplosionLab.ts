@@ -37,7 +37,8 @@ export function mountExplosionLab(host: HTMLElement): void {
   const play = panel.querySelector<HTMLButtonElement>('[data-play]')!;
   let group: ComparisonGroup = 'impact', look: ExplosionLook = 'control';
   let fx = new ExplosionComparison(scene, group, look), ms = 0, playing = true, previous: number | null = null, frame = 0;
-  const describe = { control: 'Control · 現行正式效果（未變更）', A: 'A · Flash inside black core', B: 'B · Billowing layered cloud', C: 'C · Dirty bombardment bank' };
+  const describe = { control: 'Control · 現行正式效果（未變更）', A: 'A · Flash inside black core', B: 'B · Billowing layered cloud', C: 'C · Dirty bombardment bank',
+    'B-fast': 'B-fast · Rapid expansion / early dispersal / 1.5s fade', D: 'Hybrid D · White flash + ground ring / B smoke / 2s per impact' };
   const draw = (): void => {
     fx.seek(ms); beach.update(0, 3.2, 0); renderer.render(scene, camera);
     slider.value = String(Math.round(ms)); output.value = `${(ms / 1000).toFixed(2)}s`;
@@ -57,12 +58,14 @@ export function mountExplosionLab(host: HTMLElement): void {
   const controls = (): void => {
     const choices = panel.querySelector('[data-looks]')!; choices.replaceChildren();
     for (const value of COMPARISON_LOOKS[group]) {
-      const button = document.createElement('button'); button.textContent = value === 'control' ? 'Control' : `Exp ${value}`;
+      const button = document.createElement('button');
+      button.textContent = value === 'control' ? 'Control' : value === 'D' ? 'Hybrid D' : value === 'B-fast' ? 'B-fast' : `Exp ${value}`;
       button.dataset.look = value; button.style.cssText = 'min-height:40px;flex:1;color:white;border:1px solid #789';
       button.onclick = () => select(value); choices.append(button);
     }
     const phases = panel.querySelector('[data-phases]')!; phases.replaceChildren();
-    const times = group === 'impact' ? [30, 180, 450, 900, 1500, 2100] : [30, 180, 1000, 2500, 4000, 6500, 8900];
+    const times = group === 'impact' ? [30, 180, 350, 450, 650, 900, 1200, 1500, 2100]
+      : [30, 180, 450, 900, 1000, 1500, 1800, 2000, 2500, 4000, 6500, 8900];
     for (const time of times) {
       const button = document.createElement('button'); button.textContent = `${time / 1000}s`;
       button.style.cssText = 'min-height:32px;background:#30475a;color:white;border:1px solid #789';

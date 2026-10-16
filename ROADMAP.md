@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.23 compares explosion looks in an isolated DEV-only lab: production Control, immediate black-core flash (A), rolling layered cloud (B), and dirty bombardment bank (C). Compare impact Control/A/B and airstrike Control/B/C at fixed camera, impact anchors and seekable ages. No experiment replaces ordinary gameplay visuals.
+P4.23B adds B-fast impacts and Hybrid D airstrikes to the isolated DEV-only lab after the owner's first Pixel 8 comparison. B-fast speeds B's expansion/dispersal and ends at 1.5s; D pairs Control's white flash/ground ring with B's cloud, fading each individual plume at 1.5–2s. Original Control/A/B/C remain unchanged; C is rejected for promotion. No experiment replaces ordinary gameplay visuals.
 
-Owner desktop/Pixel 8 comparison is next; explosion direction is not finalized. Tracer V5 also remains pending phone acceptance. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. No gameplay or public-playtest backlog implementation is included.
+Owner physical Pixel 8 comparison of B-fast and Hybrid D is next; production promotion is not authorized. Tracer V5 also remains pending phone acceptance. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. No gameplay or public-playtest backlog implementation is included.
 
 ## NEXT
 
