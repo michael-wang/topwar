@@ -49,7 +49,7 @@ it('projects a deterministic arc and reuses bounded explosion resources across r
     renderer.present([{kind:'grenadeDetonated',x:1.4,z:15,radius:2,victims:[]}],0);
     renderer.update({...state,flight:null},80);expect(renderer.getDebugStats().burst).toBe(true);
     expect(scene.getObjectByName('grenade-dust')!.position).toEqual(new THREE.Vector3());
-    renderer.update({...state,flight:null},1200);expect(renderer.getDebugStats()).toMatchObject({supply:false,flight:false,burst:false,dustCapacity:16,activeExplosions:0});
+    renderer.update({...state,flight:null},1900);expect(renderer.getDebugStats()).toMatchObject({supply:false,flight:false,burst:false,dustCapacity:16,activeExplosions:0});
     expect(scene.children).toEqual(children);renderer.reset();expect(scene.children.every(c=>!c.visible)).toBe(true);
   }
   renderer.dispose();expect(scene.children).toHaveLength(0);

@@ -3,6 +3,7 @@ import type { GameRenderState } from './RenderState';
 import type { GrenadeEvent } from '../simulation/grenade';
 import { SupplyCrateRenderer } from './SupplyCrateRenderer';
 import { GrenadeExplosion } from './GrenadeExplosion';
+import { GRENADE_FX } from '../presentation/GrenadeMotion';
 import { GOLDEN_GRENADE } from '../art/GoldenGrenade';
 
 export class GrenadeRenderer {
@@ -88,7 +89,7 @@ export class GrenadeRenderer {
       THREE.MathUtils.lerp(f.startZ, f.targetZ, t) - originZ);
   }
   getDebugStats() { return { supply: this.crate.visible, flight: this.flight.visible,
-    burst: this.explosion.active > 0, dustCapacity: 16, explosionSlots: 2, activeExplosions: this.explosion.active,
+    burst: this.explosion.active > 0, dustCapacity: 16, explosionSlots: GRENADE_FX.slots, activeExplosions: this.explosion.active,
     activeScorches: this.explosion.activeScorches }; }
   preparationMeshes(): THREE.Mesh[] { return [...this.crate.preparationMeshes(), ...this.flight.children as THREE.Mesh[], this.trail]; }
   reset(): void { this.crate.reset(); this.explosion.reset(); this.flight.visible = false; this.trail.visible = false; }

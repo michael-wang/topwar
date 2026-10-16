@@ -43,7 +43,7 @@ it('keeps crate panels attached until opening, then rotates and falls every frag
   r.dispose();expect(scene.children).toEqual([]);
 });
 
-it('has a bright initial core, fast radius-sized shockwave and dissipating smoke in two stable pools',()=>{
+it('has a bright initial core, fast radius-sized shockwave and dissipating smoke in three stable pools through the longer smoke tail',()=>{
   const scene=new THREE.Scene(),r=new GrenadeRenderer(scene),state={supply:null,flight:null,originZ:0,elapsedSeconds:0};
   const children=[...scene.children];
   const blast=(at:number)=>r.present([{kind:'grenadeDetonated',x:1.4,z:14,radius:4,victims:[]}],at);
@@ -53,7 +53,7 @@ it('has a bright initial core, fast radius-sized shockwave and dissipating smoke
   expect(scene.getObjectByName('grenade-shock-ring')!.scale.x).toBeGreaterThan(3.7);
   r.update(state,700);expect(scene.getObjectByName('grenade-smoke')!.visible).toBe(true);
   expect(scene.getObjectByName('grenade-fire')!.visible).toBe(false);
-  for(let i=0;i<30;i++){blast(i*650);r.update(state,i*650+100);expect(r.getDebugStats().activeExplosions).toBeLessThanOrEqual(2);expect(scene.children).toEqual(children);}
+  for(let i=0;i<30;i++){blast(i*650);r.update(state,i*650+100);expect(r.getDebugStats().activeExplosions).toBeLessThanOrEqual(3);expect(scene.children).toEqual(children);}
   r.update(state,30000);expect(r.getDebugStats().activeExplosions).toBe(0);r.reset();expect(scene.children.every(m=>!m.visible)).toBe(true);
   r.dispose();expect(scene.children).toEqual([]);
 });

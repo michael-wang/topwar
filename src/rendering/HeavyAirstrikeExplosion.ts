@@ -1,17 +1,16 @@
 import * as THREE from 'three';
-import {smokeWindX} from '../presentation/BattlefieldWind';
+import {EXPLOSION_SMOKE, explosionSmokeGeometry, prepareExplosionSmoke, poseExplosionSmoke, explosionSmokeOpacity} from './ExplosionSmoke';
+const SMOKE = EXPLOSION_SMOKE.airstrike;
 
-const AIRSTRIKE_FX = { slots: 9, durationMs: 5600, radius: 4.8, smokeOpacity: .21 } as const;
-/** Nine reusable impacts: solid fire lobes and eight smoke puffs, no per-victim objects. */
+const AIRSTRIKE_FX = { slots: 9, durationMs: SMOKE.seconds * 1000, radius: 4.8 } as const;
+/** Nine reusable impacts: solid fire lobes and twenty layered smoke puffs, no per-victim objects. */
 export class HeavyAirstrikeExplosion {
   private readonly sphere = new THREE.SphereGeometry(1, 9, 6);
-  private readonly smokeSphere = this.sphere.clone();
+  private readonly smokeSphere = explosionSmokeGeometry(this.sphere, SMOKE);
   private readonly ring = new THREE.RingGeometry(.82, 1, 32);
   private readonly pose = new THREE.Object3D();
   private readonly slots: ReturnType<HeavyAirstrikeExplosion['slot']>[] = [];
   constructor(private readonly scene: THREE.Scene) {
-    // One smoke draw per impact: three compact dark puffs inside five airy puffs.
-    this.smokeSphere.setAttribute('smokeWeight', new THREE.InstancedBufferAttribute(new Float32Array([1, 1, 1, .28, .28, .28, .28, .28]), 1));
     for (let i = 0; i < AIRSTRIKE_FX.slots; i++) this.slots.push(this.slot(i));
   }
   private slot(index: number) {
@@ -23,18 +22,9 @@ export class HeavyAirstrikeExplosion {
       new THREE.MeshBasicMaterial({ color: '#ffc271', transparent: true, depthWrite: false, side: THREE.DoubleSide }),
     ];
     const core = new THREE.Mesh(this.sphere, mats[0]), fire = new THREE.InstancedMesh(this.sphere, mats[1], 5),
-      smoke = new THREE.InstancedMesh(this.smokeSphere, mats[2], 8), dust = new THREE.InstancedMesh(this.sphere, mats[3], 10),
+      smoke = new THREE.InstancedMesh(this.smokeSphere, mats[2], SMOKE.count), dust = new THREE.InstancedMesh(this.sphere, mats[3], 10),
       shock = new THREE.Mesh(this.ring, mats[4]);
-    const smokeAge = { value: 0 };
-    mats[2].onBeforeCompile = shader => {
-      shader.uniforms.smokeAge = smokeAge;
-      shader.vertexShader = `attribute float smokeWeight; varying float vSmokeWeight;\n${shader.vertexShader}`
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSmokeWeight = smokeWeight;');
-      shader.fragmentShader = `uniform float smokeAge; varying float vSmokeWeight;\n${shader.fragmentShader}`
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= vSmokeWeight * mix(1., clamp((4.-smokeAge)/2.,0.,1.), step(.5,vSmokeWeight));');
-    };
-    mats[2].customProgramCacheKey = () => 'airstrike-layered-smoke';
-    for (let i = 0; i < 8; i++) smoke.setColorAt(i, new THREE.Color(i < 3 ? '#45494c' : '#929395'));
+    const smokeAge = prepareExplosionSmoke(smoke, SMOKE);
     const meshes = [core, fire, smoke, dust, shock];
     for (const m of meshes) { m.name = `airstrike-${index}-${m === core ? 'core' : m === fire ? 'fire' : m === smoke ? 'smoke' : m === dust ? 'dust' : 'shockwave'}`; m.visible = false; m.frustumCulled = false; }
     for (const m of [fire, smoke, dust]) m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -53,10 +43,8 @@ export class HeavyAirstrikeExplosion {
       s.core.visible = t < .28; s.fire.visible = t < .65; s.dust.visible = t < 1.4; s.shock.visible = t < .6;
       s.core.position.set(x, 2.5, z); s.core.scale.setScalar(r * (.22 + .32 * Math.min(1, t / .18)));
       s.mats[0].opacity = Math.max(0, 1 - t / .28); s.mats[1].opacity = Math.max(0, 1 - t/.65);
-      // Dark center fades earlier; five larger outer puffs stay below .27 combined alpha.
-      // All eight still use one instanced draw, and the existing 5.6-second clock.
       s.smokeAge.value = t;
-      s.mats[2].opacity = Math.min(1, t / .4) * AIRSTRIKE_FX.smokeOpacity * Math.min(1, (durationSeconds - t) / 1.5);
+      s.mats[2].opacity = explosionSmokeOpacity(t, SMOKE);
       s.mats[3].opacity = .45 * Math.max(0, 1 - t / 1.4); s.mats[4].opacity = .85 * Math.max(0, 1 - t / .6);
       s.shock.position.set(x, .1, z); s.shock.scale.setScalar(r * (1 + t * 2.3));
       for (let i = 0; i < 10; i++) {
@@ -66,19 +54,12 @@ export class HeavyAirstrikeExplosion {
           this.pose.position.set(x + dx * r * .27 * g, 1.5 + i % 2 * .5 + t * 2, z + dz * r * .25 * g);
           this.pose.scale.setScalar(r * (.20 + .13 * g)); this.pose.rotation.set(i, a, 0); this.pose.updateMatrix(); s.fire.setMatrixAt(i, this.pose.matrix);
         }
-        if (i < 8) {
-          const drift=smokeWindX(Math.max(0,t-.08),i<3);
-          if (i < 3) {
-            this.pose.position.set(x + drift + dx * (.25+t*.1), .65 + i * .35 + t * .65, z + dz * .25);
-            this.pose.scale.set(.7 + t * .2, .8 + t * .3, .7 + t * .16);
-          } else {
-            this.pose.position.set(x + drift + dx * (.7 + t * .14), 1 + i % 3 * .65 + t * (.65 + i % 2 * .2), z + dz * (.8 + t * .16));
-            this.pose.scale.set(1.25 + t * .3, 1.05 + t * .35, 1.1 + t * .26);
-          }
-          this.pose.rotation.set(i, a, t * .06); this.pose.updateMatrix(); s.smoke.setMatrixAt(i, this.pose.matrix);
-        }
         this.pose.position.set(x + dx * r * Math.min(1.5, .2 + t), .2 + t * .18, z + dz * r * Math.min(1.5, .2 + t));
         this.pose.scale.set(.55 + t * .5, .22 + t * .3, .7 + t * .5); this.pose.rotation.set(0, a, 0); this.pose.updateMatrix(); s.dust.setMatrixAt(i, this.pose.matrix);
+      }
+      for(let i=0;i<SMOKE.count;i++) {
+        poseExplosionSmoke(this.pose,i,i<SMOKE.dark,t,r,x,z);
+        s.smoke.setMatrixAt(i,this.pose.matrix);
       }
       for (const m of [s.fire, s.smoke, s.dust]) m.instanceMatrix.needsUpdate = true;
     }

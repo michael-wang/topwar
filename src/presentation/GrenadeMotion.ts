@@ -1,5 +1,5 @@
 // Deterministic presentation only; never applied to authoritative positions.
-export const GRENADE_FX = { durationMs: 1200, slots: 2, airborneLimit: 8, airborneMs: 1150, reactionMs: 650 } as const;
+export const GRENADE_FX = { durationMs: 1200, slots: 3, airborneLimit: 8, airborneMs: 1150, reactionMs: 650 } as const;
 export const GRENADE_DEBRIS_COUNT = 24;
 export function grenadeDebrisPose(index: number, ageMs: number, radius: number) {
   const t = Math.max(0, ageMs / 1000), vy = 3 + index % 5 * 1.1;

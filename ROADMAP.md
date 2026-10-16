@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.19 unifies battlefield smoke wind across cannon, artillery impacts and Grenades, clarifies the airstrike blast → smoke → dispersal sequence with a shorter fire phase and the same wind and trials a thin, understated white bullet streak (0.85px core with minimal trim), replacing the broad white spear appearance. These are separate visual changes; accepted Destroyer singles/staggered pairs, cannon flame/core, manual Air Support, progression and Grenade balance remain unchanged.
+P4.20 unifies the explosion family: airstrike > Grenade > artillery/Tank shell impacts, with layered light/charcoal smoke and shared screen-right dispersal. Impacts have a larger visual smoke footprint; Grenades have more persistent smoke and less fire emphasis; airstrike remains the largest tier. Accepted Destroyer salvos, cannon flame/core, manual Air Support, progression and Grenade balance remain unchanged.
 
-Physical Pixel 8 acceptance is pending for impact/Grenade smoke cohesion, airstrike smoke readability and thin tracers. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
+Physical Pixel 8 acceptance is pending for the unified explosion family and current thin tracers. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
 
 ## NEXT
 

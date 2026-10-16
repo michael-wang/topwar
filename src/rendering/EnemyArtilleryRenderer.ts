@@ -37,7 +37,7 @@ export class EnemyArtilleryRenderer {
   private readonly overhead: OverheadLaneWarnings;
   private readonly restoredShellIds = new Float64Array(ARTILLERY_CAPACITY);
   constructor(private readonly scene: THREE.Scene) {
-    this.impacts = new GrenadeExplosion(scene, ARTILLERY_CAPACITY, false);
+    this.impacts = new GrenadeExplosion(scene, ARTILLERY_CAPACITY, false, 'artillery');
     this.overhead = new OverheadLaneWarnings(scene);
     this.alert.name = 'artillery-lock-on'; this.alert.renderOrder = 12; scene.add(this.alert);
     for (let i = 0; i < ARTILLERY_CAPACITY; i++) this.slots.push(this.createSlot(i));

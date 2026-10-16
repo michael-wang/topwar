@@ -14,14 +14,14 @@ it('layers compact dark smoke inside airy gray puffs in the same bounded draw an
   for (const name of ['core', 'fire', 'dust', 'shockwave']) expect(scene.getObjectByName(`airstrike-0-${name}`)!.visible).toBe(true);
   fx.update(600, 0);
   const smoke = scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
-  expect(smoke.count).toBe(8); expect(smoke.material.depthWrite).toBe(false);
+  expect(smoke.count).toBe(20); expect(smoke.material.depthWrite).toBe(false);
   const weights=smoke.geometry.getAttribute('smokeWeight');
-  expect(Array.from(weights.array)).toEqual([1,1,1,...Array(5).fill(Math.fround(.28))]);
-  expect(1-(1-smoke.material.opacity*.28)**5).toBeLessThan(.27);
-  expect(1-(1-smoke.material.opacity)**3).toBeGreaterThan(.45);
-  const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(0,inner);smoke.getColorAt(3,outer);
+  expect(Array.from(weights.array)).toEqual([...Array(6).fill(1),...Array(14).fill(Math.fround(.10))]);
+  expect(1-(1-smoke.material.opacity*.10)**14).toBeLessThan(.27);
+  expect(1-(1-smoke.material.opacity)**6).toBeGreaterThan(.45);
+  const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(0,inner);smoke.getColorAt(6,outer);
   expect(inner.r).toBeLessThan(outer.r*.3);expect(Math.max(outer.r,outer.g,outer.b)-Math.min(outer.r,outer.g,outer.b)).toBeLessThan(.025);
-  const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(0,innerPose);smoke.getMatrixAt(3,outerPose);
+  const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(0,innerPose);smoke.getMatrixAt(6,outerPose);
   expect(new THREE.Vector3().setFromMatrixScale(innerPose).x).toBeLessThan(new THREE.Vector3().setFromMatrixScale(outerPose).x*.6);
   const pose = Array.from(smoke.instanceMatrix.array); fx.update(600, 0);
   expect(Array.from(smoke.instanceMatrix.array)).toEqual(pose); expect(scene.children).toEqual(meshes);
@@ -53,7 +53,7 @@ it.each([350,390])('hands a strong early blast to layered smoke drifting screen-
  expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(true);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(true);
  fx.update(700,0);expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(false);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(false);
  const smoke=scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),objects=scene.children.slice();
- const xs=()=>Array.from({length:8},(_,i)=>{smoke.getMatrixAt(i,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;});
+ const xs=()=>Array.from({length:smoke.count},(_,i)=>{smoke.getMatrixAt(i,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;});
  const before=xs();expect(smoke.visible).toBe(true);fx.update(1700,0);xs().forEach((x,i)=>expect(x).toBeGreaterThan(before[i]));
  const frozen=Array.from(smoke.instanceMatrix.array);fx.update(1700,0);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);expect(scene.children).toEqual(objects);
  // Reconstruct the same age on a different presentation clock, as Continue does.
