@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.23B adds B-fast impacts and Hybrid D airstrikes to the isolated DEV-only lab after the owner's first Pixel 8 comparison. B-fast speeds B's expansion/dispersal and ends at 1.5s; D pairs Control's white flash/ground ring with B's cloud, fading each individual plume at 1.5–2s. Original Control/A/B/C remain unchanged; C is rejected for promotion. No experiment replaces ordinary gameplay visuals.
+P4.24 promotes the Pixel 8-approved B-fast and Hybrid D designs in two independent changes. B-fast now drives real Tank/Destroyer impacts with bounded batching and 1.5s expiry; Hybrid D airstrike promotion follows independently. Keep the DEV Explosion Lab as a comparison/reference tool.
 
-Owner physical Pixel 8 comparison of B-fast and Hybrid D is next; production promotion is not authorized. Tracer V5 also remains pending phone acceptance. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. No gameplay or public-playtest backlog implementation is included.
+Owner final production Pixel 8 acceptance is pending. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints, gameplay and manual deployment. No additional feature implementation is included.
 
 ## NEXT
 
@@ -13,6 +13,8 @@ Owner physical Pixel 8 comparison of B-fast and Hybrid D is next; production pro
 3. Investigate and reduce the long first load.
 
 ## LATER
+
+- Required before public playtest: mobile fullscreen (#28), coordinated with arcade 「開始遊戲」 and startup/audio activation UX. Separate future task; no fullscreen/PWA/startup implementation in this batch.
 
 - Tracking only, outside P4.23: Heavy death (#27) should match Grunt with a compact rising smoke puff; Giant death (#14) should use robotic disassembly/explosion treatment. No death-renderer implementation in this batch.
 

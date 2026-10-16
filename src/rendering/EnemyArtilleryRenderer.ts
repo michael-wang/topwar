@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ARTILLERY_CAPACITY } from '../config/artilleryConfig';
 import { sampleArtillery, type ArtilleryEvent } from '../simulation/artillery';
 import type { GameRenderState } from './RenderState';
-import { GrenadeExplosion } from './GrenadeExplosion';
+import { BillowingExplosionPool } from './BillowingExplosionPool';
 import { ART } from '../art/ArtDirection';
 import { LOCK_ON_ALERT_MS, warningInnerRadius } from '../presentation/ArtilleryWarning';
 import { OverheadLaneWarnings } from './OverheadLaneWarnings';
@@ -28,7 +28,7 @@ export class EnemyArtilleryRenderer {
   private readonly direction = new THREE.Vector3();
   private readonly up = new THREE.Vector3(0, 1, 0);
   private readonly slots: ReturnType<EnemyArtilleryRenderer['createSlot']>[] = [];
-  private readonly impacts: GrenadeExplosion;
+  private readonly impacts: BillowingExplosionPool;
   private readonly glyph = exclamationGeometry();
   private readonly alertMaterial = new THREE.MeshBasicMaterial({ color: '#ff334b', transparent: true, depthTest: false });
   private readonly alert = new THREE.Mesh(this.glyph, this.alertMaterial);
@@ -37,7 +37,7 @@ export class EnemyArtilleryRenderer {
   private readonly overhead: OverheadLaneWarnings;
   private readonly restoredShellIds = new Float64Array(ARTILLERY_CAPACITY);
   constructor(private readonly scene: THREE.Scene) {
-    this.impacts = new GrenadeExplosion(scene, ARTILLERY_CAPACITY, false, 'artillery');
+    this.impacts = new BillowingExplosionPool(scene, ARTILLERY_CAPACITY);
     this.overhead = new OverheadLaneWarnings(scene);
     this.alert.name = 'artillery-lock-on'; this.alert.renderOrder = 12; scene.add(this.alert);
     for (let i = 0; i < ARTILLERY_CAPACITY; i++) this.slots.push(this.createSlot(i));

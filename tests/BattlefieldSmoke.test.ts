@@ -87,8 +87,16 @@ it.each([350,390])('drifts grenade and real artillery-impact smoke screen-right 
   const state={shells:[],elapsedSeconds:2,warningPresentation:'personalEmergency' as const};
   const update=(ms:number)=>{if(fx instanceof EnemyArtilleryRenderer)fx.update(state,ms);else fx.update(ms,0);};
   update(0);
-  if(fx instanceof EnemyArtilleryRenderer)fx.present([{kind:'artilleryImpact',id:1,x:1.4,z:12,radius:.588,atSeconds:2,hit:false}],0);
-  else fx.present(1.4,12,4,0);
+  if(fx instanceof EnemyArtilleryRenderer){
+   fx.present([{kind:'artilleryImpact',id:1,x:1.4,z:12,radius:.588,atSeconds:2,hit:false}],0);
+   const smoke=scene.getObjectByName('artillery-impact-smoke') as THREE.InstancedMesh,matrix=new THREE.Matrix4();
+   const project=()=>{smoke.getMatrixAt(0,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;};
+   update(350);const before=project();update(850);expect(project()).toBeGreaterThan(before);
+   const frozen=Array.from(smoke.instanceMatrix.array);update(850);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);
+   update(1500);expect(smoke.visible).toBe(false);fx.restore(state);update(850);expect(smoke.visible).toBe(false);
+   fx.dispose();expect(scene.children).toHaveLength(0);continue;
+  }
+  fx.present(1.4,12,4,0);
   update(30);expect(scene.getObjectByName('grenade-flash')!.position.x).toBe(-1.4);
   const smoke=scene.getObjectByName('grenade-smoke') as THREE.InstancedMesh,objects=scene.children.slice(),matrix=new THREE.Matrix4();
   const projected=()=>Array.from({length:smoke.count},(_,i)=>{smoke.getMatrixAt(i,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;});
@@ -98,7 +106,7 @@ it.each([350,390])('drifts grenade and real artillery-impact smoke screen-right 
   projected().forEach((x,i)=>expect(x).toBeGreaterThan(before[i]));
   const frozen=Array.from(smoke.instanceMatrix.array);update(850);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);
   expect(scene.children).toEqual(objects);update(artillery?1800:1900);expect(smoke.visible).toBe(false);
-  if(fx instanceof EnemyArtilleryRenderer)fx.restore(state);else fx.reset();update(850);expect(smoke.visible).toBe(false);
+  fx.reset();update(850);expect(smoke.visible).toBe(false);
   fx.dispose();expect(scene.children).toHaveLength(0);
  }
 });
