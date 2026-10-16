@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {smokeWindX} from '../presentation/BattlefieldWind';
 
 const AIRSTRIKE_FX = { slots: 9, durationMs: 5600, radius: 4.8, smokeOpacity: .21 } as const;
 /** Nine reusable impacts: solid fire lobes and eight smoke puffs, no per-victim objects. */
@@ -49,9 +50,9 @@ export class HeavyAirstrikeExplosion {
       const t = (now - s.at) / 1000, r = AIRSTRIKE_FX.radius, x = -s.x, z = s.z - originZ;
       for (const m of s.meshes) m.visible = t >= 0 && t < durationSeconds;
       if (t < 0 || t >= durationSeconds) continue;
-      s.core.visible = t < .45; s.fire.visible = t < 1; s.dust.visible = t < 1.4; s.shock.visible = t < .6;
+      s.core.visible = t < .28; s.fire.visible = t < .65; s.dust.visible = t < 1.4; s.shock.visible = t < .6;
       s.core.position.set(x, 2.5, z); s.core.scale.setScalar(r * (.22 + .32 * Math.min(1, t / .18)));
-      s.mats[0].opacity = Math.max(0, 1 - t / .45); s.mats[1].opacity = Math.max(0, 1 - t);
+      s.mats[0].opacity = Math.max(0, 1 - t / .28); s.mats[1].opacity = Math.max(0, 1 - t/.65);
       // Dark center fades earlier; five larger outer puffs stay below .27 combined alpha.
       // All eight still use one instanced draw, and the existing 5.6-second clock.
       s.smokeAge.value = t;
@@ -63,15 +64,16 @@ export class HeavyAirstrikeExplosion {
         if (i < 5) {
           const g = Math.min(1, t / .22);
           this.pose.position.set(x + dx * r * .27 * g, 1.5 + i % 2 * .5 + t * 2, z + dz * r * .25 * g);
-          this.pose.scale.setScalar(r * (.22 + .16 * g)); this.pose.rotation.set(i, a, 0); this.pose.updateMatrix(); s.fire.setMatrixAt(i, this.pose.matrix);
+          this.pose.scale.setScalar(r * (.20 + .13 * g)); this.pose.rotation.set(i, a, 0); this.pose.updateMatrix(); s.fire.setMatrixAt(i, this.pose.matrix);
         }
         if (i < 8) {
+          const drift=smokeWindX(Math.max(0,t-.08),i<3);
           if (i < 3) {
-            this.pose.position.set(x + dx * .25, .65 + i * .35 + t * .65, z + dz * .25);
-            this.pose.scale.set(.58 + t * .08, .75 + t * .18, .55 + t * .08);
+            this.pose.position.set(x + drift + dx * (.25+t*.1), .65 + i * .35 + t * .65, z + dz * .25);
+            this.pose.scale.set(.7 + t * .2, .8 + t * .3, .7 + t * .16);
           } else {
-            this.pose.position.set(x + dx * (.7 + t * .14), 1 + i % 3 * .65 + t * (.65 + i % 2 * .2), z + dz * (.8 + t * .16));
-            this.pose.scale.set(1.25 + t * .22, 1.05 + t * .3, 1.1 + t * .19);
+            this.pose.position.set(x + drift + dx * (.7 + t * .14), 1 + i % 3 * .65 + t * (.65 + i % 2 * .2), z + dz * (.8 + t * .16));
+            this.pose.scale.set(1.25 + t * .3, 1.05 + t * .35, 1.1 + t * .26);
           }
           this.pose.rotation.set(i, a, t * .06); this.pose.updateMatrix(); s.smoke.setMatrixAt(i, this.pose.matrix);
         }

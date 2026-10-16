@@ -47,6 +47,20 @@ it('reconstructs persistent impact scorches once, beneath lane paint, without re
   r.dispose();expect(scene.children).toHaveLength(0);
 });
 
+it.each([350,390])('hands a strong early blast to layered smoke drifting screen-right at %ipx',width=>{
+ const scene=new THREE.Scene(),fx=new HeavyAirstrikeExplosion(scene),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
+ applyCoastalCamera(camera);fx.present(0,0,14,0);fx.update(150,0);
+ expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(true);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(true);
+ fx.update(700,0);expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(false);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(false);
+ const smoke=scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),objects=scene.children.slice();
+ const xs=()=>Array.from({length:8},(_,i)=>{smoke.getMatrixAt(i,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;});
+ const before=xs();expect(smoke.visible).toBe(true);fx.update(1700,0);xs().forEach((x,i)=>expect(x).toBeGreaterThan(before[i]));
+ const frozen=Array.from(smoke.instanceMatrix.array);fx.update(1700,0);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);expect(scene.children).toEqual(objects);
+ // Reconstruct the same age on a different presentation clock, as Continue does.
+ fx.reset();fx.present(0,0,14,5000);fx.update(6700,0);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);
+ fx.dispose();expect(scene.children).toHaveLength(0);
+});
+
 it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes, resets and disposes its fixed resources once', () => {
   const scene = new THREE.Scene(), r = new SupportAirstrikeRenderer(scene), support = emptyCommanderSupport(true, true);
   Object.assign(support.airstrike!, { status: 'waiting', triggeredAtSeconds: 60, bombAtSeconds: 67.5, strikesCompleted: 1,

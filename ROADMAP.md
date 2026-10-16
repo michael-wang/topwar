@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.19 unifies battlefield smoke wind across cannon, artillery impacts and Grenades, then clarifies the airstrike blast → smoke → dispersal sequence and trials a thin, understated white bullet streak. These are separate visual changes; accepted Destroyer singles/staggered pairs, cannon flame/core, manual Air Support, progression and Grenade balance remain unchanged.
+P4.19 unifies battlefield smoke wind across cannon, artillery impacts and Grenades, clarifies the airstrike blast → smoke → dispersal sequence with a shorter fire phase and the same wind and trials a thin, understated white bullet streak. These are separate visual changes; accepted Destroyer singles/staggered pairs, cannon flame/core, manual Air Support, progression and Grenade balance remain unchanged.
 
 Physical Pixel 8 acceptance is pending for impact/Grenade smoke cohesion, airstrike smoke readability and thin tracers. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
 
