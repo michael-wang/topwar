@@ -1,5 +1,7 @@
 # Current visual contract
 
+P4.23 is a DEV-only comparison, not a production promotion. Existing Tank/Destroyer and airstrike effects below are Control. Compare A (immediate black core with a short internal flash), B (cohesive rolling charcoal/medium-gray/outer-gray cloud), and C (broader, darker repeated-impact bombardment bank). Every sample uses fixed anchors, Camera B and shared screen-right wind; the experiment adds a transitional gray band. Grenades, cannon muzzle FX and ordinary gameplay remain unchanged. Owner desktop/physical Pixel 8 selection is pending. See [comparison instructions](docs/EXPLOSION_LAB.md).
+
 The accepted direction is Rounded Toy Soldier / Handcrafted Military Arcade, with Command Blue UI and a sunlit coastal Greek battlefield. Color layers separate olive Grunts, gray-blue/khaki Heavies, rust-brown/old-iron Giants and deep navy-gray vehicles. Sand/copper trim and small amber accents retain their shared armory language. Rounded infantry and chamfered machinery distinguish roles; friendly blue art stays unchanged. Models use the existing procedural, merged/instanced pipeline.
 
 - Camera: the tested P4.2 Camera B is approved as the default in DEV and production after Pixel 8 preference testing. Keep the four-unit dolly along the original view axis, original look-at target and near-player depth/FOV compensation (about 36.3° at 9:16), with responsive aspect handling. All scenes, including Boss, Victory and Air Support, share it. Physical Boss gameplay acceptance remains pending; retain the Boss quick-test entry.

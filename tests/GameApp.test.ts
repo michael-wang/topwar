@@ -89,6 +89,7 @@ const mock = vi.hoisted(() => ({
   hudSetPaused: vi.fn(),
   hudDispose: vi.fn(),
   panelConstructedWith: vi.fn(),
+  advancedAppend: vi.fn(),
   panelAnchor: vi.fn(),
   panelSetValues: vi.fn(),
   panelToggle: vi.fn(),
@@ -807,6 +808,7 @@ it('restarts selected development fixtures and clears renderer feedback on every
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
+  expect(mock.advancedAppend.mock.lastCall![0].href).toBe('?explosion-lab');
   const select = mock.reviewConstructed.mock.lastCall![0] as (role: string) => void;
   for (const role of ['late', 'late', 'crate3', 'crate8', 'naval', 'crate3']) {
     const before = mock.resetFeedback.mock.calls.length;
@@ -832,6 +834,7 @@ it('shares the approved playtest menu outside DEV while omitting engineering QA'
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
     expect(mock.reviewConstructed).toHaveBeenCalledOnce();expect(mock.reviewFixture).not.toHaveBeenCalled();
     expect(mock.panelConstructedWith).toHaveBeenCalledOnce(); expect(mock.qaConstructed).not.toHaveBeenCalled();
+    expect(mock.advancedAppend).not.toHaveBeenCalled();
     expect(mock.manualSupportConstructed).toHaveBeenCalledOnce(); app.dispose();
   } finally { vi.unstubAllEnvs(); }
 });
@@ -1149,7 +1152,7 @@ vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
 
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   reviewControlsHost = {} as HTMLElement;
-  advancedControlsHost = {prepend:vi.fn()} as unknown as HTMLElement;
+  advancedControlsHost = {prepend:vi.fn(),append:mock.advancedAppend} as unknown as HTMLElement;
   private open = false;
   close() {mock.panelClose();if(this.open){this.open=false;this.onOpenChange(false);}}
   constructor(_viewport: HTMLElement, defaults: unknown, onChange: unknown, private onOpenChange:(open:boolean)=>void) {

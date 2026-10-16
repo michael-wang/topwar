@@ -12,6 +12,9 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
+if (['explosion-lab', 'Explosion Lab', 'Flash inside black core', 'Billowing layered cloud',
+  'Dirty bombardment bank', 'Invalid explosion comparison'].some(marker => shippingJs.includes(marker)))
+  throw Error('DEV explosion experiments survived production tree-shaking');
 if (shippingJs.includes('__testApp') || shippingJs.includes('qa:scene-start')) throw Error('QA instrumentation leaked into production');
 if (['dev-fps', 'dev-wake-status', 'vite:beforeFullReload', 'checkpoint-write', '__qaHpMode'].some(marker => shippingJs.includes(marker)))
   throw Error('DEV FPS/lifecycle diagnostics or HP audit controls survived production tree-shaking');

@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.22 trials white-body tracers with local dark head contrast, cohesive simultaneous fire/charcoal/gray artillery impacts and dark-smoke-forward airstrike banks. Preserve accepted Grenade and cannon muzzle visuals, sand, Destroyer firing, manual Air Support and all gameplay/balance. Three independently committed visual tasks only.
+P4.23 compares explosion looks in an isolated DEV-only lab: production Control, immediate black-core flash (A), rolling layered cloud (B), and dirty bombardment bank (C). Compare impact Control/A/B and airstrike Control/B/C at fixed camera, impact anchors and seekable ages. No experiment replaces ordinary gameplay visuals.
 
-Physical Pixel 8 acceptance is pending for Tracer V5, cohesive artillery impacts and dark airstrike smoke. Preserve four shared entries, historical checkpoints, warning readability and manual deployment. No additional gameplay or public-playtest backlog work is included.
+Owner desktop/Pixel 8 comparison is next; explosion direction is not finalized. Tracer V5 also remains pending phone acceptance. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. No gameplay or public-playtest backlog implementation is included.
 
 ## NEXT
 
@@ -14,7 +14,7 @@ Physical Pixel 8 acceptance is pending for Tracer V5, cohesive artillery impacts
 
 ## LATER
 
-- Tracking only, outside P4.22: Heavy death (#27) should match Grunt with a compact rising smoke puff; Giant death (#14) should use robotic disassembly/explosion treatment. No death-renderer implementation in this batch.
+- Tracking only, outside P4.23: Heavy death (#27) should match Grunt with a compact rising smoke puff; Giant death (#14) should use robotic disassembly/explosion treatment. No death-renderer implementation in this batch.
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.

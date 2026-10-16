@@ -21,7 +21,8 @@ if (!viewport) {
   throw new Error('Game viewport is missing');
 }
 const gameViewport = viewport;
-if (checkpointPresent()) SessionRecovery.loading(gameViewport);
+const explosionLab = import.meta.env.DEV && new URLSearchParams(location.search).has('explosion-lab');
+if (!explosionLab && checkpointPresent()) SessionRecovery.loading(gameViewport);
 applyArtTheme(document.documentElement);
 const buildLabel = mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 if (import.meta.env.DEV) void refreshDevBuildLabel(buildLabel, __TOPWAR_VERSION__, __TOPWAR_SHA__);
@@ -86,4 +87,9 @@ async function startGame(): Promise<void> {
   recovery.dialog?.initializationReady();
 }
 
-void startGame();
+if (explosionLab) {
+  // The HTML presence guard may already cover a saved DEV session. Dismiss only
+  // its loading UI; the isolated lab must never validate, consume or clear that save.
+  SessionRecovery.clearLoading(gameViewport);
+  void import('./dev/ExplosionLab').then(({ mountExplosionLab }) => mountExplosionLab(gameViewport));
+} else void startGame();

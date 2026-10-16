@@ -203,6 +203,11 @@ export class GameApp {
     this.devReview = this.config.catharsis?.defenseMode
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, selectReview) : null;
     if (import.meta.env.DEV && this.config.catharsis?.defenseMode) {
+      const lab = document.createElement('a');
+      lab.href = '?explosion-lab'; lab.target = '_blank'; lab.rel = 'noopener';
+      lab.textContent = '爆炸視覺比較（DEV）';
+      lab.style.cssText = 'display:block;padding:12px;color:#ffe0a0';
+      this.tuningPanel.advancedControlsHost.append(lab);
       const dense = document.createElement('button');
       dense.type = 'button'; dense.textContent = 'BOSS 密集輾壓'; dense.className = 'dev-dense-tank';
       dense.addEventListener('click', () => { selectReview('boss-dense'); dense.blur(); });
