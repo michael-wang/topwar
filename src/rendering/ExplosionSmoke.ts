@@ -5,7 +5,7 @@ import {smokeWindX} from '../presentation/BattlefieldWind';
 export const EXPLOSION_SMOKE = {
   artillery: {count:12, dark:4, seconds:1.8, opacity:.58, airyWeight:.34, darkFadeEnd:.95, darkLast:true, darkColor:'#252b2d', lightColor:'#9b9f9c', darkScale:1.5, startSeconds:0, fadeInSeconds:.08, initialOpacity:.6},
   grenade: {count:16, dark:5, seconds:1.9, opacity:.30, airyWeight:.09},
-  airstrike: {count:20, dark:6, seconds:5.6, opacity:.52, airyWeight:.32},
+  airstrike: {count:20, dark:10, seconds:5.6, opacity:.66, airyWeight:.22, darkFadeEnd:.98, darkLast:true, darkColor:'#252b2d', lightColor:'#8b8f8e', darkScale:1.3, startSeconds:0, fadeInSeconds:.15, initialOpacity:.45},
 } as const;
 type SmokeProfile = typeof EXPLOSION_SMOKE[keyof typeof EXPLOSION_SMOKE];
 export function smokeIsDark(index:number, profile:SmokeProfile):boolean {

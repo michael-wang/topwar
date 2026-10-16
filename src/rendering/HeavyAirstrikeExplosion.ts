@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {EXPLOSION_SMOKE, explosionSmokeGeometry, prepareExplosionSmoke, poseExplosionSmoke, explosionSmokeOpacity} from './ExplosionSmoke';
+import {EXPLOSION_SMOKE, explosionSmokeGeometry, prepareExplosionSmoke, poseExplosionSmoke, explosionSmokeOpacity, smokeIsDark} from './ExplosionSmoke';
 const SMOKE = EXPLOSION_SMOKE.airstrike;
 
 const AIRSTRIKE_FX = { slots: 9, durationMs: SMOKE.seconds * 1000, radius: 4.8, smokeScale: 1.5 } as const;
@@ -58,7 +58,7 @@ export class HeavyAirstrikeExplosion {
         this.pose.scale.set(.55 + t * .5, .22 + t * .3, .7 + t * .5); this.pose.rotation.set(0, a, 0); this.pose.updateMatrix(); s.dust.setMatrixAt(i, this.pose.matrix);
       }
       for(let i=0;i<SMOKE.count;i++) {
-        poseExplosionSmoke(this.pose,i,i<SMOKE.dark,t,r*AIRSTRIKE_FX.smokeScale,x,z);
+        poseExplosionSmoke(this.pose,i,smokeIsDark(i,SMOKE),t,r*AIRSTRIKE_FX.smokeScale,x,z,SMOKE);
         s.smoke.setMatrixAt(i,this.pose.matrix);
       }
       for (const m of [s.fire, s.smoke, s.dust]) m.instanceMatrix.needsUpdate = true;

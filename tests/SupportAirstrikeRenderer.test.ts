@@ -8,7 +8,7 @@ import config from './helpers/ShippingConfig';
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
 import {EXPLOSION_SMOKE} from '../src/rendering/ExplosionSmoke';
 
-it.each([350,390])('builds dense overlapping projected smoke banks at %ipx while leaving other profiles alone',width=>{
+it.each([350,390])('builds dark-forward overlapping projected smoke banks at %ipx while leaving other profiles alone',width=>{
  expect(EXPLOSION_SMOKE.grenade).toEqual({count:16,dark:5,seconds:1.9,opacity:.30,airyWeight:.09});
  expect(EXPLOSION_SMOKE.artillery).toEqual({count:12,dark:4,seconds:1.8,opacity:.58,airyWeight:.34,darkFadeEnd:.95,darkLast:true,darkColor:'#252b2d',lightColor:'#9b9f9c',darkScale:1.5,startSeconds:0,fadeInSeconds:.08,initialOpacity:.6});
  const scene=new THREE.Scene(),fx=new HeavyAirstrikeExplosion(scene),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
@@ -21,7 +21,9 @@ it.each([350,390])('builds dense overlapping projected smoke banks at %ipx while
   const bounds=[0,1,2].map(i=>{
    const smoke=scene.getObjectByName(`airstrike-${i}-smoke`) as THREE.InstancedMesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
    expect(smoke.visible).toBe(true);
-   expect(1-(1-smoke.material.opacity*.32)**14).toBeGreaterThan(.8);
+   const sootFade=Math.max(0,Math.min(1,(5.6*.98-age/1000)/(5.6*.36)));
+   expect(1-(1-smoke.material.opacity*sootFade)**10).toBeGreaterThan(.96);
+   expect(1-(1-smoke.material.opacity*.22)**10).toBeGreaterThan(.6);
    const matrix=new THREE.Matrix4();smoke.getMatrixAt(6,matrix);
    expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeGreaterThan(2.2);
    const xs:number[]=[];
@@ -36,7 +38,7 @@ it.each([350,390])('builds dense overlapping projected smoke banks at %ipx while
  fx.update(5600,0);expect(scene.children.every(m=>!m.visible)).toBe(true);fx.dispose();expect(scene.children).toHaveLength(0);
 });
 
-it('layers compact dark smoke inside airy gray puffs in the same bounded draw and 5.6-second lifetime', () => {
+it('layers prominent charcoal after softer gray puffs in the same bounded draw and 5.6-second lifetime', () => {
   const scene = new THREE.Scene(), fx = new HeavyAirstrikeExplosion(scene);
   for (let i = 0; i < 9; i++) fx.present(i, (i % 3 - 1) * 2.8, 7 + Math.floor(i / 3) * 14, 0);
   const meshes = [...scene.children]; fx.update(150, 0);
@@ -45,13 +47,13 @@ it('layers compact dark smoke inside airy gray puffs in the same bounded draw an
   const smoke = scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   expect(smoke.count).toBe(20); expect(smoke.material.depthWrite).toBe(false);
   const weights=smoke.geometry.getAttribute('smokeWeight');
-  expect(Array.from(weights.array)).toEqual([...Array(6).fill(1),...Array(14).fill(Math.fround(.32))]);
-  expect(1-(1-smoke.material.opacity*.32)**14).toBeGreaterThan(.9);
-  expect(1-(1-smoke.material.opacity)**6).toBeGreaterThan(.98);
-  const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(0,inner);smoke.getColorAt(6,outer);
+  expect(Array.from(weights.array)).toEqual([...Array(10).fill(Math.fround(.22)),...Array(10).fill(1)]);
+  expect(1-(1-smoke.material.opacity*.22)**10).toBeGreaterThan(.75);
+  expect(1-(1-smoke.material.opacity)**10).toBeGreaterThan(.999);
+  const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(10,inner);smoke.getColorAt(0,outer);
   expect(inner.r).toBeLessThan(outer.r*.3);expect(Math.max(outer.r,outer.g,outer.b)-Math.min(outer.r,outer.g,outer.b)).toBeLessThan(.025);
-  const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(0,innerPose);smoke.getMatrixAt(6,outerPose);
-  expect(new THREE.Vector3().setFromMatrixScale(innerPose).x).toBeLessThan(new THREE.Vector3().setFromMatrixScale(outerPose).x*.6);
+  const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(10,innerPose);smoke.getMatrixAt(0,outerPose);
+  expect(new THREE.Vector3().setFromMatrixScale(innerPose).x).toBeLessThan(new THREE.Vector3().setFromMatrixScale(outerPose).x);
   const pose = Array.from(smoke.instanceMatrix.array); fx.update(600, 0);
   expect(Array.from(smoke.instanceMatrix.array)).toEqual(pose); expect(scene.children).toEqual(meshes);
   fx.update(5599, 0); expect(smoke.visible).toBe(true); fx.update(5600, 0); expect(smoke.visible).toBe(false);
