@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import config from './helpers/ShippingConfig';
+import shippingConfig from './helpers/ShippingConfig';
 import levelData from '../public/game-data/levels/level-001.json';
 import {LevelDefinitionSchema} from '../src/level/LevelDefinition';
 import {createAirSupportPlaytest} from '../src/app/TankPlaytest';
@@ -8,7 +8,12 @@ import {defaultRuntimeTuning} from '../src/app/runtimeTuning';
 import {readCheckpoint,writeCheckpoint,simulationFromCheckpoint,type SessionCheckpoint} from '../src/app/SessionCheckpoint';
 import {CommanderSupportConfigSchema,advanceCommanderSupport,supportBossHpThreshold} from '../src/simulation/commanderSupport';
 import type {Simulation} from '../src/simulation/Simulation';
-const level=LevelDefinitionSchema.parse(levelData),tuning=qaSimulationTuning(config),table=[750,750,1200,1600,2000];
+const config = structuredClone(shippingConfig);
+// Keep coverage of the previous automatic, living-MG threshold policy.
+const historicalLastStand = config.catharsis!.commanderSupport!.heavyRaid!.lastStand!;
+historicalLastStand.triggerPolicy = 'bossHpBySquad';
+historicalLastStand.livingMgHpThresholds = [750, 750, 1200, 1600, 2000];
+const level = LevelDefinitionSchema.parse(levelData),tuning=qaSimulationTuning(config),table=[750,750,1200,1600,2000];
 function make(count:number,hp:number){
   const sim=createAirSupportPlaytest({seed:17,level,startSquad:1,startRocketCount:0,tiers:config.tiers,
     catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}},config.weapon.rifle.fireRate),s=sim.getState();

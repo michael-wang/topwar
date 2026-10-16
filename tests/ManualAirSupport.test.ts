@@ -27,6 +27,11 @@ function ready(sim: ReturnType<typeof fixture>) {
   step(sim, 1, { supportNoticeStarted: true }); step(sim, 184, { supportNoticeComplete: true });
   expect(sim.getState().commanderSupport!.airstrike!.manual!.ready).toBe(true);
 }
+it('ships manual support in ordinary Stage 1, without automatic HP thresholds', () => {
+  const last = config.catharsis!.commanderSupport!.heavyRaid!.lastStand!;
+  expect(last.triggerPolicy).toBe('manualPlayerCall');
+  expect(last.livingMgHpThresholds).toBeUndefined();
+});
 it('makes support available only in Phase 3 after entry/naval guards, without HP or ETA eligibility', () => {
   const sim = fixture(), s = sim.getState(), c = s.catharsis!.balance.commanderSupport!;
   const update = () => advanceCommanderSupport(s, c, s.commanderSupport!, -3);

@@ -51,8 +51,8 @@ it('shares one reproducible manual 3-MG battle, READY/called Restore and Retry i
   expect(lethal).toBe(false);
   expect(sim.getState().defenseTank!.status).toBe('defeated'); expect(copy!.getState()).toEqual(sim.getState()); expect(make().getState()).toEqual(initial);
 });
-it('retains four shared entries, ordinary automatic configuration and the unrelated dense review', () => {
-  expect(config.catharsis!.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy).toBe('bossHpBySquad');
+it('retains four shared entries, shipping manual configuration and the unrelated dense review', () => {
+  expect(config.catharsis!.commanderSupport!.heavyRaid!.lastStand!.triggerPolicy).toBe('manualPlayerCall');
   expect(PLAYTEST_ENTRIES.map(e => e.role)).toEqual(['naval', 'boss-intro', 'victory', 'air-support']);
   expect(createDevReviewFixture(options, 27, 'boss-dense').getState().enemies).toHaveLength(67);
 });
@@ -60,7 +60,7 @@ it('retains four shared entries, ordinary automatic configuration and the unrela
 it.each(['bossHpBySquad','bossHpOnly',undefined] as const)('restores historical shared support under its saved %s policy in production',policy=>{
   const historical=structuredClone(config),last=historical.catharsis!.commanderSupport!.heavyRaid!.lastStand!;
   if(policy===undefined)delete last.triggerPolicy;else last.triggerPolicy=policy;
-  if(policy!=='bossHpBySquad')delete last.livingMgHpThresholds;
+  if(policy==='bossHpBySquad')last.livingMgHpThresholds=[750,750,1200,1600,2000];else delete last.livingMgHpThresholds;
   const sim=createAirSupportPlaytest({...options,catharsis:{...options.catharsis,balance:historical.catharsis!}},historical.weapon.rifle.fireRate);
   for(const waiting of [false,true]){
     if(waiting)sim.step(1/60,{targetX:sim.getState().player.x},tuning);

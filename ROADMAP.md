@@ -2,9 +2,9 @@
 
 ## NOW
 
-P4.16 finishes the shared Air Support review and scoped nightly cleanup. Exactly four shared entries remain; Air Support now uses the canonical manual 3-MG scene in DEV and production. Ordinary Stage 1 keeps accepted automatic 750/1200/1600/2000 thresholds and the 150-HP floor. The manual lethal strike, four/five-MG outer-lane position versus artillery risk, continuous bomber flight/matching shadow motion, randomized staggered Tank artillery, Camera B, lane highlights and P4.9 menu/dense-review behavior are accepted on Pixel 8 and remain unchanged.
+P4.17 promotes accepted manual air support into ordinary newly authored Stage 1. The one-use glowing READY button, two-part Commander dialogue and optionally lethal player-called raid become normal gameplay, with no automatic fallback. The four shared test entries remain, including the manual 3-MG review. Historical checkpoints retain their original automatic living-MG thresholds and 150-HP floor.
 
-Pending Pixel 8: corrected shadow facing, stronger engine audio, text-free Level Up-style support READY effect and the revised shared manual preview/button UX. Other pending tuning/presentation reviews include Lv11/Lv12 XP and casualty recovery, Boss/Victory continuity, emergency warnings, smoke/scorches, cannon feedback, Supply recovery and results music. Preserve released Defense saves, historical shared automatic previews and manual deployment.
+Pending Pixel 8: ordinary New Game manual no-call/call/lethal finish, Pause/Continue/Retry and saved historical automatic support. The shared manual preview remains available. Later tasks include #19 naval phases, stronger #10 muzzle feedback, #14 Giant mechanical visuals, Commander targeting, loading/opening, credits and performance. Preserve release saves, manual deployment and the frozen tag.
 
 ## NEXT
 

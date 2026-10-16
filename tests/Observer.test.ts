@@ -566,7 +566,8 @@ it.each(['ready', 'unavailable'] as const)('keeps manual readiness and call dial
   expect(text()).not.toContain('爭取'); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
 });
 it('shows two support phrases through the entire voice and restores only its remaining portion without an opening cue', () => {
-  const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = shipping.catharsis!.commanderSupport!;
+  const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = structuredClone(shipping.catharsis!.commanderSupport!);
+  c.heavyRaid!.lastStand!.triggerPolicy = 'bossHpBySquad'; c.heavyRaid!.lastStand!.livingMgHpThresholds = [750,750,1200,1600,2000];
   ui.update(undefined, undefined, 60, true, false, undefined, s, c);
   s.airstrike!.triggeredAtSeconds = 60.1; s.airstrike!.status = 'waiting';
   ui.update(undefined, undefined, 60.1, true, false, undefined, s, c);
