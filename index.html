@@ -5,22 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:," />
     <title>TopWar</title>
+    <style>
+      .boot-cover { position:fixed;inset:0;z-index:10000;display:grid;place-items:center;box-sizing:border-box;
+        padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
+        background:#14212b;color:#fff3dc;font:700 18px/1.6 system-ui,sans-serif;text-align:center; }
+      .boot-cover > div { width:min(100%,300px); }
+      .boot-cover strong { color:#ffd779;font-size:32px;letter-spacing:.08em; }
+      .boot-cover p { margin:16px 0; }
+      .boot-cover small { display:block;color:#b9cbd1;font-size:14px;font-weight:400; }
+      .boot-cover button { min-height:48px;padding:10px 24px;margin-top:20px;border:2px solid #ffe7a5;border-radius:8px;
+        background:#ffdb85;color:#14212b;font:inherit;touch-action:manipulation; }
+      .boot-cover button:focus-visible { outline:3px solid #fff3dc;outline-offset:4px; }
+    </style>
   </head>
   <body>
-    <main id="game-viewport" aria-label="TopWar game viewport"></main>
+    <main id="game-viewport" aria-label="TopWar game viewport" inert data-recovery-pending></main>
+    <div id="session-recovery-loading" class="boot-cover" lang="zh-Hant" role="dialog" aria-modal="true" aria-label="準備遊戲" aria-busy="true">
+      <div><strong>TOPWAR</strong><p data-boot-status role="status" aria-live="polite" aria-atomic="true">正在準備灘頭防線…</p>
+        <small data-boot-hint>首次載入需要一點時間，請稍候。</small><button type="button" data-boot-retry hidden>重新載入</button></div>
+    </div>
     <script>
-      // Presence only: block before module/config/model downloads; validation stays in TypeScript.
+      // Paint before module/config/model downloads. Presence only; validation stays in TypeScript.
+      const cover = document.getElementById('session-recovery-loading');
       try {
         if (localStorage.getItem('topwar:session:v1:' + ('%DEV%' === 'true' ? 'dev' : 'release')) !== null) {
-          const host = document.getElementById('game-viewport');
-          host.inert = true; host.setAttribute('data-recovery-pending', '');
-          const cover = document.createElement('div'); cover.id = 'session-recovery-loading';
-          cover.lang = 'zh-Hant'; cover.setAttribute('role', 'dialog'); cover.setAttribute('aria-modal', 'true');
-          cover.setAttribute('aria-label', '遊戲進度'); cover.setAttribute('aria-busy', 'true');
-          cover.style.cssText = 'position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:#14212b;color:#fff3dc;font:700 20px/1.5 sans-serif;text-align:center';
-          cover.textContent = '正在載入上次進度…'; document.body.append(cover);
+          cover.querySelector('[data-boot-status]').textContent = '正在載入上次進度…';
         }
       } catch { /* Storage may be unavailable; ordinary startup remains usable. */ }
+      const retry = cover.querySelector('[data-boot-retry]');
+      retry.onclick = () => { retry.disabled = true; retry.textContent = '正在重新載入…'; location.reload(); };
+      const failed = () => {
+        if (!cover.isConnected || !cover.classList.contains('boot-cover')) return;
+        cover.setAttribute('aria-busy', 'false');
+        cover.querySelector('[data-boot-status]').textContent = '暫時無法載入遊戲';
+        cover.querySelector('[data-boot-hint]').textContent = '請檢查連線後重新載入。已儲存的進度會保留。';
+        retry.hidden = false;
+      };
+      const resourceError = event => { if (event.target === window || event.target instanceof HTMLScriptElement) failed(); };
+      window.addEventListener('error', resourceError, true);
+      const slow = setTimeout(() => {
+        if (!cover.isConnected || !cover.classList.contains('boot-cover')) return;
+        cover.querySelector('[data-boot-hint]').textContent = '載入時間較長，請稍候，或重新載入。'; retry.hidden = false;
+      }, 12000);
+      document.addEventListener('topwar:boot-ready', () => {
+        clearTimeout(slow); window.removeEventListener('error', resourceError, true);
+      }, { once:true });
     </script>
     <script type="module" src="/src/main.ts"></script>
   </body>

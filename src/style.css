@@ -216,16 +216,6 @@ body {
   text-align: center;
 }
 
-#game-viewport.game-viewport-error {
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  padding: 1.5rem;
-  color: #1d252d;
-  font: 1rem/1.5 sans-serif;
-  text-align: center;
-}
-
 @media (any-pointer: coarse) {
   .pause-button, .tuning-panel summary { min-width: 44px; min-height: 44px; }
   .tuning-panel-content {

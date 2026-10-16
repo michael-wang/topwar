@@ -2,16 +2,14 @@
 
 ## NOW
 
-P4.25: wreck smoke (#29) rises and drifts screen-right using the shared battlefield wind, retaining eight pooled puffs and three small fires. Owner Pixel 8 acceptance is pending.
+Immediate first-load feedback (#21) now appears before modules and data, handing over to the existing protected recovery choice or single Tap-to-Start gesture. Slow/failing resources have Reload recovery. Owner Pixel 8 startup feel review remains pending.
 
-Heavy ordinary death (#27) now matches Grunt's compact intact pale lift/fade over 520ms. Alive visuals, explosion reactions, blood/stains and gameplay remain unchanged. Owner Pixel 8 acceptance is pending.
-
-P4.24 Tank/Destroyer B-fast production impacts are physically accepted. Preserve Hybrid D, approved Grenade/cannon visuals, four shared entries, historical checkpoints, gameplay and manual deployment. Keep the DEV Explosion Lab as a comparison/reference tool.
+P4.25 wreck smoke (#29) and Heavy death (#27), plus P4.24 Tank/Destroyer B-fast impacts, are physically accepted. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
 
 ## NEXT
 
 1. Review Boss/Victory continuity and pending emergency-warning and music polish on Pixel 8. Preserve accepted Lv12 casualty behavior, the 1,800 XP recovery cost and 0.35-second Supply recovery.
-2. Add immediate loading feedback after Continue / New Game.
+2. Validate the limited DEV fullscreen trial (#28) on Pixel 8 before later public startup integration.
 3. Investigate and reduce the long first load.
 
 ## LATER

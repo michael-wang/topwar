@@ -46,6 +46,8 @@ Boss and Victory results recordings reuse StreamedMusic, each with one lazy stre
 
 ## Browser lifecycle and tools
 
+An inline HTML cover paints before the module graph and shares one DOM identity with SessionRecovery. Only checkpoint presence is checked early; TypeScript retains strict validation and recovery ownership. Boot status cannot overwrite an active recovery chooser. A bounded resource wait and repeat-safe Reload recover failed/stalled startup without moving the audio gesture or gameplay clocks. Cover handover cancels the early error/slow-load listeners and timer. The DEV Explosion Lab never consumes a checkpoint.
+
 The DEV-only `?explosion-lab` route dynamically loads an isolated presentation scene before GameApp starts. It neither restores nor writes checkpoints, instantiates Simulation nor consumes gameplay RNG. It dismisses the HTML save-presence loading cover without consuming the saved session. Absolute-age seeking reuses bounded pools; Control retains the pre-promotion artillery effect and DEV-only LabAirstrikeControl; accepted comparison looks remain frozen as production references. The lab module, route and advanced-menu link are removed from production builds. It is a comparison tool, not a shared gameplay entry or runtime visual override.
 
 Hidden/pagehide/freeze/context loss suspend simulation and held input, save and release Screen Wake Lock. Returning visible remains paused. Wake Lock acquisition is race-safe, optional and secure-context-only; failures cannot block gameplay. The DEV QA sleep scenario suppresses reacquisition until exited. Historical release QA checkpoints still restore their Defense state; public builds ignore the old armed-test flag and permit ordinary Resume.

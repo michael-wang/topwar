@@ -24,6 +24,7 @@ export class SessionRecovery {
     return cover;
   }
   static clearLoading(host: HTMLElement): void {
+    document.dispatchEvent(new Event('topwar:boot-ready'));
     document.getElementById('session-recovery-loading')?.remove();
     host.inert = false; host.removeAttribute('data-recovery-pending');
   }
@@ -31,6 +32,7 @@ export class SessionRecovery {
     waitForInitialization = false) {
     this.ready = !waitForInitialization;
     this.element = SessionRecovery.loading(host);
+    document.dispatchEvent(new Event('topwar:boot-ready'));
     this.element.removeAttribute('style'); this.element.replaceChildren();
     this.element.setAttribute('aria-busy', 'false');
     const card = document.createElement('div'), title = document.createElement('strong');
