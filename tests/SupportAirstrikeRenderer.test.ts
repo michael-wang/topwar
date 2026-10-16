@@ -6,59 +6,7 @@ import type { GameRenderState } from '../src/rendering/RenderState';
 import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
 import config from './helpers/ShippingConfig';
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
-import {EXPLOSION_SMOKE} from '../src/rendering/ExplosionSmoke';
 
-it.each([350,390])('builds dark-forward overlapping projected smoke banks at %ipx while leaving other profiles alone',width=>{
- expect(EXPLOSION_SMOKE.grenade).toEqual({count:16,dark:5,seconds:1.9,opacity:.30,airyWeight:.09});
- expect(EXPLOSION_SMOKE.artillery).toEqual({count:12,dark:4,seconds:1.8,opacity:.58,airyWeight:.34,darkFadeEnd:.95,darkLast:true,darkColor:'#252b2d',lightColor:'#9b9f9c',darkScale:1.5,startSeconds:0,fadeInSeconds:.08,initialOpacity:.6});
- const scene=new THREE.Scene(),fx=new HeavyAirstrikeExplosion(scene),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
- applyCoastalCamera(camera);
- for(let i=0;i<3;i++)fx.present(i,(i-1)*2.8,14,0);
- fx.update(150,0);expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(true);
- fx.update(450,0);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(false);
- for(const age of [1000,2000,3000,4000]){
-  fx.update(age,0);
-  const bounds=[0,1,2].map(i=>{
-   const smoke=scene.getObjectByName(`airstrike-${i}-smoke`) as THREE.InstancedMesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
-   expect(smoke.visible).toBe(true);
-   const sootFade=Math.max(0,Math.min(1,(5.6*.98-age/1000)/(5.6*.36)));
-   expect(1-(1-smoke.material.opacity*sootFade)**10).toBeGreaterThan(.96);
-   expect(1-(1-smoke.material.opacity*.22)**10).toBeGreaterThan(.6);
-   const matrix=new THREE.Matrix4();smoke.getMatrixAt(6,matrix);
-   expect(new THREE.Vector3().setFromMatrixScale(matrix).x).toBeGreaterThan(2.2);
-   const xs:number[]=[];
-   for(let j=0;j<smoke.count;j++){
-    smoke.getMatrixAt(j,matrix);
-    for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1])xs.push(new THREE.Vector3(x,y,z).applyMatrix4(matrix).project(camera).x);
-   }
-   return {min:Math.min(...xs),max:Math.max(...xs)};
-  });
-  for(let i=1;i<bounds.length;i++)expect(Math.min(bounds[i-1].max,bounds[i].max)-Math.max(bounds[i-1].min,bounds[i].min)).toBeGreaterThan(.3);
- }
- fx.update(5600,0);expect(scene.children.every(m=>!m.visible)).toBe(true);fx.dispose();expect(scene.children).toHaveLength(0);
-});
-
-it('layers prominent charcoal after softer gray puffs in the same bounded draw and 5.6-second lifetime', () => {
-  const scene = new THREE.Scene(), fx = new HeavyAirstrikeExplosion(scene);
-  for (let i = 0; i < 9; i++) fx.present(i, (i % 3 - 1) * 2.8, 7 + Math.floor(i / 3) * 14, 0);
-  const meshes = [...scene.children]; fx.update(150, 0);
-  for (const name of ['core', 'fire', 'dust', 'shockwave']) expect(scene.getObjectByName(`airstrike-0-${name}`)!.visible).toBe(true);
-  fx.update(600, 0);
-  const smoke = scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
-  expect(smoke.count).toBe(20); expect(smoke.material.depthWrite).toBe(false);
-  const weights=smoke.geometry.getAttribute('smokeWeight');
-  expect(Array.from(weights.array)).toEqual([...Array(10).fill(Math.fround(.22)),...Array(10).fill(1)]);
-  expect(1-(1-smoke.material.opacity*.22)**10).toBeGreaterThan(.75);
-  expect(1-(1-smoke.material.opacity)**10).toBeGreaterThan(.999);
-  const inner=new THREE.Color(),outer=new THREE.Color();smoke.getColorAt(10,inner);smoke.getColorAt(0,outer);
-  expect(inner.r).toBeLessThan(outer.r*.3);expect(Math.max(outer.r,outer.g,outer.b)-Math.min(outer.r,outer.g,outer.b)).toBeLessThan(.025);
-  const innerPose=new THREE.Matrix4(),outerPose=new THREE.Matrix4();smoke.getMatrixAt(10,innerPose);smoke.getMatrixAt(0,outerPose);
-  expect(new THREE.Vector3().setFromMatrixScale(innerPose).x).toBeLessThan(new THREE.Vector3().setFromMatrixScale(outerPose).x);
-  const pose = Array.from(smoke.instanceMatrix.array); fx.update(600, 0);
-  expect(Array.from(smoke.instanceMatrix.array)).toEqual(pose); expect(scene.children).toEqual(meshes);
-  fx.update(5599, 0); expect(smoke.visible).toBe(true); fx.update(5600, 0); expect(smoke.visible).toBe(false);
-  fx.reset(); expect(scene.children.every(m => !m.visible)).toBe(true); fx.dispose(); expect(scene.children).toHaveLength(0);
-});
 
 it('reconstructs persistent impact scorches once, beneath lane paint, without replaying expired explosions',()=>{
   const scene=new THREE.Scene(),r=new SupportAirstrikeRenderer(scene),support=emptyCommanderSupport(true,true);
@@ -71,7 +19,7 @@ it('reconstructs persistent impact scorches once, beneath lane paint, without re
   const saved=structuredClone(state);r.update(0,state);
   const marks=scene.getObjectByName('airstrike-ground-scorch') as THREE.InstancedMesh;
   expect(marks.count).toBe(11);expect(marks.instanceMatrix.count).toBe(12);expect(marks.renderOrder).toBeLessThan(0);
-  expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(false);
+  expect(scene.getObjectByName('airstrike-flash')!.visible).toBe(false);
   const pose=Array.from(marks.instanceMatrix.array);r.update(0,state);expect(marks.count).toBe(11);expect(Array.from(marks.instanceMatrix.array)).toEqual(pose);
   r.update(120000,state);expect(marks.count).toBe(11);expect(state).toEqual(saved);
   r.reset();expect(marks.count).toBe(0);r.update(120000,state);expect(marks.count).toBe(11);expect(Array.from(marks.instanceMatrix.array)).toEqual(pose);
@@ -80,10 +28,10 @@ it('reconstructs persistent impact scorches once, beneath lane paint, without re
 
 it.each([350,390])('hands a strong early blast to layered smoke drifting screen-right at %ipx',width=>{
  const scene=new THREE.Scene(),fx=new HeavyAirstrikeExplosion(scene),camera=new THREE.PerspectiveCamera(48,width/844,.1,180);
- applyCoastalCamera(camera);fx.present(0,0,14,0);fx.update(150,0);
- expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(true);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(true);
- fx.update(700,0);expect(scene.getObjectByName('airstrike-0-core')!.visible).toBe(false);expect(scene.getObjectByName('airstrike-0-fire')!.visible).toBe(false);
- const smoke=scene.getObjectByName('airstrike-0-smoke') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),objects=scene.children.slice();
+ applyCoastalCamera(camera);fx.present(0,0,14,0);fx.update(30,0);
+ expect(scene.getObjectByName('airstrike-flash')!.visible).toBe(true);expect(scene.getObjectByName('airstrike-fire')!.visible).toBe(false);fx.update(180,0);expect(scene.getObjectByName('airstrike-fire')!.visible).toBe(true);
+ fx.update(700,0);expect(scene.getObjectByName('airstrike-flash')!.visible).toBe(false);expect(scene.getObjectByName('airstrike-fire')!.visible).toBe(false);
+ const smoke=scene.getObjectByName('airstrike-smoke') as THREE.InstancedMesh,matrix=new THREE.Matrix4(),objects=scene.children.slice();
  const xs=()=>Array.from({length:smoke.count},(_,i)=>{smoke.getMatrixAt(i,matrix);return new THREE.Vector3().setFromMatrixPosition(matrix).project(camera).x;});
  const before=xs();expect(smoke.visible).toBe(true);fx.update(1700,0);xs().forEach((x,i)=>expect(x).toBeGreaterThan(before[i]));
  const frozen=Array.from(smoke.instanceMatrix.array);fx.update(1700,0);expect(Array.from(smoke.instanceMatrix.array)).toEqual(frozen);expect(scene.children).toEqual(objects);
@@ -104,7 +52,7 @@ it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes,
   expect(r.planes[0].position.x).toBeCloseTo(3.45*1.1);expect(r.planes[1].position.x).toBe(0);expect(r.planes[2].position.x).toBeCloseTo(-3.45*1.1);
   expect(r.planes[0].children[0]).toBeInstanceOf(THREE.Mesh);
   expect((r.planes[0].children[0] as THREE.Mesh).geometry).toBe((r.planes[2].children[0] as THREE.Mesh).geometry);
-  expect(scene.getObjectByName('airstrike-0-smoke')!.visible).toBe(true);
+  expect(scene.getObjectByName('airstrike-smoke')!.visible).toBe(true);
   let previous = [-Infinity, -Infinity, -Infinity];
   for (const age of [1, 3.4, 6.5, 7.5, 8.15, 8.8, 9.45, 10.75, 16, 20]) {
     r.update(age * 1000, { ...state, commanderSupport: { ...state.commanderSupport!, elapsedSeconds: 60 + age } });
@@ -114,9 +62,9 @@ it('rebuilds three heavy bombers and remaining smoke from saved clocks, freezes,
   const pose = r.planes.map(p => [p.position.toArray(), p.rotation.toArray()]); for (let i = 0; i < 20; i++) r.update(1000, state);
   expect(r.planes.map(p => [p.position.toArray(), p.rotation.toArray()])).toEqual(pose); expect(scene.children).toEqual(objects);
   r.reset(); expect(r.planes.every(p => !p.visible)).toBe(true); r.update(1000, state);
-  expect(scene.getObjectByName('airstrike-0-smoke')!.visible).toBe(true);
+  expect(scene.getObjectByName('airstrike-smoke')!.visible).toBe(true);
   r.update(7200, { ...state, commanderSupport: { ...state.commanderSupport!, elapsedSeconds: 74 } });
-  expect(scene.getObjectByName('airstrike-0-smoke')!.visible).toBe(false);
+  expect(scene.getObjectByName('airstrike-smoke')!.visible).toBe(false);
   const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
   scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); for (const m of Array.isArray(o.material) ? o.material : [o.material]) materials.add(m); } });
   const releases = [...geometries, ...materials].map(resource => vi.spyOn(resource, 'dispose'));

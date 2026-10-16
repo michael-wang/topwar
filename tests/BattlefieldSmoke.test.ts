@@ -4,7 +4,7 @@ import {GrenadeExplosion} from '../src/rendering/GrenadeExplosion';
 import {EnemyArtilleryRenderer} from '../src/rendering/EnemyArtilleryRenderer';
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
 import {smokeWindX} from '../src/presentation/BattlefieldWind';
-import {HeavyAirstrikeExplosion} from '../src/rendering/HeavyAirstrikeExplosion';
+import {LabAirstrikeControl as HeavyAirstrikeExplosion} from '../src/dev/LabAirstrikeControl';
 import {EXPLOSION_SMOKE} from '../src/rendering/ExplosionSmoke';
 
 it('uses one size-independent world wind, with screen-right light and charcoal drift',()=>{
@@ -48,7 +48,7 @@ it('preserves the approved grenade profile, debris, sparks and fire while exclud
  }
 });
 
-it('orders actual smoke footprint, quantity and persistence airstrike > grenade > artillery without enlarging damage rings',()=>{
+it('preserves the retained Lab Control tier hierarchy without enlarging damage rings',()=>{
  const sizes:number[]=[],counts:number[]=[],durations:number[]=[];
  for(const tier of ['artillery','grenade','airstrike'] as const){
   const scene=new THREE.Scene(),fx=tier==='airstrike'?new HeavyAirstrikeExplosion(scene):new GrenadeExplosion(scene,1,false,tier);

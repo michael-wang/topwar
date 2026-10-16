@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GrenadeExplosion } from '../rendering/GrenadeExplosion';
-import { HeavyAirstrikeExplosion } from '../rendering/HeavyAirstrikeExplosion';
+import { LabAirstrikeControl } from './LabAirstrikeControl';
 import { smokeWindX } from '../presentation/BattlefieldWind';
 
 export type ComparisonGroup = 'impact' | 'airstrike';
@@ -136,13 +136,13 @@ class ExperimentalCloud {
 /** Absolute-time seeking reconstructs the same sample independent of frame rate or playback order. */
 export class ExplosionComparison {
   private readonly impact: GrenadeExplosion | null;
-  private readonly air: HeavyAirstrikeExplosion | null;
+  private readonly air: LabAirstrikeControl | null;
   private readonly experiment: ExperimentalCloud | null;
   readonly durationMs: number;
   constructor(scene: THREE.Scene, readonly group: ComparisonGroup, readonly look: ExplosionLook) {
     if (!(COMPARISON_LOOKS[group] as readonly string[]).includes(look)) throw Error('Invalid explosion comparison');
     this.impact = look === 'control' && group === 'impact' ? new GrenadeExplosion(scene, 1, false, 'artillery') : null;
-    this.air = look === 'control' && group === 'airstrike' ? new HeavyAirstrikeExplosion(scene) : null;
+    this.air = look === 'control' && group === 'airstrike' ? new LabAirstrikeControl(scene) : null;
     this.experiment = look !== 'control' ? new ExperimentalCloud(scene, group, look) : null;
     this.durationMs = group === 'impact' ? 2200 : 9000;
   }

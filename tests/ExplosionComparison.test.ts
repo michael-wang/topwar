@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { COMPARISON_LOOKS, COMPARISON_IMPACTS, ExplosionComparison } from '../src/dev/ExplosionComparison';
 import { GrenadeExplosion } from '../src/rendering/GrenadeExplosion';
-import { HeavyAirstrikeExplosion } from '../src/rendering/HeavyAirstrikeExplosion';
+import { LabAirstrikeControl as HeavyAirstrikeExplosion } from '../src/dev/LabAirstrikeControl';
 import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 
 function snapshot(scene: THREE.Scene) {

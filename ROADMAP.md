@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.24 promotes the Pixel 8-approved B-fast and Hybrid D designs in two independent changes. B-fast now drives real Tank/Destroyer impacts with bounded batching and 1.5s expiry; Hybrid D airstrike promotion follows independently. Keep the DEV Explosion Lab as a comparison/reference tool.
+P4.24 promotes the Pixel 8-approved B-fast and Hybrid D designs in two independent changes. B-fast drives real Tank/Destroyer impacts with bounded batching and 1.5s expiry; Hybrid D drives real airstrike impacts with preserved white flash/ring and independent 1.5–2s smoke fade. Keep the DEV Explosion Lab as a comparison/reference tool.
 
 Owner final production Pixel 8 acceptance is pending. Preserve approved Grenade/cannon visuals, four shared entries, historical checkpoints, gameplay and manual deployment. No additional feature implementation is included.
 

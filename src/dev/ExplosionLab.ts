@@ -37,7 +37,7 @@ export function mountExplosionLab(host: HTMLElement): void {
   const play = panel.querySelector<HTMLButtonElement>('[data-play]')!;
   let group: ComparisonGroup = 'impact', look: ExplosionLook = 'control';
   let fx = new ExplosionComparison(scene, group, look), ms = 0, playing = true, previous: number | null = null, frame = 0;
-  const describe = { control: 'Control · 現行正式效果（未變更）', A: 'A · Flash inside black core', B: 'B · Billowing layered cloud', C: 'C · Dirty bombardment bank',
+  const describe = { control: 'Control · 原始效果（保留比較）', A: 'A · Flash inside black core', B: 'B · Billowing layered cloud', C: 'C · Dirty bombardment bank',
     'B-fast': 'B-fast · Rapid expansion / early dispersal / 1.5s fade', D: 'Hybrid D · White flash + ground ring / B smoke / 2s per impact' };
   const draw = (): void => {
     fx.seek(ms); beach.update(0, 3.2, 0); renderer.render(scene, camera);
