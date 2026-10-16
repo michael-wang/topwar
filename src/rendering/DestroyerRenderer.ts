@@ -48,7 +48,7 @@ export class DestroyerRenderer {
     barrel.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()); this.group.add(barrel);
     this.muzzle.position.copy(end); this.group.add(this.muzzle);
     this.muzzle.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction);
-    this.cannon = new CannonMuzzleFeedback(this.muzzle,'destroyer',1.7);
+    this.cannon = new CannonMuzzleFeedback(scene,this.muzzle,'destroyer',1.7);
     // Bake the static ship to four material batches, rather than per-detail draw calls.
     for (const material of [this.hull, this.ivory, this.ink, this.gold]) {
       const parts = this.group.children.filter(o => o instanceof THREE.Mesh && o.material === material) as THREE.Mesh[];
@@ -63,10 +63,10 @@ export class DestroyerRenderer {
   update(frame: GameRenderState['destroyer'],nowMs=0): void {
     this.group.visible = !!frame && (frame.presence ? frame.presence.status !== 'absent' : frame.state.status === 'active');
     if (!frame || !this.group.visible) {this.cannon.reset();return;}
-    this.cannon.update(nowMs);
     const age = frame.elapsedSeconds - (frame.presence?.enteredAtSeconds ?? frame.state.startedAtSeconds!);
     const p = frame.presence ? navalPresencePose(frame.presence, frame.elapsedSeconds, frame.config) : destroyerPose(age, frame.config);
     this.group.position.set(-p.x, p.y, p.z);
+    this.cannon.update(nowMs);
     this.wake.position.y = .025 - p.y; this.wake.scale.set(1 + Math.sin(age * 2) * .025, 1 + Math.sin(age) * .04, 1);
     const introAge = frame.elapsedSeconds - frame.state.startedAtSeconds!;
     const identifying = frame.state.status === 'active' && introAge >= frame.config.radioAtSeconds

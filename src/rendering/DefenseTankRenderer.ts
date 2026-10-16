@@ -92,7 +92,7 @@ export class DefenseTankRenderer {
     barrel.position.set(0, .35, -2.25); this.turret.add(barrel);
     this.muzzle.name = 'tank-muzzle'; this.muzzle.position.set(0,.35,-3.6);
     this.muzzle.rotation.x = -Math.PI/2; this.turret.add(this.muzzle);
-    this.cannon = new CannonMuzzleFeedback(this.muzzle,'tank');
+    this.cannon = new CannonMuzzleFeedback(scene,this.muzzle,'tank');
     this.turret.position.y = 2.4;
     for (const root of [this.group, this.turret]) for (const material of [this.armor, this.steel, this.dark, this.accent]) {
       const parts = root.children.filter(o => o instanceof THREE.Mesh && o.geometry === this.block && o.material === material) as THREE.Mesh[];
@@ -151,7 +151,7 @@ export class DefenseTankRenderer {
     }
     update(frame: GameRenderState['defenseTank'], nowMs: number): void {
     this.group.visible = !!frame; this.landing.visible = !!frame;
-    if(frame?.state.status==='active')this.cannon.update(nowMs);else this.cannon.reset();
+    if(frame?.state.status!=='active')this.cannon.reset();
     const shockProgress = (nowMs - this.entranceAtMs) / 700;
     this.shock.visible = !!frame && shockProgress >= 0 && shockProgress < 1;
     if (this.shock.visible) {
@@ -235,6 +235,7 @@ export class DefenseTankRenderer {
       this.armor.color.set('#292c27'); // Keep an armored wreck after the final explosion.
     }
     this.explosions.update(nowMs, 0);
+    if(s.status==='active')this.cannon.update(nowMs);
   }
   recoil(atSeconds: number, nowSeconds: number): void {
     const age = nowSeconds - atSeconds;
