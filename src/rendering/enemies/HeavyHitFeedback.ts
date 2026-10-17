@@ -6,6 +6,8 @@ export const HEAVY_HIT_GAP_MS = 250;
 const SPARK_MS = 170;
 export const GIANT_SPARK_MS = 300;
 const MAX_BURSTS = 12;
+// Defender-facing chest plate only. Authored variation never consumes gameplay RNG.
+const GIANT_ARMOR_HITS = [[.04,.82],[-.18,.87],[.18,.72],[-.10,.65],[.16,.90],[-.17,.74],[.08,.67]] as const;
 // Ordinary surviving-hit presentation only. Death has separate timing
 // and materials. These styles are selected by explicit archetype, never IDs.
 export const SURVIVING_HIT_STYLES = {
@@ -14,7 +16,7 @@ export const SURVIVING_HIT_STYLES = {
     emissivePeak: .10 },
 } as const;
 interface Burst { id: number; startedAt: number; body: THREE.Mesh; sparks: THREE.Group; core: THREE.Mesh;
-  material: THREE.MeshBasicMaterial; giant: boolean; anchored: boolean; x: number; y: number; z: number }
+  material: THREE.MeshBasicMaterial; giant: boolean; anchored: boolean; armorPoint: number; x: number; y: number; z: number }
 export class HeavyHitFeedback {
   private readonly lastHit = new Map<number, number>();
   private readonly bursts: Burst[] = [];
@@ -27,6 +29,7 @@ export class HeavyHitFeedback {
   private readonly geometry = new THREE.SphereGeometry(.035, 5, 3);
   private readonly hot = new THREE.MeshBasicMaterial({ color: '#fff8d9', depthWrite: false, toneMapped: false });
   private readonly anchor = new THREE.Vector3();
+  private giantHitSequence = 0;
   constructor(private readonly scene: THREE.Scene) {
     // Fixed pool: ordinary hits only select/reuse resources, never construct them.
     for (let slot = 0; slot < MAX_BURSTS; slot++) {
@@ -37,7 +40,7 @@ export class HeavyHitFeedback {
       const core = new THREE.Mesh(this.geometry, this.hot); core.name = 'giant-hit-hot-core'; sparks.add(core);
       body.visible = sparks.visible = core.visible = false;
       this.scene.add(body, sparks);
-      this.bursts.push({ id: 0, startedAt: 0, body, sparks, core, material, giant: false, anchored: false, x: 0, y: .7, z: 0 });
+      this.bursts.push({ id: 0, startedAt: 0, body, sparks, core, material, giant: false, anchored: false, armorPoint: 0, x: 0, y: .7, z: 0 });
     }
   }
   observe(enemy: EnemyRenderState, nowMs: number): boolean {
@@ -49,6 +52,7 @@ export class HeavyHitFeedback {
       if (candidate.startedAt < burst.startedAt) burst = candidate;
     }
     burst.giant = enemy.archetype === 'giant';
+    if (burst.giant) burst.armorPoint = this.giantHitSequence++ % GIANT_ARMOR_HITS.length;
     const style = SURVIVING_HIT_STYLES[burst.giant ? 'giant' : 'heavy'];
     burst.body.material = burst.giant ? this.giantFlash : this.flash;
     burst.material.color.set(style.sparkColor);
@@ -69,7 +73,8 @@ export class HeavyHitFeedback {
       burst.body.geometry = geometry; burst.body.matrix.copy(matrix);
       if (burst.giant && !burst.anchored) {
         // Actual scaled/rotated upper armor, on its defender-facing surface.
-        this.anchor.set(.04, .82, .41).applyMatrix4(matrix);
+        const point = GIANT_ARMOR_HITS[burst.armorPoint];
+        this.anchor.set(point[0], point[1], .41).applyMatrix4(matrix);
         burst.x = this.anchor.x; burst.y = this.anchor.y; burst.z = this.anchor.z; burst.anchored = true;
         this.poseSparks(burst, nowMs);
       }
@@ -102,7 +107,7 @@ export class HeavyHitFeedback {
       burst.core.position.set(burst.x, burst.y, burst.z - .035);
       burst.core.scale.setScalar(3.6 * Math.max(0, 1 - age / 150));
   }
-  reset(): void { this.lastHit.clear(); for (const burst of this.bursts) { burst.body.visible = false; burst.sparks.visible = false; burst.id = 0; } }
+  reset(): void { this.lastHit.clear(); this.giantHitSequence = 0; for (const burst of this.bursts) { burst.body.visible = false; burst.sparks.visible = false; burst.id = 0; } }
   dispose(): void {
     for (const burst of this.bursts) { this.scene.remove(burst.body, burst.sparks); burst.material.dispose(); }
     // Body overlays borrow the renderer's baked pose geometry; only sparks own geometry here.

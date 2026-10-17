@@ -9,6 +9,31 @@ import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamil
 import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
 import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 
+it('varies repeated armor contacts deterministically, stays on the upper chest and reuses the same pool', () => {
+  const scene=new THREE.Scene(),family=createChibiGiantFamily(),r=new GiantRenderer(scene,family),hits=new HeavyHitFeedback(scene);
+  const e={id:1,tier:1,archetype:'giant' as const,hp:172,x:2,z:14,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:4.2};
+  const objects=scene.children.slice(),points:number[][]=[];
+  const inverse=new THREE.Matrix4();
+  for(let cycle=0;cycle<2;cycle++){
+    hits.reset();
+    for(let i=0;i<8;i++){
+      const now=1000+i*350;hits.update(new Set([1]),now);expect(hits.observe(e,now)).toBe(true);r.update(e,now,hits);
+      const body=scene.getObjectByName('giant-body') as THREE.Mesh;
+      const core=scene.children.find(o=>o.name==='heavy-hit-sparks'&&o.visible)!.getObjectByName('giant-hit-hot-core')!;
+      inverse.copy(body.matrixWorld).invert();
+      const local=core.position.clone();local.z+=.035;local.applyMatrix4(inverse);
+      expect(local.x).toBeGreaterThanOrEqual(-.181);expect(local.x).toBeLessThanOrEqual(.181);
+      expect(local.y).toBeGreaterThanOrEqual(.649);expect(local.y).toBeLessThanOrEqual(.901);expect(local.z).toBeCloseTo(.41);
+      if(cycle===0)points.push(local.toArray());else local.toArray().forEach((v,axis)=>expect(v).toBeCloseTo(points[i][axis]));
+      const captured=core.position.clone();r.update({...e,x:1,z:13},now+30,hits);expect(core.position.equals(captured)).toBe(true);
+      expect(scene.children).toEqual(objects);
+    }
+  }
+  expect(new Set(points.slice(0,7).map(p=>p.map(v=>v.toFixed(3)).join(','))).size).toBe(7);
+  points[0].forEach((v,axis)=>expect(points[7][axis]).toBeCloseTo(v));
+  r.dispose();hits.dispose();family.dispose();expect(scene.children).toHaveLength(0);
+});
+
 it('anchors the ivory core and long gold streaks to transformed upper armor, detaches, and outlasts Heavy sparks', () => {
   const scene=new THREE.Scene(),family=createChibiGiantFamily(),r=new GiantRenderer(scene,family),hits=new HeavyHitFeedback(scene);
   const e={id:1,tier:1,archetype:'giant' as const,hp:172,x:2,z:22,visualScaleX:2.3,visualScaleY:2.9,visualScaleZ:2.6};

@@ -2,7 +2,7 @@
 
 ## NOW
 
-GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks now use larger 300ms upper-armor streaks and a brief ivory center. Eleven original-colored mechanical pieces now follow short gravity-driven arcs, land/settle, then fade at 1.9–2.6s; the existing fire and rightward smoke remain. New visuals require Pixel 8 review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
+GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks use larger 300ms upper-armor streaks and a brief ivory center, now varying across seven nearby chest contacts. Eleven original-colored mechanical pieces now follow short gravity-driven arcs, land/settle, then fade at 1.9–2.6s; the existing fire and rightward smoke remain. New visuals require Pixel 8 review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
 Opening experience (#22/#23) has a [design proposal](docs/OPENING_PROPOSAL.md), **PROPOSED — NOT APPROVED FOR PRODUCTION**: silent Battle Showcase versus recommended lower-power Battlefield Diorama, followed by a proposed opening using the existing complete Commander recording. No attract, siren, Commander or production fullscreen code is authorized by that document.
 
