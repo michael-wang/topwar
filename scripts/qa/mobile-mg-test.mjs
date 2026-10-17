@@ -11,7 +11,7 @@ try{for(const width of [350,390]){
  const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();','window.__testApp=app;app.start();')});});
- await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5175/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
+ await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5175/');await page.getByRole('button',{name:'開始遊戲'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
  await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
  if(width===350)await page.locator('.beachhead-defense').evaluate(e=>e.style.setProperty('--hud-inset-bottom','34px'));
  const open=async()=>{if(!await page.locator('.tuning-panel').evaluate(e=>e.open))await page.locator('.tuning-panel > summary').tap();};

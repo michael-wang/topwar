@@ -28,7 +28,7 @@ try{for(const width of [350,390])for(const level of [8,9,10]) {
   page.on('pageerror',e=>errors.push(e.message));
   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await exposeProductionApp(page);
-  await page.goto('http://127.0.0.1:5194/topwar/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
+  await page.goto('http://127.0.0.1:5194/topwar/');await page.getByRole('button',{name:'開始遊戲'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
   await page.evaluate(state=>{
     const a=window.__testApp;cancelAnimationFrame(a.frameId);a.simulation.restoreState(state);a.restored=true;a.fieldObserver?.reset();a.progressionObserver.reset();a.progressionObserver.observe(state.progression.level);
     a.renderer.resetFeedback();

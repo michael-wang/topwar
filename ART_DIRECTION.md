@@ -26,3 +26,7 @@ The accepted direction is Rounded Toy Soldier / Handcrafted Military Arcade, wit
 - HUD: accepted bottom lane controls, XP/loadout and compact Grenade count. Quiet 44px testing hatch shared by local Vite and closed-playtest Pages; subtle 14px FPS is local DEV-only. No new backing cards or overlap with Pause/subtitles/safe areas.
 
 Use existing palette/material/VFX modules, pooled resources and bounded preparation. Physical-phone review is authoritative for readability; desktop projected pixels and SwiftShader are supporting diagnostics only. Historical art-showcase exports and unused GLBs are archived in Git history.
+
+## Arcade idle opening
+
+Ordinary New Game uses the existing Camera B coastal tableau: three blue soldiers foreground, small distant formations and quiet sea/cloud/squad motion. A centered navy/gold/ivory native 「開始遊戲」 button remains dominant. This silent decorative Diorama has no combat spectacle, new assets or audio; reduced motion is static. Owner Pixel 8 visual and sustained idle-cost acceptance remain pending.

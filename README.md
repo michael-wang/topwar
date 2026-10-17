@@ -24,7 +24,7 @@ Local Vite and the GitHub Pages closed-playtest build share one hatch with four 
 
 DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT arrival, hit variation, tight grounded collapse and no persistent fire are Pixel 8 accepted. The #33 amplified localized rising smoke awaits physical review. QA usability review remains separate.
 
-The [opening experience proposal](docs/OPENING_PROPOSAL.md) compares two silent attract concepts and a Red Alert storyboard using existing Commander audio. It is **PROPOSED — NOT APPROVED FOR PRODUCTION**; current startup and DEV-only fullscreen behavior remain unchanged.
+Ordinary New Game now shows the silent [Battlefield Diorama](docs/OPENING_PROPOSAL.md) and centered 「開始遊戲」. Continue restores paused and bypasses it; Retry restarts immediately. Pixel 8 appearance/idle-cost review remains pending. Red Alert and Commander changes remain proposed only.
 
 Rifle levels 1–5 lead to MG levels 6–12. Lv4 introduces the Giant. Lv6 starts the 3.2-second Carnival and persistent Destroyer entrance. AHEAD Survival takes over at +3.2 seconds, with its first mixed wave at +4.2 seconds. At Lv9, the giant Tank Boss lands in 2.5 seconds and takes over with three HP phases, artillery and flank troops. The user-provided family-original 135.302-second `boss-theme.mp3` starts at INTRO and loops continuously through phases 1/2/3 without restarting; defeating it leaves a wreck, plays a skippable upper Commander victory communication after the explosions, then shows 第一關通關！, Traditional Chinese combat results and 再玩一次. Golden Grenades accumulate without a gameplay inventory cap.
 
@@ -36,7 +36,7 @@ See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](AR
 
 ## Saves and phone testing
 
-Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single Tap-to-Start gesture remain. Loading feedback/bar (#21) are Pixel 8 PASS; the owner has accepted the DEV fullscreen technical trial (#28), with Android/Chrome edge-swipe exit treated as expected. Production fullscreen integration remains separate.
+Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single 「開始遊戲」 gesture remain. Loading feedback/bar (#21) are Pixel 8 PASS; the owner has accepted the DEV fullscreen technical trial (#28), with Android/Chrome edge-swipe exit treated as expected. Production fullscreen integration remains separate.
 
 Manual Pause and page hiding save a bounded full-state checkpoint. After reload, Continue/New Game is available before asset initialization. Continue restores paused and explicit Resume activates audio and requests Screen Wake Lock. Returning to a surviving hidden page also remains paused.
 

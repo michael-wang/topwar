@@ -33,7 +33,7 @@ try {
     if(build==='production') await exposeProductionApp(page);
     else await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('app.start();','window.__testApp=app;app.start();')});});
     await page.goto(build==='dev'?'http://127.0.0.1:5175/':'http://127.0.0.1:5196/topwar/');
-    await page.getByRole('button',{name:'Start game with audio'}).tap();
+    await page.getByRole('button',{name:'開始遊戲'}).tap();
     await page.waitForFunction(()=>window.__testApp?.startup==='started');
     await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
     await page.locator('.tuning-panel > summary').tap();

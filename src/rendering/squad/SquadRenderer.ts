@@ -264,6 +264,14 @@ export class SquadRenderer {
     this.levelEffect.update(this.members, nowMs);
   }
 
+  updateIdle(state: GameRenderState, nowMs: number): void {
+    this.update(state, nowMs);
+    // No spawn pop, including the static reduced-motion first frame.
+    for (const member of this.members) if (member.group.visible) {
+      member.group.scale.setScalar(this.presentation.rootScale);
+    }
+  }
+
   reset(): void {
     this.blood.reset(); this.stains.reset(); this.casualtySequence = 0;
     this.lastLane = undefined; this.laneMotionAt = -Infinity; this.lastUpdateMs = -Infinity;

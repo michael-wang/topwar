@@ -11,7 +11,7 @@ try { for (const width of [350, 390]) {
   const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await exposeProductionApp(page);
-  await page.goto('http://127.0.0.1:5186/topwar/'); await page.getByRole('button', { name: 'Start game with audio' }).tap();
+  await page.goto('http://127.0.0.1:5186/topwar/'); await page.getByRole('button', { name: '開始遊戲' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
   assert.equal(await page.locator('.dev-fps,.dev-wake-status,.qa-panel,.dev-advanced,.dev-survival-test').count(), 0);

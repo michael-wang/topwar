@@ -10,9 +10,9 @@ try {for(const width of [390,350]) {
  page.on('pageerror',e=>results.errors.push(e.message));
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();',`window.__testApp=app;window.__cues=[];const play=app.audio.play.bind(app.audio);app.audio.play=(cue,...args)=>{window.__cues.push(cue);return play(cue,...args)};app.start();`)});});
  await page.goto(process.env.TOPWAR_QA_URL??'http://127.0.0.1:5173/');
- await page.getByRole('button',{name:'Start game with audio'}).waitFor();
+ await page.getByRole('button',{name:'開始遊戲'}).waitFor();
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().tick),0);
- await page.getByRole('button',{name:'Start game with audio'}).tap();
+ await page.getByRole('button',{name:'開始遊戲'}).tap();
  await page.waitForFunction(()=>window.__testApp.startup==='started');
  await page.evaluate(()=>{const a=window.__testApp;cancelAnimationFrame(a.frameId);window.__clock=0;
   window.__advance=ticks=>{for(let i=0;i<ticks;i++){window.__clock+=1000/60;a.renderFrame(window.__clock);cancelAnimationFrame(a.frameId);}};

@@ -31,7 +31,7 @@ try { for (const width of [350, 390]) {
   await page.route(/\/(game-data\/game\.json|models\/.*\.glb)(\?.*)?$/, async route => {
     if (delayed) await new Promise(r => setTimeout(r, route.request().url().includes('models/') ? 2200 : 1500)); await route.continue();
   });
-  await page.goto(url); await page.getByRole('button', { name: 'Start game with audio' }).tap();
+  await page.goto(url); await page.getByRole('button', { name: '開始遊戲' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
   await selectDevFixture(page, 'survival10-ahead');
   await page.getByRole('button', { name: 'Pause game', exact: true }).tap();

@@ -21,7 +21,7 @@ try{for(const width of [350,390]){
   const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await exposeProductionApp(page);await page.goto('http://127.0.0.1:5196/topwar/');
-  await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp?.startup==='started');
+  await page.getByRole('button',{name:'開始遊戲'}).tap();await page.waitForFunction(()=>window.__testApp?.startup==='started');
   await page.evaluate(()=>cancelAnimationFrame(window.__testApp.frameId));
   const draw=async()=>page.evaluate(()=>{const a=window.__testApp;a.renderFrame(0);cancelAnimationFrame(a.frameId);const m=a.renderer.scene.getObjectByName('battlefield-lane-highlights'),u=m.material.uniforms,s=a.simulation.getState();return{state:s,playerX:u.playerX.value,count:u.dangerCount.value,centers:Array.from(u.dangerCenters.value).slice(0,u.dangerCount.value),visible:m.visible,playerActive:u.playerActive.value,camera:a.renderer.camera.projectionMatrix.elements};});
   const shot=async label=>{await page.waitForTimeout(250);await page.screenshot({path:`${out}/${width}-${label}.png`});};

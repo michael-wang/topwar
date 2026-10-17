@@ -169,6 +169,16 @@ export class GameRenderer {
     window.removeEventListener('resize', this.resize);
   }
 
+  // Uses the same renderer/pools, without weapons, warning or combat FX passes.
+  renderDiorama(state: GameRenderState, nowMs: number): void {
+    if (this.disposed) return;
+    this.environment.update(state.player.z, state.track.halfWidth, nowMs);
+    this.squadRenderer.updateIdle(state, nowMs);
+    this.enemyRenderer.update(state.enemies, nowMs, true, 0, 0);
+    this.contactShadows.update(state, this.squadRenderer, nowMs);
+    this.renderer.render(this.scene, this.camera);
+  }
+
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     this.air.update(state.enemies, nowMs, !!state.defenseMode);

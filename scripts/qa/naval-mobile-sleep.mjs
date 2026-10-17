@@ -26,7 +26,7 @@ async function install(page,platform='mock'){
     }}});
   },platform);
 }
-async function start(page){await page.goto('http://127.0.0.1:5196/');await button(page,'Start game with audio').tap();await page.waitForFunction(()=>window.__testApp.startup==='started');}
+async function start(page){await page.goto('http://127.0.0.1:5196/');await button(page,'開始遊戲').tap();await page.waitForFunction(()=>window.__testApp.startup==='started');}
 async function openQa(page){
   for(const selector of ['.tuning-panel','.dev-advanced','.qa-panel'])if(!await page.locator(selector).evaluate(e=>e.open))await page.locator(`${selector}>summary`).tap();
 }

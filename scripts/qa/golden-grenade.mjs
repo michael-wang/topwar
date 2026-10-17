@@ -10,7 +10,7 @@ try{for(const width of [350,390])for(const role of glInspect?['survival10-ahead'
  const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
  await page.route(/\/src\/main\.ts(\?.*)?$/,async route=>{const r=await route.fetch();await route.fulfill({response:r,body:(await r.text()).replace('app.start();','window.__testApp=app;app.start();')});});
- await page.goto('http://127.0.0.1:5187/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
+ await page.goto('http://127.0.0.1:5187/');await page.getByRole('button',{name:'開始遊戲'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');
  await page.evaluate(({role,glInspect})=>{
   const a=window.__testApp;cancelAnimationFrame(a.frameId);a.devReviewFixture=role;a.retry();cancelAnimationFrame(a.frameId);
   const gpu=a.renderer.renderer,native=gpu.render;gpu.render=()=>{};let stamp=0;a.renderFrame(stamp);cancelAnimationFrame(a.frameId);

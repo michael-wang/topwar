@@ -26,6 +26,7 @@ vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   update() {} reset() {} restore() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
+  constructor(_viewport: unknown, start: unknown) { mock.startConstructed(start); }
   show() {} setActivating() {} finish() {} dispose() {}
 } }));
 vi.mock('../src/ui/DevReviewControls', () => ({ DevReviewControls: class {
@@ -41,6 +42,8 @@ vi.mock('../src/app/DevReviewFixtures', () => ({ createDevReviewFixture: (...arg
 } }));
 
 const mock = vi.hoisted(() => ({
+  startConstructed: vi.fn(),
+  dioramaRender: vi.fn(),
   missionIntro: vi.fn(),
   qaConstructed: vi.fn(),
   victory: vi.fn((_now: number, _paused: boolean) => false),
@@ -139,6 +142,7 @@ vi.mock('../src/simulation/Simulation', () => ({
 vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
+    renderDiorama = mock.dioramaRender;
     present = mock.present;
     presentGrenade = vi.fn();
     presentArtillery = vi.fn();
@@ -361,7 +365,7 @@ describe('GameApp config and frame lifecycle', () => {
     createRaf();
     const element = { className: '', textContent: '', setAttribute: vi.fn(), remove: vi.fn() };
     vi.stubGlobal('document', { createElement: vi.fn(() => element) });
-    const viewport = { append: vi.fn(), classList: { remove: vi.fn() } } as unknown as HTMLElement;
+    const viewport = { append: vi.fn(), classList: { toggle: vi.fn(), remove: vi.fn() } } as unknown as HTMLElement;
     const normal = new GameApp(viewport, createConfigStore().store, level, {} as CharacterAssets);
     expect(viewport.append).not.toHaveBeenCalled();
     normal.dispose();
@@ -381,7 +385,7 @@ describe('GameApp config and frame lifecycle', () => {
     const raf = createRaf();
     const notice = { className: '', textContent: '', setAttribute: vi.fn() };
     vi.stubGlobal('document', { createElement: () => notice });
-    const viewport = { append: vi.fn(), classList: { remove: vi.fn() } } as unknown as HTMLElement;
+    const viewport = { append: vi.fn(), classList: { toggle: vi.fn(), remove: vi.fn() } } as unknown as HTMLElement;
     const originalError = new Error('render failure');
     const reported = vi.spyOn(console, 'error').mockImplementation(() => {});
     mock.render.mockImplementationOnce(() => { throw originalError; });
@@ -398,7 +402,7 @@ describe('GameApp config and frame lifecycle', () => {
   it('reports the original simulation exception instead of leaving a frozen frame', async () => {
     const raf = createRaf();
     vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn() }) });
-    const viewport = { append: vi.fn(), classList: { remove: vi.fn() } } as unknown as HTMLElement;
+    const viewport = { append: vi.fn(), classList: { toggle: vi.fn(), remove: vi.fn() } } as unknown as HTMLElement;
     const originalError = new Error('simulation failure');
     const reported = vi.spyOn(console, 'error').mockImplementation(() => {});
     const app = new GameApp(viewport, createConfigStore().store, level, {} as CharacterAssets);
@@ -794,7 +798,7 @@ it.each(['personalEmergency', 'overheadLanes', undefined] as const)('keeps canno
 
 it('constructs defense XP presentation without constructing the obsolete lane-number HUD', async () => {
   createRaf();
-  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+  const viewport = Object.assign(new EventTarget(), { classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() } });
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
@@ -836,7 +840,7 @@ it('enables only visible defense controls after start and clears them on Pause, 
 
 it('restarts selected development fixtures and clears renderer feedback on every switch and Retry', async () => {
   createRaf();
-  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+  const viewport = Object.assign(new EventTarget(), { classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() } });
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
   const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
@@ -861,7 +865,7 @@ it('shares the approved playtest menu outside DEV while omitting engineering QA'
   createRaf();vi.stubEnv('DEV', false);
   const config = { ...gameData, catharsis: CatharsisConfigSchema.parse(gameData.catharsis) } as unknown as GameConfig;
   const store = { getConfig: () => config, subscribe: () => () => {} } as unknown as ConfigStore;
-  const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn() } });
+  const viewport = Object.assign(new EventTarget(), { classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() } });
   try {
     const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets);
     expect(mock.reviewConstructed).toHaveBeenCalledOnce();expect(mock.reviewFixture).not.toHaveBeenCalled();
@@ -1012,9 +1016,7 @@ describe('intentional gameplay startup', () => {
     const pointer=(pointerType:string)=>{
       const e=new Event('pointerdown',{cancelable:true});Object.defineProperty(e,'pointerType',{value:pointerType});viewport.dispatchEvent(e);
     };
-    if(gesture==='Enter'||gesture===' ')raf.key(gesture);
-    else if(gesture==='click')viewport.dispatchEvent(new Event('click',{cancelable:true}));
-    else pointer(gesture);
+    mock.startConstructed.mock.lastCall![0](expected);
     expect(attributes.get('data-input-presentation')).toBe(expected);
     // A competing gesture during optional audio activation cannot replace the first.
     pointer(expected==='desktop'?'touch':'mouse');raf.key('Enter');
@@ -1042,7 +1044,8 @@ describe('intentional gameplay startup', () => {
     expect(play).not.toHaveBeenCalled();
     expect(GameAudio.prototype.activate).not.toHaveBeenCalled();
     expect(mock.render.mock.calls.every(call => call[1] === 0)).toBe(true);
-    expect(raf.key('Enter')).toBe(true);
+    expect(raf.key('Enter')).toBe(false);
+    mock.startConstructed.mock.lastCall![0]('desktop');
     await Promise.resolve();
     raf.frame(400000);
     expect(mock.step).not.toHaveBeenCalled();
@@ -1059,7 +1062,7 @@ describe('intentional gameplay startup', () => {
     const reset = vi.spyOn(GameAudio.prototype, 'resetObservation');
     const app = new GameApp({} as HTMLElement, createConfigStore().store, level, {} as CharacterAssets);
     app.start();
-    expect(raf.key(' ')).toBe(true);
+    mock.startConstructed.mock.lastCall![0]('desktop');
     await Promise.resolve();
     raf.frame(10000);
     raf.frame(10000 + 1000 / 60);
@@ -1075,11 +1078,11 @@ describe('intentional gameplay startup', () => {
     app.dispose();
   });
 
-  it('consumes dev-control gestures, freezes while activation is pending and ignores duplicate starts', async () => {
+  it('leaves unrelated controls usable, freezes during activation and ignores duplicate starts', async () => {
     const raf = createRaf();
     let resolve!: (value: 'running') => void;
     vi.mocked(GameAudio.prototype.activate).mockImplementation(() => new Promise(r => { resolve = r; }));
-    const viewport = Object.assign(new EventTarget(), { classList: { remove: vi.fn() } }) as unknown as HTMLElement;
+    const viewport = Object.assign(new EventTarget(), { classList: { remove: vi.fn(), toggle: vi.fn() } }) as unknown as HTMLElement;
     const app = new GameApp(viewport, createConfigStore().store, level, {} as CharacterAssets);
     const control = vi.fn();
     app.start();
@@ -1087,7 +1090,10 @@ describe('intentional gameplay startup', () => {
     viewport.dispatchEvent(new Event('pointerdown', { cancelable: true }));
     raf.key('Enter');
     raf.frame(5000);
-    expect(control).not.toHaveBeenCalled();
+    expect(control).toHaveBeenCalledOnce();
+    expect(GameAudio.prototype.activate).not.toHaveBeenCalled();
+    mock.startConstructed.mock.lastCall![0]('touch');
+    mock.startConstructed.mock.lastCall![0]('desktop');
     expect(mock.step).not.toHaveBeenCalled();
     expect(GameAudio.prototype.activate).toHaveBeenCalledOnce();
     resolve('running'); await Promise.resolve();
@@ -1226,4 +1232,35 @@ it('waits for the tank finale, freezes it on Pause and uses PLAY AGAIN to reset 
   mock.getState.mockReturnValue(base); tankUi.replay!(); expect(tankUi.reset).toHaveBeenCalled();
   expect(mock.constructedWith).toHaveBeenCalledTimes(2); app.dispose();
   silenceWeapons.mockRestore();
+});
+
+it('keeps the decorative Defense tableau silent, bounded, hidden-aware and independent of simulation', async () => {
+  const raf=createRaf(), base=mock.getState();
+  const config={...gameData,catharsis:CatharsisConfigSchema.parse(gameData.catharsis)} as unknown as GameConfig;
+  const state={...base,elapsedSeconds:0,tick:0,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}};
+  mock.getState.mockReturnValue(state);
+  const viewport=Object.assign(new EventTarget(),{classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
+  const store={getConfig:()=>config,subscribe:()=>()=>{}} as unknown as ConfigStore;
+  const app=new GameApp(viewport as unknown as HTMLElement,store,level,{} as CharacterAssets);
+  const initial=structuredClone(state);
+  try {
+    app.start(); for(let i=0;i<61;i++)raf.frame(i*1000/60);
+    expect(mock.dioramaRender.mock.calls.length).toBeLessThanOrEqual(31);
+    expect(mock.dioramaRender).toHaveBeenCalled();expect(mock.step).not.toHaveBeenCalled();
+    expect(state).toEqual(initial);expect(GameAudio.prototype.activate).not.toHaveBeenCalled();
+    expect(mock.missionIntro).not.toHaveBeenCalled();expect(localStorage.getItem('topwar:session:v1:dev')).toBeNull();
+    const draws=mock.dioramaRender.mock.calls.length;
+    Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});
+    document.dispatchEvent(new Event('visibilitychange'));raf.frame(20000);
+    expect(mock.dioramaRender).toHaveBeenCalledTimes(draws);
+    Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
+    document.dispatchEvent(new Event('visibilitychange'));raf.frame(30000);
+    expect(mock.dioramaRender.mock.lastCall![1]).toBeLessThan(1100);
+    mock.startConstructed.mock.lastCall![0]('touch');await Promise.resolve();
+    expect(mock.resetFeedback).toHaveBeenCalledOnce();expect(mock.missionIntro).toHaveBeenCalledOnce();
+    raf.frame(31000);raf.frame(31020);expect(mock.step).toHaveBeenCalled();
+    const drawsAtStart=mock.dioramaRender.mock.calls.length;
+    mock.overlayConstructedWith.mock.lastCall![0]();raf.frame(32000);
+    expect(mock.dioramaRender).toHaveBeenCalledTimes(drawsAtStart);
+  } finally {app.dispose();mock.getState.mockReturnValue(base);}
 });

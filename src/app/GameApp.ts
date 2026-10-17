@@ -52,6 +52,7 @@ import { ScreenWakeLock } from './ScreenWakeLock';
 import { QaPanel } from '../ui/QaPanel';
 import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from './QaStressFixture';
 import { DevGiantReviewControls } from '../ui/DevGiantReviewControls';
+import { BattlefieldDiorama } from '../presentation/BattlefieldDiorama';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -111,7 +112,10 @@ export class GameApp {
   private running = false;
   private startup: 'recovering' | 'awaiting-start' | 'activating' | 'started' = 'awaiting-start';
   private startGeneration = 0;
-  private consumeStartClick = false;
+  private diorama: BattlefieldDiorama | null = null;
+  private idleAgeMs = 0;
+  private idleFrameAtMs: number | null = null;
+  private readonly reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   private disposed = false;
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
@@ -169,7 +173,7 @@ export class GameApp {
     this.renderer = new GameRenderer(viewport, assets);
     this.audio = audio;
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
-    this.startOverlay = new GameStartOverlay(viewport);
+    this.startOverlay = new GameStartOverlay(viewport, presentation => { void this.beginGameplay(presentation); });
     this.pauseOverlay = new PauseOverlay(viewport, () => { if (this.paused) this.togglePaused(); });
     this.controlStrip = this.config.catharsis?.defenseMode ? new CombatControlStrip(viewport) : null;
     this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;
@@ -261,10 +265,9 @@ export class GameApp {
     this.running = true;
     this.previousFrameTimestampMs = null;
     this.renderer.startResizeHandling();
-    if (this.startup === 'awaiting-start') this.startOverlay.show();
+    if (this.startup === 'awaiting-start') this.showReady();
     if (this.startup === 'started') this.startInputs();
     this.viewport.addEventListener?.('pointerdown', this.onStartPointerDown, true);
-    this.viewport.addEventListener?.('click', this.onStartClick, true);
     window.addEventListener?.('keydown', this.onStartKeyDown, true);
     window.addEventListener?.('keydown', this.onPauseKeyDown);
     window.addEventListener?.('keydown', this.onActiveItemKeyDown);
@@ -296,10 +299,11 @@ export class GameApp {
     canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
     this.grenadeRequested = false; this.airSupportRequested = false;
     this.startOverlay.dispose();
+    this.diorama = null;
+    this.viewport.classList?.remove('game-attract');
     this.startGeneration++;
     if (this.startup === 'activating') this.startup = 'awaiting-start';
     this.viewport.removeEventListener?.('pointerdown', this.onStartPointerDown, true);
-    this.viewport.removeEventListener?.('click', this.onStartClick, true);
     window.removeEventListener?.('keydown', this.onStartKeyDown, true);
     if (this.frameId !== null) cancelAnimationFrame(this.frameId);
     this.frameId = null;
@@ -388,7 +392,7 @@ export class GameApp {
     this.damageFlash.reset();
     this.fieldObserver?.reset();
     this.audio.resetObservation();
-    if (!this.devReviewFixture) this.fieldObserver?.startMission(initialState.elapsedSeconds);
+    if (this.startup === 'started' && !this.devReviewFixture) this.fieldObserver?.startMission(initialState.elapsedSeconds);
     this.xpHud?.reset();
     this.battleInfo?.reset();
     this.supplyTransfer?.reset();this.grenadeButton?.reset(); this.manualSupportButton?.reset();
@@ -401,6 +405,7 @@ export class GameApp {
     }
     if (initialState.progression && initialState.catharsis) this.battleInfo?.update(initialState.progression, initialState.catharsis.balance.progression, this.presentationMs);
     this.renderer.resetFeedback(this.devReviewFixture ? ++this.devReviewVisualSalt : 0);
+    if (this.startup === 'awaiting-start') this.showReady();
     this.syncWakeLock();
   }
 
@@ -479,6 +484,9 @@ export class GameApp {
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.presentationMs = 0;
+    if (this.diorama) this.renderer.resetFeedback();
+    this.diorama = null;
+    this.viewport.classList?.remove('game-attract');
     this.audio.resetObservation();
     this.startup = 'started';
     if (!this.restored && !this.devReviewFixture) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
@@ -489,26 +497,12 @@ export class GameApp {
     this.syncWakeLock();
   }
 
-  private readonly onStartPointerDown = (event: PointerEvent): void => {
+  private readonly onStartPointerDown = (): void => {
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if (this.startup === 'started') {
       if (this.audio.needsResume) void this.audio.activate();
       return;
     }
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    this.consumeStartClick = true;
-    void this.beginGameplay(event.pointerType === 'mouse' ? 'desktop' : 'touch');
-  };
-
-  private readonly onStartClick = (event: MouseEvent): void => {
-    if (this.startup === 'recovering' || this.recovery?.blocking) return;
-    if (this.startup === 'started' && !this.consumeStartClick) return;
-    this.consumeStartClick = false;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    // Supports assistive-technology button activation without a pointerdown.
-    void this.beginGameplay();
   };
 
   private readonly onStartKeyDown = (event: KeyboardEvent): void => {
@@ -517,11 +511,18 @@ export class GameApp {
       if (!event.repeat && this.audio.needsResume) void this.audio.activate();
       return;
     }
-    event.stopImmediatePropagation();
-    if (event.key !== 'Enter' && ![' ', 'Space', 'Spacebar'].includes(event.key)) return;
-    event.preventDefault();
-    if (!event.repeat) void this.beginGameplay('desktop');
   };
+
+  private showReady(): void {
+    this.idleAgeMs = 0; this.idleFrameAtMs = null;
+    this.diorama = this.config.catharsis?.defenseMode && !this.devReviewFixture && !this.giantReview
+      ? new BattlefieldDiorama(projectRenderState(this.simulation.getFrameState(), {
+        formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
+        defenseLineOffset: this.config.track.defenseLineOffset, catharsis: this.simulation.getFrameState().catharsis,
+      })) : null;
+    this.viewport.classList?.toggle('game-attract', !!this.diorama);
+    this.startOverlay.show(this.giantReview);
+  }
 
   private readonly onPauseKeyDown = (event: KeyboardEvent): void => {
     if (this.startup !== 'started' || this.recovery?.blocking) return;
@@ -633,7 +634,7 @@ export class GameApp {
         return;
       } catch { this.showCheckpointFailure('無法恢復進度，請重新開始'); }
     }
-    clearCheckpoint(this.checkpointStorage); this.startup = 'awaiting-start'; this.startOverlay.show();
+    clearCheckpoint(this.checkpointStorage); this.startup = 'awaiting-start'; this.showReady();
   };
 
   private showCheckpointFailure(text: string): void {
@@ -769,6 +770,23 @@ export class GameApp {
     if (!this.running) return;
     try {
       if (this.startup !== 'started') {
+        // Presentation time is independent of fixed-step time and never catches up
+        // after a hidden tab. Reduced motion keeps a still tableau, including sea.
+        if (this.hidden || this.contextLost) {
+          this.idleFrameAtMs = null;
+          this.frameId = requestAnimationFrame(this.renderFrame); return;
+        }
+        const interval = this.reducedMotion?.matches ? 1000 : 1000 / 30;
+        if (this.idleFrameAtMs !== null && timestampMs - this.idleFrameAtMs < interval - .1) {
+          this.frameId = requestAnimationFrame(this.renderFrame); return;
+        }
+        if (this.idleFrameAtMs !== null) this.idleAgeMs += Math.min(100, timestampMs - this.idleFrameAtMs);
+        this.idleFrameAtMs = timestampMs;
+        if (this.diorama) {
+          const age = this.reducedMotion?.matches ? 0 : this.idleAgeMs;
+          this.renderer.renderDiorama(this.diorama.sample(age), age);
+          this.frameId = requestAnimationFrame(this.renderFrame); return;
+        }
         const state = this.simulation.getFrameState();
         if (state.progression && state.catharsis) {
           this.xpHud?.update(state.progression, state.catharsis.balance.progression, 0);

@@ -25,7 +25,7 @@ try { for (const width of [350, 390]) {
       .replace('bar.backing.visible = true;', 'bar.backing.userData.qaArchetype = enemy.archetype; bar.backing.visible = true;') + body.slice(end) });
   });
   await page.goto('http://127.0.0.1:5175/?perf=1');
-  await page.getByRole('button', { name: 'Start game with audio' }).tap(); await page.waitForFunction(() => window.__testApp.startup === 'started');
+  await page.getByRole('button', { name: '開始遊戲' }).tap(); await page.waitForFunction(() => window.__testApp.startup === 'started');
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
   await selectDevFixture(page, 'survival10-ahead');
   const setup = await page.evaluate(async () => {

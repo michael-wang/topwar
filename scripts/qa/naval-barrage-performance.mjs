@@ -21,7 +21,7 @@ try{for(const width of [350,390])for(const mode of ['off','on'])for(const phase 
   const page=await browser.newPage({viewport:{width,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
   await exposeProductionApp(page);
-  const start=performance.now();await page.goto('http://127.0.0.1:5191/topwar/');await page.getByRole('button',{name:'Start game with audio'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');const startupMs=performance.now()-start;
+  const start=performance.now();await page.goto('http://127.0.0.1:5191/topwar/');await page.getByRole('button',{name:'開始遊戲'}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');const startupMs=performance.now()-start;
   assert.equal(await page.locator('.dev-naval-barrage,.dev-fps,.dev-advanced').count(),0);
   if(phase==='warm')await page.waitForTimeout(3500);
   const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});

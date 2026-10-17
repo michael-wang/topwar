@@ -20,7 +20,7 @@ try { for (const secure of [true, false]) {
     else await route.fulfill({ response: r });
   });
   await page.goto(secure ? 'http://localhost:5175/' : 'http://topwar.test:5175/');
-  await page.getByRole('button', { name: 'Start game with audio' }).tap();
+  await page.getByRole('button', { name: '開始遊戲' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started' && window.__testApp.wakeLock.status !== 'requesting');
   const data = await page.evaluate(() => ({ secure: isSecureContext, supported: !!navigator.wakeLock, status: window.__testApp.wakeLock.status,
     realSentinel: !!window.__testApp.wakeLock.sentinel && !window.__testApp.wakeLock.sentinel.released }));

@@ -186,7 +186,7 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  const jsonFetches=await page.evaluate(()=>window.__qaJsonFetches);
  for(const path of ['game-data/game.json','game-data/levels/level-001.json'])if(!jsonFetches.some(r=>r.url===`/topwar/${manifest[path]}`&&r.cache===undefined))throw Error(`Missing content-addressed fetch: ${path}`);
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
- await page.getByRole('button',{name:'Start game with audio'}).tap();
+ await page.getByRole('button',{name:'開始遊戲'}).tap();
  // Production ignores DEV review queries; wait for the normal post-start HUD.
  await page.waitForFunction(level=>{
    const valid=!document.querySelector('.game-start-overlay')

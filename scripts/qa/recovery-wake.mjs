@@ -38,7 +38,7 @@ try { for (const width of [350, 390]) {
   const resume = async () => { await page.getByRole('button', { name: 'Resume game', exact: true }).tap(); await stop(); await status('active'); };
   await page.goto('http://127.0.0.1:5175/?perf=1');
   assert.equal(await page.locator('#session-recovery-loading').count(), 0);
-  await page.getByRole('button', { name: 'Start game with audio' }).tap(); await stop(); await status('active');
+  await page.getByRole('button', { name: '開始遊戲' }).tap(); await stop(); await status('active');
   await selectDevFixture(page, 'survival10-ahead'); await stop();
   assert.equal(await page.evaluate(() => window.__testApp.simulation.getState().progression.level), 10);
   await pause(); const saved = await page.evaluate(() => window.__testApp.simulation.getState());
@@ -125,7 +125,7 @@ try { for (const width of [350, 390]) {
   await context.close();
   for (const mode of ['denied', 'unsupported', 'insecure']) {
     const c = await browser.newContext({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true }); await c.addInitScript(mockWake, { mode });
-    const p = await c.newPage(); await p.goto('http://127.0.0.1:5175/'); await p.getByRole('button', { name: 'Start game with audio' }).tap();
+    const p = await c.newPage(); await p.goto('http://127.0.0.1:5175/'); await p.getByRole('button', { name: '開始遊戲' }).tap();
     await p.locator('.tuning-panel > summary').tap(); await p.getByText('進階調校',{exact:true}).tap(); await p.getByText('熄屏與存檔 QA',{exact:true}).tap();
     const label = await p.locator('.qa-panel-content').textContent();
     assert.match(label, mode === 'denied' ? /DENIED/ : mode === 'unsupported' ? /UNSUPPORTED/ : /INSECURE/);
@@ -136,7 +136,7 @@ try { for (const width of [350, 390]) {
   const native = await browser.newPage();
   await native.route(/\/src\/main\.ts(\?.*)?$/, async route => { const r = await route.fetch(); await route.fulfill({ response: r,
     body: (await r.text()).replace('app.start();', 'window.__testApp=app;app.start();') }); });
-  await native.goto('http://localhost:5175/'); await native.getByRole('button', { name: 'Start game with audio' }).click();
+  await native.goto('http://localhost:5175/'); await native.getByRole('button', { name: '開始遊戲' }).click();
   await native.waitForFunction(() => window.__testApp.wakeLock.status !== 'requesting');
   const nativeResult = await native.evaluate(() => ({ native: true, secure: isSecureContext, supported: !!navigator.wakeLock, status: window.__testApp.wakeLock.status }));
   assert(nativeResult.secure); results.push(nativeResult); await native.getByRole('button', { name: 'Pause game', exact: true }).click();
