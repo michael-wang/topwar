@@ -8,6 +8,14 @@ import { CoastalVegetation } from '../src/rendering/environment/CoastalVegetatio
 import { foliageMassTexture, flowerSpeckTexture } from '../src/rendering/art/FoliageTexture';
 import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
 
+it('preserves every accepted flower texel after skipping zero-contribution work', async () => {
+  const texture = flowerSpeckTexture();
+  const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(texture.image.data));
+  expect(Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join(''))
+    .toBe('82ef0cbc8490ad3c3442f1d4252e6e5f28f42aec847ee587b98e35c77e2daefb');
+  texture.dispose();
+});
+
 it('updates the coastal scene and restores its owner background on disposal', () => {
   const scene = new THREE.Scene(), environment = new BridgeEnvironment(scene);
   environment.update(80, 3.2, 500);

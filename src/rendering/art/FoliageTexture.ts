@@ -43,13 +43,21 @@ export function flowerSpeckTexture(): THREE.DataTexture {
     x: .5 + Math.cos(i * 2.399963) * (.15 + i * .022),
     y: .5 + Math.sin(i * 2.399963) * (.13 + i * .026),
   }));
+  const petals = Array.from({ length: 4 }, (_, i) => ({
+    x: Math.cos(i * Math.PI / 2) * .013, y: Math.sin(i * Math.PI / 2) * .013,
+  }));
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const px = (x + .5) / size, py = (y + .5) / size;
     let alpha = 0;
-    for (const center of centers) for (let petal = 0; petal < 4; petal++) {
-      const angle = petal * Math.PI / 2;
-      const dx = (x + .5) / size - center.x - Math.cos(angle) * .013;
-      const dy = (y + .5) / size - center.y - Math.sin(angle) * .013;
-      alpha = Math.max(alpha, THREE.MathUtils.clamp((.016 - Math.hypot(dx, dy)) * 220, 0, 1));
+    for (const center of centers) {
+      const cx = px - center.x, cy = py - center.y;
+      // Petals extend .013 from the center with radius .016. Distant pixels
+      // contribute exactly zero; keep the original arithmetic for visible texels.
+      if (Math.abs(cx) > .030 || Math.abs(cy) > .030) continue;
+      for (const petal of petals) {
+        const dx = cx - petal.x, dy = cy - petal.y;
+        alpha = Math.max(alpha, THREE.MathUtils.clamp((.016 - Math.hypot(dx, dy)) * 220, 0, 1));
+      }
     }
     const at = (y * size + x) * 4;
     data[at] = Math.round(color.r * 255); data[at + 1] = Math.round(color.g * 255);
