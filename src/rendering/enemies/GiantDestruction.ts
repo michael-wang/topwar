@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { smokeWindX } from '../../presentation/BattlefieldWind';
-import { EXPLOSION_SMOKE, poseExplosionSmoke, explosionSmokeOpacity, smokeIsDark } from '../ExplosionSmoke';
+import { ENEMY_DEATH_TIMING } from '../../presentation/EnemyDeathTiming';
 
-const SMOKE = EXPLOSION_SMOKE.giant;
-const SMOKE_COUNT = SMOKE.count + 8, BURST_COUNT = 14;
+const SMOKE = { count: 8, puffSeconds: .72, riseSeconds: .24, windStrength: .28,
+  darkColor: '#343b3e', lightColor: '#a0a6a7' } as const;
+const BURST_COUNT = 10;
 // Both existing GIANT draws use per-instance opacity; no extra particle system.
 function prepareAlpha(material: THREE.MeshBasicMaterial): void {
   material.onBeforeCompile = shader => {
@@ -22,10 +23,10 @@ export class GiantDestruction {
   private readonly burstGeometry = this.sphere.clone();
   private readonly smokeMaterial = new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,toneMapped:false});
   private readonly burstMaterial = new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,toneMapped:false});
-  private readonly smoke = new THREE.InstancedMesh(this.smokeGeometry, this.smokeMaterial, SMOKE_COUNT);
+  private readonly smoke = new THREE.InstancedMesh(this.smokeGeometry, this.smokeMaterial, SMOKE.count);
   private readonly burst = new THREE.InstancedMesh(this.burstGeometry, this.burstMaterial, BURST_COUNT);
   private readonly alpha = new THREE.InstancedBufferAttribute(new Float32Array(BURST_COUNT), 1).setUsage(THREE.DynamicDrawUsage);
-  private readonly smokeAlpha = new THREE.InstancedBufferAttribute(new Float32Array(SMOKE_COUNT), 1).setUsage(THREE.DynamicDrawUsage);
+  private readonly smokeAlpha = new THREE.InstancedBufferAttribute(new Float32Array(SMOKE.count), 1).setUsage(THREE.DynamicDrawUsage);
   private readonly pose = new THREE.Object3D();
   private readonly anchor = new THREE.Vector3();
   private readonly wreckSources = [new THREE.Vector3(), new THREE.Vector3()];
@@ -38,8 +39,8 @@ export class GiantDestruction {
     this.smokeGeometry.setAttribute('destructionAlpha', this.smokeAlpha);
     prepareAlpha(this.burstMaterial); prepareAlpha(this.smokeMaterial);
     const color = new THREE.Color();
-    for (let i=0;i<BURST_COUNT;i++) this.burst.setColorAt(i,color.set(i>=10?(i%2?'#ffd778':'#e98929'):i===0?'#f19332':i===1?'#fff1a1':'#ffe34f'));
-    for (let i=0;i<SMOKE_COUNT;i++) this.smoke.setColorAt(i,color.set((i<SMOKE.count?smokeIsDark(i,SMOKE):i%2===1)?SMOKE.darkColor:SMOKE.lightColor));
+    for (let i=0;i<BURST_COUNT;i++) this.burst.setColorAt(i,color.set(i===0?'#f19332':i===1?'#fff1a1':'#ffe34f'));
+    for (let i=0;i<SMOKE.count;i++) this.smoke.setColorAt(i,color.set(i%2===1?SMOKE.darkColor:SMOKE.lightColor));
     for (const mesh of [this.smoke,this.burst]) {
       mesh.frustumCulled = false; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(mesh);
     }
@@ -58,31 +59,24 @@ export class GiantDestruction {
     this.wreckSources[index].copy(point);this.wreckStarts[index]=landingAgeMs/1000;
   }
   update(nowMs: number): void {
-    const t=(nowMs-this.startedAt)/1000,active=t>=0&&t<SMOKE.seconds;
-    this.smoke.visible=active;
-    this.burst.visible=active&&(t<.55||t>=Math.min(this.wreckStarts[0],this.wreckStarts[1]));
+    const t=(nowMs-this.startedAt)/1000,active=t>=0&&t<ENEMY_DEATH_TIMING.giant.totalMs/1000;
+    this.smoke.visible=false;
+    this.burst.visible=active&&t<.55;
     if(!active)return;
-    const blastOpacity=explosionSmokeOpacity(t,SMOKE);
+    // Two landed sources, two short-lived light/charcoal pairs each. No standing-pose cloud.
     for(let i=0;i<SMOKE.count;i++){
-      const dark=smokeIsDark(i,SMOKE);
-      poseExplosionSmoke(this.pose,i,dark,t,this.scale*.8,this.anchor.x,this.anchor.z,SMOKE);
-      this.pose.position.y+=this.anchor.y-.4;this.pose.updateMatrix();this.smoke.setMatrixAt(i,this.pose.matrix);
-      // Preserve the initial cloud's existing weights and age-driven fade.
-      this.smokeAlpha.setX(i,blastOpacity*(dark?Math.max(0,Math.min(1,(SMOKE.seconds*SMOKE.darkFadeEnd-t)/(SMOKE.seconds*.36))):SMOKE.airyWeight));
-    }
-    // Fresh light/charcoal pairs emerge successively from the landed interiors.
-    for(let i=0;i<8;i++){
-      const pair=i>>1,source=pair&1,dark=i%2===1,age=t-this.wreckStarts[source]-pair*.20;
-      const fade=age<0?0:Math.min(1,age/.12)*Math.max(0,Math.min(1,(1.1-age)/.45))*Math.min(1,(SMOKE.seconds-t)/.25);
-      this.smokeAlpha.setX(SMOKE.count+i,fade*(dark?.62:.24));
-      const drift=Math.max(0,age),p=this.wreckSources[source];
-      this.pose.position.set(p.x+smokeWindX(drift,dark),p.y+this.scale*.07+drift*(dark?.65:.9),p.z-this.scale*.06+Math.sin(pair*2.4)*.12);
-      const size=this.scale*(dark?.105:.145)*(1+drift*.65);
-      this.pose.scale.set(size*(1+pair*.06),size*(dark?1.05:1.16),size*.9);
-      this.pose.rotation.set(pair,i*.7,drift*.12);this.pose.updateMatrix();this.smoke.setMatrixAt(SMOKE.count+i,this.pose.matrix);
+      const pair=i>>1,source=pair&1,dark=i%2===1,age=t-this.wreckStarts[source]-pair*.12;
+      const fade=age<0?0:Math.min(1,age/.10)*Math.max(0,Math.min(1,(SMOKE.puffSeconds-age)/.30));
+      this.smokeAlpha.setX(i,fade*(dark?.48:.22));
+      if(fade>0)this.smoke.visible=true;
+      const rise=Math.max(0,age),drift=Math.max(0,rise-SMOKE.riseSeconds),p=this.wreckSources[source];
+      // Vent above the interior so the compact puffs are not buried inside the armor.
+      this.pose.position.set(p.x+smokeWindX(drift,dark)*SMOKE.windStrength,p.y+this.scale*.11+rise*(dark?1.3:1.5),p.z-this.scale*.04);
+      const size=this.scale*(dark?.075:.10)*(1+rise*.30);
+      this.pose.scale.set(size,size*(dark?1.05:1.16),size*.9);
+      this.pose.rotation.set(pair,i*.7,rise*.12);this.pose.updateMatrix();this.smoke.setMatrixAt(i,this.pose.matrix);
     }
     this.smokeAlpha.needsUpdate=true;this.smoke.instanceMatrix.needsUpdate=true;
-    if(!this.burst.visible)return;
     for(let i=0;i<10;i++){
       if(t>=.55){
         this.alpha.setX(i,0);this.pose.matrix.makeScale(0,0,0);this.burst.setMatrixAt(i,this.pose.matrix);continue;
@@ -99,16 +93,6 @@ export class GiantDestruction {
         const size=this.scale*.035*(1-p*.5);this.pose.scale.set(size*2.7,size*.55,size*.6);this.pose.rotation.set(0,angle,angle);
       }
       this.pose.updateMatrix();this.burst.setMatrixAt(i,this.pose.matrix);
-    }
-    // Two small orange flames with warm cores persist after contact, not another blast.
-    for(let i=0;i<4;i++){
-      const source=i>>1,core=i%2===1,p=this.wreckSources[source],age=t-this.wreckStarts[source];
-      const fade=Math.max(0,Math.min(1,age/.12))*Math.min(1,(SMOKE.seconds-t)/.45);
-      this.alpha.setX(10+i,fade*(core?.9:.82));
-      const flicker=1+.14*Math.sin(age*17+source*2.4)+.06*Math.sin(age*29+source);
-      this.pose.position.set(p.x+(core?.02:-.02)*this.scale,p.y+this.scale*(core?.065:.105)*flicker,p.z-this.scale*.08-(core?.025:0));
-      this.pose.scale.set(this.scale*(core?.045:.085),this.scale*(core?.105:.18)*flicker,this.scale*(core?.04:.07));
-      this.pose.rotation.set(0,0,.12*Math.sin(age*11+source));this.pose.updateMatrix();this.burst.setMatrixAt(10+i,this.pose.matrix);
     }
     this.alpha.needsUpdate=true;this.burst.instanceMatrix.needsUpdate=true;
   }
