@@ -70,12 +70,13 @@ export class CoastalForeground {
     }));
     block.dispose();
   }
-  update(trackHalfWidth:number):void {
+  update(trackHalfWidth:number,diorama=false):void {
     this.sides[0].position.x=-trackHalfWidth-1.2;
     this.sides[1].position.x=trackHalfWidth+1.3;
     // Keep recognizable village corners at the crop while opening the coast.
     this.sides[0].position.z=5;
     this.sides[1].position.z=6;
+    this.group.scale.setScalar(diorama?.85:1); this.group.position.z=diorama?-2:0;
   }
   dispose():void {
     this.geometries.forEach(geometry=>geometry.dispose());

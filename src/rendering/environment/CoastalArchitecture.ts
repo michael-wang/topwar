@@ -84,7 +84,10 @@ export class CoastalArchitecture {
     }
     for (const side of this.sides) for (const child of [...side.children]) if (!child.userData.baked) side.remove(child);
   }
-  update(halfWidth: number): void { this.sides[0].position.x = -halfWidth - .8; this.sides[1].position.x = halfWidth + .8; }
+  update(halfWidth: number, diorama = false): void {
+    this.sides[0].position.x = -halfWidth - .8; this.sides[1].position.x = halfWidth + .8;
+    this.group.scale.setScalar(diorama ? .85 : 1); this.group.position.z = diorama ? -4 : 0;
+  }
   dispose(): void {
     this.block.dispose(); this.plane.dispose(); this.baked.forEach(geometry => geometry.dispose());
     Object.values(this.materials).forEach(material => material.dispose());

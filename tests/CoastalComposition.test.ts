@@ -87,10 +87,14 @@ it.each([350,390])('exposes the trunk below each crown at the actual %spx Camera
   architecture.dispose(); foreground.dispose(); vegetation.dispose();
 });
 
-it.each([350,390])('leaves at least 90% of the primary surf sightline clear at %spx Camera B', width => {
-  const architecture = new CoastalArchitecture(), foreground = new CoastalForeground();
-  architecture.update(3.2); foreground.update(3.2);
-  const scene = new THREE.Scene(); scene.add(architecture.group, foreground.group); scene.updateMatrixWorld(true);
+it.each([350,390].flatMap(width => [false, true].map(diorama => ({ width, diorama }))))
+('leaves the surf clear at $width px Camera B (diorama=$diorama)', ({ width, diorama }) => {
+  const architecture = new CoastalArchitecture(), foreground = new CoastalForeground(), vegetation = new CoastalVegetation();
+  architecture.update(3.2, diorama); foreground.update(3.2, diorama); vegetation.update(3.2, 0, diorama);
+  const scene = new THREE.Scene(); scene.add(architecture.group, foreground.group);
+  // Diorama framing must expose the whole surf even with the canopy cards.
+  if (diorama) scene.add(vegetation.group);
+  scene.updateMatrixWorld(true);
   const camera = new THREE.PerspectiveCamera(48, width / 844, .1, 180); applyCoastalCamera(camera);
   const opaque: THREE.Object3D[] = [];
   scene.traverse(o => { if (o instanceof THREE.Mesh && !(o.material as THREE.Material).transparent) opaque.push(o); });
@@ -104,7 +108,22 @@ it.each([350,390])('leaves at least 90% of the primary surf sightline clear at %
       const hit = ray.intersectObjects(opaque, false)[0];
       if (!hit || hit.distance > ray.ray.origin.distanceTo(point)) clear++;
     }
-    expect(clear).toBeGreaterThanOrEqual(90);
+    expect(clear).toBeGreaterThanOrEqual(diorama ? 100 : 90);
   }
-  architecture.dispose(); foreground.dispose();
+  architecture.dispose(); foreground.dispose(); vegetation.dispose();
+});
+
+it('pulls the same side resources forward for idle and restores the combat transforms on Start', () => {
+  const architecture = new CoastalArchitecture(), foreground = new CoastalForeground(), vegetation = new CoastalVegetation();
+  const roots = [architecture.group, foreground.group, vegetation.group];
+  const children = roots.map(root => [...root.children]);
+  for (const diorama of [true, false, true, false]) {
+    architecture.update(3.2, diorama); foreground.update(3.2, diorama); vegetation.update(3.2, 0, diorama);
+    roots.forEach((root, i) => {
+      expect(root.children).toEqual(children[i]);
+      if (diorama) { expect(root.position.z).toBeLessThan(0); expect(root.scale.x).toBeLessThan(1); }
+      else { expect(root.position.z).toBe(0); expect(root.scale.toArray()).toEqual([1, 1, 1]); }
+    });
+  }
+  architecture.dispose(); foreground.dispose(); vegetation.dispose();
 });

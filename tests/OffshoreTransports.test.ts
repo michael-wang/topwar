@@ -51,8 +51,23 @@ it('returns the same pooled craft offshore on Start and back near shore for New 
     const layout = diorama ? DIORAMA_LANDING_CRAFT_LAYOUT : LANDING_CRAFT_LAYOUT;
     ships.forEach((ship, i) => {
       expect(ship.position.x).toBe(layout[i].x); expect(ship.position.z).toBe(layout[i].z);
-      expect(ship.rotation.y).toBe(LANDING_CRAFT_LAYOUT[i].heading);
+      expect(ship.rotation.y).toBe(layout[i].heading);
+      expect(ship.scale.x).toBe(diorama ? .75 : 1);
     });
+  }
+  transports.dispose();
+});
+
+it('keeps the smaller Diorama craft orderly beside the shore with only slight heading/depth variation', () => {
+  const transports = new OffshoreTransports(); transports.update(0, 0, true, true);
+  const ships = transports.group.children;
+  expect(ships.map(ship => ship.position.x)).toEqual([4.6, 0, -4.6]);
+  expect(Math.max(...ships.map(ship => ship.position.z)) - Math.min(...ships.map(ship => ship.position.z))).toBeLessThan(1);
+  for (const ship of ships) {
+    expect(Math.abs(ship.rotation.y)).toBeLessThan(.06);
+    const nearBounds = new THREE.Box3().setFromObject(ship);
+    expect(nearBounds.min.z).toBeGreaterThan(ART.coastalDefense.shorelineZ);
+    expect(nearBounds.min.z).toBeLessThan(ART.coastalDefense.shorelineZ + 4);
   }
   transports.dispose();
 });
