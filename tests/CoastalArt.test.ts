@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { ART } from '../src/art/ArtDirection';
 import { CoastalArchitecture } from '../src/rendering/environment/CoastalArchitecture';
 import { CoastalWater } from '../src/rendering/environment/CoastalWater';
-import { CoastalCloth, coastalCanvasGeometry } from '../src/rendering/environment/CoastalCloth';
 import { CoastalVegetation } from '../src/rendering/environment/CoastalVegetation';
 import { foliageMassTexture, flowerSpeckTexture } from '../src/rendering/art/FoliageTexture';
 import { BridgeEnvironment } from '../src/rendering/environment/BridgeEnvironment';
@@ -51,25 +50,6 @@ it('keeps hero water anchored at the unchanged shoreline and updates only its pr
   water.update(2000); expect(shader.uniforms.time.value).toBe(2);
   expect(sea.position.z).toBe(ART.coastalDefense.shorelineZ + 90);
   const dispose = vi.spyOn(shader, 'dispose'); water.dispose(); expect(dispose).toHaveBeenCalledOnce();
-});
-
-it('uses two low-segment sagging canvases with independent bounded wind shaders', () => {
-  const geometry = coastalCanvasGeometry(3, 2.4), positions = geometry.getAttribute('position');
-  expect(positions.count).toBe(36);
-  expect(Math.min(...Array.from({ length: positions.count }, (_, i) => positions.getY(i)))).toBeCloseTo(-.36);
-  const cloth = new CoastalCloth(); cloth.update(3.2, 1500);
-  const canvases = cloth.group.children.filter(mesh => mesh.name === 'wind-coastal-canvas') as THREE.Mesh[];
-  expect(canvases).toHaveLength(2);
-  const phases: string[] = [];
-  for (const canvas of canvases) {
-    const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>\n#include <project_vertex>', fragmentShader: '#include <common>\n#include <color_fragment>' };
-    (canvas.material as THREE.MeshStandardMaterial).onBeforeCompile(shader as never, {} as THREE.WebGLRenderer);
-    expect(shader.uniforms).toHaveProperty('canvasTime', { value: 1.5 });
-    expect(shader.vertexShader).toContain('freeEdge');
-    expect(shader.vertexShader).toMatch(/position.z\+\d+\.\d+\)\/\d+\.\d+/); // GLSL float literals even for whole-number authored dimensions
-    phases.push(shader.vertexShader);
-  }
-  expect(phases[0]).not.toBe(phases[1]); cloth.dispose(); geometry.dispose();
 });
 
 it('batches crossed cutout foliage/flowers outside the track without transparent sorting', () => {

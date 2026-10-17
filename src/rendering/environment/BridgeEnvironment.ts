@@ -2,7 +2,6 @@ import { OffshoreTransports } from './OffshoreTransports';
 import { CoastalWater } from './CoastalWater';
 import { CoastalArchitecture } from './CoastalArchitecture';
 import { CoastalVegetation } from './CoastalVegetation';
-import { CoastalCloth } from './CoastalCloth';
 import { CoastalForeground } from './CoastalForeground';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
@@ -31,7 +30,6 @@ export class BridgeEnvironment {
   private readonly coastalWater = new CoastalWater();
   private readonly coastalArchitecture = new CoastalArchitecture();
   private readonly coastalVegetation = new CoastalVegetation();
-  private readonly coastalCloth = new CoastalCloth();
   private readonly coastalForeground = new CoastalForeground();
   private readonly coastalBackground = new THREE.Color(ART.coastalDefense.sky);
   private readonly coastalFog = new THREE.Fog(ART.coastalDefense.horizon, ART.coastalDefense.fogNear, ART.coastalDefense.fogFar);
@@ -50,7 +48,7 @@ export class BridgeEnvironment {
     sand.rotation.x = -Math.PI / 2;
     sand.position.set(0, .005, (ART.coastalDefense.shorelineZ + sandNearZ) / 2);
     this.defenseBeach.add(sand, this.coastalWater.group, this.coastalArchitecture.group,
-      this.coastalVegetation.group, this.coastalCloth.group, this.coastalForeground.group);
+      this.coastalVegetation.group, this.coastalForeground.group);
     const duneMaterial = this.material(ART.coastalDefense.sandShade);
     // CoastalWater owns surf; retain only the existing side dunes here.
     for (let patch = 0; patch < 20; patch += 3) {
@@ -73,7 +71,6 @@ export class BridgeEnvironment {
     this.coastalWater.update(nowMs);
     this.coastalArchitecture.update(trackHalfWidth);
     this.coastalVegetation.update(trackHalfWidth, nowMs);
-    this.coastalCloth.update(trackHalfWidth, nowMs);
     this.coastalForeground.update(trackHalfWidth);
     this.scene.background = this.coastalBackground;
     this.scene.fog = this.coastalFog;
@@ -83,7 +80,7 @@ export class BridgeEnvironment {
 
   dispose(): void {
     this.coastalWater.dispose(); this.coastalArchitecture.dispose();
-    this.coastalVegetation.dispose(); this.coastalCloth.dispose();
+    this.coastalVegetation.dispose();
     this.coastalForeground.dispose();
     this.transports.dispose();
     this.scene.remove(this.defenseBeach, this.transports.group);

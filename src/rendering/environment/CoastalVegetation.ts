@@ -5,8 +5,8 @@ import { foliageMassTexture, flowerSpeckTexture } from '../art/FoliageTexture';
 
 const C = ART.coastalDefense;
 export const COASTAL_TREES = [
-  { side: -1, x: 3.2, z: 19, h: 3.4, size: 1.25 },
-  { side: 1, x: 2.5, z: 21, h: 3.6, size: 1.25 },
+  { side: -1, x: 1.7, z: 20.5, h: 3.4, size: 1.15 },
+  { side: 1, x: 1.7, z: 21, h: 3.6, size: 1.15 },
 ] as const;
 
 export class CoastalVegetation {
@@ -69,14 +69,14 @@ export class CoastalVegetation {
               transform.scale.set(tree.size * 1.40, tree.size * .70, 1);
             } else {
               // Keep climbing cards attached to the shorter near-village facades.
-              transform.position.set(side * (side < 0 ? 5.1 : 4.0), 1.15 + (i % 3)*.30,
-                (side < 0 ? 16.3 : 18.1) + (i % 3)*.08);
+              transform.position.set(side * (side < 0 ? 1.0 : 3.3), 1.15 + (i % 3)*.30,
+                22.3 + (i % 3)*.08);
               transform.rotation.set(.12, Math.sin(angle)*.45, Math.cos(angle)*.3);
               transform.scale.set(.72, .65, 1);
             }
           } else if (family === 1) {
-            transform.position.set(side * (side < 0 ? 5.05 : 3.95),
-              1.25 + (i % 3)*.30, (side < 0 ? 16.20 : 18.0) + (i % 3)*.08);
+            transform.position.set(side * (side < 0 ? 1.05 : 3.25),
+              1.25 + (i % 3)*.30, 22.20 + (i % 3)*.08);
             transform.rotation.set(.12, Math.sin(angle)*.2, Math.cos(angle)*.18);
             transform.scale.set(.50, .46, 1);
           } else if (family === 2) {
@@ -87,7 +87,7 @@ export class CoastalVegetation {
             transform.scale.set(branch ? .65 : 1, tree.h * (branch ? .36 : .86), branch ? .65 : 1);
           } else {
             const tree = trees[i];
-            transform.position.set(side * tree.x + 1.1, .024, tree.z + .8);
+            transform.position.set(side * tree.x + .25, .024, tree.z + .8);
             transform.scale.set(tree.size * 1.3, 1, tree.size * .9);
           }
           transform.updateMatrix(); mesh.setMatrixAt(i, transform.matrix);

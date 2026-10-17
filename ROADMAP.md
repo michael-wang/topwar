@@ -4,7 +4,7 @@
 
 GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks use larger 300ms upper-armor streaks and a brief ivory center, now varying across seven nearby chest contacts. Eleven original-colored mechanical pieces now collapse into a tighter footprint with less horizontal travel/skid, retaining ground contact and their 1.9–2.6s fade. Persistent wreck fire is removed; eight denser charcoal/gray lobes now have 1.8× radius, over 3× projected area and stronger upward emergence for .30s, then gently drift right and fade near the wreck by roughly 2.15s. Arrival, spark variation, tight footprint and no persistent fire are Pixel 8 accepted. Only amplified smoke awaits owner review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
-Opening (#22): the silent Concept B Battlefield Diorama now reuses the existing coastal renderer at ≤30Hz with one centered 「開始遊戲」 button. It is isolated from Simulation/RNG/audio/checkpoints; Continue bypasses it paused and Retry remains immediate. Pixel 8 visual/idle-cost review is pending. Optional mobile portrait fullscreen (#28) now shares the real Start/audio gesture, with one first-Resume attempt after Continue and an explicit menu re-entry action; failure stays playable. Red Alert/Commander changes in the [proposal](docs/OPENING_PROPOSAL.md) remain unapproved.
+Opening (#22): the silent Concept B Battlefield Diorama now reuses the existing coastal renderer at ≤30Hz with one centered 「開始遊戲」 button. It is isolated from Simulation/RNG/audio/checkpoints; Continue bypasses it paused and Retry remains immediate. The base Diorama is owner-accepted; three asymmetric military landing craft now replace the scenic boats, floating canopy clutter is removed and the shared Greek village/olive-tree framing is clearer. These environment refinements await owner review. Optional mobile portrait fullscreen (#28) now shares the real Start/audio gesture, with one first-Resume attempt after Continue and an explicit menu re-entry action; failure stays playable. Red Alert/Commander changes in the [proposal](docs/OPENING_PROPOSAL.md) remain unapproved.
 
 Enemy artillery impact smoke now reads lighter gray with lower opacity, fade from .25s and expiry at 1.05s. Initial fire/flash and wind remain; all other VFX families are unchanged. Pixel 8 readability acceptance is pending.
 
@@ -18,7 +18,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Owner reviews Diorama framing, reduced motion and sustained idle cost on Pixel 8 (#22).
+1. Owner reviews the three enemy landing craft, clearer Greek side scenery and retained idle cost/reduced motion on Pixel 8 (#22).
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 

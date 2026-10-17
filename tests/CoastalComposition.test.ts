@@ -3,11 +3,11 @@ import { expect, it } from 'vitest';
 import { COASTAL_BUILDINGS, CoastalArchitecture } from '../src/rendering/environment/CoastalArchitecture';
 import { COASTAL_TREES, CoastalVegetation } from '../src/rendering/environment/CoastalVegetation';
 import { CoastalForeground } from '../src/rendering/environment/CoastalForeground';
-import { coastalCameraFov } from '../src/rendering/renderSize';
+import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 
 it('opens the shoreline showcase while retaining asymmetric near/mid village masses', () => {
   expect(COASTAL_BUILDINGS).toHaveLength(2);
-  for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(24);
+  for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(29);
   expect(COASTAL_TREES).toHaveLength(2);
   for (const tree of COASTAL_TREES) expect(tree.z + tree.size).toBeLessThan(39);
 });
@@ -51,21 +51,20 @@ it('retains a ground shadow and grounded main trunk for each tree', () => {
   vegetation.dispose();
 });
 
-it('exposes retained trunks at the portrait camera, including the relocated tree foot', () => {
+it.each([350,390])('exposes the trunk below each crown at the actual %spx Camera B', width => {
   const architecture = new CoastalArchitecture(), foreground = new CoastalForeground(), vegetation = new CoastalVegetation();
   architecture.update(3.2); foreground.update(3.2); vegetation.update(3.2, 0);
   const scene = new THREE.Scene(); scene.add(architecture.group, foreground.group, vegetation.group); scene.updateMatrixWorld(true);
-  const camera = new THREE.PerspectiveCamera(coastalCameraFov(390 / 844), 390 / 844, .1, 180);
-  camera.position.set(0, 6.5, -10); camera.lookAt(0, 0, 12.5); camera.updateMatrixWorld(true);
+  const camera = new THREE.PerspectiveCamera(48, width / 844, .1, 180); applyCoastalCamera(camera);
   const opaque: THREE.Object3D[] = [];
   scene.traverse(o => { if (o instanceof THREE.Mesh && !(o.material as THREE.Material).transparent) opaque.push(o); });
   const ray = new THREE.Raycaster(), matrix = new THREE.Matrix4();
   for (const side of vegetation.group.children) {
     const trunk = side.getObjectByName('olive-trunks-and-branches') as THREE.InstancedMesh;
     trunk.getMatrixAt(0, matrix); matrix.premultiply(trunk.matrixWorld);
-    // The short near arch crosses the rear tree's middle; its lower trunk/foot
-    // remain exposed through the opening rather than disappearing behind a house.
-    for (const height of side.position.x > 0 ? [-.4, -.2] : [0]) {
+    // The village walls layer in front of the foot; the upper trunk below the
+    // crown must remain exposed, rather than leaving isolated leaf fragments.
+    for (const height of [.1, .2]) {
       const screen = new THREE.Vector3(0, height, 0).applyMatrix4(matrix).project(camera);
       expect(Math.abs(screen.x)).toBeLessThan(1); expect(Math.abs(screen.y)).toBeLessThan(1);
       ray.setFromCamera(new THREE.Vector2(screen.x, screen.y), camera);
@@ -75,12 +74,11 @@ it('exposes retained trunks at the portrait camera, including the relocated tree
   architecture.dispose(); foreground.dispose(); vegetation.dispose();
 });
 
-it('leaves at least 90% of the primary surf sightline clear at the unchanged portrait camera', () => {
+it.each([350,390])('leaves at least 90% of the primary surf sightline clear at %spx Camera B', width => {
   const architecture = new CoastalArchitecture(), foreground = new CoastalForeground();
   architecture.update(3.2); foreground.update(3.2);
   const scene = new THREE.Scene(); scene.add(architecture.group, foreground.group); scene.updateMatrixWorld(true);
-  const camera = new THREE.PerspectiveCamera(coastalCameraFov(390 / 844), 390 / 844, .1, 180);
-  camera.position.set(0, 6.5, -10); camera.lookAt(0, 0, 12.5); camera.updateMatrixWorld(true);
+  const camera = new THREE.PerspectiveCamera(48, width / 844, .1, 180); applyCoastalCamera(camera);
   const opaque: THREE.Object3D[] = [];
   scene.traverse(o => { if (o instanceof THREE.Mesh && !(o.material as THREE.Material).transparent) opaque.push(o); });
   const ray = new THREE.Raycaster(), sand = new THREE.Plane(new THREE.Vector3(0, 1, 0), -.02), point = new THREE.Vector3();

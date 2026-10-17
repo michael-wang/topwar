@@ -15,7 +15,7 @@ it('keeps foreground village vertices outside track clearance and within the nea
       for(let i=0;i<p.count;i++){
         vector.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld);
         expect(Math.abs(vector.x)).toBeGreaterThanOrEqual(halfWidth+COASTAL_FOREGROUND_CLEARANCE);
-        expect(vector.y).toBeLessThan(2.1);expect(vector.z).toBeGreaterThan(5);expect(vector.z).toBeLessThan(17);
+        expect(vector.y).toBeLessThan(2.1);expect(vector.z).toBeGreaterThan(5);expect(vector.z).toBeLessThan(23);
       }
     }
   }

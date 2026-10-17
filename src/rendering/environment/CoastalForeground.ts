@@ -35,7 +35,7 @@ export class CoastalForeground {
       const resource=this.materials[material];
       const list=pieces[side].get(resource)??[];list.push(baked);pieces[side].set(resource,list);
     };
-    // Screen-left: cropped house corner, inner stair and low terrace at Z 6–11.
+    // Screen-left: house corner, inner stair and low terrace; update() anchors the side.
     part(1,1.65,.85,7.2,2.8,1.7,2.25);
     part(1,1.65,1.73,7.2,2.94,.12,2.38,'shade');
     part(1,1.65,1.88,8.26,2.94,.28,.24);
@@ -73,6 +73,10 @@ export class CoastalForeground {
   update(trackHalfWidth:number):void {
     this.sides[0].position.x=-trackHalfWidth-.8;
     this.sides[1].position.x=trackHalfWidth+.8;
+    // Move existing village corners back into the portrait composition, not inward
+    // over the combat lanes. Their facade/door shapes now survive the edge crop.
+    this.sides[0].position.z=5;
+    this.sides[1].position.z=6;
   }
   dispose():void {
     this.geometries.forEach(geometry=>geometry.dispose());

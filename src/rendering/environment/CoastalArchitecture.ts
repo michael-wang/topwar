@@ -8,8 +8,8 @@ const C = ART.coastalDefense;
 // Near village corners stay below the primary surf sightline at the portrait camera.
 // X is measured outward from the track edge; foreground corners live separately.
 export const COASTAL_BUILDINGS = [
-  { side: -1, offset: 5.3, z: 18, width: 2.7, height: 2.1, depth: 3.0, angle: .07 },
-  { side: 1, offset: 4.5, z: 20, width: 2.8, height: 2.2, depth: 3.2, angle: .04 },
+  { side: -1, offset: 2.2, z: 24, width: 2.7, height: 2.1, depth: 3.0, angle: .12 },
+  { side: 1, offset: 2.3, z: 23.5, width: 2.8, height: 2.2, depth: 3.2, angle: -.12 },
 ] as const;
 
 export class CoastalArchitecture {
