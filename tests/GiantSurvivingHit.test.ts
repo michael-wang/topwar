@@ -65,12 +65,12 @@ it('routes repeated Giant HP deltas to bounded gold sparks without blood, and re
   renderer.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);
 });
 
-it('limits ordinary emissive while preserving Giant reveal and dedicated HP dimensions; lethal pales without emission', () => {
+it('limits ordinary emissive while preserving immediate Giant visibility and dedicated HP dimensions', () => {
   const scene=new THREE.Scene(), family=createChibiGiantFamily(), renderer=new GiantRenderer(scene,family);
   const feedback=new HeavyHitFeedback(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,x:0,z:10,hp:100,visualScale:3};
   renderer.update(enemy,0,feedback);
-  expect(renderer.barVisible(0)).toBe(false); expect(renderer.barVisible(1500)).toBe(true);
+  expect(renderer.barVisible()).toBe(true);
   feedback.observe(enemy,2000); renderer.update(enemy,2000,feedback);
   const body=scene.getObjectByName('giant-body') as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
   expect(body.material.emissiveIntensity).toBe(SURVIVING_HIT_STYLES.giant.emissivePeak);

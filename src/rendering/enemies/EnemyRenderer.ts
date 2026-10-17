@@ -298,7 +298,7 @@ export class EnemyRenderer {
     for (const enemy of enemies) {
       if ((enemy.archetype !== 'heavy' && enemy.archetype !== 'giant') || enemy.maxHp === undefined) continue;
       const giantSlot = enemy.archetype === 'giant' ? this.giantRenderers.find(slot => slot.id === enemy.id) : undefined;
-      if (giantSlot && !giantSlot.barVisible(nowMs)) continue;
+      if (giantSlot && !giantSlot.barVisible()) continue;
       let bar = this.healthBars[barIndex++];
       if (!bar) {
         const material = this.barFillMaterial.clone();

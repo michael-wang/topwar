@@ -2,7 +2,7 @@
 
 ## NOW
 
-GIANT mechanical identity (#14) is Pixel 8 PASS / CLOSED. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
+GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; hit sparks and grounded mechanical death are the remaining scoped changes. New visuals require Pixel 8 review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
 Opening experience (#22/#23) has a [design proposal](docs/OPENING_PROPOSAL.md), **PROPOSED — NOT APPROVED FOR PRODUCTION**: silent Battle Showcase versus recommended lower-power Battlefield Diorama, followed by a proposed opening using the existing complete Commander recording. No attract, siren, Commander or production fullscreen code is authorized by that document.
 
@@ -10,7 +10,7 @@ Enemy artillery impact smoke now reads lighter gray with lower opacity, fade fro
 
 Defeat’s 「作戰失敗」 poster now echoes victory with left-side results, lower-right battle-worn characters and 「再試一次」. The soldier is discouraged and the tired Commander supports his shoulder; a darker cool vignette reinforces the mood. The battlefield freezes after final casualty feedback; victory and saves retain their existing flow. Pixel 8 presentation acceptance is pending.
 
-The navy/gold immediate loading cover (#21) is physically approved; its honest four-stage bar still awaits phone acceptance. Protected recovery, the single Start gesture and Reload recovery remain. [Startup measurements](docs/STARTUP_PERFORMANCE.md) (#32) identify renderer CPU work: one byte-identical flower-atlas optimization saves ~87ms construction time and ~17% cold-ready latency under desktop 4× CPU slowdown. Native cold-ready improvement is not established; physical Pixel 8 measurements remain pending. No loading-stage timing is simulated.
+The navy/gold immediate loading cover and honest four-stage bar (#21) are Pixel 8 PASS. Protected recovery, the single Start gesture and Reload recovery remain. [Startup measurements](docs/STARTUP_PERFORMANCE.md) (#32) identify renderer CPU work: one byte-identical flower-atlas optimization saves ~87ms construction time and ~17% cold-ready latency under desktop 4× CPU slowdown. Native cold-ready improvement is not established; physical Pixel 8 measurements remain pending. No loading-stage timing is simulated.
 
 Fullscreen (#28) has an optional DEV QA enter/exit/re-entry trial only. Run the [physical Pixel 8 checklist](docs/FULLSCREEN_TRIAL.md); public startup integration and HTTPS validation remain deferred.
 

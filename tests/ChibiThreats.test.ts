@@ -89,13 +89,12 @@ it('registers Heavy hit geometry, anchors its HP bar, and reuses dedicated conta
   expect(death).toBeDefined(); expect((death.children[1] as THREE.Mesh).geometry).toBe(heavy.helmet.geometry);
   renderer.dispose(); heavy.dispose(); giant.dispose(); expect(scene.children).toHaveLength(0);
 });
-it('uses a full Giant motion envelope for the HP bar, delayed weapon, reveal, hit and shared intact death', () => {
+it('uses a full Giant motion envelope with immediate solid visibility, HP bar, delayed weapon and hit', () => {
   const family = createChibiGiantFamily(), scene = new THREE.Scene(), hits = new HeavyHitFeedback(scene);
   const renderer = new GiantRenderer(scene, family), e = enemy(1, 'giant');
-  renderer.update(e, 0, hits); expect(renderer.barVisible(0)).toBe(false); expect(renderer.barVisible(1500)).toBe(true);
-  const haze = scene.getObjectByName('giant-emergence-haze')!;
-  expect(Math.max(...haze.children.map(cloud => cloud.position.y + cloud.scale.y / 2)))
-    .toBeLessThan(family.helmet.geometry.boundingBox!.max.y);
+  expect(renderer.barVisible()).toBe(false);
+  renderer.update(e, 0, hits); expect(renderer.barVisible()).toBe(true);
+  expect(scene.getObjectByName('giant-emergence-haze')).toBeUndefined();
   const group = scene.getObjectByName('giant-assault-soldier')!;
   for (let t = 0; t <= 850; t += 25) {
     renderer.update(e, 1700 + t, hits); group.updateMatrixWorld(true);

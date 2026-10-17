@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import type { GiantVisualFamily } from '../CharacterVisualFamilies';
-import { GIANT_REVEAL_MS, giantReveal } from '../../presentation/GiantDrama';
 import { deathVariant } from './DeathAssembly';
 import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
@@ -16,17 +15,6 @@ import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
 import { SURVIVING_HIT_STYLES, type HeavyHitFeedback } from './HeavyHitFeedback';
 
-function hazeTexture(): THREE.DataTexture {
-  const size = 32, bytes = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const dx = (x - 15.5) / 15.5, dy = (y - 15.5) / 15.5, radius = dx * dx + dy * dy;
-    const at = (y * size + x) * 4; bytes[at] = bytes[at + 1] = bytes[at + 2] = 255;
-    bytes[at + 3] = Math.round(180 * Math.pow(Math.max(0, 1 - radius), 1.5));
-  }
-  const texture = new THREE.DataTexture(bytes, size, size); texture.needsUpdate = true;
-  texture.magFilter = texture.minFilter = THREE.LinearFilter; return texture;
-}
-
 // Three bounded slots allow two live Colossi and one recent lethal freeze. Resources
 // are borrowed from the Giant family; only slot materials and effects are owned.
 export class GiantRenderer {
@@ -38,11 +26,6 @@ export class GiantRenderer {
   private readonly weaponRest = new THREE.Vector3();
   private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color; tint: ReturnType<typeof prepareEnemyDeathMaterial> }[];
   private readonly dimensions: { width: number; height: number; depth: number };
-  private readonly hazeMap = hazeTexture();
-  private readonly hazeMaterial = new THREE.SpriteMaterial({ map: this.hazeMap, color: ART.world.fog,
-    transparent: true, opacity: 0, depthWrite: false });
-  private readonly haze = new THREE.Group();
-  private bornAt = -Infinity;
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
   private deathVariant=0;
@@ -88,10 +71,7 @@ export class GiantRenderer {
     const bounds = new THREE.Box3().setFromObject(this.group), size = bounds.getSize(new THREE.Vector3());
     this.dimensions = family.presentation ?? { width: size.x, height: bounds.max.y, depth: size.z };
     this.group.visible = false;
-    this.haze.name = 'giant-emergence-haze';
-    for (let i = 0; i < 4; i++) this.haze.add(new THREE.Sprite(this.hazeMaterial));
-    this.haze.visible = false;
-    scene.add(this.group, this.haze);
+    scene.add(this.group);
   }
   get id(): number | undefined { return this.previous?.id; }
   applyBlastReaction(x: number, z: number, strength: number): void {
@@ -107,7 +87,7 @@ export class GiantRenderer {
     return true;
   }
   available(nowMs: number): boolean { return !this.previous || (Number.isFinite(this.deathAt) && nowMs - this.deathAt >= ENEMY_DEATH_TIMING.giant.totalMs); }
-  barVisible(nowMs: number): boolean { return giantReveal(nowMs - this.bornAt).barVisible; }
+  barVisible(): boolean { return !!this.previous && !Number.isFinite(this.deathAt); }
   getModelDimensions(): { width: number; height: number; depth: number } { return { ...this.dimensions }; }
   healthBarLayout(enemy: EnemyRenderState): { width: number; height: number; y: number; x: number } {
     const base = enemy.visualScale ?? 1;
@@ -142,7 +122,6 @@ export class GiantRenderer {
       this.helmet.geometry = this.family.helmet.geometry;
       if (this.family.weapon) (this.weapon.children[0] as THREE.Mesh).geometry = this.family.weapon.geometry;
       this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = true;
-      if (this.previous?.id !== enemy.id) this.bornAt = nowMs;
       this.previous = enemy; this.deathAt = -Infinity;
       const cycle = enemy.gaitCycleMs ?? 850, weight = giantWeightPose(enemy.id, nowMs, cycle), hit = hits.strength(enemy.id, nowMs);
       const kick = impulse?.strength(enemy.id, nowMs) ?? 0;
@@ -156,25 +135,12 @@ export class GiantRenderer {
       const scale = enemy.visualScale ?? 1;
       this.group.scale.set(enemy.visualScaleX ?? scale, (enemy.visualScaleY ?? scale) * (1 - weight.compression - kick * ENEMY_HIT_STYLE.giant.compression), enemy.visualScaleZ ?? scale);
       this.group.visible = true; this.restorePalette();
-      const reveal = giantReveal(nowMs - this.bornAt);
-      for (const { material, color } of this.palette) {
-        material.transparent = reveal.opacity < 1; material.opacity = reveal.opacity;
-        material.color.set(ART.world.near).lerp(color, reveal.color);
+      for (const { material } of this.palette) {
         material.emissive.set(SURVIVING_HIT_STYLES.giant.overlayColor);
         material.emissiveIntensity = SURVIVING_HIT_STYLES.giant.emissivePeak * hit;
       }
-      this.haze.visible = nowMs - this.bornAt < GIANT_REVEAL_MS;
-      this.hazeMaterial.color.set(ART.world.fog); this.hazeMaterial.opacity = reveal.haze;
-      const height = this.dimensions.height * (enemy.visualScaleY ?? scale);
-      this.haze.children.forEach((cloud, index) => {
-        cloud.position.set(-enemy.x + Math.sin(index * 2.4) * 1.1 + (nowMs - this.bornAt) * .00025,
-          // Leave the crest above the highest cloud: identity emerges first.
-          height * (.12 + index * .18), enemy.z - 1.1 - index * .15);
-        cloud.scale.set(4.7 + index * .35, height * .43, 1);
-      });
       this.group.updateMatrixWorld(true); hits.setBody(enemy.id, this.body.geometry, this.body.matrixWorld, nowMs); return;
     }
-    this.haze.visible = false;
     this.destruction.update(nowMs);
     const age = nowMs - this.deathAt;
     const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
@@ -242,16 +208,15 @@ export class GiantRenderer {
   }
   reset(): void {
     this.destruction.reset();
-    this.previous = undefined; this.deathAt = this.bornAt = -Infinity;
-    this.group.visible = this.haze.visible = false;
+    this.previous = undefined; this.deathAt = -Infinity;
+    this.group.visible = false;
     this.group.matrixAutoUpdate = true;
     this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = true;
     this.weapon.position.copy(this.weaponRest); this.restorePalette();
   }
   dispose(): void {
     this.destruction.dispose();
-    this.scene.remove(this.group, this.haze);
-    this.hazeMap.dispose(); this.hazeMaterial.dispose();
+    this.scene.remove(this.group);
     for (const { material } of this.palette) material.dispose();
   }
 }

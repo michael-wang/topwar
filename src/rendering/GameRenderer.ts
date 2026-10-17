@@ -2,7 +2,6 @@ import { SupportAirstrikeRenderer } from './SupportAirstrikeRenderer';
 import { applyCoastalCamera } from './CoastalCamera';
 import type { SupportEvent } from '../simulation/commanderSupport';
 import { ART } from '../art/ArtDirection';
-import { GIANT_REVEAL_MS } from '../presentation/GiantDrama';
 import { IdlePreparation } from '../presentation/IdlePreparation';
 import { GrenadeRenderer } from './GrenadeRenderer';
 import { EnemyArtilleryRenderer } from './EnemyArtilleryRenderer';
@@ -271,9 +270,8 @@ export class GameRenderer {
     this.resetFeedback();
     if (state.defenseTank) { this.tankRenderer ??= new DefenseTankRenderer(this.scene); this.tankRenderer.restore(state.defenseTank, nowMs, victoryElapsedMs); }
     if(state.artillery){this.artilleryRenderer ??= new EnemyArtilleryRenderer(this.scene);this.artilleryRenderer.restore(state.artillery);}
-    // Snapshot entities already exist. Prime identity before the first paused
-    // draw so an existing Giant is readable, without replaying its entrance fade.
-    this.enemyRenderer.update(state.enemies, nowMs - GIANT_REVEAL_MS, !!state.defenseMode,
+    // Prime existing identities before the first paused draw; no hit/death replay.
+    this.enemyRenderer.update(state.enemies, nowMs, !!state.defenseMode,
       -state.player.x, state.player.z);
   }
 
