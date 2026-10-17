@@ -4,8 +4,10 @@ import { smokeWindX } from '../presentation/BattlefieldWind';
 const BAND_SIZE = [.31, .25, .20] as const;
 const BAND_ALPHA = [.20, .40, .64] as const;
 const BAND_COLOR = ['#969b9b', '#51585a', '#303739'] as const;
+const IMPACT_ALPHA = [.14, .24, .32] as const;
+const IMPACT_COLOR = ['#b0b6b6', '#889193', '#697477'] as const;
 
-/** Accepted cloud math, batched across the whole pool in Lab painter order. */
+/** Shared billowing shapes; artillery readability tuning stays separate from Hybrid D. */
 export class BillowingExplosionPool {
   private readonly sphere = new THREE.SphereGeometry(1, 12, 8);
   private readonly pose = new THREE.Object3D();
@@ -24,7 +26,8 @@ export class BillowingExplosionPool {
   readonly durationMs: number;
   constructor(private readonly scene: THREE.Scene, readonly capacity: number, private readonly mode: 'impact' | 'airstrike' = 'impact') {
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > 12) throw Error('Invalid explosion capacity');
-    const air = mode === 'airstrike'; this.durationMs = air ? 2000 : 1500;
+    const air = mode === 'airstrike'; this.durationMs = air ? 2000 : 1050;
+    const colors = air ? BAND_COLOR : IMPACT_COLOR;
     this.hotSphere = air ? new THREE.SphereGeometry(1, 9, 6) : null;
     this.ring = air ? new THREE.RingGeometry(.82, 1, 32) : null;
     this.slots = Array.from({ length: capacity }, () => ({ x: 0, z: 0, atMs: -Infinity }));
@@ -48,7 +51,7 @@ export class BillowingExplosionPool {
     for (const ring of this.rings) { ring.mesh.material.side = THREE.DoubleSide; ring.mesh.material.forceSinglePass = true; }
     const color = new THREE.Color();
     for (let band = air ? 1 : 0; band < 3; band++) for (let slot = 0; slot < capacity; slot++) for (let i = 0; i < 8; i++)
-      this.smoke.mesh.setColorAt(this.smokeIndex(band, slot, i), color.set(BAND_COLOR[band]).multiplyScalar(.85 + i % 3 * .075));
+      this.smoke.mesh.setColorAt(this.smokeIndex(band, slot, i), color.set(colors[band]).multiplyScalar(.85 + i % 3 * .075));
     for (const outer of this.outer) for (let i = 0; i < 8; i++) outer.mesh.setColorAt(i, color.setScalar(.85 + i % 3 * .075));
     this.reset();
   }
@@ -85,6 +88,7 @@ export class BillowingExplosionPool {
     for (const ring of this.rings) { ring.alpha.array.fill(0); ring.mesh.visible = false; }
     for (const outer of this.outer) { outer.alpha.array.fill(0); outer.mesh.visible = false; }
     const air = this.mode === 'airstrike';
+    const colors = air ? BAND_COLOR : IMPACT_COLOR, alpha = air ? BAND_ALPHA : IMPACT_ALPHA;
     this.activeCount = 0; let fires = false, cores = false, packed = 0;
     for (let i = 0; i < this.capacity; i++) {
       const s = this.slots[i];
@@ -102,7 +106,7 @@ export class BillowingExplosionPool {
     this.smoke.mesh.count = this.activeCount * (air ? 16 : 24);
     if (this.activeCount > 0 && this.smokeSlots !== this.activeCount) {
       for (let band = air ? 1 : 0; band < 3; band++) for (let slot = 0; slot < this.activeCount; slot++) for (let i = 0; i < 8; i++)
-        this.smoke.mesh.setColorAt(this.smokeIndex(band, slot, i, this.activeCount), this.color.set(BAND_COLOR[band]).multiplyScalar(.85 + i % 3 * .075));
+        this.smoke.mesh.setColorAt(this.smokeIndex(band, slot, i, this.activeCount), this.color.set(colors[band]).multiplyScalar(.85 + i % 3 * .075));
       this.smoke.mesh.instanceColor!.needsUpdate = true; this.smokeSlots = this.activeCount;
     }
     for (let n = 0; n < this.activeCount; n++) {
@@ -112,7 +116,7 @@ export class BillowingExplosionPool {
       const x = -s.x, z = s.z - originZ, r = air ? 7.2 : 3.6;
       const growth = 1 - Math.exp(-Math.max(0, t) * (air ? 4 : 12));
       const driftAge = Math.max(0, t - (air ? .16 : .08)), wind = smokeWindX(driftAge);
-      const fade = Math.min(1, Math.max(0, (this.durationMs / 1000 - t) / (air ? .5 : .6))) ** 3;
+      const fade = Math.min(1, Math.max(0, (this.durationMs / 1000 - t) / (air ? .5 : .8))) ** (air ? 3 : 2);
       const dispersal = air ? 0 : Math.max(0, t - .35);
       for (let band = 0; band < 3; band++) {
         const size = r * BAND_SIZE[band] * (band === 2 ? .88 : 1) * (.65 + growth * .55 + t * .07);
@@ -126,7 +130,7 @@ export class BillowingExplosionPool {
           this.pose.rotation.set(i * .7, angle, curl); this.pose.updateMatrix();
           const target = air && band === 0 ? this.outer[slot] : this.smoke;
           const index = air && band === 0 ? i : this.smokeIndex(band, packed, i, this.activeCount);
-          target.mesh.setMatrixAt(index, this.pose.matrix); target.alpha.setX(index, BAND_ALPHA[band] * fade);
+          target.mesh.setMatrixAt(index, this.pose.matrix); target.alpha.setX(index, alpha[band] * fade);
         }
       }
       if (air) {

@@ -3,23 +3,28 @@ import * as THREE from 'three';
 import { BillowingExplosionPool } from '../src/rendering/BillowingExplosionPool';
 import { ExplosionComparison } from '../src/dev/ExplosionComparison';
 
-it('matches every accepted B-fast lobe, color, opacity, fire and flash at the requested ages', () => {
+it('keeps B-fast shape, wind, fire and flash but lightens artillery smoke and fades it earlier than the reference', () => {
   const scene = new THREE.Scene(), reference = new THREE.Scene();
   const pool = new BillowingExplosionPool(scene, 8), lab = new ExplosionComparison(reference, 'impact', 'B-fast');
   pool.present(0, 5, .588, 0);
   const smoke = scene.getObjectByName('artillery-impact-smoke') as THREE.InstancedMesh;
   const matrix = new THREE.Matrix4(), other = new THREE.Matrix4(), color = new THREE.Color(), expected = new THREE.Color();
-  for (const ms of [0, 30, 180, 350, 650, 900, 1200, 1500]) {
-    pool.update(ms, 0); lab.seek(ms); expect(smoke.visible).toBe(ms < 1500);
-    if (ms >= 1500) continue;
+  expect(pool.durationMs).toBe(1050);
+  for (const ms of [0, 30, 180, 350, 650, 900, 1050, 1200, 1500]) {
+    pool.update(ms, 0); lab.seek(ms); expect(smoke.visible).toBe(ms < 1050);
+    if (ms >= 1050) continue;
     for (let band = 0; band < 3; band++) {
       const mesh = reference.getObjectByName(`lab-0-band-${band}`) as THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
       expect(Array.from(smoke.geometry.attributes.position.array)).toEqual(Array.from(mesh.geometry.attributes.position.array));
       for (let i = 0; i < 8; i++) {
         smoke.getMatrixAt(band * 8 + i, matrix); mesh.getMatrixAt(i, other); expect(matrix.elements).toEqual(other.elements);
         smoke.getColorAt(band * 8 + i, color); mesh.getColorAt(i, expected); expected.multiply(mesh.material.color);
-        color.toArray().forEach((value, j) => expect(value).toBeCloseTo(expected.toArray()[j], 6));
-        expect(smoke.geometry.attributes.fxOpacity.getX(band * 8 + i)).toBeCloseTo(mesh.material.opacity, 6);
+        color.toArray().forEach((value, j) => expect(value).toBeGreaterThan(expected.toArray()[j]));
+        const alpha = smoke.geometry.attributes.fxOpacity.getX(band * 8 + i);
+        expect(alpha).toBeLessThan(mesh.material.opacity);
+        if (ms === 350) expect(alpha).toBeLessThan(.25);
+        if (ms === 650) expect(alpha).toBeLessThan(.09);
+        if (ms === 900) expect(alpha).toBeLessThan(.02);
       }
     }
     const fire = scene.getObjectByName('artillery-impact-fire') as THREE.InstancedMesh;

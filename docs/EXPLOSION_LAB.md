@@ -1,6 +1,6 @@
 # Explosion Lab — accepted production references
 
-Reference tool retained during P4.24 promotion. The owner physically approved B-fast and Hybrid D on Pixel 8. B-fast now drives Tank/Destroyer gameplay impacts and Hybrid D drives real airstrikes. B-fast production impacts are accepted on Pixel 8; Hybrid D production acceptance (#12) remains open. Grenades, cannon muzzles, tracers, gameplay and saves are unchanged.
+Reference tool retained during P4.24 promotion. The owner physically approved B-fast and Hybrid D on Pixel 8. B-fast now drives Tank/Destroyer gameplay impacts and Hybrid D drives real airstrikes. The original B-fast was accepted on Pixel 8; production now uses a lighter, earlier-fading artillery-only aftermath (1.05s) for readability review. The Lab keeps its original reference unchanged. Hybrid D production acceptance (#12) remains open. Grenades, cannon muzzles, tracers, gameplay and saves are unchanged.
 
 Run `npm run dev -- --host 0.0.0.0`, then open the terminal's Local or Network URL with `?explosion-lab` appended. On Pixel 8, use the Network URL on the same Wi-Fi. Alternatively, the DEV advanced testing menu has **爆炸視覺比較（DEV）**, opening the lab in a separate tab. Production `/topwar/` has neither this link nor the lab; it cannot be reviewed on Pages.
 
