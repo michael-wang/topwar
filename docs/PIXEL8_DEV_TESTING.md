@@ -1,5 +1,7 @@
 # Pixel 8 secure development testing
 
+For accepted GIANT hit/death regression without playing from Lv1, use the isolated [GIANT quick review](GIANT_REVIEW.md). It opens from DEV advanced controls and never replaces the normal checkpoint.
+
 Screen Wake Lock is optional and requires a secure context. HTTP on a LAN IP such as `http://192.168.1.20:5173` normally is insecure. DEV → 進階調校 → 熄屏與存檔 QA shows **Wake Lock: UNSUPPORTED — INSECURE ORIGIN** there. Combat still works; no lock is attempted. HTTPS and Chrome's trustworthy localhost origin support the API when the browser/system grants it. [API requirements and system release](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API).
 
 ## Preferred: USB localhost forwarding

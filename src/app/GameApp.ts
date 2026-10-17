@@ -43,7 +43,7 @@ import { GameStartOverlay } from '../ui/GameStartOverlay';
 import { GrenadeButton } from '../ui/GrenadeButton';
 import { grenadeTarget } from '../simulation/grenade';
 import { progressionStage } from '../simulation/progression';
-import { clearCheckpoint, readCheckpoint, simulationFromCheckpoint, writeCheckpoint,
+import { browserSessionStorage, clearCheckpoint, readCheckpoint, simulationFromCheckpoint, writeCheckpoint,
   type CheckpointRead, type SessionCheckpoint } from './SessionCheckpoint';
 import { SessionRecovery } from '../ui/SessionRecovery';
 import { DevFps } from '../ui/DevFps';
@@ -51,6 +51,7 @@ import { DevLifecycle } from './DevLifecycle';
 import { ScreenWakeLock } from './ScreenWakeLock';
 import { QaPanel } from '../ui/QaPanel';
 import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from './QaStressFixture';
+import { DevGiantReviewControls } from '../ui/DevGiantReviewControls';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -136,12 +137,18 @@ export class GameApp {
   private qaPreparing=false;
   private qaGeneration=0;
   private qaHidden=false;
+  private readonly giantControls: DevGiantReviewControls | null;
+  private get giantReview(): boolean { return import.meta.env.DEV && this.isolatedGiantReview; }
+  // An isolated review has no storage target, including all clear/read paths.
+  private get checkpointStorage() { return this.giantReview ? null : browserSessionStorage(); }
 
   constructor(private readonly viewport: HTMLElement, configStore: ConfigStore,
     private readonly level: LevelDefinition, assets: CharacterAssets, perfEnabled = false,
     audio = new GameAudio(), portraits?: ObserverPortraits,
     saved: CheckpointRead = { status: 'empty' },
-    earlyRecovery?: { dialog: SessionRecovery; continueGame: boolean }) {
+    earlyRecovery?: { dialog: SessionRecovery; continueGame: boolean },
+    private readonly isolatedGiantReview = false) {
+    if (this.giantReview) { this.devReviewFixture = 'giant'; saved = { status: 'empty' }; }
     this.sessionLevel = level;
     this.lifecycle = import.meta.env.DEV ? new DevLifecycle(saved.status,
       saved.checkpoint?.paused, saved.checkpoint?.hidden) : null;
@@ -200,19 +207,26 @@ export class GameApp {
       this.historicalAirSupportReview = false;
       this.retry();
     };
-    this.devReview = this.config.catharsis?.defenseMode
+    this.devReview = this.config.catharsis?.defenseMode && !this.giantReview
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, selectReview) : null;
-    if (import.meta.env.DEV && this.config.catharsis?.defenseMode) {
+    if (import.meta.env.DEV && !this.giantReview && this.config.catharsis?.defenseMode) {
       const lab = document.createElement('a');
       lab.href = '?explosion-lab'; lab.target = '_blank'; lab.rel = 'noopener';
       lab.textContent = '爆炸視覺比較（DEV）';
       lab.style.cssText = 'display:block;padding:12px;color:#ffe0a0';
       this.tuningPanel.advancedControlsHost.append(lab);
+      const giant = document.createElement('a');
+      giant.href = '?giant-review'; giant.target = '_blank'; giant.rel = 'noopener';
+      giant.textContent = 'GIANT 特效測試（DEV）';
+      giant.style.cssText = 'display:block;box-sizing:border-box;min-height:48px;padding:14px;color:#ffe0a0;touch-action:manipulation';
+      this.tuningPanel.advancedControlsHost.prepend(giant);
       const dense = document.createElement('button');
       dense.type = 'button'; dense.textContent = 'BOSS 密集輾壓'; dense.className = 'dev-dense-tank';
       dense.addEventListener('click', () => { selectReview('boss-dense'); dense.blur(); });
       this.tuningPanel.advancedControlsHost.prepend(dense);
     }
+    this.giantControls = import.meta.env.DEV && this.giantReview
+      ? new DevGiantReviewControls(viewport, () => this.retry()) : null;
 
     this.damageFlash = new DamageFlashOverlay(viewport);
     this.gameOverOverlay = new GameOverOverlay(viewport, () => this.retry());
@@ -228,7 +242,7 @@ export class GameApp {
       }, this.controlStrip!.buttons) : null;
     this.unsubscribeConfig = configStore.subscribe((config) => { this.config = config; });
     this.fps = import.meta.env.DEV ? new DevFps(viewport) : null;
-    this.qaPanel=import.meta.env.DEV && this.tuningPanel && this.config.catharsis?.defenseMode ? new QaPanel(this.tuningPanel.advancedControlsHost,{
+    this.qaPanel=import.meta.env.DEV && !this.giantReview && this.tuningPanel && this.config.catharsis?.defenseMode ? new QaPanel(this.tuningPanel.advancedControlsHost,{
       sleep:()=>{void this.beginSleepTest();},reload:()=>this.reloadTest(),exit:()=>this.exitSleepTest(),
     },viewport):null;
     if (this.qaPanel) this.wakeLock.observe(status => this.qaPanel?.setWake(status));
@@ -318,6 +332,7 @@ export class GameApp {
     this.tankEntranceHud.dispose();
     this.artilleryEmergencyHud.dispose();
     this.tuningPanel?.dispose();
+    this.giantControls?.dispose();
     this.hudActions.dispose();
     this.devReview?.dispose();
     this.pauseOverlay.dispose();
@@ -339,7 +354,7 @@ export class GameApp {
     if(this.qaSleepActive||this.qaPreparing)return;
     this.tuningPanel?.close();
     this.qaSession=false;
-    clearCheckpoint(); this.checkpointNotice?.remove(); this.checkpointNotice = null;
+    clearCheckpoint(this.checkpointStorage); this.checkpointNotice?.remove(); this.checkpointNotice = null;
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
     this.celebration = null; this.lastCombatProjectiles = undefined; this.stageClearAtMs = null;
     this.restored = false;
@@ -618,7 +633,7 @@ export class GameApp {
         return;
       } catch { this.showCheckpointFailure('無法恢復進度，請重新開始'); }
     }
-    clearCheckpoint(); this.startup = 'awaiting-start'; this.startOverlay.show();
+    clearCheckpoint(this.checkpointStorage); this.startup = 'awaiting-start'; this.startOverlay.show();
   };
 
   private showCheckpointFailure(text: string): void {
@@ -628,10 +643,11 @@ export class GameApp {
   }
 
   private saveCheckpoint(reason: SessionCheckpoint['reason']): void {
+    if (this.giantReview) return;
     if (this.startup !== 'started') return;
     const started = performance.now(), state = this.simulation.getState();
     const victoryPreview = this.devReviewFixture === 'victory' && state.defenseTank?.status === 'defeated';
-    if (state.squad.count === 0 || state.defenseTank?.status === 'defeated' && !victoryPreview) { clearCheckpoint(); return; }
+    if (state.squad.count === 0 || state.defenseTank?.status === 'defeated' && !victoryPreview) { clearCheckpoint(this.checkpointStorage); return; }
     // Crate fixtures intentionally have no enemy stream; retain that level contract too.
     const level = state.enemyStream === null && this.sessionLevel.enemyStream
       ? { ...this.sessionLevel, enemyStream: undefined, enemyGroups: [], upgradeGates: [] } : this.sessionLevel;
@@ -642,7 +658,7 @@ export class GameApp {
       ...(victoryPreview ? { playtestVictory: { elapsedMs: this.tankDeathAtMs === null ? 0 : this.presentationMs - this.tankDeathAtMs,
         communication: this.fieldObserver?.victoryCheckpoint(this.presentationMs / 1000) } } : {}),
       ...(import.meta.env.DEV && this.qaSession?{qa:{version:1 as const,kind:'sleep-lv10' as const,armed:this.qaSleepActive}}:{}),
-      config: this.config as GameConfig, level, tuning: this.runtimeTuning, state });
+      config: this.config as GameConfig, level, tuning: this.runtimeTuning, state }, this.checkpointStorage);
     if (import.meta.env.DEV) this.lifecycle?.record('checkpoint-write', { ...result, totalMilliseconds: performance.now() - started });
     if (!result.ok) this.showCheckpointFailure('無法儲存進度；請保持此分頁開啟');
     else { this.checkpointNotice?.remove(); this.checkpointNotice = null; }
@@ -695,7 +711,7 @@ export class GameApp {
       await this.audio.activate();
       if(this.disposed||generation!==this.qaGeneration)return;
       this.qaPreparing=true;this.qaSleepActive=false;this.qaSession=true;
-      clearCheckpoint();this.devReviewFixture=null;this.config=this.authoredConfig;this.sessionLevel=this.level;
+      clearCheckpoint(this.checkpointStorage);this.devReviewFixture=null;this.config=this.authoredConfig;this.sessionLevel=this.level;
       this.runtimeTuning=defaultRuntimeTuning(this.config,this.level);
       const tuning=qaSimulationTuning(this.config);
       this.simulation=createQaStressFixture({seed:42,level:this.level,startSquad:1,startRocketCount:0,
@@ -724,7 +740,7 @@ export class GameApp {
       if(this.disposed||generation!==this.qaGeneration)return;
       this.qaPreparing=false;this.qaSleepActive=true;this.setPaused(true);this.pauseOverlay.setVisible(false);
       this.saveCheckpoint('pause');
-      if(readCheckpoint().status!=='valid')throw Error('Checkpoint storage unavailable or invalid');
+      if(readCheckpoint(this.checkpointStorage).status!=='valid')throw Error('Checkpoint storage unavailable or invalid');
       let timer:ReturnType<typeof setTimeout>|undefined;
       const released=await Promise.race([this.wakeLock.releaseForTest(),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),4000);})]);
       if(timer)clearTimeout(timer);
@@ -745,7 +761,7 @@ export class GameApp {
     if (!import.meta.env.DEV) return;
     if(this.startup!=='started'||!this.simulation.getFrameState().squad.count)return;
     this.setPaused(true);this.saveCheckpoint('pause');
-    if(readCheckpoint().status==='valid')window.location.reload();
+    if(readCheckpoint(this.checkpointStorage).status==='valid')window.location.reload();
     else this.qaPanel?.setStatus('無有效儲存進度，未重新載入');
   }
 
@@ -820,7 +836,7 @@ export class GameApp {
       this.fps?.frame(timestampMs, !this.paused && !this.hidden && !this.contextLost && state.squad.count > 0);
       if (state.squad.count === 0 || this.stageClearAtMs !== null) this.laneInput?.stop();
       if (state.squad.count === 0 || cleared) {
-        if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
+        if (!this.clearedFinishedCheckpoint) { if (this.devReviewFixture !== 'victory') clearCheckpoint(this.checkpointStorage); this.clearedFinishedCheckpoint = true; this.wakeLock.setActive(false); } }
       if (!cleared)
         this.fieldObserver?.update(state.destroyer, state.catharsis?.balance.destroyer, state.elapsedSeconds, state.squad.count > 0, this.paused, state.defenseTank, state.commanderSupport, state.catharsis?.balance.commanderSupport);
       if (cleared && (this.tankDeathAtMs === null || this.presentationMs - this.tankDeathAtMs < TANK_DEATH_MS))

@@ -22,6 +22,8 @@ Local Vite and the GitHub Pages closed-playtest build share one hatch with four 
 
 ## Current game
 
+DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT hit/death visuals are Pixel 8 PASS (#14); the new QA entry still needs phone usability review.
+
 Rifle levels 1–5 lead to MG levels 6–12. Lv4 introduces the Giant. Lv6 starts the 3.2-second Carnival and persistent Destroyer entrance. AHEAD Survival takes over at +3.2 seconds, with its first mixed wave at +4.2 seconds. At Lv9, the giant Tank Boss lands in 2.5 seconds and takes over with three HP phases, artillery and flank troops. The user-provided family-original 135.302-second `boss-theme.mp3` starts at INTRO and loops continuously through phases 1/2/3 without restarting; defeating it leaves a wreck, plays a skippable upper Commander victory communication after the explosions, then shows 第一關通關！, Traditional Chinese combat results and 再玩一次. Golden Grenades accumulate without a gameplay inventory cap.
 
 Newly authored Stage 1 uses one optional PLAYER-COMMANDED heavy bomber raid. Once the Tank is active in Phase 3 and the Commander's readiness notice completes, the glowing aircraft button above Grenade is ready; the player can call once or never call. There is no HP/ETA automatic fallback. The manually called raid can deliver the Boss's lethal hit (up to 500 HP). The shared ✈️ Air Support quick-test demonstrates the same policy at Lv10 / 3 MG / 2100 Boss HP. Historical checkpoints keep their embedded automatic HP-by-squad or older triggers, 150-HP protection and player final shot.

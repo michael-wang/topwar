@@ -23,6 +23,7 @@ if (!viewport) {
 }
 const gameViewport = viewport;
 const explosionLab = import.meta.env.DEV && new URLSearchParams(location.search).has('explosion-lab');
+const giantReview = import.meta.env.DEV && new URLSearchParams(location.search).has('giant-review');
 applyArtTheme(document.documentElement);
 const buildLabel = mountBuildLabel(gameViewport, __TOPWAR_VERSION__, __TOPWAR_SHA__);
 if (import.meta.env.DEV) void refreshDevBuildLabel(buildLabel, __TOPWAR_VERSION__, __TOPWAR_SHA__);
@@ -33,7 +34,7 @@ async function startGame(): Promise<void> {
   let assets;
   const audio = new GameAudio();
   let portraits: ObserverPortraits | undefined;
-  let saved: CheckpointRead = readCheckpoint();
+  let saved: CheckpointRead = giantReview ? { status: 'empty' } : readCheckpoint();
   const recovery: { dialog: SessionRecovery | null; decision: Promise<boolean> | null; selected?: boolean }
     = { dialog: null, decision: null };
   const offerRecovery = (valid: boolean): void => {
@@ -87,7 +88,7 @@ async function startGame(): Promise<void> {
     await startupPaint();
     app = new GameApp(gameViewport, configStore, level, assets,
       perfEnabled(window.location.search), audio, portraits, saved,
-      chosenRecovery);
+      chosenRecovery, giantReview);
     startupStatus('正在完成準備…', 3);
     app.start();
     startupStatus(continueGame ? '即將開始' : '準備完成', 4);

@@ -288,6 +288,30 @@ async function startGame(app: GameApp): Promise<void> {
   await (app as unknown as { beginGameplay(): Promise<void> }).beginGameplay();
 }
 
+it('isolates GIANT review from normal checkpoints through pause, Retry, lifecycle and disposal', async () => {
+  const raf = createRaf(), { store } = createConfigStore();
+  const original = 'owner checkpoint: must remain byte-for-byte intact';
+  localStorage.setItem('topwar:session:v1:dev', original);
+  const viewport = Object.assign(new EventTarget(), { append: vi.fn(),
+    classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });
+  const app = new GameApp(viewport as unknown as HTMLElement, store, level, {} as CharacterAssets,
+    false, undefined, undefined, { status: 'invalid' }, undefined, true);
+  await startGame(app); raf.frame(0);
+  const internal = app as any;
+  expect(internal.devReviewFixture).toBe('giant');
+  expect(mock.qaConstructed).not.toHaveBeenCalled();
+  expect(mock.reviewConstructed).not.toHaveBeenCalled();
+  internal.setPaused(true);
+  internal.retry();
+  window.dispatchEvent(new Event('pagehide'));
+  document.dispatchEvent(new Event('freeze'));
+  internal.saveCheckpoint('contextlost');
+  expect(localStorage.getItem('topwar:session:v1:dev')).toBe(original);
+  expect(mock.reviewFixture.mock.calls.every(call => call[2] === 'giant')).toBe(true);
+  app.dispose();
+  expect(localStorage.getItem('topwar:session:v1:dev')).toBe(original);
+});
+
 it('suspends and checkpoints hidden/frozen pages without replacing the simulation or resuming on return', async () => {
   const raf = createRaf(), { store } = createConfigStore();
   const viewport = Object.assign(new EventTarget(), { classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() } });

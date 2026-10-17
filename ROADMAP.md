@@ -2,7 +2,7 @@
 
 ## NOW
 
-GIANT mechanical identity (#14) is implemented: golden nonlethal sparks, no blood/stains, internal death burst and authored component separation with rightward charcoal/gray smoke. Existing gameplay and 2.6-second visual release remain. Pixel 8 acceptance is pending.
+GIANT mechanical identity (#14) is Pixel 8 PASS / CLOSED. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
 Enemy artillery impact smoke now reads lighter gray with lower opacity, fade from .25s and expiry at 1.05s. Initial fire/flash and wind remain; all other VFX families are unchanged. Pixel 8 readability acceptance is pending.
 
