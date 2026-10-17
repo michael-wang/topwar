@@ -30,12 +30,12 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the shared froz
   renderer.die(enemy, 200); renderer.update(undefined, 320, hits);
   expect(scene.getObjectByName('giant-death-impact')).toBeUndefined();
   expect(group.visible).toBe(true);
-  const weapon=group.getObjectByName('giant-maul')!, localGrip=weapon.matrix.clone();
+  const weapon=group.getObjectByName('giant-maul')!, localGrip=weapon.matrix.clone(), captured=(group.children[0] as THREE.Mesh).geometry;
   renderer.update(undefined, 200+ENEMY_DEATH_TIMING.giant.totalMs-1, hits);
   expect(group.rotation.x).toBeCloseTo(-.12);
-  expect((group.children[0] as THREE.Mesh).geometry.getAttribute('position').array).toEqual(family.lethalReaction!.final.geometry.getAttribute('position').array);expect((group.children[0] as THREE.Mesh).geometry.getAttribute('deathPieceDirection')).toBeDefined();
+  expect((group.children[0] as THREE.Mesh).geometry).toBe(captured);expect((group.children[0] as THREE.Mesh).geometry.getAttribute('deathPieceDirection')).toBeDefined();
   expect(scene.getObjectByName('giant-armor-wreckage')).toBeUndefined();
-  expect(group.visible).toBe(true);expect(weapon.matrix.equals(localGrip)).toBe(false);
+  expect(group.visible).toBe(true);expect(weapon.matrix.equals(localGrip)).toBe(true);
   renderer.update(undefined, 200+ENEMY_DEATH_TIMING.giant.totalMs, hits);expect(group.visible).toBe(false);
   let borrowedDisposed = false; family.body.geometry.addEventListener('dispose', () => { borrowedDisposed = true; });
   renderer.reset(); renderer.dispose(); hits.dispose();

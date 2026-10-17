@@ -62,7 +62,6 @@ it('bounds Giant dust buffers and never allocates another emitter during a long 
 import { EnemyRenderer, enemyRunFrame } from '../src/rendering/enemies/EnemyRenderer';
 import { GiantRenderer } from '../src/rendering/enemies/GiantRenderer';
 import { HeavyHitFeedback } from '../src/rendering/enemies/HeavyHitFeedback';
-import { writeLethalRecoil } from '../src/rendering/enemies/EnemyLethalRecoil';
 import { gruntDeathBody } from '../src/presentation/GruntDeathBody';
 import { grayBodyModel, runFrames } from './characterModel';
 it('keeps Heavy locomotion underneath additive hits and captures its lethal pose before the compact upward fade', () => {
@@ -87,7 +86,7 @@ it('keeps Heavy locomotion underneath additive hits and captures its lethal pose
   renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);
   renderer.update([],1300);expect(corpse.visible).toBe(false);renderer.update([],1150);expect(scene.getObjectByName('enemy-ground-blood-stains')!.visible).toBe(true);renderer.reset();renderer.dispose();
 });
-it('delays the Giant maul independently and keeps the maul/grip assembly intact throughout its lethal recoil', () => {
+it('keeps the live Giant grip intact and freezes its captured root while mechanical pieces separate', () => {
   const family = createChibiGiantFamily();
   const scene=new THREE.Scene(), renderer=new GiantRenderer(scene,family), hits=new HeavyHitFeedback(scene);
   const enemy={id:1,tier:1,archetype:'giant' as const,x:0,z:14,hp:210,maxHp:210,visualScaleX:3.4272,visualScaleY:5.04,visualScaleZ:5.04};
@@ -98,8 +97,9 @@ it('delays the Giant maul independently and keeps the maul/grip assembly intact 
   expect(mace.rotation.x).not.toBe(angle);
   group.updateMatrixWorld(true);const captured=group.matrixWorld.clone();
   renderer.die(enemy,200);renderer.update(undefined,400,hits);
-  const expected=new THREE.Matrix4();writeLethalRecoil(expected,captured,200,'giant');
-  expect(group.matrix.equals(expected)).toBe(true);expect(mace.parent).toBe(group);expect(group.visible).toBe(true);
+  expect(group.matrix.equals(captured)).toBe(true);expect(mace.parent).toBe(group);expect(group.visible).toBe(true);
+  const debris=(renderer as unknown as {debris:{matrices:{value:THREE.Matrix4[]}}}).debris;
+  expect(debris.matrices.value[7].equals(new THREE.Matrix4())).toBe(false);
   renderer.update(undefined,2800,hits);expect(group.visible).toBe(false);
   renderer.update(undefined,2900,hits);expect(group.visible).toBe(false);
   renderer.reset();renderer.update(enemy,1000,hits);expect(mace.rotation.x).toBeLessThan(.15);

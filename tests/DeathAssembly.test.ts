@@ -21,7 +21,7 @@ it('bakes semantic pieces into the exact accepted pose with three deterministic 
     }
     expect(pieces.size).toBe(DEATH_PIECE_COUNTS[f.role]);expect(a.pieceCount).toBe(pieces.size);
     if('weapon' in a)expect(new Set(Array.from(a.weapon.getAttribute('deathPieceId').array))).toEqual(new Set([7]));
-    expect(f.body.geometry.getAttribute('deathPieceId')).toBeUndefined();f.dispose();
+    if(f.role==='heavy')expect(f.body.geometry.getAttribute('deathPieceId')).toBeUndefined();else expect(f.body.geometry.getAttribute('deathPieceId')).toBeDefined();f.dispose();
   }
 });
 it('keeps separation in world units and preserves instanced authored color/fade/variant without extra piece draws', () => {

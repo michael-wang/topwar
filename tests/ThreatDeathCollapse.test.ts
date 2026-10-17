@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { THREAT_DEATH_COLLAPSE, threatCollapseProgress, giantMaulSettle } from '../src/presentation/ThreatDeathCollapse';
+import { THREAT_DEATH_COLLAPSE, threatCollapseProgress } from '../src/presentation/ThreatDeathCollapse';
 import { ENEMY_DEATH_TIMING, enemyBodyOpening, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
 import { writeLethalRecoil, lethalRecoilPose, LETHAL_FOOT_PIVOT_Y } from '../src/rendering/enemies/EnemyLethalRecoil';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
@@ -47,16 +47,15 @@ it('retains grenade-killed Heavy collapse and planted shoes without changing sim
   expect(geometry.getAttribute('position').array).toEqual(new Float32Array(positions));expect(JSON.stringify(e)).toBe(before);
   r.reset();expect(body.count).toBe(0);r.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);
 });
-it('drops the complete Giant maul and grip, settles them with a short lag and resets the death-only correction', () => {
+it('grounds the complete Giant ram without changing its captured grip or geometry',()=>{
   const f=createChibiGiantFamily(),scene=new THREE.Scene(),r=new GiantRenderer(scene,f),hits=new HeavyHitFeedback(scene),e={id:1,archetype:'giant' as const,hp:1,tier:1,x:0,z:8,visualScale:2.6};
-  r.update(e,0,hits);r.update(e,2000,hits);const group=r.die(e,2010),weapon=group.getObjectByName('giant-maul')!,mesh=weapon.children[0]as THREE.Mesh;
-  const original=Array.from(mesh.geometry.getAttribute('position').array),rest=mesh.position.clone();group.updateMatrixWorld(true);const aliveY=new THREE.Vector3().setFromMatrixPosition(weapon.matrixWorld).y;
-  r.update(undefined,2760,hits);group.updateMatrixWorld(true);const droppedY=new THREE.Vector3().setFromMatrixPosition(weapon.matrixWorld).y;
-  expect(droppedY).toBeLessThan(aliveY-.35);expect(mesh.position).toEqual(rest);expect(mesh.geometry.getAttribute('position').array).toEqual(new Float32Array(original));
-  expect(weapon.children).toHaveLength(1);expect(weapon.parent).toBe(group);
-  expect(giantMaulSettle(230)).toBe(0);expect(giantMaulSettle(750)).toBe(.50);expect(giantMaulSettle(2600)).toBe(.50);
-  const mat=(group.children[0]as THREE.Mesh).material as THREE.Material,shader={uniforms:{},vertexShader:'#include <project_vertex>',fragmentShader:''}as Parameters<THREE.Material['onBeforeCompile']>[0];mat.onBeforeCompile(shader,{}as THREE.WebGLRenderer);expect(shader.uniforms.deathSink.value).toBe(.40);
-  r.update(undefined,2860,hits);const held=weapon.matrix.clone();r.update(undefined,2860,hits);expect(weapon.matrix.elements).toEqual(held.elements);
-  r.reset();r.update(e,3000,hits);expect(shader.uniforms.deathSink.value).toBe(0);
+  r.update(e,2000,hits);const group=r.die(e,2010),weapon=group.getObjectByName('giant-maul')!,mesh=weapon.children[0] as THREE.Mesh;
+  const original=mesh.geometry,grip=weapon.matrix.clone();r.update(undefined,3510,hits);group.updateMatrixWorld(true);
+  const material=mesh.material as THREE.MeshStandardMaterial,shader={uniforms:{},vertexShader:'',fragmentShader:''} as Parameters<typeof material.onBeforeCompile>[0];material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);
+  const matrix=shader.uniforms.giantDebrisMatrices.value[7],p=mesh.geometry.getAttribute('position'),v=new THREE.Vector3();let floor=Infinity;
+  for(let i=0;i<p.count;i++)floor=Math.min(floor,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).applyMatrix4(matrix).y);
+  expect(floor).toBeCloseTo(.035,5);expect(mesh.geometry).toBe(original);expect(weapon.matrix.equals(grip)).toBe(true);
+  expect(shader.uniforms).not.toHaveProperty('deathPale');expect(shader.uniforms.giantDebrisEnabled.value).toBe(1);
+  r.reset();expect(shader.uniforms.giantDebrisEnabled.value).toBe(0);
   r.dispose();hits.dispose();f.dispose();expect(scene.children).toHaveLength(0);
 });

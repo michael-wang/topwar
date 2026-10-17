@@ -22,7 +22,7 @@ Local Vite and the GitHub Pages closed-playtest build share one hatch with four 
 
 ## Current game
 
-DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT hit/death visuals are Pixel 8 PASS (#14); the new QA entry still needs phone usability review.
+DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. The #33 GIANT arrival, brighter armor hits and grounded metal death refine the prior #14 presentation; new visuals and QA usability await Pixel 8 review.
 
 The [opening experience proposal](docs/OPENING_PROPOSAL.md) compares two silent attract concepts and a Red Alert storyboard using existing Commander audio. It is **PROPOSED — NOT APPROVED FOR PRODUCTION**; current startup and DEV-only fullscreen behavior remain unchanged.
 
@@ -36,7 +36,7 @@ See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](AR
 
 ## Saves and phone testing
 
-Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single Tap-to-Start gesture remain. Loading feel (#21) and DEV fullscreen (#28) await physical Pixel 8 review.
+Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single Tap-to-Start gesture remain. Loading feedback/bar (#21) are Pixel 8 PASS; DEV fullscreen (#28) awaits physical review.
 
 Manual Pause and page hiding save a bounded full-state checkpoint. After reload, Continue/New Game is available before asset initialization. Continue restores paused and explicit Resume activates audio and requests Screen Wake Lock. Returning to a surviving hidden page also remains paused.
 

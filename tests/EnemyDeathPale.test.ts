@@ -7,7 +7,7 @@ import { prepareEnemyDeathMaterial } from '../src/rendering/enemies/EnemyDeathMa
 import { DEATH_BLOOD_COLORS } from '../src/rendering/enemies/IntegratedDeathBlood';
 
 it('starts in authored colors, drains monotonically with smoothstep and holds pale through breakup/fade', () => {
-  for (const role of ['grunt', 'heavy', 'giant'] as const) {
+  for (const role of ['grunt', 'heavy'] as const) {
     expect(enemyDeathPale(0, role)).toBe(0);
     expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role] / 2, role)).toBe(.5);
     expect(enemyDeathPale(DEATH_PALE_COMPLETE_MS[role], role)).toBe(1);
@@ -19,6 +19,7 @@ it('starts in authored colors, drains monotonically with smoothstep and holds pa
     for (const age of [BLOOD_RIBBON_START_MS[role], ENEMY_DEATH_TIMING[role].totalMs]) expect(enemyDeathPale(age, role)).toBe(1);
   }
 });
+it('never pales mechanical GIANT at any age',()=>{for(const age of [0,100,500,1500,2600])expect(enemyDeathPale(age,'giant')).toBe(0);});
 it('uses a single non-emissive albedo scalar and leaves the crimson blood palette intact', () => {
   expect(DEATH_PALE_COLOR).toBe('#b9beba');
   expect(DEATH_BLOOD_COLORS).toEqual(['#751d27', '#9f2734', '#c93443']);

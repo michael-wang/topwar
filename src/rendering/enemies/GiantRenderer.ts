@@ -1,15 +1,11 @@
 import * as THREE from 'three';
 import type { GiantVisualFamily } from '../CharacterVisualFamilies';
 import { deathVariant } from './DeathAssembly';
-import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
-import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
-import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage } from '../../presentation/EnemyDeathTiming';
-import { GiantDestruction, giantDisassembly } from './GiantDestruction';
-import { giantMaulSettle, giantMaulSwing, THREAT_DEATH_COLLAPSE } from '../../presentation/ThreatDeathCollapse';
-import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
-import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
+import { GiantDebris, giantDebrisOpacity, GIANT_DEBRIS } from './GiantDebris';
+import { ENEMY_DEATH_TIMING } from '../../presentation/EnemyDeathTiming';
+import { GiantDestruction } from './GiantDestruction';
 import type { GiantImpactDust } from './GiantImpactDust';
 import type { EnemyRenderState } from '../RenderState';
 import { ENEMY_HIT_STYLE, type EnemyHitImpulse } from './EnemyHitImpulse';
@@ -24,33 +20,25 @@ export class GiantRenderer {
   private readonly helmet: THREE.Mesh;
   private readonly weapon = new THREE.Group();
   private readonly weaponRest = new THREE.Vector3();
-  private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color; tint: ReturnType<typeof prepareEnemyDeathMaterial> }[];
+  private readonly palette: { material: THREE.MeshStandardMaterial; color: THREE.Color }[];
+  private readonly debris: GiantDebris;
   private readonly dimensions: { width: number; height: number; depth: number };
   private previous: EnemyRenderState | undefined;
   private deathAt = -Infinity;
-  private deathVariant=0;
-  private readonly frozenHelmet = new THREE.Matrix4();
+
   private readonly frozenRoot = new THREE.Matrix4();
-  private readonly recoilDirection = new THREE.Vector2();
-  private readonly frozenWeapon = new THREE.Matrix4();
-  private readonly maulSwing = new THREE.Matrix4();
-  private readonly maulHead = new THREE.Vector3(.60, .77, .08);
+
   private readonly maulContact = new THREE.Vector3();
   private dustTriggered = false;
-  private readonly reactionWeaponMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
-  private readonly reactionMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
+
   constructor(private readonly scene: THREE.Scene, private readonly family: GiantVisualFamily, private readonly impactDust?: GiantImpactDust) {
     this.destruction = new GiantDestruction(scene);
-    const reaction = family.lethalReaction;
-    this.reactionMatrices = [lethalUpperMatrix(.5, reaction?.sink ?? 0, reaction?.tilt ?? 0, reaction?.compression ?? 0),
-      lethalUpperMatrix(1, reaction?.sink ?? 0, reaction?.tilt ?? 0, reaction?.compression ?? 0)];
-    this.reactionWeaponMatrices = this.reactionMatrices.map((matrix, index) => new THREE.Matrix4().makeTranslation(0, (index + 1) * .025, 0).multiply(matrix)) as unknown as readonly [THREE.Matrix4, THREE.Matrix4];
-    const material = (source: THREE.Material, surface: 'body' | 'gear') => {
+    const material = (source: THREE.Material) => {
       if (!(source instanceof THREE.MeshStandardMaterial)) throw new Error('Giant requires standard family materials');
       const result = (source.clone());
       result.color.set('white'); result.emissive.set(ART.fx.core); result.emissiveIntensity = 0; return result;
     };
-    const bodyMaterial = material(family.body.material, 'body'), gearMaterial = material(family.helmet.material, 'gear');
+    const bodyMaterial = material(family.body.material), gearMaterial = material(family.helmet.material);
     this.body = new THREE.Mesh(family.body.geometry, bodyMaterial);
     this.body.name = 'giant-body';
     this.helmet = new THREE.Mesh(family.helmet.geometry, gearMaterial); this.helmet.name = 'giant-crest-helmet';
@@ -65,8 +53,12 @@ export class GiantRenderer {
       this.weapon.position.copy(this.weaponRest); maul.position.copy(this.weaponRest).negate();
       this.weapon.add(maul); this.group.add(this.weapon);
     }
-    this.palette = [bodyMaterial, gearMaterial].map(material => ({ material, color: material.color.clone(),
-      tint: prepareEnemyDeathMaterial(material, true) }));
+    this.palette = [bodyMaterial, gearMaterial].map(material => ({ material, color: material.color.clone() }));
+    const meshes = [this.body, this.helmet];
+    if (this.weapon.children[0]) meshes.push(this.weapon.children[0] as THREE.Mesh);
+    this.debris = new GiantDebris(meshes, [family.body.geometry, ...family.runFrames.map(frame => frame.geometry)]);
+    for (const { material } of this.palette) this.debris.prepareMaterial(material);
+    for (const mesh of meshes) mesh.frustumCulled = false;
     this.group.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(this.group), size = bounds.getSize(new THREE.Vector3());
     this.dimensions = family.presentation ?? { width: size.x, height: bounds.max.y, depth: size.z };
@@ -96,28 +88,25 @@ export class GiantRenderer {
     return { x: this.group.position.x, width: bar.width * scale, height: bar.height * scale,
       y: this.dimensions.height * (enemy.visualScaleY ?? base) + .35 };
   }
-  die(enemy: EnemyRenderState, nowMs: number, variant=deathVariant(enemy.id), attackerX?: number, attackerZ?: number): THREE.Group {
-    this.previous = enemy; this.deathAt = nowMs;this.deathVariant=variant; this.dustTriggered = false;
+  die(enemy: EnemyRenderState, nowMs: number, variant=deathVariant(enemy.id), _attackerX?: number, _attackerZ?: number): THREE.Group {
+    this.previous = enemy; this.deathAt = nowMs; this.dustTriggered = false;
     // Current body geometry, root, helmet lag and grip/maul stay untouched.
     this.group.updateMatrixWorld(true);
     this.frozenRoot.copy(this.group.matrixWorld);
     this.destruction.present(this.frozenRoot, nowMs);
-    writeLethalDirection(this.recoilDirection, this.frozenRoot, attackerX, attackerZ);
+    this.debris.capture(variant);
     this.group.matrixAutoUpdate = false;
-    this.frozenHelmet.copy(this.helmet.matrix); this.frozenWeapon.copy(this.weapon.matrix);
     this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = false;
     return this.group;
   }
   private restorePalette(): void {
-    for (const { material, color, tint } of this.palette) {
-      tint.breakup.value = 0; tint.sink.value = 0;
-      tint.pale.value = 0;
+    for (const { material, color } of this.palette) {
       material.color.copy(color); material.opacity = 1; material.transparent = false; material.depthWrite = true; material.emissiveIntensity = 0;
     }
   }
   update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback, impulse?: EnemyHitImpulse): void {
     if (enemy) {
-      this.destruction.reset();
+      this.destruction.reset(); this.debris.reset();
       this.group.matrixAutoUpdate = true;
       this.helmet.geometry = this.family.helmet.geometry;
       if (this.family.weapon) (this.weapon.children[0] as THREE.Mesh).geometry = this.family.weapon.geometry;
@@ -143,71 +132,25 @@ export class GiantRenderer {
     }
     this.destruction.update(nowMs);
     const age = nowMs - this.deathAt;
-    const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
-    this.group.visible = !!this.previous && pose.bodyVisible;
+    this.group.visible = !!this.previous && age >= 0 && age < GIANT_DEBRIS.totalMs;
     if (!this.group.visible) {
-      // Finish the opacity clock before releasing the complete body/weapon slot.
-      if (this.previous && age >= ENEMY_DEATH_TIMING.giant.totalMs)
-        for (const { material } of this.palette) material.opacity = 0;
+      if (age >= GIANT_DEBRIS.totalMs) for (const { material } of this.palette) material.opacity = 0;
       return;
     }
-    writeLethalRecoil(this.group.matrix, this.frozenRoot, age, 'giant', this.recoilDirection.x, this.recoilDirection.y);
-    this.group.matrixWorldNeedsUpdate = true;
-    this.weapon.matrix.copy(this.frozenWeapon);
-    const stage = enemyReactionStage(age, 'giant'), reaction = this.family.lethalReaction;
-    if (reaction && stage > 0) {
-      this.body.geometry = (stage === 1 ? reaction.transition : reaction.final).geometry;
-      const upper = this.reactionMatrices[stage - 1];
-      this.helmet.matrix.copy(this.frozenHelmet).premultiply(upper);
-      this.weapon.matrix.copy(this.frozenWeapon).premultiply(this.reactionWeaponMatrices[stage - 1]);
-      // The role reaction moves the complete grip-hand + maul assembly.
-      this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
+    this.debris.update(age);
+    for (const { material, color } of this.palette) {
+      material.color.copy(color); material.opacity = giantDebrisOpacity(age);
+      material.transparent = material.opacity < 1; material.depthWrite = true; material.emissiveIntensity = 0;
     }
-    // Swing the entire hand/shaft/head about the original grip, then settle.
-    this.weapon.matrix.multiply(this.maulSwing.makeRotationX(giantMaulSwing(age)));
-    this.weapon.matrix.elements[13] -= giantMaulSettle(age) / Math.max(.001, this.group.scale.y);
-    this.weapon.matrixWorldNeedsUpdate = true;
-    this.group.updateMatrixWorld(true);
-    const maulMesh = this.weapon.children[0] as THREE.Mesh | undefined;
-    if (maulMesh) {
-      this.maulContact.copy(this.maulHead).applyMatrix4(maulMesh.matrixWorld);
-      const m = maulMesh.matrixWorld.elements;
-      // Y projection of the two authored metal boxes, including their rotated corners.
-      const ax = Math.abs(m[1]), ay = Math.abs(m[5]), az = Math.abs(m[9]);
-      const headFloor = Math.min(
-        this.maulContact.y - (ax * .21 + ay * .15 + az * .17),
-        this.maulContact.y + m[1] * .155 - (ax * .06 + ay * .135 + az * .175));
-      const correction = Math.max(0, .025 - headFloor);
-      this.weapon.matrix.elements[13] += correction / Math.max(.001, this.group.matrixWorld.elements[5]);
-      this.weapon.matrixWorldNeedsUpdate = true;
-      if (!this.dustTriggered && age >= THREAT_DEATH_COLLAPSE.giant.peakMs) {
-        this.group.updateMatrixWorld(true);
-        this.maulContact.copy(this.maulHead).applyMatrix4(maulMesh.matrixWorld);
-        this.impactDust?.spawn(this.maulContact.x, this.maulContact.z, this.deathAt + THREAT_DEATH_COLLAPSE.giant.peakMs);
-        this.dustTriggered = true;
-      }
-    }
-    // All vertices in a logical piece share one bounded displacement; the
-    // grip-hand and maul remain a single piece throughout the breakup.
-    const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
-    const separation = giantDisassembly(age) / Math.max(.001,scale);
-    if (stage === 2 && this.family.deathAssembly) {
-      this.body.geometry = this.family.deathAssembly.body;
-      this.helmet.geometry = this.family.deathAssembly.helmet;
-      (this.weapon.children[0] as THREE.Mesh).geometry = this.family.deathAssembly.weapon;
-    }
-    this.helmet.matrixWorldNeedsUpdate = this.weapon.matrixWorldNeedsUpdate = true;
-    for (const { material, color, tint } of this.palette) {
-      material.color.copy(color); tint.breakup.value = separation;
-      tint.pale.value = enemyDeathPale(age, 'giant');
-      tint.sink.value = lethalRecoilPose(age, 'giant').sink;
-      tint.variant.value = this.deathVariant;
-      material.transparent = pose.bodyOpacity < 1; material.depthWrite = true;
-      material.opacity = pose.bodyOpacity; material.emissiveIntensity = 0;
+    if (!this.dustTriggered && age >= this.debris.landingAgeMs(7)) {
+      this.debris.landingPoint(7, this.maulContact);
+      this.impactDust?.spawn(this.maulContact.x, this.maulContact.z, this.deathAt + this.debris.landingAgeMs(7));
+      this.dustTriggered = true;
     }
   }
+
   reset(): void {
-    this.destruction.reset();
+    this.destruction.reset(); this.debris.reset();
     this.previous = undefined; this.deathAt = -Infinity;
     this.group.visible = false;
     this.group.matrixAutoUpdate = true;

@@ -1,17 +1,11 @@
 import * as THREE from 'three';
 import {expect,it,vi} from 'vitest';
-import {GiantDestruction,giantDisassembly} from '../src/rendering/enemies/GiantDestruction';
+import {GiantDestruction} from '../src/rendering/enemies/GiantDestruction';
 import {EnemyRenderer} from '../src/rendering/enemies/EnemyRenderer';
 import {createChibiGruntFamily} from '../src/rendering/enemies/ChibiGruntFamily';
 import {createChibiHeavyFamily,createChibiGiantFamily} from '../src/rendering/enemies/ChibiThreatFamilies';
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
 import {ENEMY_DEATH_TIMING} from '../src/presentation/EnemyDeathTiming';
-
-it('separates rigid metal pieces early while retaining the 2.6-second release clock',()=>{
- expect(giantDisassembly(179)).toBe(0);expect(giantDisassembly(350)).toBeGreaterThan(.1);
- expect(giantDisassembly(650)).toBeGreaterThan(.7);expect(giantDisassembly(930)).toBeCloseTo(1.15);
- expect(ENEMY_DEATH_TIMING.giant.totalMs).toBe(2600);
-});
 
 it('detaches bounded layered smoke from a rotated/scaled torso, drifts screen-right, seeks, freezes and expires',()=>{
  const scene=new THREE.Scene(),fx=new GiantDestruction(scene),matrix=new THREE.Matrix4().compose(new THREE.Vector3(2,0,14),
@@ -73,7 +67,7 @@ it('keeps three simultaneous destruction slots bounded and drives actual tagged 
  expect(body.geometry.getAttribute('deathPieceDirection')).toBeDefined();
  const shader={uniforms:{},vertexShader:'',fragmentShader:''} as Parameters<typeof body.material.onBeforeCompile>[0];
  body.material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);
- expect(shader.uniforms.deathBreakup.value*2.66).toBeCloseTo(giantDisassembly(650));
+ expect(shader.uniforms.giantDebrisEnabled.value).toBe(1);expect(shader.uniforms.giantDebrisMatrices.value).toHaveLength(11);
  r.update([],4700);expect(scene.children.filter(o=>o.name.startsWith('giant-destruction-')&&o.visible)).toHaveLength(0);
  expect(scene.children.length).toBe(objects);r.dispose();Object.values(families).forEach(f=>f.dispose());
 });

@@ -5,10 +5,8 @@ import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamil
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { ENEMY_DEATH_TIMING, ENEMY_REACTION_TIMING, enemyDeathPose } from '../src/presentation/EnemyDeathTiming';
 import { gruntDeathBody } from '../src/presentation/GruntDeathBody';
-import { enemyDeathPale } from '../src/presentation/EnemyDeathPale';
-import { writeLethalRecoil } from '../src/rendering/enemies/EnemyLethalRecoil';
 function matrixClose(a: THREE.Matrix4,b: THREE.Matrix4) { a.elements.forEach((value,i)=>expect(value).toBeCloseTo(b.elements[i],6)); }
-it('captures exact lethal poses, lifts intact Grunts/Heavies or topples Giants, and fades all surfaces together', () => {
+it('captures exact lethal poses, lifts intact Grunts/Heavies or grounds original-color Giants, and fades all surfaces together', () => {
   for(const role of ['grunt','heavy','giant'] as const){
     const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()};
     const scene=new THREE.Scene(),renderer=new EnemyRenderer(scene,families),timing=ENEMY_DEATH_TIMING[role==='heavy'?'grunt':role];
@@ -33,15 +31,9 @@ it('captures exact lethal poses, lifts intact Grunts/Heavies or topples Giants, 
     const root=corpse.matrix.clone();
     for(const age of role!=='giant'?[0,20,50,95,140,200,350,400,519]:[0,20,ENEMY_REACTION_TIMING[role].startMs-1,ENEMY_REACTION_TIMING[role].endMs,breakupTiming!.breakupEndMs,timing.fadeStartMs,(timing.fadeStartMs+timing.totalMs)/2,timing.totalMs-1]) {
       renderer.update([],2031+age);corpse.updateMatrixWorld(true);expect(corpse.visible).toBe(true);
-      const expected = new THREE.Matrix4(); if(role!=='giant'){expected.copy(root);expected.elements[13]+=gruntDeathBody(age).lift;}else writeLethalRecoil(expected, root, age, role); matrixClose(corpse.matrix,expected);
-      if(role!=='giant' || age < ENEMY_REACTION_TIMING[role].startMs) {
-        if(age===0)parts.forEach((part,index)=>matrixClose(part.matrixWorld,before[index]));
-        geometries.forEach((geometry,index)=>expect((parts[index] as THREE.Mesh).geometry).toBe(geometry));
-      } else {
-        const geometry=(parts[0] as THREE.Mesh).geometry;
-        if(role==='giant'&&age>breakupTiming!.breakupStartMs){expect(geometry.getAttribute('deathPieceDirection')).toBeDefined();expect(geometry.getAttribute('position').array).toEqual(family.lethalReaction!.final.geometry.getAttribute('position').array);}
-        else expect(geometry).toBe(family.lethalReaction!.final.geometry);
-      }
+      const expected = new THREE.Matrix4(); if(role!=='giant'){expected.copy(root);expected.elements[13]+=gruntDeathBody(age).lift;}else expected.copy(root); matrixClose(corpse.matrix,expected);
+      if(age===0)parts.forEach((part,index)=>matrixClose(part.matrixWorld,before[index]));
+      geometries.forEach((geometry,index)=>expect((parts[index] as THREE.Mesh).geometry).toBe(geometry));
       const body=parts[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
       expect(body.material.opacity).toBe((role!=='giant'?gruntDeathBody(age).opacity:enemyDeathPose(age,breakupTiming!).bodyOpacity));expect(body.material.emissiveIntensity).toBe(0);
       expect(body.material.transparent).toBe(age>(role!=='giant'?140:timing.fadeStartMs));expect(body.material.depthWrite).toBe(true);
@@ -49,7 +41,7 @@ it('captures exact lethal poses, lifts intact Grunts/Heavies or topples Giants, 
         for (const mesh of [parts[0], parts[1], corpse.getObjectByName('giant-maul')!.children[0]] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>[]) {
           const shader = { uniforms: {}, vertexShader: '', fragmentShader: '#include <color_fragment>' } as Parameters<typeof mesh.material.onBeforeCompile>[0];
           mesh.material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
-          expect(shader.uniforms.deathPale.value).toBe(enemyDeathPale(age, role));
+          expect(shader.uniforms).not.toHaveProperty('deathPale');expect(shader.uniforms.giantDebrisEnabled.value).toBe(1);
         }
       }
       if(role==='giant'&&age>=breakupTiming!.breakupEndMs){
@@ -69,7 +61,7 @@ it('captures exact lethal poses, lifts intact Grunts/Heavies or topples Giants, 
       const material = (corpse.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material;
       const shader = { uniforms: {}, vertexShader: '', fragmentShader: '' } as Parameters<typeof material.onBeforeCompile>[0];
       material.onBeforeCompile(shader, {} as THREE.WebGLRenderer);
-      expect(shader.uniforms.deathPale.value).toBe(0); // Reused live slot cannot inherit a dead tint.
+      expect(shader.uniforms.giantDebrisEnabled.value).toBe(0); // Reused live slot cannot inherit debris transforms.
     }
     else {renderer.update([],4010);expect(corpse.visible).toBe(true);}
     renderer.dispose();for(const family of Object.values(families))family.dispose();

@@ -8,11 +8,3 @@ export function threatCollapseProgress(ageMs: number, role: 'heavy' | 'giant'): 
   const t = THREAT_DEATH_COLLAPSE[role];
   return smooth((ageMs - t.startMs) / (t.peakMs - t.startMs));
 }
-// Delayed downward swing around the coupled grip; the head settles at the sand.
-export const GIANT_MAUL_COLLAPSE = { startMs: 230, peakMs: 750, dropUnits: .50, swingRadians: 1.20 } as const;
-export function giantMaulSettle(ageMs: number): number {
-  return GIANT_MAUL_COLLAPSE.dropUnits * smooth((ageMs-GIANT_MAUL_COLLAPSE.startMs)/(GIANT_MAUL_COLLAPSE.peakMs-GIANT_MAUL_COLLAPSE.startMs));
-}
-export function giantMaulSwing(ageMs: number): number {
-  return GIANT_MAUL_COLLAPSE.swingRadians * smooth((ageMs-GIANT_MAUL_COLLAPSE.startMs)/(GIANT_MAUL_COLLAPSE.peakMs-GIANT_MAUL_COLLAPSE.startMs));
-}

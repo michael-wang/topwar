@@ -22,14 +22,16 @@ it('bakes Heavy role-owned compressed sink/fists-down poses with planted, wider 
   expect(ENEMY_DEATH_TIMING.grunt.totalMs).toBeLessThanOrEqual(540);family.dispose();
  }
 });
-it('keeps the Giant grip and maul in one assembly through reaction, then slightly loosens without uncoupling',()=>{
+it('keeps the captured Giant meshes and grip intact while shader transforms carry the mechanical debris',()=>{
  const family=createChibiGiantFamily(),scene=new THREE.Scene(),renderer=new GiantRenderer(scene,family),hits=new HeavyHitFeedback(scene);
  const enemy={id:1,tier:1,hp:1,x:0,z:12,archetype:'giant' as const,visualScale:2.6};
  renderer.update(enemy,0,hits);renderer.update(enemy,2000,hits);const group=renderer.die(enemy,2010),root=group.position.clone();
- const weapon=group.getObjectByName('giant-maul')!,mesh=weapon.children[0] as THREE.Mesh,offset=mesh.position.clone();
+ const weapon=group.getObjectByName('giant-maul')!,mesh=weapon.children[0] as THREE.Mesh,offset=mesh.position.clone(),bodyGeometry=(group.children[0] as THREE.Mesh).geometry;
  renderer.update(undefined,2700,hits);group.updateMatrixWorld(true);const final=weapon.matrixWorld.clone();
  expect(mesh.geometry.getAttribute('position').array).toEqual(family.weapon!.geometry.getAttribute('position').array);expect(mesh.position).toEqual(offset);expect(group.position).toEqual(root);
- expect((group.children[0] as THREE.Mesh).geometry).toBe(family.lethalReaction!.final.geometry);
+ expect((group.children[0] as THREE.Mesh).geometry).toBe(bodyGeometry);
+ const debris=(renderer as unknown as {debris:{matrices:{value:THREE.Matrix4[]}}}).debris;
+ expect(debris.matrices.value[7].equals(new THREE.Matrix4())).toBe(false);
  renderer.update(undefined,3500,hits);group.updateMatrixWorld(true);const a=new THREE.Vector3().setFromMatrixPosition(final),b=new THREE.Vector3().setFromMatrixPosition(weapon.matrixWorld);expect(a.distanceTo(b)).toBeLessThan(.12);expect(mesh.position).toEqual(offset);expect(mesh.geometry.getAttribute('position').array).toEqual(family.weapon!.geometry.getAttribute('position').array);
  renderer.dispose();hits.dispose();family.dispose();
 });

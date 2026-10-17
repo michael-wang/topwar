@@ -3,12 +3,6 @@ import { EXPLOSION_SMOKE, explosionSmokeGeometry, prepareExplosionSmoke, poseExp
   explosionSmokeOpacity, smokeIsDark } from '../ExplosionSmoke';
 
 const SMOKE = EXPLOSION_SMOKE.giant;
-/** World-space opening of the existing eleven rigid mechanical pieces. */
-export function giantDisassembly(ageMs: number): number {
-  const p = Math.max(0, Math.min(1, (ageMs - 180) / 750));
-  return 1.15 * p * p * (3 - 2 * p);
-}
-
 /** One slot's two bounded draws. Anchors detach from the falling robot; no spawned objects, physics or timers. */
 export class GiantDestruction {
   private readonly sphere = new THREE.SphereGeometry(1, 8, 5);

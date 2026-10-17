@@ -19,7 +19,9 @@ const options={seed:19,level:LevelDefinitionSchema.parse(levelData),startSquad:c
   startRocketCount:c.player.startRocketCount,tiers:c.tiers,catharsis:{trackHalfWidth:c.track.halfWidth,balance:c.catharsis!}};
 function crown(mesh:THREE.Mesh,camera:THREE.Camera):number {
   const p=mesh.geometry.getAttribute('position'),v=new THREE.Vector3(); let y=Infinity;
-  for(let i=0;i<p.count;i++)y=Math.min(y,(1-v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).project(camera).y)*422);
+  const material=mesh.material as THREE.MeshStandardMaterial,shader={uniforms:{},vertexShader:'',fragmentShader:''} as Parameters<typeof material.onBeforeCompile>[0];material.onBeforeCompile(shader,{} as THREE.WebGLRenderer);
+  const matrices=shader.uniforms.giantDebrisMatrices?.value,ids=mesh.geometry.getAttribute('deathPieceId');
+  for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld);if(matrices)v.applyMatrix4(matrices[ids.getX(i)]);y=Math.min(y,(1-v.project(camera).y)*422);}
   return y;
 }
 it.each(['heavy','giant'] as const)('keeps %s grenade collapse clear in the 390Ã—844 defense camera',role=>{
@@ -36,42 +38,23 @@ it.each(['heavy','giant'] as const)('keeps %s grenade collapse clear in the 390Ã
   r.update([],2010,true);
   const holder=scene.children.find(o=>o.visible&&o.name===(role==='heavy'?'enemy-pale-death-body':'giant-assault-soldier'))as THREE.Group;
   holder.updateMatrixWorld(true); const aliveCrown=crown(holder.children[1]as THREE.Mesh,camera);
-  let aliveHeadY=0;
-  const weapon=holder.getObjectByName('giant-maul');
-  if(weapon)aliveHeadY=new THREE.Vector3(.6,.77,.08).applyMatrix4(weapon.children[0].matrixWorld).y;
+  if(role==='giant'){
+    r.update([],3510,true);holder.updateMatrixWorld(true);
+    expect(crown(holder.children[1] as THREE.Mesh,camera)-aliveCrown).toBeGreaterThan(24);
+    expect((holder.children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>).material.opacity).toBe(1);
+    expect(JSON.stringify(enemy)).toBe(unchanged);
+    r.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);return;
+  }
   r.update([],2010+t.peakMs,true);holder.updateMatrixWorld(true);
   const drop=crown(holder.children[1]as THREE.Mesh,camera)-aliveCrown;
   expect(drop).toBeGreaterThanOrEqual(role==='heavy'?16:24);
   expect(t.compression).toBeGreaterThanOrEqual(role==='heavy'?.08:.06);expect(t.compression).toBeLessThanOrEqual(role==='heavy'?.12:.09);
   expect(families[role].lethalReaction!.compression).toBe(t.compression);
   expect(t.holdEndMs-t.peakMs).toBe(role==='heavy'?165:300);
-  const peakRoot=holder.matrix.clone(),peakWeapon=weapon?.matrix.clone();
+  const peakRoot=holder.matrix.clone();
   for(let age=t.peakMs;age<=t.holdEndMs;age+=25){
     r.update([],2010+age,true);expect(holder.matrix.elements).toEqual(peakRoot.elements);
-    if(weapon)expect(weapon.matrix.elements).toEqual(peakWeapon!.elements);
     const clock=ENEMY_DEATH_TIMING[role];expect(enemyBodyOpening(age,role,enemyDeathPose(age,clock).breakup)).toBe(0);
-  }
-  if(weapon){
-    const mesh=weapon.children[0]as THREE.Mesh;holder.updateMatrixWorld(true);
-    const p=mesh.geometry.getAttribute('position'),v=new THREE.Vector3();let minY=Infinity;
-    for(let i=0;i<p.count;i++)if(p.getY(i)>.6)minY=Math.min(minY,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).y);
-    expect(minY).toBeGreaterThanOrEqual(0);expect(minY).toBeLessThan(.10);
-    // The painted boxes have beveled corners, so their vertices clear the conservative box floor slightly.
-    expect(minY).toBeGreaterThanOrEqual(.025 - 1e-6);
-    // Keep the actual head corners above ground throughout the existing swing and hold.
-    for(let age=0;age<=t.holdEndMs;age+=25){
-      r.update([],2010+age,true);holder.updateMatrixWorld(true);
-      let headFloor=Infinity;
-      for(let i=0;i<p.count;i++)if(p.getY(i)>.6)headFloor=Math.min(headFloor,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).y);
-      expect(headFloor).toBeGreaterThanOrEqual(0);
-    }
-    expect(aliveHeadY-new THREE.Vector3(.6,.77,.08).applyMatrix4(mesh.matrixWorld).y).toBeGreaterThan(1);
-    expect(weapon.children).toHaveLength(1);expect(weapon.parent).toBe(holder);
-    r.reset();r.update([enemy],2000,true);r.update([],2010,true);r.update([],2010+t.peakMs,true);
-    holder.updateMatrixWorld(true);
-    let retriedFloor=Infinity;
-    for(let i=0;i<p.count;i++)if(p.getY(i)>.6)retriedFloor=Math.min(retriedFloor,v.fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld).y);
-    expect(retriedFloor).toBeCloseTo(minY,6);
   }
   expect(JSON.stringify(enemy)).toBe(unchanged);r.dispose();Object.values(families).forEach(f=>f.dispose());expect(scene.children).toHaveLength(0);
 });

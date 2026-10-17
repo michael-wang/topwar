@@ -11,7 +11,7 @@ import { ENEMY_DEATH_TIMING } from '../src/presentation/EnemyDeathTiming';
 
 it('smoothly lifts .26 vertically after impact and fades an intact pale silhouette by 520ms', () => {
   expect(GRUNT_DEATH_BODY).toEqual({totalMs:520,liftStartMs:50,liftEndMs:350,liftUnits:.26,fadeStartMs:140});
-  expect(DEATH_PALE_COMPLETE_MS).toEqual({grunt:95,heavy:185,giant:290});
+  expect(DEATH_PALE_COMPLETE_MS).toEqual({grunt:95,heavy:185});
   expect(enemyDeathPale(0,'grunt')).toBe(0);expect(enemyDeathPale(47.5,'grunt')).toBe(.5);expect(enemyDeathPale(95,'grunt')).toBe(1);
   let lift=0, opacity=1;
   for(let age=0;age<=520;age+=5){const p=gruntDeathBody(age);expect(p.lift).toBeGreaterThanOrEqual(lift);expect(p.lift).toBeLessThanOrEqual(.26);expect(p.opacity).toBeLessThanOrEqual(opacity);lift=p.lift;opacity=p.opacity;}
@@ -63,7 +63,7 @@ it('bounds intact batches and reuses their resources without assembly attributes
 });
 it('retains total clocks, separation caps and stain sizes through threat-only collapse retiming', () => {
   expect(ENEMY_DEATH_TIMING.heavy).toEqual({breakupEndMs:900,breakupStartMs:515,breakupDistance:.15,fadeStartMs:650,totalMs:1100,stainDiameter:.64});
-  expect(ENEMY_DEATH_TIMING.giant).toEqual({breakupEndMs:2050,breakupStartMs:1050,breakupDistance:.24,fadeStartMs:1550,totalMs:2600,stainDiameter:.95});
+  expect(ENEMY_DEATH_TIMING.giant).toEqual({breakupEndMs:2050,breakupStartMs:1050,breakupDistance:.24,fadeStartMs:1900,totalMs:2600,stainDiameter:.95});
   expect(LETHAL_RECOIL.heavy).toEqual({distance:0,angleDegrees:29,peakMs:350});expect(LETHAL_RECOIL.giant).toEqual({distance:0,angleDegrees:20,peakMs:750});
   expect(ENEMY_DEATH_TIMING.grunt.stainDiameter).toBe(.34);expect(ENEMY_DEATH_TIMING.grunt).not.toHaveProperty('breakupStartMs');expect(ENEMY_DEATH_TIMING.grunt).not.toHaveProperty('breakupDistance');
 });

@@ -25,7 +25,7 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
     const positions = geometry.getAttribute('position'), colors = new Float32Array(positions.count * 3);
     if (reaction > 0 && part.piece === undefined) throw Error('Death pose needs a logical piece');
     const piece = part.piece ?? 0;
-    if (!part.color) return reaction > 0 ? tagDeathPiece(geometry, giant ? 'giant' : 'heavy', piece) : geometry;
+    if (!part.color) return reaction > 0 || giant ? tagDeathPiece(geometry, giant ? 'giant' : 'heavy', piece) : geometry;
     const color = new THREE.Color(part.color);
     for (let i = 0; i < positions.count; i += 3) {
       const y = (positions.getY(i) + positions.getY(i + 1) + positions.getY(i + 2)) / 3;
@@ -33,7 +33,7 @@ function merge(parts: Part[], reaction = 0, sink = .11): THREE.BufferGeometry {
       for (let j = i; j < i + 3; j++) color.toArray(colors, j * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    if (reaction > 0) tagDeathPiece(geometry, giant ? 'giant' : 'heavy', piece);
+    if (reaction > 0 || giant) tagDeathPiece(geometry, giant ? 'giant' : 'heavy', piece);
     if (reaction && !part.fixed) geometry.applyMatrix4(lethalUpperMatrix(reaction, sink, .09, THREAT_DEATH_COLLAPSE[giant ? 'giant' : 'heavy'].compression));
     return geometry;
   });
@@ -152,14 +152,15 @@ export function createChibiGiantFamily(): GiantVisualFamily & { dispose(): void 
     { geometry: block(.60,.77,.08,.42,.30,.34), color: THREAT_COLORS.helmet },
     { geometry: block(.755,.77,.08,.12,.27,.35), color: THREAT_COLORS.stone },
   ]);
+  const stone = new THREE.Color(THREAT_COLORS.stone);
+  tagDeathPiece(helmetGeometry, 'giant', (_y, color, i) =>
+    color && Math.abs(color.getX(i)-stone.r) < .00001 ? 1 : 0);
+  tagDeathPiece(weaponGeometry, 'giant', 7);
   // Contact's bounded three-mesh adapter includes the signature maul explicitly.
   const contactGeometry = mergeGeometries([idle, weaponGeometry]);
   if (!contactGeometry) throw new Error('Giant contact requires body and maul');
   contactGeometry.computeBoundingBox(); contactGeometry.computeBoundingSphere();
-  const stone = new THREE.Color(THREAT_COLORS.stone);
-  const deathHelmet = tagDeathPiece(helmetGeometry.clone(), 'giant', (_y, color, i) =>
-    color && Math.abs(color.getX(i)-stone.r) < .00001 ? 1 : 0);
-  const deathWeapon = tagDeathPiece(weaponGeometry.clone(), 'giant', 7);
+  const deathHelmet = helmetGeometry.clone(), deathWeapon = weaponGeometry.clone();
   const bodyMaterial = matte(), gearMaterial = matte();
   const body = new THREE.Mesh(idle, bodyMaterial), helmet = new THREE.Mesh(helmetGeometry, gearMaterial),
     vest = new THREE.Mesh(armorGeometry, gearMaterial), weapon = new THREE.Mesh(weaponGeometry, gearMaterial);
