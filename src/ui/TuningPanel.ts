@@ -20,6 +20,7 @@ export class TuningPanel {
   get isOpen(): boolean { return this.element.open; }
   readonly reviewControlsHost = document.createElement('div');
   readonly advancedControlsHost = document.createElement('div');
+  readonly menuActionsHost = document.createElement('div');
   private readonly advanced = document.createElement('details');
   private readonly element: HTMLDetailsElement;
   private readonly summary = document.createElement('summary');
@@ -74,6 +75,7 @@ export class TuningPanel {
       summary.style.cssText = 'width:100%;box-sizing:border-box;min-height:44px;padding:10px;font-size:14px';
       this.advanced.append(summary, this.advancedControlsHost); content.append(this.advanced);
     }
+    content.append(this.menuActionsHost);
     this.element.append(summary, content);
     if (import.meta.env.DEV) {
       for (const control of controls) {

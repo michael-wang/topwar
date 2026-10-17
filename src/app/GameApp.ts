@@ -53,6 +53,7 @@ import { QaPanel } from '../ui/QaPanel';
 import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from './QaStressFixture';
 import { DevGiantReviewControls } from '../ui/DevGiantReviewControls';
 import { BattlefieldDiorama } from '../presentation/BattlefieldDiorama';
+import { MobileFullscreen } from './MobileFullscreen';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -126,6 +127,8 @@ export class GameApp {
   private readonly fps: DevFps | null;
   private readonly lifecycle: DevLifecycle | null;
   private readonly wakeLock = new ScreenWakeLock();
+  private readonly fullscreen: MobileFullscreen;
+  private resumeFullscreenPending = false;
   private recovery: SessionRecovery | null = null;
   private recoveryPending: SessionCheckpoint | null = null;
   private restored = false;
@@ -172,6 +175,7 @@ export class GameApp {
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
     this.audio = audio;
+    this.fullscreen = new MobileFullscreen(viewport);
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
     this.startOverlay = new GameStartOverlay(viewport, presentation => { void this.beginGameplay(presentation); });
     this.pauseOverlay = new PauseOverlay(viewport, () => { if (this.paused) this.togglePaused(); });
@@ -213,6 +217,7 @@ export class GameApp {
     };
     this.devReview = this.config.catharsis?.defenseMode && !this.giantReview
       ? new DevReviewControls(this.tuningPanel!.reviewControlsHost, selectReview) : null;
+    if (!this.giantReview) this.fullscreen.mount(this.tuningPanel.menuActionsHost, () => { void this.audio.activate(); });
     if (import.meta.env.DEV && !this.giantReview && this.config.catharsis?.defenseMode) {
       const lab = document.createElement('a');
       lab.href = '?explosion-lab'; lab.target = '_blank'; lab.rel = 'noopener';
@@ -326,6 +331,7 @@ export class GameApp {
     if (this.disposed) return;
     this.stop();
     this.unsubscribeConfig();
+    this.fullscreen.dispose();
     this.laneInput?.dispose();
     this.xpHud?.dispose();
     this.controlStrip?.dispose();
@@ -362,6 +368,7 @@ export class GameApp {
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
     this.celebration = null; this.lastCombatProjectiles = undefined; this.stageClearAtMs = null;
     this.restored = false;
+    this.resumeFullscreenPending = false;
     this.fps?.reset();
     this.laneInput?.stop();
     this.simulation = this.createSimulation();
@@ -479,7 +486,12 @@ export class GameApp {
     // Initial Start owns session hints only; later input and Retry never change them.
     this.viewport.setAttribute?.('data-input-presentation', presentation);
     this.startOverlay.setActivating();
-    try { await this.audio.activate(); } catch { /* Optional audio cannot block play. */ }
+    // AudioContext creation/resume is synchronous up to its returned promise.
+    // Fullscreen may consume activation, so start audio first and never await it here.
+    let activation: ReturnType<GameAudio['activate']> | undefined;
+    try { activation = this.audio.activate(); } catch { /* Optional audio. */ }
+    if (!this.giantReview) this.fullscreen.request();
+    try { await activation; } catch { /* Optional audio cannot block play. */ }
     if (!this.running || this.disposed || generation !== this.startGeneration) return;
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
@@ -545,7 +557,13 @@ export class GameApp {
     if (!this.running || this.startup !== 'started' || this.recovery?.blocking) return;
     if(this.qaSleepActive||this.qaPreparing)return;
     if (this.paused && (this.hidden || this.contextLost)) return;
-    if (this.paused) void this.audio.activate(); // Called within the Resume gesture.
+    if (this.paused) {
+      void this.audio.activate(); // Called within the Resume gesture, before fullscreen.
+      if (this.resumeFullscreenPending) {
+        this.resumeFullscreenPending = false;
+        this.fullscreen.request();
+      }
+    }
     this.setPaused(!this.paused);
     if (this.paused) this.saveCheckpoint('pause');
   }
@@ -619,7 +637,8 @@ export class GameApp {
         this.tankDeathCue = s.defenseTank?.status === 'defeated'
           ? TANK_EXPLOSION_TIMES_MS.filter(at => at <= (c.playtestVictory?.elapsedMs ?? TANK_DEATH_MS)).length - 1 : -1;
         if (c.playtestVictory?.communication) this.fieldObserver?.restoreVictory(c.playtestVictory.communication, 0);
-        this.restored = true; this.startup = 'started'; this.setPaused(true);
+        this.restored = true; this.resumeFullscreenPending = true;
+        this.startup = 'started'; this.setPaused(true);
         // Historical release QA saves still restore as ordinary paused Defense.
         this.stageClearOverlay.setDevPreview(this.devReviewFixture === 'victory');
         if (import.meta.env.DEV) {
@@ -668,6 +687,7 @@ export class GameApp {
 
   private suspendSession(reason: SessionCheckpoint['reason']): void {
     this.previousFrameTimestampMs = null; this.fixedStepLoop.reset();
+    this.idleFrameAtMs = null;
     if (this.startup === 'started') { this.setPaused(true); this.saveCheckpoint(reason); }
     if (reason !== 'contextlost') this.audio.suspendForBackground();
     if (import.meta.env.DEV) this.lifecycle?.record(reason);

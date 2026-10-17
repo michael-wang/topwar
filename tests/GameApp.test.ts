@@ -1190,6 +1190,7 @@ vi.mock('../src/ui/HudActions', () => ({ HudActions: class {
 
 vi.mock('../src/ui/TuningPanel', () => ({ TuningPanel: class {
   reviewControlsHost = {} as HTMLElement;
+  menuActionsHost = {append:vi.fn()} as unknown as HTMLElement;
   advancedControlsHost = {prepend:vi.fn(),append:mock.advancedAppend} as unknown as HTMLElement;
   private open = false;
   close() {mock.panelClose();if(this.open){this.open=false;this.onOpenChange(false);}}
@@ -1256,6 +1257,13 @@ it('keeps the decorative Defense tableau silent, bounded, hidden-aware and indep
     Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
     document.dispatchEvent(new Event('visibilitychange'));raf.frame(30000);
     expect(mock.dioramaRender.mock.lastCall![1]).toBeLessThan(1100);
+    const ageBeforeSleep=mock.dioramaRender.mock.lastCall![1];
+    Object.defineProperty(document,'visibilityState',{value:'hidden',configurable:true});
+    document.dispatchEvent(new Event('visibilitychange'));
+    // Real browsers may deliver no RAF at all while hidden.
+    Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
+    document.dispatchEvent(new Event('visibilitychange'));raf.frame(90000);
+    expect(mock.dioramaRender.mock.lastCall![1]).toBe(ageBeforeSleep);
     mock.startConstructed.mock.lastCall![0]('touch');await Promise.resolve();
     expect(mock.resetFeedback).toHaveBeenCalledOnce();expect(mock.missionIntro).toHaveBeenCalledOnce();
     raf.frame(31000);raf.frame(31020);expect(mock.step).toHaveBeenCalled();
@@ -1263,4 +1271,24 @@ it('keeps the decorative Defense tableau silent, bounded, hidden-aware and indep
     mock.overlayConstructedWith.mock.lastCall![0]();raf.frame(32000);
     expect(mock.dioramaRender).toHaveBeenCalledTimes(drawsAtStart);
   } finally {app.dispose();mock.getState.mockReturnValue(base);}
+});
+
+it('initiates audio then optional fullscreen synchronously once, before audio resolves; only first restored Resume retries', async () => {
+  const raf=createRaf(),order:string[]=[];
+  Object.assign(window,{innerWidth:390,innerHeight:844});
+  vi.stubGlobal('navigator',{maxTouchPoints:1});
+  let resolve!:(value:'running')=>void;
+  vi.mocked(GameAudio.prototype.activate).mockImplementation(()=>{order.push('audio');return new Promise(r=>{resolve=r;});});
+  const requestFullscreen=vi.fn(()=>{order.push('fullscreen');return Promise.resolve();});
+  const viewport=Object.assign(new EventTarget(),{requestFullscreen,classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
+  const app=new GameApp(viewport as unknown as HTMLElement,createConfigStore().store,level,{} as CharacterAssets);
+  try {
+    app.start();mock.startConstructed.mock.lastCall![0]('touch');mock.startConstructed.mock.lastCall![0]('touch');
+    expect(order).toEqual(['audio','fullscreen']);expect(mock.step).not.toHaveBeenCalled();
+    resolve('running');await Promise.resolve();await Promise.resolve();
+    raf.key('p');(app as any).resumeFullscreenPending=true;
+    order.length=0;raf.key('p');expect(order).toEqual(['audio','fullscreen']);
+    raf.key('p');raf.key('p');expect(requestFullscreen).toHaveBeenCalledTimes(2);
+    mock.overlayConstructedWith.mock.lastCall![0]();expect(requestFullscreen).toHaveBeenCalledTimes(2);
+  } finally {app.dispose();}
 });
