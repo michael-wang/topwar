@@ -80,7 +80,8 @@ export class GiantDebris {
       const box = this.boxes[id], center = this.centers[id]; box.getCenter(center);
       const angle = id * 2.399963 + variant * .65;
       this.flight[id] = Math.min(1.05, .34 + Math.sqrt(Math.max(0, box.min.y - GIANT_DEBRIS.groundY)) * .36);
-      this.velocity[id].set(Math.cos(angle) * (id === 3 || id === 4 ? 1.5 : 2.2), .8, Math.sin(angle) * 1.2 - .4);
+      // Collapse near the original body instead of throwing parts into nearby lanes.
+      this.velocity[id].set(Math.cos(angle) * (id === 3 || id === 4 ? .4 : .65), .8, Math.sin(angle) * .35 - .08);
       this.rotations[id].set((id % 2 ? 1 : -1) * (id >= 9 ? .25 : 1.1), Math.sin(angle) * .6, Math.cos(angle) * .7);
       this.setRotation(id, 1);
       this.targetY[id] = GIANT_DEBRIS.groundY - this.floor(id);
@@ -110,7 +111,7 @@ export class GiantDebris {
       const gravity = 2 * (v.y * duration - this.targetY[id]) / (duration * duration);
       const floorOffset = GIANT_DEBRIS.groundY - this.floor(id);
       const y = t >= duration ? floorOffset : Math.max(floorOffset, v.y * travel - .5 * gravity * travel * travel);
-      const skid = t > duration ? .12 * (1 - Math.exp(-(t - duration) / .12)) : 0;
+      const skid = t > duration ? .05 * (1 - Math.exp(-(t - duration) / .12)) : 0;
       const matrix = this.matrices.value[id].copy(this.rotation), m = matrix.elements;
       m[12] = center.x + v.x * (travel + skid) - (m[0] * center.x + m[4] * center.y + m[8] * center.z);
       m[13] = center.y + y - (m[1] * center.x + m[5] * center.y + m[9] * center.z);

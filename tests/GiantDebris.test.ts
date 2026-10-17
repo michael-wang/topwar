@@ -13,6 +13,7 @@ it.each([0, 1, 2])('keeps all eleven original-colored pieces airborne then exact
   const meshes=[group.children[0],group.children[1],group.getObjectByName('giant-maul')!.children[0]] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>[];
   const colors=meshes.map(m=>Float32Array.from(m.geometry.getAttribute('color').array));
   const matrices=debris.matrices.value,refs=matrices.slice(),point=new THREE.Vector3();
+  const centers=(debris as unknown as {centers:THREE.Vector3[]}).centers;
   const destruction=(r as unknown as {destruction:{wreckSources:THREE.Vector3[];wreckStarts:Float64Array}}).destruction;
   for(let source=0;source<2;source++){
     debris.landingCenter(3+source,point);expect(destruction.wreckSources[source]).toEqual(point);
@@ -38,6 +39,11 @@ it.each([0, 1, 2])('keeps all eleven original-colored pieces airborne then exact
     for(let id=0;id<11;id++){
       expect(Number.isFinite(floors[id])).toBe(true);expect(floors[id]).toBeGreaterThanOrEqual(GIANT_DEBRIS.groundY-1e-6);
       if(age>=debris.landingAgeMs(id))expect(floors[id]).toBeCloseTo(GIANT_DEBRIS.groundY,5);
+      if(age>=1500){
+        const landed=centers[id].clone().applyMatrix4(matrices[id]);
+        expect(Math.abs(landed.x-centers[id].x)).toBeLessThan(.75);
+        expect(Math.abs(landed.z-centers[id].z)).toBeLessThan(.5);
+      }
       if(age===500&&floors[id]>.1)flying=true;
       expect(debris.landingAgeMs(id)).toBeLessThan(GIANT_DEBRIS.fadeStartMs-500);
       expect(matrices[id]).toBe(refs[id]);
