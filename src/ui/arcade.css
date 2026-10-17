@@ -228,17 +228,14 @@
   animation:stage-clear-cta .35s 2.05s ease-out both; }
 .stage-clear-overlay button:active { background:#ffca60; box-shadow:0 1px #142332; }
 .stage-clear-overlay button:focus-visible { outline:3px solid #fff3dc; outline-offset:4px; }
-.defeat-results-overlay { background:linear-gradient(#081523c9, #122231b8 40%, #101c2be8); color:#dce4e8; }
+.defeat-results-overlay { background:radial-gradient(ellipse at 58% 60%, #18202c88, #07111be6 90%),
+  linear-gradient(#0a1729bb, #0c1825b8 45%, #080f1de6); color:#dce4e8; }
 .defeat-results-overlay .stage-clear-title { color:#e8edef; text-shadow:0 4px #142332, 2px 0 #142332, -2px 0 #142332;
   animation:stage-clear-reveal .35s .08s ease-out both; }
 .defeat-results-overlay .stage-clear-title::after { display:none; }
-.defeat-results-overlay .stage-clear-stat { top:25%; width:27%; text-align:center; color:#dce4e8; animation-delay:.2s; }
-.defeat-results-overlay .stage-clear-stat[data-result="0"] { left:5%; }
-.defeat-results-overlay .stage-clear-stat[data-result="1"] { left:36.5%; }
-.defeat-results-overlay .stage-clear-stat[data-result="5"] { left:68%; }
-.defeat-results-overlay dd { font-size:clamp(24px, 7.6vw, 32px); }
-.defeat-results-overlay .stage-clear-illustration { left:10%; top:35%; width:80%; height:47%;
-  object-position:center bottom; animation-delay:.25s; }
+.defeat-results-overlay .stage-clear-stat { width:38%; color:#dce4e8; animation-delay:.2s; }
+.defeat-results-overlay dd { font-size:clamp(32px, 9.5vw, 42px); }
+.defeat-results-overlay .stage-clear-illustration { animation-delay:.25s; filter:brightness(.86) saturate(.82); }
 .defeat-results-overlay button { background:linear-gradient(#e3e8e9,#aabec9); animation-delay:.55s; }
 .defeat-results-overlay button:active { background:#aabec9; }
 #game-viewport:has(> .defeat-results-overlay:not([hidden]))

@@ -29,7 +29,7 @@ export class StageClearOverlay {
     const title = document.createElement('h1'); title.textContent = defeat ? '作戰失敗' : '第一關通關！';
     title.id = titleId; title.className = 'stage-clear-title';
     this.illustration.className = 'stage-clear-illustration';
-    this.illustration.alt = defeat ? '海防指揮官與藍盔士兵蹲坐在地上，神情沮喪' : '海防指揮官微笑著將手放在藍盔士兵肩膀上';
+    this.illustration.alt = defeat ? '滿身塵土的士兵低頭蹲坐在地上，疲憊的指揮官蹲在身旁，手扶他的肩膀' : '海防指揮官微笑著將手放在藍盔士兵肩膀上';
     this.illustration.src = publicAssetUrl(`art/${defeat ? 'defeat' : 'victory'}/commander-soldier.webp`);
     this.illustration.decoding = 'async'; this.illustration.draggable = false;
     this.button.type = 'button'; this.button.textContent = defeat ? '再試一次' : '再玩一次';

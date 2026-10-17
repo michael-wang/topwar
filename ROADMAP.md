@@ -4,7 +4,7 @@
 
 Enemy artillery impact smoke now reads lighter gray with lower opacity, fade from .25s and expiry at 1.05s. Initial fire/flash and wind remain; all other VFX families are unchanged. Pixel 8 readability acceptance is pending.
 
-Defeat now ends with 「作戰失敗」, three stable combat results, a seated discouraged Commander/soldier illustration and 「再試一次」. The battlefield freezes after final casualty feedback; victory and saves retain their existing flow. Pixel 8 presentation acceptance is pending.
+Defeat’s 「作戰失敗」 poster now echoes victory with left-side results, lower-right battle-worn characters and 「再試一次」. The soldier is discouraged and the tired Commander supports his shoulder; a darker cool vignette reinforces the mood. The battlefield freezes after final casualty feedback; victory and saves retain their existing flow. Pixel 8 presentation acceptance is pending.
 
 Immediate first-load feedback (#21) now appears before modules and data, handing over to the existing protected recovery choice or single Tap-to-Start gesture. Slow/failing resources have Reload recovery. Owner Pixel 8 startup feel review remains pending.
 

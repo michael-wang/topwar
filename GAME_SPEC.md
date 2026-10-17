@@ -16,7 +16,7 @@ Five stationary lanes; player Z=0. Hold left/right for adjacent lane steps, or u
 
 ## Defeat results
 
-Losing the last soldier retains the final casualty feedback, then shows 「作戰失敗」 with 存活時間, 擊殺總數 and 命中率 from the terminal simulation state. The three values remain fixed; zero shots report 0.0%. Historical saves without combat statistics remain valid and display zero for unavailable counters, without injecting retrospective statistics. A cooler subdued results poster shows the Commander and a soldier seated on the ground, discouraged. Combat HUD is hidden and the battlefield presentation freezes once the poster appears. 「再試一次」 uses the existing Retry path, clearing results and old effects. Victory, checkpoint format, terminal-save removal, audio/dialogue and gameplay are unchanged. Pixel 8 visual acceptance is pending.
+Losing the last soldier retains the final casualty feedback, then shows 「作戰失敗」 with 存活時間, 擊殺總數 and 命中率 from the terminal simulation state. The three values remain fixed; zero shots report 0.0%. Historical saves without combat statistics remain valid and display zero for unavailable counters, without injecting retrospective statistics. The cooler, darker vignetted poster echoes victory: title above, results down the left and a lower-right illustration. A dirty, ash-stained soldier sits collapsed and discouraged beside a tired Commander who supports his shoulder; neither is triumphant or angry. Combat HUD is hidden and the battlefield presentation freezes once the poster appears. 「再試一次」 uses the existing Retry path, clearing results and old effects. Victory, checkpoint format, terminal-save removal, audio/dialogue and gameplay are unchanged. Pixel 8 visual acceptance is pending.
 
 ## 海防指揮官通訊
 
