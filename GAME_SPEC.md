@@ -47,6 +47,8 @@ Encounter pressure retains its highest reached level and within-level XP, separa
 
 ## Ordinary pressure and Giant
 
+GIANT is mechanical. Nonlethal bullet impacts use bounded bright yellow/golden sparks and the restrained body flash/recoil, with no hit blood or stains. Grunt/Heavy biological hit feedback is unchanged. Damage, HP, movement, bars, XP, admission timing and gameplay RNG are unaffected; Pixel 8 visual acceptance is pending.
+
 The dangerous Lv3→4 transition is retained. At Lv4 XP≥35%, ordinary waves contain two Heavies across four pressure lanes; at Lv5 XP≥25%, three Heavies across three lanes. Thresholds do not change wave population or cadence. Giant introduction occurs on the tick reaching Lv4, at the distant spawn position, in a least-crowded interior lane: 172 HP, 0.68 authored speed, 120 XP, once per run. Ordinary combat determines its survival.
 
 Grunts have 1 HP; Heavies have 15 HP. Existing approach rules, lane cursors and stamped Survival speed multipliers are preserved.

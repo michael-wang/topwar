@@ -6,7 +6,7 @@ import { createChibiHeavyFamily, createChibiGiantFamily } from '../src/rendering
 import { hitBloodVariation, HIT_BLOOD_ANCHORS } from '../src/rendering/enemies/HitBloodVariation';
 
 it('pins each surviving splash to a real local surface point through recoil, lean and nonuniform scale', () => {
-  for (const role of ['grunt', 'heavy', 'giant'] as const) {
+  for (const role of ['grunt', 'heavy'] as const) {
     const families = { grunt: createChibiGruntFamily(), heavy: createChibiHeavyFamily(), giant: createChibiGiantFamily() };
     const scene = new THREE.Scene(), renderer = new EnemyRenderer(scene, families);
     const enemy = { id: 9, tier: 1, archetype: role, hp: 20, x: .6, z: 13,
@@ -18,12 +18,8 @@ it('pins each surviving splash to a real local surface point through recoil, lea
       const start = 2000 + sequence * 300, struck = { ...enemy, hp: 20 - sequence };
       for (const age of [0, 20, 70, 120]) {
         renderer.update([struck], start + age);
-        if (role === 'giant') {
-          const body = scene.getObjectByName('giant-body')!; body.updateWorldMatrix(true, false); bodyMatrix.copy(body.matrixWorld);
-        } else {
-          const mesh = scene.children.find(o => o instanceof THREE.InstancedMesh && o.count > 0 && families[role].runFrames.some(f => f.geometry === o.geometry)) as THREE.InstancedMesh;
-          mesh.getMatrixAt(0, bodyMatrix);
-        }
+        const mesh = scene.children.find(o => o instanceof THREE.InstancedMesh && o.count > 0 && families[role].runFrames.some(f => f.geometry === o.geometry)) as THREE.InstancedMesh;
+        mesh.getMatrixAt(0, bodyMatrix);
         const expected = new THREE.Vector3().fromArray(hitBloodVariation(enemy.id, sequence, role).localAnchor).applyMatrix4(bodyMatrix);
         expect(blood.count).toBe(1); blood.getMatrixAt(0, burstMatrix);
         expect(new THREE.Vector3().setFromMatrixPosition(burstMatrix).distanceTo(expected)).toBeLessThan(.00001);

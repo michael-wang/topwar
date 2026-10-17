@@ -584,6 +584,7 @@ export class EnemyRenderer {
 
   private presentSurvivingHit(enemy: EnemyRenderState, sequence: number, nowMs: number, damageTaken:number): void {
     const role = enemy.archetype ?? 'grunt';
+    if (role === 'giant') return; // Mechanical armor uses the bounded metallic spark pool, never blood.
     const variation = hitBloodVariation(enemy.id, sequence, role);
     variation.size *= hitBloodRelativeScale(damageTaken,enemy.maxHp??enemy.hp+damageTaken);
     this.feedbackOrigin.fromArray(variation.localAnchor).applyMatrix4(this.feedbackMatrix);

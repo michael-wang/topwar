@@ -8,8 +8,8 @@ const MAX_BURSTS = 12;
 // Ordinary surviving-hit presentation only. Death/reveal have separate timing
 // and materials. These styles are selected by explicit archetype, never IDs.
 export const SURVIVING_HIT_STYLES = {
-  heavy: { overlayColor: ART.fx.core, overlayOpacity: .72, sparkCount: 4, sparkScale: 1, sparkOpacity: 1, sparkSpread: .32 },
-  giant: { overlayColor: '#dda999', overlayOpacity: .24, sparkCount: 3, sparkScale: .9, sparkOpacity: .5, sparkSpread: .30,
+  heavy: { overlayColor: ART.fx.core, overlayOpacity: .72, sparkColor: ART.fx.impact, sparkCount: 4, sparkScale: 1, sparkOpacity: 1, sparkSpread: .32 },
+  giant: { overlayColor: '#ffe34f', overlayOpacity: .24, sparkColor: '#ffe34f', sparkCount: 6, sparkScale: 1.8, sparkOpacity: 1, sparkSpread: .62,
     emissivePeak: .10 },
 } as const;
 interface Burst { id: number; startedAt: number; body: THREE.Mesh; sparks: THREE.Group; material: THREE.MeshBasicMaterial; giant: boolean; x: number; z: number }
@@ -41,6 +41,7 @@ export class HeavyHitFeedback {
     burst.giant = enemy.archetype === 'giant';
     const style = SURVIVING_HIT_STYLES[burst.giant ? 'giant' : 'heavy'];
     burst.body.material = burst.giant ? this.giantFlash : this.flash;
+    burst.material.color.set(style.sparkColor);
     burst.sparks.children.forEach((spark, index) => spark.visible = index < style.sparkCount);
     burst.id = enemy.id; burst.startedAt = nowMs; burst.x = -enemy.x; burst.z = enemy.z - (burst.giant ? (enemy.visualScaleZ ?? enemy.visualScale ?? 1) * .32 : .25);
     burst.body.visible = true; burst.sparks.visible = true;
@@ -66,7 +67,9 @@ export class HeavyHitFeedback {
         const angle = index * 2.4;
         spark.position.set(burst.x + Math.cos(angle) * style.sparkSpread * progress,
           .7 + Math.sin(angle) * .2 * progress + .15 * progress, burst.z - .35 * progress);
-        spark.scale.setScalar(style.sparkScale * (1 - .5 * progress));
+        const scale = style.sparkScale * (1 - .5 * progress);
+        spark.scale.set(scale * (burst.giant ? 2.4 : 1), scale * (burst.giant ? .65 : 1), scale);
+        spark.rotation.z = burst.giant ? angle : 0;
       });
     }
   }

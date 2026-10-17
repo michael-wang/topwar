@@ -22,7 +22,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 - Required before public playtest: production mobile fullscreen (#28), coordinated with arcade 「開始遊戲」 and startup/audio activation UX after the DEV technical trial. PWA/installed mode remains a separate future decision.
 
-- Tracking only: Giant death (#14) should use robotic disassembly/explosion treatment. No Giant death changes in this batch.
+- Giant robotic disassembly/explosion (#14) is the next part of the current mechanical-identity work; metallic nonlethal hit feedback is implemented and awaits Pixel 8 review.
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.
