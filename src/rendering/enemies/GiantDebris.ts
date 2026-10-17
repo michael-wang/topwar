@@ -122,5 +122,9 @@ export class GiantDebris {
     target.copy(this.centers[id]).addScaledVector(this.velocity[id], this.flight[id]);
     target.y = GIANT_DEBRIS.groundY;
   }
+  landingCenter(id: number, target: THREE.Vector3): void {
+    this.landingPoint(id, target);
+    target.y = this.centers[id].y + this.targetY[id];
+  }
   reset(): void { this.enabled.value = 0; for (const matrix of this.matrices.value) matrix.identity(); }
 }

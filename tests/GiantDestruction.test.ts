@@ -12,7 +12,7 @@ it('detaches bounded layered smoke from a rotated/scaled torso, drifts screen-ri
   new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI),new THREE.Vector3(2.5,2.8,2.6));
  const smoke=scene.getObjectByName('giant-destruction-smoke') as THREE.InstancedMesh;
  const burst=scene.getObjectByName('giant-destruction-burst') as THREE.InstancedMesh;
- expect(scene.children).toHaveLength(2);expect(smoke.count).toBe(10);expect(burst.count).toBe(10);
+ expect(scene.children).toHaveLength(2);expect(smoke.count).toBe(18);expect(burst.count).toBe(14);
  const resources=[smoke.geometry,burst.geometry,smoke.material as THREE.Material,burst.material as THREE.Material];
  const dispose=resources.map(r=>vi.spyOn(r,'dispose'));
  fx.present(matrix,1000);fx.update(1030);expect(smoke.visible).toBe(true);expect(burst.visible).toBe(true);
@@ -32,6 +32,35 @@ it('detaches bounded layered smoke from a rotated/scaled torso, drifts screen-ri
  for(let i=0;i<100;i++){fx.present(matrix,i*3000);fx.update(i*3000+1000);expect(scene.children).toHaveLength(2);}
  fx.reset();expect(smoke.visible).toBe(false);expect(burst.visible).toBe(false);
  fx.dispose();expect(scene.children).toHaveLength(0);dispose.forEach(spy=>expect(spy).toHaveBeenCalledOnce());
+});
+
+it('keeps two landed interiors burning, emits fresh drifting smoke and deterministically cleans both batches',()=>{
+ const scene=new THREE.Scene(),fx=new GiantDestruction(scene);
+ const matrix=new THREE.Matrix4().makeScale(3,3,3);matrix.setPosition(2,0,14);
+ fx.present(matrix,1000);fx.setWreckSource(0,new THREE.Vector3(4,.035,14),950);fx.setWreckSource(1,new THREE.Vector3(-1,.035,15),1100);
+ const smoke=scene.getObjectByName('giant-destruction-smoke') as THREE.InstancedMesh;
+ const burst=scene.getObjectByName('giant-destruction-burst') as THREE.InstancedMesh;
+ const alpha=burst.geometry.getAttribute('destructionAlpha'),smokeAlpha=smoke.geometry.getAttribute('destructionAlpha');
+ const first=new THREE.Matrix4(),later=new THREE.Matrix4();
+ fx.update(1900);expect(Array.from(alpha.array).slice(10)).toEqual([0,0,0,0]);
+ fx.update(2250);expect(burst.visible).toBe(true);expect(Array.from(alpha.array).slice(0,10)).toEqual(Array(10).fill(0));
+ expect(Array.from(alpha.array).slice(10).every(a=>a>.7)).toBe(true);
+ expect(smokeAlpha.getX(10)).toBeGreaterThan(0);expect(smokeAlpha.getX(16)).toBe(0); // Later puffs have not emitted yet.
+ smoke.getMatrixAt(11,first);
+ fx.update(2800);smoke.getMatrixAt(11,later);
+ for(const width of [350,390]){
+  const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
+  expect(new THREE.Vector3().setFromMatrixPosition(later).project(camera).x).toBeGreaterThan(new THREE.Vector3().setFromMatrixPosition(first).project(camera).x);
+ }
+ expect(later.elements[13]).toBeGreaterThan(first.elements[13]);expect(smokeAlpha.getX(16)).toBeGreaterThan(0);
+ const transforms=Array.from(smoke.instanceMatrix.array),flames=Array.from(burst.instanceMatrix.array),opacities=Array.from(smokeAlpha.array);
+ fx.update(2800);expect(Array.from(burst.instanceMatrix.array)).toEqual(flames); // Pause.
+ fx.update(1250);fx.update(2800);expect(Array.from(smoke.instanceMatrix.array)).toEqual(transforms);
+ expect(Array.from(smokeAlpha.array)).toEqual(opacities);expect(Array.from(burst.instanceMatrix.array)).toEqual(flames);
+ const held=alpha.getX(10);fx.update(3500);expect(alpha.getX(10)).toBeLessThan(held);
+ fx.update(3600);expect(smoke.visible).toBe(false);expect(burst.visible).toBe(false);
+ fx.reset();fx.update(2700);expect(scene.children.every(o=>!o.visible)).toBe(true);
+ fx.dispose();expect(scene.children).toHaveLength(0);
 });
 
 it.each(['bullet','grenade','airstrike','tank'] as const)('owns one mechanical %s death with zero Giant biological effects, and reuses slots silently',cause=>{

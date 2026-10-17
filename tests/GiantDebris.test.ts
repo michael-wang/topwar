@@ -13,6 +13,12 @@ it.each([0, 1, 2])('keeps all eleven original-colored pieces airborne then exact
   const meshes=[group.children[0],group.children[1],group.getObjectByName('giant-maul')!.children[0]] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>[];
   const colors=meshes.map(m=>Float32Array.from(m.geometry.getAttribute('color').array));
   const matrices=debris.matrices.value,refs=matrices.slice(),point=new THREE.Vector3();
+  const destruction=(r as unknown as {destruction:{wreckSources:THREE.Vector3[];wreckStarts:Float64Array}}).destruction;
+  for(let source=0;source<2;source++){
+    debris.landingCenter(3+source,point);expect(destruction.wreckSources[source]).toEqual(point);
+    expect(point.y).toBeGreaterThan(GIANT_DEBRIS.groundY);
+    expect(destruction.wreckStarts[source]).toBeCloseTo(debris.landingAgeMs(3+source)/1000);
+  }
   let flying=false; const floors=new Float64Array(11);
   for(const age of [0,120,250,500,750,1000,1200,1500,1900,2200,2599]){
     r.update(undefined,1710+age,hits);group.updateMatrixWorld(true);floors.fill(Infinity);

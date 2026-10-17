@@ -2,7 +2,7 @@
 
 ## NOW
 
-GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks use larger 300ms upper-armor streaks and a brief ivory center, now varying across seven nearby chest contacts. Eleven original-colored mechanical pieces now follow short gravity-driven arcs, land/settle, then fade at 1.9–2.6s; the existing fire and rightward smoke remain. New visuals require Pixel 8 review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
+GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks use larger 300ms upper-armor streaks and a brief ivory center, now varying across seven nearby chest contacts. Eleven original-colored mechanical pieces retain their grounded arcs and 1.9–2.6s fade. Two small burning interiors and fresh right-drifting smoke now continue among the landed debris. Spark variation and wreck aftermath await owner Pixel 8 acceptance. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
 Opening experience (#22/#23) has a [design proposal](docs/OPENING_PROPOSAL.md), **PROPOSED — NOT APPROVED FOR PRODUCTION**: silent Battle Showcase versus recommended lower-power Battlefield Diorama, followed by a proposed opening using the existing complete Commander recording. No attract, siren, Commander or production fullscreen code is authorized by that document.
 
@@ -12,14 +12,14 @@ Defeat’s 「作戰失敗」 poster now echoes victory with left-side results, 
 
 The navy/gold immediate loading cover and honest four-stage bar (#21) are Pixel 8 PASS. Protected recovery, the single Start gesture and Reload recovery remain. [Startup measurements](docs/STARTUP_PERFORMANCE.md) (#32) identify renderer CPU work: one byte-identical flower-atlas optimization saves ~87ms construction time and ~17% cold-ready latency under desktop 4× CPU slowdown. Native cold-ready improvement is not established; physical Pixel 8 measurements remain pending. No loading-stage timing is simulated.
 
-Fullscreen (#28) has an optional DEV QA enter/exit/re-entry trial only. Run the [physical Pixel 8 checklist](docs/FULLSCREEN_TRIAL.md); public startup integration and HTTPS validation remain deferred.
+Fullscreen (#28) DEV technical trial is accepted by the owner on Pixel 8. Android/Chrome edge-swipe exits are expected platform behavior, not an in-game defect to fix here. [Trial notes](docs/FULLSCREEN_TRIAL.md) remain; production integration belongs to a separate startup/Attract task, with HTTPS validation deferred.
 
 Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original B-fast impact approval is retained as the reference for the new artillery-only readability follow-up. Hybrid D production acceptance (#12) and Tracer V5 acceptance (#25) remain open. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
 
 ## NEXT
 
 1. Owner selects the attract concept and approves opening content, siren, briefing handoff and Retry/Skip policy (#22/#23) before implementation.
-2. Validate the limited DEV fullscreen trial (#28) on Pixel 8 before later public startup integration.
+2. Plan the accepted fullscreen trial’s public single-gesture startup integration (#28) with future startup/Attract work after owner design approval; no implementation yet.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 
 ## LATER

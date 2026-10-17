@@ -1,5 +1,7 @@
 # DEV fullscreen technical trial (#28)
 
+The owner accepts the Pixel 8 DEV technical trial. The observed exit is attributed to Android/Chrome edge gestures and is treated as expected platform behavior, not an in-game bug. Respect system exits; no forced re-entry or input/fullscreen change is part of GIANT polish. Future public integration remains a separate startup/Attract task.
+
 This optional trial does not integrate fullscreen into public Start/Continue and is absent from production. It adds no shared scene, PWA or service worker. Accepted gameplay, VFX and Camera B are unchanged.
 
 ## Physical Pixel 8 steps
@@ -19,6 +21,6 @@ The automation exercises the real Fullscreen API from real Chrome click gestures
 
 Headless tab backgrounding may not generate native visibility changes; where unavailable, the diagnostic dispatches a clearly identified synthetic visibility event. This does not establish Android lifecycle behavior. Browser automation also cannot establish Android Back, physical safe areas, thermal behavior or immersive bar removal.
 
-**HTTPS has not been exercised with this DEV control.** Loopback's secure context is not HTTPS. The deployed Pages build intentionally has no trial control, and no certificate/proxy or deployment infrastructure is added for this batch. Physical LAN testing comes first; HTTPS/public startup integration requires a later authorized task. No Pixel 8 acceptance is claimed.
+**HTTPS has not been exercised with this DEV control.** Loopback's secure context is not HTTPS. The deployed Pages build intentionally has no trial control, and no certificate/proxy or deployment infrastructure is added for this batch. Physical LAN testing comes first; HTTPS/public startup integration requires a later authorized task. The owner’s physical technical-trial acceptance is recorded above; browser automation alone does not establish physical-device behavior.
 
 Local captures/results: `artifacts/p4.26-b/`. Production checks must continue rejecting `dev-fullscreen-trial` and its button labels in built JavaScript.

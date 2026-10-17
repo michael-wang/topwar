@@ -93,8 +93,13 @@ export class GiantRenderer {
     // Current body geometry, root, helmet lag and grip/maul stay untouched.
     this.group.updateMatrixWorld(true);
     this.frozenRoot.copy(this.group.matrixWorld);
-    this.destruction.present(this.frozenRoot, nowMs);
     this.debris.capture(variant);
+    this.destruction.present(this.frozenRoot, nowMs);
+    // Burning interiors follow the authored torso landing sites, never the old standing pose.
+    for (let source = 0; source < 2; source++) {
+      this.debris.landingCenter(3 + source, this.maulContact);
+      this.destruction.setWreckSource(source, this.maulContact, this.debris.landingAgeMs(3 + source));
+    }
     this.group.matrixAutoUpdate = false;
     this.helmet.matrixAutoUpdate = this.weapon.matrixAutoUpdate = false;
     return this.group;
