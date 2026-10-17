@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { smokeWindX } from '../../presentation/BattlefieldWind';
 import { ENEMY_DEATH_TIMING } from '../../presentation/EnemyDeathTiming';
 
-const SMOKE = { count: 8, puffSeconds: .72, riseSeconds: .24, windStrength: .28,
+const SMOKE = { count: 8, puffSeconds: .72, riseSeconds: .30, windStrength: .28,
   darkColor: '#343b3e', lightColor: '#a0a6a7' } as const;
 const BURST_COUNT = 10;
 // Both existing GIANT draws use per-instance opacity; no extra particle system.
@@ -67,13 +67,13 @@ export class GiantDestruction {
     for(let i=0;i<SMOKE.count;i++){
       const pair=i>>1,source=pair&1,dark=i%2===1,age=t-this.wreckStarts[source]-pair*.12;
       const fade=age<0?0:Math.min(1,age/.10)*Math.max(0,Math.min(1,(SMOKE.puffSeconds-age)/.30));
-      this.smokeAlpha.setX(i,fade*(dark?.48:.22));
+      this.smokeAlpha.setX(i,fade*(dark?.60:.33));
       if(fade>0)this.smoke.visible=true;
       const rise=Math.max(0,age),drift=Math.max(0,rise-SMOKE.riseSeconds),p=this.wreckSources[source];
       // Vent above the interior so the compact puffs are not buried inside the armor.
-      this.pose.position.set(p.x+smokeWindX(drift,dark)*SMOKE.windStrength,p.y+this.scale*.11+rise*(dark?1.3:1.5),p.z-this.scale*.04);
-      const size=this.scale*(dark?.075:.10)*(1+rise*.30);
-      this.pose.scale.set(size,size*(dark?1.05:1.16),size*.9);
+      this.pose.position.set(p.x+smokeWindX(drift,dark)*SMOKE.windStrength,p.y+this.scale*.11+rise*(dark?2.0:2.3),p.z-this.scale*.04);
+      const size=this.scale*(dark?.135:.18)*(1+rise*.30);
+      this.pose.scale.set(size,size*(dark?1.30:1.42),size*.9);
       this.pose.rotation.set(pair,i*.7,rise*.12);this.pose.updateMatrix();this.smoke.setMatrixAt(i,this.pose.matrix);
     }
     this.smokeAlpha.needsUpdate=true;this.smoke.instanceMatrix.needsUpdate=true;

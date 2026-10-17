@@ -22,7 +22,7 @@ Local Vite and the GitHub Pages closed-playtest build share one hatch with four 
 
 ## Current game
 
-DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT hit variation is Pixel 8 PASS. The #33 tighter grounded collapse and localized rising smoke await physical review; no persistent wreck fire remains. QA usability review remains separate.
+DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT arrival, hit variation, tight grounded collapse and no persistent fire are Pixel 8 accepted. The #33 amplified localized rising smoke awaits physical review. QA usability review remains separate.
 
 The [opening experience proposal](docs/OPENING_PROPOSAL.md) compares two silent attract concepts and a Red Alert storyboard using existing Commander audio. It is **PROPOSED — NOT APPROVED FOR PRODUCTION**; current startup and DEV-only fullscreen behavior remain unchanged.
 

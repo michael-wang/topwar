@@ -7,6 +7,34 @@ import {createChibiHeavyFamily,createChibiGiantFamily} from '../src/rendering/en
 import {applyCoastalCamera} from '../src/rendering/CoastalCamera';
 import {ENEMY_DEATH_TIMING} from '../src/presentation/EnemyDeathTiming';
 
+it.each([350,390])('amplifies projected smoke area beyond 3× P4.34 at %s×844 without extending its travel or lifetime',width=>{
+ const scene=new THREE.Scene(),fx=new GiantDestruction(scene),scale=3,age=.2;
+ fx.present(new THREE.Matrix4().makeScale(scale,scale,scale),1000);
+ fx.setWreckSource(0,new THREE.Vector3(0,.5,14),950);fx.setWreckSource(1,new THREE.Vector3(.4,.5,14),1100);
+ fx.update(2150); // First puff age .20s: still rising vertically.
+ const smoke=scene.getObjectByName('giant-destruction-smoke') as THREE.InstancedMesh;
+ const current=new THREE.Matrix4(),oldPose=new THREE.Object3D();
+ const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
+ const area=(matrix:THREE.Matrix4)=>{
+  const bounds=new THREE.Box2(),point=new THREE.Vector3();
+  for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1]){
+   point.set(x,y,z).applyMatrix4(matrix).project(camera);bounds.expandByPoint(new THREE.Vector2(point.x*width/2,point.y*844/2));
+  }
+  return (bounds.max.x-bounds.min.x)*(bounds.max.y-bounds.min.y);
+ };
+ for(let i=0;i<2;i++){
+  const dark=i===1,oldSize=scale*(dark?.075:.10)*(1+age*.30);smoke.getMatrixAt(i,current);
+  oldPose.position.set(0,.5+scale*.11+age*(dark?1.3:1.5),14-scale*.04);
+  oldPose.scale.set(oldSize,oldSize*(dark?1.05:1.16),oldSize*.9);oldPose.rotation.set(0,i*.7,age*.12);oldPose.updateMatrix();
+  expect(area(current)/area(oldPose.matrix)).toBeGreaterThanOrEqual(3);
+  expect(current.elements[12]).toBeCloseTo(0);expect(current.elements[13]).toBeGreaterThan(oldPose.position.y);
+ }
+ const alpha=smoke.geometry.getAttribute('destructionAlpha');expect(alpha.getX(1)).toBeCloseTo(.60);expect(alpha.getX(0)).toBeCloseTo(.33);
+ fx.update(2520);smoke.getMatrixAt(1,current);expect(current.elements[12]).toBeLessThan(0);expect(Math.abs(current.elements[12])).toBeLessThan(.4);
+ fx.update(3200);expect(smoke.visible).toBe(false);
+ fx.dispose();expect(scene.children).toHaveLength(0);
+});
+
 it('keeps bounded wreck smoke rising before wind, seeks, freezes, expires early and disposes',()=>{
  const scene=new THREE.Scene(),fx=new GiantDestruction(scene),matrix=new THREE.Matrix4().compose(new THREE.Vector3(2,0,14),
   new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI),new THREE.Vector3(2.5,2.8,2.6));
