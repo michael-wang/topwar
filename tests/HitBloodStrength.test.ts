@@ -22,13 +22,13 @@ it('maps actual damage fraction perceptually, with bounded chip and major-hit si
 it('feeds the real observed HP delta into the varied attached hit card, never on lethal removal',()=>{
  const families={grunt:createChibiGruntFamily(),heavy:createChibiHeavyFamily(),giant:createChibiGiantFamily()},scene=new THREE.Scene(),r=new EnemyRenderer(scene,families);
  const spawn=vi.spyOn(BloodSplat.prototype,'spawnStyled');
- const e={id:8,tier:1,archetype:'giant' as const,x:0,z:14,hp:172,maxHp:172};
- r.update([e],0);r.update([e],2000);r.update([{...e,hp:169}],2010);
+ const e={id:8,tier:1,archetype:'heavy' as const,x:0,z:14,hp:15,maxHp:15};
+ r.update([e],0);r.update([e],2000);r.update([{...e,hp:12}],2010);
  expect(spawn).toHaveBeenCalledOnce();
  const variation=spawn.mock.lastCall![6]!;
- expect(variation.size).toBeCloseTo(hitBloodVariation(e.id,1,'giant').size*hitBloodRelativeScale(3,172));
+ expect(variation.size).toBeCloseTo(hitBloodVariation(e.id,1,'heavy').size*hitBloodRelativeScale(3,15));
  expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(0);
- r.update([],2030);expect(spawn).toHaveBeenCalledOnce();expect(e.hp).toBe(172);expect(e.z).toBe(14);
+ r.update([],2030);expect(spawn).toHaveBeenCalledOnce();expect(e.hp).toBe(15);expect(e.z).toBe(14);
  spawn.mockRestore();r.dispose();Object.values(families).forEach(f=>f.dispose());
 });
 it('preserves every accepted knockback number independently of hit blood strength',()=>{

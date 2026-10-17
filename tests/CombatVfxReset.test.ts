@@ -24,18 +24,19 @@ it('clears every feedback owner on role restarts and reuses warmed death/dust re
       const enemy = { id: 1, archetype: role, tier: 1, hp: 10, maxHp: 10, x: 0, z: 10 };
       renderer.update([enemy], 0, true); renderer.update([enemy], 2000, true);
       renderer.update([{ ...enemy, hp: 9 }], 2010, true);
-      expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(1);
+      expect((scene.getObjectByName('enemy-hit-blood') as THREE.InstancedMesh).count).toBe(role==='giant'?0:1);
       renderer.update([], 2020, true);
       renderer.update([], 2820, true); // Giant impact dust is active.
       if (role === 'giant') expect(scene.getObjectByName('giant-death-impact-dust')!.visible).toBe(true);
       renderer.update([], 4800, true);
-      expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
+      expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(role==='giant'?0:1);
       renderer.reset(cycle);
       for (const name of ['enemy-hit-blood', 'enemy-ground-blood-stains',
         ...['grunt', 'heavy', 'giant'].flatMap(r => [`enemy-3d-blood-${r}`, `enemy-blood-ribbons-${r}`])]) {
         expect((scene.getObjectByName(name) as THREE.InstancedMesh).count).toBe(0);
       }
       expect(scene.getObjectByName('giant-death-impact-dust')!.visible).toBe(false);
+      expect(scene.children.filter(o=>o.name.startsWith('giant-destruction-')&&o.visible)).toHaveLength(0);
       expect(renderer.getDebugStats().deathVisuals).toBe(0);
     }
     if (warmed) expect(resources()).toEqual(warmed);

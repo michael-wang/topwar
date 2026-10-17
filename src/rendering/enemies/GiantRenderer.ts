@@ -6,7 +6,8 @@ import { lethalUpperMatrix } from './LethalReaction';
 import { ART } from '../../art/ArtDirection';
 import { giantWeightPose, giantGripMotion } from '../../presentation/CharacterMotion';
 import { prepareEnemyDeathMaterial } from './EnemyDeathMaterial';
-import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage, enemyBodyOpening } from '../../presentation/EnemyDeathTiming';
+import { ENEMY_DEATH_TIMING, enemyDeathPose, enemyReactionStage } from '../../presentation/EnemyDeathTiming';
+import { GiantDestruction, giantDisassembly } from './GiantDestruction';
 import { giantMaulSettle, giantMaulSwing, THREAT_DEATH_COLLAPSE } from '../../presentation/ThreatDeathCollapse';
 import { enemyDeathPale } from '../../presentation/EnemyDeathPale';
 import { writeLethalDirection, writeLethalRecoil, lethalRecoilPose } from './EnemyLethalRecoil';
@@ -30,6 +31,7 @@ function hazeTexture(): THREE.DataTexture {
 // are borrowed from the Giant family; only slot materials and effects are owned.
 export class GiantRenderer {
   private readonly group = new THREE.Group();
+  private readonly destruction: GiantDestruction;
   private readonly body: THREE.Mesh;
   private readonly helmet: THREE.Mesh;
   private readonly weapon = new THREE.Group();
@@ -55,6 +57,7 @@ export class GiantRenderer {
   private readonly reactionWeaponMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
   private readonly reactionMatrices: readonly [THREE.Matrix4, THREE.Matrix4];
   constructor(private readonly scene: THREE.Scene, private readonly family: GiantVisualFamily, private readonly impactDust?: GiantImpactDust) {
+    this.destruction = new GiantDestruction(scene);
     const reaction = family.lethalReaction;
     this.reactionMatrices = [lethalUpperMatrix(.5, reaction?.sink ?? 0, reaction?.tilt ?? 0, reaction?.compression ?? 0),
       lethalUpperMatrix(1, reaction?.sink ?? 0, reaction?.tilt ?? 0, reaction?.compression ?? 0)];
@@ -118,6 +121,7 @@ export class GiantRenderer {
     // Current body geometry, root, helmet lag and grip/maul stay untouched.
     this.group.updateMatrixWorld(true);
     this.frozenRoot.copy(this.group.matrixWorld);
+    this.destruction.present(this.frozenRoot, nowMs);
     writeLethalDirection(this.recoilDirection, this.frozenRoot, attackerX, attackerZ);
     this.group.matrixAutoUpdate = false;
     this.frozenHelmet.copy(this.helmet.matrix); this.frozenWeapon.copy(this.weapon.matrix);
@@ -133,6 +137,7 @@ export class GiantRenderer {
   }
   update(enemy: EnemyRenderState | undefined, nowMs: number, hits: HeavyHitFeedback, impulse?: EnemyHitImpulse): void {
     if (enemy) {
+      this.destruction.reset();
       this.group.matrixAutoUpdate = true;
       this.helmet.geometry = this.family.helmet.geometry;
       if (this.family.weapon) (this.weapon.children[0] as THREE.Mesh).geometry = this.family.weapon.geometry;
@@ -170,6 +175,7 @@ export class GiantRenderer {
       this.group.updateMatrixWorld(true); hits.setBody(enemy.id, this.body.geometry, this.body.matrixWorld, nowMs); return;
     }
     this.haze.visible = false;
+    this.destruction.update(nowMs);
     const age = nowMs - this.deathAt;
     const pose = enemyDeathPose(age, ENEMY_DEATH_TIMING.giant);
     this.group.visible = !!this.previous && pose.bodyVisible;
@@ -218,7 +224,7 @@ export class GiantRenderer {
     // All vertices in a logical piece share one bounded displacement; the
     // grip-hand and maul remain a single piece throughout the breakup.
     const scale = Math.max(this.group.scale.x,this.group.scale.y,this.group.scale.z);
-    const separation = enemyBodyOpening(age, 'giant', pose.breakup) / Math.max(.001,scale);
+    const separation = giantDisassembly(age) / Math.max(.001,scale);
     if (stage === 2 && this.family.deathAssembly) {
       this.body.geometry = this.family.deathAssembly.body;
       this.helmet.geometry = this.family.deathAssembly.helmet;
@@ -235,6 +241,7 @@ export class GiantRenderer {
     }
   }
   reset(): void {
+    this.destruction.reset();
     this.previous = undefined; this.deathAt = this.bornAt = -Infinity;
     this.group.visible = this.haze.visible = false;
     this.group.matrixAutoUpdate = true;
@@ -242,6 +249,7 @@ export class GiantRenderer {
     this.weapon.position.copy(this.weaponRest); this.restorePalette();
   }
   dispose(): void {
+    this.destruction.dispose();
     this.scene.remove(this.group, this.haze);
     this.hazeMap.dispose(); this.hazeMaterial.dispose();
     for (const { material } of this.palette) material.dispose();

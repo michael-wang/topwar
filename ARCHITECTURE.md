@@ -2,6 +2,8 @@
 
 ## Dependency direction
 
+GIANT's three reusable renderer slots own mechanical destruction. Each uses two bounded instanced draws (ten layered smoke lobes, two short fire lobes/eight small metal sparks), retained transforms and absolute presentation age. Existing tagged armor geometry separates earlier without changing the 2.6-second release or live geometry. EnemyRenderer excludes GIANT from both surviving and lethal biological blood owners; Grunt/Heavy retain their existing paths. The isolated Giant smoke profile reuses battlefield wind/math without retuning Grenade, artillery, airstrike or muzzle effects. Restore primes living state without replaying disposable hits/deaths; reset/disposal clears every slot.
+
 StageClearOverlay owns the shared victory/defeat results poster. GameOverOverlay selects the defeat treatment and captures terminal statistics once; Retry resets/reuses the same DOM and image. Once final casualty feedback finishes and defeat results appear, GameApp freezes the pause-aware presentation clock as well as the already-terminal simulation. No result fields or migrations are added to Defense checkpoints; historical absent statistics use a zero-counter display fallback.
 
 `game-data → ConfigStore → Simulation → RenderState → Three.js renderer`.

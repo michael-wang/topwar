@@ -2,6 +2,8 @@
 
 ## NOW
 
+GIANT mechanical identity (#14) is implemented: golden nonlethal sparks, no blood/stains, internal death burst and authored component separation with rightward charcoal/gray smoke. Existing gameplay and 2.6-second visual release remain. Pixel 8 acceptance is pending.
+
 Enemy artillery impact smoke now reads lighter gray with lower opacity, fade from .25s and expiry at 1.05s. Initial fire/flash and wind remain; all other VFX families are unchanged. Pixel 8 readability acceptance is pending.
 
 Defeat’s 「作戰失敗」 poster now echoes victory with left-side results, lower-right battle-worn characters and 「再試一次」. The soldier is discouraged and the tired Commander supports his shoulder; a darker cool vignette reinforces the mood. The battlefield freezes after final casualty feedback; victory and saves retain their existing flow. Pixel 8 presentation acceptance is pending.
@@ -22,7 +24,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 - Required before public playtest: production mobile fullscreen (#28), coordinated with arcade 「開始遊戲」 and startup/audio activation UX after the DEV technical trial. PWA/installed mode remains a separate future decision.
 
-- Giant robotic disassembly/explosion (#14) is the next part of the current mechanical-identity work; metallic nonlethal hit feedback is implemented and awaits Pixel 8 review.
+
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.

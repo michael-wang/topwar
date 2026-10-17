@@ -594,7 +594,8 @@ export class EnemyRenderer {
   }
 
   private scheduleKillFeedback(enemy: EnemyRenderState, frozen: THREE.Group, nowMs: number, visualSeed:number, attackerX?: number, attackerZ?: number): void {
-    const role = enemy.archetype === 'giant' ? 'giant' : enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
+    if (enemy.archetype === 'giant') return; // The Giant slot owns mechanical destruction, never biological blood/stains.
+    const role = enemy.archetype === 'heavy' ? 'heavy' : 'grunt';
     frozen.updateMatrixWorld(true); this.feedbackMatrix.copy(frozen.matrixWorld);
     if (role === 'grunt') {
       const variation = hitBloodVariation(enemy.id, visualSeed % 997, role);

@@ -53,7 +53,7 @@ The dangerous Lv3→4 transition is retained. At Lv4 XP≥35%, ordinary waves co
 
 Grunts have 1 HP; Heavies have 15 HP. Existing approach rules, lane cursors and stamped Survival speed multipliers are preserved.
 
-Ordinary gunfire kills keep both Grunt and Heavy silhouettes intact, turn them pale/gray, lift them .26 units and fade them over 520ms. Heavy alive armor, size, gait and hit feedback remain unchanged. Grenade, Airstrike and Tank-entry victims keep their existing explosion reactions, while biological blood and ground stains keep their independent role-specific clocks. Giant death is unchanged. Heavy's compact death is Pixel 8 PASS / CLOSED (#27); no gameplay or checkpoint fields change.
+Ordinary gunfire kills keep both Grunt and Heavy silhouettes intact, turn them pale/gray, lift them .26 units and fade them over 520ms. Heavy alive armor, size, gait and hit feedback remain unchanged. Grenade, Airstrike and Tank-entry victims keep their existing explosion reactions, while biological blood and ground stains keep their independent role-specific clocks. Giant death is mechanical: brief internal orange/yellow fire and metal sparks, earlier visible separation of the authored armor/head/arm/ram pieces, then layered charcoal/gray smoke rising and drifting screen-right. No Giant lethal ribbons, droplets or red stains are emitted. The existing 2.6-second release, maul collapse, authoritative removal and all rewards/gameplay stay unchanged; physical Pixel 8 acceptance is pending. Heavy's compact death is Pixel 8 PASS / CLOSED (#27); no gameplay or checkpoint fields change.
 
 ## Carnival, naval presence and Survival
 

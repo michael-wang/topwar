@@ -60,8 +60,8 @@ it('captures exact lethal poses, lifts intact Grunts/Heavies or topples Giants, 
     }
     renderer.update([],2031+timing.totalMs);expect(corpse.visible).toBe(false);
     renderer.update([],2031+ENEMY_DEATH_TIMING[role].totalMs); // Blood landing retains its separate role clock.
-    expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
-    renderer.update([],100000);expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(1);
+    expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(role==='giant'?0:1);
+    renderer.update([],100000);expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(role==='giant'?0:1);
     expect(scene.children.some(c=>/shatter|fragment|debris/.test(c.name))).toBe(false);
     renderer.reset();expect((scene.getObjectByName('enemy-ground-blood-stains') as THREE.InstancedMesh).count).toBe(0);renderer.update([enemy],4000);
     if(role==='giant') {
