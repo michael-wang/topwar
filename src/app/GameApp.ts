@@ -776,7 +776,9 @@ export class GameApp {
       this.previousFrameTimestampMs = timestampMs;
       let stepCpuMs = 0;
       if (!this.paused && !this.hidden && !this.contextLost) {
-        this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
+        if (!this.gameOverOverlay.visible) {
+          this.presentationMs += Math.min(elapsedSeconds, this.fixedStepLoop.maxFrameSeconds) * 1000;
+        }
         const stepStartedMs = perf ? performance.now() : 0;
         const advance = this.fixedStepLoop.advance(elapsedSeconds, (dtSeconds) => {
         const before = this.simulation.getFrameState();
@@ -966,8 +968,9 @@ export class GameApp {
             tier: state.progression?.level ?? 1,
             playerZ: state.player.z });
       }
-      this.gameOverOverlay.setVisible(state.squad.count === 0
-        && this.presentationMs >= this.fatalPresentationUntilMs);
+      if (state.squad.count === 0 && this.presentationMs >= this.fatalPresentationUntilMs) {
+        this.gameOverOverlay.setVisible(true, state.combatStats, state.elapsedSeconds);
+      } else this.gameOverOverlay.setVisible(false);
       this.frameId = requestAnimationFrame(this.renderFrame);
     } catch (error) {
       console.error('TopWar game loop stopped after an unexpected error', error);

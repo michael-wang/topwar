@@ -9,6 +9,10 @@ export function clearResultRows(stats: Readonly<CombatStats>, clearSeconds: numb
     ['發射子彈', String(s.shotsFired)], ['命中子彈', String(s.shotsHit)], ['命中率', `${(s.accuracy * 100).toFixed(1)}%`],
     ['使用手榴彈', String(s.grenadesUsed)]];
 }
+export function defeatResultRows(stats: Readonly<CombatStats>, seconds: number): [string, string][] {
+  const rows = clearResultRows(stats, seconds);
+  return [['存活時間', rows[0][1]], rows[1], rows[5]];
+}
 export class StageClearOverlay {
   readonly element = document.createElement('div');
   private readonly results = document.createElement('dl');
@@ -16,20 +20,22 @@ export class StageClearOverlay {
   private readonly button = document.createElement('button');
   private shown = false;
   private readonly previewNote = document.createElement('small');
-  constructor(viewport: HTMLElement, private readonly onPlayAgain: () => void) {
-    this.element.className = 'stage-clear-overlay'; this.element.hidden = true;
+  constructor(viewport: HTMLElement, private readonly onPlayAgain: () => void,
+    private readonly outcome: 'victory' | 'defeat' = 'victory') {
+    const defeat = outcome === 'defeat', titleId = defeat ? 'defeat-results-title' : 'stage-clear-title';
+    this.element.className = defeat ? 'stage-clear-overlay game-over-overlay defeat-results-overlay' : 'stage-clear-overlay'; this.element.hidden = true;
     this.element.lang = 'zh-Hant';
-    this.element.setAttribute('role', 'region'); this.element.setAttribute('aria-labelledby', 'stage-clear-title');
-    const title = document.createElement('h1'); title.textContent = '第一關通關！';
-    title.id = 'stage-clear-title'; title.className = 'stage-clear-title';
+    this.element.setAttribute('role', 'region'); this.element.setAttribute('aria-labelledby', titleId);
+    const title = document.createElement('h1'); title.textContent = defeat ? '作戰失敗' : '第一關通關！';
+    title.id = titleId; title.className = 'stage-clear-title';
     this.illustration.className = 'stage-clear-illustration';
-    this.illustration.alt = '海防指揮官微笑著將手放在藍盔士兵肩膀上';
-    this.illustration.src = publicAssetUrl('art/victory/commander-soldier.webp');
+    this.illustration.alt = defeat ? '海防指揮官與藍盔士兵蹲坐在地上，神情沮喪' : '海防指揮官微笑著將手放在藍盔士兵肩膀上';
+    this.illustration.src = publicAssetUrl(`art/${defeat ? 'defeat' : 'victory'}/commander-soldier.webp`);
     this.illustration.decoding = 'async'; this.illustration.draggable = false;
-    this.button.type = 'button'; this.button.textContent = '再玩一次';
+    this.button.type = 'button'; this.button.textContent = defeat ? '再試一次' : '再玩一次';
     this.button.addEventListener('click', onPlayAgain); this.element.addEventListener('pointerdown', this.stopPointer);
     this.element.append(title, this.results, this.illustration, this.button); viewport.append(this.element);
-    if (this.previewNote) {
+    if (!defeat) {
       this.previewNote.textContent = 'DEV 範例戰績'; this.previewNote.hidden = true;
       this.previewNote.style.cssText = 'position:absolute;left:8%;top:47%;font:11px sans-serif;color:#ffdb78';
       this.element.append(this.previewNote);
@@ -40,9 +46,10 @@ export class StageClearOverlay {
   show(stats: Readonly<CombatStats>, clearSeconds: number): void {
     if (this.shown) return;
     this.shown = true; this.results.replaceChildren();
-    for (const [index, [label, value]] of clearResultRows(stats, clearSeconds).entries()) {
+    const rows = this.outcome === 'defeat' ? defeatResultRows(stats, clearSeconds) : clearResultRows(stats, clearSeconds);
+    for (const [index, [label, value]] of rows.entries()) {
       const row = document.createElement('div'); row.className = 'stage-clear-stat';
-      row.dataset.result = String(index);
+      row.dataset.result = String(this.outcome === 'defeat' && index === 2 ? 5 : index);
       const dt = document.createElement('dt'), dd = document.createElement('dd');
       dt.textContent = label; dd.textContent = value; row.append(dt, dd); this.results.append(row);
     }

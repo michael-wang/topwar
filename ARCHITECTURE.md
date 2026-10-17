@@ -2,6 +2,8 @@
 
 ## Dependency direction
 
+StageClearOverlay owns the shared victory/defeat results poster. GameOverOverlay selects the defeat treatment and captures terminal statistics once; Retry resets/reuses the same DOM and image. Once final casualty feedback finishes and defeat results appear, GameApp freezes the pause-aware presentation clock as well as the already-terminal simulation. No result fields or migrations are added to Defense checkpoints; historical absent statistics use a zero-counter display fallback.
+
 `game-data → ConfigStore → Simulation → RenderState → Three.js renderer`.
 
 Dev controls and snapshot/checkpoint adapters command Simulation through explicit APIs. Simulation imports neither Three.js nor DOM/storage APIs. Plain-data state is authoritative; renderer state is disposable. No backend, ECS framework or generic plugin system is required.

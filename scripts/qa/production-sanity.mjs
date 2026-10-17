@@ -109,7 +109,7 @@ async function checkPlaytestScenes(page,width,out) {
    await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='victory'&&window.__testApp.audio.voice.source!==null);
    assert(await page.evaluate(offset=>window.__testApp.audio.voice.offset>=offset,saved.cp.playtestVictory.communication.offsetSeconds));
    await page.evaluate(()=>window.__advance(9));await page.waitForTimeout(2500);
-   assert(await page.locator('.stage-clear-overlay').isVisible());assert(await page.getByText('DEV 範例戰績',{exact:true}).isVisible());
+   assert(await page.locator('.stage-clear-overlay:not(.defeat-results-overlay)').isVisible());assert(await page.getByText('DEV 範例戰績',{exact:true}).isVisible());
    assert.equal(await page.evaluate(()=>window.__testApp.audio.music.lastState),'VICTORY');
    assert(await page.evaluate(()=>window.__testApp.renderer.tankRenderer.smoke.visible&&window.__testApp.renderer.tankRenderer.flames.visible));
    await page.screenshot({path:`${out}/playtest-victory-results-${width}.png`});

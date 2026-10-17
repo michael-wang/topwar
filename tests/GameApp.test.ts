@@ -165,7 +165,10 @@ vi.mock('../src/ui/DamageFlashOverlay', () => ({
 vi.mock('../src/ui/GameOverOverlay', () => ({
   GameOverOverlay: class {
     constructor(_viewport: HTMLElement, onRetry: () => void) { mock.overlayConstructedWith(onRetry); }
-    setVisible = mock.overlayVisible;
+    visible = false;
+    setVisible = (visible: boolean, ...args: unknown[]) => {
+      this.visible = visible; mock.overlayVisible(visible, ...args);
+    };
     dispose = mock.overlayDispose;
   },
 }));
@@ -647,7 +650,7 @@ describe('GameApp config and frame lifecycle', () => {
       player: { x: 2, z: 3 }, squad: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 }, enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [],
     });
     raf.frame(116);
-    expect(mock.overlayVisible).toHaveBeenLastCalledWith(true);
+    expect(mock.overlayVisible).toHaveBeenLastCalledWith(true, undefined, undefined);
     expect(raf.pending.size).toBe(1);
 
     config.changePlayer({ startSquad: 5, startRocketCount: 0 });
@@ -700,6 +703,8 @@ describe('GameApp config and frame lifecycle', () => {
       {} as CharacterAssets);
     const zero = { player: { x: 0, z: 0 },
       squad: { count: 0, rocketCount: 0, rifleCounts: [], rifleRemainder: 0 },
+      elapsedSeconds: 90, combatStats: { gruntKills: 5, heavyKills: 2, giantKills: 1,
+        shotsFired: 100, shotsHit: 35, grenadesUsed: 1 },
       enemies: [], streamRewards: [], gates: [], pickups: [], projectiles: [] };
     mock.consumePresentationEvents.mockReturnValueOnce([{ kind: 'artilleryContact', shellId: 1, attackerX: 0, attackerZ: 2,
       playerX: 0, playerZ: 0,
@@ -712,7 +717,10 @@ describe('GameApp config and frame lifecycle', () => {
     for (let frame = 1; frame <= 23; frame++) {
       raf.frame(100 + frame * (1000 / 60));
     }
-    expect(mock.overlayVisible).toHaveBeenLastCalledWith(true);
+    expect(mock.overlayVisible).toHaveBeenLastCalledWith(true, zero.combatStats, 90);
+    const frozenAge = (app as unknown as { presentationMs: number }).presentationMs;
+    raf.frame(1100);
+    expect((app as unknown as { presentationMs: number }).presentationMs).toBe(frozenAge);
     app.dispose();
     mock.getState.mockReturnValue(base);
   });

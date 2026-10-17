@@ -60,20 +60,6 @@ body {
   pointer-events: none;
 }
 
-.game-over-overlay:not([hidden]) {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 1rem;
-  background: rgb(18 24 30 / 72%);
-  color: white;
-  font-family: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
-  text-align: center;
-}
-
 .pause-overlay:not([hidden]) {
   position: absolute;
   inset: 0;
@@ -185,18 +171,6 @@ body {
   to { opacity: 0; }
 }
 
-.game-over-overlay h1 { margin: 0; font-size: clamp(2rem, 8vw, 3rem); }
-
-.game-over-overlay button {
-  padding: 0.7rem 1.5rem;
-  border: 0;
-  border-radius: 0.3rem;
-  background: var(--art-highlight);
-  color: var(--art-deep);
-  font: 900 1.1rem "Trebuchet MS", sans-serif; letter-spacing: .04em;
-  cursor: pointer;
-}
-
 #game-viewport canvas {
   display: block;
   width: 100%;
@@ -286,10 +260,9 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .qa-hatch::-webkit-details-marker { display:none; }
 .qa-hatch:focus-visible { outline:2px solid #fff3dc;outline-offset:3px; }
 .beachhead-defense .tuning-panel select, .beachhead-defense .tuning-panel button { color: #fff3dc; background: #263444; border-color: #566578; }
-.beachhead-defense .pause-overlay:not([hidden]), .beachhead-defense .game-over-overlay:not([hidden]) {
+.beachhead-defense .pause-overlay:not([hidden]) {
   background: color-mix(in srgb, var(--coast-shadow) 46%, transparent); color: var(--coast-paper);
 }
-.beachhead-defense .game-over-overlay button { background: var(--coast-paper); color: var(--coast-ink); }
 .combat-control-strip {
   --movement-width: 64px; --movement-gap: 10px;
   position: absolute; z-index: 3; left: var(--hud-safe-left); right: var(--hud-safe-right); bottom: var(--hud-safe-bottom);
@@ -518,10 +491,6 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .movement-left .combat-keycue { left: 60%; }
 .movement-right .combat-keycue { left: 40%; }
 .grenade-button .combat-keycue { top: 62%; color: #382b2b; font-size: 12px; }
-.beachhead-defense .game-over-overlay { font-family: var(--font-combat-hud); }
-.beachhead-defense .game-over-overlay h1 { font-family: var(--font-combat-display); font-style: oblique 8deg;
-  letter-spacing: .04em; text-shadow: 0 3px 0 #172331, 0 0 12px #ff7a2755; }
-.beachhead-defense .game-over-overlay button { font-family: var(--font-combat-hud); }
 .beachhead-defense .pause-overlay { font-family: var(--font-combat-hud); }
 .beachhead-defense .game-start-overlay { font-family: var(--font-combat-hud); }
 

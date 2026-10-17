@@ -83,21 +83,21 @@
   box-shadow: inset 0 2px 0 #ffffff26, inset 3px 0 0 var(--ui-ink), 2px 3px 0 var(--ui-ink);
 }
 .beachhead-defense .pause-button:active { box-shadow: inset 0 2px 0 #07121c, 1px 1px 0 var(--ui-ink); }
-.beachhead-defense .pause-overlay:not([hidden]), .beachhead-defense .game-over-overlay:not([hidden]) {
+.beachhead-defense .pause-overlay:not([hidden]) {
   background: color-mix(in srgb, var(--ui-ink) 38%, transparent);
 }
-.beachhead-defense .pause-overlay > button, .beachhead-defense .game-over-overlay h1 {
+.beachhead-defense .pause-overlay > button {
   position: relative; isolation: isolate; margin: 0; padding: 9px 18px 13px;
   font: 900 clamp(44px, 13vw, 58px)/1 var(--font-combat-display);
   letter-spacing: .025em; color: var(--ui-paper); transform: rotate(-2deg);
   text-shadow: var(--ui-offset) 3px 0 #07121c; filter: drop-shadow(2px 4px 0 #07121c);
 }
-.beachhead-defense .pause-overlay > button::before, .beachhead-defense .game-over-overlay h1::before {
+.beachhead-defense .pause-overlay > button::before {
   content: ''; position: absolute; z-index: -1; inset: 0;
   background: var(--ui-deep); clip-path: var(--ui-plaque);
   border-top: 2px solid var(--ui-edge); border-bottom: 4px solid var(--ui-gold);
 }
-.beachhead-defense .pause-overlay > button::after, .beachhead-defense .game-over-overlay h1::after {
+.beachhead-defense .pause-overlay > button::after {
   content: ''; position: absolute; width: 10px; height: 3px; right: 8px; top: 7px;
   background: var(--ui-paper);
 }
@@ -107,16 +107,6 @@
 }
 .beachhead-defense .pause-overlay > button:focus-visible { outline: 3px solid var(--ui-paper); outline-offset: 6px; }
 .beachhead-defense .pause-overlay > button:active { transform: rotate(-2deg) scale(.97); }
-.beachhead-defense .game-over-overlay h1 { font-size: clamp(40px, 12vw, 54px); transform: rotate(1deg); }
-.beachhead-defense .game-over-overlay h1::before { border-bottom-color: var(--ui-danger); }
-.beachhead-defense .game-over-overlay button {
-  min-width: 110px; min-height: 48px; border: 2px solid var(--ui-paper); border-radius: 4px 10px 5px 8px;
-  background: var(--ui-deep); color: var(--ui-paper); font: 900 22px/1 var(--font-combat-display);
-  letter-spacing: .04em; box-shadow: inset 0 2px 0 #ffffff26, 2px 4px 0 var(--ui-ink);
-}
-.beachhead-defense .game-over-overlay button:hover { background: var(--ui-steel); }
-.beachhead-defense .game-over-overlay button:active { box-shadow: inset 0 2px 0 #07121c, 1px 1px 0 var(--ui-ink); }
-.beachhead-defense .game-over-overlay button:focus-visible { outline: 2px solid var(--ui-gold); outline-offset: 4px; }
 
 .beachhead-defense .game-start-overlay span {
   position: relative; isolation: isolate; padding: 7px 11px 10px;
@@ -226,7 +216,7 @@
 .stage-clear-illustration { position:absolute; left:41%; top:37%; width:57%; height:45%;
   object-fit:contain; object-position:right bottom; pointer-events:none; user-select:none;
   animation:stage-clear-reveal .4s 1.65s ease-out both; }
-/* Only the settled victory poster hides combat HUD clutter; Retry restores it. */
+/* Settled results hide combat HUD clutter; Retry restores it. */
 #game-viewport:has(> .stage-clear-overlay:not([hidden])) :is(.combat-control-strip, .battle-info, .grenade-button) {
   visibility:hidden; pointer-events:none;
 }
@@ -238,6 +228,23 @@
   animation:stage-clear-cta .35s 2.05s ease-out both; }
 .stage-clear-overlay button:active { background:#ffca60; box-shadow:0 1px #142332; }
 .stage-clear-overlay button:focus-visible { outline:3px solid #fff3dc; outline-offset:4px; }
+.defeat-results-overlay { background:linear-gradient(#081523c9, #122231b8 40%, #101c2be8); color:#dce4e8; }
+.defeat-results-overlay .stage-clear-title { color:#e8edef; text-shadow:0 4px #142332, 2px 0 #142332, -2px 0 #142332;
+  animation:stage-clear-reveal .35s .08s ease-out both; }
+.defeat-results-overlay .stage-clear-title::after { display:none; }
+.defeat-results-overlay .stage-clear-stat { top:25%; width:27%; text-align:center; color:#dce4e8; animation-delay:.2s; }
+.defeat-results-overlay .stage-clear-stat[data-result="0"] { left:5%; }
+.defeat-results-overlay .stage-clear-stat[data-result="1"] { left:36.5%; }
+.defeat-results-overlay .stage-clear-stat[data-result="5"] { left:68%; }
+.defeat-results-overlay dd { font-size:clamp(24px, 7.6vw, 32px); }
+.defeat-results-overlay .stage-clear-illustration { left:10%; top:35%; width:80%; height:47%;
+  object-position:center bottom; animation-delay:.25s; }
+.defeat-results-overlay button { background:linear-gradient(#e3e8e9,#aabec9); animation-delay:.55s; }
+.defeat-results-overlay button:active { background:#aabec9; }
+#game-viewport:has(> .defeat-results-overlay:not([hidden]))
+  :is(.hud-actions,.tank-boss-hud,.tank-entrance-warning,.field-observer,.manual-air-support,.artillery-emergency,.lane-hud) {
+  visibility:hidden; pointer-events:none;
+}
 @keyframes stage-clear-dim { from { opacity:0; } to { opacity:1; } }
 @keyframes stage-clear-pop {
   from { opacity:0; transform:translateY(8px) scale(.72); }

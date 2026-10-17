@@ -2,6 +2,8 @@
 
 A mobile-first, five-lane Beachhead Defense playtest. TypeScript, Vite, Three.js and Vitest; no backend.
 
+Defeat ends with 「作戰失敗」, survival time, total kills, accuracy and 「再試一次」 over a frozen battlefield, with the discouraged Commander and soldier seated together. This presentation and the lighter, faster-clearing enemy artillery impact smoke await Pixel 8 review; gameplay and other accepted VFX are unchanged.
+
 ## Develop and verify
 
 Use the Node version in `.node-version`.
