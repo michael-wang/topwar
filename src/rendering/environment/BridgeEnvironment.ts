@@ -64,8 +64,8 @@ export class BridgeEnvironment {
     this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number): void {
-    this.transports.update(playerZ, nowMs, true);
+  update(playerZ: number, trackHalfWidth: number, nowMs: number, diorama = false): void {
+    this.transports.update(playerZ, nowMs, true, diorama);
     this.defenseBeach.visible = true;
     this.defenseBeach.position.z = playerZ;
     this.coastalWater.update(nowMs);

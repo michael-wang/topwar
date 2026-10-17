@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { OffshoreTransports, NAVAL_PALETTE, LANDING_CRAFT_LAYOUT } from '../src/rendering/environment/OffshoreTransports';
+import { OffshoreTransports, NAVAL_PALETTE, LANDING_CRAFT_LAYOUT, DIORAMA_LANDING_CRAFT_LAYOUT } from '../src/rendering/environment/OffshoreTransports';
 import { ART } from '../src/art/ArtDirection';
 import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 import gameData from '../public/game-data/game.json';
@@ -17,15 +17,23 @@ it('keeps exactly three asymmetric beach-facing craft for lanes 1/3/5 without sc
   transports.update(100, 2000, false); expect(transports.group.visible).toBe(false); transports.dispose();
 });
 
-it.each([350, 390])('separates three readable craft across the sea at %s×844 without cropping', width => {
+it.each([350, 390].flatMap(width => [false, true].map(diorama => ({ width, diorama }))))
+('separates three readable craft at $width×844 (diorama=$diorama) without cropping', ({ width, diorama }) => {
   const transports = new OffshoreTransports(), camera = new THREE.PerspectiveCamera(48, width / 844, .1, 180);
-  applyCoastalCamera(camera); transports.group.updateMatrixWorld(true); let previous = -Infinity;
+  applyCoastalCamera(camera); transports.update(0, 0, true, diorama);
+  transports.group.updateMatrixWorld(true); let previous = -Infinity;
   for (const ship of transports.group.children) {
     const center = ship.position.clone().project(camera);
     expect(center.x - previous).toBeGreaterThan(.35); previous = center.x;
     const bounds = new THREE.Box3().setFromObject(ship), corners: THREE.Vector3[] = [];
-    // Decorative bows must stay behind the real Destroyer's station/wake depth.
-    expect(bounds.min.z).toBeGreaterThan(gameData.catharsis.destroyer.z + 4);
+    if (diorama) {
+      // Bows approach the waterline without grounding; the beachhead is nearby.
+      expect(bounds.min.z).toBeGreaterThan(ART.coastalDefense.shorelineZ);
+      expect(bounds.min.z).toBeLessThan(ART.coastalDefense.shorelineZ + 8);
+    } else {
+      // Real combat still keeps decorative bows behind the Destroyer's wake.
+      expect(bounds.min.z).toBeGreaterThan(gameData.catharsis.destroyer.z + 4);
+    }
     for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y])
       for (const z of [bounds.min.z, bounds.max.z]) corners.push(new THREE.Vector3(x, y, z).project(camera));
     const xs = corners.map(p => (p.x + 1) * width / 2);
@@ -33,6 +41,20 @@ it.each([350, 390])('separates three readable craft across the sea at %s×844 wi
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(40);
   }
   expect(LANDING_CRAFT_LAYOUT).toHaveLength(3); transports.dispose();
+});
+
+it('returns the same pooled craft offshore on Start and back near shore for New Game', () => {
+  const transports = new OffshoreTransports(), ships = [...transports.group.children];
+  for (const diorama of [true, false, true]) {
+    transports.update(0, 1000, true, diorama);
+    expect(transports.group.children).toEqual(ships);
+    const layout = diorama ? DIORAMA_LANDING_CRAFT_LAYOUT : LANDING_CRAFT_LAYOUT;
+    ships.forEach((ship, i) => {
+      expect(ship.position.x).toBe(layout[i].x); expect(ship.position.z).toBe(layout[i].z);
+      expect(ship.rotation.y).toBe(LANDING_CRAFT_LAYOUT[i].heading);
+    });
+  }
+  transports.dispose();
 });
 
 it('shares five military material/geometry batches across craft and disposes each resource once', () => {

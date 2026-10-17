@@ -10,6 +10,19 @@ it('opens the shoreline showcase while retaining asymmetric near/mid village mas
   for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(29);
   expect(COASTAL_TREES).toHaveLength(2);
   for (const tree of COASTAL_TREES) expect(tree.z + tree.size).toBeLessThan(39);
+  expect(Math.abs(COASTAL_TREES[0].z - COASTAL_TREES[1].z)).toBeGreaterThanOrEqual(3);
+  expect(COASTAL_TREES[0].size).not.toBe(COASTAL_TREES[1].size);
+});
+
+it('keeps graphic house/arch shadows off the central sand and projects the right house seaward', () => {
+  const architecture = new CoastalArchitecture(); architecture.update(3.2); architecture.group.updateMatrixWorld(true);
+  architecture.group.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || !(object.material as THREE.Material).transparent) return;
+    const bounds = new THREE.Box3().setFromObject(object);
+    expect(bounds.min.x >= 3.6 || bounds.max.x <= -3.6).toBe(true);
+    if (bounds.max.x < 0) expect(bounds.getCenter(new THREE.Vector3()).z).toBeGreaterThan(COASTAL_BUILDINGS[0].z + 2);
+  });
+  architecture.dispose();
 });
 
 it.each([2.4, 3.2, 4, 5])('keeps opaque village and vegetation outside %.1f track edge plus clearance', halfWidth => {

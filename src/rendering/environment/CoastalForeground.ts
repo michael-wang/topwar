@@ -71,10 +71,9 @@ export class CoastalForeground {
     block.dispose();
   }
   update(trackHalfWidth:number):void {
-    this.sides[0].position.x=-trackHalfWidth-.8;
-    this.sides[1].position.x=trackHalfWidth+.8;
-    // Move existing village corners back into the portrait composition, not inward
-    // over the combat lanes. Their facade/door shapes now survive the edge crop.
+    this.sides[0].position.x=-trackHalfWidth-1.2;
+    this.sides[1].position.x=trackHalfWidth+1.3;
+    // Keep recognizable village corners at the crop while opening the coast.
     this.sides[0].position.z=5;
     this.sides[1].position.z=6;
   }

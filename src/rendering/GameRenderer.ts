@@ -172,7 +172,7 @@ export class GameRenderer {
   // Uses the same renderer/pools, without weapons, warning or combat FX passes.
   renderDiorama(state: GameRenderState, nowMs: number): void {
     if (this.disposed) return;
-    this.environment.update(state.player.z, state.track.halfWidth, nowMs);
+    this.environment.update(state.player.z, state.track.halfWidth, nowMs, true);
     this.squadRenderer.updateIdle(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs, true, 0, 0);
     this.contactShadows.update(state, this.squadRenderer, nowMs);

@@ -5,8 +5,8 @@ import { foliageMassTexture, flowerSpeckTexture } from '../art/FoliageTexture';
 
 const C = ART.coastalDefense;
 export const COASTAL_TREES = [
-  { side: -1, x: 1.7, z: 20.5, h: 3.4, size: 1.15 },
-  { side: 1, x: 1.7, z: 21, h: 3.6, size: 1.15 },
+  { side: -1, x: 1.45, z: 20, h: 3.6, size: .85 },
+  { side: 1, x: .8, z: 15, h: 3.7, size: .70 },
 ] as const;
 
 export class CoastalVegetation {

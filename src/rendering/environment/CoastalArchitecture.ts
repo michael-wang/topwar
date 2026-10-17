@@ -8,8 +8,8 @@ const C = ART.coastalDefense;
 // Near village corners stay below the primary surf sightline at the portrait camera.
 // X is measured outward from the track edge; foreground corners live separately.
 export const COASTAL_BUILDINGS = [
-  { side: -1, offset: 2.2, z: 24, width: 2.7, height: 2.1, depth: 3.0, angle: .12 },
-  { side: 1, offset: 2.3, z: 23.5, width: 2.8, height: 2.2, depth: 3.2, angle: -.12 },
+  { side: -1, offset: 2.9, z: 22, width: 2.7, height: 2.1, depth: 3.0, angle: .12 },
+  { side: 1, offset: 2.8, z: 22.5, width: 2.8, height: 2.2, depth: 3.2, angle: -.12 },
 ] as const;
 
 export class CoastalArchitecture {
@@ -54,7 +54,10 @@ export class CoastalArchitecture {
       this.part(building, 'sun-bleached-door', 0, .72, -d / 2 - .07, .88, 1.42, .10, 'door');
       this.part(building, 'door-inner-recess', .19, .68, -d / 2 - .14, .42, 1.16, .05, 'dark');
       this.part(building, 'plaster-door-step', 0, .12, -d / 2 - .4, 1.3, .24, .65, 'plaster');
-      this.shadow(side, layout.side * layout.offset + 1.2, layout.z + 1.5, w + 2, d + 1, layout.angle - .18);
+      // Negative world X is screen-right: send that house's shadow outward and
+      // seaward (+Z), rather than laying a dark bar across the central sand.
+      this.shadow(side, layout.side * layout.offset + (layout.side < 0 ? -1 : 1.2),
+        layout.z + (layout.side < 0 ? 3 : 1.5), w + 1, d + 1, layout.angle - .18);
     }
     // Civilian terrace and arch frame the street; neither crosses the combat field.
     this.arch(this.sides[1], 1.7, 18);

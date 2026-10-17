@@ -16,6 +16,12 @@ export const LANDING_CRAFT_LAYOUT = [
   { lane: 5, x: -9.2, z: 80, heading: .20 },
 ] as const;
 
+// Near-shore bows link the idle beachhead to its transports. Combat keeps the
+// offshore layout above so the actual arriving Destroyer retains its silhouette.
+export const DIORAMA_LANDING_CRAFT_LAYOUT = [
+  { x: 6.8, z: 54 }, { x: -.45, z: 51 }, { x: -7.2, z: 56 },
+] as const;
+
 function paintedHull(): THREE.BufferGeometry {
   const geometry = paintedBlockGeometry(), positions = geometry.getAttribute('position');
   const colors = new Float32Array(positions.count * 3), color = new THREE.Color();
@@ -81,10 +87,12 @@ export class OffshoreTransports {
       }
     }
   }
-  update(playerZ: number, nowMs: number, defense: boolean): void {
+  update(playerZ: number, nowMs: number, defense: boolean, diorama = false): void {
     this.group.visible = defense; this.group.position.z = playerZ;
     for (let i = 0; i < this.ships.length; i++) {
       const ship = this.ships[i];
+      const layout = diorama ? DIORAMA_LANDING_CRAFT_LAYOUT[i] : LANDING_CRAFT_LAYOUT[i];
+      ship.position.x = layout.x; ship.position.z = layout.z;
       ship.position.y = -.15 + Math.sin(nowMs * .00035 + i * 2.3) * .045;
       ship.rotation.z = Math.sin(nowMs * .00022 + i) * .004;
     }
