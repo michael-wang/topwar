@@ -7,6 +7,29 @@ import { ART } from '../src/art/ArtDirection';
 import { EnemyRenderer } from '../src/rendering/enemies/EnemyRenderer';
 import { createChibiGruntFamily } from '../src/rendering/enemies/ChibiGruntFamily';
 import { createChibiHeavyFamily } from '../src/rendering/enemies/ChibiThreatFamilies';
+import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
+
+it('anchors the ivory core and long gold streaks to transformed upper armor, detaches, and outlasts Heavy sparks', () => {
+  const scene=new THREE.Scene(),family=createChibiGiantFamily(),r=new GiantRenderer(scene,family),hits=new HeavyHitFeedback(scene);
+  const e={id:1,tier:1,archetype:'giant' as const,hp:172,x:2,z:22,visualScaleX:2.3,visualScaleY:2.9,visualScaleZ:2.6};
+  r.update(e,0,hits);hits.observe(e,1000);hits.update(new Set([1]),1000);r.update(e,1000,hits);
+  const body=scene.getObjectByName('giant-body') as THREE.Mesh;
+  const core=scene.getObjectByName('giant-hit-hot-core') as THREE.Mesh;
+  const expected=new THREE.Vector3(.04,.82,.41).applyMatrix4(body.matrixWorld);
+  expect(core.position.y).toBeCloseTo(expected.y);expect(core.position.y).toBeGreaterThan(2);
+  expect(core.position.z).toBeCloseTo(expected.z-.035);expect(core.visible).toBe(true);
+  const sparks=scene.getObjectByName('heavy-hit-sparks')!,streak=sparks.children[0] as THREE.Mesh;
+  for(const width of [350,390]){
+    const camera=new THREE.PerspectiveCamera(48,width/844,.1,180);applyCoastalCamera(camera);
+    const left=streak.position.clone().add(new THREE.Vector3(-.035*streak.scale.x,0,0)).project(camera);
+    const right=streak.position.clone().add(new THREE.Vector3(.035*streak.scale.x,0,0)).project(camera);
+    expect(Math.abs(right.x-left.x)*width/2).toBeGreaterThan(5);
+  }
+  const anchored=core.position.clone();r.update({...e,z:21},1010,hits);expect(core.position.equals(anchored)).toBe(true);
+  hits.update(new Set([1]),1240);expect(sparks.visible).toBe(true);expect(core.visible).toBe(false);
+  hits.update(new Set([1]),1300);expect(sparks.visible).toBe(false);
+  r.dispose();hits.dispose();family.dispose();expect(scene.children).toHaveLength(0);
+});
 
 it('uses bright six-spoke Giant metal sparks with a restrained body flash and unchanged Heavy treatment', () => {
   const scene=new THREE.Scene(), feedback=new HeavyHitFeedback(scene);
@@ -19,24 +42,25 @@ it('uses bright six-spoke Giant metal sparks with a restrained body flash and un
   expect(bodies[0].material.opacity).toBe(.24);
   expect(bodies[1].material.opacity).toBe(.72);
   expect(bodies[1].material.color.getHexString()).toBe(new THREE.Color(ART.fx.core).getHexString());
-  expect(sparks[0].children.filter(child=>child.visible)).toHaveLength(6);
+  expect(sparks[0].children.filter(child=>child.visible)).toHaveLength(7);
   expect(sparks[1].children.filter(child=>child.visible)).toHaveLength(4);
   const spark=sparks[0].children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
-  expect(spark.scale.x).toBeCloseTo(1.8*2.4); expect(spark.material.opacity).toBe(1);
+  expect(spark.scale.x).toBeCloseTo(2.8*4.2); expect(spark.material.opacity).toBe(1);
   expect(spark.material.color.getHexString()).toBe('ffe34f');
   const heavySpark=sparks[1].children[0] as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;
   expect(heavySpark.material.color.getHexString()).toBe(new THREE.Color(ART.fx.impact).getHexString());
   expect(heavySpark.scale.toArray()).toEqual([1,1,1]);
   feedback.update(new Set([1,2]),50);
   expect(bodies[0].visible).toBe(true);
-  expect(spark.material.opacity).toBeCloseTo(1-50/170);
+  expect(spark.material.opacity).toBeCloseTo(Math.pow(1-50/300,.6));
   feedback.update(new Set([1,2]),100); expect(bodies[0].visible).toBe(false);
-  feedback.update(new Set([1,2]),170); expect(sparks[0].visible).toBe(false);
+  feedback.update(new Set([1,2]),170); expect(sparks[0].visible).toBe(true); expect(sparks[1].visible).toBe(false);
+  feedback.update(new Set([1,2]),300);expect(sparks[0].visible).toBe(false);
   const material=bodies[0].material, disposed=vi.spyOn(material,'dispose');
-  expect(feedback.observe(enemy,250)).toBe(true);
-  expect(scene.children).toHaveLength(4); expect(bodies[0].material).toBe(material);
+  expect(feedback.observe(enemy,500)).toBe(true);
+  expect(scene.children).toHaveLength(24); expect(bodies[0].material).toBe(material);
   const borrowed=new THREE.BufferGeometry(), borrowedDisposed=vi.spyOn(borrowed,'dispose');
-  feedback.setBody(1,borrowed,new THREE.Matrix4(),250);
+  feedback.setBody(1,borrowed,new THREE.Matrix4(),500);
   feedback.dispose(); expect(disposed).toHaveBeenCalledTimes(1); expect(borrowedDisposed).not.toHaveBeenCalled();
   borrowed.dispose();
 });

@@ -23,7 +23,7 @@ it('uses the dedicated crest/maul silhouette, bounded sparks and the shared froz
   expect(hits.observe(enemy, 1)).toBe(true);
   expect(hits.observe(enemy, 146)).toBe(false);
   hits.update(new Set([1]), 1); renderer.update(enemy, 1, hits);
-  expect(scene.getObjectByName('heavy-hit-sparks')!.children.filter(s => s.visible)).toHaveLength(6);
+  expect(scene.getObjectByName('heavy-hit-sparks')!.children.filter(s => s.visible)).toHaveLength(7);
   expect(group.position.z).toBe(14); // emphasis alone never moves the root
   hits.update(new Set([1]), 120); renderer.update(enemy, 120, hits);
   expect(group.position.z).toBe(14);
@@ -56,7 +56,7 @@ it('settles between impacts throughout a 30-second LV6 Giant fight without growi
     expect(hits.strength(1, now + 110)).toBe(0);
   }
   expect(reactions).toBe(105);
-  expect(scene.children.length).toBeLessThanOrEqual(4);
+  expect(scene.children.length).toBe(24);
   hits.update(new Set([1]), 31000);
   expect(scene.children.every(child => !child.visible)).toBe(true);
   hits.reset(); hits.dispose(); expect(scene.children).toHaveLength(0);
