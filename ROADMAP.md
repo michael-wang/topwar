@@ -4,6 +4,8 @@
 
 GIANT mechanical identity (#14) is Pixel 8 PASS / CLOSED. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
+Opening experience (#22/#23) has a [design proposal](docs/OPENING_PROPOSAL.md), **PROPOSED — NOT APPROVED FOR PRODUCTION**: silent Battle Showcase versus recommended lower-power Battlefield Diorama, followed by a proposed opening using the existing complete Commander recording. No attract, siren, Commander or production fullscreen code is authorized by that document.
+
 Enemy artillery impact smoke now reads lighter gray with lower opacity, fade from .25s and expiry at 1.05s. Initial fire/flash and wind remain; all other VFX families are unchanged. Pixel 8 readability acceptance is pending.
 
 Defeat’s 「作戰失敗」 poster now echoes victory with left-side results, lower-right battle-worn characters and 「再試一次」. The soldier is discouraged and the tired Commander supports his shoulder; a darker cool vignette reinforces the mood. The battlefield freezes after final casualty feedback; victory and saves retain their existing flow. Pixel 8 presentation acceptance is pending.
@@ -16,9 +18,9 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Review Boss/Victory continuity and pending emergency-warning and music polish on Pixel 8. Preserve accepted Lv12 casualty behavior, the 1,800 XP recovery cost and 0.35-second Supply recovery.
+1. Owner selects the attract concept and approves opening content, siren, briefing handoff and Retry/Skip policy (#22/#23) before implementation.
 2. Validate the limited DEV fullscreen trial (#28) on Pixel 8 before later public startup integration.
-3. Investigate and reduce the long first load.
+3. Owner reviews GIANT QA usability, startup/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 
 ## LATER
 
@@ -28,4 +30,5 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.
+- Targeted first-load and idle-performance improvements after device measurements.
 - Further authored encounters, stages and art when explicitly requested.
