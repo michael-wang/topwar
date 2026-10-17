@@ -15,7 +15,7 @@ import { ObserverPortraits } from './ui/ObserverPortraits';
 import { FIELD_OBSERVER_LOCALE } from './ui/observerLocale';
 import { clearCheckpoint, readCheckpoint, type CheckpointRead } from './app/SessionCheckpoint';
 import { SessionRecovery } from './ui/SessionRecovery';
-import { startupFailure, startupResource, startupStatus } from './ui/StartupFeedback';
+import { startupFailure, startupLoading, startupPaint, startupResource, startupStatus } from './ui/StartupFeedback';
 
 const viewport = document.querySelector<HTMLElement>('#game-viewport');
 if (!viewport) {
@@ -42,6 +42,7 @@ async function startGame(): Promise<void> {
       recovery.dialog = new SessionRecovery(gameViewport, valid, resume => {
         recovery.selected = resume;
         if (!resume) clearCheckpoint(); // Deliberate invalidation at the actual New Game gesture.
+        startupLoading(gameViewport, resume);
         resolve(resume);
       }, true);
     });
@@ -49,7 +50,7 @@ async function startGame(): Promise<void> {
   // Strict saved-config/Simulation validation is independent of network and GPU assets.
   if (saved.status === 'valid' || saved.status === 'invalid') offerRecovery(saved.status === 'valid');
   try {
-    startupStatus('正在讀取遊戲設定…');
+    startupStatus('正在讀取遊戲設定…', 0);
     const data = await startupResource(Promise.all([
       configStore.load(),
       loadLevelDefinition(publicAssetUrl('game-data/levels/level-001.json')),
@@ -67,8 +68,10 @@ async function startGame(): Promise<void> {
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'tankBoss');
       audio.prepareRadio(FIELD_OBSERVER_LOCALE, 'victory');
     }
-    startupStatus('正在準備角色與戰場…');
+    startupStatus('正在準備角色與戰場…', 1);
+    await startupPaint();
     assets = await startupResource(loadCharacterAssets());
+    startupStatus('正在建立戰場…', 2);
   } catch (error) {
     recovery.dialog?.dispose();
     portraits?.dispose(); audio.dispose();
@@ -81,12 +84,15 @@ async function startGame(): Promise<void> {
   const chosenRecovery = recovery.dialog ? { dialog: recovery.dialog, continueGame } : undefined;
   let app: GameApp | undefined;
   try {
-    startupStatus('正在建立戰場…');
+    await startupPaint();
     app = new GameApp(gameViewport, configStore, level, assets,
       perfEnabled(window.location.search), audio, portraits, saved,
       chosenRecovery);
-    if (saved.status !== 'valid' && saved.status !== 'invalid') SessionRecovery.clearLoading(gameViewport);
+    startupStatus('正在完成準備…', 3);
     app.start();
+    startupStatus(continueGame ? '即將開始' : '準備完成', 4);
+    await startupPaint();
+    if (saved.status !== 'valid' && saved.status !== 'invalid') SessionRecovery.clearLoading(gameViewport);
     recovery.dialog?.initializationReady();
   } catch (error) {
     recovery.dialog?.dispose();

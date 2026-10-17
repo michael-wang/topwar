@@ -6,7 +6,7 @@ Enemy artillery impact smoke now reads lighter gray with lower opacity, fade fro
 
 Defeat’s 「作戰失敗」 poster now echoes victory with left-side results, lower-right battle-worn characters and 「再試一次」. The soldier is discouraged and the tired Commander supports his shoulder; a darker cool vignette reinforces the mood. The battlefield freezes after final casualty feedback; victory and saves retain their existing flow. Pixel 8 presentation acceptance is pending.
 
-Immediate first-load feedback (#21) now appears before modules and data, handing over to the existing protected recovery choice or single Tap-to-Start gesture. Slow/failing resources have Reload recovery. Owner Pixel 8 startup feel review remains pending.
+Immediate first-load feedback (#21) now includes an honest four-stage completed-work bar, present before modules and data and retained after recovery selection. It hands over to the existing protected recovery choice or single Tap-to-Start gesture. Slow/failing resources have Reload recovery. Owner Pixel 8 startup feel review remains pending.
 
 Fullscreen (#28) has an optional DEV QA enter/exit/re-entry trial only. Run the [physical Pixel 8 checklist](docs/FULLSCREEN_TRIAL.md); public startup integration and HTTPS validation remain deferred.
 

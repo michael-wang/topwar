@@ -32,7 +32,7 @@ See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](AR
 
 ## Saves and phone testing
 
-Fresh visits show immediate HTML loading feedback before modules/data, with Reload recovery for slow or failed resources; the existing single Tap-to-Start gesture remains. Loading feel (#21) and DEV fullscreen (#28) await physical Pixel 8 review.
+Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single Tap-to-Start gesture remain. Loading feel (#21) and DEV fullscreen (#28) await physical Pixel 8 review.
 
 Manual Pause and page hiding save a bounded full-state checkpoint. After reload, Continue/New Game is available before asset initialization. Continue restores paused and explicit Resume activates audio and requests Screen Wake Lock. Returning to a surviving hidden page also remains paused.
 

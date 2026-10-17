@@ -73,12 +73,12 @@ body {
 }
 
 #game-viewport[data-recovery-pending] > * { visibility:hidden; }
-.session-recovery { position:fixed; inset:0; z-index:10000; display:grid; place-items:center;
+.session-recovery:not(.boot-cover) { position:fixed; inset:0; z-index:10000; display:grid; place-items:center;
   padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
   background:#14212b; color:#fff3dc; font:700 17px/1.5 var(--font-utility,sans-serif); }
-.session-recovery > div { display:grid; gap:12px; width:min(270px,80%); padding:20px;
+.session-recovery:not(.boot-cover) > div { display:grid; gap:12px; width:min(270px,80%); padding:20px;
   border:1px solid #566578; border-radius:12px; background:#14212b; box-sizing:border-box; text-align:center; }
-.session-recovery button { min-height:48px; border:1px solid #8997a4; border-radius:8px;
+.session-recovery:not(.boot-cover) button { min-height:48px; border:1px solid #8997a4; border-radius:8px;
   background:#263444; color:#fff3dc; font:700 17px var(--font-utility,sans-serif); touch-action:manipulation; }
 .checkpoint-notice { position:absolute; z-index:20; top:calc(50% + 44px);
   left:var(--hud-safe-left,12px); right:var(--hud-safe-right,12px); padding:8px; border-radius:6px;
