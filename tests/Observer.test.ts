@@ -220,11 +220,12 @@ function missionUi(portraits = readyPortraits(), search = '') {
 it('opts into Commander A only in DEV with the exact query, without changing communications', () => {
   for (const dev of [true, false]) {
     vi.stubEnv('DEV', dev);
-    for (const search of ['', '?commander-placement=b', '?commander-placement=a']) {
+    for (const search of ['', '?commander-placement=b', '?commander-placement=A1', '?commander-placement=a', '?commander-placement=a1', '?commander-placement=a2']) {
       const {ui, audio} = missionUi(readyPortraits(), search);
-      expect(ui.element.style.left).toBe(dev && search.endsWith('=a') ? 'max(12px, calc(50% - 155px))' : undefined);
-      expect(ui.element.style.top).toBe(dev && search.endsWith('=a')
-        ? 'calc(64% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)' : undefined);
+      const height = dev ? ({a:64,a1:58,a2:56} as Record<string,number>)[search.split('=')[1]] : undefined;
+      expect(ui.element.style.left).toBe(height ? 'max(12px, calc(50% - 155px))' : undefined);
+      expect(ui.element.style.top).toBe(height
+        ? `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)` : undefined);
       expect(audio.prepareRadio).toHaveBeenCalledTimes(4);
       for (const message of ['missionIntro', 'tankBoss', 'victory', 'airSupport'])
         expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', message);

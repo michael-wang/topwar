@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.44a Commander Placement Trial A (#23) is implemented as DEV-only `?commander-placement=a`, awaiting Julia/Owner Pixel 8 review. Existing panel/portrait and all communication timing remain; production keeps upper-left placement. Review recorded soldier/weapon and emergency-glyph overlap before accepting A. The separate P4.44 cinematic remains unimplemented.
+P4.44b Commander Placement Refinement (#23) compares DEV-only A (64%), A1 (58%) and A2 (56%). A remains ART HOLD; higher candidates improve squad clearance but conflict with warnings. Awaiting Julia/Owner Pixel 8 review. Panel/portrait, communication timing and production upper-left placement remain. The separate P4.44 cinematic remains unimplemented.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 
@@ -22,7 +22,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Julia/Owner review P4.44a Commander A (#23) and P4.43 composition (#22) on Pixel 8; stop implementation until feedback. Both remain without art PASS.
+1. Julia/Owner review P4.44b Commander variants (#23) and P4.43 composition (#22) on Pixel 8; stop implementation until feedback. Both remain without art PASS.
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 

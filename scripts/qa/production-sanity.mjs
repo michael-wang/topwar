@@ -145,7 +145,7 @@ async function checkPlaytestScenes(page,width,out) {
 }
 try {
 for(const width of [390,350]){
-for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1]]){
+for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1],['?commander-placement=a1',1],['?commander-placement=a2',1]]){
  const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'en-US'});const errors=[];
  const runtimeRequests=[];let configResponse,levelResponse;
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});

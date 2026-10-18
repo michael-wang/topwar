@@ -57,9 +57,14 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'airSupport');
     this.element.className = 'field-observer'; this.element.hidden = true;
     // Reversible placement trial only; production retains the authored upper slot.
-    if (import.meta.env.DEV && new URLSearchParams(window.location?.search).get('commander-placement') === 'a') {
-      this.element.style.left = 'max(12px, calc(50% - 155px))';
-      this.element.style.top = 'calc(64% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)';
+    if (import.meta.env.DEV) {
+      const placement = new URLSearchParams(window.location?.search).get('commander-placement');
+      const height = placement === 'a' ? 64 : placement === 'a1' ? 58 : placement === 'a2' ? 56 : null;
+      if (height !== null) {
+        this.element.style.left = 'max(12px, calc(50% - 155px))';
+        // Retain A's inset compensation so only the requested percentage differs.
+        this.element.style.top = `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)`;
+      }
     }
     this.element.setAttribute('aria-live', 'polite');
     this.element.setAttribute('aria-label', '海防指揮官通訊');
