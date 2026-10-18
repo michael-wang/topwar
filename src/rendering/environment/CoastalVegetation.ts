@@ -5,8 +5,8 @@ import { foliageMassTexture, flowerSpeckTexture } from '../art/FoliageTexture';
 
 const C = ART.coastalDefense;
 export const COASTAL_TREES = [
-  { side: -1, x: 1.45, z: 20, h: 3.6, size: .85 },
-  { side: 1, x: .8, z: 15, h: 3.7, size: .70 },
+  { side: -1, x: 1.45, z: 21, h: 3.2, size: .95 },
+  { side: 1, x: 1.0, z: 18, h: 3.4, size: .82 },
 ] as const;
 
 export class CoastalVegetation {
@@ -66,19 +66,19 @@ export class CoastalVegetation {
               transform.position.set(side * tree.x + Math.sin(angle)*.20,
                 tree.h + Math.cos(angle)*.18, tree.z + Math.sin(angle*1.7)*.45);
               transform.rotation.set(Math.sin(angle)*.18, [-.6, .35, 1.05, -1.0][layer], Math.cos(angle)*.12);
-              transform.scale.set(tree.size * 1.40, tree.size * .70, 1);
+              transform.scale.set(tree.size * 1.25, tree.size * .95, 1);
             } else {
               // Keep climbing cards attached to the shorter near-village facades.
-              transform.position.set(side * (side < 0 ? 1.0 : 3.3), 1.15 + (i % 3)*.30,
-                22.3 + (i % 3)*.08);
+              transform.position.set(side * (side < 0 ? 1.0 : 1.65), 1.45 + (i % 3)*.30,
+                (side < 0 ? 25.3 : 32.2) + (i % 3)*.08);
               transform.rotation.set(.12, Math.sin(angle)*.45, Math.cos(angle)*.3);
               transform.scale.set(.72, .65, 1);
             }
           } else if (family === 1) {
-            transform.position.set(side * (side < 0 ? 1.05 : 3.25),
-              1.25 + (i % 3)*.30, 22.20 + (i % 3)*.08);
+            transform.position.set(side * (side < 0 ? 1.05 : 1.60),
+              1.55 + (i % 3)*.30, (side < 0 ? 25.2 : 32.1) + (i % 3)*.08);
             transform.rotation.set(.12, Math.sin(angle)*.2, Math.cos(angle)*.18);
-            transform.scale.set(.50, .46, 1);
+            transform.scale.set(.70, .62, 1);
           } else if (family === 2) {
             const tree = trees[Math.floor(i / 3)], branch = i % 3;
             transform.position.set(side * tree.x + (branch ? (branch === 1 ? -.25 : .25) : 0),

@@ -34,9 +34,11 @@ export class DioramaSentries {
     this.group.visible = retreat < 1;
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
-      // Stay outside physical lanes; move behind the inner facade then disappear.
-      this.group.children[i].position.set(side * (halfWidth + .5 + retreat * 2.5), 0,
-        (i === 0 ? 16.5 : 14) + retreat * 1.2);
+      // Idle-only side-edge guards move away into the existing village facades.
+      // They have no combat identity; real squad placement is untouched.
+      const x = halfWidth - (i === 0 ? .4 : .6);
+      this.group.children[i].position.set(side * THREE.MathUtils.lerp(x, halfWidth + 3, retreat), 0,
+        THREE.MathUtils.lerp(i === 0 ? 7 : 5.5, i === 0 ? 17.7 : 15.2, retreat));
     }
   }
   dispose(): void { this.group.removeFromParent(); this.gear.dispose(); }

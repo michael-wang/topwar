@@ -6,7 +6,7 @@ P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its 
 
 GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks use larger 300ms upper-armor streaks and a brief ivory center, now varying across seven nearby chest contacts. Eleven original-colored mechanical pieces now collapse into a tighter footprint with less horizontal travel/skid, retaining ground contact and their 1.9–2.6s fade. Persistent wreck fire is removed; eight denser charcoal/gray lobes now have 1.8× radius, over 3× projected area and stronger upward emergence for .30s, then gently drift right and fade near the wreck by roughly 2.15s. Arrival, spark variation, tight footprint and no persistent fire are Pixel 8 accepted. Only amplified smoke awaits owner review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
 
-Opening P4.42 (#22): Battlefield Diorama 2.0 first visual prototype is implemented / awaiting owner Pixel 8 visual acceptance. Same Battlefield, Calmer Moment keeps static scenery aligned with combat, removes decorative enemies and the separate fleet, reuses three remote landing craft, and shows the real-looking center soldier with two presentation-only side sentries retreating behind architecture. The one-second Start approach never delays Simulation. Preserve accepted P4.40c UI, startSquad=1 and gameplay. Julia directs art; owner makes the final art decision. No Pages deployment.
+Opening P4.43 (#22): Aegean Scenic Readability is implemented / awaiting Julia composition review then Owner Pixel 8 final decision. P4.42 scene consistency and one-second threat-cue transition remain; art is not PASS. Shared side architecture gains asymmetric upper rooms, clear blue windows and stone terraces/steps; olive crowns, sparse flowers, sand/wet-shore shading and sea layers improve scenic readability. Decorative sentries now read nearer the player at the side edges and still leave behind facades. Camera B, Z45, gameplay, initial enemies, HUD and audio remain unchanged. No Pages deployment.
 
 Enemy artillery impact smoke now reads lighter gray with lower opacity, fade from .25s and expiry at 1.05s. Initial fire/flash and wind remain; all other VFX families are unchanged. Pixel 8 readability acceptance is pending.
 
@@ -20,7 +20,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Owner reviews P4.42 calm-coast visual prototype (#22) on Pixel 8; stop implementation until feedback. Desktop evidence does not grant art acceptance.
+1. Julia reviews P4.43 composition (#22), then Owner makes the Pixel 8 final decision; stop implementation until feedback. Issue stays OPEN / no art PASS.
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 

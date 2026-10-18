@@ -11,8 +11,10 @@ const WATER_FRAGMENT = `uniform float time; uniform vec3 aqua,blue,shine,foam,we
     float depth=coastPosition.z;
     float edge=depth-shoreOffset(coastPosition.x);
     vec3 color=mix(clearAqua,aqua,smoothstep(0.,7.,max(edge,0.)));
-    color=mix(color,middleBlue,smoothstep(6.,28.,depth));
-    color=mix(color,blue,smoothstep(25.,65.,depth));
+    color=mix(color,middleBlue,smoothstep(5.,22.,depth));
+    color=mix(color,blue,smoothstep(20.,62.,depth));
+    // A narrow distant haze separates sea from sky without an added skyline mesh.
+    color=mix(color,vec3(.25,.48,.57),smoothstep(80.,150.,depth)*.22);
     float shallows=1.-smoothstep(5.,24.,depth);
     // Three unequal crossing phases imply moving shallow light, not refraction.
     float waveA=sin(coastPosition.x*.68+depth*.82-time*.19);
@@ -22,10 +24,10 @@ const WATER_FRAGMENT = `uniform float time; uniform vec3 aqua,blue,shine,foam,we
     float ripple=.5+.5*sin(coastPosition.x*.17+depth*.39+waveB*.6-time*.13);
     float crossed=.5+.5*sin(coastPosition.x*-.24+depth*.23+time*.09);
     float glint=smoothstep(.965,1.,waveA)*smoothstep(.975,1.,waveB);
-    color=mix(color,shine,shallows*(.085*caustic+.025*glint)+.013*ripple+.009*crossed);
+    color=mix(color,shine,shallows*(.13*caustic+.035*glint)+.024*ripple+.014*crossed);
     float alpha=1.;
     #ifdef SHORE_OVERLAY
-      color=mix(wetSand,color,smoothstep(-.25,.85,edge));
+      color=mix(wetSand,color,smoothstep(-.75,1.15,edge));
       float broken=smoothstep(-.28,.35,sin(coastPosition.x*.63+sin(coastPosition.x*.19)*1.6+time*.17));
       float width=.13+.23*(.5+.5*sin(coastPosition.x*.81+time*.11));
       float lap=(1.-smoothstep(width*.35,width,abs(edge)))*broken*.24;

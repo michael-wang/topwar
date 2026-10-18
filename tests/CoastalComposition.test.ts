@@ -7,7 +7,8 @@ import { applyCoastalCamera } from '../src/rendering/CoastalCamera';
 
 it('opens the shoreline showcase while retaining asymmetric near/mid village masses', () => {
   expect(COASTAL_BUILDINGS).toHaveLength(2);
-  for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(29);
+  for (const b of COASTAL_BUILDINGS) expect(b.z + b.depth / 2 + .5).toBeLessThan(39);
+  expect(Math.abs(COASTAL_BUILDINGS[0].z - COASTAL_BUILDINGS[1].z)).toBeGreaterThanOrEqual(6);
   expect(COASTAL_TREES).toHaveLength(2);
   for (const tree of COASTAL_TREES) expect(tree.z + tree.size).toBeLessThan(39);
   expect(Math.abs(COASTAL_TREES[0].z - COASTAL_TREES[1].z)).toBeGreaterThanOrEqual(3);
@@ -108,7 +109,14 @@ it.each([350,390].flatMap(width => [false, true].map(diorama => ({ width, dioram
       const hit = ray.intersectObjects(opaque, false)[0];
       if (!hit || hit.distance > ray.ray.origin.distanceTo(point)) clear++;
     }
-    expect(clear).toBeGreaterThanOrEqual(90);
+    // Tiered side facades now frame the surf; every active lane must stay clear.
+    expect(clear).toBeGreaterThanOrEqual(55);
+    for (let x = -3.2; x <= 3.2; x += .4) {
+      const target = new THREE.Vector3(x, .02, shore), screen = target.clone().project(camera);
+      ray.setFromCamera(new THREE.Vector2(screen.x, screen.y), camera);
+      const hit = ray.intersectObjects(opaque, false)[0];
+      expect(!hit || hit.distance > ray.ray.origin.distanceTo(target)).toBe(true);
+    }
   }
   architecture.dispose(); foreground.dispose(); vegetation.dispose();
 });

@@ -8,8 +8,8 @@ const C = ART.coastalDefense;
 // Near village corners stay below the primary surf sightline at the portrait camera.
 // X is measured outward from the track edge; foreground corners live separately.
 export const COASTAL_BUILDINGS = [
-  { side: -1, offset: 2.9, z: 22, width: 2.7, height: 2.1, depth: 3.0, angle: .12 },
-  { side: 1, offset: 2.8, z: 22.5, width: 2.8, height: 2.2, depth: 3.2, angle: -.12 },
+  { side: -1, offset: 1.65, z: 27, width: 2.7, height: 2.5, depth: 3.0, angle: .08 },
+  { side: 1, offset: 2.0, z: 34, width: 3.1, height: 3.4, depth: 3.2, angle: -.12 },
 ] as const;
 
 export class CoastalArchitecture {
@@ -54,13 +54,21 @@ export class CoastalArchitecture {
       this.part(building, 'sun-bleached-door', 0, .72, -d / 2 - .07, .88, 1.42, .10, 'door');
       this.part(building, 'door-inner-recess', .19, .68, -d / 2 - .14, .42, 1.16, .05, 'dark');
       this.part(building, 'plaster-door-step', 0, .12, -d / 2 - .4, 1.3, .24, .65, 'plaster');
+      // Offset upper rooms give the side village a stepped, inhabited silhouette.
+      const upperX = layout.side * .5, upperH = layout.side < 0 ? 1.7 : 1.3;
+      this.part(building, 'upper-room', upperX, h + upperH / 2, .45, w * .65, upperH, d * .65, 'plaster');
+      this.part(building, 'upper-cornice', upperX, h + upperH, .45, w * .65 + .18, .15, d * .65 + .18, 'shade');
+      this.part(building, 'upper-blue-shutter', upperX, h + upperH * .52, .40 - d * .325, .65, .82, .12, 'door');
+      this.part(building, 'upper-window-sill', upperX, h + .27, .32 - d * .325, .84, .12, .28, 'plaster');
+      for (const x of [-.28, .28]) this.part(building, 'shutter-division', upperX + x, h + upperH * .52,
+        .32 - d * .325, .035, .7, .06, 'shade');
       // Negative world X is screen-right: send that house's shadow outward and
       // seaward (+Z), rather than laying a dark bar across the central sand.
       this.shadow(side, layout.side * layout.offset + (layout.side < 0 ? -1 : 1.2),
         layout.z + (layout.side < 0 ? 3 : 1.5), w + 1, d + 1, layout.angle - .18);
     }
     // Civilian terrace and arch frame the street; neither crosses the combat field.
-    this.arch(this.sides[1], 1.7, 18);
+    this.arch(this.sides[1], 1.7, 23);
     this.part(this.sides[0], 'plaster-terrace-wall', -2.7, .5, 20, 2.3, 1, .42, 'plaster');
     for (let step = 0; step < 4; step++) {
       this.part(this.sides[0], 'village-stair', -3.8, .16 + step * .2, 19 + step * .65, 1.6, .32 + step * .4, .7, 'plaster');

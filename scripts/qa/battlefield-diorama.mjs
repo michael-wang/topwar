@@ -15,6 +15,9 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true,
       reducedMotion: variant === 'reduced-motion' ? 'reduce' : 'no-preference' });
     const errors = []; page.on('pageerror', e => errors.push(e.message));
+    page.on('console', message => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
     await exposeProductionApp(page);
     if (variant === 'safe-fullscreen') {
       // Inject device safe-area values into the test response only, not production CSS.
@@ -39,6 +42,21 @@ try {
     }, variant === 'reduced-motion');
     assert.equal(idle.enemies, 0); assert.equal(idle.guards, 2); assert.equal(idle.stats.visibleSquad, 1);
     await page.screenshot({ path: `${out}/${label}-idle.png` });
+    const longIdle = await page.evaluate(() => {
+      const a = window.__testApp, r = a.renderer;
+      // Sample ten minutes of presentation time; this is not a phone soak test.
+      const state = a.diorama.state;
+      const snapshots = [];
+      for (const time of [60000, 300000, 600000, 60000, 300000, 600000]) {
+        r.renderDiorama(state, time); const s = r.getDebugStats();
+        snapshots.push({ time, geometries: s.geometries, textures: s.textures, draws: s.drawCalls });
+      }
+      r.renderDiorama(state, a.reducedMotion?.matches ? 0 : 1200);
+      return snapshots;
+    });
+    assert.equal(longIdle[3].geometries, longIdle[5].geometries);
+    assert.equal(longIdle[3].textures, longIdle[5].textures);
+    assert.deepEqual(longIdle[5], longIdle[2]);
     const idleLifecycle = await page.evaluate(() => {
       const a = window.__testApp, before = JSON.stringify(a.simulation.getState());
       const age = a.idleAgeMs, frames = a.renderer.renderer.info.render.frame;
@@ -103,12 +121,10 @@ try {
       assert.deepEqual(newGameErrors, { started: true, noDiorama: true, noSentries: true });
     }
     assert.deepEqual(errors, []);
-    results.push({ width, variant, idle, idleLifecycle, newGameErrors, ...captures, errors });
+    results.push({ width, variant, idle, idleLifecycle, longIdle, newGameErrors, ...captures, errors });
     await page.close();
   }
 } finally {
   writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));
   await browser.close(); await new Promise(resolve => server.httpServer.close(resolve));
 }
-
-

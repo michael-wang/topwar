@@ -15,6 +15,14 @@ it.each([350, 390])('hides both sentries behind permanent facades before removal
   foreground.update(3.2); architecture.update(3.2);
   scene.add(foreground.group, architecture.group);
   const camera = new THREE.PerspectiveCamera(48, width / 844, .1, 180); applyCoastalCamera(camera);
+  sentries.update(3.2, 0); scene.updateMatrixWorld(true);
+  for (const guard of sentries.group.children) {
+    const screen = new THREE.Box3().setFromObject(guard).getCenter(new THREE.Vector3()).project(camera);
+    const x = (1 + screen.x) * width / 2, y = (1 - screen.y) * 844 / 2;
+    expect(x).toBeGreaterThan(15); expect(x).toBeLessThan(width - 15);
+    expect(x < width * .25 || x > width * .75).toBe(true);
+    expect(y).toBeGreaterThan(450); expect(y).toBeLessThan(550);
+  }
   sentries.update(3.2, .99); scene.updateMatrixWorld(true);
   const ray = new THREE.Raycaster();
   for (const guard of sentries.group.children) {

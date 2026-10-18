@@ -3,6 +3,7 @@ import { CoastalWater } from './CoastalWater';
 import { CoastalArchitecture } from './CoastalArchitecture';
 import { CoastalVegetation } from './CoastalVegetation';
 import { CoastalForeground } from './CoastalForeground';
+import { coastalSand } from './CoastalSand';
 import { ART } from '../../art/ArtDirection';
 import { illustratedMaterial } from '../art/IllustratedMaterial';
 import { paintedBlockGeometry } from '../art/PaintedGeometry';
@@ -40,6 +41,7 @@ export class BridgeEnvironment {
     this.skyLayer.name = 'battlefield-sky-activity';
     this.buildActivity();
     const sandMaterial = this.material(ART.coastalDefense.sand, false, 1, true);
+    coastalSand(sandMaterial);
     sandMaterial.map = this.sandTexture = sandWashTexture();
     this.sandTexture.wrapS = THREE.RepeatWrapping; this.sandTexture.repeat.set(10, 1);
     // Keep the near beach edge fixed while the far edge follows the visual coast.

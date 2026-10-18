@@ -60,6 +60,21 @@ export class CoastalForeground {
     part(0,-1.10,1.10,12.11,1,1,1,'plaster',undefined,arch);arch.dispose();
     for(let step=0;step<2;step++)part(0,-1.10,.08+step*.08,11.55+step*.42,1.18,.16+step*.16,.45);
     part(0,-.58,.18,14.8,.36,.36,1.35);
+    // Asymmetric limestone terraces run along the margins, never across lanes.
+    // Baked into the existing batches; broad courses read at phone resolution.
+    for (const side of [0, 1] as const) {
+      const sign = side ? 1 : -1;
+      const z = side ? 9.5 : 13;
+      part(side, sign * .4, .34, z, 1.45, .68, 2.3, 'paint', '#c9b99b');
+      part(side, sign * .4, .72, z, 1.6, .12, 2.45, 'plaster');
+      for (let step = 0; step < 4; step++) {
+        part(side, sign * .4, .075 + step * .075, z - 1.7 + step * .32,
+          .85, .15 + step * .15, .34, 'paint', step % 2 ? '#d6c6a8' : '#e6d9bd');
+      }
+      for (let course = 0; course < 3; course++) {
+        part(side, sign * .4, .12 + course * .19, z - 1.16, 1.3, .035, .025, 'paint', '#b2a58d');
+      }
+    }
     // Three material batches per side: stairs/parapets/door frames add no draws.
     pieces.forEach((batches,side)=>batches.forEach((sources,material)=>{
       const geometry=mergeGeometries(sources);sources.forEach(source=>source.dispose());
