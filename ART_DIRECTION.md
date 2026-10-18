@@ -38,7 +38,7 @@ shared display stack puts Bungee before Mantou Sans for mixed text.
 
 Mantou Sans is rejected for Commander subtitles and dense small Chinese. Commander
 dialogue uses the original 600 13px/1.38 system-ui, sans-serif, with unchanged panel,
-portraits and timing. Sentences, small labels, 強敵來襲！, damage hints and utility UI
+portraits and timing. Sentences, small labels, damage hints and utility UI
 use legible native sans-serif. Preserve the original self-hosted TTFs and OFL notices;
 no subsetting or font conversion.
 
@@ -47,6 +47,20 @@ The 暫停 banner resumes play and is therefore named 繼續遊戲 for assistive
 Keep TopWar/TOPWAR, LV, HP and literal A/D/Q keys; DEV/QA/tuning labels and review-only
 TAP TO START are outside this localization pass. Validate 350×844 and 390×844 layouts;
 physical Pixel 8 review decides readability, not desktop screenshots alone.
+
+### P4.40b hierarchy proposal — awaiting owner Pixel 8 sign-off
+
+The ordinary centered 開始遊戲 CTA uses 48–52px Mantou, tighter .03em tracking and
+a 104px-high panel, at most 320px wide with 20px minimum side margins. Its four
+glyphs outweigh the unchanged 暫停 banner; the full-screen review gate is unchanged.
+強敵來襲！ uses 28–32px Mantou Regular on a narrow slanted navy plaque with warm ivory
+text, dark offset edges and amber trim. Anchor it in the open mid-beach gap (52%
+height, below the Commander safe-area reserve), avoiding the crowded upper Tank
+entrance/Commander region. It exists only during the original entering event, with
+no new animation, alarm or clock. Replay/Retry labels use 26–28px Mantou Regular
+inside the unchanged gold/gray-blue result buttons. Keep all three single-line;
+preserve Commander system-ui, Pause, 升級！, Bungee and the existing result headlines.
+This hierarchy remains a proposal until physical Pixel 8 review.
 
 ## Arcade idle opening
 

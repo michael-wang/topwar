@@ -162,9 +162,17 @@
 .artillery-emergency span::before { top:0; left:3px; width:46px; height:61px;
   clip-path:polygon(0 0, 100% 0, 85% 100%, 15% 100%); }
 .artillery-emergency span::after { bottom:0; left:11px; width:30px; height:24px; border-radius:3px; }
-.tank-entrance-warning span { position:absolute; top:calc(var(--hud-inset-top, 0px) + 184px);
-  left:0; width:100%; color:#ffe5b0; text-align:center; font:900 14px var(--font-utility, sans-serif);
-  letter-spacing:.12em; text-shadow:1px 2px #54221c; }
+/* The upper field is occupied by Commander and the entering Tank. Use the open
+   mid-beach gap instead, including when a top safe inset pushes Commander down. */
+.tank-entrance-warning span { position:absolute; top:max(52%, calc(var(--hud-inset-top, 0px) + 184px));
+  left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px);
+  box-sizing:border-box; padding:5px 13px 7px; isolation:isolate;
+  color:#ffe5b0; text-align:center; font:400 clamp(28px, 8vw, 32px)/1.15 'Mantou Sans', system-ui, sans-serif;
+  font-synthesis:none; letter-spacing:.025em; white-space:nowrap;
+  text-shadow:2px 0 #07121c, -2px 0 #07121c, 0 -2px #07121c, 2px 3px #07121c; }
+.tank-entrance-warning span::before { content:''; position:absolute; inset:0; z-index:-1;
+  background:#142332e8; border-bottom:3px solid #f6ac55;
+  clip-path:polygon(5% 0, 100% 0, 95% 100%, 0 100%); }
 .tank-boss-bar { position:relative; height:18px; overflow:hidden; background:#142332;
   border:2px solid #fff3dc; box-shadow:0 2px #142332; }
 .tank-boss-hp { position:absolute; inset:0; display:grid; place-items:center; }
@@ -216,7 +224,8 @@
 }
 .stage-clear-overlay button { position:absolute; bottom:max(3%, calc(var(--hud-inset-bottom, 0px) + 6px));
   left:50%; width:min(250px, 72%); min-height:50px; height:6.5%; padding:8px 20px; transform:translateX(-50%);
-  pointer-events:auto; touch-action:manipulation; font:900 22px var(--font-combat-display);
+  pointer-events:auto; touch-action:manipulation; font:400 clamp(26px, 7.2vw, 28px)/1.15 'Mantou Sans', system-ui, sans-serif;
+  font-synthesis:none; letter-spacing:.025em; white-space:nowrap;
   color:#142332; background:linear-gradient(#ffe49b,#ffca60); border:2px solid #fff3dc;
   border-radius:6px 13px 6px 11px; box-shadow:0 4px #142332, inset 0 2px #ffffff88; cursor:pointer;
   animation:stage-clear-cta .35s 2.05s ease-out both; }

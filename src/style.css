@@ -435,6 +435,11 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
   font: 900 clamp(27px, 7.5vw, 34px)/1.2 var(--font-combat-display);
   letter-spacing: .12em; cursor: pointer; touch-action: manipulation;
 }
+/* The ordinary primary CTA outweighs Pause; the full-screen review gate keeps its typography. */
+.game-start-overlay:not(.is-review) {
+  width: min(320px, calc(100% - 40px)); min-height: 104px; padding-inline: 20px;
+  font-size: clamp(48px, 13.34vw, 52px); letter-spacing: .03em; white-space: nowrap;
+}
 .game-start-overlay span { transition: opacity 150ms ease; }
 .game-start-overlay:focus-visible { outline: 3px solid #fff5dd; outline-offset: 5px; }
 .game-start-overlay.is-activating span { opacity: .65; }

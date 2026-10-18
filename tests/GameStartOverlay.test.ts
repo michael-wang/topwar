@@ -58,6 +58,10 @@ it('keeps Start bounded so it cannot intercept the testing hatch', () => {
   expect(css).toContain('width: min(280px');
   expect(css).toContain('left: 50%');
   expect(css).not.toContain('inset: 0');
+  const primary = stylesheet.split('.game-start-overlay:not(.is-review) {')[1].split('}')[0];
+  expect(primary).toContain('width: min(320px, calc(100% - 40px))');
+  expect(primary).toContain('white-space: nowrap');
+  expect(primary).not.toContain('inset: 0');
 });
 
 it('keeps the Defense start title on the regular display trial instead of the HUD override', () => {
