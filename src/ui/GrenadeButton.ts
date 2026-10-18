@@ -22,7 +22,7 @@ export class GrenadeButton {
   private readonly click = (): void => { if (!this.element.disabled) this.activate(); };
   constructor(viewport: HTMLElement, private readonly activate: () => void) {
     this.element.type = 'button'; this.element.className = 'grenade-button';
-    this.element.title = 'Throw Grenade (Q)';
+    this.element.title = '投擲榴彈（Q）';
     this.element.innerHTML = `${grenadeIcon}<strong>0</strong><span class="combat-keycue" aria-hidden="true">Q</span><span class="grenade-thrown-label" aria-hidden="true">已投出</span>`;
     this.count = this.element.querySelector('strong')!; this.icon = this.element.querySelector('svg')!;
     this.element.addEventListener('pointerdown', this.stopPointer);
@@ -36,7 +36,7 @@ export class GrenadeButton {
     if (this.element.hidden === acquired) this.element.hidden = !acquired;
     const disabled = !enabled || inventory === 0;
     if (this.element.disabled !== disabled) this.element.disabled = disabled;
-    const label = `Throw Grenade (${inventory} available, Q${inventory > 0 && !enabled ? ', temporarily unavailable' : ''})`;
+    const label = `投擲榴彈（剩餘 ${inventory} 枚，Q${inventory > 0 && !enabled ? '，暫時無法使用' : ''}）`;
     if (label !== this.previousLabel) { this.element.setAttribute('aria-label', label); this.previousLabel = label; }
     if (inventory !== this.previousInventory) this.count.textContent = grenadeCountLabel(inventory);
     if (inventory !== this.previousInventory) this.element.classList.toggle('grenade-empty', inventory === 0);

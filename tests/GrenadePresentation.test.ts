@@ -143,9 +143,9 @@ it('only enables a held valid active charge, isolates pointer input, and resets 
   hud.update(1,true,false);expect(button.hidden).toBe(false);expect(button.disabled).toBe(true);
   expect(button.querySelector('strong').textContent).toBe('1');
   expect(button.innerHTML).not.toMatch(/GRENADE|READY|HELD|EMPTY|<small/);
-  expect(button.attributes.get('aria-label')).toContain('temporarily unavailable');
+  expect(button.attributes.get('aria-label')).toContain('暫時無法使用');
   hud.update(1,true,true);button.dispatchEvent(new Event('click'));expect(activate).toHaveBeenCalledOnce();
-  expect(button.attributes.get('aria-label')).toBe('Throw Grenade (1 available, Q)');
+  expect(button.attributes.get('aria-label')).toBe('投擲榴彈（剩餘 1 枚，Q）');
   const pointer=new Event('pointerdown'),stop=vi.spyOn(pointer,'stopPropagation');button.dispatchEvent(pointer);expect(stop).toHaveBeenCalledOnce();
   hud.update(0,true,true);button.dispatchEvent(new Event('click'));expect(activate).toHaveBeenCalledOnce();
   expect(button.querySelector('strong').textContent).toBe('0');expect(button.classList.toggle).toHaveBeenLastCalledWith('grenade-empty',true);

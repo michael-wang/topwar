@@ -18,7 +18,7 @@ it('resumes only through the native button, blocks underlying UI and restores it
   hud.className='hud-actions'; alreadyBlocked.inert=true;viewport.append(results,hud,alreadyBlocked,menu);
   const resume=vi.fn(),overlay=new PauseOverlay(viewport as unknown as HTMLElement,resume);
   const root=viewport.children[4],button=root.children[0];
-  expect(button.type).toBe('button');expect(button.attributes.get('aria-label')).toContain('Resume');
+  expect(button.type).toBe('button');expect(button.attributes.get('aria-label')).toBe('繼續遊戲');expect(button.textContent).toBe('暫停');
   overlay.setVisible(true);expect(results.inert).toBe(true);expect(hud.inert).toBe(false);
   expect(menu.inert).toBe(false);overlay.setMenuOpen(true);
   expect(button.hidden).toBe(true);expect(root.hidden).toBe(false);expect(results.inert).toBe(true);

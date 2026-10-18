@@ -27,6 +27,27 @@ The accepted direction is Rounded Toy Soldier / Handcrafted Military Arcade, wit
 
 Use existing palette/material/VFX modules, pooled resources and bounded preparation. Physical-phone review is authoritative for readability; desktop projected pixels and SwiftShader are supporting diagnostics only. Historical art-showcase exports and unused GLBs are archived in Git history.
 
+## Production typography and Traditional Chinese
+
+Owner direction for P4.40: Mantou Sans is accepted for brief, prominent Traditional
+Chinese arcade text: 開始遊戲, 暫停 and victory/defeat headings, subject to screen fit.
+The 升級！ HUD label also uses Mantou Sans Regular; its smaller animated presentation
+still awaits Pixel 8 readability review. Use regular display faces without synthetic
+ultra-bold. Bungee remains accepted for Latin display, LV and level numerals; the
+shared display stack puts Bungee before Mantou Sans for mixed text.
+
+Mantou Sans is rejected for Commander subtitles and dense small Chinese. Commander
+dialogue uses the original 600 13px/1.38 system-ui, sans-serif, with unchanged panel,
+portraits and timing. Sentences, small labels, 強敵來襲！, damage hints and utility UI
+use legible native sans-serif. Preserve the original self-hosted TTFs and OFL notices;
+no subsetting or font conversion.
+
+Production visible copy, tooltips and accessible names use Traditional Chinese.
+The 暫停 banner resumes play and is therefore named 繼續遊戲 for assistive technology.
+Keep TopWar/TOPWAR, LV, HP and literal A/D/Q keys; DEV/QA/tuning labels and review-only
+TAP TO START are outside this localization pass. Validate 350×844 and 390×844 layouts;
+physical Pixel 8 review decides readability, not desktop screenshots alone.
+
 ## Arcade idle opening
 
 Ordinary New Game uses the existing Camera B coastal tableau: three blue soldiers foreground, small distant formations and quiet sea/cloud/squad motion. A centered navy/gold/ivory native 「開始遊戲」 button remains dominant. This silent decorative Diorama has no combat spectacle, new assets or audio; reduced motion is static. The base Diorama is owner-accepted. Current environment refinement uses three asymmetric enemy landing craft with open wells, low pilot cabins and broad bow ramps, in military navy/olive/steel for screen lanes 1/3/5. Scenic carriers and floating shoreline canopy cards are removed. Greek facades and military craft styling are owner-accepted. Diorama village corners and asymmetric olive trees sit closer to the player, opening the beach-water boundary behind them. The screen-right house shadow retains its outward/seaward direction. Three 25%-smaller landing craft sit close to the surf in a compact, lightly varied lane-1/3/5 row aligned with the beachhead. Three much smaller, low-contrast warship silhouettes imply a distant fleet; they are static atmosphere only. Start restores the existing combat scenery/craft transforms and hides those silhouettes. This composition follow-up awaits owner Pixel 8 review.

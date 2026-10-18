@@ -29,7 +29,7 @@ export class XpHud {
     this.edge.className = 'xp-edge';
     this.message.className = 'level-up-message';
     const title = document.createElement('strong');
-    title.textContent = 'LEVEL UP';
+    title.textContent = '升級！';
     this.message.append(title);
     track.append(this.fill, this.edge);
     this.element.append(this.label, track, this.message);

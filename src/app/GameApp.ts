@@ -1032,7 +1032,7 @@ export class GameApp {
       const notice = document.createElement('div');
       notice.className = 'runtime-error-overlay';
       notice.setAttribute('role', 'alert');
-      notice.textContent = 'Game stopped unexpectedly. Reload to retry.';
+      notice.textContent = '遊戲意外中止，請重新載入再試一次。';
       this.viewport.append(notice);
     }
   };

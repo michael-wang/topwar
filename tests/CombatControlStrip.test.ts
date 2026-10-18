@@ -14,7 +14,7 @@ it('places accessible visible movement buttons around a dedicated progression ho
   expect(root.children.map(e=>e.className)).toEqual(['movement-button movement-left','combat-progression','movement-button movement-right']);
   for(const [index,direction]of ['left','right'].entries()){
     const button=strip.buttons[index] as unknown as Element;
-    expect(button.attributes['aria-label']).toBe(`Move ${direction}`);expect(button.attributes['aria-pressed']).toBe('false');
+    expect(button.attributes['aria-label']).toBe(direction === 'left' ? '向左移動' : '向右移動');expect(button.attributes['aria-pressed']).toBe('false');
     expect(button.type).toBe('button');expect(button.disabled).toBe(true);expect(button.draggable).toBe(false);
     expect(button.innerHTML).toContain('<svg');
     expect(button.innerHTML).toContain(`class="combat-keycue" aria-hidden="true">${index===0?'A':'D'}</span>`);

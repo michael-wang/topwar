@@ -23,10 +23,10 @@ it('reports actual Tank Grenade damage beside its accurate HP, freezes on Pause,
   hud.presentGrenade([{ kind: 'grenadeDetonated', x: 0, z: 40, radius: 4, victims: [] }], 1000);
   expect(damage.hidden).toBe(true);
   hud.presentGrenade([{ kind: 'grenadeDetonated', x: 0, z: 40, radius: 4, victims: [], tankDamage: 9 }], 1000);
-  expect(damage.textContent).toBe('GRENADE −9 HP');
+  expect(damage.textContent).toBe('榴彈 −9 HP');
   for (let i = 0; i < 20; i++) hud.update(state, 1000, position);
   expect(damage.hidden).toBe(false); hud.update(state, 1750, position); expect(damage.hidden).toBe(true);
   hud.presentGrenade([{ kind: 'grenadeDetonated', x: 0, z: 40, radius: 4, victims: [], tankDamage: 3 }], 1800);
-  expect(damage.textContent).toBe('GRENADE −3 HP'); hud.reset(); hud.update(state, 1800, position);
+  expect(damage.textContent).toBe('榴彈 −3 HP'); hud.reset(); hud.update(state, 1800, position);
   expect(damage.hidden).toBe(true); hud.dispose(); expect(root.remove).toHaveBeenCalledOnce();
 });

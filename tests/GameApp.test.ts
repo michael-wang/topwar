@@ -395,7 +395,7 @@ describe('GameApp config and frame lifecycle', () => {
     expect(reported).toHaveBeenCalledWith('TopWar game loop stopped after an unexpected error', originalError);
     expect(raf.pending.size).toBe(0);
     expect(viewport.append).toHaveBeenCalledWith(notice);
-    expect(notice.textContent).toMatch(/Reload to retry/);
+    expect(notice.textContent).toMatch(/遊戲意外中止，請重新載入再試一次。/);
     app.dispose();
     reported.mockRestore();
   });

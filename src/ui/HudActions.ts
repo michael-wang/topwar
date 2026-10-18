@@ -19,8 +19,8 @@ export class HudActions {
 
   setPaused(paused: boolean): void {
     this.pauseButton.textContent = paused ? '▶' : 'Ⅱ';
-    this.pauseButton.setAttribute('aria-label', paused ? 'Resume game' : 'Pause game');
-    this.pauseButton.title = paused ? 'Resume game' : 'Pause game';
+    this.pauseButton.setAttribute('aria-label', paused ? '繼續遊戲' : '暫停遊戲');
+    this.pauseButton.title = paused ? '繼續遊戲' : '暫停遊戲';
   }
 
   dispose(): void {

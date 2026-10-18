@@ -12,13 +12,13 @@ export class TankBossHud {
     this.element.className = 'tank-boss-hud'; this.element.hidden = true;
     this.bar.className = 'tank-boss-bar'; this.fill.className = 'tank-boss-fill';
     this.damage.className = 'tank-boss-damage'; this.damage.hidden = true;
-    this.bar.setAttribute('role', 'progressbar'); this.bar.ariaLabel = 'Tank Boss HP';
+    this.bar.setAttribute('role', 'progressbar'); this.bar.ariaLabel = '重型坦克生命值';
     this.label.className = 'tank-boss-hp';
     this.bar.append(this.fill, this.label); this.element.append(this.bar, this.damage); viewport.append(this.element);
   }
   presentGrenade(events: readonly GrenadeEvent[], nowMs: number): void {
     for (const event of events) if (event.kind === 'grenadeDetonated' && (event.tankDamage ?? 0) > 0) {
-      this.damage.textContent = `GRENADE −${event.tankDamage} HP`;
+      this.damage.textContent = `榴彈 −${event.tankDamage} HP`;
       this.damageUntilMs = nowMs + 750; this.damage.hidden = false;
     }
   }

@@ -58,13 +58,13 @@ async function checkAirSupport(page,width,out) {
  assert.equal(await page.locator('.field-observer p').textContent(),'各位！我剛爭取到空中轟炸支援！');
  await advance(3.3);assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds),null);
  assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isEnabled());
- await page.getByRole('button',{name:'Pause game',exact:true}).tap();
+ await page.getByRole('button',{name:'暫停遊戲',exact:true}).tap();
  const saved=await page.evaluate(()=>window.__testApp.simulation.getState());await advance(.5);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
  assert.equal(await page.evaluate(()=>window.__testApp.audio.supportSources.size),0);
  await page.reload();await page.getByRole('button',{name:'繼續上次遊戲'}).tap();await page.locator('.session-recovery').waitFor({state:'detached'});
  await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
  assert.equal(await page.locator('.manual-air-support i').evaluate(e=>e.style.opacity),'0');
- await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.evaluate(()=>window.__draw());
+ await page.locator('.hud-actions').getByRole('button',{name:'繼續遊戲',exact:true}).tap();await page.evaluate(()=>window.__draw());
  await page.getByRole('button',{name:'呼叫空襲',exact:true}).tap();await advance(.1);
  await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupportCalled'&&window.__testApp.audio.voice.source!==null);
  assert.equal(await page.locator('.field-observer p').textContent(),'轟炸機馬上抵達現場！注意！轟炸即將開始！！');
@@ -97,14 +97,14 @@ async function checkPlaytestScenes(page,width,out) {
   await page.waitForFunction(message=>window.__testApp.audio.voice?.message===message&&window.__testApp.audio.voice.source!==null,message);
   assert(await page.locator('.field-observer').isVisible());
   await page.screenshot({path:`${out}/playtest-${role}-${width}.png`});
-  await page.getByRole('button',{name:'Pause game',exact:true}).tap();
+  await page.getByRole('button',{name:'暫停遊戲',exact:true}).tap();
   const saved=await page.evaluate(()=>({state:window.__testApp.simulation.getState(),cp:JSON.parse(localStorage.getItem('topwar:session:v1:release'))}));
   assert.equal(saved.cp.fixture,role);assert(saved.cp.state);
   await page.evaluate(()=>window.__advance(.5));assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved.state);
   await page.reload();await page.getByRole('button',{name:'繼續上次遊戲'}).tap();await page.locator('.session-recovery').waitFor({state:'detached'});
   await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved.state);
   assert(await page.evaluate(()=>window.__testApp.paused));
-  await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.2);});
+  await page.locator('.hud-actions').getByRole('button',{name:'繼續遊戲',exact:true}).tap();await page.evaluate(()=>{cancelAnimationFrame(window.__testApp.frameId);window.__draw();window.__advance(.2);});
   if(role==='victory') {
    await page.waitForFunction(()=>window.__testApp.audio.radioDurationSeconds('zh-TW','victory')>0);
    await page.evaluate(()=>window.__draw());

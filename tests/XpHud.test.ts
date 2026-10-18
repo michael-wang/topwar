@@ -43,7 +43,7 @@ it('flashes full then resets cleanly to new-level truth, pops the label and expi
   hud.update({ level: 2, xp: 15 }, balance, 100);
   expect(root.classes.has('level-up')).toBe(true);
   expect(fill.style.clipPath).toBe('inset(0 0% 0 0 round .45rem)'); expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 1');
-  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP']);
+  expect(root.children[2].children.map(child => child.textContent)).toEqual(['升級！']);
   hud.update({ level: 2, xp: 15 }, balance, 250);
   expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 2'); expect(root.classes.has('level-label-pop')).toBe(true);
   hud.update({ level: 2, xp: 15 }, balance, 341);
@@ -77,7 +77,7 @@ it('visibly interpolates a large Giant XP grant without numeric text and keeps t
   expect(root.children[0].children.map(child => child.textContent).join(' ')).toBe('LV 4');
   hud.presentLevelUp({ kind: 'progressionLevelUp', fromLevel: 6, toLevel: 7 }, 500);
   hud.update({ level: 7, xp: 0 }, balance, 600);
-  expect(root.children[2].children.map(child => child.textContent)).toEqual(['LEVEL UP']);
+  expect(root.children[2].children.map(child => child.textContent)).toEqual(['升級！']);
   hud.reset(); hud.update({ level: 1, xp: 1 }, balance, 1000);
   expect(fill.style.transition).toBe('none');
   hud.update({ level: 1, xp: 2 }, balance, 1020);

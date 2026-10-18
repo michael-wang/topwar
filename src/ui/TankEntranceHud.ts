@@ -10,7 +10,7 @@ export class TankEntranceHud {
   private readonly reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   constructor(host: HTMLElement, private readonly alarm: () => void) {
     this.element.className = 'tank-entrance-warning'; this.element.hidden = true;
-    const text = document.createElement('span'); text.textContent = 'BOSS INCOMING';
+    const text = document.createElement('span'); text.textContent = '強敵來襲！';
     this.element.append(text); host.append(this.element);
   }
   update(state: SimulationFrameState, paused: boolean): void {

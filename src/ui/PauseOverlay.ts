@@ -13,8 +13,8 @@ export class PauseOverlay {
     this.element.className = 'pause-overlay';
     this.button = document.createElement('button');
     this.button.type = 'button';
-    this.button.textContent = 'PAUSED';
-    this.button.setAttribute('aria-label', 'Resume game from PAUSED screen');
+    this.button.textContent = '暫停';
+    this.button.setAttribute('aria-label', '繼續遊戲');
     this.button.addEventListener('click', this.onClick);
     this.element.addEventListener('pointerdown', this.stopPointer);
     this.element.append(this.button);

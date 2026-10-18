@@ -25,15 +25,15 @@ describe('HUD actions', () => {
     const actions = new HudActions(viewport as unknown as HTMLElement, toggle);
     const root = viewport.children[0];
     const button = root.children[0];
-    expect(button.getAttribute('aria-label')).toBe('Pause game');
+    expect(button.getAttribute('aria-label')).toBe('暫停遊戲');
     expect(button.textContent).toBe('Ⅱ');
     button.dispatchEvent(new Event('click'));
     expect(toggle).toHaveBeenCalledOnce();
     actions.setPaused(true);
-    expect(button.getAttribute('aria-label')).toBe('Resume game');
+    expect(button.getAttribute('aria-label')).toBe('繼續遊戲');
     expect(button.textContent).toBe('▶');
     actions.setPaused(false);
-    expect(button.getAttribute('aria-label')).toBe('Pause game');
+    expect(button.getAttribute('aria-label')).toBe('暫停遊戲');
     const pointer = new Event('pointerdown');
     const stop = vi.spyOn(pointer, 'stopPropagation');
     root.dispatchEvent(pointer);

@@ -87,7 +87,7 @@ it('fills MG cartridges through Lv7/8 without recruiting or replaying the silhou
 it('shows only the saved family capacity and pulses the new fourth/fifth MG slot',()=>{
   const f=make();f.update(5);expect(f.squad.children.filter(p=>!p.hidden)).toHaveLength(3);
   f.update(10);expect(f.squad.children.filter(p=>!p.hidden)).toHaveLength(5);
-  f.update(11,100);expect(animated(f.squad)).toEqual([3]);expect(f.squad.ariaLabel).toContain('4 of 5');
+  f.update(11,100);expect(animated(f.squad)).toEqual([3]);expect(f.squad.ariaLabel).toContain('已解鎖小隊階段 4／5');
   f.update(12,600);expect(animated(f.squad)).toEqual([4]);expect(filled(f.squad)).toHaveLength(5);
   const old={...balance,levelPlan:balance.levelPlan.slice(0,10),xpRequirements:balance.xpRequirements.slice(0,9)};
   f.hud.reset();f.hud.update({level:10,xp:0},old,0);expect(f.squad.children.filter(p=>!p.hidden)).toHaveLength(3);

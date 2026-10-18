@@ -41,9 +41,9 @@ export class BattleInfoHud {
         this.element.dataset.weaponFamily = model.weapon;
       }
       this.familyPulseUntil = familyChanged ? nowMs + UPGRADE_PULSE_MS : -Infinity;
-      this.weaponRow.ariaLabel = `Weapon stage ${model.weaponStage} of 3`;
-      this.squadRow.ariaLabel = `Unlocked squad stage ${model.squadStage ?? 1} of ${squadMax}`;
-      this.element.setAttribute('aria-label', `${model.weapon === 'rifle' ? 'Rifle' : 'Machine Gun'}, weapon stage ${model.weaponStage} of 3${model.squadStage ? `, unlocked squad stage ${model.squadStage} of ${squadMax}` : ''}`);
+      this.weaponRow.ariaLabel = `武器階段 ${model.weaponStage}／3`;
+      this.squadRow.ariaLabel = `已解鎖小隊階段 ${model.squadStage ?? 1}／${squadMax}`;
+      this.element.setAttribute('aria-label', `${model.weapon === 'rifle' ? '步槍' : '機槍'}，武器階段 ${model.weaponStage}／3${model.squadStage ? `，已解鎖小隊階段 ${model.squadStage}／${squadMax}` : ''}`);
       this.weaponPips.forEach((pip, index) => {
         const filled = index < model.weaponStage;
         pip.innerHTML = iconMarkup('cartridge', filled); pip.ariaHidden = 'true';
