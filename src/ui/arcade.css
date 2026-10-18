@@ -95,25 +95,25 @@
 }
 .beachhead-defense .pause-overlay > button {
   position: relative; isolation: isolate; margin: 0; padding: 9px 18px 13px;
-  font: 400 clamp(40px, 11.5vw, 50px)/1.2 var(--font-title-trial);
-  letter-spacing: .025em; color: var(--ui-paper); transform: rotate(-2deg);
-  text-shadow: var(--ui-offset) 3px 0 #07121c; filter: drop-shadow(2px 4px 0 #07121c);
+  font: 400 clamp(42px, 11.5vw, 46px)/1.2 var(--font-title-trial);
+  letter-spacing: .025em; color: var(--ui-paper);
+  text-shadow: 1px 2px 0 #07121c;
 }
 .beachhead-defense .pause-overlay > button::before {
-  content: ''; position: absolute; z-index: -1; inset: 0;
-  background: var(--ui-deep); clip-path: var(--ui-plaque);
-  border-top: 2px solid var(--ui-edge); border-bottom: 4px solid var(--ui-gold);
+  content: ''; position: absolute; z-index: -1; left: 50%; top: 50%;
+  width: 160px; height: 68px; transform: translate(-50%, -50%);
+  background: #142332b3; border-radius: 8px 10px 8px 10px; pointer-events: none;
 }
 .beachhead-defense .pause-overlay > button::after {
-  content: ''; position: absolute; width: 10px; height: 3px; right: 8px; top: 7px;
-  background: var(--ui-paper);
+  content: ''; position: absolute; width: 64px; height: 3px; left: calc(50% - 32px); top: calc(50% + 30px);
+  background: var(--ui-gold); pointer-events: none;
 }
 .beachhead-defense .pause-overlay > button {
   min-width: min(270px, 85vw); min-height: 88px; padding: 16px 24px;
   border: 0; background: transparent; cursor: pointer; touch-action: manipulation;
 }
 .beachhead-defense .pause-overlay > button:focus-visible { outline: 3px solid var(--ui-paper); outline-offset: 6px; }
-.beachhead-defense .pause-overlay > button:active { transform: rotate(-2deg) scale(.97); }
+.beachhead-defense .pause-overlay > button:active::before { background: #142332df; }
 
 /* Frame only: the golden icon, its 36px destination and transfer transforms stay owned
    by GrenadeHud / SupplyRewardTransfer. The backing never covers the inventory badge. */
@@ -167,12 +167,14 @@
 .tank-entrance-warning span { position:absolute; top:max(52%, calc(var(--hud-inset-top, 0px) + 184px));
   left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px);
   box-sizing:border-box; padding:5px 13px 7px; isolation:isolate;
-  color:#ffe5b0; text-align:center; font:400 clamp(28px, 8vw, 32px)/1.15 'Mantou Sans', system-ui, sans-serif;
+  color:#ffe5b0; text-align:center; font:400 clamp(36px, 10.5vw, 42px)/1.15 'Mantou Sans', system-ui, sans-serif;
   font-synthesis:none; letter-spacing:.025em; white-space:nowrap;
-  text-shadow:2px 0 #07121c, -2px 0 #07121c, 0 -2px #07121c, 2px 3px #07121c; }
-.tank-entrance-warning span::before { content:''; position:absolute; inset:0; z-index:-1;
-  background:#142332e8; border-bottom:3px solid #f6ac55;
-  clip-path:polygon(5% 0, 100% 0, 95% 100%, 0 100%); }
+  -webkit-text-stroke:2px #07121c; paint-order:stroke fill; text-shadow:2px 3px 0 #07121c; }
+.tank-entrance-warning span::before, .tank-entrance-warning span::after {
+  content:''; position:absolute; top:50%; width:8px; height:14px;
+  border-top:3px solid #f6ac55; border-right:3px solid #f6ac55; }
+.tank-entrance-warning span::before { left:-5px; transform:translateY(-50%) rotate(-135deg); }
+.tank-entrance-warning span::after { right:-5px; transform:translateY(-50%) rotate(45deg); }
 .tank-boss-bar { position:relative; height:18px; overflow:hidden; background:#142332;
   border:2px solid #fff3dc; box-shadow:0 2px #142332; }
 .tank-boss-hp { position:absolute; inset:0; display:grid; place-items:center; }

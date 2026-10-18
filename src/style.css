@@ -439,7 +439,16 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .game-start-overlay:not(.is-review) {
   width: min(320px, calc(100% - 40px)); min-height: 104px; padding-inline: 20px;
   font-size: clamp(48px, 13.34vw, 52px); letter-spacing: .03em; white-space: nowrap;
+  background: transparent; border-color: transparent; box-shadow: none;
+  -webkit-text-stroke: 2px #102331; paint-order: stroke fill;
+  text-shadow: 0 4px 0 #102331;
 }
+.game-start-overlay:not(.is-review) span { position: relative; display: inline-block; }
+.game-start-overlay:not(.is-review) span::after {
+  content: ''; position: absolute; left: 29%; right: 29%; bottom: -6px; height: 3px;
+  background: #ffcf70; box-shadow: 0 2px 0 #102331; pointer-events: none;
+}
+.game-start-overlay:not(.is-review):active span { transform: translateY(2px); }
 .game-start-overlay span { transition: opacity 150ms ease; }
 .game-start-overlay:focus-visible { outline: 3px solid #fff5dd; outline-offset: 5px; }
 .game-start-overlay.is-activating span { opacity: .65; }

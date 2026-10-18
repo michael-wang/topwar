@@ -48,19 +48,22 @@ Keep TopWar/TOPWAR, LV, HP and literal A/D/Q keys; DEV/QA/tuning labels and revi
 TAP TO START are outside this localization pass. Validate 350×844 and 390×844 layouts;
 physical Pixel 8 review decides readability, not desktop screenshots alone.
 
-### P4.40b hierarchy proposal — awaiting owner Pixel 8 sign-off
+### P4.40c lightweight UI experiment — awaiting owner Pixel 8 art approval
 
-The ordinary centered 開始遊戲 CTA uses 48–52px Mantou, tighter .03em tracking and
-a 104px-high panel, at most 320px wide with 20px minimum side margins. Its four
-glyphs outweigh the unchanged 暫停 banner; the full-screen review gate is unchanged.
-強敵來襲！ uses 28–32px Mantou Regular on a narrow slanted navy plaque with warm ivory
-text, dark offset edges and amber trim. Anchor it in the open mid-beach gap (52%
-height, below the Commander safe-area reserve), avoiding the crowded upper Tank
-entrance/Commander region. It exists only during the original entering event, with
-no new animation, alarm or clock. Replay/Retry labels use 26–28px Mantou Regular
-inside the unchanged gold/gray-blue result buttons. Keep all three single-line;
-preserve Commander system-ui, Pause, 升級！, Bungee and the existing result headlines.
-This hierarchy remains a proposal until physical Pixel 8 review.
+For these three surfaces only, let Mantou glyphs carry the emphasis rather than
+large filled plaques. The centered 開始遊戲 keeps 48–52px type and its full invisible
+310–320×104px native hit area, with cream lettering, crisp navy outline/short offset
+shadow and a short gold underline attached to the text. Its rectangular fill/frame
+is removed; the full-screen review gate remains unchanged. 暫停 uses 42–46px Mantou
+on a compact 160×68px translucent navy tag with a short gold underside, inside the
+existing larger transparent button. Keep full-screen dimming, focus and resume behavior.
+
+強敵來襲！ uses 36–42px Mantou, navy outline/offset shadow and two small amber edge
+chevrons, without a filled plate. Retain the open mid-beach anchor (52% height, below
+the Commander safe-area reserve) and original entering-only lifetime/red pulse.
+No new animation, alarm or clock. This is not a global ban on UI backing: accepted
+Replay/Retry buttons retain their 26–28px Mantou, gold/gray-blue palettes and geometry.
+Preserve Commander system-ui, 升級！, Bungee and all result headings/stat typography.
 
 ## Arcade idle opening
 
