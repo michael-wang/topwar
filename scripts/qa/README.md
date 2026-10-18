@@ -19,6 +19,7 @@ Camera B is the approved default in every scene. After a fresh build, `node scri
 | lane-highlights.mjs | Production Lv1/Lv8, physical-X transitions, Destroyer/Tank threats, red/cyan overlap, cancellation and Pause/Continue/Retry at both phone widths |
 | production-sanity.mjs | Shipping /topwar/ assets, startup, current AHEAD policy and approved four-scene playback/voice/music/checkpoint recovery, plus exclusion of engineering QA, DEV fullscreen and Explosion Lab; both widths |
 | production-resume.mjs | Real production Pause → reload → Continue, identical state/continuation, Retry |
+| battlefield-diorama.mjs | P4.42 production idle/0.5s/1.2s HUD captures at both widths, safe-area/fullscreen and reduced-motion variants, fixed landmarks, hidden/context-loss idle suspension, New Game/error fallback and no sentry leaks |
 | instant-recovery.mjs | DEV delayed-config recovery choice before assets, blocked inputs, repeated reloads |
 | recovery-wake.mjs | Wake Lock grant/denial/deferred races, Pause/hidden/recovery and disposal |
 | wake-origins.mjs | Genuine trustworthy localhost vs insecure proxied HTTP, HMR/asset checks |

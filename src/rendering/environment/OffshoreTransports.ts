@@ -16,12 +16,11 @@ export const LANDING_CRAFT_LAYOUT = [
   { lane: 5, x: -9.2, z: 80, heading: .20 },
 ] as const;
 
-// Near-shore bows link the idle beachhead to its transports. Combat keeps the
-// offshore layout above so the actual arriving Destroyer retains its silhouette.
+// The same physical craft seen through coastal haze, never additional warships.
 export const DIORAMA_LANDING_CRAFT_LAYOUT = [
-  { x: 4.6, z: 49.5, heading: -.04 },
-  { x: 0, z: 49.9, heading: .01 },
-  { x: -4.6, z: 50.3, heading: .05 },
+  { x: 16, z: 134, heading: -.16 },
+  { x: -.8, z: 142, heading: .08 },
+  { x: -17, z: 138, heading: .20 },
 ] as const;
 
 function paintedHull(): THREE.BufferGeometry {
@@ -47,8 +46,24 @@ export class OffshoreTransports {
   private readonly wake = new THREE.MeshBasicMaterial({ color: ART.coastalDefense.foam, transparent: true, opacity: .16, depthWrite: false });
   private readonly baked: THREE.BufferGeometry[] = [];
   private readonly ships: THREE.Group[] = [];
+  private readonly idleHaze = { value: 0 };
   constructor() {
     this.group.name = 'offshore-troop-transports';
+    // Blend remote hulls into the sea, rather than fog-white blocks at the horizon.
+    // Uniform-only transition keeps the accepted combat shaders/colors at t=1.
+    for (const material of [this.hull, this.deck, this.hold, this.steel]) {
+      const prepare = material.onBeforeCompile;
+      const key = material.customProgramCacheKey();
+      material.customProgramCacheKey = () => key + '|distant-landing-craft-v1';
+      material.onBeforeCompile = (shader, renderer) => {
+        prepare.call(material, shader, renderer);
+        shader.uniforms.idleHaze = this.idleHaze;
+        shader.uniforms.idleSea = { value: new THREE.Color(ART.coastalDefense.deepSea) };
+        shader.fragmentShader = 'uniform float idleHaze; uniform vec3 idleSea;\n' + shader.fragmentShader;
+        shader.fragmentShader = shader.fragmentShader.replace('#include <fog_fragment>',
+          '#include <fog_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb, idleSea, idleHaze);');
+      };
+    }
     const prototype = new THREE.Group();
     const part = (x: number, y: number, z: number, width: number, height: number,
       depth: number, material: THREE.Material) => {
@@ -89,13 +104,17 @@ export class OffshoreTransports {
       }
     }
   }
-  update(playerZ: number, nowMs: number, defense: boolean, diorama = false): void {
+  update(playerZ: number, nowMs: number, defense: boolean, diorama = false, approach = 1): void {
     this.group.visible = defense; this.group.position.z = playerZ;
+    const t = diorama ? 0 : THREE.MathUtils.clamp(approach, 0, 1);
+    this.idleHaze.value = (1 - t) * .85;
     for (let i = 0; i < this.ships.length; i++) {
       const ship = this.ships[i];
-      const layout = diorama ? DIORAMA_LANDING_CRAFT_LAYOUT[i] : LANDING_CRAFT_LAYOUT[i];
-      ship.position.x = layout.x; ship.position.z = layout.z;
-      ship.scale.setScalar(diorama ? .75 : 1); ship.rotation.y = layout.heading;
+      const idle = DIORAMA_LANDING_CRAFT_LAYOUT[i], combat = LANDING_CRAFT_LAYOUT[i];
+      ship.position.x = THREE.MathUtils.lerp(idle.x, combat.x, t);
+      ship.position.z = THREE.MathUtils.lerp(idle.z, combat.z, t);
+      ship.rotation.y = combat.heading;
+      ship.scale.setScalar(THREE.MathUtils.lerp(.6, 1, t));
       ship.position.y = -.15 + Math.sin(nowMs * .00035 + i * 2.3) * .045;
       ship.rotation.z = Math.sin(nowMs * .00022 + i) * .004;
     }

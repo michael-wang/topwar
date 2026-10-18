@@ -27,9 +27,9 @@ it.each([350, 390].flatMap(width => [false, true].map(diorama => ({ width, diora
     expect(center.x - previous).toBeGreaterThan(.35); previous = center.x;
     const bounds = new THREE.Box3().setFromObject(ship), corners: THREE.Vector3[] = [];
     if (diorama) {
-      // Bows approach the waterline without grounding; the beachhead is nearby.
+      // Remote idle craft remain far beyond the real combat positions.
       expect(bounds.min.z).toBeGreaterThan(ART.coastalDefense.shorelineZ);
-      expect(bounds.min.z).toBeLessThan(ART.coastalDefense.shorelineZ + 8);
+      expect(bounds.min.z).toBeGreaterThan(120);
     } else {
       // Real combat still keeps decorative bows behind the Destroyer's wake.
       expect(bounds.min.z).toBeGreaterThan(gameData.catharsis.destroyer.z + 4);
@@ -38,12 +38,12 @@ it.each([350, 390].flatMap(width => [false, true].map(diorama => ({ width, diora
       for (const z of [bounds.min.z, bounds.max.z]) corners.push(new THREE.Vector3(x, y, z).project(camera));
     const xs = corners.map(p => (p.x + 1) * width / 2);
     expect(Math.min(...xs)).toBeGreaterThan(20); expect(Math.max(...xs)).toBeLessThan(width - 20);
-    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(40);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(diorama ? 12 : 40);
   }
   expect(LANDING_CRAFT_LAYOUT).toHaveLength(3); transports.dispose();
 });
 
-it('returns the same pooled craft offshore on Start and back near shore for New Game', () => {
+it('reuses the same pooled craft between distant idle and accepted combat transforms', () => {
   const transports = new OffshoreTransports(), ships = [...transports.group.children];
   for (const diorama of [true, false, true]) {
     transports.update(0, 1000, true, diorama);
@@ -52,22 +52,8 @@ it('returns the same pooled craft offshore on Start and back near shore for New 
     ships.forEach((ship, i) => {
       expect(ship.position.x).toBe(layout[i].x); expect(ship.position.z).toBe(layout[i].z);
       expect(ship.rotation.y).toBe(layout[i].heading);
-      expect(ship.scale.x).toBe(diorama ? .75 : 1);
+      expect(ship.scale.x).toBe(diorama ? .6 : 1);
     });
-  }
-  transports.dispose();
-});
-
-it('keeps the smaller Diorama craft orderly beside the shore with only slight heading/depth variation', () => {
-  const transports = new OffshoreTransports(); transports.update(0, 0, true, true);
-  const ships = transports.group.children;
-  expect(ships.map(ship => ship.position.x)).toEqual([4.6, 0, -4.6]);
-  expect(Math.max(...ships.map(ship => ship.position.z)) - Math.min(...ships.map(ship => ship.position.z))).toBeLessThan(1);
-  for (const ship of ships) {
-    expect(Math.abs(ship.rotation.y)).toBeLessThan(.06);
-    const nearBounds = new THREE.Box3().setFromObject(ship);
-    expect(nearBounds.min.z).toBeGreaterThan(ART.coastalDefense.shorelineZ);
-    expect(nearBounds.min.z).toBeLessThan(ART.coastalDefense.shorelineZ + 4);
   }
   transports.dispose();
 });
@@ -94,4 +80,21 @@ it('shares five military material/geometry batches across craft and disposes eac
   const disposals = [...new Set(meshes.map(m => m.geometry))].map(g => vi.spyOn(g, 'dispose'));
   const materials = [...new Set(meshes.map(m => m.material))].map(m => vi.spyOn(m as THREE.Material, 'dispose'));
   transports.dispose(); for (const spy of [...disposals, ...materials]) expect(spy).toHaveBeenCalledTimes(1);
+});
+
+it('approaches continuously with no allocations and returns to exact combat poses', () => {
+  const transports = new OffshoreTransports(), ships = [...transports.group.children];
+  transports.update(0, 1200, true, true);
+  const start = ships.map(ship => ship.position.clone());
+  transports.update(0, 1200, true, false, 0);
+  ships.forEach((ship, i) => expect(ship.position).toEqual(start[i]));
+  for (const t of [.25, .5, .75, 1]) {
+    transports.update(0, 1200 + t * 1000, true, false, t);
+    ships.forEach((ship, i) => {
+      expect(ship.position.z).toBeCloseTo(DIORAMA_LANDING_CRAFT_LAYOUT[i].z * (1-t) + LANDING_CRAFT_LAYOUT[i].z * t);
+      expect(ship.scale.x).toBeCloseTo(.6 + .4 * t);
+    });
+    expect(transports.group.children).toEqual(ships);
+  }
+  transports.dispose();
 });

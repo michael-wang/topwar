@@ -1,5 +1,4 @@
 import { OffshoreTransports } from './OffshoreTransports';
-import { DioramaFleet } from './DioramaFleet';
 import { CoastalWater } from './CoastalWater';
 import { CoastalArchitecture } from './CoastalArchitecture';
 import { CoastalVegetation } from './CoastalVegetation';
@@ -27,7 +26,6 @@ export class BridgeEnvironment {
   private readonly aircraft: THREE.Group[] = [];
   private sandTexture: THREE.DataTexture | null = null;
   private readonly transports = new OffshoreTransports();
-  private readonly distantFleet = new DioramaFleet();
   private readonly defenseBeach = new THREE.Group();
   private readonly coastalWater = new CoastalWater();
   private readonly coastalArchitecture = new CoastalArchitecture();
@@ -61,14 +59,13 @@ export class BridgeEnvironment {
     }
     this.defenseBeach.name = 'stationary-defense-beach';
     this.defenseBeach.visible = true;
-    this.scene.add(this.defenseBeach, this.transports.group, this.distantFleet.mesh);
+    this.scene.add(this.defenseBeach, this.transports.group);
     this.scene.add(this.skyLayer);
     this.update(0, 3.2, 0);
   }
 
-  update(playerZ: number, trackHalfWidth: number, nowMs: number, diorama = false): void {
-    this.transports.update(playerZ, nowMs, true, diorama);
-    this.distantFleet.update(playerZ, diorama);
+  update(playerZ: number, trackHalfWidth: number, nowMs: number, diorama = false, approach = 1): void {
+    this.transports.update(playerZ, nowMs, true, diorama, approach);
     this.defenseBeach.visible = true;
     this.defenseBeach.position.z = playerZ;
     this.coastalWater.update(nowMs);
@@ -86,8 +83,7 @@ export class BridgeEnvironment {
     this.coastalVegetation.dispose();
     this.coastalForeground.dispose();
     this.transports.dispose();
-    this.distantFleet.dispose();
-    this.scene.remove(this.defenseBeach, this.transports.group, this.distantFleet.mesh);
+    this.scene.remove(this.defenseBeach, this.transports.group);
     this.scene.remove(this.skyLayer);
     this.scene.background = this.previousBackground;
     this.scene.fog = this.previousFog;
@@ -160,4 +156,3 @@ export class BridgeEnvironment {
     return mesh;
   }
 }
-

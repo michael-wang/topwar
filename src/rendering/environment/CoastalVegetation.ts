@@ -96,10 +96,10 @@ export class CoastalVegetation {
       });
     }
   }
-  update(halfWidth: number, nowMs: number, diorama = false): void {
+  update(halfWidth: number, nowMs: number, _diorama = false): void {
     this.sides[0].position.x = -halfWidth - .8; this.sides[1].position.x = halfWidth + .8;
     this.time.value = nowMs / 1000;
-    this.group.scale.setScalar(diorama ? .8 : 1); this.group.position.z = diorama ? -3 : 0;
+    // One shared battlefield transform in idle and combat.
   }
   dispose(): void {
     this.meshes.forEach(mesh => mesh.dispose());

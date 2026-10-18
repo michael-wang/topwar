@@ -6,7 +6,7 @@ export const ART = {
     shallowAqua: '#58c8c1', deepSea: '#247e9c', waterLight: '#c4efdf', foam: '#e5f6ee',
     sky: '#78bde0', horizon: '#b7d8e3', shadow: '#2c4158', secondaryShadow: '#405a6d',
     foliageDark: '#294735', foliageLight: '#507455', bark: '#685a45',
-    cloth: '#84cbd4', clothIvory: '#e1e5d6', flower: '#c51e67',
+    cloth: '#397eb5', clothIvory: '#e1e5d6', flower: '#c51e67',
     rust: '#985e49', charcoal: '#3a4348', fire: '#f58a48', scorch: '#53606a',
     camera: { verticalFov: 48, referenceAspect: 9 / 16 }, // Pre-dolly reference; CoastalCamera derives the final FOV.
     laneHighlights: { playerColor: '#39bdd3', dangerColor: '#ed343c', playerOpacity: .18, dangerOpacity: .22,

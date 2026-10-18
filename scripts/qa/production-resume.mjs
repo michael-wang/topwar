@@ -23,7 +23,7 @@ try { for (const width of [350, 390]) {
     for (let i = 0; i < 180; i++) a.simulation.step(1 / 60, { targetX: 0 }, tuning);
     return { state: a.simulation.getState(), tuning };
   });
-  await page.getByRole('button', { name: 'Pause game', exact: true }).tap();
+  await page.getByRole('button', { name: '暫停遊戲', exact: true }).tap();
   const text = await page.evaluate(() => localStorage.getItem('topwar:session:v1:release')); assert(text);
   await page.reload(); await page.locator('.session-recovery button').first().waitFor();
   await page.getByRole('button', { name: '繼續上次遊戲' }).tap();

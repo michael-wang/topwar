@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { BattlefieldDiorama } from '../src/presentation/BattlefieldDiorama';
 import type { GameRenderState } from '../src/rendering/RenderState';
 
-it('authors only reusable decorative state with repeatable, nearby distant formations', () => {
+it('authors only reusable decorative state with one real-looking player and no decorative enemies', () => {
   const base: GameRenderState = { player: { x: 0, z: 0 },
     squad: { count: 1, rifleCounts: [1], rocketCount: 0, formationSpacing: .45 },
     track: { halfWidth: 3.2, defenseLineZ: -1.5 }, enemies: [], projectiles: [] };
@@ -11,8 +11,8 @@ it('authors only reusable decorative state with repeatable, nearby distant forma
   for (const t of [3500, 7000, 10500, 14000]) {
     const state = diorama.sample(t);
     expect(state).toBe(diorama.state);
-    expect(state.enemies).toHaveLength(12);
-    expect(state.enemies.every(enemy => enemy.z >= 24 && Math.abs(enemy.x) < 2)).toBe(true);
+    expect(state.enemies).toHaveLength(0);
+    expect(state.squad.count).toBe(1); expect(state.player).toEqual(base.player);
     expect(state.projectiles).toEqual([]);
     expect(state.artillery).toBeUndefined(); expect(state.commanderSupport).toBeUndefined();
   }

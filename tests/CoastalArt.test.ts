@@ -21,14 +21,14 @@ it('updates the coastal scene and restores its owner background on disposal', ()
   expect((scene.fog as THREE.Fog).near).toBe(ART.coastalDefense.fogNear);
   expect((scene.background as THREE.Color).getHexString()).toBe('78bde0');
   expect(scene.getObjectByName('stationary-defense-beach')!.position.z).toBe(80);
-  const fleet = scene.getObjectByName('diorama-distant-fleet')!;
+  expect(scene.getObjectByName('diorama-distant-fleet')).toBeUndefined();
   const village = scene.getObjectByName('coastal-defensive-compound')!;
-  expect(fleet.visible).toBe(false);
+
   environment.update(80, 3.2, 500, true);
-  expect(fleet.visible).toBe(true); expect(fleet.position.z).toBe(80);
-  expect(village.scale.x).toBeLessThan(1); expect(village.position.z).toBeLessThan(0);
+
+  expect(village.scale.x).toBe(1); expect(village.position.z).toBe(0);
   environment.update(80, 3.2, 500);
-  expect(fleet.visible).toBe(false); expect(village.scale.x).toBe(1); expect(village.position.z).toBe(0);
+  expect(village.scale.x).toBe(1); expect(village.position.z).toBe(0);
   environment.dispose(); expect(scene.fog).toBeNull(); expect(scene.background).toBeNull(); expect(scene.children).toHaveLength(0);
 });
 

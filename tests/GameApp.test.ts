@@ -143,6 +143,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
     renderDiorama = mock.dioramaRender;
+    beginDioramaTransition = vi.fn();
     present = mock.present;
     presentGrenade = vi.fn();
     presentArtillery = vi.fn();

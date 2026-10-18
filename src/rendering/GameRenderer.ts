@@ -20,6 +20,7 @@ import { ProjectileRenderer } from './projectiles/ProjectileRenderer';
 import { renderSize } from './renderSize';
 import type { GameRenderState } from './RenderState';
 import { SquadRenderer } from './squad/SquadRenderer';
+import { DioramaSentries } from './squad/DioramaSentries';
 import { BridgeEnvironment } from './environment/BridgeEnvironment';
 import { ContactShadowRenderer } from './ContactShadowRenderer';
 import type { CharacterAssets } from './CharacterAssets';
@@ -64,6 +65,10 @@ export class GameRenderer {
   private readonly playerWarningPoint = { x: 0, y: 0 };
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly squadRenderer: SquadRenderer;
+  private readonly sentries: DioramaSentries;
+  private coastAgeMs = 0;
+  private coastOffsetMs = 0;
+  private opening = false;
   private readonly enemyRenderer: EnemyRenderer;
   private readonly projectileRenderer: ProjectileRenderer;
   private readonly environment: BridgeEnvironment;
@@ -78,6 +83,7 @@ export class GameRenderer {
 
   constructor(private readonly viewport: HTMLElement, private readonly assets: CharacterAssets) {
     this.squadRenderer = new SquadRenderer(this.scene, assets.families.player);
+    this.sentries = new DioramaSentries(this.scene, assets.families.player);
     this.enemyRenderer = new EnemyRenderer(this.scene, assets.families);
     this.projectileRenderer = new ProjectileRenderer(this.scene, assets.families.player.presentation.tracer);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -172,17 +178,30 @@ export class GameRenderer {
   // Uses the same renderer/pools, without weapons, warning or combat FX passes.
   renderDiorama(state: GameRenderState, nowMs: number): void {
     if (this.disposed) return;
+    this.coastAgeMs = nowMs;
     this.environment.update(state.player.z, state.track.halfWidth, nowMs, true);
+    this.sentries.update(state.track.halfWidth, 0);
     this.squadRenderer.updateIdle(state, nowMs);
     this.enemyRenderer.update(state.enemies, nowMs, true, 0, 0);
     this.contactShadows.update(state, this.squadRenderer, nowMs);
     this.renderer.render(this.scene, this.camera);
   }
 
+  beginDioramaTransition(reducedMotion: boolean): void {
+    this.coastOffsetMs = this.coastAgeMs;
+    this.opening = !reducedMotion;
+    this.squadRenderer.continueIdlePlayer();
+  }
+
   render(state: GameRenderState, nowMs = performance.now()): void {
     if (this.disposed) return;
     this.air.update(state.enemies, nowMs, !!state.defenseMode);
-    this.environment.update(state.player.z, state.track.halfWidth, nowMs);
+    const approach = this.opening ? Math.min(1, Math.max(0, nowMs / 1000)) : 1;
+    // Pure presentation clock: gameplay enemies/projectiles render immediately.
+    this.environment.update(state.player.z, state.track.halfWidth, this.coastOffsetMs + nowMs,
+      false, approach * approach * (3 - 2 * approach));
+    this.sentries.update(state.track.halfWidth, approach);
+    if (approach === 1) this.opening = false;
     this.attackLanes.update(state.track.lanePositions, state.player.z);
     this.laneHighlights.update(state);
     this.squadRenderer.update(state, nowMs);
@@ -286,6 +305,8 @@ export class GameRenderer {
   }
 
   resetFeedback(visualSalt=0): void {
+    this.opening = false; this.coastOffsetMs = 0;
+    this.sentries.group.visible = false;
     this.laneHighlights.reset();
     this.air.reset();
     this.grenadeRenderer.reset();
@@ -312,6 +333,7 @@ export class GameRenderer {
     this.tankRenderer?.dispose();
     this.supportRenderer?.dispose();
     this.environment.dispose();
+    this.sentries.dispose();
     this.attackLanes.dispose();
     this.laneHighlights.dispose();
     this.contactShadows.dispose();

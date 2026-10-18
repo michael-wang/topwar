@@ -272,6 +272,11 @@ export class SquadRenderer {
     }
   }
 
+  continueIdlePlayer(): void {
+    const player = this.members[0];
+    if (player) { player.group.visible = true; player.appearedAtMs = -Infinity; }
+  }
+
   reset(): void {
     this.blood.reset(); this.stains.reset(); this.casualtySequence = 0;
     this.lastLane = undefined; this.laneMotionAt = -Infinity; this.lastUpdateMs = -Infinity;

@@ -496,7 +496,10 @@ export class GameApp {
     this.fixedStepLoop.reset();
     this.previousFrameTimestampMs = null;
     this.presentationMs = 0;
-    if (this.diorama) this.renderer.resetFeedback();
+    if (this.diorama) {
+      this.renderer.resetFeedback();
+      this.renderer.beginDioramaTransition(!!this.reducedMotion?.matches);
+    }
     this.diorama = null;
     this.viewport.classList?.remove('game-attract');
     this.audio.resetObservation();
@@ -1037,4 +1040,3 @@ export class GameApp {
     }
   };
 }
-
