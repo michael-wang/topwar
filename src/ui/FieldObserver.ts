@@ -56,6 +56,11 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'victory');
     this.audio.prepareRadio(this.locale, 'airSupport');
     this.element.className = 'field-observer'; this.element.hidden = true;
+    // Reversible placement trial only; production retains the authored upper slot.
+    if (import.meta.env.DEV && new URLSearchParams(window.location?.search).get('commander-placement') === 'a') {
+      this.element.style.left = 'max(12px, calc(50% - 155px))';
+      this.element.style.top = 'calc(64% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)';
+    }
     this.element.setAttribute('aria-live', 'polite');
     this.element.setAttribute('aria-label', '海防指揮官通訊');
     this.fallback.className = 'observer-fallback'; this.fallback.setAttribute('aria-hidden', 'true');

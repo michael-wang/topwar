@@ -36,6 +36,8 @@ still awaits Pixel 8 readability review. Use regular display faces without synth
 ultra-bold. Bungee remains accepted for Latin display, LV and level numerals; the
 shared display stack puts Bungee before Mantou Sans for mixed text.
 
+P4.44a / #23 is a reversible DEV-only Commander placement trial, awaiting Julia/Owner Pixel 8 review, not art PASS. `?commander-placement=a` centers the existing panel at 64% of the safe vertical area; the anchor is fixed across lanes. Production retains the upper-left slot. Keep the same bust, panel, typography, recordings, priority and clocks. Player/weapon and emergency-glyph intersections remain explicit review risks; do not silently reposition accepted warnings or turn this trial into a production policy. P4.44 Red Alert, cinematic landing and opening Skip are not implemented.
+
 Mantou Sans is rejected for Commander subtitles and dense small Chinese. Commander
 dialogue uses the original 600 13px/1.38 system-ui, sans-serif, with unchanged panel,
 portraits and timing. Sentences, small labels, damage hints and utility UI

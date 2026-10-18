@@ -209,14 +209,29 @@ class ElementStub extends EventTarget {
   setAttribute(key:string,value:string){this.attrs[key]=value;}
 }
 const readyPortraits = (): PreparedObserverPortraits => ({ readiness: 'ready', get: () => new ElementStub() as unknown as HTMLImageElement });
-function missionUi(portraits = readyPortraits()) {
+function missionUi(portraits = readyPortraits(), search = '') {
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
-  vi.stubGlobal('navigator',{languages:['zh-TW']});vi.stubGlobal('window',{});
+  vi.stubGlobal('navigator',{languages:['zh-TW']});vi.stubGlobal('window',{location:{search}});
   const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const),
     radioDurationSeconds:vi.fn((): number | null => null)};
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio,portraits);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
+it('opts into Commander A only in DEV with the exact query, without changing communications', () => {
+  for (const dev of [true, false]) {
+    vi.stubEnv('DEV', dev);
+    for (const search of ['', '?commander-placement=b', '?commander-placement=a']) {
+      const {ui, audio} = missionUi(readyPortraits(), search);
+      expect(ui.element.style.left).toBe(dev && search.endsWith('=a') ? 'max(12px, calc(50% - 155px))' : undefined);
+      expect(ui.element.style.top).toBe(dev && search.endsWith('=a')
+        ? 'calc(64% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)' : undefined);
+      expect(audio.prepareRadio).toHaveBeenCalledTimes(4);
+      for (const message of ['missionIntro', 'tankBoss', 'victory', 'airSupport'])
+        expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', message);
+    }
+  }
+  vi.unstubAllEnvs();
+});
 it('presents Tank speech/subtitles for five seconds beyond landing, freezes and restores subtitles without replay', () => {
   const portraits = readyPortraits(), get = vi.spyOn(portraits, 'get');
   const { ui, audio, text } = missionUi(portraits), tank = startDefenseTank(0, 17, shipping.catharsis!.defenseTank!);

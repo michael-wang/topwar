@@ -12,6 +12,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
+if (shippingJs.includes('commander-placement')) throw Error('DEV Commander placement survived production tree-shaking');
 if (['giant-review', 'GIANT 特效測試', '重測 GIANT', 'GIANT review requires'].some(marker => shippingJs.includes(marker)))
   throw Error('DEV GIANT review survived production tree-shaking');
 if (['dev-fullscreen-trial', '進入全螢幕（DEV）', '離開全螢幕（DEV）'].some(marker => shippingJs.includes(marker)))
@@ -144,7 +145,7 @@ async function checkPlaytestScenes(page,width,out) {
 }
 try {
 for(const width of [390,350]){
-for(const [query,level]of [['',1],['?review=threats',1]]){
+for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1]]){
  const page=await browser.newPage({viewport:{width,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'en-US'});const errors=[];
  const runtimeRequests=[];let configResponse,levelResponse;
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
@@ -198,6 +199,8 @@ for(const [query,level]of [['',1],['?review=threats',1]]){
  const actual=await page.locator('.xp-level-number').textContent();
  if(await page.locator('.observer-languages').count())throw Error('Language selector survived closed-playtest policy');
  if(await page.locator('.field-observer p').getAttribute('lang')!=='zh-TW')throw Error('Observer did not ignore English browser and saved preference');
+ assert.equal(await page.locator('.field-observer').evaluate(e=>e.style.left),'');
+ assert.equal(await page.locator('.field-observer').evaluate(e=>getComputedStyle(e).left),'12px');
  if(await page.locator('#game-viewport').getAttribute('data-input-presentation')!=='touch'||await page.locator('.combat-keycue:visible').count())throw Error('Production touch Start exposed keyboard hints');
  await page.screenshot({path:`${out}/production-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  const labControls=await page.locator('.dev-review-controls').count();

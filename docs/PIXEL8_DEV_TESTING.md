@@ -19,6 +19,18 @@ Use Android SDK [Platform Tools](https://developer.android.com/tools/releases/pl
 
 [Chrome remote debugging](https://developer.chrome.com/docs/devtools/remote-debugging/) and [localhost forwarding](https://developer.chrome.com/docs/devtools/remote-debugging/local-server/) describe inspecting the phone and reaching the host server. This task's desktop automation cannot verify the phone's USB authorization or physical screen timeout.
 
+## P4.44a — Commander A placement trial
+
+This changes only the existing Commander anchor in DEV. Production ignores the query. No Pages deployment is needed; physical Pixel 8 readability remains for Julia/Owner to judge.
+
+1. In `C:\astra-dev\topwar`, run `npm run dev -- --port 5173 --strictPort` (reuse an already-running server). Connect the phone with USB debugging authorized, then run `adb devices` and `adb reverse tcp:5173 tcp:5173`.
+2. In phone Chrome open `http://localhost:5173/topwar/?commander-placement=a`. Start a new test to see the first and long briefing lines. A should appear centered low on the sand. For original placement use `http://localhost:5173/topwar/` without the query. Reloading retains the existing Continue/New Game flow; the placement itself is not saved.
+3. While Commander speaks, use the arrows through all five positions. Compare soldier/weapon visibility and the red personal artillery warning, especially outer lanes. Check XP/LV, arrows, Grenade, Support and loadout; try normal Chrome and the existing fullscreen entry/exit.
+4. Use the existing menu entries `🚢 驅逐艦進場`, `🚨 BOSS 進場`, `✈️ 空中支援`, `🏆 勝利結算`; scene selection replaces the current test progress as the menu explains. Check the Boss entrance warning, live Tank, manual support, and Victory's existing `略過`. Pause, reload, Continue (must remain paused), then Resume. For isolated real GIANT review use `http://localhost:5173/topwar/?giant-review&commander-placement=a`; this existing isolated path does not replace the normal save.
+5. A is an experiment, not a readability PASS: the lower panel can cover soldiers/weapon feedback and intersect personal artillery warnings. Record the lane, message and screenshot for Julia/Owner. Remove `commander-placement=a` to return to baseline; stop the server and run `adb reverse --remove tcp:5173` when finished.
+
+Desktop evidence can be regenerated with `node scripts/qa/commander-placement.mjs`; its ignored `artifacts/p4.44a/index.html` shows original/A at actual 350×844 and 390×844 sizes. Safe-inset screenshots simulate 24px top / 20px bottom and reduced motion; they do not establish physical phone acceptance.
+
 ## Optional: trusted HTTPS over LAN
 
 Use a development certificate issued by a CA that you deliberately trust on the Pixel, with your exact LAN IP or hostname in its Subject Alternative Names. An existing team/local CA can supply it; [mkcert](https://github.com/FiloSottile/mkcert) is one optional local-development tool. Install its root CA on the phone through Android's certificate settings and retain the CA private key on the development computer. Trust only your own development CA; do not bypass Chrome certificate warnings or enable unsafe-origin flags.

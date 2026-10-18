@@ -2,6 +2,8 @@
 
 ## NOW
 
+P4.44a Commander Placement Trial A (#23) is implemented as DEV-only `?commander-placement=a`, awaiting Julia/Owner Pixel 8 review. Existing panel/portrait and all communication timing remain; production keeps upper-left placement. Review recorded soldier/weapon and emergency-glyph overlap before accepting A. The separate P4.44 cinematic remains unimplemented.
+
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 
 GIANT physical-readability refinement (#33) supersedes the prior #14 presentation details. Arrival is now immediately opaque/original-color, with no emergence haze or HP-bar delay; GIANT hit sparks use larger 300ms upper-armor streaks and a brief ivory center, now varying across seven nearby chest contacts. Eleven original-colored mechanical pieces now collapse into a tighter footprint with less horizontal travel/skid, retaining ground contact and their 1.9–2.6s fade. Persistent wreck fire is removed; eight denser charcoal/gray lobes now have 1.8× radius, over 3× projected area and stronger upward emergence for .30s, then gently drift right and fade near the wreck by roughly 2.15s. Arrival, spark variation, tight footprint and no persistent fire are Pixel 8 accepted. Only amplified smoke awaits owner review. The isolated [GIANT quick review](docs/GIANT_REVIEW.md) (#31) now exercises real MG hits/death and deterministic repeat without touching normal saves. New review-control phone usability remains pending.
@@ -20,7 +22,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Julia reviews P4.43 composition (#22), then Owner makes the Pixel 8 final decision; stop implementation until feedback. Issue stays OPEN / no art PASS.
+1. Julia/Owner review P4.44a Commander A (#23) and P4.43 composition (#22) on Pixel 8; stop implementation until feedback. Both remain without art PASS.
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 
