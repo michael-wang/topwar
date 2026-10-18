@@ -1,3 +1,18 @@
+@font-face {
+  font-family: 'Mantou Sans';
+  src: url('/fonts/mantou-sans/MantouSans-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Bungee';
+  src: url('/fonts/bungee/Bungee-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 html,
 body {
   margin: 0;
@@ -226,6 +241,7 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 }
 .beachhead-defense {
   --font-combat-display: Impact, Haettenschweiler, "Arial Narrow", "Franklin Gothic Heavy", sans-serif;
+  --font-title-trial: 'Bungee', 'Mantou Sans', var(--font-combat-display);
   --font-combat-hud: "Bahnschrift SemiCondensed", "Arial Narrow", "Segoe UI", sans-serif;
   --font-utility: "Segoe UI", Arial, sans-serif;
   --combat-surface: #172331; --combat-edge: #526176; --combat-paper: #fff3dc;
@@ -482,7 +498,7 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .movement-right .combat-keycue { left: 40%; }
 .grenade-button .combat-keycue { top: 62%; color: #382b2b; font-size: 12px; }
 .beachhead-defense .pause-overlay { font-family: var(--font-combat-hud); }
-.beachhead-defense .game-start-overlay { font-family: var(--font-combat-hud); }
+.beachhead-defense .game-start-overlay { font-family: var(--font-title-trial); font-weight: 400; font-synthesis: none; }
 
 .beachhead-defense .movement-button { position: relative; font-family: var(--font-combat-hud); }
 .beachhead-defense .tuning-panel summary { font-family: var(--font-utility); }

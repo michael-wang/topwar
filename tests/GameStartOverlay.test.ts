@@ -59,3 +59,10 @@ it('keeps Start bounded so it cannot intercept the testing hatch', () => {
   expect(css).toContain('left: 50%');
   expect(css).not.toContain('inset: 0');
 });
+
+it('keeps the Defense start title on the regular display trial instead of the HUD override', () => {
+  const css = stylesheet.split('.beachhead-defense .game-start-overlay {')[1].split('}')[0];
+  expect(css).toContain('font-family: var(--font-title-trial)');
+  expect(css).toContain('font-weight: 400');
+  expect(css).toContain('font-synthesis: none');
+});

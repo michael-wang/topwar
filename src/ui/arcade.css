@@ -1,5 +1,12 @@
 /* Defense-only art layer. Layout, fill clipping and animation clocks live in style.css
    and the existing presenters. Decorative cuts never clip interactive hit areas. */
+/* P4.40: original regular faces only on display titles, never utility text. */
+.beachhead-defense :is(.xp-level-prefix, .xp-level-number, .level-up-message strong,
+  .pause-overlay > button, .stage-clear-title) {
+  font-family: var(--font-title-trial);
+  font-weight: 400;
+  font-synthesis: none;
+}
 .beachhead-defense {
   --combat-surface: var(--ui-ink);
   --combat-paper: var(--ui-paper);
@@ -88,7 +95,7 @@
 }
 .beachhead-defense .pause-overlay > button {
   position: relative; isolation: isolate; margin: 0; padding: 9px 18px 13px;
-  font: 900 clamp(44px, 13vw, 58px)/1 var(--font-combat-display);
+  font: 400 clamp(40px, 11.5vw, 50px)/1.2 var(--font-title-trial);
   letter-spacing: .025em; color: var(--ui-paper); transform: rotate(-2deg);
   text-shadow: var(--ui-offset) 3px 0 #07121c; filter: drop-shadow(2px 4px 0 #07121c);
 }
