@@ -42,7 +42,8 @@ async function startGame(): Promise<void> {
     recovery.decision = new Promise(resolve => {
       recovery.dialog = new SessionRecovery(gameViewport, valid, resume => {
         recovery.selected = resume;
-        if (!resume) clearCheckpoint(); // Deliberate invalidation at the actual New Game gesture.
+        if (!resume && !(import.meta.env.DEV && new URLSearchParams(window.location.search).get('opening-review') === '1'))
+          clearCheckpoint(); // Trial preserves an older save until its unsaved prelude completes.
         startupLoading(gameViewport, resume);
         resolve(resume);
       }, true);

@@ -144,6 +144,33 @@ export type AudioActivationResult = 'running' | 'unavailable' | 'denied';
 export const AUDIO_ACTIVATION_TIMEOUT_MS = 1000;
 
 export class GameAudio {
+  private openingSiren: OscillatorNode | null = null;
+  private openingSirenFinished = false;
+  /** One bounded rising/falling air-raid gesture, never a shell/Boss cue. */
+  syncOpeningAlert(offset: number | null, paused: boolean): void {
+    if (offset === null || paused || offset >= 1.1) {
+      if (this.openingSiren) { try { this.openingSiren.stop(); } catch { /* ended */ } this.openingSiren = null; }
+      if (offset === null || paused) this.openingSirenFinished = false;
+      return;
+    }
+    const c = this.context;
+    if (this.openingSiren || this.openingSirenFinished || !this.unlocked || !c || c.state !== 'running' || !this.master) return;
+    const source = c.createOscillator(), filter = c.createBiquadFilter(), gain = c.createGain();
+    source.type = 'sawtooth'; filter.type = 'lowpass'; filter.frequency.value = 750;
+    const frequencies = new Float32Array(64), envelope = new Float32Array(64);
+    for (let i = 0; i < 64; i++) {
+      const t = offset + (1.1 - offset) * i / 63;
+      frequencies[i] = 220 + 260 * Math.sin(Math.PI * t / 1.1);
+      envelope[i] = .055 * Math.min(1, t / .08, (1.1 - t) / .22);
+    }
+    source.frequency.setValueCurveAtTime(frequencies, c.currentTime, 1.1 - offset);
+    gain.gain.setValueCurveAtTime(envelope, c.currentTime, 1.1 - offset);
+    source.connect(filter); filter.connect(gain); gain.connect(this.master);
+    this.openingSiren = source; this.active.add(source);
+    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); this.active.delete(source);
+      if (this.openingSiren === source) { this.openingSiren = null; this.openingSirenFinished = true; } };
+    source.start(); source.stop(c.currentTime + 1.1 - offset);
+  }
   getDebugStats(): { musicVoices: number; sfxSources: number } {
     return { musicVoices: this.music?.activeVoiceCount ?? 0, sfxSources: this.active.size };
   }

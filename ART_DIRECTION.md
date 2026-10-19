@@ -36,7 +36,9 @@ still awaits Pixel 8 readability review. Use regular display faces without synth
 ultra-bold. Bungee remains accepted for Latin display, LV and level numerals; the
 shared display stack puts Bungee before Mantou Sans for mixed text.
 
-P4.44b / #23 retains DEV-only Commander A (`?commander-placement=a`, 64%) and adds A1 (`a1`, 58%) / A2 (`a2`, 56%), all with A's original safe-inset compensation and fixed horizontal center. A remains ART HOLD after Owner phone review; higher candidates improve soldier clearance but collide with accepted warnings. Awaiting Julia/Owner Pixel 8 review, not art PASS. Production retains upper-left placement. Keep the same bust, panel, typography, recordings, priority and clocks; no automatic movement, shrinking or warning relocation. P4.44 Red Alert, cinematic landing and opening Skip are not implemented.
+P4.44b / #23 retains DEV-only Commander A (`?commander-placement=a`, 64%), A1 (`a1`, 58%) / A2 (`a2`, 56%), with A's safe-inset compensation and horizontal center. P4.44c A3 selects A2 for `?opening-review=1` only; production retains upper-left. Same bust, panel, typography and recordings; no automatic movement, shrinking or warning relocation. Later-combat Boss/personal-warning overlap remains a review risk, not art PASS.
+
+P4.44c A3 supersedes nearshore beaching: the three existing craft approach original safe Z71–80 anchors and stay. Decorative copies of the read-only T=0 enemies appear individually at the far surf and accumulate toward exact initial identities/poses, using existing renderer pools. A brief rising/falling filtered siren ends before the original full Commander speech; a restrained red edge remains through the briefing. Optional `跳過` cancels speech/subtitles/red immediately and cuts into real T=0 after a short alignment. Camera B, Z45, static Greek scenery, Boss route, production defaults and accepted combat warnings remain. DEV prototype only; Julia/Owner Pixel 8 art and audio acceptance pending.
 
 Mantou Sans is rejected for Commander subtitles and dense small Chinese. Commander
 dialogue uses the original 600 13px/1.38 system-ui, sans-serif, with unchanged panel,

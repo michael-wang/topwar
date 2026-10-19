@@ -455,6 +455,11 @@ body:has(.beachhead-defense) { background: radial-gradient(ellipse at center, va
 .game-start-overlay.is-leaving { pointer-events: none; opacity: 0; }
 .game-start-overlay.is-review { inset: 0; transform: none; width: 100%; height: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .game-attract > :is(.combat-control-strip,.battle-info,.hud-actions,.grenade-button,.manual-air-support) { visibility: hidden; }
+.game-opening > :is(.combat-control-strip,.battle-info,.grenade-button,.manual-air-support) { visibility:hidden; }
+.opening-alert { position:absolute; inset:0; z-index:2; pointer-events:none;
+  box-shadow:inset 0 0 35px 5px #d52d1e; border:3px solid #ef5441; box-sizing:border-box; }
+.opening-alert span { position:absolute; top:34%; left:0; right:0; text-align:center;
+  color:#ffe5c0; text-shadow:2px 2px #631c18; font:36px 'Mantou Sans',system-ui; }
 @media (prefers-reduced-motion: reduce) { .game-start-overlay span { transition: none; } }
 /* Safe-area anchored active item; native button semantics exclude lane taps. */
 .grenade-button {

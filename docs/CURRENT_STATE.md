@@ -7,13 +7,13 @@ Read only when task scope/status needs orientation, not as another specification
 - P4.40c / #36 Lightweight Arcade UI is implemented and owner Pixel 8 PASS: floating Start, compact Pause, larger unbacked Boss warning. Accepted Retry/Replay stay unchanged. Mantou titles, Bungee English/acronyms, Commander system-ui.
 
 ## Implemented, acceptance pending
-- P4.44b / #23 compares DEV-only `?commander-placement=a` (64%), `a1` (58%) and `a2` (56%), retaining A's safe-inset compensation. A remains ART HOLD after Owner phone captures; higher candidates reduce squad overlap but conflict with Boss/personal artillery warnings. Awaiting Julia/Owner Pixel 8 review, not art PASS. Production remains upper-left; portrait, panel, typography, audio/timing, HUD, gameplay and saves are unchanged. Cinematic/Red Alert/opening Skip remain unimplemented.
+- P4.44c / #23 Storyboard A3 is a DEV prototype at `?opening-review=1`, awaiting Julia/Owner Pixel 8 acceptance. Independent precombat clock: short rising/falling siren, persistent faint red edge, A2 Commander full original briefing, three craft approaching and staying at original offshore anchors, individual surf arrivals building to exact real T=0. Skip cuts to combat; Continue is paused and Retry immediate. Production/no-query retains prior behavior. Prior `commander-placement=a/a1/a2` trials remain; A2 can still obscure accepted Boss/personal warnings during later combat. See [phone steps](PIXEL8_DEV_TESTING.md#p444c--storyboard-a3-dev-opening).
 - P4.43 / #22 Aegean Scenic Readability is implemented / awaiting Julia composition review and owner Pixel 8 visual acceptance. P4.42 shared-coast/transition architecture is provisionally retained; its art remains HOLD. Tiered asymmetric Greek side facades, visible terraces/stone steps, fuller olives/sparse flowers, warm sand/wet-shore shading and nearer decorative sentries improve the same idle/combat scene. Continue bypasses idle paused; Retry is immediate.
 - Pending art/VFX includes amplified GIANT smoke/review usability, artillery smoke polish, Hybrid D production, Tracer V5, defeat/Boss/Victory presentation and bomber shadow/audio refinements. Preserve accepted portions; consult task-specific canonical status.
 - Combined production Start/audio/fullscreen and native startup-performance review remain pending.
 
 ## Deferred directions
-P4.43 implements the scenic iteration above; further art iteration requires owner feedback. Red Alert/siren/briefing and PWA remain unapproved.
+P4.43 implements the scenic iteration above; further art iteration requires owner feedback. Opening production promotion and PWA remain unapproved.
 
 ## Read only the relevant section
 - Gameplay / saves / startup: [GAME_SPEC](../GAME_SPEC.md).

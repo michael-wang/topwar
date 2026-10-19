@@ -54,6 +54,9 @@ import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from 
 import { DevGiantReviewControls } from '../ui/DevGiantReviewControls';
 import { BattlefieldDiorama } from '../presentation/BattlefieldDiorama';
 import { MobileFullscreen } from './MobileFullscreen';
+import { openingReviewEnabled } from './openingReview';
+import { InvasionPresentation } from '../presentation/InvasionPresentation';
+import { OpeningAlert } from '../ui/OpeningAlert';
 
 function isInteractivePauseTarget(target: EventTarget | null): boolean {
   const element = target as { tagName?: string; isContentEditable?: boolean;
@@ -115,6 +118,11 @@ export class GameApp {
   private startGeneration = 0;
   private diorama: BattlefieldDiorama | null = null;
   private idleAgeMs = 0;
+  private readonly openingReview = openingReviewEnabled();
+  private invasion: InvasionPresentation | null = null;
+  private openingAlert: OpeningAlert | null = null;
+  private openingSeconds = 0;
+  private openingSkipSeconds: number | null = null;
   private idleFrameAtMs: number | null = null;
   private readonly reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   private disposed = false;
@@ -245,7 +253,7 @@ export class GameApp {
     this.stageClearOverlay = new StageClearOverlay(viewport, () => this.retry());
     this.laneInput = this.config.catharsis?.defenseMode ? new LaneStepInput(viewport, window,
       (direction) => {
-        if (!this.running || this.startup !== 'started' || this.paused || this.simulation.getFrameState().squad.count === 0) return false;
+        if (!this.running || this.startup !== 'started' || this.invasion || this.paused || this.simulation.getFrameState().squad.count === 0) return false;
         if (this.stageClearAtMs !== null) return false;
         return this.celebration ? this.celebration.stepLane(direction) : this.simulation.stepLane(direction);
       }, this.controlStrip!.buttons) : null;
@@ -293,6 +301,7 @@ export class GameApp {
     if (!this.running) return;
 
     this.running = false;
+    this.cancelOpening();
     this.wakeLock.setActive(false);
     document.removeEventListener?.('visibilitychange', this.onVisibility);
     document.removeEventListener?.('freeze', this.onFreeze);
@@ -329,6 +338,7 @@ export class GameApp {
 
   dispose(): void {
     if (this.disposed) return;
+    this.cancelOpening();
     this.stop();
     this.unsubscribeConfig();
     this.fullscreen.dispose();
@@ -362,6 +372,7 @@ export class GameApp {
     if (this.disposed) throw new Error('Cannot retry a disposed GameApp');
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if(this.qaSleepActive||this.qaPreparing)return;
+    this.cancelOpening();
     this.tuningPanel?.close();
     this.qaSession=false;
     clearCheckpoint(this.checkpointStorage); this.checkpointNotice?.remove(); this.checkpointNotice = null;
@@ -399,7 +410,7 @@ export class GameApp {
     this.damageFlash.reset();
     this.fieldObserver?.reset();
     this.audio.resetObservation();
-    if (this.startup === 'started' && !this.devReviewFixture) this.fieldObserver?.startMission(initialState.elapsedSeconds);
+    if (this.startup === 'started' && !this.devReviewFixture && !this.openingReview) this.fieldObserver?.startMission(initialState.elapsedSeconds);
     this.xpHud?.reset();
     this.battleInfo?.reset();
     this.supplyTransfer?.reset();this.grenadeButton?.reset(); this.manualSupportButton?.reset();
@@ -442,6 +453,7 @@ export class GameApp {
   }
 
   private startInputs(): void {
+    if (this.invasion) return;
     if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost || this.recovery?.blocking || this.stageClearAtMs !== null) return;
     if (this.laneInput) {
       if (this.simulation.getFrameState().squad.count > 0) this.laneInput.start();
@@ -456,6 +468,7 @@ export class GameApp {
 
   private takeAirSupportRequest(): boolean { const requested = this.airSupportRequested; this.airSupportRequested = false; return requested; }
   private readonly requestAirSupport = (): boolean => {
+    if (this.invasion) return false;
     if (!this.running || this.startup !== 'started' || this.paused || this.hidden || this.contextLost
       || this.recovery?.blocking || this.tuningPanel?.isOpen || this.airSupportRequested) return false;
     const s = this.simulation.getFrameState(), air = s.commanderSupport?.airstrike;
@@ -465,6 +478,7 @@ export class GameApp {
   };
 
   private readonly requestGrenade = (): void => {
+    if (this.invasion) return;
     if (!this.running || this.startup !== 'started' || this.paused || this.grenadeRequested) return;
     const state = this.simulation.getFrameState();
     if (state.defenseTank?.status === 'defeated') return;
@@ -504,7 +518,17 @@ export class GameApp {
     this.viewport.classList?.remove('game-attract');
     this.audio.resetObservation();
     this.startup = 'started';
-    if (!this.restored && !this.devReviewFixture) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
+    if (import.meta.env.DEV && this.openingReview && !this.restored && !this.devReviewFixture && !this.giantReview && this.config.catharsis?.defenseMode) {
+      const state = this.simulation.getFrameState();
+      this.invasion = new InvasionPresentation(projectRenderState(state, {
+        formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
+        defenseLineOffset: this.config.track.defenseLineOffset, catharsis: state.catharsis,
+      }));
+      this.openingSeconds = 0; this.openingSkipSeconds = null;
+      this.openingAlert = new OpeningAlert(this.viewport);
+      this.viewport.classList?.add('game-opening');
+      this.fieldObserver?.startOpening(this.skipOpening);
+    } else if (!this.restored && !this.devReviewFixture) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
     this.startOverlay.finish();
     if (this.hidden || this.contextLost) this.setPaused(true);
     this.startInputs();
@@ -512,10 +536,47 @@ export class GameApp {
     this.syncWakeLock();
   }
 
+  private readonly skipOpening = (): void => {
+    if (!this.invasion || this.openingSkipSeconds !== null || this.paused || this.hidden || this.contextLost) return;
+    this.openingSkipSeconds = 0; this.fieldObserver?.reset();
+    this.audio.syncOpeningAlert(null, false); this.openingAlert?.dispose(); this.openingAlert = null;
+  };
+
+  private cancelOpening(): void {
+    if (!this.invasion) return;
+    this.invasion = null; this.openingSkipSeconds = null;
+    this.openingAlert?.dispose(); this.openingAlert = null;
+    this.viewport.classList?.remove('game-opening');
+    this.audio.syncOpeningAlert(null, false); this.fieldObserver?.reset();
+  }
+
+  private renderOpening(timestampMs: number): void {
+    const dt = this.previousFrameTimestampMs === null ? 0 : Math.min(.1, Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000));
+    this.previousFrameTimestampMs = timestampMs;
+    if (this.hidden || this.contextLost) return;
+    if (!this.paused) {
+      this.openingSeconds += dt;
+      if (this.openingSkipSeconds !== null) this.openingSkipSeconds += dt;
+    }
+    const skipping = this.openingSkipSeconds !== null;
+    const done = skipping ? this.openingSkipSeconds! >= .2 : this.fieldObserver?.updateOpening(this.openingSeconds, this.paused) ?? true;
+    this.audio.syncOpeningAlert(skipping ? null : this.openingSeconds, this.paused);
+    this.openingAlert?.update(this.openingSeconds, !!this.reducedMotion?.matches);
+    // Skip is an intentional short cut, not accelerated speech or simulation.
+    const poseSeconds = skipping ? Math.max(10.9, this.openingSeconds) : this.openingSeconds;
+    this.renderer.renderInvasion(this.invasion!.sample(poseSeconds, !!this.reducedMotion?.matches), poseSeconds, !!this.reducedMotion?.matches);
+    if (done && !this.paused) {
+      this.renderer.finishInvasion(poseSeconds, !!this.reducedMotion?.matches);
+      this.cancelOpening(); this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
+      clearCheckpoint(this.checkpointStorage); this.startInputs();
+      // First combat draw is still exactly T=0; the next animation frame starts its clock.
+    }
+  }
+
   private readonly onStartPointerDown = (): void => {
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if (this.startup === 'started') {
-      if (this.audio.needsResume) void this.audio.activate();
+      if (this.audio.needsResume) void this.audio.activate().catch(() => {});
       return;
     }
   };
@@ -523,7 +584,7 @@ export class GameApp {
   private readonly onStartKeyDown = (event: KeyboardEvent): void => {
     if (this.startup === 'recovering' || this.recovery?.blocking) return;
     if (this.startup === 'started') {
-      if (!event.repeat && this.audio.needsResume) void this.audio.activate();
+      if (!event.repeat && this.audio.needsResume) void this.audio.activate().catch(() => {});
       return;
     }
   };
@@ -561,7 +622,7 @@ export class GameApp {
     if(this.qaSleepActive||this.qaPreparing)return;
     if (this.paused && (this.hidden || this.contextLost)) return;
     if (this.paused) {
-      void this.audio.activate(); // Called within the Resume gesture, before fullscreen.
+      void this.audio.activate().catch(() => {}); // Optional; still synchronous before fullscreen.
       if (this.resumeFullscreenPending) {
         this.resumeFullscreenPending = false;
         this.fullscreen.request();
@@ -584,7 +645,10 @@ export class GameApp {
       this.laneInput?.stop();
       const s = this.simulation.getState();
       this.targetX = s.player.x;
-      if (s.defenseTank?.status === 'defeated' && this.tankDeathAtMs !== null
+      if (this.invasion) {
+        this.audio.syncOpeningAlert(null, true);
+        if (this.openingSkipSeconds === null) this.fieldObserver?.updateOpening(this.openingSeconds, true);
+      } else if (s.defenseTank?.status === 'defeated' && this.tankDeathAtMs !== null
         && this.presentationMs - this.tankDeathAtMs >= TANK_DEATH_MS)
         this.fieldObserver?.updateVictory(this.presentationMs / 1000, true);
       else if (s.defenseTank?.status === 'defeated') this.fieldObserver?.finishCombat(this.presentationMs / 1000, true);
@@ -656,7 +720,8 @@ export class GameApp {
         return;
       } catch { this.showCheckpointFailure('無法恢復進度，請重新開始'); }
     }
-    clearCheckpoint(this.checkpointStorage); this.startup = 'awaiting-start'; this.showReady();
+    if (!this.openingReview) clearCheckpoint(this.checkpointStorage);
+    this.startup = 'awaiting-start'; this.showReady();
   };
 
   private showCheckpointFailure(text: string): void {
@@ -666,6 +731,7 @@ export class GameApp {
   }
 
   private saveCheckpoint(reason: SessionCheckpoint['reason']): void {
+    if (this.invasion) return;
     if (this.giantReview) return;
     if (this.startup !== 'started') return;
     const started = performance.now(), state = this.simulation.getState();
@@ -792,6 +858,9 @@ export class GameApp {
   private readonly renderFrame = (timestampMs: number): void => {
     if (!this.running) return;
     try {
+      if (this.invasion) {
+        this.renderOpening(timestampMs); this.frameId = requestAnimationFrame(this.renderFrame); return;
+      }
       if (this.startup !== 'started') {
         // Presentation time is independent of fixed-step time and never catches up
         // after a hidden tab. Reduced motion keeps a still tableau, including sea.

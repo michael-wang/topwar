@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.44b Commander Placement Refinement (#23) compares DEV-only A (64%), A1 (58%) and A2 (56%). A remains ART HOLD; higher candidates improve squad clearance but conflict with warnings. Awaiting Julia/Owner Pixel 8 review. Panel/portrait, communication timing and production upper-left placement remain. The separate P4.44 cinematic remains unimplemented.
+P4.44c Storyboard A3 (#23) is a DEV-only opening prototype awaiting Julia/Owner Pixel 8 review: safe offshore craft approach/stay, individual surf arrivals matching real T=0, A2 full briefing, short rising/falling alert, persistent red edge and optional Skip. Production retains prior behavior. Earlier A/A1/A2 placement queries remain, including known later-combat warning overlap; no warning relocation or compact radio mode is authorized.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 
@@ -22,13 +22,13 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Julia/Owner review P4.44b Commander variants (#23) and P4.43 composition (#22) on Pixel 8; stop implementation until feedback. Both remain without art PASS.
+1. Julia/Owner review P4.44c A3 opening / A2 combat readability (#23) and P4.43 composition (#22) on Pixel 8; stop implementation after verified prototype delivery. Neither has art PASS.
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 
 ## LATER
 
-- Red Alert/siren/briefing (#23) remain design-only pending owner approval; no Commander timing changes. PWA/installed mode remains a separate future decision.
+- Promote the DEV opening (#23) only after Julia/Owner acceptance and explicit release direction. PWA/installed mode remains a separate future decision.
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.

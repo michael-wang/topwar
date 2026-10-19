@@ -207,6 +207,7 @@ class ElementStub extends EventTarget {
   append(...children:ElementStub[]){this.children.push(...children);}
   replaceWith=vi.fn();
   setAttribute(key:string,value:string){this.attrs[key]=value;}
+  removeAttribute(key:string){delete this.attrs[key];}
 }
 const readyPortraits = (): PreparedObserverPortraits => ({ readiness: 'ready', get: () => new ElementStub() as unknown as HTMLImageElement });
 function missionUi(portraits = readyPortraits(), search = '') {
@@ -217,6 +218,26 @@ function missionUi(portraits = readyPortraits(), search = '') {
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio,portraits);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
+it.each(['ready','pending','unavailable'] as const)('runs the full opening once with %s voice, pauses and keeps Skip separate from Victory', readiness => {
+  const {ui,audio,text}=missionUi(readyPortraits(), '?opening-review=1');
+  audio.prepareRadio.mockReturnValue(readiness as 'ready');
+  audio.radioDurationSeconds.mockReturnValue(10.188);
+  const skip=vi.fn();ui.startOpening(skip);
+  const button=(ui.element as unknown as ElementStub).children[3] as unknown as HTMLButtonElement;
+  let doneAt=0;
+  for(let frame=0;frame<1000;frame++){
+    const now=frame/60,done=ui.updateOpening(now,false);
+    if(frame===75){expect(ui.element.hidden).toBe(false);expect(button.textContent).toBe('跳過');
+      const current=text();ui.updateOpening(now,true);expect(text()).toBe(current);expect(button.disabled).toBe(true);
+      button.onclick?.(new Event('click') as unknown as PointerEvent);expect(skip).not.toHaveBeenCalled();}
+    if(done){doneAt=now;break;}
+  }
+  expect(doneAt).toBeCloseTo(readiness==='pending'?14.25:11.75,1);
+  expect(audio.play.mock.calls.filter(([cue])=>cue==='radioOpen')).toHaveLength(1);
+  ui.reset();expect(button.textContent).toBe('略過');expect(button.hidden).toBe(true);
+  ui.update(undefined,undefined,0,true,false);expect(ui.element.hidden).toBe(true);
+  ui.dispose();
+});
 it('opts into Commander A only in DEV with the exact query, without changing communications', () => {
   for (const dev of [true, false]) {
     vi.stubEnv('DEV', dev);

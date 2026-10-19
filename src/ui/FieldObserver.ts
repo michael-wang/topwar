@@ -1,4 +1,5 @@
 import { CommanderComms } from '../presentation/CommanderComms';
+import { openingReviewEnabled } from '../app/openingReview';
 import type { SimulationFrameState } from '../simulation/SimulationState';
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
 import { observerEmblem } from './observerEmblem';
@@ -44,6 +45,8 @@ export class FieldObserver {
   private finaleClock = false;
   private readonly tankTimeline = new ObserverTimeline();
   private readonly missionTimeline = new MissionObserverTimeline();
+  private readonly openingTimeline = new MissionObserverTimeline({ ...missionIntroTiming, atSeconds: 1.2 });
+  private openingSkip: (() => void) | null = null;
   private message: ObserverMessage = 'destroyer';
   private phrase = 0;
   private readonly locale = FIELD_OBSERVER_LOCALE;
@@ -58,7 +61,7 @@ export class FieldObserver {
     this.element.className = 'field-observer'; this.element.hidden = true;
     // Reversible placement trial only; production retains the authored upper slot.
     if (import.meta.env.DEV) {
-      const placement = new URLSearchParams(window.location?.search).get('commander-placement');
+      const placement = openingReviewEnabled() ? 'a2' : new URLSearchParams(window.location?.search).get('commander-placement');
       const height = placement === 'a' ? 64 : placement === 'a1' ? 58 : placement === 'a2' ? 56 : null;
       if (height !== null) {
         this.element.style.left = 'max(12px, calc(50% - 155px))';
@@ -74,6 +77,7 @@ export class FieldObserver {
     this.skip.className = 'commander-skip'; this.skip.textContent = '略過'; this.skip.hidden = true;
     this.skip.setAttribute('type', 'button');
     this.skip.onclick = () => {
+      if (this.openingSkip) { if (!this.frame.paused) this.openingSkip(); return; }
       if (!this.victoryStarted || this.victoryFinished || this.frame.paused) return;
       this.victoryFinished = true; this.victoryTimeline.reset(); this.element.hidden = true;
       this.audio.play('radioClose');
@@ -96,6 +100,21 @@ export class FieldObserver {
     // Only an explicit fresh attempt can arm the intro. Restoring a snapshot is
     // never a new mission, and a completed intro stays retired after rewinds.
     if (now === 0) this.missionTimeline.start(now);
+  }
+  startOpening(skip: () => void): void {
+    this.reset(); this.openingSkip = skip; this.openingTimeline.start(0);
+    this.skip.textContent = '跳過'; this.skip.setAttribute('aria-label', '跳過開場簡報，開始遊戲');
+  }
+  updateOpening(now: number, paused: boolean): boolean {
+    const frame = this.openingTimeline.update(now, true, paused,
+      this.audio.prepareRadio(this.locale, 'missionIntro'), this.portraits.readiness === 'pending',
+      this.audio.radioDurationSeconds?.(this.locale, 'missionIntro') ?? null);
+    // Keep a usable Skip and first subtitle during bounded voice/portrait loading.
+    const waiting = now >= 1.2 && this.openingTimeline.active && !frame.visible;
+    if (frame.begin) this.presented = false;
+    this.present(waiting ? { ...frame, visible: true, offset: .18, audible: false } : frame, 'missionIntro', now, paused);
+    this.skip.hidden = now < 1.2 || !this.openingTimeline.active;
+    return !this.openingTimeline.active;
   }
   update(state: DestroyerState | undefined, config: DestroyerSettings | undefined, now: number, alive: boolean, paused: boolean,
     tank?: Readonly<DefenseTankState>, support?: SimulationFrameState['commanderSupport'], supportConfig?: CommanderSupportConfig): void {
@@ -172,7 +191,7 @@ export class FieldObserver {
     if (message === 'airSupportReady' && frame.visible) this.manualNoticePresented = true;
     const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
     const phrase = message === 'airSupportCalled' ? 1 : message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
-      ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * frame.duration / timing.durationSeconds ? i : index, 0) : 0;
+      ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * (this.openingSkip ? 1 : frame.duration / timing.durationSeconds) ? i : index, 0) : 0;
     if (message !== this.message) this.presented = false;
     if (message !== this.message || phrase !== this.phrase) {
       this.message = message; this.phrase = phrase; this.updateText();
@@ -204,6 +223,8 @@ export class FieldObserver {
     if (!frame.visible) this.presented = false;
   }
   reset(): void {
+    this.openingTimeline.reset(); this.openingSkip = null;
+    this.skip.textContent = '略過'; this.skip.removeAttribute('aria-label');
     this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
     this.victoryTimeline.reset(); this.victoryStarted = false; this.victoryFinished = false; this.skip.hidden = true;
     this.victoryPresented = false;

@@ -14,6 +14,8 @@ Camera B is the approved default in every scene. After a fresh build, `node scri
 
 ## Regression commands
 
+`node scripts/qa/opening-prototype.mjs` starts its own DEV server on 5177 for P4.44c A3. Checks both mobile widths, safe insets, reduced motion, immutable T=0/first ticks, loading fallback, Pause/hidden/Skip, old checkpoint preservation and review bypass. Output includes a silent continuous browser video and compact screenshot sources under ignored `artifacts/p4.44c/a3/`. Playwright's FFmpeg must be installed in its configured `PLAYWRIGHT_BROWSERS_PATH`; physical Pixel 8 audio/art acceptance is separate.
+
 | Tool | Current purpose |
 |---|---|
 | lane-highlights.mjs | Production Lv1/Lv8, physical-X transitions, Destroyer/Tank threats, red/cyan overlap, cancellation and Pause/Continue/Retry at both phone widths |
