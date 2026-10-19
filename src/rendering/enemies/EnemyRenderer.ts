@@ -239,7 +239,7 @@ export class EnemyRenderer {
     const front = event.victims.reduce((z, v) => Math.min(z, v.z), event.z);
     for (const x of [-1.4, 0, 1.4]) this.giantImpactDust.spawn(x, front, nowMs);
   }
-  update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean, attackerX?: number, attackerZ?: number): void {
+  update(enemies: readonly EnemyRenderState[], nowMs = performance.now(), sceneMode?: boolean, attackerX?: number, attackerZ?: number, poseTimes?: ReadonlyMap<number, number>): void {
     this.pendingHitBlood.clear();this.pendingHitDamage.clear();
     if (sceneMode !== undefined) {
       if (this.sceneMode !== undefined && this.sceneMode !== sceneMode) this.reset();
@@ -339,7 +339,7 @@ export class EnemyRenderer {
       this.healthBars[barIndex].backing.visible = false;
       this.healthBars[barIndex].fill.visible = false;
     }
-    for (const batch of this.batches) this.updateBatch(batch, enemies, nowMs);
+    for (const batch of this.batches) this.updateBatch(batch, enemies, nowMs, poseTimes);
     for (const enemy of enemies) {
       const sequence = this.pendingHitBlood.get(enemy.id);
       if (sequence === undefined && this.hitImpulse.strength(enemy.id, nowMs) === 0) continue;
@@ -350,13 +350,13 @@ export class EnemyRenderer {
     this.hitBlood.update(nowMs);
   }
 
-  private updateBatch(batch: CrowdBatch, enemies: readonly EnemyRenderState[], nowMs: number): void {
+  private updateBatch(batch: CrowdBatch, enemies: readonly EnemyRenderState[], nowMs: number, poseTimes?: ReadonlyMap<number, number>): void {
     const counts = PALETTES.map(() => 0);
     const bodyCounts = [0, 0, 0, 0];
     for (const enemy of enemies) {
       if (enemy.archetype === 'giant' || this.batchFor(enemy) !== batch) continue;
       counts[0]++;
-      bodyCounts[enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs)]++;
+      bodyCounts[enemyRunFrame(enemy.id, poseTimes?.get(enemy.id) ?? nowMs, this.crowdFamily(enemy).gaitCycleMs)]++;
     }
     for (let frame = 0; frame < 4; frame++) {
       if (bodyCounts[frame] > batch.bodyCapacity[frame]) this.growBody(batch, frame, bodyCounts[frame]);
@@ -374,11 +374,11 @@ export class EnemyRenderer {
       if (enemy.archetype === 'giant' || this.batchFor(enemy) !== batch) continue;
       const palette = 0;
       const index = indices[palette]++;
-      const pose = enemyWalkPose(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
+      const pose = enemyWalkPose(enemy.id, poseTimes?.get(enemy.id) ?? nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const transform = this.transform;
       const heavy = enemy.archetype === 'heavy';
       const presentation = this.crowdFamily(enemy).presentation;
-      const step = presentation.stepWeight && stepWeightPose(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
+      const step = presentation.stepWeight && stepWeightPose(enemy.id, poseTimes?.get(enemy.id) ?? nowMs, this.crowdFamily(enemy).gaitCycleMs);
       // Low bounce, stronger alternating weight transfer distinguish a Heavy.
       const sway = step ? step.support * presentation.stepWeight!.roll : pose.leftArm * (heavy ? .18 : .075);
       transform.position.set(-enemy.x + (step ? step.support * presentation.stepWeight!.shift
@@ -403,7 +403,7 @@ export class EnemyRenderer {
       if (step) transform.scale.y *= 1 - step.landing * presentation.stepWeight!.compression;
       transform.scale.y *= 1 - Math.max((presentation.hitCompression ?? 0) * hitStrength, style.compression * impact);
       transform.updateMatrix();
-      const frame = enemyRunFrame(enemy.id, nowMs, this.crowdFamily(enemy).gaitCycleMs);
+      const frame = enemyRunFrame(enemy.id, poseTimes?.get(enemy.id) ?? nowMs, this.crowdFamily(enemy).gaitCycleMs);
       const bodySlot = bodyIndices[frame]++;
       batch.bodyMeshes[frame].setMatrixAt(bodySlot, transform.matrix);
       // Authored vertex colors stay neutral.

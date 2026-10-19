@@ -523,7 +523,7 @@ export class GameApp {
       this.invasion = new InvasionPresentation(projectRenderState(state, {
         formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
         defenseLineOffset: this.config.track.defenseLineOffset, catharsis: state.catharsis,
-      }));
+      }), state.catharsis!.balance);
       this.openingSeconds = 0; this.openingSkipSeconds = null;
       this.openingAlert = new OpeningAlert(this.viewport);
       this.viewport.classList?.add('game-opening');
@@ -566,7 +566,7 @@ export class GameApp {
     this.openingAlert?.update(this.openingSeconds, !!this.reducedMotion?.matches);
     // Skip is an intentional short cut, not accelerated speech or simulation.
     const poseSeconds = skipping ? Math.max(this.invasion!.formationAt, this.openingSeconds) : this.openingSeconds;
-    this.renderer.renderInvasion(this.invasion!.sample(poseSeconds, !!this.reducedMotion?.matches), poseSeconds, !!this.reducedMotion?.matches, this.invasion!.formationAt);
+    this.renderer.renderInvasion(this.invasion!.sample(poseSeconds, !!this.reducedMotion?.matches), poseSeconds, !!this.reducedMotion?.matches, this.invasion!.poseTimes);
     if (done && !this.paused) {
       this.renderer.finishInvasion(poseSeconds, !!this.reducedMotion?.matches);
       this.cancelOpening(); this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;

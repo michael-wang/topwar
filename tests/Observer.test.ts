@@ -285,6 +285,15 @@ it.each(['ready','pending','unavailable'] as const)('runs the full opening once 
   ui.update(undefined,undefined,0,true,false);expect(ui.element.hidden).toBe(true);
   ui.dispose();
 });
+it('centers the opening-review bust/plaque while retaining the A2 reference and ordinary upper slot',()=>{
+  vi.stubEnv('DEV',true);
+  for(const query of ['?opening-review=1','?opening-review=1&commander-placement=a2','']) {
+    const {ui}=missionUi(readyPortraits(),query);
+    expect(ui.element.style.top).toBe(query.endsWith('a2')?'calc(56% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)':query?'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)':undefined);
+    const top=ui.element.style.top;ui.startOpening(()=>{});ui.reset();expect(ui.element.style.top).toBe(top);ui.dispose();
+  }
+  vi.unstubAllEnvs();
+});
 it('opts into Commander A only in DEV with the exact query, without changing communications', () => {
   for (const dev of [true, false]) {
     vi.stubEnv('DEV', dev);

@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.44d Opening Refinement + Commander Voice Integration (#23) awaits Julia/Owner Pixel 8 review: boats settle before individual enemies, buildup follows actual briefing time, subdued siren/red persist throughout, and A2/Skip remain. New intro recording is DEV-only; original production intro remains. GIANT uses the approved full recording without changing combat. Earlier placement trials and known warning overlap remain; no relocation is authorized.
+P4.44e Opening Art & Audio Refinement (#23) awaits Julia/Owner Pixel 8 review: stronger siren gain and red glow share one cycle; first near-surf walkers obey combat speed, other ranks reveal in place; full Commander is visually centered, with A2 retained as a DEV reference. Approved voices, production behavior and gameplay remain. Warning intersections are reported rather than automatically avoided; no deployment authorization.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 

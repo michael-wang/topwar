@@ -1,4 +1,5 @@
 import { supportEngineEnvelope } from '../presentation/SupportFlyover';
+import { openingSirenFrequency, openingSirenGain } from '../presentation/OpeningAlertPulse';
 import { ObserverVoice, ObserverVoiceFiles, observerVoiceAsset, type ObserverAudioReadiness } from './ObserverVoice';
 import { hasPublicAsset, publicAssetUrl } from '../core/publicAssetUrl';
 import { StreamedMusic } from './StreamedMusic';
@@ -147,28 +148,37 @@ export class GameAudio {
   private openingSiren: { source: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
   /** One phase-driven siren; presentation pauses never replay the initial accent. */
   syncOpeningAlert(offset: number | null, paused: boolean): void {
-    if (offset === null || paused) {
-      const node = this.openingSiren;
-      if (node) {
-        node.source.onended = null;
-        try { node.source.stop(); } catch { /* already ended */ }
-        node.source.disconnect(); node.filter.disconnect(); node.gain.disconnect();
-        this.active.delete(node.source); this.openingSiren = null;
+    const c = this.context;
+    if (paused) {
+      // Keep the one oscillator silent, so rapid Resume cannot duplicate it.
+      if (this.openingSiren && c) {
+        this.openingSiren.gain.gain.cancelScheduledValues(c.currentTime);
+        this.openingSiren.gain.gain.setTargetAtTime(0, c.currentTime, .008);
       }
       return;
     }
-    const c = this.context;
+    if (offset === null) {
+      const node = this.openingSiren;
+      if (node) {
+        node.gain.gain.cancelScheduledValues(c!.currentTime);
+        node.gain.gain.setTargetAtTime(0, c!.currentTime, .008);
+        node.source.stop(c!.currentTime + .03); this.openingSiren = null;
+      }
+      return;
+    }
     if (!this.unlocked || !c || c.state !== 'running' || !this.master) return;
     if (!this.openingSiren) {
       const source = c.createOscillator(), filter = c.createBiquadFilter(), gain = c.createGain();
       source.type = 'sawtooth'; filter.type = 'lowpass'; filter.frequency.value = 750;
+      gain.gain.value = 0;
       source.connect(filter); filter.connect(gain); gain.connect(this.master);
+      source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); this.active.delete(source); };
       this.openingSiren = { source, filter, gain }; this.active.add(source); source.start();
     }
     const { source, gain } = this.openingSiren;
-    source.frequency.value = offset < 1.2 ? 220 + 260 * Math.sin(Math.PI * offset / 1.2)
-      : 240 + 110 * Math.sin(2 * Math.PI * (offset - 1.2) / 2.6);
-    gain.gain.value = offset < 1.2 ? .018 + .037 * Math.sin(Math.PI * offset / 1.2) : .018;
+    source.frequency.value = openingSirenFrequency(offset);
+    gain.gain.cancelScheduledValues(c.currentTime);
+    gain.gain.setTargetAtTime(openingSirenGain(offset), c.currentTime, .008);
   }
   getDebugStats(): { musicVoices: number; sfxSources: number } {
     return { musicVoices: this.music?.activeVoiceCount ?? 0, sfxSources: this.active.size };

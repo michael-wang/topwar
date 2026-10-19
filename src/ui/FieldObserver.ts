@@ -66,12 +66,18 @@ export class FieldObserver {
     this.element.className = 'field-observer'; this.element.hidden = true;
     // Reversible placement trial only; production retains the authored upper slot.
     if (import.meta.env.DEV) {
-      const placement = openingReviewEnabled() ? 'a2' : new URLSearchParams(window.location?.search).get('commander-placement');
+      const reference = new URLSearchParams(window.location?.search).get('commander-placement');
+      const placement = openingReviewEnabled() ? reference === 'a2' ? 'a2' : 'center' : reference;
       const height = placement === 'a' ? 64 : placement === 'a1' ? 58 : placement === 'a2' ? 56 : null;
       if (height !== null) {
         this.element.style.left = 'max(12px, calc(50% - 155px))';
         // Retain A's inset compensation so only the requested percentage differs.
         this.element.style.top = `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)`;
+      }
+      if (placement === 'center') {
+        this.element.style.left = 'max(12px, calc(50% - 155px))';
+        // Center the plaque + protruding bust (bounds -14..96), not its top edge.
+        this.element.style.top = 'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)';
       }
     }
     this.element.setAttribute('aria-live', 'polite');

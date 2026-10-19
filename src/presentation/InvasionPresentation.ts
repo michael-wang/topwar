@@ -1,38 +1,46 @@
 import type { EnemyRenderState, GameRenderState } from '../rendering/RenderState';
 
+type Speeds = { gruntSpeed: number; heavySpeed: number };
 /** Disposable render copies of T=0; never owns a Simulation, RNG or checkpoint. */
 export class InvasionPresentation {
   private firstArrival = 5.1;
   formationAt = 11.074;
+  readonly poseTimes = new Map<number, number>();
   setBriefing(start: number, end: number): void {
     this.firstArrival = Math.max(5.1, start + 2);
     this.formationAt = end - .35;
   }
   readonly state: GameRenderState;
   private readonly visible: EnemyRenderState[] = [];
-  private readonly actors: { target: EnemyRenderState; actor: { -readonly [K in keyof EnemyRenderState]: EnemyRenderState[K] }; at: number; entryX: number }[];
-  constructor(initial: GameRenderState) {
-    // Front ranks travel first and furthest. Every identity gets one appearance.
-    const frontFirst = [...initial.enemies].sort((a, b) => a.z - b.z || a.id - b.id);
-    const directions = [frontFirst.filter(e => e.x < -.65), frontFirst.filter(e => Math.abs(e.x) <= .65), frontFirst.filter(e => e.x > .65)];
-    const ordered: EnemyRenderState[] = [];
-    for (let row = 0; row < Math.max(...directions.map(group => group.length)); row++)
-      for (const group of directions) if (group[row]) ordered.push(group[row]);
-    this.actors = ordered.map((target, i) => ({ target, actor: { ...target },
-      at: i < 6 ? i * .35 : 1.9 + ((i - 6) / Math.max(1, ordered.length - 7)) ** .65,
-      entryX: target.x < -.65 ? -3 : target.x > .65 ? 3 : 0 }));
+  private readonly actors: { target: EnemyRenderState; actor: { -readonly [K in keyof EnemyRenderState]: EnemyRenderState[K] }; at: number; walks: boolean; speed: number }[];
+  constructor(initial: GameRenderState, speeds: Speeds) {
+    const speed = (e: EnemyRenderState) => e.archetype === 'heavy' ? speeds.heavySpeed : speeds.gruntSpeed;
+    // Pick real near-surf destinations reachable even by the sixth arrival.
+    // Far-inland ranks assemble in place; they never sprint to meet a deadline.
+    const reachable = initial.enemies.filter(e => e.z <= 45.5).sort((a,b)=>a.z-b.z || a.id-b.id);
+    const pioneers: EnemyRenderState[] = [];
+    for(let i=0;i<6;i++) {
+      const available = this.formationAt-this.firstArrival-i*.35-.15;
+      const eligible = reachable.filter(e=>!pioneers.includes(e) && 45.5-e.z<=speed(e)*available);
+      const sector = (e: EnemyRenderState) => e.x<-.65?0:e.x>.65?2:1;
+      const next = eligible.find(e=>sector(e)===i%3) ?? eligible[0];
+      if(next)pioneers.push(next);
+    }
+    const ids = new Set(pioneers.map(e=>e.id));
+    const ordered = [...pioneers, ...initial.enemies.filter(e=>!ids.has(e.id)).sort((a,b)=>b.z-a.z || a.id-b.id)];
+    this.actors = ordered.map((target,i) => ({ target, actor: { ...target }, walks: i<pioneers.length, speed: speed(target),
+      at: i < pioneers.length ? i * .35 : 1.9 + ((i-pioneers.length)/Math.max(1,ordered.length-pioneers.length-1)) ** .65 }));
     this.state = { ...initial, enemies: this.visible, projectiles: [] };
   }
   sample(seconds: number, reducedMotion = false): GameRenderState {
     this.visible.length = 0;
-    for (const { target, actor, at: admission, entryX } of this.actors) {
-      const at = this.firstArrival + (admission < 1.9 ? admission : 1.9 + (admission - 1.9) * (this.formationAt - this.firstArrival - 2.7));
-      if (seconds < at) continue;
-      const fraction = Math.min(1, Math.max(0, (seconds - at) / (this.formationAt - at)));
-      // Reduced motion uses quiet stepped tableaux instead of a rushing sweep.
-      const t = reducedMotion ? Math.floor(fraction * 4) / 4 : fraction;
-      actor.x = t === 1 ? target.x : entryX + (target.x - entryX) * t;
-      actor.z = t === 1 ? target.z : 45.5 + (target.z - 45.5) * t;
+    for (const { target, actor, at: admission, walks, speed } of this.actors) {
+      const at = this.firstArrival + (walks ? admission : 1.9 + (admission-1.9) * (this.formationAt-this.firstArrival-2.7));
+      if(seconds < at) continue;
+      const elapsed = seconds-at;
+      actor.x = target.x;
+      actor.z = walks && !reducedMotion ? Math.max(target.z, 45.5-speed*elapsed) : target.z;
+      this.poseTimes.set(actor.id, actor.z > target.z ? elapsed*1000 : 0);
       this.visible.push(actor);
     }
     return this.state;

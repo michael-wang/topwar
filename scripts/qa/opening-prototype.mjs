@@ -5,12 +5,12 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const out=process.argv[2]??'artifacts/p4.44d';mkdirSync(out,{recursive:true});
+const out=process.argv[2]??'artifacts/p4.44e';mkdirSync(out,{recursive:true});
 const server=await createServer({server:{host:'127.0.0.1',port:5177,strictPort:true}});await server.listen();
-const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--window-size=500,1000','--auto-select-tab-capture-source-by-title=TopWar','--enable-usermedia-screen-capturing','--allow-http-screen-capture','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results=[];const errors=[];
 async function pageFor(width,query='?opening-review=1',variant='normal',video=false){
- const context=await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,reducedMotion:variant==='reduced'?'reduce':'no-preference',...(video?{recordVideo:{dir:out,size:{width,height:844}}}:{})});const page=await context.newPage();
+ const context=await browser.newContext({viewport:{width,height:844},isMobile:variant!=='recording',hasTouch:true,reducedMotion:variant==='reduced'?'reduce':'no-preference',...(video?{recordVideo:{dir:out,size:{width,height:844}}}:{})});const page=await context.newPage();
  page.on('pageerror',e=>errors.push(e.message));
  await page.route(/\/src\/main\.ts(?:\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('app = new GameApp(','app = window.__testApp = new GameApp(')});});
  await page.route(/\/src\/app\/GameApp\.ts(?:\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('crypto.getRandomValues(randomWord);','randomWord[0] = 17476;')});});
@@ -37,7 +37,7 @@ try{
   }
   assert.equal(phases[0].count,0);assert.equal(phases[1].count,0);assert.equal(phases[2].count,1);assert.equal(phases[3].count,6);assert.equal(phases[4].count,120);
   assert.equal(phases[4].panel.width,310);assert.equal(phases[4].panel.height,88);
-  assert(Math.abs(phases[4].panel.y-(844*.56+(variant==='insets'?24*.36-20*.64:0)))<.1);
+  assert(Math.abs(phases[4].panel.y-(844*.5-41+(variant==='insets'?(24-20)*.5:0)))<.1);
   const resources=await page.evaluate(()=>{const a=window.__testApp,samples=[];for(let i=0;i<12;i++){a.renderer.renderInvasion(a.invasion.sample(11.1),11.1,!!a.reducedMotion?.matches);samples.push(a.renderer.getDebugStats());}return samples;});
   assert.equal(resources[0].geometries,resources.at(-1).geometries);assert.equal(resources[0].textures,resources.at(-1).textures);
   await finish(page);const handoff=await inspect(page);assert.equal(handoff.state,before.state);assert(!handoff.red&&!handoff.skip);
@@ -99,10 +99,14 @@ try{
  await savePage.reload();await savePage.getByRole('button',{name:'繼續上次遊戲',exact:true}).tap();await savePage.waitForFunction(()=>window.__testApp?.startup==='started');assert((await inspect(savePage)).paused);assert(!(await inspect(savePage)).opening);results.push({oldCheckpointPreserved:true,continueBypassesPaused:true});await savePage.context().close();
  console.log('Recording continuous opening');
  // Capture actual viewport frames + the live WebAudio master on one MediaRecorder clock.
- const video=await pageFor(390);
+ const video=await pageFor(390,'?opening-review=1','recording');
+ // Windowed portrait capture avoids Chrome mobile-emulation fullscreen scaling.
+ await video.evaluate(()=>{Element.prototype.requestFullscreen=()=>Promise.reject(new Error('Windowed QA recording'));});
+ const captureSession=await video.context().newCDPSession(video);
+ const captureResult=await captureSession.send('Runtime.evaluate',{expression:"navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser',frameRate:30},audio:false,preferCurrentTab:true}).then(async s=>{window.__captureStream=s;await s.getVideoTracks()[0].applyConstraints({width:{exact:390},height:{exact:844},frameRate:{min:24,ideal:30,max:30}});return s.getVideoTracks()[0].getSettings()})",awaitPromise:true,userGesture:true,returnByValue:true});
+ assert(!captureResult.exceptionDetails,JSON.stringify(captureResult));
  await video.evaluate(async()=>{
-  const canvas=document.createElement('canvas');canvas.width=390;canvas.height=844;
-  window.__captureCanvas=canvas;window.__captureStream=canvas.captureStream(12);
+
   const a=window.__testApp,activate=a.audio.activate.bind(a.audio);
   a.audio.activate=()=>{const result=activate();if(!window.__recorder&&a.audio.context&&a.audio.master){
    const destination=a.audio.context.createMediaStreamDestination();a.audio.master.connect(destination);
@@ -113,17 +117,24 @@ try{
    window.__recorder=recorder;recorder.start();
   }return result;};
  });
- const capture=async()=>{const png=await video.screenshot();await video.evaluate(async base64=>{const img=await createImageBitmap(await(await fetch('data:image/png;base64,'+base64)).blob());window.__captureCanvas.getContext('2d').drawImage(img,0,0);img.close();},png.toString('base64'));};
- await capture();await video.getByRole('button',{name:'開始遊戲',exact:true}).tap();
- const started=Date.now();let finishedAt=null,frames=0;
- while(Date.now()-started<35000){await capture();frames++;const finished=await video.evaluate(()=>window.__testApp.startup==='started'&&!window.__testApp.invasion);if(finished){finishedAt??=Date.now();if(Date.now()-finishedAt>700)break;}await video.waitForTimeout(60);}
- assert(finishedAt,'Real-time opening did not finish');
+ await video.getByRole('button',{name:'開始遊戲',exact:true}).tap();
+ const started=Date.now();await video.waitForFunction(()=>window.__testApp.startup==='started'&&!window.__testApp.invasion,null,{timeout:35000});await video.waitForTimeout(700);
  const bytes=await video.evaluate(async()=>{window.__recorder.stop();return await window.__recorded;});
- writeFileSync(`${out}/opening-full.webm`,Buffer.from(bytes,'base64'));results.push({audiovisual:true,frames,wallSeconds:(Date.now()-started)/1000});await video.context().close();
+ writeFileSync(`${out}/opening-full.webm`,Buffer.from(bytes,'base64'));results.push({audiovisual:true,capture:captureResult.result.value,wallSeconds:(Date.now()-started)/1000});await video.context().close();
  assert.deepEqual(errors,[]);
- const scenes=[['opening-0.6.png','01 短警報｜尚無展示敵軍'],['opening-4.5.png','02 船隻停妥｜沙灘無敵軍'],['opening-5.12.png','03 第一名敵軍出現'],['opening-6.9.png','04 首六名逐人進場'],['opening-11.1.png','05 原始 120 人隊形｜警戒持續'],['opening-handoff.png','06 真正 Gameplay T=0']];
- writeFileSync(`${out}/storyboard.html`,`<!doctype html><meta charset="utf-8"><title>P4.44d</title><style>body{margin:0;padding:18px;background:#102532;color:#f4efdc;font:16px system-ui}h1{font-size:24px}p{line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,390px);gap:16px}figure{margin:0}figcaption{padding:10px 0;font-weight:600}img{display:block;width:390px;height:844px}</style><h1>P4.44d — Opening Refinement · DEV Prototype</h1><p>實際遊戲畫面 390×844；350×844、安全區與減少動態效果亦完成檢查。獨立開場時鐘，正式 Simulation 到交接才開始。<br>船隻保留原有 Z71–80 海上位置；原始 120 人隊形與正式 Gameplay 不變。Julia／Owner Pixel 8 藝術及聲音驗收待定。</p><div class="grid">${scenes.map(([file,label])=>`<figure><figcaption>${label}</figcaption><img src="${file}"></figure>`).join('')}</div>`);
- const sheet=await browser.newPage({viewport:{width:1238,height:1000},deviceScaleFactor:1});await sheet.goto(pathToFileURL(resolve(`${out}/storyboard.html`)).href);await sheet.evaluate(()=>document.fonts.ready);await sheet.screenshot({path:`${out}/storyboard.png`,fullPage:true});await sheet.close();
- writeFileSync(`${out}/index.html`,`<!doctype html><meta charset="utf-8"><title>TopWar P4.44d Review</title><style>body{background:#102532;color:#f4efdc;font:18px system-ui;margin:24px}video{max-height:844px;max-width:100%;display:block}img{max-width:100%}a{color:#99dfff}</style><h1>P4.44d — DEV 開場原型</h1><p>連續實機瀏覽器畫面；含遊戲即時 WebAudio 音軌；畫面取自實際瀏覽器連續擷取（本次約 5.5 fps）。請於 Pixel 8 複驗音量與節奏。不是 Pixel 8 驗收結果。</p><video controls preload="metadata" src="opening-full.webm"></video><p><a href="opening-results.json">驗證資料</a> · <a href="http://localhost:5173/?opening-review=1">DEV 測試入口（需啟動本機 Vite／ADB reverse）</a></p><img src="storyboard.png">`);
+ console.log('Comparing A2 / center and bright / dim pulse');
+ for(const placement of ['a2','center']) {
+  const page=await pageFor(390,'?opening-review=1'+(placement==='a2'?'&commander-placement=a2':''));await start(page);
+  for(const [time,name] of [[7.7,'bright'],[9,'dim']]) {
+   await page.evaluate(t=>window.__advance(Math.max(0,t-window.__testApp.openingSeconds)),time);
+   await page.screenshot({path:`${out}/comparison-${placement}-${name}.png`});
+   const pulse=await page.evaluate(()=>({seconds:window.__testApp.openingSeconds,opacity:+document.querySelector('.opening-alert').style.opacity,gain:window.__testApp.audio.openingSiren.gain.gain.value,frequency:window.__testApp.audio.openingSiren.source.frequency.value}));
+   results.push({placement,name,pulse});
+  }await page.context().close();
+ }
+ const scenes=[['comparison-a2-bright.png','A2 舊版位｜紅光最亮'],['comparison-center-bright.png','新置中｜紅光最亮'],['comparison-a2-dim.png','A2 舊版位｜紅光最暗'],['comparison-center-dim.png','新置中｜紅光最暗']];
+ writeFileSync(`${out}/storyboard.html`,`<!doctype html><meta charset="utf-8"><title>P4.44e</title><style>body{margin:0;padding:18px;background:#102532;color:#f4efdc;font:16px system-ui}h1{font-size:24px}p{line-height:1.6}.grid{display:grid;grid-template-columns:repeat(2,390px);gap:16px}figure{margin:0}figcaption{padding:10px 0;font-weight:600}img{display:block;width:390px;height:844px}</style><h1>P4.44e — Opening Refinement · DEV Prototype</h1><p>實際遊戲畫面 390×844；350×844、安全區與減少動態效果亦完成檢查。獨立開場時鐘，正式 Simulation 到交接才開始。<br>船隻保留原有 Z71–80 海上位置；首批按 Gameplay 速度走到近岸真實位置，其餘在原位逐人集結。原始 120 人隊形與正式 Gameplay 不變。Julia／Owner Pixel 8 藝術及聲音驗收待定。</p><div class="grid">${scenes.map(([file,label])=>`<figure><figcaption>${label}</figcaption><img src="${file}"></figure>`).join('')}</div>`);
+ const sheet=await browser.newPage({viewport:{width:832,height:1000},deviceScaleFactor:1});await sheet.goto(pathToFileURL(resolve(`${out}/storyboard.html`)).href);await sheet.evaluate(()=>document.fonts.ready);await sheet.screenshot({path:`${out}/storyboard.png`,fullPage:true});await sheet.close();
+ writeFileSync(`${out}/index.html`,`<!doctype html><meta charset="utf-8"><title>TopWar P4.44e Review</title><style>body{background:#102532;color:#f4efdc;font:18px system-ui;margin:24px}video{max-height:844px;max-width:100%;display:block}img{max-width:100%}a{color:#99dfff}</style><h1>P4.44e — DEV 開場原型</h1><p>連續實機瀏覽器畫面；含遊戲即時 WebAudio 音軌；畫面直接錄自遊戲分頁（目標 30 fps；以實際編碼幀率為準）。請於 Pixel 8 複驗音量與節奏。不是 Pixel 8 驗收結果。</p><video controls preload="metadata" src="opening-full.webm"></video><p><a href="opening-results.json">驗證資料</a> · <a href="http://localhost:5173/?opening-review=1">DEV 測試入口（需啟動本機 Vite／ADB reverse）</a></p><img src="storyboard.png">`);
 }finally{writeFileSync(`${out}/opening-results.json`,JSON.stringify({results,errors},null,2));await browser.close();await server.close();}
 console.log(`Opening checks passed: ${results.length} scenarios.`);
