@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.44c Storyboard A3 (#23) is a DEV-only opening prototype awaiting Julia/Owner Pixel 8 review: safe offshore craft approach/stay, individual surf arrivals matching real T=0, A2 full briefing, short rising/falling alert, persistent red edge and optional Skip. Production retains prior behavior. Earlier A/A1/A2 placement queries remain, including known later-combat warning overlap; no warning relocation or compact radio mode is authorized.
+P4.44d Opening Refinement + Commander Voice Integration (#23) awaits Julia/Owner Pixel 8 review: boats settle before individual enemies, buildup follows actual briefing time, subdued siren/red persist throughout, and A2/Skip remain. New intro recording is DEV-only; original production intro remains. GIANT uses the approved full recording without changing combat. Earlier placement trials and known warning overlap remain; no relocation is authorized.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 

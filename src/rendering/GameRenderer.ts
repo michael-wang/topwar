@@ -194,7 +194,7 @@ export class GameRenderer {
   }
 
   /** DEV opening uses the existing pools and safe offshore anchors. */
-  renderInvasion(state: GameRenderState, seconds: number, reducedMotion: boolean): void {
+  renderInvasion(state: GameRenderState, seconds: number, reducedMotion: boolean, formationAt = 11.074): void {
     if (this.disposed) return;
     const t = Math.min(1, seconds / 4.5);
     const approach = reducedMotion ? Number(t >= 1) : t * t * (3 - 2 * t);
@@ -203,7 +203,7 @@ export class GameRenderer {
     this.sentries.update(state.track.halfWidth, reducedMotion ? 1 : Math.min(1, seconds));
     this.squadRenderer.updateIdle(state, reducedMotion ? 0 : seconds * 1000);
     // Settle gait to the exact first combat pose, as well as positions and IDs.
-    const poseMs = reducedMotion ? 0 : seconds * 1000 * Math.max(0, Math.min(1, (10.9 - seconds) / .5));
+    const poseMs = reducedMotion ? 0 : seconds * 1000 * Math.max(0, Math.min(1, (formationAt - seconds) / .5));
     this.enemyRenderer.update(state.enemies, poseMs, true, 0, 0);
     this.contactShadows.update(state, this.squadRenderer, poseMs);
     this.renderer.render(this.scene, this.camera);

@@ -23,6 +23,10 @@ export const observerMissionDialogue: Record<ObserverLocale, readonly string[]> 
   'zh-TW': ['這裡是海防指揮部。', '其他防線已經失守，灘頭只剩你們這支部隊。', '這裡是港口最後一道防線。', '無論如何，守住它！'],
   en: ['Coastal Defense Command here.', 'The other lines have fallen. Yours is the last unit on the beachhead.', 'This is the harbor’s last line of defense.', 'Hold it at all costs!'],
 };
+export const observerOpeningDialogue: Record<ObserverLocale, readonly string[]> = {
+  'zh-TW': ['我是戰區指揮官。', '目前偵測到大批敵軍正從海上逼近。', '我會提供關鍵的情報與支援。', '讓我們一起守住這座港口！'],
+  en: ['I am your Theater Commander.', 'Large enemy forces are approaching from the sea.', 'I will provide critical intelligence and support.', 'Let’s hold this harbor together!'],
+};
 export const observerVictoryDialogue: Record<ObserverLocale, readonly string[]> = {
   'zh-TW': ['做得好！敵軍超重型坦克已被摧毀！', '你們守住了灘頭。', '各位，辛苦了……', '我以你們為榮！'],
   en: ['Well done! The enemy super-heavy tank is destroyed!', 'You held the beachhead.', 'Thank you, everyone…', 'I am proud of you!'],

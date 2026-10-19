@@ -27,8 +27,17 @@ The new fixed radio window is 1.3–8.5 seconds, first shot 8.8 seconds. All lat
 
 ### Commander introduction and victory
 
-The officer is now presented as 海防指揮官, retaining her existing identity, uniform and art style. Command uses neutral; Victory uses neutral until the owner supplies art/observer/victory.webp. No new portrait has been generated.
+The officer is now presented as 戰區指揮官, retaining her existing identity, uniform and art style. Command uses neutral; Victory uses neutral until the owner supplies art/observer/victory.webp. No new portrait has been generated.
 
 Approved recordings supplied unchanged by the owner in the P3-B.9B.6 work package: public/audio/commander_stage1_intro_zh-TW.mp3 (179,942 bytes, 10.188s; SHA-256 57accbe2425b421369639802e15da432c9cf241fd538a51f129fbdaf8a377506) and public/audio/commander_stage1_victory_zh-TW.mp3 (155,700 bytes, 8.673s; SHA-256 d25277d0217f81128fde4f00246b0ee4f330f507343fa68a589ed1f2c9e2a81b). Both are mono 44.1 kHz originals; no trimming or re-encoding. Subtitle transitions follow the observed recording pauses: intro 0 / 2.06 / 6.14 / 8.48 seconds, victory 0 / 3.76 / 5.56 / 7.38 seconds. Decoded duration plus 0.35 seconds controls completion. Spoken wording still requires human listening acceptance; automated pause inspection does not verify a transcript. The superseded mission recording is retired; no mismatched voice is played. Only build-present files prefetch before Start, and decoded duration controls the complete subtitle/voice window. Missing or failed recordings use subtitles only. The opening never gates gameplay; Victory starts after the Tank explosions and can be skipped to results. Current scripts are in GAME_SPEC.md.
 
 Tank-intro asset: `public/audio/observer_stage1_boss_intro_zh-TW.mp3`, supplied by the project owner in the P3-B.9B.5 handoff on 2026-10-13 and copied unchanged. 90,498 bytes; SHA-256 `51e007a7e927e6eb54903524f9c13ef027597ee0747dc9d92892aa91618aebb6`. Supplied duration approximately 4.6 seconds, 44.1 kHz mono. Subtitle: 警告！發現敵軍超重型坦克！正朝我方防線推進！ Speech begins at Tank entrance +0.3s in a five-second window; the 2.5-second landing and combat schedule remain independent. Existing radio filters, music/weapon ducking and Pause/Resume are reused; restoring an already-triggered message keeps remaining subtitles without replaying speech. No English recording.
+
+### P4.44d approved Commander recordings
+
+Owner supplied and listening-approved two ElevenLabs Mandarin takes in the handoff ZIP. Original MP3 bytes copied unchanged, mono 44.1kHz; no trimming, normalization or re-encoding. The recurring role is 戰區指揮官. Device mix/readability acceptance remains pending.
+
+- DEV-only selection: public/audio/commander_stage1_intro_review_zh-TW.mp3, 174925 bytes, SHA-256 f5b80857ad41dfd1fd97f16210f319b3a8b41b106a7f8998b7d6d2b28c912a1f. Chrome decoded 9.874270833s; complete window 10.224270833s. Four captions at 0 / 1.88 / 5.12 / 7.63s relative to actual speech start; Chrome PCM silence boundaries corroborate the supplied estimates. Production retains the original intro bytes/text and does not fetch this review clip.
+- GIANT: public/audio/commander_giant_warning_zh-TW.mp3, 86736 bytes, SHA-256 60c991c1d29632fd809343cec61b26c3aa691e183cf61855f05b1294b7b32db9. Chrome decoded 4.3624375s; window 4.7124375s. Existing combined two-sentence subtitle retained throughout. Integrated into the existing radio filter/ducking and bounded readiness/priority queue, without changing simulation.
+
+Opening review uses the new four lines in observerOpeningDialogue; production missionIntro and all other approved recordings/timings remain. New files use the existing content-addressed build manifest; dormant English has no voice.

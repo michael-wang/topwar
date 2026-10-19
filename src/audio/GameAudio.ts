@@ -144,32 +144,31 @@ export type AudioActivationResult = 'running' | 'unavailable' | 'denied';
 export const AUDIO_ACTIVATION_TIMEOUT_MS = 1000;
 
 export class GameAudio {
-  private openingSiren: OscillatorNode | null = null;
-  private openingSirenFinished = false;
-  /** One bounded rising/falling air-raid gesture, never a shell/Boss cue. */
+  private openingSiren: { source: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
+  /** One phase-driven siren; presentation pauses never replay the initial accent. */
   syncOpeningAlert(offset: number | null, paused: boolean): void {
-    if (offset === null || paused || offset >= 1.1) {
-      if (this.openingSiren) { try { this.openingSiren.stop(); } catch { /* ended */ } this.openingSiren = null; }
-      if (offset === null || paused) this.openingSirenFinished = false;
+    if (offset === null || paused) {
+      const node = this.openingSiren;
+      if (node) {
+        node.source.onended = null;
+        try { node.source.stop(); } catch { /* already ended */ }
+        node.source.disconnect(); node.filter.disconnect(); node.gain.disconnect();
+        this.active.delete(node.source); this.openingSiren = null;
+      }
       return;
     }
     const c = this.context;
-    if (this.openingSiren || this.openingSirenFinished || !this.unlocked || !c || c.state !== 'running' || !this.master) return;
-    const source = c.createOscillator(), filter = c.createBiquadFilter(), gain = c.createGain();
-    source.type = 'sawtooth'; filter.type = 'lowpass'; filter.frequency.value = 750;
-    const frequencies = new Float32Array(64), envelope = new Float32Array(64);
-    for (let i = 0; i < 64; i++) {
-      const t = offset + (1.1 - offset) * i / 63;
-      frequencies[i] = 220 + 260 * Math.sin(Math.PI * t / 1.1);
-      envelope[i] = .055 * Math.min(1, t / .08, (1.1 - t) / .22);
+    if (!this.unlocked || !c || c.state !== 'running' || !this.master) return;
+    if (!this.openingSiren) {
+      const source = c.createOscillator(), filter = c.createBiquadFilter(), gain = c.createGain();
+      source.type = 'sawtooth'; filter.type = 'lowpass'; filter.frequency.value = 750;
+      source.connect(filter); filter.connect(gain); gain.connect(this.master);
+      this.openingSiren = { source, filter, gain }; this.active.add(source); source.start();
     }
-    source.frequency.setValueCurveAtTime(frequencies, c.currentTime, 1.1 - offset);
-    gain.gain.setValueCurveAtTime(envelope, c.currentTime, 1.1 - offset);
-    source.connect(filter); filter.connect(gain); gain.connect(this.master);
-    this.openingSiren = source; this.active.add(source);
-    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); this.active.delete(source);
-      if (this.openingSiren === source) { this.openingSiren = null; this.openingSirenFinished = true; } };
-    source.start(); source.stop(c.currentTime + 1.1 - offset);
+    const { source, gain } = this.openingSiren;
+    source.frequency.value = offset < 1.2 ? 220 + 260 * Math.sin(Math.PI * offset / 1.2)
+      : 240 + 110 * Math.sin(2 * Math.PI * (offset - 1.2) / 2.6);
+    gain.gain.value = offset < 1.2 ? .018 + .037 * Math.sin(Math.PI * offset / 1.2) : .018;
   }
   getDebugStats(): { musicVoices: number; sfxSources: number } {
     return { musicVoices: this.music?.activeVoiceCount ?? 0, sfxSources: this.active.size };
@@ -279,6 +278,7 @@ export class GameAudio {
   }
 
   resetObservation(): void {
+    this.syncOpeningAlert(null, false);
     this.syncSupportFlyover(null, true);
     this.syncRadio('en', null, false);
     this.silenceArtillery();
@@ -563,6 +563,7 @@ export class GameAudio {
   }
 
   dispose(): void {
+    this.syncOpeningAlert(null, false);
     this.syncSupportFlyover(null, true);
     this.preparation?.dispose(); this.preparation = null;
     if (this.disposed) return;

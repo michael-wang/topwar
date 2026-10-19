@@ -19,6 +19,20 @@ import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
 import { CommanderComms } from '../src/presentation/CommanderComms';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+it('retains approved MP3 bytes and gates the new intro selection to DEV review', () => {
+  for (const [name, hash] of [
+    ['commander_stage1_intro_review_zh-TW.mp3', 'f5b80857ad41dfd1fd97f16210f319b3a8b41b106a7f8998b7d6d2b28c912a1f'],
+    ['commander_giant_warning_zh-TW.mp3', '60c991c1d29632fd809343cec61b26c3aa691e183cf61855f05b1294b7b32db9'],
+    ['commander_stage1_intro_zh-TW.mp3', '57accbe2425b421369639802e15da432c9cf241fd538a51f129fbdaf8a377506'],
+  ]) expect(createHash('sha256').update(readFileSync(`public/audio/${name}`)).digest('hex')).toBe(hash);
+  vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(true);
+  vi.stubGlobal('window', { location: { search: '?opening-review=1' } });
+  vi.stubEnv('DEV', true);
+  expect(observerVoiceAsset('zh-TW', 'missionIntro')).toContain('intro_review');
+  vi.stubEnv('DEV', false);
+  expect(observerVoiceAsset('zh-TW', 'missionIntro')).toBe('audio/commander_stage1_intro_zh-TW.mp3');
+  vi.unstubAllEnvs();
+});
 it('selects Traditional Chinese browser locales, English fallback and persisted overrides safely', () => {
   for (const locale of ['zh-TW', 'zh-Hant', 'zh-Hant-TW', 'zh-HK']) expect(selectObserverLocale([locale])).toBe('zh-TW');
   for (const locale of ['en-US', 'ja', 'zh-CN', 'zh']) expect(selectObserverLocale([locale])).toBe('en');
@@ -27,6 +41,39 @@ it('selects Traditional Chinese browser locales, English fallback and persisted 
   const storage = { getItem: () => { throw Error('denied'); }, setItem: () => { throw Error('denied'); } };
   expect(loadObserverLocale(['zh-TW'], storage)).toBe('zh-TW');expect(() => saveObserverLocale('en', storage)).not.toThrow();
   expect(observerDialogue.en).toMatch(/Over\.$/);expect(observerDialogue['zh-TW']).toContain('完畢！');
+});
+it.each(['ready', 'pending', 'unavailable'] as const)('gives GIANT a complete %s window without a late partial voice or Continue replay', readiness => {
+  const {ui,audio} = missionUi(), support = emptyCommanderSupport(true);
+  audio.prepareRadio.mockReturnValue(readiness as 'ready');
+  audio.radioDurationSeconds.mockReturnValue(4.3624375);
+  ui.update(undefined,undefined,0,true,false,undefined,support);
+  support.giantAtSeconds = .1;
+  let began = -1, ended = -1;
+  for(let frame=1;frame<600;frame++) {
+    const now=frame/60; ui.update(undefined,undefined,now,true,false,undefined,support);
+    if(!ui.element.hidden && began<0) began=now;
+    if(began>=0 && ui.element.hidden) {ended=now;break;}
+  }
+  expect(ended-began).toBeCloseTo(4.712,1);
+  expect(audio.play.mock.calls.filter(([cue])=>cue==='radioOpen')).toHaveLength(1);
+  expect(audio.syncRadio.mock.calls.some(call=>call[4]==='giant'&&call[1]!==null)).toBe(readiness==='ready');
+  ui.reset();audio.play.mockClear();ui.update(undefined,undefined,10,true,false,undefined,support);
+  expect(ui.element.hidden).toBe(true);expect(audio.play).not.toHaveBeenCalled();ui.dispose();
+});
+it('aligns the four new captions to voice time even after delayed loading', () => {
+  const {ui,audio,text}=missionUi(readyPortraits(),'?opening-review=1');
+  audio.radioDurationSeconds.mockReturnValue(9.874270833);
+  ui.startOpening(()=>{});
+  const seen=new Map<string,number>();
+  for(let frame=0;frame<900;frame++) {
+    const now=frame/60;audio.prepareRadio.mockReturnValue((now<3?'pending':'ready') as 'ready');
+    if(ui.updateOpening(now,false))break;
+    if(ui.openingWindow&&!seen.has(text()))seen.set(text(),now-ui.openingWindow.start);
+  }
+  expect(ui.openingWindow?.start).toBe(3);
+  const values=[...seen.values()];expect(values).toHaveLength(4);
+  for(const [i,at] of [0,1.88,5.12,7.63].entries())expect(values[i]).toBeCloseTo(at,1);
+  expect([...seen.keys()][0]).toBe('我是戰區指揮官。');ui.dispose();
 });
 it('announces once on the simulation clock, freezes during Pause, and does not replay restored messages', () => {
   const t = new ObserverTimeline();let opens = 0, closes = 0;
@@ -221,7 +268,7 @@ function missionUi(portraits = readyPortraits(), search = '') {
 it.each(['ready','pending','unavailable'] as const)('runs the full opening once with %s voice, pauses and keeps Skip separate from Victory', readiness => {
   const {ui,audio,text}=missionUi(readyPortraits(), '?opening-review=1');
   audio.prepareRadio.mockReturnValue(readiness as 'ready');
-  audio.radioDurationSeconds.mockReturnValue(10.188);
+  audio.radioDurationSeconds.mockReturnValue(9.874);
   const skip=vi.fn();ui.startOpening(skip);
   const button=(ui.element as unknown as ElementStub).children[3] as unknown as HTMLButtonElement;
   let doneAt=0;
@@ -232,7 +279,7 @@ it.each(['ready','pending','unavailable'] as const)('runs the full opening once 
       button.onclick?.(new Event('click') as unknown as PointerEvent);expect(skip).not.toHaveBeenCalled();}
     if(done){doneAt=now;break;}
   }
-  expect(doneAt).toBeCloseTo(readiness==='pending'?14.25:11.75,1);
+  expect(doneAt).toBeCloseTo(readiness==='pending'?13.93:11.43,1);
   expect(audio.play.mock.calls.filter(([cue])=>cue==='radioOpen')).toHaveLength(1);
   ui.reset();expect(button.textContent).toBe('略過');expect(button.hidden).toBe(true);
   ui.update(undefined,undefined,0,true,false);expect(ui.element.hidden).toBe(true);
@@ -247,7 +294,7 @@ it('opts into Commander A only in DEV with the exact query, without changing com
       expect(ui.element.style.left).toBe(height ? 'max(12px, calc(50% - 155px))' : undefined);
       expect(ui.element.style.top).toBe(height
         ? `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)` : undefined);
-      expect(audio.prepareRadio).toHaveBeenCalledTimes(4);
+      expect(audio.prepareRadio).toHaveBeenCalledTimes(5);
       for (const message of ['missionIntro', 'tankBoss', 'victory', 'airSupport'])
         expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', message);
     }
@@ -523,34 +570,35 @@ it.each([
   expect(loader).toHaveBeenCalledOnce();voice.dispose();
 });
 
-it('uses subtitle-only Alert notices once, freezes on Pause and never replays restored Giant/support warnings', () => {
+it('uses full recorded Alert notices once, freezes on Pause and never replays restored Giant/support warnings', () => {
   const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true);
   ui.update(undefined, undefined, 0, true, false, undefined, s);
   s.giantSeen = true; s.giantAtSeconds = .1;
   ui.update(undefined, undefined, .1, true, false, undefined, s);
   expect(text()).toContain('巨型機械兵'); expect((ui as any).expression).toBe('alert');
   expect(audio.play.mock.calls).toEqual([['radioOpen']]);
-  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', null, false, 3.8, 'giant']);
+  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW', 0, false, 4.712, 'giant']);
   for (let i = 0; i < 30; i++) ui.update(undefined, undefined, .1, true, true, undefined, s);
   expect(audio.play).toHaveBeenCalledTimes(1);
-  for (let tick = 7; tick <= 235; tick++) ui.update(undefined, undefined, tick / 60, true, false, undefined, s);
+  for (let tick = 7; tick <= 295; tick++) ui.update(undefined, undefined, tick / 60, true, false, undefined, s);
   expect(audio.play.mock.calls).toEqual([['radioOpen'], ['radioClose']]);
-  s.airstrike!.triggeredAtSeconds = 4; s.airstrike!.status = 'waiting';
-  ui.update(undefined, undefined, 4, true, false, undefined, s);
+  s.airstrike!.triggeredAtSeconds = 5; s.airstrike!.status = 'waiting';
+  ui.update(undefined, undefined, 5, true, false, undefined, s);
   expect(text()).toContain('空中轟炸支援'); expect((ui as any).expression).toBe('alert');
   ui.reset(); audio.play.mockClear();
   ui.update(undefined, undefined, 4.2, true, false, undefined, s);
   ui.update(undefined, undefined, 4.3, true, false, undefined, s);
   expect(ui.element.hidden).toBe(true); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
 });
-it('never requests or substitutes an existing MP3 for Giant', async () => {
+it('plays the exact approved Giant recording and rejects a shortened historical window', async () => {
   const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 4.6 } as AudioBuffer));
   const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
   for (const message of ['giant'] as const) {
-    expect(observerVoiceAsset('zh-TW', message)).toBeNull(); expect(voice.prepare('zh-TW', message)).toBe('unavailable');
+    expect(observerVoiceAsset('zh-TW', message)).toBe('audio/commander_giant_warning_zh-TW.mp3'); expect(voice.prepare('zh-TW', message)).toBe('pending');
     voice.sync('zh-TW', 0, false, 3.8, message);
   }
-  await Promise.resolve(); expect(loader).not.toHaveBeenCalled(); expect(nodes).toHaveLength(0); voice.dispose();
+  await Promise.resolve(); await Promise.resolve(); expect(loader).toHaveBeenCalledOnce(); expect(nodes).toHaveLength(0);
+  voice.sync('zh-TW',0,false,4.95,'giant');await Promise.resolve();expect(nodes[0].start).toHaveBeenCalledWith(0,0);voice.dispose();
 });
 it('plays the original support recording, pauses/seeks without restarting, and rejects shortened historical windows', async () => {
   const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 6.765708 } as AudioBuffer));

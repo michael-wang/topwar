@@ -1,4 +1,6 @@
 import { CommanderComms } from '../presentation/CommanderComms';
+import { openingReviewTiming, giantVoiceTiming } from '../presentation/ObserverTimeline';
+import { observerOpeningDialogue } from './observerLocale';
 import { openingReviewEnabled } from '../app/openingReview';
 import type { SimulationFrameState } from '../simulation/SimulationState';
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
@@ -45,7 +47,9 @@ export class FieldObserver {
   private finaleClock = false;
   private readonly tankTimeline = new ObserverTimeline();
   private readonly missionTimeline = new MissionObserverTimeline();
-  private readonly openingTimeline = new MissionObserverTimeline({ ...missionIntroTiming, atSeconds: 1.2 });
+  private readonly openingTimeline = new MissionObserverTimeline(openingReviewTiming);
+  private readonly giantTimeline = new MissionObserverTimeline(giantVoiceTiming);
+  openingWindow: { start: number; end: number } | null = null;
   private openingSkip: (() => void) | null = null;
   private message: ObserverMessage = 'destroyer';
   private phrase = 0;
@@ -58,6 +62,7 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'tankBoss');
     this.audio.prepareRadio(this.locale, 'victory');
     this.audio.prepareRadio(this.locale, 'airSupport');
+    this.audio.prepareRadio(this.locale, 'giant');
     this.element.className = 'field-observer'; this.element.hidden = true;
     // Reversible placement trial only; production retains the authored upper slot.
     if (import.meta.env.DEV) {
@@ -70,7 +75,7 @@ export class FieldObserver {
       }
     }
     this.element.setAttribute('aria-live', 'polite');
-    this.element.setAttribute('aria-label', '海防指揮官通訊');
+    this.element.setAttribute('aria-label', '戰區指揮官通訊');
     this.fallback.className = 'observer-fallback'; this.fallback.setAttribute('aria-hidden', 'true');
     this.fallback.innerHTML = observerEmblem;
     this.lamp.className = 'observer-radio-light'; this.lamp.setAttribute('aria-hidden', 'true');
@@ -90,7 +95,7 @@ export class FieldObserver {
     this.text.textContent = this.message === 'airSupport' || this.message === 'airSupportReady' || this.message === 'airSupportCalled'
       ? observerAirSupportDialogue[this.locale][this.phrase] : this.message === 'giant'
       ? observerSupportDialogue[this.message][this.locale] : this.message === 'missionIntro'
-      ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'victory'
+      ? (this.openingSkip ? observerOpeningDialogue : observerMissionDialogue)[this.locale][this.phrase] : this.message === 'victory'
         ? observerVictoryDialogue[this.locale][this.phrase] : this.message === 'tankBoss'
         ? observerTankDialogue[this.locale] : observerDialogue[this.locale];
     this.text.lang = this.locale;
@@ -103,12 +108,14 @@ export class FieldObserver {
   }
   startOpening(skip: () => void): void {
     this.reset(); this.openingSkip = skip; this.openingTimeline.start(0);
+    this.updateText();
     this.skip.textContent = '跳過'; this.skip.setAttribute('aria-label', '跳過開場簡報，開始遊戲');
   }
   updateOpening(now: number, paused: boolean): boolean {
     const frame = this.openingTimeline.update(now, true, paused,
       this.audio.prepareRadio(this.locale, 'missionIntro'), this.portraits.readiness === 'pending',
       this.audio.radioDurationSeconds?.(this.locale, 'missionIntro') ?? null);
+    if (frame.begin || frame.visible) this.openingWindow ??= { start: now - frame.offset, end: now - frame.offset + frame.duration };
     // Keep a usable Skip and first subtitle during bounded voice/portrait loading.
     const waiting = now >= 1.2 && this.openingTimeline.active && !frame.visible;
     if (frame.begin) this.presented = false;
@@ -147,7 +154,12 @@ export class FieldObserver {
         offset, duration: airSupportTiming.phraseAtSeconds, audible: true } });
     }
     if (this.observedSupport && alive) {
-      if (giantAt !== null && giantAt !== this.giantAt) requests.push({ frame: notice, message: 'giant' });
+      if (giantAt !== null && giantAt !== this.giantAt) this.giantTimeline.start(now);
+    }
+    if (this.giantTimeline.active) {
+      const frame = this.giantTimeline.update(now, alive, paused, this.audio.prepareRadio(this.locale, 'giant'), false,
+        this.audio.radioDurationSeconds?.(this.locale, 'giant') ?? null);
+      if (frame.visible) requests.push({ frame, message: 'giant' });
     }
     if (alive && airAt !== null && support?.airstrike?.status !== 'cancelled'
       && (this.observedSupport ? airAt !== this.airAt : !!supportConfig?.heavyRaid && now - airAt
@@ -189,7 +201,7 @@ export class FieldObserver {
   private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
     if (message === 'victory' && frame.visible) this.victoryPresented = true;
     if (message === 'airSupportReady' && frame.visible) this.manualNoticePresented = true;
-    const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
+    const timing = message === 'victory' ? victoryTiming : this.openingSkip ? openingReviewTiming : missionIntroTiming;
     const phrase = message === 'airSupportCalled' ? 1 : message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
       ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * (this.openingSkip ? 1 : frame.duration / timing.durationSeconds) ? i : index, 0) : 0;
     if (message !== this.message) this.presented = false;
@@ -223,7 +235,7 @@ export class FieldObserver {
     if (!frame.visible) this.presented = false;
   }
   reset(): void {
-    this.openingTimeline.reset(); this.openingSkip = null;
+    this.openingTimeline.reset(); this.openingSkip = null; this.openingWindow = null; this.giantTimeline.reset();
     this.skip.textContent = '略過'; this.skip.removeAttribute('aria-label');
     this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
     this.victoryTimeline.reset(); this.victoryStarted = false; this.victoryFinished = false; this.skip.hidden = true;

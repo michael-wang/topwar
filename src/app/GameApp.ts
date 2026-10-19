@@ -560,11 +560,13 @@ export class GameApp {
     }
     const skipping = this.openingSkipSeconds !== null;
     const done = skipping ? this.openingSkipSeconds! >= .2 : this.fieldObserver?.updateOpening(this.openingSeconds, this.paused) ?? true;
+    const window = this.fieldObserver?.openingWindow;
+    if (window) this.invasion!.setBriefing(window.start, window.end);
     this.audio.syncOpeningAlert(skipping ? null : this.openingSeconds, this.paused);
     this.openingAlert?.update(this.openingSeconds, !!this.reducedMotion?.matches);
     // Skip is an intentional short cut, not accelerated speech or simulation.
-    const poseSeconds = skipping ? Math.max(10.9, this.openingSeconds) : this.openingSeconds;
-    this.renderer.renderInvasion(this.invasion!.sample(poseSeconds, !!this.reducedMotion?.matches), poseSeconds, !!this.reducedMotion?.matches);
+    const poseSeconds = skipping ? Math.max(this.invasion!.formationAt, this.openingSeconds) : this.openingSeconds;
+    this.renderer.renderInvasion(this.invasion!.sample(poseSeconds, !!this.reducedMotion?.matches), poseSeconds, !!this.reducedMotion?.matches, this.invasion!.formationAt);
     if (done && !this.paused) {
       this.renderer.finishInvasion(poseSeconds, !!this.reducedMotion?.matches);
       this.cancelOpening(); this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;

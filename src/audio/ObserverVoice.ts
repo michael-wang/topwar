@@ -1,6 +1,7 @@
 import { publicAssetUrl, hasPublicAsset } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { airSupportVoiceSegment } from '../ui/observerLocale';
+import { openingReviewEnabled } from '../app/openingReview';
 
 // User-approved provisional Mandarin recording; English awaits an approved asset.
 export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
@@ -20,7 +21,8 @@ export const observerAirSupportVoiceAssets: Readonly<Record<ObserverLocale, stri
 };
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
-  if (message === 'giant') return null;
+  if (message === 'giant') return locale === 'zh-TW' ? 'audio/commander_giant_warning_zh-TW.mp3' : null;
+  if (message === 'missionIntro' && openingReviewEnabled()) return locale === 'zh-TW' ? 'audio/commander_stage1_intro_review_zh-TW.mp3' : null;
   if (message === 'airSupport' || airSupportVoiceSegment(message)) return hasPublicAsset(observerAirSupportVoiceAssets[locale] ?? '') ? observerAirSupportVoiceAssets[locale] : null;
   const asset = (message === 'victory' ? observerVictoryVoiceAssets : message === 'tankBoss' ? observerTankVoiceAssets
     : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
@@ -78,7 +80,7 @@ export class ObserverVoice {
     private readonly missionAssets = observerMissionVoiceAssets) {}
 
   private asset(locale: ObserverLocale, message: ObserverMessage): string | null {
-    if (message === 'giant') return null;
+    if (message === 'giant') return observerVoiceAsset(locale, message);
     if (message === 'airSupport' || airSupportVoiceSegment(message)) return observerVoiceAsset(locale, message);
     if (message === 'victory' || message === 'missionIntro' && this.missionAssets === observerMissionVoiceAssets)
       return observerVoiceAsset(locale, message);
@@ -121,7 +123,7 @@ export class ObserverVoice {
     if (paused || this.started || !pending) return;
     // The Commander presentation owns its bounded readiness wait. Never attach a
     // late-start callback that jumps into the middle of this introduction.
-    if ((message === 'missionIntro' || message === 'victory') && this.prepare(locale, message) !== 'ready') return;
+    if ((message === 'missionIntro' || message === 'victory' || message === 'giant') && this.prepare(locale, message) !== 'ready') return;
     this.started = true;
     const generation = this.generation;
     void pending.then(buffer => {

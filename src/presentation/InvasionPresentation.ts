@@ -2,6 +2,12 @@ import type { EnemyRenderState, GameRenderState } from '../rendering/RenderState
 
 /** Disposable render copies of T=0; never owns a Simulation, RNG or checkpoint. */
 export class InvasionPresentation {
+  private firstArrival = 5.1;
+  formationAt = 11.074;
+  setBriefing(start: number, end: number): void {
+    this.firstArrival = Math.max(5.1, start + 2);
+    this.formationAt = end - .35;
+  }
   readonly state: GameRenderState;
   private readonly visible: EnemyRenderState[] = [];
   private readonly actors: { target: EnemyRenderState; actor: { -readonly [K in keyof EnemyRenderState]: EnemyRenderState[K] }; at: number; entryX: number }[];
@@ -13,15 +19,16 @@ export class InvasionPresentation {
     for (let row = 0; row < Math.max(...directions.map(group => group.length)); row++)
       for (const group of directions) if (group[row]) ordered.push(group[row]);
     this.actors = ordered.map((target, i) => ({ target, actor: { ...target },
-      at: i < 6 ? 2.2 + i * .55 : 5.4 + 3.2 * ((i - 6) / Math.max(1, ordered.length - 7)) ** .65,
+      at: i < 6 ? i * .35 : 1.9 + ((i - 6) / Math.max(1, ordered.length - 7)) ** .65,
       entryX: target.x < -.65 ? -3 : target.x > .65 ? 3 : 0 }));
     this.state = { ...initial, enemies: this.visible, projectiles: [] };
   }
   sample(seconds: number, reducedMotion = false): GameRenderState {
     this.visible.length = 0;
-    for (const { target, actor, at, entryX } of this.actors) {
+    for (const { target, actor, at: admission, entryX } of this.actors) {
+      const at = this.firstArrival + (admission < 1.9 ? admission : 1.9 + (admission - 1.9) * (this.formationAt - this.firstArrival - 2.7));
       if (seconds < at) continue;
-      const fraction = Math.min(1, Math.max(0, (seconds - at) / (10.9 - at)));
+      const fraction = Math.min(1, Math.max(0, (seconds - at) / (this.formationAt - at)));
       // Reduced motion uses quiet stepped tableaux instead of a rushing sweep.
       const t = reducedMotion ? Math.floor(fraction * 4) / 4 : fraction;
       actor.x = t === 1 ? target.x : entryX + (target.x - entryX) * t;
