@@ -9,6 +9,8 @@ export class ManualAirSupportButton {
   private readonly icon: SVGElement;
   private readonly motes: HTMLElement[] = [];
   private readonly reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+  private readonly hint = document.createElement('span');
+  private introduced = false;
   private readinessSeen = false;
   private readyAtMs = -Infinity;
   private readonly stopPointer = (event: Event): void => event.stopPropagation();
@@ -30,17 +32,23 @@ export class ManualAirSupportButton {
       mote.style.cssText = `position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;background:${i % 2 ? colors.foam : colors.energy};box-shadow:0 0 7px ${colors.foam};pointer-events:none;opacity:0`;
       this.motes.push(mote); this.element.append(mote);
     }
+    this.hint.textContent = '新功能：呼叫空襲';
+    this.hint.style.cssText = 'position:absolute;left:0;bottom:96px;width:116px;padding:5px 7px;background:#172835e8;color:#fff0ca;border-radius:5px;font:700 12px sans-serif;pointer-events:none';
+    this.element.append(this.hint);
     this.element.addEventListener('pointerdown', this.stopPointer); this.element.addEventListener('click', this.click);
     this.reset(); host.append(this.element);
   }
-  update(state: SimulationFrameState, enabled: boolean, nowMs = 0): void {
+  update(state: SimulationFrameState, enabled: boolean, nowMs = 0, announcing = false): void {
     const air = state.commanderSupport?.airstrike;
+    if (announcing) this.introduced = true;
+    const ready = !!air?.manual?.ready;
     const visible = state.catharsis?.balance.commanderSupport?.heavyRaid?.lastStand?.triggerPolicy === 'manualPlayerCall'
-      && !!air?.manual?.ready && air.status === 'ready' && state.squad.count > 0
+      && !!air?.manual && (ready || this.introduced) && air.status === 'ready' && state.squad.count > 0
       && state.defenseTank?.status === 'active' && state.defenseTank.phase === 3;
     this.element.hidden = !visible; this.element.style.display = visible ? 'grid' : 'none';
-    this.element.disabled = !visible || !enabled;
-    if (visible && !this.readinessSeen) { this.readinessSeen = true; this.readyAtMs = nowMs; }
+    this.element.disabled = !visible || !enabled || !ready;
+    this.hint.hidden = !visible || !this.introduced;
+    if (visible && ready && !this.readinessSeen) { this.readinessSeen = true; this.readyAtMs = nowMs; }
     const age = nowMs - this.readyAtMs, active = visible && age >= 0 && age < LEVEL_UP_MS;
     const t = active ? age / LEVEL_UP_MS : 1, reduced = this.reducedMotion?.matches ?? false;
     const glow = active ? Math.pow(1 - t, .7) : 0, colors = ART.coastalUi;
@@ -55,6 +63,7 @@ export class ManualAirSupportButton {
     this.element.style.boxShadow = `inset 0 0 0 2px #101d29,0 3px 0 #101d29,0 0 ${glow * 26}px ${glow * 5}px ${colors.aqua}`;
   }
   reset(): void {
+    this.introduced = false; this.hint.hidden = true;
     this.readinessSeen = false; this.readyAtMs = -Infinity;
     this.element.hidden = true; this.element.style.display = 'none'; this.element.disabled = true;
     this.ring.style.opacity = '0'; this.icon.style.filter = '';
@@ -62,6 +71,7 @@ export class ManualAirSupportButton {
   }
   restore(state: SimulationFrameState): void {
     this.reset(); this.readinessSeen = !!state.commanderSupport?.airstrike?.manual?.ready;
+    this.introduced = this.readinessSeen;
     this.update(state, false);
   }
   dispose(): void {

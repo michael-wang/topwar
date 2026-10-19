@@ -407,10 +407,10 @@ it.each(['en-US','zh-CN','ja','zh-TW'])('ignores %s browser language and saved E
   const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const)}, host=new ElementStub(), ui=new FieldObserver(host as unknown as HTMLElement,audio,readyPortraits());
   for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
   expect(ui.element.hidden).toBe(false);expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerDialogue['zh-TW']);
-  expect(host.children).toEqual([ui.element]);expect('selector' in ui).toBe(false);
+  expect(host.children).toHaveLength(2); expect(host.children).toContain(ui.element);expect('selector' in ui).toBe(false);
   expect(getItem).not.toHaveBeenCalled();expect(setItem).not.toHaveBeenCalled();
   expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
-  ui.update(state,config,119/60,true,true);expect(audio.syncRadio.mock.lastCall?.[2]).toBe(true);
+  ui.update(state,config,119/60,true,true);expect(audio.syncRadio.mock.lastCall?.[2]).toBe(true);expect(host.children[0].attrs['data-paused']).toBe('true');
   ui.reset();expect(ui.element.hidden).toBe(true);expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false]);
   ui.startOpening(()=>{});for(let tick=0;tick<90;tick++)ui.updateOpening(tick/60,false);
   expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerMissionDialogue['zh-TW'][0]);

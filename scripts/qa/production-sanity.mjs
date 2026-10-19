@@ -12,6 +12,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
+if (['dev-tracer-controls', '子彈 A', '子彈 B', '子彈 C', '#ff881a'].some(s => shippingJs.includes(s))) throw Error('DEV tracer trial leaked into production');
 if (shippingJs.includes('commander-placement')) throw Error('DEV Commander placement survived production tree-shaking');
 if (shippingJs.includes('opening-review')) throw Error('DEV opening entry survived production tree-shaking');
 if (['giant-review', 'GIANT 特效測試', '重測 GIANT', 'GIANT review requires'].some(marker => shippingJs.includes(marker)))
@@ -56,10 +57,17 @@ async function checkAirSupport(page,width,out) {
   try{for(let i=0;i<Math.ceil(seconds*60);i++){const s=a.simulation.getFrameState();if(!a.paused){const danger=(s.artillery?.shells??[]).filter(p=>p.impactAtSeconds-s.elapsedSeconds<.65),lane=[0,1,2,3,4].filter(l=>!danger.some(p=>p.targetLane===l)).sort((x,y)=>Math.abs(x-2)-Math.abs(y-2))[0];if(lane!==undefined&&s.player.selectedLane!==lane)a.simulation.stepLane(lane<s.player.selectedLane?-1:1);}window.__advance(1/60);}}
   finally{gpu.render=render;}window.__draw();},seconds);
  await advance(.1);await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupportReady'&&window.__testApp.audio.voice.source!==null);
+ assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isVisible());
+ assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isDisabled());
+ assert.equal(await page.locator('.commander-focus:not([hidden])').count(),1);
+ await page.evaluate(()=>window.__supportButton=document.querySelector('.manual-air-support'));
  const duration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(duration-6.765708)<.002);
  assert.equal(await page.locator('.field-observer p').textContent(),'各位！我剛爭取到空中轟炸支援！');
  await advance(3.3);assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds),null);
  assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isEnabled());
+ assert(await page.evaluate(()=>window.__supportButton===document.querySelector('.manual-air-support')));
+ assert(await page.getByText('新功能：呼叫空襲',{exact:true}).isVisible());
+ assert.equal(await page.locator('.commander-focus:not([hidden])').count(),0);
  await page.getByRole('button',{name:'暫停遊戲',exact:true}).tap();
  const saved=await page.evaluate(()=>window.__testApp.simulation.getState());await advance(.5);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
  assert.equal(await page.evaluate(()=>window.__testApp.audio.supportSources.size),0);

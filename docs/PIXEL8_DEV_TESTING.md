@@ -4,6 +4,12 @@ For accepted GIANT hit/death regression without playing from Lv1, use the isolat
 
 Screen Wake Lock is optional and requires a secure context. HTTP on a LAN IP such as `http://192.168.1.20:5173` normally is insecure. DEV → 進階調校 → 熄屏與存檔 QA shows **Wake Lock: UNSUPPORTED — INSECURE ORIGIN** there. Combat still works; no lock is attempted. HTTPS and Chrome's trustworthy localhost origin support the API when the browser/system grants it. [API requirements and system release](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Wake_Lock_API).
 
+## P4.45 — live tracer and Commander focus review
+
+On the same LAN, open **http://192.168.1.106:5173/** (host verified during P4.45; the LAN address may change). Alternatively use **http://localhost:5173/** through the USB forwarding below. No query, reload or retry is needed to switch tracers. Start or Continue, then tap **子彈 A / 子彈 B / 子彈 C** near the top of the combat viewport. Buttons are hidden during opening, Pause/recovery and terminal screens; switching does not pause or change combat. Production has none of these controls and retains V5.
+
+For focus, play the normal opening (first visible landing, then Skip), or select the four existing shared scenes in the menu. GIANT is also available through the isolated DEV review. In 空中支援, confirm the aircraft button appears disabled during speech with one pulsing red bracket; it enables only after the original announcement completes. The small 「新功能：呼叫空襲」 label remains until the one-use call; the subsequent focus marks the bombing area. Check Pause/Resume, Continue and Retry. Existing Commander/Boss-warning overlap remains an accepted baseline; report any additional obstruction rather than accepting it automatically.
+
 ## Preferred: USB localhost forwarding
 
 Use Android SDK [Platform Tools](https://developer.android.com/tools/releases/platform-tools) if ADB is not already installed. No repository configuration change or public deployment is needed.

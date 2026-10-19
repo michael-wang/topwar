@@ -2,6 +2,8 @@
 
 ## NOW
 
+P4.45 (#20 / #25): Commander focus and air-support onboarding implemented; DEV live A/B/C tracer trial awaits Julia/Owner Pixel 8 acceptance. Production tracers remain V5, with no gameplay/balance change.
+
 P4.44g (#23): Owner/Julia-approved P4.44f opening promoted to normal production/DEV Start without query; canonical voice, centered Commander, red alert and 16 real landings. Continue preserves history; Retry is immediate. Production code implemented; manual Pages deployment pending. Lower Lv1–3 pressure is temporarily accepted, with no rebalance in this release.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.

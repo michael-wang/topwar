@@ -1,3 +1,4 @@
+import { tracerTrials, type TracerTrial } from './projectiles/TracerTrial';
 import { SupportAirstrikeRenderer } from './SupportAirstrikeRenderer';
 import { applyCoastalCamera } from './CoastalCamera';
 import type { SupportEvent } from '../simulation/commanderSupport';
@@ -36,6 +37,51 @@ export function rendererInfoSnapshot(info: Pick<THREE.WebGLInfo, 'render' | 'mem
 }
 
 export class GameRenderer {
+  setTracerTrial(style: TracerTrial): void { if (import.meta.env.DEV) this.projectileRenderer.setStyle(tracerTrials[style]); }
+  /** Fixed-area focus uses rendered geometry, never changes simulation targets. */
+  commanderFocusArea(message: string, phrase: number, state: GameRenderState): import('../ui/CommanderFocus').FocusArea | null {
+    let x = 0, z = 0, width = 5, depth = 3, height = 2;
+    if (message === 'missionIntro' || message === 'giant') {
+      if (message === 'missionIntro' && phrase !== 1) return null;
+      const enemies = state.enemies.filter(e => e.hp > 0 && (message !== 'giant' || e.archetype === 'giant'));
+      if (!enemies.length) return null;
+      x = -enemies[0].x; z = enemies[0].z;
+      width = message === 'giant' ? 4 : 9; height = message === 'giant' ? 4 : 2;
+    } else if (message === 'destroyer') {
+      if (!this.destroyerRenderer?.group.visible) return null;
+      const p = this.destroyerRenderer.group.position;
+      this.supplyProjection.copy(p).project(this.camera);
+      if (Math.abs(this.supplyProjection.x) > .95 || Math.abs(this.supplyProjection.y) > .95) return null;
+      const stationX = -(state.destroyer?.config.stationX ?? -p.x);
+      x = (p.x + stationX) / 2; z = p.z; width = Math.abs(p.x - stationX) + 22; depth = 6; height = 5;
+    } else if (message === 'tankBoss') {
+      if (!this.tankRenderer?.group.visible || state.defenseTank?.state.status === 'defeated') return null;
+      z = this.tankRenderer.group.position.z; width = 6; depth = 6; height = 4;
+    } else if (message === 'airSupportCalled' || message === 'airSupport') {
+      const air = state.commanderSupport?.state.airstrike;
+      if (!air || air.status === 'cancelled' || air.triggeredAtSeconds === null) return null;
+      // The real heavy raid sweeps the three lanes from the player to the recorded Tank depth.
+      // Enclose that band, rather than inventing a moving point target before impacts exist.
+      if (air.tankZAtWarning !== undefined) { depth = Math.max(1, air.tankZAtWarning - state.player.z); z = depth / 2; width = 12; }
+      else {
+        const target = state.enemies.find(e => air.targets.includes(e.id));
+        if (!target) return null;
+        x = -target.x; z = target.z;
+      }
+    } else return null;
+    const w = this.viewport.clientWidth, h = this.viewport.clientHeight;
+    let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+    for (const dx of [-width / 2, width / 2]) for (const dz of [-depth / 2, depth / 2]) for (const y of [0, height]) {
+      this.supplyProjection.set(x + dx, y, z + dz).project(this.camera);
+      if (Math.abs(this.supplyProjection.z) > 1) continue;
+      const px = (this.supplyProjection.x + 1) * w / 2, py = (1 - this.supplyProjection.y) * h / 2;
+      left = Math.min(left, px); right = Math.max(right, px); top = Math.min(top, py); bottom = Math.max(bottom, py);
+    }
+    if (right < 8 || left > w - 8 || bottom < 70 || top > h - 180) return null;
+    left = Math.max(8, left - 8); right = Math.min(w - 8, right + 8);
+    top = Math.max(70, top - 8); bottom = Math.min(h - 180, bottom + 8);
+    return right - left >= 32 && bottom - top >= 24 ? { x: left, y: top, width: right - left, height: bottom - top } : null;
+  }
   private readonly tankHealthVector = new THREE.Vector3();
   private readonly tankHealthPoint = { x: 0, y: 0 };
   getDebugStats() {

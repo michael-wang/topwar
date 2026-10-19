@@ -1,3 +1,4 @@
+import { CommanderFocus, type FocusArea } from './CommanderFocus';
 import { CommanderComms } from '../presentation/CommanderComms';
 import { giantVoiceTiming } from '../presentation/ObserverTimeline';
 import type { SimulationFrameState } from '../simulation/SimulationState';
@@ -20,6 +21,14 @@ export interface ObserverAudio {
     message?: ObserverMessage): void;
 }
 export class FieldObserver {
+  private readonly focus: CommanderFocus;
+  get visibleCue(): { message: ObserverMessage; phrase: number } | null {
+    return this.element.hidden ? null : { message: this.message, phrase: this.phrase };
+  }
+  updateFocus(area: FocusArea | null, viewportKey: string, paused: boolean): void {
+    const cue = this.visibleCue;
+    this.focus.update(cue ? cue.message + ':' + cue.phrase : null, area, viewportKey, paused);
+  }
   readonly element = document.createElement('aside');
   private readonly fallback = document.createElement('div');
   private portrait: HTMLElement = this.fallback;
@@ -55,6 +64,7 @@ export class FieldObserver {
   private frame = { offset: null as number | null, paused: false, duration: 0 };
   constructor(host: HTMLElement, private readonly audio: ObserverAudio,
     private readonly portraits: PreparedObserverPortraits = new ObserverPortraits()) {
+    this.focus = new CommanderFocus(host);
     this.audio.prepareRadio(this.locale, 'missionIntro');
     this.audio.prepareRadio(this.locale, 'tankBoss');
     this.audio.prepareRadio(this.locale, 'victory');
@@ -184,6 +194,8 @@ export class FieldObserver {
     return this.victoryFinished;
   }
   private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
+    // Background suspension can stop RAF before GameApp's next focus update.
+    this.focus.element.setAttribute('data-paused', String(paused));
     if (message === 'victory' && frame.visible) this.victoryPresented = true;
     if (message === 'airSupportReady' && frame.visible) this.manualNoticePresented = true;
     const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
@@ -200,6 +212,7 @@ export class FieldObserver {
       this.presented = true;
     }
     this.element.hidden = !frame.visible;
+    if (!frame.visible) this.focus.clear();
     this.skip.hidden = message !== 'victory' || !frame.visible; this.skip.disabled = paused;
     if (frame.visible) {
       const expression = message === 'victory' ? 'victory' : message === 'tankBoss' || message === 'giant' || message.startsWith('airSupport') ? 'alert'
@@ -220,6 +233,7 @@ export class FieldObserver {
     if (!frame.visible) this.presented = false;
   }
   reset(): void {
+    this.focus.clear();
     this.openingTimeline.reset(); this.openingSkip = null; this.openingWindow = null; this.giantTimeline.reset();
     this.skip.textContent = '略過'; this.skip.removeAttribute('aria-label');
     this.timeline.reset(); this.tankTimeline.reset();
@@ -230,5 +244,5 @@ export class FieldObserver {
     this.presented = false;
     this.element.hidden = true; this.frame.offset = null; this.audio.syncRadio(this.locale, null, false);
   }
-  dispose(): void { this.reset(); this.element.remove(); if (this.portraits instanceof ObserverPortraits) this.portraits.dispose(); }
+  dispose(): void { this.reset(); this.focus.dispose(); this.element.remove(); if (this.portraits instanceof ObserverPortraits) this.portraits.dispose(); }
 }

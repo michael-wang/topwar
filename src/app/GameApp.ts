@@ -1,3 +1,4 @@
+import { DevTracerControls } from '../ui/DevTracerControls';
 import { createAirSupportPlaytest } from './TankPlaytest';
 import { createPlaytestScenario, isPlaytestScene } from './PlaytestScenarios';
 import { FieldObserver } from '../ui/FieldObserver';
@@ -127,6 +128,7 @@ export class GameApp {
   private disposed = false;
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
+  private readonly devTracers: DevTracerControls | null;
   private readonly devReview: DevReviewControls | null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
@@ -181,6 +183,7 @@ export class GameApp {
     this.previousWeaponFamily = initialState.progression && initialState.catharsis
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
+    this.devTracers = import.meta.env.DEV ? new DevTracerControls(viewport, style => this.renderer.setTracerTrial(style), this.giantReview ? 140 : 74) : null;
     this.audio = audio;
     this.fullscreen = new MobileFullscreen(viewport);
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
@@ -353,7 +356,7 @@ export class GameApp {
     this.tuningPanel?.dispose();
     this.giantControls?.dispose();
     this.hudActions.dispose();
-    this.devReview?.dispose();
+    this.devReview?.dispose(); this.devTracers?.dispose();
     this.pauseOverlay.dispose();
     this.damageFlash.dispose();
     this.fieldObserver?.dispose();
@@ -550,6 +553,18 @@ export class GameApp {
     this.audio.syncOpeningAlert(null, false); this.fieldObserver?.reset();
   }
 
+  private updateCommanderFocus(state: GameRenderState): void {
+    const cue = this.fieldObserver?.visibleCue;
+    let area = cue ? this.renderer.commanderFocusArea(cue.message, cue.phrase, state) : null;
+    if (cue?.message === 'airSupportReady' && this.manualSupportButton && !this.manualSupportButton.element.hidden) {
+      const button = this.manualSupportButton.element.getBoundingClientRect(), viewport = this.viewport.getBoundingClientRect();
+      area = { x: button.left - viewport.left - 6, y: button.top - viewport.top - 6, width: button.width + 12, height: button.height + 12 };
+    }
+    const viewportKey = [this.viewport.clientWidth, this.viewport.clientHeight,
+      this.manualSupportButton?.element.offsetTop].join(':');
+    this.fieldObserver?.updateFocus?.(area, viewportKey, this.paused || this.hidden || this.contextLost);
+  }
+
   private renderOpening(timestampMs: number): void {
     const dt = this.previousFrameTimestampMs === null ? 0 : Math.min(.1, Math.max(0, (timestampMs - this.previousFrameTimestampMs) / 1000));
     this.previousFrameTimestampMs = timestampMs;
@@ -567,6 +582,7 @@ export class GameApp {
     // Skip is an intentional short cut, not accelerated speech or simulation.
     const poseSeconds = skipping ? Math.max(this.invasion!.formationAt, this.openingSeconds) : this.openingSeconds;
     this.renderer.renderInvasion(this.invasion!.sample(poseSeconds, !!this.reducedMotion?.matches), poseSeconds, !!this.reducedMotion?.matches, this.invasion!.poseTimes);
+    this.updateCommanderFocus(this.invasion!.state);
     if (done && !this.paused) {
       this.renderer.finishInvasion(poseSeconds, !!this.reducedMotion?.matches);
       this.cancelOpening(); this.fixedStepLoop.reset(); this.previousFrameTimestampMs = null;
@@ -858,6 +874,8 @@ export class GameApp {
   }
 
   private readonly renderFrame = (timestampMs: number): void => {
+    this.devTracers?.setVisible(this.startup === 'started' && !this.invasion && !this.recovery?.blocking && !this.paused
+      && this.stageClearAtMs === null);
     if (!this.running) return;
     try {
       if (this.invasion) {
@@ -940,6 +958,7 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
+      if (state.squad.count === 0) this.devTracers?.setVisible(false);
       const cleared = state.defenseTank?.status === 'defeated';
       this.tankEntranceHud.update(state, this.paused);
       const emergency = personalArtilleryThreat(state);
@@ -968,7 +987,7 @@ export class GameApp {
       this.renderer.presentTankEntrance(tankEntranceEvents, this.presentationMs);
       if (tankEntranceEvents.some(event => event.shockwave)) this.audio.play('supplyImpact');
       this.manualSupportButton?.update(state, !this.paused && !this.hidden && !this.contextLost
-        && !this.tuningPanel?.isOpen && !this.airSupportRequested && !this.recovery?.blocking && this.startup === 'started', this.presentationMs);
+        && !this.tuningPanel?.isOpen && !this.airSupportRequested && !this.recovery?.blocking && this.startup === 'started', this.presentationMs, this.fieldObserver?.visibleCue?.message === 'airSupportReady');
       const grenade = state.grenade;
       this.grenadeButton?.update(grenade?.inventory ?? 0, grenade?.acquiredAtSeconds != null,
         !cleared && !this.paused && state.squad.count > 0 && !this.grenadeRequested && (grenade?.inventory ?? 0) > 0 && !grenade?.flight
@@ -1075,6 +1094,7 @@ export class GameApp {
         this.presentationMs, this.config.track.halfWidth, this.config.player.formationSpacing,
         renderState.squad.defenseFormation, renderState.track.lanePositions?.at(-1));
       this.renderer.render(renderState, this.presentationMs);
+      this.updateCommanderFocus(renderState);
       const tankHealthPosition = this.renderer.projectTankHealthPosition();
       this.tankBossHud.update(state, this.presentationMs, tankHealthPosition);
       this.supplyTransfer?.update(this.presentationMs);

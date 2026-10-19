@@ -8,6 +8,7 @@ Read only when task scope/status needs orientation, not as another specification
 - P4.40c / #36 Lightweight Arcade UI is implemented and owner Pixel 8 PASS: floating Start, compact Pause, larger unbacked Boss warning. Accepted Retry/Replay stay unchanged. Mantou titles, Bungee English/acronyms, Commander system-ui.
 
 ## Implemented, acceptance pending
+- P4.45 / #20 / #25: one stationary Commander focus bracket and disabled-to-ready air-support onboarding are implemented. DEV combat offers live 子彈 A/B/C comparison; production remains V5. Gameplay, opening, voices and checkpoints unchanged. Await Julia/Owner Pixel 8 visual choice; no deployment.
 - P4.43 / #22 Aegean Scenic Readability is implemented / awaiting Julia composition review and owner Pixel 8 visual acceptance. P4.42 shared-coast/transition architecture is provisionally retained; its art remains HOLD. Tiered asymmetric Greek side facades, visible terraces/stone steps, fuller olives/sparse flowers, warm sand/wet-shore shading and nearer decorative sentries improve the same idle/combat scene. Continue bypasses idle paused; Retry is immediate.
 - Pending art/VFX includes amplified GIANT smoke/review usability, artillery smoke polish, Hybrid D production, Tracer V5, defeat/Boss/Victory presentation and bomber shadow/audio refinements. Preserve accepted portions; consult task-specific canonical status.
 - Combined production Start/audio/fullscreen and native startup-performance review remain pending.
