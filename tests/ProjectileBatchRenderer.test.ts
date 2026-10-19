@@ -1,5 +1,3 @@
-import { tracerTrials } from '../src/rendering/projectiles/TracerTrial';
-import { ART } from '../src/art/ArtDirection';
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { ProjectileRenderer } from '../src/rendering/projectiles/ProjectileRenderer';
@@ -81,18 +79,3 @@ describe('batched projectile renderer', () => {
 });
 
 const projectileTestCamera = new THREE.PerspectiveCamera(48, 350/844, .1, 180);
-
-it('switches three bounded profiles live without mutating shots, origins, IDs, pool or birth clocks', () => {
-  const scene=new THREE.Scene(), renderer=new ProjectileRenderer(scene), shots=[shot(1),shot(2)], before=JSON.stringify(shots);
-  renderer.update(shots,100,projectileTestCamera,844);
-  const batches=[...scene.children] as THREE.InstancedMesh[], original=batches[0].instanceMatrix.array.slice();
-  const origins:number[][]=[], shapes:string[]=[];
-  for(const profile of [tracerTrials.A,tracerTrials.B,tracerTrials.C,ART.defenseTracer]) {
-    renderer.setStyle(profile);renderer.update(shots,100,projectileTestCamera,844);
-    expect(scene.children).toEqual(batches);expect(renderer.getDebugStats()).toEqual({live:2,pool:8,pulseTrackers:2});
-    const m=new THREE.Matrix4();batches[0].getMatrixAt(0,m);origins.push(m.elements.slice(12,15));shapes.push(JSON.stringify(m.elements));
-    expect(JSON.stringify(shots)).toBe(before);
-  }
-  expect(new Set(shapes).size).toBe(4);expect(origins.every(o=>JSON.stringify(o)===JSON.stringify(origins[0]))).toBe(true);
-  expect(batches[0].instanceMatrix.array).toEqual(original);renderer.dispose();
-});

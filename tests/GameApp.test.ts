@@ -10,7 +10,6 @@ import { GameAudio } from '../src/audio/GameAudio';
 import { PerfDiagnostics } from '../src/app/PerfDiagnostics';
 import { progressionDefaults } from '../src/config/progressionConfig';
 import { startDefenseTank } from '../src/simulation/defenseTank';
-vi.mock('../src/ui/DevTracerControls', () => ({ DevTracerControls: class { setVisible() {} dispose() {} } }));
 vi.mock('../src/ui/DevFps', () => ({ DevFps: class { frame() {} reset() {} dispose() {} } }));
 vi.mock('../src/ui/ManualAirSupportButton', () => ({ ManualAirSupportButton: class {
   element = { offsetTop: 0 };

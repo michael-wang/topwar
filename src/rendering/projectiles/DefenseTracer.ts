@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import { ART } from '../../art/ArtDirection';
 
-export type TracerStyle = { [K in keyof typeof ART.defenseTracer]: typeof ART.defenseTracer[K] extends number ? number : string };
-
 /** Local head contrast in the existing two batches; no extra geometry or draw. */
-export function prepareTracerContrast(material: THREE.MeshBasicMaterial, body = false, art: TracerStyle = ART.defenseTracer): void {
+export function prepareTracerContrast(material: THREE.MeshBasicMaterial, body = false): void {
+  const art = ART.defenseTracer;
   const headEnd=body?art.noseLengthRatio:art.headLengthRatio, ink={value:new THREE.Color(art.headInk)};
   material.onBeforeCompile=shader=>{
     shader.uniforms.tracerInk=ink;
@@ -16,7 +15,7 @@ export function prepareTracerContrast(material: THREE.MeshBasicMaterial, body = 
         diffuseColor.rgb = mix(tracerInk, diffuseColor.rgb, tail);
         ${body?'':`diffuseColor.a *= mix(1., ${art.tailOpacity}, tail);`}`);
   };
-  const cacheKey = `tracer-local-${body?'nose':'rim'}-${art === ART.defenseTracer ? 'v5' : JSON.stringify(art)}`;
+  const cacheKey = `tracer-local-${body?'nose':'rim'}-orange-b`;
   material.customProgramCacheKey=()=> cacheKey;
 }
 
@@ -43,7 +42,8 @@ export class DefenseTracerTransform {
   private readonly basis = new THREE.Matrix4();
 
   apply(transform: THREE.Object3D, camera: THREE.PerspectiveCamera, cssHeight: number,
-    slopeX: number, tierLength: number, pulse: number, radiusBonus: number, art: TracerStyle = ART.defenseTracer): number {
+    slopeX: number, tierLength: number, pulse: number, radiusBonus: number): number {
+    const art = ART.defenseTracer;
     const depth = -this.projected.copy(transform.position).applyMatrix4(camera.matrixWorldInverse).z;
     const unitsPerPixel = 2 * Math.max(camera.near, depth) / (camera.projectionMatrix.elements[5] * cssHeight);
     this.projected.copy(transform.position).project(camera);

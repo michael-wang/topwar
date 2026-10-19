@@ -1,4 +1,3 @@
-import { tracerTrials, type TracerTrial } from './projectiles/TracerTrial';
 import { SupportAirstrikeRenderer } from './SupportAirstrikeRenderer';
 import { applyCoastalCamera } from './CoastalCamera';
 import type { SupportEvent } from '../simulation/commanderSupport';
@@ -37,26 +36,20 @@ export function rendererInfoSnapshot(info: Pick<THREE.WebGLInfo, 'render' | 'mem
 }
 
 export class GameRenderer {
-  setTracerTrial(style: TracerTrial): void { if (import.meta.env.DEV) this.projectileRenderer.setStyle(tracerTrials[style]); }
   /** Fixed-area focus uses rendered geometry, never changes simulation targets. */
-  commanderFocusArea(message: string, phrase: number, state: GameRenderState): import('../ui/CommanderFocus').FocusArea | null {
+  commanderFocusArea(message: string, _phrase: number, state: GameRenderState): import('../ui/CommanderFocus').FocusArea | null {
     let x = 0, z = 0, width = 5, depth = 3, height = 2;
-    if (message === 'missionIntro' || message === 'giant') {
-      if (message === 'missionIntro' && phrase !== 1) return null;
-      const enemies = state.enemies.filter(e => e.hp > 0 && (message !== 'giant' || e.archetype === 'giant'));
-      if (!enemies.length) return null;
-      x = -enemies[0].x; z = enemies[0].z;
-      width = message === 'giant' ? 4 : 9; height = message === 'giant' ? 4 : 2;
+    if (message === 'missionIntro') {
+      z = 45; width = 16; depth = 4; height = 2;
+    } else if (message === 'giant') {
+      const enemy = state.enemies.find(e => e.archetype === 'giant' && e.hp > 0);
+      x = enemy ? -enemy.x : 0; z = enemy?.z ?? 45; width = 5; height = 4;
     } else if (message === 'destroyer') {
-      if (!this.destroyerRenderer?.group.visible) return null;
-      const p = this.destroyerRenderer.group.position;
-      this.supplyProjection.copy(p).project(this.camera);
-      if (Math.abs(this.supplyProjection.x) > .95 || Math.abs(this.supplyProjection.y) > .95) return null;
-      const stationX = -(state.destroyer?.config.stationX ?? -p.x);
-      x = (p.x + stationX) / 2; z = p.z; width = Math.abs(p.x - stationX) + 22; depth = 6; height = 5;
+      x = -(state.destroyer?.config.stationX ?? 0); z = state.destroyer?.config.z ?? 56;
+      width = 22; depth = 6; height = 5;
     } else if (message === 'tankBoss') {
-      if (!this.tankRenderer?.group.visible || state.defenseTank?.state.status === 'defeated') return null;
-      z = this.tankRenderer.group.position.z; width = 6; depth = 6; height = 4;
+      z = this.tankRenderer?.group.visible ? this.tankRenderer.group.position.z : 45;
+      width = 6; depth = 6; height = 4;
     } else if (message === 'airSupportCalled' || message === 'airSupport') {
       const air = state.commanderSupport?.state.airstrike;
       if (!air || air.status === 'cancelled' || air.triggeredAtSeconds === null) return null;

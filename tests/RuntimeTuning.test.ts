@@ -7,7 +7,7 @@ const config = GameConfigSchema.parse(data);
 const level = { id:'live-tuning',length:1000,enemyGroups:[],upgradeGates:[] };
 it('starts from authored Defense tuning and rejects unknown control configuration', () => {
   const tuning=defaultRuntimeTuning(config,level);
-  expect(tuning).toMatchObject({bulletSpeed:60,bulletRange:80,fireRate:3,forwardSpeed:0,
+  expect(tuning).toMatchObject({bulletSpeed:60,bulletRange:44.25,fireRate:3,forwardSpeed:0,
     musicVolume:.5,enemyVisualScale:1.4,gruntSpeed:.85,heavyHp:15,heavySpeed:.72,heavyChance:.25,groupSize:24});
   expect(()=>GameConfigSchema.parse({...data,controls:{mouseSensitivity:1}})).toThrow();
 });

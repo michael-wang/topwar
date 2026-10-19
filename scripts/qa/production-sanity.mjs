@@ -12,7 +12,7 @@ const out = process.argv[2] ?? 'artifacts/sanity';
 mkdirSync(out, { recursive: true });
 const shippingJs = readdirSync('dist/assets').filter(name => name.endsWith('.js'))
   .map(name => readFileSync('dist/assets/' + name, 'utf8')).join('\n');
-if (['dev-tracer-controls', '子彈 A', '子彈 B', '子彈 C', '#ff881a'].some(s => shippingJs.includes(s))) throw Error('DEV tracer trial leaked into production');
+if (['dev-tracer-controls', '子彈 A', '子彈 B', '子彈 C'].some(s => shippingJs.includes(s))) throw Error('DEV tracer trial leaked into production');
 if (shippingJs.includes('commander-placement')) throw Error('DEV Commander placement survived production tree-shaking');
 if (shippingJs.includes('opening-review')) throw Error('DEV opening entry survived production tree-shaking');
 if (['giant-review', 'GIANT 特效測試', '重測 GIANT', 'GIANT review requires'].some(marker => shippingJs.includes(marker)))

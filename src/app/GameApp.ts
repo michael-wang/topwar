@@ -1,4 +1,3 @@
-import { DevTracerControls } from '../ui/DevTracerControls';
 import { createAirSupportPlaytest } from './TankPlaytest';
 import { createPlaytestScenario, isPlaytestScene } from './PlaytestScenarios';
 import { FieldObserver } from '../ui/FieldObserver';
@@ -128,7 +127,6 @@ export class GameApp {
   private disposed = false;
   private readonly perf: PerfDiagnostics | null;
   private readonly perfHud: PerfHud | null;
-  private readonly devTracers: DevTracerControls | null;
   private readonly devReview: DevReviewControls | null;
   private devReviewVisualSalt=-1;
   private devReviewFixture: DevReviewFixture | null = null;
@@ -183,7 +181,6 @@ export class GameApp {
     this.previousWeaponFamily = initialState.progression && initialState.catharsis
       ? progressionStage(initialState.progression.level, initialState.catharsis.balance.progression).weaponFamily : 'rifle';
     this.renderer = new GameRenderer(viewport, assets);
-    this.devTracers = import.meta.env.DEV ? new DevTracerControls(viewport, style => this.renderer.setTracerTrial(style), this.giantReview ? 140 : 74) : null;
     this.audio = audio;
     this.fullscreen = new MobileFullscreen(viewport);
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
@@ -356,7 +353,7 @@ export class GameApp {
     this.tuningPanel?.dispose();
     this.giantControls?.dispose();
     this.hudActions.dispose();
-    this.devReview?.dispose(); this.devTracers?.dispose();
+    this.devReview?.dispose();
     this.pauseOverlay.dispose();
     this.damageFlash.dispose();
     this.fieldObserver?.dispose();
@@ -378,6 +375,11 @@ export class GameApp {
     this.tuningPanel?.close();
     this.qaSession=false;
     clearCheckpoint(this.checkpointStorage); this.checkpointNotice?.remove(); this.checkpointNotice = null;
+    if (this.restored) {
+      // Continue owns its historical plan; an explicit Retry starts a fresh authored game.
+      this.config = this.authoredConfig; this.runtimeTuning = defaultRuntimeTuning(this.config, this.level);
+      this.historicalAirSupportReview = false; this.tuningPanel?.setValues(this.runtimeTuning);
+    }
     this.clearedFinishedCheckpoint = false; this.sessionLevel = this.level;
     this.celebration = null; this.lastCombatProjectiles = undefined; this.stageClearAtMs = null;
     this.restored = false;
@@ -555,14 +557,17 @@ export class GameApp {
 
   private updateCommanderFocus(state: GameRenderState): void {
     const cue = this.fieldObserver?.visibleCue;
-    let area = cue ? this.renderer.commanderFocusArea(cue.message, cue.phrase, state) : null;
-    if (cue?.message === 'airSupportReady' && this.manualSupportButton && !this.manualSupportButton.element.hidden) {
-      const button = this.manualSupportButton.element.getBoundingClientRect(), viewport = this.viewport.getBoundingClientRect();
-      area = { x: button.left - viewport.left - 6, y: button.top - viewport.top - 6, width: button.width + 12, height: button.height + 12 };
-    }
-    const viewportKey = [this.viewport.clientWidth, this.viewport.clientHeight,
-      this.manualSupportButton?.element.offsetTop].join(':');
-    this.fieldObserver?.updateFocus?.(area, viewportKey, this.paused || this.hidden || this.contextLost);
+    const capture = () => {
+      let area = cue ? this.renderer.commanderFocusArea(cue.message, cue.phrase, state) : null;
+      if (cue?.message === 'airSupportReady' && this.manualSupportButton && !this.manualSupportButton.element.hidden) {
+        const button = this.manualSupportButton.element.getBoundingClientRect(), viewport = this.viewport.getBoundingClientRect();
+        area = { x: button.left - viewport.left - 6, y: button.top - viewport.top - 6, width: button.width + 12, height: button.height + 12 };
+      }
+      return area;
+    };
+    const css = typeof getComputedStyle === 'function' ? getComputedStyle(this.viewport) : null;
+    const viewportKey = [this.viewport.clientWidth, this.viewport.clientHeight, css?.getPropertyValue('--hud-inset-top'), css?.getPropertyValue('--hud-inset-bottom')].join(':');
+    this.fieldObserver?.updateFocus?.(capture, viewportKey, this.paused || this.hidden || this.contextLost);
   }
 
   private renderOpening(timestampMs: number): void {
@@ -874,8 +879,6 @@ export class GameApp {
   }
 
   private readonly renderFrame = (timestampMs: number): void => {
-    this.devTracers?.setVisible(this.startup === 'started' && !this.invasion && !this.recovery?.blocking && !this.paused
-      && this.stageClearAtMs === null);
     if (!this.running) return;
     try {
       if (this.invasion) {
@@ -958,7 +961,6 @@ export class GameApp {
       }
       const stateStartedMs = perf ? performance.now() : 0;
       const state = this.simulation.getFrameState();
-      if (state.squad.count === 0) this.devTracers?.setVisible(false);
       const cleared = state.defenseTank?.status === 'defeated';
       this.tankEntranceHud.update(state, this.paused);
       const emergency = personalArtilleryThreat(state);

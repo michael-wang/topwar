@@ -1,7 +1,7 @@
 import { ART } from '../../art/ArtDirection';
 import * as THREE from 'three';
 import type { ProjectileRenderState } from '../RenderState';
-import { defenseTracerGeometry, DefenseTracerTransform, prepareTracerContrast, type TracerStyle } from './DefenseTracer';
+import { defenseTracerGeometry, DefenseTracerTransform, prepareTracerContrast } from './DefenseTracer';
 
 export function projectilePulseScale(ageMs: number): number {
   return 1 + 0.35 * Math.max(0, 1 - ageMs / 65);
@@ -23,14 +23,6 @@ export class ProjectilePulseTracker {
 export class ProjectileRenderer {
   getDebugStats(): { live: number; pool: number; pulseTrackers: number } {
     return { live: this.body.count, pool: this.capacity, pulseTrackers: this.pulse.size };
-  }
-  private style: TracerStyle = ART.defenseTracer;
-  setStyle(style: TracerStyle): void {
-    if (this.style === style) return;
-    this.style = style;
-    this.tracerMaterial.color.set(style.core); this.glowMaterial.color.set(style.outline);
-    prepareTracerContrast(this.tracerMaterial, true, style); prepareTracerContrast(this.glowMaterial, false, style);
-    this.tracerMaterial.needsUpdate = this.glowMaterial.needsUpdate = true;
   }
   private readonly pulse = new ProjectilePulseTracker();
   private readonly transform = new THREE.Object3D();
@@ -71,9 +63,9 @@ export class ProjectileRenderer {
       transform.position.set(-projectile.x + this.rifleOrigin.offsetX, this.rifleOrigin.height, projectile.z);
       {
         const edge = this.defenseTransform.apply(transform, defenseCamera, cssHeight,
-          projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus, this.style);
+          projectile.slopeX ?? 0, length, pulse, projectile.hitRadiusBonus);
         const fullLength = transform.scale.z;
-        transform.scale.z *= this.style.coreLengthRatio;
+        transform.scale.z *= ART.defenseTracer.coreLengthRatio;
         transform.updateMatrix();
         this.body.setMatrixAt(index, transform.matrix);
         transform.scale.x += edge;

@@ -22,10 +22,14 @@ export class CommanderFocus {
     for (let i = 0; i < 4; i++) this.element.append(document.createElement('i'));
     this.clear(); host.append(this.element);
   }
-  update(key: string | null, area: FocusArea | null, viewportKey: string, paused: boolean): void {
+  update(key: string | null, area: FocusArea | null | (() => FocusArea | null), viewportKey: string, paused: boolean): void {
     this.element.setAttribute('data-paused', String(paused));
-    if (!key || !area) { this.clear(); return; }
+    if (!key) { this.clear(); return; }
     if (key !== this.key || viewportKey !== this.viewportKey || this.element.hidden) {
+      const captured = typeof area === 'function' ? area() : area;
+      this.clear();
+      if (!captured) return;
+      area = captured;
       this.key = key; this.viewportKey = viewportKey;
       Object.assign(this.element.style, { left: `${area.x}px`, top: `${area.y}px`, width: `${area.width}px`, height: `${area.height}px` });
     }

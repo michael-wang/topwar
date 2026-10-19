@@ -25,9 +25,9 @@ export class FieldObserver {
   get visibleCue(): { message: ObserverMessage; phrase: number } | null {
     return this.element.hidden ? null : { message: this.message, phrase: this.phrase };
   }
-  updateFocus(area: FocusArea | null, viewportKey: string, paused: boolean): void {
+  updateFocus(area: FocusArea | null | (() => FocusArea | null), viewportKey: string, paused: boolean): void {
     const cue = this.visibleCue;
-    this.focus.update(cue ? cue.message + ':' + cue.phrase : null, area, viewportKey, paused);
+    this.focus.update(cue?.message ?? null, area, viewportKey, paused);
   }
   readonly element = document.createElement('aside');
   private readonly fallback = document.createElement('div');

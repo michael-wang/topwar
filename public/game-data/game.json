@@ -331,7 +331,7 @@
     "machineGun": {
       "fireRate": 18,
       "projectileSpeed": 60,
-      "range": 80,
+      "range": 44.25,
       "damageEnemyHp": 1
     },
     "commanderSupport": {
@@ -419,7 +419,7 @@
     "rifle": {
       "fireRate": 3,
       "projectileSpeed": 60,
-      "range": 80
+      "range": 44.25
     }
   },
   "tiers": {

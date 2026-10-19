@@ -44,7 +44,7 @@ describe('runtime Defense config', () => {
     expect(config.getConfig().tiers).toEqual({ mergeCount: 10, tier1Power: 3,
       tier2Power: 300, enemyHigherTierPowerMultiplier: 10, rifleHigherTierPowerMultiplier: 10, normalEnemyRadius: 0.3 });
     expect(config.getConfig().weapon.rifle).toEqual({ fireRate: 3, projectileSpeed: 60,
-      range: 80, tierHitRadiusStep: 0.45, maxHitRadiusBonus: 0.90 });
+      range: 44.25, tierHitRadiusStep: 0.45, maxHitRadiusBonus: 0.90 });
   });
 
   it('rejects obsolete enemy HP and fixed rifle damage fields', () => {

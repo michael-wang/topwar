@@ -27,24 +27,24 @@ async function freeze(page){await page.evaluate(()=>{
  window.__advance=seconds=>{const gpu=a.renderer.renderer,draw=gpu.render;gpu.render=()=>{};try{for(let i=0;i<Math.ceil(seconds*60);i++){window.__stamp+=1000/60;a.renderFrame(window.__stamp);cancelAnimationFrame(a.frameId);}}finally{gpu.render=draw;}a.renderFrame(window.__stamp);cancelAnimationFrame(a.frameId);};
 });}
 async function start(page){await page.getByRole('button',{name:'開始遊戲',exact:true}).tap();await page.waitForFunction(()=>window.__testApp.startup==='started');await freeze(page);await page.locator('.game-start-overlay').waitFor({state:'detached'});}
-async function inspect(page){return page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState(),e=document.querySelector('.field-observer'),r=e.getBoundingClientRect();return{state:JSON.stringify(s),tick:s.tick,elapsed:s.elapsedSeconds,opening:!!a.invasion,seconds:a.openingSeconds,count:a.invasion?.state.enemies.length,paused:a.paused,ships:a.renderer.environment.transports.ships.map(s=>({x:s.position.x,z:s.position.z})),stats:a.renderer.getDebugStats(),panel:{x:r.x,y:r.y,width:r.width,height:r.height},subtitle:e.querySelector('p').textContent,voice:a.audio.voice?.message,red:!!document.querySelector('.opening-alert'),skip:!!document.querySelector('.commander-skip:not([hidden])')};});}
+async function inspect(page){return page.evaluate(()=>{const a=window.__testApp,s=a.simulation.getState(),e=document.querySelector('.field-observer'),r=e.getBoundingClientRect();return{state:JSON.stringify(s),tick:s.tick,elapsed:s.elapsedSeconds,opening:!!a.invasion,seconds:a.openingSeconds,count:a.invasion?.state.enemies.length,paused:a.paused,ships:a.renderer.environment.transports.ships.map(s=>({x:s.position.x,z:s.position.z})),stats:a.renderer.getDebugStats(),panel:{x:r.x,y:r.y,width:r.width,height:r.height},subtitle:e.querySelector('p').textContent,focus:{visible:!!document.querySelector('.commander-focus:not([hidden])'),style:document.querySelector('.commander-focus')?.getAttribute('style')},voice:a.audio.voice?.message,red:!!document.querySelector('.opening-alert'),skip:!!document.querySelector('.commander-skip:not([hidden])')};});}
 async function finish(page){await page.evaluate(()=>{const a=window.__testApp,gpu=a.renderer.renderer,draw=gpu.render;gpu.render=()=>{};try{let n=0;while(a.invasion&&n++<1200)window.__advance(1/60);if(a.invasion)throw Error('Opening hung');}finally{gpu.render=draw;}gpu.render(a.renderer.scene,a.renderer.camera);});}
 try{
  for(const width of [350,390])for(const variant of ['normal','insets','reduced']){
   console.log(`Checking ${width} ${variant}`);
   const page=await pageFor(width,'',variant);const before=await inspect(page);await start(page);
   const phases=[];
-  for(const target of [.6,4.5,5.12,6.9,11.1]){
+  for(const target of [.6,1.7,4.5,5.12,6.9,11.1]){
    await page.evaluate(target=>window.__advance(Math.max(0,target-window.__testApp.openingSeconds)),target);
    const d=await inspect(page);assert.equal(d.state,before.state);assert(d.red);phases.push(d);
    if(variant==='normal'&&width===390)await page.screenshot({path:`${out}/opening-${target}.png`});
   }
-  assert.equal(phases[0].count,0);assert.equal(phases[1].count,0);assert.equal(phases[2].count,1);assert.equal(phases[3].count,6);assert.equal(phases[4].count,16);
-  assert.equal(phases[4].panel.width,310);assert.equal(phases[4].panel.height,88);
+  assert.equal(phases[0].count,0);assert.equal(phases[1].count,0);assert.equal(phases[2].count,0);assert.equal(phases[3].count,1);assert.equal(phases[4].count,6);assert.equal(phases[5].count,16);
+  for(const p of phases.slice(1)){assert(p.focus.visible);assert.equal(p.focus.style,phases[1].focus.style);}assert.equal(phases[4].panel.width,310);assert.equal(phases[4].panel.height,88);
   assert(Math.abs(phases[4].panel.y-(844*.5-41+(variant==='insets'?(24-20)*.5:0)))<.1);
   const resources=await page.evaluate(()=>{const a=window.__testApp,samples=[];for(let i=0;i<12;i++){a.renderer.renderInvasion(a.invasion.sample(11.1),11.1,!!a.reducedMotion?.matches);samples.push(a.renderer.getDebugStats());}return samples;});
   assert.equal(resources[0].geometries,resources.at(-1).geometries);assert.equal(resources[0].textures,resources.at(-1).textures);
-  await finish(page);const handoff=await inspect(page);assert.equal(handoff.state,before.state);assert(!handoff.red&&!handoff.skip);
+  await finish(page);const handoff=await inspect(page);assert.equal(handoff.state,before.state);assert(!handoff.red&&!handoff.skip&&!handoff.focus.visible);
   await page.evaluate(()=>window.__advance(0)); // First regular render remains T=0.
   assert.equal((await inspect(page)).tick,0);
   if(variant==='normal'&&width===390)await page.screenshot({path:`${out}/opening-handoff.png`});
@@ -103,13 +103,13 @@ try{
  results.push({newGameClearsOldProgress:true,noPreludeCheckpoint:true});await savePage.context().close();
  console.log('Checking historical cohorts and A2 reference');
  for(const width of [350,390]) {
-  const page=await pageFor(width,'');await start(page);await page.evaluate(()=>{const a=window.__testApp,c=a.config;a.cancelOpening();a.simulation=new a.simulation.constructor({seed:17476,level:a.level,startSquad:c.player.startSquad,startRocketCount:c.player.startRocketCount,tiers:c.tiers,catharsis:{balance:c.catharsis,trackHalfWidth:c.track.halfWidth}});window.__advance(1);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});
+  const page=await pageFor(width,'');await start(page);await page.evaluate(()=>{const a=window.__testApp,c=a.config;a.cancelOpening();a.config=structuredClone(c);a.config.weapon.rifle.range=80;a.config.catharsis.machineGun.range=80;a.runtimeTuning.bulletRange=80;a.simulation=new a.simulation.constructor({seed:17476,level:a.level,startSquad:c.player.startSquad,startRocketCount:c.player.startRocketCount,tiers:c.tiers,catharsis:{balance:a.config.catharsis,trackHalfWidth:c.track.halfWidth}});window.__advance(1);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});
   const historical=(await inspect(page)).state;assert(JSON.parse(historical).enemies.length>16);
   await page.goto(base);await page.getByRole('button',{name:'繼續上次遊戲',exact:true}).tap();await page.waitForFunction(()=>window.__testApp?.startup==='started');
-  const continued=await inspect(page);assert(continued.paused&&!continued.opening);assert.deepEqual(JSON.parse(continued.state),JSON.parse(historical));
+  assert.equal(await page.evaluate(()=>window.__testApp.runtimeTuning.bulletRange),80);const continued=await inspect(page);assert(continued.paused&&!continued.opening);assert.deepEqual(JSON.parse(continued.state),JSON.parse(historical));
   await page.waitForFunction(()=>!window.__testApp.recovery?.blocking);
   await page.evaluate(()=>{window.__testApp.retry();cancelAnimationFrame(window.__testApp.frameId);});
-  const retried=await inspect(page);assert.equal(JSON.parse(retried.state).enemies.length,16);assert.equal(retried.tick,0);assert(!retried.opening);
+  assert.equal(await page.evaluate(()=>window.__testApp.runtimeTuning.bulletRange),44.25);const retried=await inspect(page);assert.equal(JSON.parse(retried.state).enemies.length,16);assert.equal(retried.tick,0);assert(!retried.opening);
   results.push({width,historicalCohortPreserved:true,retryRealCohort:true});await page.context().close();
  }
  const a2=await pageFor(390,'?opening-review=1&commander-placement=a2');await start(a2);await a2.evaluate(()=>window.__advance(2));
@@ -139,6 +139,6 @@ try{
  const bytes=await video.evaluate(async()=>{window.__recorder.stop();return await window.__recorded;});
  writeFileSync(`${out}/opening-full.webm`,Buffer.from(bytes,'base64'));results.push({audiovisual:true,capture:captureResult.result.value,wallSeconds:(Date.now()-started)/1000});await video.context().close();
  assert.deepEqual(errors,[]);
- writeFileSync(`${out}/index.html`,`<!doctype html><meta charset="utf-8"><title>TopWar P4.44g</title><style>body{background:#102532;color:#f4efdc;font:18px system-ui;margin:24px}video{max-height:844px;max-width:100%;display:block}a{color:#99dfff}</style><h1>P4.44g — Approved Production Opening</h1><p>正式真實初始隊伍 16 人，逐人從浪線上岸，正常速度前進。完整開場與其後 3 秒實際 Gameplay，含遊戲即時音軌。已驗收開場升為正式預設；Pages 尚未部署。</p><video controls preload="metadata" src="opening-full.webm"></video><p><a href="opening-results.json">回歸檢查</a> · <a href="http://localhost:4173/topwar/">無 Query 正式 build 入口</a></p>`);
+ writeFileSync(`${out}/index.html`,`<!doctype html><meta charset="utf-8"><title>TopWar P4.45c</title><style>body{background:#102532;color:#f4efdc;font:18px system-ui;margin:24px}video{max-height:844px;max-width:100%;display:block}a{color:#99dfff}</style><h1>P4.45c — Approved Production Opening</h1><p>正式真實初始隊伍 16 人，逐人從浪線上岸，正常速度前進。完整開場與其後 3 秒實際 Gameplay，含遊戲即時音軌。已驗收開場升為正式預設；Pages 尚未部署。</p><video controls preload="metadata" src="opening-full.webm"></video><p><a href="opening-results.json">回歸檢查</a> · <a href="http://localhost:4173/topwar/">無 Query 正式 build 入口</a></p>`);
 }finally{writeFileSync(`${out}/opening-results.json`,JSON.stringify({results,errors},null,2));await browser.close();if(production)await new Promise(r=>server.httpServer.close(r));else await server.close();}
 console.log(`Opening checks passed: ${results.length} scenarios.`);

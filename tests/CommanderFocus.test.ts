@@ -13,12 +13,14 @@ it('keeps a single stationary area, replaces cues, recalculates resize and clear
     const a = { x: 20, y: 100, width: 90, height: 60 }, b = { ...a, x: 60 };
     focus.update('giant:0', a, '350:844', false);
     expect(host.children).toHaveLength(1); expect(focus.element.hidden).toBe(false);
-    focus.update('giant:0', b, '350:844', true);
+    const probe = vi.fn(() => b);
+    focus.update('giant:0', probe, '350:844', true); expect(probe).not.toHaveBeenCalled();
     expect(focus.element.style.left).toBe('20px');
     expect((focus.element as unknown as Element).attributes['data-paused']).toBe('true');
     focus.update('tankBoss:0', b, '350:844', false); expect(focus.element.style.left).toBe('60px');
     focus.update('tankBoss:0', a, '390:844', false); expect(focus.element.style.left).toBe('20px');
-    focus.update('tankBoss:0', null, '390:844', false); expect(focus.element.hidden).toBe(true);
+    focus.update('tankBoss:0', null, '390:844', false); expect(focus.element.hidden).toBe(false);
+    focus.update('destroyer', null, '390:844', false); expect(focus.element.hidden).toBe(true);
     focus.update('airSupportReady:0', b, '390:844', false);
     focus.update(null, b, '390:844', false); expect(focus.element.hidden).toBe(true);
     focus.clear(); expect(focus.element.hidden).toBe(true);

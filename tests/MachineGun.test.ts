@@ -61,7 +61,7 @@ it('shares lane collisions, one-hit damage and bounded primary projectile semant
   const sim=controlledSimulation(6);step(sim);const bullet=sim.getState().projectiles[0];
   expect(bullet).toMatchObject({kind:'machineGun',tier:1,lane:2,speed:60,damage:config.tiers.tier1Power,
     blastRadius:0,hitRadiusBonus:0,penetrationRemaining:0});
-  expect(bullet.remainingRange).toBeCloseTo(79);
+  expect(bullet.remainingRange).toBeCloseTo(43.25);
   const s=sim.getState();s.enemies=[{id:1,tier:1,archetype:'heavy',lane:2,x:0,z:3,hp:15},
     {id:2,tier:1,archetype:'grunt',lane:1,x:-1.4,z:3,hp:1}];
   s.projectiles=[{...bullet,x:0,z:2.5}];s.weapons.rifleMemberCooldowns=[10];sim.restoreState(s);step(sim);
