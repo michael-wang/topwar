@@ -55,6 +55,7 @@ import { DevGiantReviewControls } from '../ui/DevGiantReviewControls';
 import { BattlefieldDiorama } from '../presentation/BattlefieldDiorama';
 import { MobileFullscreen } from './MobileFullscreen';
 import { openingReviewEnabled } from './openingReview';
+import { prepareOpeningReviewCohort } from './openingReviewCohort';
 import { InvasionPresentation } from '../presentation/InvasionPresentation';
 import { OpeningAlert } from '../ui/OpeningAlert';
 
@@ -449,7 +450,9 @@ export class GameApp {
     if (isPlaytestScene(this.devReviewFixture)) return createPlaytestScenario(options, this.runtimeTuning.fireRate, this.devReviewFixture);
     if (import.meta.env.DEV && this.devReviewFixture)
       return createDevReviewFixture(options, this.runtimeTuning.fireRate, this.devReviewFixture);
-    return new Simulation(options);
+    const simulation = new Simulation(options);
+    if (import.meta.env.DEV && this.openingReview) prepareOpeningReviewCohort(simulation);
+    return simulation;
   }
 
   private startInputs(): void {

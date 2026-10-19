@@ -163,6 +163,8 @@ for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1],['
  await exposeProductionApp(page);
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
  await page.waitForSelector('.game-start-overlay');
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().enemies.length),120,
+   'Production must retain its original initial cohort, including opening-review queries');
  const sha=(await page.locator('.build-label').textContent()).split(' · ').at(-1);
  if(!/^[0-9a-f]{7,40}$/.test(sha))throw Error('Missing build SHA');
  for(const expression of ['neutral','alert']){

@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.44e Opening Art & Audio Refinement (#23) awaits Julia/Owner Pixel 8 review: stronger siren gain and red glow share one cycle; first near-surf walkers obey combat speed, other ranks reveal in place; full Commander is visually centered, with A2 retained as a DEV reference. Approved voices, production behavior and gameplay remain. Warning intersections are reported rather than automatically avoided; no deployment authorization.
+P4.44f True Individual Landings (#23) awaits Julia/Owner Pixel 8 review: DEV-only 16-member real initial cohort, individual surf arrivals and continuous normal-speed handoff into combat. Old 120-person deadline/inland reveals are superseded. Red alert and centered Commander have Owner PASS; preserve them, voices, production defaults and existing waves. No deployment authorization.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 
@@ -22,7 +22,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Julia/Owner review P4.44c A3 opening / A2 combat readability (#23) and P4.43 composition (#22) on Pixel 8; stop implementation after verified prototype delivery. Neither has art PASS.
+1. Julia/Owner review P4.44f individual landings and early combat (#23), plus P4.43 composition (#22), on Pixel 8. Preserve accepted red alert and centered Commander; stop after verified prototype delivery.
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 

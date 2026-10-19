@@ -1,46 +1,30 @@
 import type { EnemyRenderState, GameRenderState } from '../rendering/RenderState';
+import { landingHandoffSeconds, landingSurfZ } from '../app/openingReviewCohort';
 
 type Speeds = { gruntSpeed: number; heavySpeed: number };
-/** Disposable render copies of T=0; never owns a Simulation, RNG or checkpoint. */
+/** Render copies of the real DEV cohort; no ticks, RNG, rewards or extra enemies. */
 export class InvasionPresentation {
-  private firstArrival = 5.1;
-  formationAt = 11.074;
+  formationAt = landingHandoffSeconds;
   readonly poseTimes = new Map<number, number>();
-  setBriefing(start: number, end: number): void {
-    this.firstArrival = Math.max(5.1, start + 2);
-    this.formationAt = end - .35;
-  }
+  setBriefing(_start: number, end: number): void { this.formationAt = end; }
   readonly state: GameRenderState;
   private readonly visible: EnemyRenderState[] = [];
-  private readonly actors: { target: EnemyRenderState; actor: { -readonly [K in keyof EnemyRenderState]: EnemyRenderState[K] }; at: number; walks: boolean; speed: number }[];
+  private readonly actors: { target: EnemyRenderState; actor: { -readonly [K in keyof EnemyRenderState]: EnemyRenderState[K] }; travel: number; speed: number }[];
   constructor(initial: GameRenderState, speeds: Speeds) {
-    const speed = (e: EnemyRenderState) => e.archetype === 'heavy' ? speeds.heavySpeed : speeds.gruntSpeed;
-    // Pick real near-surf destinations reachable even by the sixth arrival.
-    // Far-inland ranks assemble in place; they never sprint to meet a deadline.
-    const reachable = initial.enemies.filter(e => e.z <= 45.5).sort((a,b)=>a.z-b.z || a.id-b.id);
-    const pioneers: EnemyRenderState[] = [];
-    for(let i=0;i<6;i++) {
-      const available = this.formationAt-this.firstArrival-i*.35-.15;
-      const eligible = reachable.filter(e=>!pioneers.includes(e) && 45.5-e.z<=speed(e)*available);
-      const sector = (e: EnemyRenderState) => e.x<-.65?0:e.x>.65?2:1;
-      const next = eligible.find(e=>sector(e)===i%3) ?? eligible[0];
-      if(next)pioneers.push(next);
-    }
-    const ids = new Set(pioneers.map(e=>e.id));
-    const ordered = [...pioneers, ...initial.enemies.filter(e=>!ids.has(e.id)).sort((a,b)=>b.z-a.z || a.id-b.id)];
-    this.actors = ordered.map((target,i) => ({ target, actor: { ...target }, walks: i<pioneers.length, speed: speed(target),
-      at: i < pioneers.length ? i * .35 : 1.9 + ((i-pioneers.length)/Math.max(1,ordered.length-pioneers.length-1)) ** .65 }));
+    this.actors = initial.enemies.map(target => {
+      const speed = target.archetype === 'heavy' ? speeds.heavySpeed : speeds.gruntSpeed;
+      return { target, actor: { ...target }, speed, travel: (landingSurfZ-target.z)/speed };
+    });
     this.state = { ...initial, enemies: this.visible, projectiles: [] };
   }
-  sample(seconds: number, reducedMotion = false): GameRenderState {
+  sample(seconds: number, _reducedMotion = false): GameRenderState {
     this.visible.length = 0;
-    for (const { target, actor, at: admission, walks, speed } of this.actors) {
-      const at = this.firstArrival + (walks ? admission : 1.9 + (admission-1.9) * (this.formationAt-this.firstArrival-2.7));
-      if(seconds < at) continue;
-      const elapsed = seconds-at;
-      actor.x = target.x;
-      actor.z = walks && !reducedMotion ? Math.max(target.z, 45.5-speed*elapsed) : target.z;
-      this.poseTimes.set(actor.id, actor.z > target.z ? elapsed*1000 : 0);
+    const remaining = Math.max(0, this.formationAt-seconds);
+    for (const { target, actor, travel, speed } of this.actors) {
+      if (remaining > travel + 1e-9) continue;
+      actor.z = target.z + speed*remaining;
+      // Phase approaches combat clock zero continuously; reduced motion never teleports troops.
+      this.poseTimes.set(actor.id, -remaining*1000);
       this.visible.push(actor);
     }
     return this.state;
