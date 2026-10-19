@@ -163,8 +163,8 @@ for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1],['
  await exposeProductionApp(page);
  await page.goto(`http://127.0.0.1:5181/topwar/${query}`);await page.waitForSelector('canvas');
  await page.waitForSelector('.game-start-overlay');
- assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().enemies.length),120,
-   'Production must retain its original initial cohort, including opening-review queries');
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().enemies.length),16,
+   'Production must use the approved initial cohort, regardless of obsolete review queries');
  const sha=(await page.locator('.build-label').textContent()).split(' · ').at(-1);
  if(!/^[0-9a-f]{7,40}$/.test(sha))throw Error('Missing build SHA');
  for(const expression of ['neutral','alert']){
@@ -191,7 +191,21 @@ for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1],['
  for(const path of ['game-data/game.json','game-data/levels/level-001.json'])if(!jsonFetches.some(r=>r.url===`/topwar/${manifest[path]}`&&r.cache===undefined))throw Error(`Missing content-addressed fetch: ${path}`);
  await page.screenshot({path:`${out}/production-start-${query.includes('threats')?'threats':query?'normal':'default'}-${width}.png`});
  await page.getByRole('button',{name:'開始遊戲'}).tap();
- // Production ignores DEV review queries; wait for the normal post-start HUD.
+ // The no-query production opening is required; query references do not change it.
+ await page.getByRole('button',{name:'跳過開場簡報，開始遊戲'}).waitFor();
+ assert.equal(await page.locator('.opening-alert').count(),1);
+ await page.waitForFunction(()=>window.__testApp.audio.voice?.source?.buffer?.duration>9);
+ assert(Math.abs(await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration)-9.874270833)<.002);
+ assert.equal(await page.locator('.field-observer p').textContent(),'我是戰區指揮官。');
+ // Preserve the accepted radio slide-in; measure its settled placement.
+ await page.waitForFunction(()=>Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('.field-observer')).transform).m41)<.05);
+ assert(Math.abs(await page.locator('.field-observer').evaluate(e=>e.getBoundingClientRect().y)-(844*.5-41))<.1);
+ assert(Math.abs(await page.locator('.field-observer').evaluate(e=>e.getBoundingClientRect().x)-(width/2-155))<.1);
+ await controlledFrames(page);
+ await page.evaluate(()=>{let n=0;while(window.__testApp.invasion&&n++<1200)window.__advance(1/60);if(window.__testApp.invasion)throw Error('Production opening hung');});
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().enemies.length),16);
+ assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().tick),0);
+ // Original HUD becomes available after the handoff.
  await page.waitForFunction(level=>{
    const valid=!document.querySelector('.game-start-overlay')
      && document.querySelector('.xp-level-number')?.textContent===String(level)
@@ -202,8 +216,6 @@ for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1],['
  const actual=await page.locator('.xp-level-number').textContent();
  if(await page.locator('.observer-languages').count())throw Error('Language selector survived closed-playtest policy');
  if(await page.locator('.field-observer p').getAttribute('lang')!=='zh-TW')throw Error('Observer did not ignore English browser and saved preference');
- assert.equal(await page.locator('.field-observer').evaluate(e=>e.style.left),'');
- assert.equal(await page.locator('.field-observer').evaluate(e=>getComputedStyle(e).left),'12px');
  assert.equal(await page.locator('.opening-alert').count(),0);
  assert.deepEqual(reviewAudioRequests,[], 'Production must never download the DEV intro');
  if(await page.locator('#game-viewport').getAttribute('data-input-presentation')!=='touch'||await page.locator('.combat-keycue:visible').count())throw Error('Production touch Start exposed keyboard hints');

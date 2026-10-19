@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { InvasionPresentation } from '../src/presentation/InvasionPresentation';
-import { prepareOpeningReviewCohort, landingCount, landingHandoffSeconds, landingSurfZ } from '../src/app/openingReviewCohort';
+import { prepareOpeningCohort, landingCount, landingHandoffSeconds, landingSurfZ } from '../src/app/openingCohort';
 import { Simulation } from '../src/simulation/Simulation';
 import { projectRenderState } from '../src/app/projectRenderState';
 import { pilotTuning } from '../scripts/qa/DefensePilot';
@@ -16,7 +16,7 @@ const project = (sim: Simulation) => projectRenderState(sim.getFrameState(), { f
 it.each([17,17476,0xffffffff])('keeps real cohort identities, wave cursors and RNG for seed %s', seed => {
   const sim=make(seed), original=sim.getState();
   expect(original.enemies).toHaveLength(120);
-  prepareOpeningReviewCohort(sim);
+  prepareOpeningCohort(sim);
   const before=sim.getState();
   expect(before.enemies).toHaveLength(landingCount);
   expect({...before,enemies:original.enemies}).toEqual(original);
@@ -27,11 +27,11 @@ it.each([17,17476,0xffffffff])('keeps real cohort identities, wave cursors and R
   expect(sim.getState()).toEqual(restored.getState());
   expect(sim.getState().enemies.filter(e=>e.id>=original.enemyStream!.nextEnemyId)).toHaveLength(24);
   expect(sim.getState().enemies.some(e=>e.id>landingCount&&e.id<original.enemyStream!.nextEnemyId)).toBe(false);
-  const ongoing=sim.getState();prepareOpeningReviewCohort(sim);expect(sim.getState()).toEqual(ongoing);
+  const ongoing=sim.getState();prepareOpeningCohort(sim);expect(sim.getState()).toEqual(ongoing);
 });
 
 it.each([false,true])('admits every enemy at surf, walks continuously and hands off exact T=0 (reduced=%s)', reduced => {
-  const sim=make();prepareOpeningReviewCohort(sim);const before=sim.getState(), projected=project(sim);
+  const sim=make();prepareOpeningCohort(sim);const before=sim.getState(), projected=project(sim);
   for(const end of [landingHandoffSeconds,landingHandoffSeconds+.0002708333,landingHandoffSeconds+2.5]) {
     const opening=new InvasionPresentation(projected,config.catharsis!);opening.setBriefing(end-10.224,end);
     const previous=new Map<number,{x:number;z:number}>();let count=0;

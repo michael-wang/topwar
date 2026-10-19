@@ -1,8 +1,8 @@
 import type { EnemyRenderState, GameRenderState } from '../rendering/RenderState';
-import { landingHandoffSeconds, landingSurfZ } from '../app/openingReviewCohort';
+import { landingHandoffSeconds, landingSurfZ } from '../app/openingCohort';
 
 type Speeds = { gruntSpeed: number; heavySpeed: number };
-/** Render copies of the real DEV cohort; no ticks, RNG, rewards or extra enemies. */
+/** Render copies of the real opening cohort; no ticks, RNG, rewards or extra enemies. */
 export class InvasionPresentation {
   formationAt = landingHandoffSeconds;
   readonly poseTimes = new Map<number, number>();

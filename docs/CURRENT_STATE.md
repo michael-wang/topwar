@@ -3,17 +3,17 @@
 Read only when task scope/status needs orientation, not as another specification.
 
 ## Current and accepted
+- P4.44g / #23: Owner/Julia Pixel 8-approved opening is now the default production and DEV Stage-1 Start, without query. Canonical new voice/subtitles, centered Commander/red alert and 16 real individual landings are promoted unchanged. Continue preserves historical cohorts; Retry starts immediate new combat. Lower Lv1–3 pressure is temporarily accepted. Code implemented; manual Pages deployment pending. See [production phone steps](PIXEL8_DEV_TESTING.md#p444g--approved-production-opening).
 - Portrait mobile-web Beachhead Defense; TypeScript / Vite / Three.js / Vitest. Released Defense checkpoint compatibility remains required.
 - P4.40c / #36 Lightweight Arcade UI is implemented and owner Pixel 8 PASS: floating Start, compact Pause, larger unbacked Boss warning. Accepted Retry/Replay stay unchanged. Mantou titles, Bungee English/acronyms, Commander system-ui.
 
 ## Implemented, acceptance pending
-- P4.44f / #23 is DEV implemented at `?opening-review=1`, awaiting Julia/Owner Pixel 8 individual-landing acceptance. Owner has accepted red alert and centered Commander; landing art remains HOLD. The old 120-enemy formation constraint and inland reveals are removed: a 16-member real near-surf cohort lands individually at normal speed and continues into combat. Existing wave scheduler, production initialization, historical saves, voices and offshore anchors remain. Known centered-card BOSS-label/personal-artillery intersections are unchanged. See [phone steps](PIXEL8_DEV_TESTING.md#p444f--true-individual-landings-dev-review).
 - P4.43 / #22 Aegean Scenic Readability is implemented / awaiting Julia composition review and owner Pixel 8 visual acceptance. P4.42 shared-coast/transition architecture is provisionally retained; its art remains HOLD. Tiered asymmetric Greek side facades, visible terraces/stone steps, fuller olives/sparse flowers, warm sand/wet-shore shading and nearer decorative sentries improve the same idle/combat scene. Continue bypasses idle paused; Retry is immediate.
 - Pending art/VFX includes amplified GIANT smoke/review usability, artillery smoke polish, Hybrid D production, Tracer V5, defeat/Boss/Victory presentation and bomber shadow/audio refinements. Preserve accepted portions; consult task-specific canonical status.
 - Combined production Start/audio/fullscreen and native startup-performance review remain pending.
 
 ## Deferred directions
-P4.43 implements the scenic iteration above; further art iteration requires owner feedback. Opening production promotion and PWA remain unapproved.
+P4.43 implements the scenic iteration above; further art iteration requires owner feedback. Opening promotion is authorized and implemented; Pages deployment still requires separate manual Owner action. PWA remains unapproved.
 
 ## Read only the relevant section
 - Gameplay / saves / startup: [GAME_SPEC](../GAME_SPEC.md).

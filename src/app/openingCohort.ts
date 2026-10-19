@@ -7,8 +7,8 @@ export const landingFirstSeconds = 5.1;
 export const landingIntervalSeconds = .34;
 export const landingCount = 16;
 
-/** Fresh DEV runs only. Keep generated identities, stats, RNG and wave cursors. */
-export function prepareOpeningReviewCohort(simulation: Simulation): void {
+/** Fresh Stage-1 runs only. Keep generated identities, stats, RNG and wave cursors. */
+export function prepareOpeningCohort(simulation: Simulation): void {
   const state = simulation.getState();
   if (!state.catharsis?.balance.defenseMode || state.tick !== 0) return;
   const balance = state.catharsis.balance;

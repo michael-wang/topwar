@@ -54,8 +54,7 @@ import { createQaStressFixture, advanceQaPreparation, qaSimulationTuning } from 
 import { DevGiantReviewControls } from '../ui/DevGiantReviewControls';
 import { BattlefieldDiorama } from '../presentation/BattlefieldDiorama';
 import { MobileFullscreen } from './MobileFullscreen';
-import { openingReviewEnabled } from './openingReview';
-import { prepareOpeningReviewCohort } from './openingReviewCohort';
+import { prepareOpeningCohort } from './openingCohort';
 import { InvasionPresentation } from '../presentation/InvasionPresentation';
 import { OpeningAlert } from '../ui/OpeningAlert';
 
@@ -119,7 +118,6 @@ export class GameApp {
   private startGeneration = 0;
   private diorama: BattlefieldDiorama | null = null;
   private idleAgeMs = 0;
-  private readonly openingReview = openingReviewEnabled();
   private invasion: InvasionPresentation | null = null;
   private openingAlert: OpeningAlert | null = null;
   private openingSeconds = 0;
@@ -411,7 +409,6 @@ export class GameApp {
     this.damageFlash.reset();
     this.fieldObserver?.reset();
     this.audio.resetObservation();
-    if (this.startup === 'started' && !this.devReviewFixture && !this.openingReview) this.fieldObserver?.startMission(initialState.elapsedSeconds);
     this.xpHud?.reset();
     this.battleInfo?.reset();
     this.supplyTransfer?.reset();this.grenadeButton?.reset(); this.manualSupportButton?.reset();
@@ -451,7 +448,7 @@ export class GameApp {
     if (import.meta.env.DEV && this.devReviewFixture)
       return createDevReviewFixture(options, this.runtimeTuning.fireRate, this.devReviewFixture);
     const simulation = new Simulation(options);
-    if (import.meta.env.DEV && this.openingReview) prepareOpeningReviewCohort(simulation);
+    if (this.level.id === 'level-001') prepareOpeningCohort(simulation);
     return simulation;
   }
 
@@ -521,7 +518,7 @@ export class GameApp {
     this.viewport.classList?.remove('game-attract');
     this.audio.resetObservation();
     this.startup = 'started';
-    if (import.meta.env.DEV && this.openingReview && !this.restored && !this.devReviewFixture && !this.giantReview && this.config.catharsis?.defenseMode) {
+    if (!this.restored && !this.devReviewFixture && !this.giantReview && this.config.catharsis?.defenseMode) {
       const state = this.simulation.getFrameState();
       this.invasion = new InvasionPresentation(projectRenderState(state, {
         formationSpacing: this.config.player.formationSpacing, trackHalfWidth: this.config.track.halfWidth,
@@ -531,7 +528,7 @@ export class GameApp {
       this.openingAlert = new OpeningAlert(this.viewport);
       this.viewport.classList?.add('game-opening');
       this.fieldObserver?.startOpening(this.skipOpening);
-    } else if (!this.restored && !this.devReviewFixture) this.fieldObserver?.startMission(this.simulation.getFrameState().elapsedSeconds);
+    }
     this.startOverlay.finish();
     if (this.hidden || this.contextLost) this.setPaused(true);
     this.startInputs();
@@ -725,7 +722,7 @@ export class GameApp {
         return;
       } catch { this.showCheckpointFailure('無法恢復進度，請重新開始'); }
     }
-    if (!this.openingReview) clearCheckpoint(this.checkpointStorage);
+    clearCheckpoint(this.checkpointStorage);
     this.startup = 'awaiting-start'; this.showReady();
   };
 

@@ -1,19 +1,25 @@
-// Real GameApp/Simulation; instrumentation is confined to intercepted DEV responses.
+// Real GameApp/Simulation; instrumentation is confined to intercepted test-browser responses.
 import assert from 'node:assert/strict';
-import {createServer} from 'vite';
+import {createServer,preview} from 'vite';
+import {exposeProductionApp} from './production-app-hook.mjs';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const {chromium}=await import(process.env.TOPWAR_PLAYWRIGHT_MODULE??'file:///C:/Users/USER/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
-const out=process.argv[2]??'artifacts/p4.44f';mkdirSync(out,{recursive:true});
-const server=await createServer({server:{host:'127.0.0.1',port:5177,strictPort:true}});await server.listen();
+const production=process.env.TOPWAR_PRODUCTION==='1';
+const out=process.argv[2]??'artifacts/p4.44g/'+(production?'production':'dev');mkdirSync(out,{recursive:true});
+const server=production?await preview({preview:{host:'127.0.0.1',port:5177,strictPort:true}}):await createServer({server:{host:'127.0.0.1',port:5177,strictPort:true}});if(!production)await server.listen();
+const base='http://127.0.0.1:5177/'+(production?'topwar/':'');
 const browser=await chromium.launch({headless:true,executablePath:process.env.TOPWAR_CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--window-size=500,1000','--auto-select-tab-capture-source-by-title=TopWar','--enable-usermedia-screen-capturing','--allow-http-screen-capture','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const results=[];const errors=[];
-async function pageFor(width,query='?opening-review=1',variant='normal',video=false){
+async function pageFor(width,query='',variant='normal',video=false){
  const context=await browser.newContext({viewport:{width,height:844},isMobile:variant!=='recording',hasTouch:true,reducedMotion:variant==='reduced'?'reduce':'no-preference',...(video?{recordVideo:{dir:out,size:{width,height:844}}}:{})});const page=await context.newPage();
  page.on('pageerror',e=>errors.push(e.message));
+ if(production)await exposeProductionApp(page,body=>body.replace(/crypto\.getRandomValues\((\w+)\)/g,'($1[0]=17476)'));
+ if(!production){
  await page.route(/\/src\/main\.ts(?:\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('app = new GameApp(','app = window.__testApp = new GameApp(')});});
  await page.route(/\/src\/app\/GameApp\.ts(?:\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('crypto.getRandomValues(randomWord);','randomWord[0] = 17476;')});});
- if(variant==='insets')await page.route(/\/src\/style\.css(?:\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace(/env\(safe-area-inset-top(?:,[^)]*)?\)/g,'24px').replace(/env\(safe-area-inset-bottom(?:,[^)]*)?\)/g,'20px')});});
- await page.goto(`http://127.0.0.1:5177/${query}`);await page.getByRole('button',{name:'開始遊戲',exact:true}).waitFor();await page.evaluate(()=>document.fonts.ready);
+ }
+ if(variant==='insets')await page.route(/\/(?:src\/style|assets\/index-[^/]+)\.css(?:\?.*)?$/,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace(/env\(safe-area-inset-top(?:,[^)]*)?\)/g,'24px').replace(/env\(safe-area-inset-bottom(?:,[^)]*)?\)/g,'20px')});});
+ await page.goto(base+query);await page.getByRole('button',{name:'開始遊戲',exact:true}).waitFor();await page.evaluate(()=>document.fonts.ready);
  return page;
 }
 async function freeze(page){await page.evaluate(()=>{
@@ -26,7 +32,7 @@ async function finish(page){await page.evaluate(()=>{const a=window.__testApp,gp
 try{
  for(const width of [350,390])for(const variant of ['normal','insets','reduced']){
   console.log(`Checking ${width} ${variant}`);
-  const page=await pageFor(width,'?opening-review=1',variant);const before=await inspect(page);await start(page);
+  const page=await pageFor(width,'',variant);const before=await inspect(page);await start(page);
   const phases=[];
   for(const target of [.6,4.5,5.12,6.9,11.1]){
    await page.evaluate(target=>window.__advance(Math.max(0,target-window.__testApp.openingSeconds)),target);
@@ -76,7 +82,7 @@ try{
  }
  console.log('Checking review bypass and original Boss route');
  const fixtures=await pageFor(390);await start(fixtures);
- for(const fixture of ['naval','boss-intro','air-support','victory','giant']){
+ for(const fixture of (production?['naval','boss-intro','air-support','victory']:['naval','boss-intro','air-support','victory','giant'])){
   await fixtures.evaluate(fixture=>{const a=window.__testApp;a.devReviewFixture=fixture;a.retry();cancelAnimationFrame(a.frameId);window.__advance(1.2);},fixture);
   const d=await inspect(fixtures);assert(!d.opening&&!d.red);assert.notEqual(d.voice,'missionIntro');
   if(fixture==='giant'){
@@ -88,18 +94,18 @@ try{
   results.push({fixture,bypasses:true,ships:d.ships});
  }
  await fixtures.context().close();
- console.log('Checking save preservation and Continue');
- // Preserve an older valid checkpoint while a fresh trial intro is unsaved.
+ console.log('Checking deliberate New Game clears old progress');
  const savePage=await pageFor(390);await start(savePage);await finish(savePage);await savePage.evaluate(()=>{window.__advance(1);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});
- await savePage.reload();await savePage.getByRole('button',{name:'重新開始',exact:true}).waitFor();
- const stored=await savePage.evaluate(()=>JSON.stringify({...localStorage}));
- await savePage.getByRole('button',{name:'重新開始',exact:true}).tap();await savePage.getByRole('button',{name:'開始遊戲',exact:true}).waitFor();await start(savePage);await savePage.evaluate(()=>{window.__advance(3);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});assert.equal(await savePage.evaluate(()=>JSON.stringify({...localStorage})),stored);
- await savePage.reload();await savePage.getByRole('button',{name:'繼續上次遊戲',exact:true}).tap();await savePage.waitForFunction(()=>window.__testApp?.startup==='started');assert((await inspect(savePage)).paused);assert(!(await inspect(savePage)).opening);results.push({oldCheckpointPreserved:true,continueBypassesPaused:true});await savePage.context().close();
+ await savePage.reload();await savePage.getByRole('button',{name:'重新開始',exact:true}).tap();await savePage.getByRole('button',{name:'開始遊戲',exact:true}).waitFor();await start(savePage);
+ await savePage.evaluate(()=>{window.__advance(3);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});
+ assert.equal(await savePage.evaluate(()=>localStorage.getItem('topwar:session:v1:'+(location.pathname.startsWith('/topwar/')?'release':'dev'))),null);
+ await savePage.reload();await savePage.getByRole('button',{name:'開始遊戲',exact:true}).waitFor();assert.equal(await savePage.locator('.session-recovery').count(),0);
+ results.push({newGameClearsOldProgress:true,noPreludeCheckpoint:true});await savePage.context().close();
  console.log('Checking historical cohorts and A2 reference');
  for(const width of [350,390]) {
-  const page=await pageFor(width,'');await start(page);await page.evaluate(()=>{window.__advance(1);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});
+  const page=await pageFor(width,'');await start(page);await page.evaluate(()=>{const a=window.__testApp,c=a.config;a.cancelOpening();a.simulation=new a.simulation.constructor({seed:17476,level:a.level,startSquad:c.player.startSquad,startRocketCount:c.player.startRocketCount,tiers:c.tiers,catharsis:{balance:c.catharsis,trackHalfWidth:c.track.halfWidth}});window.__advance(1);window.__testApp.setPaused(true);window.__testApp.saveCheckpoint('pause');});
   const historical=(await inspect(page)).state;assert(JSON.parse(historical).enemies.length>16);
-  await page.goto('http://127.0.0.1:5177/?opening-review=1');await page.getByRole('button',{name:'繼續上次遊戲',exact:true}).tap();await page.waitForFunction(()=>window.__testApp?.startup==='started');
+  await page.goto(base);await page.getByRole('button',{name:'繼續上次遊戲',exact:true}).tap();await page.waitForFunction(()=>window.__testApp?.startup==='started');
   const continued=await inspect(page);assert(continued.paused&&!continued.opening);assert.deepEqual(JSON.parse(continued.state),JSON.parse(historical));
   await page.waitForFunction(()=>!window.__testApp.recovery?.blocking);
   await page.evaluate(()=>{window.__testApp.retry();cancelAnimationFrame(window.__testApp.frameId);});
@@ -107,10 +113,10 @@ try{
   results.push({width,historicalCohortPreserved:true,retryRealCohort:true});await page.context().close();
  }
  const a2=await pageFor(390,'?opening-review=1&commander-placement=a2');await start(a2);await a2.evaluate(()=>window.__advance(2));
- const reference=await inspect(a2);assert(Math.abs(reference.panel.y-844*.56)<.1);assert.equal(reference.panel.width,310);assert.equal(reference.panel.height,88);results.push({a2Preserved:true});await a2.context().close();
+ const reference=await inspect(a2);assert(Math.abs(reference.panel.y-(production?844*.5-41:844*.56))<.1);assert.equal(reference.panel.width,310);assert.equal(reference.panel.height,88);results.push({a2Preserved:true});await a2.context().close();
  console.log('Recording continuous opening');
  // Capture actual viewport frames + the live WebAudio master on one MediaRecorder clock.
- const video=await pageFor(390,'?opening-review=1','recording');
+ const video=await pageFor(390,'','recording');
  // Windowed portrait capture avoids Chrome mobile-emulation fullscreen scaling.
  await video.evaluate(()=>{Element.prototype.requestFullscreen=()=>Promise.reject(new Error('Windowed QA recording'));});
  const captureSession=await video.context().newCDPSession(video);
@@ -133,6 +139,6 @@ try{
  const bytes=await video.evaluate(async()=>{window.__recorder.stop();return await window.__recorded;});
  writeFileSync(`${out}/opening-full.webm`,Buffer.from(bytes,'base64'));results.push({audiovisual:true,capture:captureResult.result.value,wallSeconds:(Date.now()-started)/1000});await video.context().close();
  assert.deepEqual(errors,[]);
- writeFileSync(`${out}/index.html`,`<!doctype html><meta charset="utf-8"><title>TopWar P4.44f</title><style>body{background:#102532;color:#f4efdc;font:18px system-ui;margin:24px}video{max-height:844px;max-width:100%;display:block}a{color:#99dfff}</style><h1>P4.44f — True Individual Landings</h1><p>DEV 真實初始隊伍 16 人，逐人從浪線上岸，正常速度前進。完整開場與其後 3 秒實際 Gameplay，含遊戲即時音軌。正式版不變；Pixel 8 敵軍登陸藝術驗收待定。</p><video controls preload="metadata" src="opening-full.webm"></video><p><a href="opening-results.json">回歸檢查</a> · <a href="http://localhost:5173/?opening-review=1">Pixel 8 DEV 入口</a></p>`);
-}finally{writeFileSync(`${out}/opening-results.json`,JSON.stringify({results,errors},null,2));await browser.close();await server.close();}
+ writeFileSync(`${out}/index.html`,`<!doctype html><meta charset="utf-8"><title>TopWar P4.44g</title><style>body{background:#102532;color:#f4efdc;font:18px system-ui;margin:24px}video{max-height:844px;max-width:100%;display:block}a{color:#99dfff}</style><h1>P4.44g — Approved Production Opening</h1><p>正式真實初始隊伍 16 人，逐人從浪線上岸，正常速度前進。完整開場與其後 3 秒實際 Gameplay，含遊戲即時音軌。已驗收開場升為正式預設；Pages 尚未部署。</p><video controls preload="metadata" src="opening-full.webm"></video><p><a href="opening-results.json">回歸檢查</a> · <a href="http://localhost:4173/topwar/">無 Query 正式 build 入口</a></p>`);
+}finally{writeFileSync(`${out}/opening-results.json`,JSON.stringify({results,errors},null,2));await browser.close();if(production)await new Promise(r=>server.httpServer.close(r));else await server.close();}
 console.log(`Opening checks passed: ${results.length} scenarios.`);

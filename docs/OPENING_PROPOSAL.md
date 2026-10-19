@@ -1,3 +1,4 @@
+> Historical proposal, superseded by the accepted P4.44g production contract in [GAME_SPEC.md](../GAME_SPEC.md).
 > Historical concept / Red Alert proposed, not current implementation order. Current P4.39 Diorama is implemented but not owner-approved; the agreed future calm Greek coast direction is not implemented. See [current state](CURRENT_STATE.md). The body below is retained as historical context.
 
 # Opening experience — Diorama implemented; Red Alert PROPOSED — NOT APPROVED FOR PRODUCTION

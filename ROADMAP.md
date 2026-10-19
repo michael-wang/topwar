@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.44f True Individual Landings (#23) awaits Julia/Owner Pixel 8 review: DEV-only 16-member real initial cohort, individual surf arrivals and continuous normal-speed handoff into combat. Old 120-person deadline/inland reveals are superseded. Red alert and centered Commander have Owner PASS; preserve them, voices, production defaults and existing waves. No deployment authorization.
+P4.44g (#23): Owner/Julia-approved P4.44f opening promoted to normal production/DEV Start without query; canonical voice, centered Commander, red alert and 16 real landings. Continue preserves history; Retry is immediate. Production code implemented; manual Pages deployment pending. Lower Lv1–3 pressure is temporarily accepted, with no rebalance in this release.
 
 P4.40c lightweight UI (#36) is implemented and owner Pixel 8 PASS. Preserve its accepted Start, Pause, Boss warning and Retry/Replay treatment.
 
@@ -22,13 +22,13 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Julia/Owner review P4.44f individual landings and early combat (#23), plus P4.43 composition (#22), on Pixel 8. Preserve accepted red alert and centered Commander; stop after verified prototype delivery.
+1. Review remaining public-playtest release blockers and manual launch checklist; do not reopen approved opening art.
 2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
 3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
 
 ## LATER
 
-- Promote the DEV opening (#23) only after Julia/Owner acceptance and explicit release direction. PWA/installed mode remains a separate future decision.
+- Holistic difficulty review, including temporarily accepted Lv1–3 pressure. PWA/installed mode remains a separate future decision.
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.

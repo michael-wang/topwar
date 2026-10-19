@@ -1,7 +1,5 @@
 import { CommanderComms } from '../presentation/CommanderComms';
-import { openingReviewTiming, giantVoiceTiming } from '../presentation/ObserverTimeline';
-import { observerOpeningDialogue } from './observerLocale';
-import { openingReviewEnabled } from '../app/openingReview';
+import { giantVoiceTiming } from '../presentation/ObserverTimeline';
 import type { SimulationFrameState } from '../simulation/SimulationState';
 import { ObserverPortraits, type PreparedObserverPortraits, type ObserverExpression } from './ObserverPortraits';
 import { observerEmblem } from './observerEmblem';
@@ -46,8 +44,7 @@ export class FieldObserver {
   get supportNoticeComplete(): boolean { return this.manualNoticeElapsed || this.comms.hasCompleted('airSupportReady'); }
   private finaleClock = false;
   private readonly tankTimeline = new ObserverTimeline();
-  private readonly missionTimeline = new MissionObserverTimeline();
-  private readonly openingTimeline = new MissionObserverTimeline(openingReviewTiming);
+  private readonly openingTimeline = new MissionObserverTimeline(missionIntroTiming);
   private readonly giantTimeline = new MissionObserverTimeline(giantVoiceTiming);
   openingWindow: { start: number; end: number } | null = null;
   private openingSkip: (() => void) | null = null;
@@ -64,20 +61,17 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'airSupport');
     this.audio.prepareRadio(this.locale, 'giant');
     this.element.className = 'field-observer'; this.element.hidden = true;
-    // Reversible placement trial only; production retains the authored upper slot.
+    // Accepted full portrait/plaque center; optional historical DEV references only.
+    this.element.style.left = 'max(12px, calc(50% - 155px))';
+    this.element.style.top = 'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)';
     if (import.meta.env.DEV) {
       const reference = new URLSearchParams(window.location?.search).get('commander-placement');
-      const placement = openingReviewEnabled() ? reference === 'a2' ? 'a2' : 'center' : reference;
+      const placement = reference;
       const height = placement === 'a' ? 64 : placement === 'a1' ? 58 : placement === 'a2' ? 56 : null;
       if (height !== null) {
         this.element.style.left = 'max(12px, calc(50% - 155px))';
         // Retain A's inset compensation so only the requested percentage differs.
         this.element.style.top = `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)`;
-      }
-      if (placement === 'center') {
-        this.element.style.left = 'max(12px, calc(50% - 155px))';
-        // Center the plaque + protruding bust (bounds -14..96), not its top edge.
-        this.element.style.top = 'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)';
       }
     }
     this.element.setAttribute('aria-live', 'polite');
@@ -101,16 +95,10 @@ export class FieldObserver {
     this.text.textContent = this.message === 'airSupport' || this.message === 'airSupportReady' || this.message === 'airSupportCalled'
       ? observerAirSupportDialogue[this.locale][this.phrase] : this.message === 'giant'
       ? observerSupportDialogue[this.message][this.locale] : this.message === 'missionIntro'
-      ? (this.openingSkip ? observerOpeningDialogue : observerMissionDialogue)[this.locale][this.phrase] : this.message === 'victory'
+      ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'victory'
         ? observerVictoryDialogue[this.locale][this.phrase] : this.message === 'tankBoss'
         ? observerTankDialogue[this.locale] : observerDialogue[this.locale];
     this.text.lang = this.locale;
-  }
-  startMission(now: number): void {
-    this.reset();
-    // Only an explicit fresh attempt can arm the intro. Restoring a snapshot is
-    // never a new mission, and a completed intro stays retired after rewinds.
-    if (now === 0) this.missionTimeline.start(now);
   }
   startOpening(skip: () => void): void {
     this.reset(); this.openingSkip = skip; this.openingTimeline.start(0);
@@ -135,15 +123,6 @@ export class FieldObserver {
     if (state?.status === 'active') this.audio.prepareRadio(this.locale, 'destroyer');
     const navalFrame = this.timeline.update(state, config, now, alive);
     let message: ObserverMessage = 'destroyer';
-    if (this.missionTimeline.active) {
-      if (!alive) this.missionTimeline.reset();
-      else {
-        const audioReady = this.audio.prepareRadio(this.locale, 'missionIntro');
-        const intro = this.missionTimeline.update(now, alive, paused, audioReady,
-          this.portraits.readiness === 'pending', this.audio.radioDurationSeconds?.(this.locale, 'missionIntro') ?? null);
-        if (intro.owns) { message = 'missionIntro'; requests.push({ frame: intro, message }); }
-      }
-    }
     const tankFrame = this.tankTimeline.updateWindow(tank?.startedAtSeconds ?? null, tankIntroTiming.atSeconds,
       tankIntroTiming.durationSeconds, now, alive && !!tank && tank.status !== 'defeated');
 
@@ -207,7 +186,7 @@ export class FieldObserver {
   private present(frame: ReturnType<ObserverTimeline['updateWindow']>, message: ObserverMessage, _now: number, paused: boolean): void {
     if (message === 'victory' && frame.visible) this.victoryPresented = true;
     if (message === 'airSupportReady' && frame.visible) this.manualNoticePresented = true;
-    const timing = message === 'victory' ? victoryTiming : this.openingSkip ? openingReviewTiming : missionIntroTiming;
+    const timing = message === 'victory' ? victoryTiming : missionIntroTiming;
     const phrase = message === 'airSupportCalled' ? 1 : message === 'airSupport' ? Number(frame.offset >= airSupportTiming.phraseAtSeconds) : message === 'missionIntro' || message === 'victory'
       ? timing.phraseAtSeconds.reduce<number>((index, at, i) => frame.offset >= at * (this.openingSkip ? 1 : frame.duration / timing.durationSeconds) ? i : index, 0) : 0;
     if (message !== this.message) this.presented = false;
@@ -243,7 +222,7 @@ export class FieldObserver {
   reset(): void {
     this.openingTimeline.reset(); this.openingSkip = null; this.openingWindow = null; this.giantTimeline.reset();
     this.skip.textContent = '略過'; this.skip.removeAttribute('aria-label');
-    this.timeline.reset(); this.tankTimeline.reset(); this.missionTimeline.reset();
+    this.timeline.reset(); this.tankTimeline.reset();
     this.victoryTimeline.reset(); this.victoryStarted = false; this.victoryFinished = false; this.skip.hidden = true;
     this.victoryPresented = false;
     this.comms.reset(); this.observedSupport = false; this.giantAt = this.airAt = null; this.finaleClock = false;

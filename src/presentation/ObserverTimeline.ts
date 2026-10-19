@@ -2,9 +2,7 @@ import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 
 // Subtitle-only defaults; decoded Commander recordings determine their complete window.
-export const missionIntroTiming = { atSeconds: .2, durationSeconds: 10.54,
-  readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 2.06, 6.14, 8.48] } as const;
-export const openingReviewTiming = { atSeconds: 1.2, durationSeconds: 10.224,
+export const missionIntroTiming = { atSeconds: 1.2, durationSeconds: 10.224,
   readinessWaitSeconds: 2.5, phraseAtSeconds: [0, 1.88, 5.12, 7.63] } as const;
 export const giantVoiceTiming = { atSeconds: 0, durationSeconds: 4.712, readinessWaitSeconds: 2.5 } as const;
 export const victoryTiming = { atSeconds: 0, durationSeconds: 9.03,

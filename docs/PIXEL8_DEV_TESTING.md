@@ -31,16 +31,16 @@ This changes only the existing Commander anchor in DEV. Production ignores the q
 
 Desktop evidence can be regenerated with `node scripts/qa/commander-placement.mjs`. Ignored `artifacts/p4.44b/index.html` presents only two contact sheets (normal/upgraded squad and Boss/artillery warnings), with complete 390×844 game frames in A/A1/A2 columns. `results.json` records both 350×844 and 390×844, five settled physical lanes, expanded movement hit areas, and samples through the artillery emergency window. Safe-area checks simulate 24px top / 20px bottom with fullscreen/reduced motion; desktop evidence does not establish physical phone acceptance.
 
-## P4.44f — True individual landings DEV review
+## P4.44g — Approved production opening
 
-Red alert and centered Commander have Owner Pixel 8 PASS. Enemy landing art remains HOLD; this trial needs Julia/Owner acceptance. Production ignores the query.
+The approved P4.44f staging is now normal behavior. No query or DEV menu is needed. Lower Lv1–3 pressure is temporarily accepted; this is production integration validation, not another art trial. Pages has not been deployed.
 
-1. In `C:\astra-dev\topwar`, run `npm run dev -- --port 5173 --strictPort`. With USB debugging authorized, run `adb devices`, then `adb reverse tcp:5173 tcp:5173`.
-2. Open **http://localhost:5173/?opening-review=1** in Pixel 8 Chrome. Choose `重新開始` if offered, then tap `開始遊戲`. Ships stop near 4.5s; the first enemy crosses the surf near 5.1s, then one every .34s across left/center/right. The 16 real enemies keep walking at normal speed, and are the same enemies attacked after the full briefing. No inland reveals or 120-person refill. Audio loading can shift arrivals later, preserving the same combat configuration.
-3. Watch through at least 3 seconds of combat: the handoff itself must not add/remove enemies. The unchanged ordinary scheduler adds its first 24-enemy wave at combat 1.667s; distinguish that existing wave from the handoff and report any objectionable crowd appearance. Play 30–60 seconds to judge XP, pressure and mowing satisfaction; the smaller start intentionally reduces initial density and may ease early pressure.
-4. Reload and try Skip, Pause/Resume and app switching. Skip cuts to the same real cohort after about .2s. Continue restores the saved cohort paused without an opening; Retry starts immediate combat using the trial cohort policy. Older saves remain intact during an unfinished new prelude. Remove the query for the original game. Approved voices, red pulse and centered portrait are unchanged; `&commander-placement=a2` remains a reference. Known BOSS/personal-artillery overlap is outside this task.
+1. In `C:\astra-dev\topwar`, run `npm run build`, then `npx vite preview --host 127.0.0.1 --port 4173 --strictPort`.
+2. With USB debugging authorized, run `adb reverse tcp:4173 tcp:4173`. Open **http://localhost:4173/topwar/** in Pixel 8 Chrome, without a query. DEV uses `npm run dev -- --port 5173 --strictPort` and **http://localhost:5173/** with the equivalent port forwarding.
+3. Choose `重新開始` if offered, then tap `開始遊戲`. Full approved briefing, canonical new recording, red pulse, centered portrait, three offshore ships and 16 individual landings run by default. The same enemies continue into combat. Existing first ordinary wave still adds 24 at combat 1.667s.
+4. Verify Skip, Pause/Resume and app switching. Deliberate New Game clears old progress immediately and writes no checkpoint during the opening; reload during it starts fresh. Continue restores saved state paused without cinematic, including historical 120-person states. Retry starts current 16-person combat immediately. The four shared encounter entries retain their native behavior.
 
-`node scripts/qa/opening-prototype.mjs` checks 350/390 widths, safe insets, reduced motion, lifecycle and restores, and records the actual viewport with its live WebAudio master through the first 3 combat seconds. Review `artifacts/p4.44f/index.html`; capture targets 30fps but actual software-rendered rate varies. Desktop evidence is not Pixel 8 acceptance. No Pages publishing.
+`TOPWAR_PRODUCTION=1 node scripts/qa/opening-prototype.mjs` (set the environment variable using your shell) runs no-query production opening/lifecycle regression at 350/390 widths with safe insets and reduced motion, and records live audio through the first combat seconds. Without the variable it checks DEV. Evidence: `artifacts/p4.44g/production/index.html`. Known Commander/BOSS/personal-warning intersections are unchanged. No Pages publishing is implied.
 
 ## Optional: trusted HTTPS over LAN
 

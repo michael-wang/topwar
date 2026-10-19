@@ -19,16 +19,15 @@ import { emptyCommanderSupport } from '../src/simulation/commanderSupport';
 import { CommanderComms } from '../src/presentation/CommanderComms';
 const state = { status: 'active' as const, startedAtSeconds: 0, nextShotIndex: 0 };
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-it('retains approved MP3 bytes and gates the new intro selection to DEV review', () => {
+it('uses the approved canonical intro bytes in development and production', () => {
   for (const [name, hash] of [
-    ['commander_stage1_intro_review_zh-TW.mp3', 'f5b80857ad41dfd1fd97f16210f319b3a8b41b106a7f8998b7d6d2b28c912a1f'],
     ['commander_giant_warning_zh-TW.mp3', '60c991c1d29632fd809343cec61b26c3aa691e183cf61855f05b1294b7b32db9'],
-    ['commander_stage1_intro_zh-TW.mp3', '57accbe2425b421369639802e15da432c9cf241fd538a51f129fbdaf8a377506'],
+    ['commander_stage1_intro_zh-TW.mp3', 'f5b80857ad41dfd1fd97f16210f319b3a8b41b106a7f8998b7d6d2b28c912a1f'],
   ]) expect(createHash('sha256').update(readFileSync(`public/audio/${name}`)).digest('hex')).toBe(hash);
   vi.spyOn(publicAssets, 'hasPublicAsset').mockReturnValue(true);
   vi.stubGlobal('window', { location: { search: '?opening-review=1' } });
   vi.stubEnv('DEV', true);
-  expect(observerVoiceAsset('zh-TW', 'missionIntro')).toContain('intro_review');
+  expect(observerVoiceAsset('zh-TW', 'missionIntro')).toBe('audio/commander_stage1_intro_zh-TW.mp3');
   vi.stubEnv('DEV', false);
   expect(observerVoiceAsset('zh-TW', 'missionIntro')).toBe('audio/commander_stage1_intro_zh-TW.mp3');
   vi.unstubAllEnvs();
@@ -113,30 +112,28 @@ it.each([0,.5,1,2])('starts a ready mission recording at offset zero after %ss p
   for(let tick=0;tick<900;tick++){
     const now=tick/60,frame=t.update(now,true,false,now>=readyAt?'ready':'pending');
     if(frame.begin){beginCount++;start=now;expect(frame.offset).toBe(0);expect(frame.audible).toBe(true);}
-    if(now<Math.max(.2,readyAt))expect(frame.visible).toBe(false);
+    if(now<Math.max(1.2,readyAt))expect(frame.visible).toBe(false);
   }
-  expect(beginCount).toBe(1);expect(start).toBeCloseTo(Math.max(.2,readyAt));expect(t.active).toBe(false);
+  expect(beginCount).toBe(1);expect(start).toBeCloseTo(Math.max(1.2,readyAt));expect(t.active).toBe(false);
 });
 it('bounds intro waiting, chooses subtitle-only once and refuses late speech after fallback or completion',()=>{
   const t=new MissionObserverTimeline();t.start(0);let began=0;
   for(let tick=0;tick<960;tick++){
     const now=tick/60,frame=t.update(now,true,false,now>=4?'ready':'pending');
-    if(frame.begin){began++;expect(now).toBeCloseTo(.2+missionIntroTiming.readinessWaitSeconds);}
+    if(frame.begin){began++;expect(now).toBeCloseTo(1.2+missionIntroTiming.readinessWaitSeconds);}
     expect(frame.audible).toBe(false);
   }
   expect(began).toBe(1);expect(t.update(1,true,false,'ready').visible).toBe(false);
 });
-it('freezes readiness wait and speech on Pause; Retry cancels either phase and starts a fresh attempt',()=>{
-  const t=new MissionObserverTimeline();t.start(0);
-  for(let tick=0;tick<=60;tick++)t.update(tick/60,true,false,'pending');
-  for(let n=0;n<200;n++)expect(t.update(1,true,true,'ready').visible).toBe(false);
-  const begun=t.update(1,true,false,'ready');expect(begun).toMatchObject({begin:true,offset:0,audible:true});
-  expect(t.update(1.1,true,true,'ready').offset).toBeCloseTo(.1);
-  expect(t.update(1.1,true,false,'ready').offset).toBeCloseTo(.1);
-  t.start(0);expect(t.update(0,true,false,'ready').visible).toBe(false);
-  expect(t.update(.2,true,false,'ready')).toMatchObject({begin:true,offset:0});
-  t.start(0);t.update(.1,true,false,'pending');t.start(0);
-  expect(t.update(.2,true,false,'ready')).toMatchObject({begin:true,offset:0});
+it('freezes readiness and resumes speech without restarting the opening clock',()=>{
+ const t=new MissionObserverTimeline();t.start(0);
+ for(let tick=0;tick<=72;tick++)t.update(tick/60,true,false,'pending');
+ for(let n=0;n<30;n++)expect(t.update(1.2,true,true,'ready').visible).toBe(false);
+ expect(t.update(1.2,true,false,'ready')).toMatchObject({begin:true,offset:0,audible:true});
+ expect(t.update(1.3,true,true,'ready').offset).toBeCloseTo(.1);
+ expect(t.update(1.3,true,false,'ready').offset).toBeCloseTo(.1);
+ t.start(0);let starts=0;for(let tick=0;tick<=72;tick++)starts+=Number(t.update(tick/60,true,false,'ready').begin);
+ expect(starts).toBe(1);
 });
 it('fetches cold files before activation without creating audio sources, reuses warm bytes, and tolerates missing audio',async()=>{
   const bytes=new ArrayBuffer(8),fetcher=vi.fn(async()=>({ok:true,arrayBuffer:async()=>bytes}));
@@ -285,11 +282,11 @@ it.each(['ready','pending','unavailable'] as const)('runs the full opening once 
   ui.update(undefined,undefined,0,true,false);expect(ui.element.hidden).toBe(true);
   ui.dispose();
 });
-it('centers the opening-review bust/plaque while retaining the A2 reference and ordinary upper slot',()=>{
+it('centers the default bust/plaque and retains the DEV A2 reference',()=>{
   vi.stubEnv('DEV',true);
   for(const query of ['?opening-review=1','?opening-review=1&commander-placement=a2','']) {
     const {ui}=missionUi(readyPortraits(),query);
-    expect(ui.element.style.top).toBe(query.endsWith('a2')?'calc(56% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)':query?'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)':undefined);
+    expect(ui.element.style.top).toBe(query.endsWith('a2')?'calc(56% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)':'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)');
     const top=ui.element.style.top;ui.startOpening(()=>{});ui.reset();expect(ui.element.style.top).toBe(top);ui.dispose();
   }
   vi.unstubAllEnvs();
@@ -300,9 +297,9 @@ it('opts into Commander A only in DEV with the exact query, without changing com
     for (const search of ['', '?commander-placement=b', '?commander-placement=A1', '?commander-placement=a', '?commander-placement=a1', '?commander-placement=a2']) {
       const {ui, audio} = missionUi(readyPortraits(), search);
       const height = dev ? ({a:64,a1:58,a2:56} as Record<string,number>)[search.split('=')[1]] : undefined;
-      expect(ui.element.style.left).toBe(height ? 'max(12px, calc(50% - 155px))' : undefined);
+      expect(ui.element.style.left).toBe('max(12px, calc(50% - 155px))');
       expect(ui.element.style.top).toBe(height
-        ? `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)` : undefined);
+        ? `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)` : 'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)');
       expect(audio.prepareRadio).toHaveBeenCalledTimes(5);
       for (const message of ['missionIntro', 'tankBoss', 'victory', 'airSupport'])
         expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', message);
@@ -363,48 +360,10 @@ it('shares the slow siren period with smooth full-field light and holds reduced-
   expect(tankAlarmGlow(0, false)).toBeGreaterThan(tankAlarmGlow(TANK_ALARM_PERIOD_SECONDS / 2, false));
   expect(tankAlarmGlow(0, true)).toBe(tankAlarmGlow(.375, true));
 });
-it('waits for decoded portraits before starting all parts of the mission at offset zero', () => {
-  let ready = false;
-  const prepared = readyPortraits();
-  const {ui,audio} = missionUi({ get readiness() { return ready ? 'ready' : 'pending'; }, get: e => ready ? prepared.get(e) : null });
-  ui.startMission(0);
-  for (let tick=0; tick<90; tick++) ui.update(undefined,undefined,tick/60,true,false);
-  expect(ui.element.hidden).toBe(true);expect(audio.play).not.toHaveBeenCalled();
-  ready=true;ui.update(undefined,undefined,1.5,true,false);
-  expect(ui.element.hidden).toBe(false);expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
-  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',0,false,10.54,'missionIntro']);ui.dispose();
-});
-it('keeps ready speech with an emblem at the portrait deadline, freezes it, and reuses portraits on Retry', () => {
-  let ready = false;
-  const prepared = readyPortraits();
-  const {ui,audio} = missionUi({ get readiness() { return ready ? 'ready' : 'pending'; }, get: e => ready ? prepared.get(e) : null });
-  ui.startMission(0);
-  for (let tick=0; tick<190; tick++) ui.update(undefined,undefined,tick/60,true,false);
-  expect(ui.element.hidden).toBe(false);
-  expect((ui as any).portrait.className).toBe('observer-fallback');
-  const firstSpeech = audio.syncRadio.mock.calls.find(call=>call[1]!==null);
-  expect(firstSpeech).toEqual(['zh-TW',0,false,10.54,'missionIntro']);
-  ready=true;
-  for (let tick=190; tick<530; tick++) ui.update(undefined,undefined,tick/60,true,false);
-  expect((ui as any).portrait.className).toBe('observer-fallback');
-  expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
-  ui.startMission(0);for(let tick=0;tick<20;tick++)ui.update(undefined,undefined,tick/60,true,false);
-  expect(ui.element.hidden).toBe(false);expect((ui as any).portrait.className).not.toBe('observer-fallback');
-  expect(audio.play).toHaveBeenCalledTimes(2);ui.dispose();
-});
-it('queues Destroyer communication behind a playing mission recording even without portraits', () => {
-  const {ui,audio,text}=missionUi({readiness:'unavailable',get:()=>null});ui.startMission(0);
-  for(let tick=0;tick<120;tick++)ui.update(state,config,tick/60,true,false);
-  expect(ui.element.hidden).toBe(false);expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);
-  for(let tick=120;tick<690;tick++)ui.update(state,config,tick/60,true,false);
-  expect(text()).toBe(observerDialogue['zh-TW']);
-  expect((ui as any).portrait.className).toBe('observer-fallback');
-  expect(audio.syncRadio.mock.lastCall?.[1]).not.toBeNull();ui.dispose();
-});
 it('makes the audio decision independently when portraits remain pending at the deadline', () => {
   for(const readiness of ['ready','pending','unavailable'] as const){
     const t=new MissionObserverTimeline();t.start(0);let first:any;
-    for(let tick=0;tick<180;tick++){const f=t.update(tick/60,true,false,readiness,true);if(f.begin)first=f;}
+    for(let tick=0;tick<240;tick++){const f=t.update(tick/60,true,false,readiness,true);if(f.begin)first=f;}
     expect(first).toMatchObject({visible:true,begin:true,offset:0,audible:readiness==='ready'});
   }
 });
@@ -424,46 +383,7 @@ it('uses the Commander script and never requests absent optional recordings', as
     voice.sync('zh-TW',0,false,20,message);
   }
   expect(loader).not.toHaveBeenCalled();expect(nodes).toHaveLength(0);voice.dispose();
-  expect(observerMissionDialogue['zh-TW']).toEqual(['這裡是海防指揮部。','其他防線已經失守，灘頭只剩你們這支部隊。','這裡是港口最後一道防線。','無論如何，守住它！']);
-});
-it('presents four mission phrases once, freezes with Pause and restarts only on a fresh attempt',()=>{
-  const {ui,audio,text}=missionUi();ui.startMission(0);
-  const shown=new Set<string>();
-  for(let tick=0;tick<780;tick++){
-    ui.update(undefined,undefined,tick/60,true,false);
-    if(!ui.element.hidden)shown.add(text());
-    if(tick===60){
-      for(let n=0;n<30;n++)ui.update(undefined,undefined,1,true,true);
-      expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);
-      expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',.8,true,10.54,'missionIntro']);
-    }
-  }
-  expect([...shown]).toEqual(observerMissionDialogue['zh-TW']);
-  expect(audio.play.mock.calls).toEqual([['radioOpen'],['radioClose']]);
-  expect(ui.element.hidden).toBe(true);
-  for(let tick=0;tick<180;tick++)ui.update(undefined,undefined,tick/60,true,false);
-  expect(ui.element.hidden).toBe(true);expect(audio.play).toHaveBeenCalledTimes(2);
-  ui.startMission(0);for(let tick=0;tick<60;tick++)ui.update(undefined,undefined,tick/60,true,false);
-  expect(audio.play).toHaveBeenCalledTimes(3);expect(ui.element.hidden).toBe(false);ui.dispose();
-});
-it('restores mid-intro as Chinese subtitles without repeated speech',()=>{
-  const {ui,audio,text}=missionUi();ui.startMission(0);ui.update(undefined,undefined,2.5,true,false);
-  expect(ui.element.hidden).toBe(false);expect(audio.play).not.toHaveBeenCalled();
-  expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false,10.54,'missionIntro']);
-  expect(text()).toBe(observerMissionDialogue['zh-TW'][1]);
-  ui.reset();ui.update(undefined,undefined,3,true,false);expect(ui.element.hidden).toBe(true);
-  ui.startMission(10);ui.update(undefined,undefined,10,true,false);expect(ui.element.hidden).toBe(true);
-  ui.startMission(0);for(let tick=0;tick<20;tick++)ui.update(undefined,undefined,tick/60,true,false);
-  ui.update(undefined,undefined,.35,false,false);expect(ui.element.hidden).toBe(true);ui.dispose();
-});
-it('keeps the opening syllable when a render frame crosses the cue and resumes from that same voice clock',()=>{
-  const {ui,audio}=missionUi();ui.startMission(0);
-  ui.update(undefined,undefined,.1,true,false);ui.update(undefined,undefined,.3,true,false);
-  expect(audio.syncRadio.mock.lastCall?.[1]).toBe(0);
-  ui.update(undefined,undefined,.35,true,true);
-  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(.05);
-  ui.update(undefined,undefined,.35,true,false);
-  expect(audio.syncRadio.mock.lastCall?.[1]).toBeCloseTo(.05);ui.dispose();
+  expect(observerMissionDialogue['zh-TW']).toEqual(['我是戰區指揮官。','目前偵測到大批敵軍正從海上逼近。','我會提供關鍵的情報與支援。','讓我們一起守住這座港口！']);
 });
 it('keeps mission and naval recordings distinct, cancels delayed old dialogue and caches each recording once',async()=>{
   const {context,nodes}=audioHarness();let resolve!: (b:AudioBuffer)=>void;
@@ -492,7 +412,7 @@ it.each(['en-US','zh-CN','ja','zh-TW'])('ignores %s browser language and saved E
   expect(audio.play).toHaveBeenCalledExactlyOnceWith('radioOpen');
   ui.update(state,config,119/60,true,true);expect(audio.syncRadio.mock.lastCall?.[2]).toBe(true);
   ui.reset();expect(ui.element.hidden).toBe(true);expect(audio.syncRadio.mock.lastCall).toEqual(['zh-TW',null,false]);
-  ui.startMission(0);for(let tick=0;tick<60;tick++)ui.update(undefined,undefined,tick/60,true,false);
+  ui.startOpening(()=>{});for(let tick=0;tick<90;tick++)ui.updateOpening(tick/60,false);
   expect((ui.element as unknown as ElementStub).children[1].textContent).toBe(observerMissionDialogue['zh-TW'][0]);
   expect(audio.syncRadio.mock.calls.every(call=>call[0]==='zh-TW')).toBe(true);ui.dispose();
 });
@@ -518,8 +438,8 @@ it('completes all Victory phrases without media, freezes during Pause, and lets 
   ui.reset();expect(ui.updateVictory(0,false)).toBe(false);
   expect((ui as any).skip.hidden).toBe(false);(ui as any).skip.onclick();
   expect(ui.updateVictory(.1,false)).toBe(true);expect(ui.element.hidden).toBe(true);
-  ui.startMission(0);ui.update(undefined,undefined,0,true,false);ui.update(undefined,undefined,.2,true,false);
-  expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);expect((ui as any).skip.hidden).toBe(true);ui.dispose();
+  ui.startOpening(()=>{});ui.updateOpening(0,false);for(let tick=1;tick<=72;tick++)ui.updateOpening(tick/60,false);
+  expect(text()).toBe(observerMissionDialogue['zh-TW'][0]);expect((ui as any).skip.hidden).toBe(false);ui.dispose();
 });
 
 it('latches the presentation cease-fire boundary at visible subtitle start even when voice is late or unavailable',()=>{
@@ -535,10 +455,10 @@ it('uses actual Commander audio length for subtitle progression and completion, 
   for(const message of ['missionIntro','victory'] as const){
     const {ui,audio,text}=missionUi();audio.radioDurationSeconds.mockReturnValue(15.2);
     const shown=new Set<string>();
-    if(message==='missionIntro')ui.startMission(0);
-    for(let tick=0;tick<970;tick++){
+    if(message==='missionIntro')ui.startOpening(()=>{});
+    for(let tick=0;tick<1050;tick++){
       const now=tick/60;
-      if(message==='victory')ui.updateVictory(now,false);else ui.update(undefined,undefined,now,true,false);
+      if(message==='victory')ui.updateVictory(now,false);else ui.updateOpening(now,false);
       if(!ui.element.hidden)shown.add(text());
       if(tick===850){expect(ui.element.hidden).toBe(false);expect(audio.syncRadio.mock.lastCall![3]).toBeCloseTo(15.55);}
     }
@@ -560,7 +480,7 @@ it('prepares optional voice only when present, exposes decoded duration and resu
 });
 
 it.each([
-  ['missionIntro','audio/commander_stage1_intro_zh-TW.mp3','57accbe2425b421369639802e15da432c9cf241fd538a51f129fbdaf8a377506',10.188,missionIntroTiming],
+  ['missionIntro','audio/commander_stage1_intro_zh-TW.mp3','f5b80857ad41dfd1fd97f16210f319b3a8b41b106a7f8998b7d6d2b28c912a1f',9.874270833,missionIntroTiming],
   ['victory','audio/commander_stage1_victory_zh-TW.mp3','d25277d0217f81128fde4f00246b0ee4f330f507343fa68a589ed1f2c9e2a81b',8.673,victoryTiming],
 ] as const)('bundles the approved %s bytes and plays its complete duration across Pause/Resume and Retry',async(message,asset,hash,duration,timing)=>{
   expect(observerVoiceAsset('zh-TW',message)).toBe(asset);

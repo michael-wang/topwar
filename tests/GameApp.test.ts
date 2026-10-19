@@ -20,10 +20,12 @@ vi.mock('../src/ui/QaPanel', () => ({ QaPanel: class {
   open() {} setStatus() {} setWake() {} refreshCheckpoint() {} dispose() {}
 } }));
 vi.mock('../src/app/DevLifecycle', () => ({ DevLifecycle: class { record() {} dispose() {} } }));
+vi.mock('../src/app/openingCohort', async original => ({ ...await original<typeof import('../src/app/openingCohort')>(), prepareOpeningCohort: vi.fn() }));
+vi.mock('../src/ui/OpeningAlert', () => ({ OpeningAlert: class { update() {} dispose() {} } }));
 vi.mock('../src/ui/FieldObserver', () => ({ FieldObserver: class {
   updateVictory(now: number, paused: boolean) { return mock.victory(now, paused); }
   finishCombat() {} victoryCheckpoint() { return undefined; } restoreVictory() {}
-  update() {} reset() {} restore() {} dispose() {} startMission(now: number) { mock.missionIntro(now); }
+  update() {} reset() {} restore() {} dispose() {} startOpening() { mock.missionIntro(0); } updateOpening() { return true; }
 } }));
 vi.mock('../src/ui/GameStartOverlay', () => ({ GameStartOverlay: class {
   constructor(_viewport: unknown, start: unknown) { mock.startConstructed(start); }
@@ -143,6 +145,7 @@ vi.mock('../src/rendering/GameRenderer', () => ({
   GameRenderer: class {
     render = mock.render;
     renderDiorama = mock.dioramaRender;
+    renderInvasion = vi.fn(); finishInvasion = vi.fn();
     beginDioramaTransition = vi.fn();
     present = mock.present;
     presentGrenade = vi.fn();
@@ -291,6 +294,8 @@ function createRaf() {
 async function startGame(app: GameApp): Promise<void> {
   app.start();
   await (app as unknown as { beginGameplay(): Promise<void> }).beginGameplay();
+  // Combat-focused unit cases complete the separately tested opening boundary.
+  (app as any).cancelOpening(); (app as any).startInputs();
 }
 
 it('isolates GIANT review from normal checkpoints through pause, Retry, lifecycle and disposal', async () => {
@@ -340,18 +345,19 @@ it('suspends and checkpoints hidden/frozen pages without replacing the simulatio
   document.dispatchEvent(new Event('freeze')); expect(localStorage.getItem('topwar:session:v1:dev')).toBeNull();
 });
 
-it('starts the mission intro only after activation, rearms Retry, and keeps isolated DEV fixtures unchanged',async()=>{
+it('starts the mission intro only after activation, bypasses Retry, and keeps isolated DEV fixtures unchanged',async()=>{
   const raf=createRaf();
   const config={...gameData,catharsis:CatharsisConfigSchema.parse(gameData.catharsis)} as unknown as GameConfig;
+  const base=mock.getState();mock.getState.mockReturnValue({...base,catharsis:{balance:config.catharsis!,trackHalfWidth:config.track.halfWidth}});
   const viewport=Object.assign(new EventTarget(),{classList:{add:vi.fn(),remove:vi.fn(),toggle:vi.fn()}});
   const store={getConfig:()=>config,subscribe:()=>()=>{}} as unknown as ConfigStore;
   const app=new GameApp(viewport as unknown as HTMLElement,store,level,{} as CharacterAssets);
   app.start();raf.frame(0);expect(mock.missionIntro).not.toHaveBeenCalled();
   await startGame(app);expect(mock.missionIntro).toHaveBeenCalledOnce();
   raf.frame(100);raf.frame(100+1000/60);expect(mock.step).toHaveBeenCalled();
-  const retry=mock.overlayConstructedWith.mock.lastCall![0];retry();expect(mock.missionIntro).toHaveBeenCalledTimes(2);
-  const select=mock.reviewConstructed.mock.lastCall![0];select('naval');expect(mock.missionIntro).toHaveBeenCalledTimes(2);
-  app.dispose();
+  const retry=mock.overlayConstructedWith.mock.lastCall![0];retry();expect(mock.missionIntro).toHaveBeenCalledTimes(1);
+  const select=mock.reviewConstructed.mock.lastCall![0];select('naval');expect(mock.missionIntro).toHaveBeenCalledTimes(1);
+  app.dispose();mock.getState.mockReturnValue(base);
 });
 
 afterEach(() => {
@@ -1267,7 +1273,7 @@ it('keeps the decorative Defense tableau silent, bounded, hidden-aware and indep
     expect(mock.dioramaRender.mock.lastCall![1]).toBe(ageBeforeSleep);
     mock.startConstructed.mock.lastCall![0]('touch');await Promise.resolve();
     expect(mock.resetFeedback).toHaveBeenCalledOnce();expect(mock.missionIntro).toHaveBeenCalledOnce();
-    raf.frame(31000);raf.frame(31020);expect(mock.step).toHaveBeenCalled();
+    raf.frame(31000);raf.frame(31020);raf.frame(31040);expect(mock.step).toHaveBeenCalled();
     const drawsAtStart=mock.dioramaRender.mock.calls.length;
     mock.overlayConstructedWith.mock.lastCall![0]();raf.frame(32000);
     expect(mock.dioramaRender).toHaveBeenCalledTimes(drawsAtStart);

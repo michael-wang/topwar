@@ -1,7 +1,6 @@
 import { publicAssetUrl, hasPublicAsset } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
 import { airSupportVoiceSegment } from '../ui/observerLocale';
-import { openingReviewEnabled } from '../app/openingReview';
 
 // User-approved provisional Mandarin recording; English awaits an approved asset.
 export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
@@ -22,7 +21,6 @@ export const observerAirSupportVoiceAssets: Readonly<Record<ObserverLocale, stri
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
   if (message === 'giant') return locale === 'zh-TW' ? 'audio/commander_giant_warning_zh-TW.mp3' : null;
-  if (message === 'missionIntro' && openingReviewEnabled()) return locale === 'zh-TW' ? 'audio/commander_stage1_intro_review_zh-TW.mp3' : null;
   if (message === 'airSupport' || airSupportVoiceSegment(message)) return hasPublicAsset(observerAirSupportVoiceAssets[locale] ?? '') ? observerAirSupportVoiceAssets[locale] : null;
   const asset = (message === 'victory' ? observerVictoryVoiceAssets : message === 'tankBoss' ? observerTankVoiceAssets
     : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];

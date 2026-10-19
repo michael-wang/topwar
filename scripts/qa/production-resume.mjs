@@ -13,6 +13,8 @@ try { for (const width of [350, 390]) {
   await exposeProductionApp(page);
   await page.goto('http://127.0.0.1:5186/topwar/'); await page.getByRole('button', { name: '開始遊戲' }).tap();
   await page.waitForFunction(() => window.__testApp.startup === 'started');
+  await page.getByRole('button',{name:'跳過開場簡報，開始遊戲'}).tap();
+  await page.waitForFunction(()=>!window.__testApp.invasion);
   await page.evaluate(() => cancelAnimationFrame(window.__testApp.frameId));
   assert.equal(await page.locator('.dev-fps,.dev-wake-status,.qa-panel,.dev-advanced,.dev-survival-test').count(), 0);
   const saved = await page.evaluate(() => {
@@ -40,6 +42,7 @@ try { for (const width of [350, 390]) {
     return first === canonical(sim.getState());
   }, saved); assert(identical);
   await page.evaluate(() => window.__testApp.retry()); assert.equal(await page.evaluate(() => localStorage.getItem('topwar:session:v1:release')), null);
+  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().enemies.length),16);assert.equal(await page.locator('.opening-alert').count(),0);
   assert.deepEqual(errors, []); results.push({ width, restored: true, paused: true, identical, devExcluded: true, characters: text.length, errors });
   await page.close();
 } } finally { writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2)); await browser.close(); await new Promise(r => server.httpServer.close(r)); }
