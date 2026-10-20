@@ -49,7 +49,7 @@ it('keeps Return usable when the browser rejects playback', async () => {
   dialog.children[2].dispatchEvent(new Event('click')); expect(dialog.open).toBe(false); overlay.dispose();
 });
 
-it('uses front-walk sprites for Giant, Heavy and each separate Grunt, retaining collaboration art', () => {
+it('uses front-walk sprites for all five groups, including the approved collaboration animation', () => {
   const { overlay, dialog } = setup();
   const rows = dialog.children[1].children;
   expect(rows[0].className).toBe('credits-producer');
@@ -61,6 +61,8 @@ it('uses front-walk sprites for Giant, Heavy and each separate Grunt, retaining 
     expect(row.children[0].style.backgroundImage).toContain('grunt-front-walk');
     expect(row.children[0].setAttribute).toHaveBeenCalledWith('aria-label','GRUNT');
   }
-  expect((rows[4].children[0] as unknown as {src:string}).src).toContain('art/victory/commander-soldier');
+  expect(rows[4].children[0].className).toBe('credits-sprite');
+  expect(rows[4].children[0].style.backgroundImage).toContain('art/credits/collab-front-walk');
+  expect(rows[4].children[0].setAttribute).toHaveBeenCalledWith('aria-label','Julia、扣碟子');
   overlay.dispose();
 });

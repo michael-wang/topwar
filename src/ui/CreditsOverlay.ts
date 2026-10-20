@@ -5,8 +5,7 @@ const people = [
   ['音樂', '阿弘', 'art/credits/heavy-front-walk.webp', 'music'],
   ['測試', '阿翔', 'art/credits/grunt-front-walk.webp', 'test-xiang'],
   ['測試、點子', '小楷甯', 'art/credits/grunt-front-walk.webp', 'test-kai'],
-  // Owner-approved static collaboration illustration.
-  ['協作', 'Julia、扣碟子', 'art/victory/commander-soldier.webp', 'collab'],
+  ['協作', 'Julia、扣碟子', 'art/credits/collab-front-walk.webp', 'collab'],
 ] as const;
 
 /** Idle-only presentation: owns no game clock, checkpoint or shared audio state. */
@@ -43,17 +42,12 @@ export class CreditsOverlay {
     header.append(brand, title);
     const cast = document.createElement('div'); cast.className = 'credits-cast';
     for (const [role, name, asset, section] of people) {
-      const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement(section === 'collab' ? 'img' : 'span');
+      const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement('span');
       label.textContent = role; person.textContent = name;
       row.className = `credits-${section}`;
-      if (section === 'collab') {
-        const portrait = image as HTMLImageElement;
-        portrait.src = publicAssetUrl(asset); portrait.alt = ''; portrait.draggable = false;
-      } else {
-        image.className = 'credits-sprite'; image.setAttribute('role', 'img');
-        image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : 'GRUNT');
-        image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
-      }
+      image.className = 'credits-sprite'; image.setAttribute('role', 'img');
+      image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : section === 'collab' ? name : 'GRUNT');
+      image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
       row.append(image, label, person); cast.append(row);
     }
     this.dialog.append(header, cast, this.back); viewport.append(this.button, this.dialog);
