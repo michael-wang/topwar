@@ -1,6 +1,7 @@
 @font-face {
   font-family: 'Mantou Sans';
-  src: url('/fonts/mantou-sans/MantouSans-Regular.ttf') format('truetype');
+  src: url('/fonts/mantou-sans/MantouSans-Regular.woff2') format('woff2'),
+    url('/fonts/mantou-sans/MantouSans-Regular.ttf') format('truetype');
   font-style: normal;
   font-weight: 400;
   font-display: swap;
