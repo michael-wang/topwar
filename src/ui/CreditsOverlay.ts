@@ -1,10 +1,10 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
 
 const people = [
-  ['遊戲製作', '疾如風', 'art/observer/neutral.webp'],
-  ['音樂', '阿弘', 'art/victory/commander-soldier.webp'],
-  ['測試、點子', '阿翔、小楷甯', 'art/observer/alert.webp'],
-  ['協作', 'Julia、扣碟子', 'art/victory/commander-soldier.webp'],
+  ['遊戲製作', '疾如風', 'art/credits/giant-walk.webp', 'producer'],
+  ['音樂', '阿弘', 'art/credits/heavy.webp', 'music'],
+  ['測試、點子', '阿翔、小楷甯', 'art/credits/grunt.webp', 'test'],
+  ['協作', 'Julia、扣碟子', 'art/victory/commander-soldier.webp', 'collab'],
 ] as const;
 
 /** Idle-only presentation: owns no game clock, checkpoint or shared audio state. */
@@ -40,11 +40,17 @@ export class CreditsOverlay {
     brand.textContent = 'TOPWAR'; title.textContent = '製作名單'; title.id = 'credits-title';
     header.append(brand, title);
     const cast = document.createElement('div'); cast.className = 'credits-cast';
-    for (const [role, name, asset] of people) {
-      const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement('img');
+    for (const [role, name, asset, section] of people) {
+      const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement(section === 'producer' ? 'span' : 'img');
       label.textContent = role; person.textContent = name;
-      image.src = publicAssetUrl(asset); image.alt = ''; image.draggable = false;
-      image.className = asset.includes('victory') ? 'credits-duo' : 'credits-portrait';
+      row.className = `credits-${section}`;
+      if (section !== 'producer') {
+        const portrait = image as HTMLImageElement;
+        portrait.src = publicAssetUrl(asset); portrait.alt = section === 'music' ? 'HEAVY' : section === 'test' ? 'GRUNT' : ''; portrait.draggable = false;
+      } else {
+        image.className = 'credits-giant'; image.setAttribute('role', 'img'); image.setAttribute('aria-label', 'GIANT');
+        image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
+      }
       row.append(image, label, person); cast.append(row);
     }
     this.dialog.append(header, cast, this.back); viewport.append(this.button, this.dialog);

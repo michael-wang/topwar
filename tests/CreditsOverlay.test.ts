@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { CreditsOverlay } from '../src/ui/CreditsOverlay';
 
 class Element extends EventTarget {
+  style = { backgroundImage: '' };
   children: Element[] = []; open = false; textContent = ''; className = ''; focus = vi.fn(); remove = vi.fn();
   setAttribute = vi.fn();
   append(...children: Element[]) { this.children.push(...children); }
@@ -46,4 +47,16 @@ it('keeps Return usable when the browser rejects playback', async () => {
   Music.reject = true;
   entry.dispatchEvent(new Event('click')); await Promise.resolve();
   dialog.children[2].dispatchEvent(new Event('click')); expect(dialog.open).toBe(false); overlay.dispose();
+});
+
+it('uses Giant locomotion, Heavy and Grunt while retaining the approved collaboration illustration', () => {
+  const { overlay, dialog } = setup();
+  const rows = dialog.children[1].children;
+  expect(rows[0].className).toBe('credits-producer');
+  expect(rows[0].children[0].style.backgroundImage).toContain('art/credits/giant-walk');
+  expect(rows[0].children[0].setAttribute).toHaveBeenCalledWith('aria-label','GIANT');
+  const art = rows.slice(1).map(row => (row.children[0] as unknown as {src:string}).src);
+  expect(art[0]).toContain('art/credits/heavy'); expect(art[1]).toContain('art/credits/grunt');
+  expect(art[2]).toContain('art/victory/commander-soldier');
+  overlay.dispose();
 });
