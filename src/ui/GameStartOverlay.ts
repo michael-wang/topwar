@@ -1,8 +1,11 @@
+import { CreditsOverlay } from './CreditsOverlay';
+
 // One accessible gesture surface owns startup; removed after activation, including
 // the failure path. Audio and simulation remain owned by GameApp.
 export class GameStartOverlay {
   private button: HTMLButtonElement | null = null;
   private removalTimer: ReturnType<typeof setTimeout> | null = null;
+  private credits: CreditsOverlay | null = null;
 
   constructor(private readonly viewport: HTMLElement,
     private readonly start: (presentation: 'desktop' | 'touch') => void = () => {}) {}
@@ -22,10 +25,12 @@ export class GameStartOverlay {
     button.append(text);
     this.viewport.append(button);
     this.button = button;
+    if (!review) this.credits = new CreditsOverlay(this.viewport);
     button.focus({ preventScroll: true });
   }
 
   setActivating(): void {
+    this.credits?.dispose(); this.credits = null;
     this.button?.classList.add('is-activating');
     this.button?.setAttribute('aria-busy', 'true');
     if (this.button) this.button.disabled = true;
@@ -39,6 +44,7 @@ export class GameStartOverlay {
   }
 
   dispose(): void {
+    this.credits?.dispose(); this.credits = null;
     if (this.removalTimer !== null) clearTimeout(this.removalTimer);
     this.removalTimer = null;
     this.button?.remove();

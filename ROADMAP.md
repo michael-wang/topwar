@@ -24,7 +24,7 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Owner supplies public Credits names and approves placement (#15); implement the small credits view.
+1. Owner reviews implemented P4.48 idle Credits (#15) layout/music/Return on Pixel 8; approved names are integrated.
 2. Owner validates combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); observe late-play heat without speculative optimization.
 3. After gates pass, Owner chooses a reviewed SHA for manual Pages publication and a short HTTPS Start/Continue/assets smoke.
 

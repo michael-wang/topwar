@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 const stylesheet: string = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
 import { afterEach, expect, it, vi } from 'vitest';
 import { GameStartOverlay } from '../src/ui/GameStartOverlay';
+vi.mock('../src/ui/CreditsOverlay', () => ({ CreditsOverlay: class { dispose = vi.fn(); } }));
 
 class Element extends EventTarget {
   type = ''; className = ''; textContent = ''; disabled = false; removed = false;
