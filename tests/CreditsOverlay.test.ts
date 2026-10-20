@@ -26,7 +26,7 @@ it('preserves approved names, opens only on a gesture and returns without any ga
   const { overlay, entry, dialog } = setup();
   expect(Music.instances).toHaveLength(0);
   expect(dialog.children[1].children.map(row => row.children.slice(1).map(e => e.textContent)))
-    .toEqual([['遊戲製作','疾如風'],['音樂','阿弘'],['測試、點子','阿翔、小楷甯'],['協作','Julia、扣碟子']]);
+    .toEqual([['遊戲製作','疾如風'],['音樂','阿弘'],['測試','阿翔'],['測試、點子','小楷甯'],['協作','Julia、扣碟子']]);
   entry.dispatchEvent(new Event('click'));
   expect(dialog.open).toBe(true); expect(Music.instances[0].src).toContain('stage1-complete');
   expect(Music.instances[0].play).toHaveBeenCalledOnce();
@@ -49,14 +49,18 @@ it('keeps Return usable when the browser rejects playback', async () => {
   dialog.children[2].dispatchEvent(new Event('click')); expect(dialog.open).toBe(false); overlay.dispose();
 });
 
-it('uses Giant locomotion, Heavy and Grunt while retaining the approved collaboration illustration', () => {
+it('uses front-walk sprites for Giant, Heavy and each separate Grunt, retaining collaboration art', () => {
   const { overlay, dialog } = setup();
   const rows = dialog.children[1].children;
   expect(rows[0].className).toBe('credits-producer');
-  expect(rows[0].children[0].style.backgroundImage).toContain('art/credits/giant-walk');
+  expect(rows[0].children[0].style.backgroundImage).toContain('art/credits/giant-front-walk');
   expect(rows[0].children[0].setAttribute).toHaveBeenCalledWith('aria-label','GIANT');
-  const art = rows.slice(1).map(row => (row.children[0] as unknown as {src:string}).src);
-  expect(art[0]).toContain('art/credits/heavy'); expect(art[1]).toContain('art/credits/grunt');
-  expect(art[2]).toContain('art/victory/commander-soldier');
+  expect(rows).toHaveLength(5);
+  expect(rows[1].children[0].style.backgroundImage).toContain('heavy-front-walk');
+  for (const row of rows.slice(2,4)) {
+    expect(row.children[0].style.backgroundImage).toContain('grunt-front-walk');
+    expect(row.children[0].setAttribute).toHaveBeenCalledWith('aria-label','GRUNT');
+  }
+  expect((rows[4].children[0] as unknown as {src:string}).src).toContain('art/victory/commander-soldier');
   overlay.dispose();
 });

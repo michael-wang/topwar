@@ -1,9 +1,11 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
 
 const people = [
-  ['遊戲製作', '疾如風', 'art/credits/giant-walk.webp', 'producer'],
-  ['音樂', '阿弘', 'art/credits/heavy.webp', 'music'],
-  ['測試、點子', '阿翔、小楷甯', 'art/credits/grunt.webp', 'test'],
+  ['遊戲製作', '疾如風', 'art/credits/giant-front-walk.webp', 'producer'],
+  ['音樂', '阿弘', 'art/credits/heavy-front-walk.webp', 'music'],
+  ['測試', '阿翔', 'art/credits/grunt-front-walk.webp', 'test-xiang'],
+  ['測試、點子', '小楷甯', 'art/credits/grunt-front-walk.webp', 'test-kai'],
+  // Owner-approved static collaboration illustration.
   ['協作', 'Julia、扣碟子', 'art/victory/commander-soldier.webp', 'collab'],
 ] as const;
 
@@ -41,14 +43,15 @@ export class CreditsOverlay {
     header.append(brand, title);
     const cast = document.createElement('div'); cast.className = 'credits-cast';
     for (const [role, name, asset, section] of people) {
-      const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement(section === 'producer' ? 'span' : 'img');
+      const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement(section === 'collab' ? 'img' : 'span');
       label.textContent = role; person.textContent = name;
       row.className = `credits-${section}`;
-      if (section !== 'producer') {
+      if (section === 'collab') {
         const portrait = image as HTMLImageElement;
-        portrait.src = publicAssetUrl(asset); portrait.alt = section === 'music' ? 'HEAVY' : section === 'test' ? 'GRUNT' : ''; portrait.draggable = false;
+        portrait.src = publicAssetUrl(asset); portrait.alt = ''; portrait.draggable = false;
       } else {
-        image.className = 'credits-giant'; image.setAttribute('role', 'img'); image.setAttribute('aria-label', 'GIANT');
+        image.className = 'credits-sprite'; image.setAttribute('role', 'img');
+        image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : 'GRUNT');
         image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
       }
       row.append(image, label, person); cast.append(row);
