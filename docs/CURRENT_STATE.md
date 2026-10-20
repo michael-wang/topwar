@@ -3,14 +3,15 @@
 Read only when task scope/status needs orientation, not as another specification.
 
 ## Current and accepted
-- P4.44g / #23: Owner/Julia Pixel 8-approved opening is now the default production and DEV Stage-1 Start, without query. Canonical new voice/subtitles, centered Commander/red alert and 16 real individual landings are promoted unchanged. Continue preserves historical cohorts; Retry starts immediate new combat. Lower Lv1–3 pressure is temporarily accepted. Code implemented; manual Pages deployment pending. See [production phone steps](PIXEL8_DEV_TESTING.md#p444g--approved-production-opening).
+- P4.46 / #1: [Public Playtest Gate](PUBLIC_PLAYTEST_GATE.md) — technical checks PASS; public release awaits Credits #15 and Owner Pixel 8 combined Start/fullscreen/Resume #28. No production blocker fix needed; no deployment.
+- P4.45c / #20 / #25 + Julia `4baed45`: centered opening focus width 6.2, full-message duration, Orange Tracer B and 44.25 shoreline range are Owner Pixel 8 PASS. Preserve these accepted settings; historical Continue retains embedded weapons, Retry uses current config.
+- P4.44g / #23: Owner/Julia Pixel 8-approved opening is now the default production and DEV Stage-1 Start, without query. Canonical new voice/subtitles, centered Commander/red alert and 16 real individual landings are promoted unchanged. Continue preserves historical cohorts; Retry starts immediate new combat. Lower Lv1–3 pressure is temporarily accepted. Code implemented; manual Pages deployment pending. See [production phone steps](PIXEL8_DEV_TESTING.md).
 - Portrait mobile-web Beachhead Defense; TypeScript / Vite / Three.js / Vitest. Released Defense checkpoint compatibility remains required.
 - P4.40c / #36 Lightweight Arcade UI is implemented and owner Pixel 8 PASS: floating Start, compact Pause, larger unbacked Boss warning. Accepted Retry/Replay stay unchanged. Mantou titles, Bungee English/acronyms, Commander system-ui.
 
 ## Implemented, acceptance pending
-- P4.45c / #20 / #25: Commander focus holds the whole visible message; fixed opening surf region appears from the first sentence. Owner-selected Orange Tracer B is production default; A/B/C controls retired. New Rifle/MG range 44.25 caps endpoints at Z45.5; old Continue preserves 80, Retry uses current config. Await final Pixel 8 duration/range acceptance; no deployment.
 - P4.43 / #22 Aegean Scenic Readability is implemented / awaiting Julia composition review and owner Pixel 8 visual acceptance. P4.42 shared-coast/transition architecture is provisionally retained; its art remains HOLD. Tiered asymmetric Greek side facades, visible terraces/stone steps, fuller olives/sparse flowers, warm sand/wet-shore shading and nearer decorative sentries improve the same idle/combat scene. Continue bypasses idle paused; Retry is immediate.
-- Pending art/VFX includes amplified GIANT smoke/review usability, artillery smoke polish, Hybrid D production, shoreline-range acceptance, defeat/Boss/Victory presentation and bomber shadow/audio refinements. Preserve accepted portions; consult task-specific canonical status.
+- Pending art/VFX includes amplified GIANT smoke/review usability, artillery smoke polish, Hybrid D production, defeat/Boss/Victory presentation and bomber shadow/audio refinements. Preserve accepted portions; consult task-specific canonical status.
 - Combined production Start/audio/fullscreen and native startup-performance review remain pending.
 
 ## Deferred directions

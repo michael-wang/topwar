@@ -37,8 +37,16 @@ try{
   for(const target of [.6,1.7,4.5,5.12,6.9,11.1]){
    await page.evaluate(target=>window.__advance(Math.max(0,target-window.__testApp.openingSeconds)),target);
    const d=await inspect(page);assert.equal(d.state,before.state);assert(d.red);phases.push(d);
-   if(variant==='normal'&&width===390)await page.screenshot({path:`${out}/opening-${target}.png`});
+   if(variant==='normal')await page.screenshot({path:`${out}/opening-${width}-${target}.png`});
   }
+  const landingBounds=await page.evaluate(()=>{
+   const a=window.__testApp,r=document.querySelector('.commander-focus').getBoundingClientRect(),v=a.viewport.getBoundingClientRect();
+   const points=[-1.4,0,1.4].map(x=>{const p=a.renderer.supplyProjection.clone().set(x,0,45).project(a.renderer.camera);return{x:v.x+(p.x+1)*v.width/2,y:v.y+(1-p.y)*v.height/2};});
+   return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,center:r.x+r.width/2,points};
+  });
+  assert(landingBounds.width<width*.6&&landingBounds.width>width*.2,'Keep the approved narrow center surf area');
+  assert(Math.abs(landingBounds.center-width/2)<1);
+  for(const p of landingBounds.points)assert(p.x>=landingBounds.left&&p.x<=landingBounds.right&&p.y>=landingBounds.top&&p.y<=landingBounds.bottom);
   assert.equal(phases[0].count,0);assert.equal(phases[1].count,0);assert.equal(phases[2].count,0);assert.equal(phases[3].count,1);assert.equal(phases[4].count,6);assert.equal(phases[5].count,16);
   for(const p of phases.slice(1)){assert(p.focus.visible);assert.equal(p.focus.style,phases[1].focus.style);}assert.equal(phases[4].panel.width,310);assert.equal(phases[4].panel.height,88);
   assert(Math.abs(phases[4].panel.y-(844*.5-41+(variant==='insets'?(24-20)*.5:0)))<.1);

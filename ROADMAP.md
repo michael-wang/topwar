@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.45c (#20 / #25): full-message stationary Commander focus, approved Orange Tracer B production promotion and authored 44.25 shoreline range implemented. Style selection is Pixel 8 PASS; final focus-duration/range device acceptance pending. Historical Continue retains its weapons; new Retry adopts current config. No deployment.
+P4.46 (#1): [Public Playtest Gate](docs/PUBLIC_PLAYTEST_GATE.md) completed on Julia `4baed45`; technical checks PASS, no reproducible product blocker found. Public release awaits Owner-approved Credits #15 and Pixel 8 combined Start/fullscreen/Resume #28. Narrow opening focus, Orange Tracer B and shoreline range are Owner PASS; no redesign or rebalance.
 
 P4.44g (#23): Owner/Julia-approved P4.44f opening promoted to normal production/DEV Start without query; canonical voice, centered Commander, red alert and 16 real landings. Continue preserves history; Retry is immediate. Production code implemented; manual Pages deployment pending. Lower Lv1–3 pressure is temporarily accepted, with no rebalance in this release.
 
@@ -20,13 +20,13 @@ The navy/gold immediate loading cover and honest four-stage bar (#21) are Pixel 
 
 Fullscreen (#28): the DEV trial remains Pixel 8 accepted. Production Start/first restored Resume now initiate audio then optional fullscreen synchronously; external exits are respected without automatic re-entry. Desktop/unsupported/denied modes remain playable. [Combined-gesture physical/HTTPS acceptance](docs/FULLSCREEN_TRIAL.md) is pending.
 
-Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original B-fast impact approval is retained as the reference for the new artillery-only readability follow-up. Hybrid D production acceptance (#12) remains open. Orange Tracer B (#25) style is Owner PASS; shoreline-range acceptance remains open. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
+Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original B-fast impact approval is retained as the reference for the new artillery-only readability follow-up. Hybrid D production acceptance (#12) remains open. Orange Tracer B and shoreline range (#25) are Owner PASS. Preserve those results, Hybrid D, Grenade/cannon visuals, four shared entries, historical checkpoints and manual deployment. Keep the DEV Explosion Lab as a reference tool.
 
 ## NEXT
 
-1. Review remaining public-playtest release blockers and manual launch checklist; do not reopen approved opening art.
-2. Validate authorized combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); keep fallback playable.
-3. Owner reviews GIANT refinement/QA usability, startup performance/defeat and pending artillery/Hybrid D/tracer, Boss/Victory warning/music presentation on Pixel 8; preserve accepted gameplay and VFX.
+1. Owner supplies public Credits names and approves placement (#15); implement the small credits view.
+2. Owner validates combined Start/audio/fullscreen and restored Resume on Pixel 8 (#28); observe late-play heat without speculative optimization.
+3. After gates pass, Owner chooses a reviewed SHA for manual Pages publication and a short HTTPS Start/Continue/assets smoke.
 
 ## LATER
 
