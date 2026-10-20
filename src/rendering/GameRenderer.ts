@@ -40,7 +40,8 @@ export class GameRenderer {
   commanderFocusArea(message: string, _phrase: number, state: GameRenderState): import('../ui/CommanderFocus').FocusArea | null {
     let x = 0, z = 0, width = 5, depth = 3, height = 2;
     if (message === 'missionIntro') {
-      z = 45; width = 16; depth = 4; height = 2;
+      // Stage-1 landings use only the center three lanes; exclude the side houses.
+      z = 45; width = 6.2; depth = 4; height = 2;
     } else if (message === 'giant') {
       const enemy = state.enemies.find(e => e.archetype === 'giant' && e.hp > 0);
       x = enemy ? -enemy.x : 0; z = enemy?.z ?? 45; width = 5; height = 4;
