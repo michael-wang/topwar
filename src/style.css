@@ -21,9 +21,8 @@
 .credits-overlay::backdrop { background: #000; }
 .credits-overlay[open] { display: flex; flex-direction: column; }
 .credits-overlay header { padding-left: 8px; }
-.credits-overlay header small { color: #d7ac55; font: 500 16px system-ui; letter-spacing: 4px; }
-.credits-overlay h1 { margin: 6px 0 8px; font: 400 32px/1.2 var(--font-title-trial, 'Bungee', sans-serif); font-synthesis: none; letter-spacing: 2px; }
-.credits-cast { display: grid; grid-template-rows: 1fr 1fr 1.5fr 1fr 1.1fr; flex: 0 0 auto; height: min(510px, 61dvh); min-height: 460px; margin-block: auto; }
+.credits-overlay h1 { margin: 0; color: #d7ac55; font: 400 22px/1.2 var(--font-title-trial, 'Bungee', sans-serif); font-synthesis: none; letter-spacing: 2px; }
+.credits-cast { display: grid; grid-template-rows: 1fr 1fr 1.5fr 1fr 1.1fr; flex: 0 0 auto; height: min(510px, 61dvh); min-height: 460px; margin-block: 28px 0; }
 .credits-cast section { align-self: center; justify-self: center; min-width: 0; }
 .credits-cast h2 { margin: 3px 0 0; color: #d7ac55; font: 400 14px/1.3 system-ui, sans-serif; letter-spacing: 1px; }
 .credits-cast p { margin: 0; white-space: nowrap; font: 400 24px/1.2 'Mantou Sans', system-ui, sans-serif; }
@@ -34,7 +33,7 @@
 .credits-music h2 { grid-column: 2; align-self: start; }
 .credits-music p { grid-column: 2; align-self: end; }
 .credits-cast .credits-producer { grid-row: 3; display: grid; grid-template-columns: 100px auto; column-gap: 20px; }
-.credits-producer h2 { grid-column: 2; align-self: start; color: #f0d18b; font-size: 16px; }
+.credits-producer h2 { grid-column: 2; align-self: start; font-size: 16px; }
 .credits-producer .credits-sprite { grid-area: 1 / 1 / 3 / 2; width: 100px; height: 100px; }
 .credits-producer p { grid-column: 2; align-self: end; font-size: 32px; }
 .credits-test-xiang, .credits-test-kai { display: grid; grid-template-columns: 56px auto; column-gap: 20px; }
@@ -42,16 +41,19 @@
 .credits-test-xiang h2, .credits-test-kai h2 { grid-column: 2; align-self: start; }
 .credits-test-xiang p, .credits-test-kai p { grid-column: 2; align-self: end; }
 .credits-cast .credits-test-xiang { grid-row: 2; justify-self: end; margin-right: 8px; }
-.credits-cast .credits-test-kai { grid-row: 4; justify-self: start; margin-left: 8px; }
+.credits-cast .credits-test-kai { grid-row: 4; justify-self: start; grid-template-columns: 64px auto; margin-left: 8px; }
 .credits-test-xiang .credits-sprite { animation-delay: -.58s; }
 .credits-test-kai .credits-sprite { animation-delay: -.12s; }
-.credits-cast .credits-collab { grid-row: 5; justify-self: end; display: grid; grid-template-columns: 64px auto; gap: 0 20px; margin-right: 8px; }
+.credits-cast .credits-collab { grid-row: 5; justify-self: end; display: grid; grid-template-columns: auto 64px; gap: 0 20px; margin-right: 8px; }
 .credits-collab .credits-portrait { grid-area: 1 / 1 / 3 / 2; display: block; width: 64px; height: 90px; background: center / contain no-repeat; }
 .credits-collab h2 { grid-column: 2; align-self: start; }
 .credits-collab p { grid-column: 2; align-self: end; font-size: 22px; }
+.credits-cast .credits-test-xiang { grid-template-columns: auto 64px; }
+.credits-test-xiang .credits-sprite, .credits-collab .credits-portrait { grid-area: 1 / 2 / 3 / 3; justify-self: end; }
+.credits-test-xiang :is(p, h2), .credits-collab :is(p, h2) { grid-column: 1; text-align: right; }
 @media(prefers-reduced-motion: reduce) { .credits-sprite { animation: none; background-position: 0 0; } }
-.credits-back { align-self: center; flex-shrink: 0; min-width: 112px; min-height: 46px; margin-top: 14px;
-  border: 1px solid #d7ac55; background: #000; color: #fff5dc; font: 400 20px system-ui; cursor: pointer; }
+.credits-back { align-self: center; flex-shrink: 0; min-width: 112px; min-height: 46px; margin-top: auto;
+  border: 1px solid #d7ac55; background: #000; color: #d7ac55; font: 400 20px system-ui; cursor: pointer; }
 .credits-overlay button:focus-visible, .credits-entry:focus-visible { outline: 3px solid #fff5dc; outline-offset: 4px; }
 @font-face {
   font-family: 'Bungee';

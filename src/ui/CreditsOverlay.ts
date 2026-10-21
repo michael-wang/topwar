@@ -37,9 +37,9 @@ export class CreditsOverlay {
     this.back.className = 'credits-back'; this.back.textContent = '返回';
     this.dialog.className = 'credits-overlay'; this.dialog.lang = 'zh-Hant';
     this.dialog.setAttribute('aria-labelledby', 'credits-title');
-    const header = document.createElement('header'), brand = document.createElement('small'), title = document.createElement('h1');
-    brand.textContent = 'TOPWAR'; title.textContent = 'CREDITS'; title.id = 'credits-title';
-    header.append(brand, title);
+    const header = document.createElement('header'), title = document.createElement('h1');
+    title.textContent = 'CREDITS'; title.id = 'credits-title';
+    header.append(title);
     const cast = document.createElement('div'); cast.className = 'credits-cast';
     for (const [role, name, asset, section] of people) {
       const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement('span');

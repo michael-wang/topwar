@@ -26,7 +26,8 @@ afterEach(() => vi.unstubAllGlobals());
 it('preserves approved names, opens only on a gesture and returns without any game callback', () => {
   const { overlay, entry, dialog } = setup();
   expect(Music.instances).toHaveLength(0);
-  expect(dialog.children[0].children[1].textContent).toBe('CREDITS');
+  expect(dialog.children[0].children).toHaveLength(1);
+  expect(dialog.children[0].children[0].textContent).toBe('CREDITS');
   expect(dialog.children[1].children.map(row => row.children.slice(1).map(e => e.textContent)))
     .toEqual([['疾如風','遊戲製作'],['阿弘','音樂'],['阿翔','測試'],['小楷甯','點子、測試'],['Julia、扣碟子','協作']]);
   entry.dispatchEvent(new Event('click'));
