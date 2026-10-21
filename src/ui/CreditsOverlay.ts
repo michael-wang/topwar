@@ -4,8 +4,8 @@ const people = [
   ['遊戲製作', '疾如風', 'art/credits/giant-front-walk.webp', 'producer'],
   ['音樂', '阿弘', 'art/credits/heavy-front-walk.webp', 'music'],
   ['測試', '阿翔', 'art/credits/grunt-front-walk.webp', 'test-xiang'],
-  ['測試、點子', '小楷甯', 'art/credits/grunt-front-walk.webp', 'test-kai'],
-  ['協作', 'Julia、扣碟子', 'art/credits/collab-front-walk.webp', 'collab'],
+  ['點子、測試', '小楷甯', 'art/credits/player-front-walk.webp', 'test-kai'],
+  ['協作', 'Julia、扣碟子', 'art/victory/commander-soldier.webp', 'collab'],
 ] as const;
 
 /** Idle-only presentation: owns no game clock, checkpoint or shared audio state. */
@@ -20,7 +20,7 @@ export class CreditsOverlay {
     this.back.focus();
     // Call play synchronously inside the owner's button gesture. Denial stays silent and usable.
     this.music = new Audio(publicAssetUrl('audio/stage1-complete.mp3'));
-    this.music.loop = true; this.music.volume = .45;
+    this.music.loop = true; this.music.volume = .225;
     void this.music.play().catch(() => {});
   };
   private readonly stopMusic = (): void => {
@@ -45,8 +45,8 @@ export class CreditsOverlay {
       const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement('span');
       label.textContent = role; person.textContent = name;
       row.className = `credits-${section}`;
-      image.className = 'credits-sprite'; image.setAttribute('role', 'img');
-      image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : section === 'collab' ? name : 'GRUNT');
+      image.className = section === 'collab' ? 'credits-portrait' : 'credits-sprite'; image.setAttribute('role', 'img');
+      image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : section === 'collab' ? name : section === 'test-kai' ? '我方士兵' : 'GRUNT');
       image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
       row.append(image, label, person); cast.append(row);
     }

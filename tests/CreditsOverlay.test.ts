@@ -10,6 +10,7 @@ class Element extends EventTarget {
   close() { this.open = false; this.dispatchEvent(new Event('close')); }
 }
 class Music {
+  volume = 1;
   static instances: Music[] = []; static reject = false;
   play = vi.fn(() => Music.reject ? Promise.reject(new Error("autoplay denied")) : Promise.resolve()); pause = vi.fn(); load = vi.fn(); removeAttribute = vi.fn();
   constructor(readonly src: string) { Music.instances.push(this); }
@@ -26,10 +27,11 @@ it('preserves approved names, opens only on a gesture and returns without any ga
   const { overlay, entry, dialog } = setup();
   expect(Music.instances).toHaveLength(0);
   expect(dialog.children[1].children.map(row => row.children.slice(1).map(e => e.textContent)))
-    .toEqual([['遊戲製作','疾如風'],['音樂','阿弘'],['測試','阿翔'],['測試、點子','小楷甯'],['協作','Julia、扣碟子']]);
+    .toEqual([['遊戲製作','疾如風'],['音樂','阿弘'],['測試','阿翔'],['點子、測試','小楷甯'],['協作','Julia、扣碟子']]);
   entry.dispatchEvent(new Event('click'));
   expect(dialog.open).toBe(true); expect(Music.instances[0].src).toContain('stage1-complete');
   expect(Music.instances[0].play).toHaveBeenCalledOnce();
+  expect(Music.instances[0].volume).toBe(.225);
   dialog.children[2].dispatchEvent(new Event('click'));
   expect(dialog.open).toBe(false); expect(Music.instances[0].pause).toHaveBeenCalledOnce();
   expect(entry.focus).toHaveBeenCalledOnce(); overlay.dispose();
@@ -49,7 +51,7 @@ it('keeps Return usable when the browser rejects playback', async () => {
   dialog.children[2].dispatchEvent(new Event('click')); expect(dialog.open).toBe(false); overlay.dispose();
 });
 
-it('uses front-walk sprites for all five groups, including the approved collaboration animation', () => {
+it('keeps Xiang as Grunt, assigns Kai a player soldier and restores static collaboration art', () => {
   const { overlay, dialog } = setup();
   const rows = dialog.children[1].children;
   expect(rows[0].className).toBe('credits-producer');
@@ -57,12 +59,12 @@ it('uses front-walk sprites for all five groups, including the approved collabor
   expect(rows[0].children[0].setAttribute).toHaveBeenCalledWith('aria-label','GIANT');
   expect(rows).toHaveLength(5);
   expect(rows[1].children[0].style.backgroundImage).toContain('heavy-front-walk');
-  for (const row of rows.slice(2,4)) {
-    expect(row.children[0].style.backgroundImage).toContain('grunt-front-walk');
-    expect(row.children[0].setAttribute).toHaveBeenCalledWith('aria-label','GRUNT');
-  }
-  expect(rows[4].children[0].className).toBe('credits-sprite');
-  expect(rows[4].children[0].style.backgroundImage).toContain('art/credits/collab-front-walk');
+  expect(rows[2].children[0].style.backgroundImage).toContain('grunt-front-walk');
+  expect(rows[2].children[0].setAttribute).toHaveBeenCalledWith('aria-label','GRUNT');
+  expect(rows[3].children[0].style.backgroundImage).toContain('player-front-walk');
+  expect(rows[3].children[0].setAttribute).toHaveBeenCalledWith('aria-label','我方士兵');
+  expect(rows[4].children[0].className).toBe('credits-portrait');
+  expect(rows[4].children[0].style.backgroundImage).toContain('art/victory/commander-soldier');
   expect(rows[4].children[0].setAttribute).toHaveBeenCalledWith('aria-label','Julia、扣碟子');
   overlay.dispose();
 });
