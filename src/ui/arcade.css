@@ -162,9 +162,11 @@
 .artillery-emergency span::before { top:0; left:3px; width:46px; height:61px;
   clip-path:polygon(0 0, 100% 0, 85% 100%, 15% 100%); }
 .artillery-emergency span::after { bottom:0; left:11px; width:30px; height:24px; border-radius:3px; }
-/* The upper field is occupied by Commander and the entering Tank. Use the open
-   mid-beach gap instead, including when a top safe inset pushes Commander down. */
-.tank-entrance-warning span { position:absolute; top:max(52%, calc(var(--hud-inset-top, 0px) + 184px));
+/* Keep the Boss warning below the Commander's centered plaque and its
+   110px breakout portrait. Match the plaque's safe-inset compensation so the
+   warning retains at least 23px of clearance on narrow/short phone screens. */
+.tank-entrance-warning span { position:absolute;
+  top:max(60%, calc(50% + 78px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5));
   left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px);
   box-sizing:border-box; padding:5px 13px 7px; isolation:isolate;
   color:#ffe5b0; text-align:center; font:400 clamp(36px, 10.5vw, 42px)/1.15 'Mantou Sans', system-ui, sans-serif;
