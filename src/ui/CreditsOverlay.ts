@@ -1,11 +1,11 @@
 import { publicAssetUrl } from '../core/publicAssetUrl';
 
 const people = [
-  ['遊戲製作', '疾如風', 'art/credits/giant-front-walk.webp', 'producer'],
   ['音樂', '阿弘', 'art/credits/heavy-front-walk.webp', 'music'],
-  ['測試', '阿翔', 'art/credits/grunt-front-walk.webp', 'test-xiang'],
-  ['點子、測試', '小楷甯', 'art/credits/player-front-walk.webp', 'test-kai'],
-  ['協作', 'Julia、扣碟子', 'art/victory/commander-soldier.webp', 'collab'],
+  ['測試', '阿翔', 'art/credits/player-front-walk.webp', 'test-xiang'],
+  ['點子、測試', '小楷甯', 'art/credits/commander-front-walk.webp', 'test-kai'],
+  ['協作', 'Julia、扣碟子', 'art/credits/grunt-front-walk.webp', 'collab'],
+  ['遊戲製作', '疾如風', 'art/credits/giant-front-walk.webp', 'producer'],
 ] as const;
 
 /** Idle-only presentation: owns no game clock, checkpoint or shared audio state. */
@@ -45,8 +45,8 @@ export class CreditsOverlay {
       const row = document.createElement('section'), label = document.createElement('h2'), person = document.createElement('p'), image = document.createElement('span');
       label.textContent = role; person.textContent = name;
       row.className = `credits-${section}`;
-      image.className = section === 'collab' ? 'credits-portrait' : 'credits-sprite'; image.setAttribute('role', 'img');
-      image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : section === 'collab' ? name : section === 'test-kai' ? '我方士兵' : 'GRUNT');
+      image.className = 'credits-sprite'; image.setAttribute('role', 'img');
+      image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : section === 'collab' ? 'GRUNT' : section === 'test-kai' ? '女性指揮官' : '我方士兵');
       image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
       row.append(image, person, label); cast.append(row);
     }
