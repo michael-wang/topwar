@@ -38,7 +38,7 @@ export class CreditsOverlay {
     this.dialog.className = 'credits-overlay'; this.dialog.lang = 'zh-Hant';
     this.dialog.setAttribute('aria-labelledby', 'credits-title');
     const header = document.createElement('header'), brand = document.createElement('small'), title = document.createElement('h1');
-    brand.textContent = 'TOPWAR'; title.textContent = '製作名單'; title.id = 'credits-title';
+    brand.textContent = 'TOPWAR'; title.textContent = 'CREDITS'; title.id = 'credits-title';
     header.append(brand, title);
     const cast = document.createElement('div'); cast.className = 'credits-cast';
     for (const [role, name, asset, section] of people) {
@@ -48,7 +48,7 @@ export class CreditsOverlay {
       image.className = section === 'collab' ? 'credits-portrait' : 'credits-sprite'; image.setAttribute('role', 'img');
       image.setAttribute('aria-label', section === 'producer' ? 'GIANT' : section === 'music' ? 'HEAVY' : section === 'collab' ? name : section === 'test-kai' ? '我方士兵' : 'GRUNT');
       image.style.backgroundImage = `url("${publicAssetUrl(asset)}")`;
-      row.append(image, label, person); cast.append(row);
+      row.append(image, person, label); cast.append(row);
     }
     this.dialog.append(header, cast, this.back); viewport.append(this.button, this.dialog);
     this.button.addEventListener('click', this.open); this.back.addEventListener('click', this.close);
