@@ -14,6 +14,7 @@ export class CreditsOverlay {
   private readonly dialog = document.createElement('dialog');
   private readonly back = document.createElement('button');
   private music: HTMLAudioElement | null = null;
+  private restoringModal = false;
   private readonly open = (): void => {
     if (this.dialog.open) return;
     this.dialog.showModal();
@@ -22,6 +23,8 @@ export class CreditsOverlay {
     this.music = new Audio(publicAssetUrl('audio/stage1-complete.mp3'));
     this.music.loop = true; this.music.volume = .225;
     void this.music.play().catch(() => {});
+    // Fullscreen may consume activation: request only after audio, without awaiting.
+    try { this.requestFullscreen(); } catch { /* Optional presentation; Credits stays usable. */ }
   };
   private readonly stopMusic = (): void => {
     if (!this.music) return;
@@ -29,9 +32,18 @@ export class CreditsOverlay {
     this.music.removeAttribute('src'); this.music.load(); this.music = null;
   };
   private readonly close = (): void => { this.stopMusic(); this.dialog.close(); this.button.focus(); };
+  private readonly closed = (): void => { if (!this.restoringModal && !this.dialog.open) this.stopMusic(); };
+  private readonly fullscreenChanged = (): void => {
+    if (!this.dialog.open || !document.fullscreenElement?.contains(this.dialog)) return;
+    // The fullscreen ancestor enters the top layer above an already-open dialog.
+    // Reopen the same modal above it without treating this as a music dismissal.
+    this.restoringModal = true;
+    try { this.dialog.close(); this.dialog.showModal(); this.back.focus(); }
+    finally { this.restoringModal = false; }
+  };
   private readonly visibility = (): void => { if (document.hidden) this.stopMusic(); };
 
-  constructor(viewport: HTMLElement) {
+  constructor(viewport: HTMLElement, private readonly requestFullscreen: () => void = () => {}) {
     this.button.type = this.back.type = 'button';
     this.button.className = 'credits-entry'; this.button.textContent = '製作名單';
     this.back.className = 'credits-back'; this.back.textContent = '返回';
@@ -52,14 +64,16 @@ export class CreditsOverlay {
     }
     this.dialog.append(header, cast, this.back); viewport.append(this.button, this.dialog);
     this.button.addEventListener('click', this.open); this.back.addEventListener('click', this.close);
-    this.dialog.addEventListener('close', this.stopMusic);
+    this.dialog.addEventListener('close', this.closed);
+    document.addEventListener('fullscreenchange', this.fullscreenChanged);
     document.addEventListener('visibilitychange', this.visibility);
   }
   dispose(): void {
     this.stopMusic();
     if (this.dialog.open) this.dialog.close();
     this.button.removeEventListener('click', this.open); this.back.removeEventListener('click', this.close);
-    this.dialog.removeEventListener('close', this.stopMusic); document.removeEventListener('visibilitychange', this.visibility);
+    this.dialog.removeEventListener('close', this.closed); document.removeEventListener('visibilitychange', this.visibility);
+    document.removeEventListener('fullscreenchange', this.fullscreenChanged);
     this.button.remove(); this.dialog.remove();
   }
 }

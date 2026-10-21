@@ -184,7 +184,8 @@ export class GameApp {
     this.audio = audio;
     this.fullscreen = new MobileFullscreen(viewport);
     this.fieldObserver = this.config.catharsis?.defenseMode ? new FieldObserver(viewport, this.audio, portraits) : null;
-    this.startOverlay = new GameStartOverlay(viewport, presentation => { void this.beginGameplay(presentation); });
+    this.startOverlay = new GameStartOverlay(viewport, presentation => { void this.beginGameplay(presentation); },
+      () => this.fullscreen.request());
     this.pauseOverlay = new PauseOverlay(viewport, () => { if (this.paused) this.togglePaused(); });
     this.controlStrip = this.config.catharsis?.defenseMode ? new CombatControlStrip(viewport) : null;
     this.xpHud = this.controlStrip ? new XpHud(this.controlStrip.progressionHost) : null;

@@ -8,7 +8,8 @@ export class GameStartOverlay {
   private credits: CreditsOverlay | null = null;
 
   constructor(private readonly viewport: HTMLElement,
-    private readonly start: (presentation: 'desktop' | 'touch') => void = () => {}) {}
+    private readonly start: (presentation: 'desktop' | 'touch') => void = () => {},
+    private readonly requestFullscreen: () => void = () => {}) {}
 
   show(review = false): void {
     this.dispose();
@@ -25,7 +26,7 @@ export class GameStartOverlay {
     button.append(text);
     this.viewport.append(button);
     this.button = button;
-    if (!review) this.credits = new CreditsOverlay(this.viewport);
+    if (!review) this.credits = new CreditsOverlay(this.viewport, this.requestFullscreen);
     button.focus({ preventScroll: true });
   }
 
