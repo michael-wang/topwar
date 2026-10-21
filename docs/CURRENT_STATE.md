@@ -3,21 +3,20 @@
 Read only when task scope/status needs orientation, not as another specification.
 
 ## Current and accepted
-- P4.46 / #1: [Public Playtest Gate](PUBLIC_PLAYTEST_GATE.md) — technical checks PASS. Credits #15, production Start/audio/fullscreen + restored Resume #28, and regular Stage-1 play are Owner Pixel 8 PASS. Focused Boss-warning/Commander CSS clearance fix `dc497c4` awaits Owner phone review; no deployment.
+- P4.46 / #1: [Public Playtest Gate](PUBLIC_PLAYTEST_GATE.md) — technical checks PASS. Credits #15, production Start/audio/fullscreen + restored Resume #28, and regular Stage-1 play are Owner Pixel 8 PASS. Focused Boss-warning/Commander CSS clearance fix `dc497c4` is now Owner Pixel 8 PASS; only manual Pages launch/HTTPS smoke remains.
 - P4.45c / #20 / #25 + Julia `4baed45`: centered opening focus width 6.2, full-message duration, Orange Tracer B and 44.25 shoreline range are Owner Pixel 8 PASS. Preserve these accepted settings; historical Continue retains embedded weapons, Retry uses current config.
 - P4.44g / #23: Owner/Julia Pixel 8-approved opening is now the default production and DEV Stage-1 Start, without query. Canonical new voice/subtitles, centered Commander/red alert and 16 real individual landings are promoted unchanged. Continue preserves historical cohorts; Retry starts immediate new combat. Lower Lv1–3 pressure is temporarily accepted. Code implemented; manual Pages deployment pending. See [production phone steps](PIXEL8_DEV_TESTING.md).
 - Portrait mobile-web Beachhead Defense; TypeScript / Vite / Three.js / Vitest. Released Defense checkpoint compatibility remains required.
 - P4.40c / #36 Lightweight Arcade UI is implemented and owner Pixel 8 PASS: floating Start, compact Pause, larger unbacked Boss warning. Accepted Retry/Replay stay unchanged. Mantou titles, Bungee English/acronyms, Commander system-ui.
 - P4.48 / #15 Credits are Owner Pixel 8 PASS / CLOSED: approved names/roles and characters, corner entry from idle, fullscreen attempt and graceful fallback, reduced-volume Stage1 Complete music, and Return without gameplay start. Preserve the accepted layout and assets.
-- P4.43 / #22 current Aegean Diorama/coastal composition is Owner accepted for first public playtest; future attract-mode redesign is deferred. #12 Hybrid D production, #30 artillery smoke/defeat, #31 GIANT and review controls, #32 phone startup/performance also Owner PASS.
+- P4.43 / #22 current Aegean Diorama/coastal composition is Owner accepted for first public playtest; future attract-mode redesign is deferred. #12 Hybrid D production, #30 artillery smoke/defeat, #31 GIANT and review controls, #32 phone startup/performance, #34 approved font hierarchy and Boss warning placement are Owner Pixel 8 PASS.
 
-## Implemented, acceptance pending
-- #34 BOSS entrance overlap: original normal Lv8→9 and shared Boss entries placed 強敵來襲！ across the centered Commander portrait during the 0.3–2.5s entrance window. Julia CSS-only fix `dc497c4` offsets the warning below the Commander portrait with safe-inset compensation; Pixel 8 visual acceptance is pending. No voice/encounter timing changes.
+## Remaining release action and deferred work
 - Owner-accepted visual/VFX sections are frozen for first public playtest. Non-blocking future polish (BOSS/Victory presentation or bomber shadow/audio) requires explicit new feedback; no speculative rework now.
 - Final public Pages HTTPS smoke remains pending until an Owner-authorized manual deployment; Pixel 8 Start/fullscreen and startup/performance are Owner PASS.
 
 ## Deferred directions
-Current P4.43 scene is accepted for release; further art iteration requires owner feedback. Opening promotion is authorized and implemented; Pages deployment still requires separate manual Owner action. PWA remains unapproved.
+Current P4.43 scene is accepted for release; further art iteration requires owner feedback. Original #24 Commander GIANT/intro voice gaps were implemented; a broader editorial listening/script pass is deferred, not a blocker. Pages deployment still requires separate manual Owner action. PWA and physical iPhone testing are future choices.
 
 ## Read only the relevant section
 - Gameplay / saves / startup: [GAME_SPEC](../GAME_SPEC.md).

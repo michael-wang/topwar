@@ -1,6 +1,19 @@
 # P4.46 — Public Playtest GO / NO-GO
 
-2026-10-20（Asia/Taipei）；驗證基準 `4baed45ca7d8257494b386b29a82cd936bba09df`。[工作單 #1](https://github.com/michael-wang/topwar/issues/1#issuecomment-6285578950)
+## Latest release audit — 2026-10-22 (supersedes historical NO-GO snapshot)
+
+**Technical gate GO; all planned first-playtest Owner Pixel 8 acceptance gates PASS.**
+Credits #15 (approved names/music/return/fullscreen), Start/audio/fullscreen + restored Resume #28, Diorama #22, opening #23, fixed Commander focus #20, Orange Tracer B/range #25, production Hybrid D #12, Defeat/artillery smoke #30, GIANT/review #31, startup/performance #32, and BOSS warning/Commander clearance #34 are Owner accepted. Daily full Stage-1 play has no reported major blocker.
+
+Reviewed candidate is `282616040e515e5218560b48c1acd82d6bcfa182`; [its non-deploying CI succeeded](https://github.com/michael-wang/topwar/actions/runs/39669578153). It is **NOT a deployed release**. Last observed successful Pages deployment is from `033d95e` on 2026-10-19.
+
+**Outstanding for first public playtest:** Owner selects and explicitly approves the exact release SHA; manually dispatches the [Pages deployment](https://github.com/michael-wang/topwar/actions/workflows/deploy-pages.yml); on actual HTTPS URL checks Start/audio/fullscreen, Credits/Return, Continue/Resume, BOSS/manual support and asset requests. #1 stays OPEN until hosted smoke passes. #24 holistic Commander editorial is deferred, not blocking. Frozen tag must not move.
+
+---
+
+## Historical P4.46 gate snapshot — 2026-10-20
+
+驗證基準 `4baed45ca7d8257494b386b29a82cd936bba09df`。[工作單 #1](https://github.com/michael-wang/topwar/issues/1#issuecomment-6285578950)
 
 **技術驗證 GO；公開發布暫為 NO-GO。** 未發現可重現的 Start、存檔、戰鬥完成、音訊或手機控制阻擋問題。Credits #15 已於 P4.48 實作、待 Owner Pixel 8 驗收；發布仍需取得其結論，並取得 #28 的 Owner 實機結論；不是要求再做美術或平衡迭代。
 

@@ -2,7 +2,7 @@
 
 A mobile-first, five-lane Beachhead Defense playtest. TypeScript, Vite, Three.js and Vitest; no backend.
 
-Defeat ends with 「作戰失敗」, survival time, total kills, accuracy and 「再試一次」 over a frozen battlefield, with the discouraged Commander and soldier seated together. This presentation and the lighter, faster-clearing enemy artillery impact smoke await Pixel 8 review; gameplay and other accepted VFX are unchanged.
+Defeat ends with 「作戰失敗」, survival time, total kills, accuracy and 「再試一次」 over a frozen battlefield, with the discouraged Commander and soldier seated together. This presentation and the lighter, faster-clearing enemy artillery impact smoke are Owner Pixel 8 PASS for first public playtest; gameplay and other accepted VFX are unchanged.
 
 ## Develop and verify
 
@@ -22,21 +22,23 @@ Local Vite and the GitHub Pages closed-playtest build share one hatch with four 
 
 ## Current game
 
-DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT arrival, hit variation, tight grounded collapse and no persistent fire are Pixel 8 accepted. The #33 amplified localized rising smoke awaits physical review. QA usability review remains separate.
+DEV advanced controls also open an isolated [GIANT effects review](docs/GIANT_REVIEW.md) in a separate tab. It uses real MG damage and leaves the owner's normal checkpoint untouched, including on Pause/Retry/reload. GIANT arrival, hit variation, tight grounded collapse and no persistent fire are Pixel 8 accepted. The #33 amplified localized rising smoke and DEV review controls are also Owner Pixel 8 PASS.
 
-Ordinary New Game shows the silent Battlefield Diorama and centered 「開始遊戲」. Start plays the approved P4.44g opening by default: sustained Red Alert, the centered 戰區指揮官 with canonical voice/subtitles, stationary offshore transports and 16 real soldiers landing individually before the same enemies enter gameplay. Skip starts combat directly. The fixed central landing focus (width 6.2) remains through the briefing and is Owner Pixel 8 PASS. Continue restores paused and bypasses the opening; Retry starts immediate new combat. P4.43/#22 coastal composition remains a separate pending art review.
+Ordinary New Game shows the silent Battlefield Diorama and centered 「開始遊戲」. Start plays the approved P4.44g opening by default: sustained Red Alert, the centered 戰區指揮官 with canonical voice/subtitles, stationary offshore transports and 16 real soldiers landing individually before the same enemies enter gameplay. Skip starts combat directly. The fixed central landing focus (width 6.2) remains through the briefing and is Owner Pixel 8 PASS. Continue restores paused and bypasses the opening; Retry starts immediate new combat. P4.43/#22 coastal composition is Owner accepted for the first public playtest; future attract-mode enhancement is deferred.
 
 Rifle levels 1–5 lead to MG levels 6–12. Lv4 introduces the Giant. Lv6 starts the 3.2-second Carnival and persistent Destroyer entrance. AHEAD Survival takes over at +3.2 seconds, with its first mixed wave at +4.2 seconds. At Lv9, the giant Tank Boss lands in 2.5 seconds and takes over with three HP phases, artillery and flank troops. The user-provided family-original 135.302-second `boss-theme.mp3` starts at INTRO and loops continuously through phases 1/2/3 without restarting; defeating it leaves a wreck, plays a skippable upper Commander victory communication after the explosions, then shows 第一關通關！, Traditional Chinese combat results and 再玩一次. Golden Grenades accumulate without a gameplay inventory cap.
 
 Newly authored Stage 1 uses one optional PLAYER-COMMANDED heavy bomber raid. Once the Tank is active in Phase 3 and the Commander's readiness notice completes, the glowing aircraft button above Grenade is ready; the player can call once or never call. There is no HP/ETA automatic fallback. The manually called raid can deliver the Boss's lethal hit (up to 500 HP). The shared ✈️ Air Support quick-test demonstrates the same policy at Lv10 / 3 MG / 2100 Boss HP. Historical checkpoints keep their embedded automatic HP-by-squad or older triggers, 150-HP protection and player final shot.
 
-Boss wreck wind smoke (#29) and compact Heavy death (#27) are Pixel 8 PASS / CLOSED. Orange Tracer B is the production default and Owner Pixel 8 PASS. New Rifle/MG effective range is 44.25, keeping actual hits and visible endpoints near the shoreline (at or before Z45.5); the shoreline range is also Owner PASS. Hybrid D in-game production acceptance (#12) remains open.
+The Owner-approved **CREDITS** page is accessible from the idle screen's 製作名單 button, optionally enters fullscreen, and returns to idle without starting gameplay. It displays approved contributor names and plays Stage 1 Complete music at reduced Credits-only volume. Credits and normal BOSS-warning/Commander layout are Pixel 8 PASS.
+
+Boss wreck wind smoke (#29) and compact Heavy death (#27) are Pixel 8 PASS / CLOSED. Orange Tracer B is the production default and Owner Pixel 8 PASS. New Rifle/MG effective range is 44.25, keeping actual hits and visible endpoints near the shoreline (at or before Z45.5); the shoreline range is also Owner PASS. Production Hybrid D airstrike (#12) is Owner Pixel 8 PASS.
 
 See [GAME_SPEC.md](GAME_SPEC.md) for the accepted behavior, [ARCHITECTURE.md](ARCHITECTURE.md) for contracts and [ART_DIRECTION.md](ART_DIRECTION.md) for current art. Historical prototype gameplay is retired; Git history is its archive.
 
 ## Saves and phone testing
 
-Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single 「開始遊戲」 gesture remain. Loading feedback/bar (#21) are Pixel 8 PASS; the owner has accepted the DEV fullscreen technical trial (#28), with Android/Chrome edge-swipe exit treated as expected. Supported mobile portrait Start now attempts optional fullscreen in the same gesture as audio; saved Continue remains paused and attempts only on its first Resume. Denial/unsupported browsers stay playable. Use 「全螢幕」 in the existing menu for explicit re-entry after an Android system exit. Combined Start/Resume and production HTTPS acceptance remain pending; see [Pixel 8 steps](docs/FULLSCREEN_TRIAL.md).
+Fresh visits show immediate HTML loading feedback and a four-stage progress bar before modules/data. The bar counts actual completed data, character, battlefield and startup milestones, without simulated percentages; recovery selection rejoins the current stage. Reload recovery for slow/failed resources and the single 「開始遊戲」 gesture remain. Loading feedback/bar (#21) are Pixel 8 PASS; the owner has accepted the DEV fullscreen technical trial (#28), with Android/Chrome edge-swipe exit treated as expected. Supported mobile portrait Start now attempts optional fullscreen in the same gesture as audio; saved Continue remains paused and attempts only on its first Resume. Denial/unsupported browsers stay playable. Use 「全螢幕」 in the existing menu for explicit re-entry after an Android system exit. Combined Start/Resume are Owner Pixel 8 PASS; hosted Pages HTTPS smoke remains pending after manual deployment; see [Pixel 8 steps](docs/FULLSCREEN_TRIAL.md).
 
 Manual Pause and page hiding save a bounded full-state checkpoint. After reload, Continue/New Game is available before asset initialization. Continue restores paused and explicit Resume activates audio and requests Screen Wake Lock. Returning to a surviving hidden page also remains paused.
 
@@ -48,6 +50,6 @@ Production paths use `/topwar/` and content-addressed public assets. Run the qua
 
 The frozen `playtest-2026-10-08` tag must not be moved, deleted or recreated. Historical reports and experiments remain available in Git history.
 
-Boss music asset: `public/audio/boss-theme.mp3` is user-provided family-original music (使用者提供的家人原創配樂). It is used unmodified from the approved handoff; public composer attribution awaits the user's confirmation.
+Boss music asset: `public/audio/boss-theme.mp3` is user-provided family-original music (使用者提供的家人原創配樂). It is used unmodified from the approved handoff; music attribution is Owner-approved as 阿弘 in Credits.
 
 For task-specific status/navigation, consult [CURRENT_STATE](docs/CURRENT_STATE.md) on demand. P4.40c lightweight UI (#36) is owner Pixel 8 PASS.

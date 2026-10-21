@@ -2,7 +2,7 @@
 
 ## NOW
 
-P4.46 (#1): [Public Playtest Gate](docs/PUBLIC_PLAYTEST_GATE.md) technical checks PASS. Credits #15 (`eef2c09`), combined Start/fullscreen/Resume #28 and normal Stage-1 Pixel 8 play are Owner PASS. The remaining focused Boss-warning/Commander overlap fix is Julia `dc497c4` (one CSS rule); Owner Pixel 8 visual acceptance and a reviewed release SHA are pending. No deployment.
+P4.46 (#1): [Public Playtest Gate](docs/PUBLIC_PLAYTEST_GATE.md) technical checks PASS. Credits #15 (`eef2c09`), combined Start/fullscreen/Resume #28 and normal Stage-1 Pixel 8 play are Owner PASS. The focused Boss-warning/Commander overlap fix is Julia `dc497c4` (one CSS rule), now Owner Pixel 8 PASS. All planned first-playtest feature/phone gates are accepted. Pending: Owner selects an exact reviewed release SHA, manually deploys Pages, then checks the hosted HTTPS URL.
 
 P4.44g (#23): Owner/Julia-approved P4.44f opening promoted to normal production/DEV Start without query; canonical voice, centered Commander, red alert and 16 real landings. Continue preserves history; Retry is immediate. Production code implemented; manual Pages deployment pending. Lower Lv1–3 pressure is temporarily accepted, with no rebalance in this release.
 
@@ -24,13 +24,13 @@ Wreck smoke (#29) and Heavy death (#27) are Pixel 8 PASS / CLOSED; The original 
 
 ## NEXT
 
-1. Owner verifies the focused BOSS warning / Commander clearance fix (`dc497c4`) on Pixel 8 in the natural and shared Boss entry (#34). Preserve accepted typography and encounter.
-2. Confirm the final candidate SHA and CI result; keep Credits, opening, saves and approved art frozen.
-3. With explicit Owner publication authorization, dispatch the existing manual Pages workflow for that exact SHA, then smoke-check the actual HTTPS Start/Continue/audio/assets.
+1. Owner selects a reviewed **release SHA** (current candidate `2826160`, or a newer explicitly approved HEAD); verify its CI success.
+2. With explicit Owner publication authorization, dispatch the **existing manual GitHub Pages** workflow for that SHA; do not move the frozen playtest tag.
+3. Smoke-check the actual HTTPS Start/audio/fullscreen, Credits/Return, Continue/Resume, BOSS warning, manual air support and assets before sharing the new URL with testers.
 
 ## LATER
 
-- Holistic difficulty review, including temporarily accepted Lv1–3 pressure. PWA/installed mode remains a separate future decision.
+- Deferred #24 Commander editorial listening/script review, holistic difficulty including accepted low-pressure Lv1–3, optional arcade attract redesign and real iPhone Safari/PWA coverage. None block the Owner's first Android-focused public playtest.
 
 - Heavy readability in Grunt crowds: consider a modest height increase.
 - Pixel 8 heat after prolonged play: measure on the device before targeted optimization.
