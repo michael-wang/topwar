@@ -77,8 +77,8 @@ it('centers the Giant fill on its moving frame and safely reuses the pool for He
     expect(frame.scale.x/frame.scale.y).toBeCloseTo(6);
     expect(frame.scale.x).toBeCloseTo(1.20*3);
     expect(frame.scale.y).toBeCloseTo(.20*3);
-    expect(frame.visible).toBe(true);
-    expect(fill.visible).toBe(fraction > 0);
+    expect(frame.visible).toBe(fraction > 0 && fraction < 1);
+    expect(fill.visible).toBe(fraction > 0 && fraction < 1);
   }
   renderer.reset();
   renderer.update([{ ...e, archetype: 'heavy', visualScale: 1, hp: 50 }], 2300);
@@ -97,7 +97,7 @@ it('preserves dedicated Giant bar thickness with two threats and nonuniform char
   const scene = new THREE.Scene(), heavy = createChibiHeavyFamily(), giant = createChibiGiantFamily();
   const renderer = new EnemyRenderer(scene, { ...characterFamilies(), heavy, giant });
   const enemies: EnemyRenderState[] = [1, 2].map(id => ({ id, archetype: 'giant', tier: 1,
-    x: id === 1 ? -1 : 1, z: 10, hp: id === 1 ? 0 : 100, maxHp: 100, visualScaleX: 4, visualScaleY: 3 }));
+    x: id === 1 ? -1 : 1, z: 10, hp: id === 1 ? 25 : 50, maxHp: 100, visualScaleX: 4, visualScaleY: 3 }));
   renderer.update(enemies, 0); renderer.update(enemies, 2000);
   const frames = scene.children.filter(child => child.name === 'heavy-hp-backing' && child.visible);
   const fills = scene.children.filter(child => child.name === 'heavy-hp-fill');
@@ -107,6 +107,6 @@ it('preserves dedicated Giant bar thickness with two threats and nonuniform char
     expect(frame.scale.y).toBeCloseTo(.20 * 4 * .8);
     expect(frame.scale.x / frame.scale.y).toBeCloseTo(6);
   }
-  expect(fills.filter(fill => fill.visible)).toHaveLength(1);
+  expect(fills.filter(fill => fill.visible)).toHaveLength(2);
   renderer.dispose(); heavy.dispose(); giant.dispose();
 });

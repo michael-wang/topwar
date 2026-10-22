@@ -10,6 +10,7 @@ Read only when task scope/status needs orientation, not as another specification
 - P4.40c / #36 Lightweight Arcade UI is implemented and owner Pixel 8 PASS: floating Start, compact Pause, larger unbacked Boss warning. Accepted Retry/Replay stay unchanged. Mantou titles, Bungee English/acronyms, Commander system-ui.
 - P4.48 / #15 Credits are Owner Pixel 8 PASS / CLOSED: approved names/roles and characters, corner entry from idle, fullscreen attempt and graceful fallback, reduced-volume Stage1 Complete music, and Return without gameplay start. Preserve the accepted layout and assets.
 - Victory results now also offer the existing Credits modal via a secondary navy/gold button; Return preserves results/Replay and the current victory music, with no duplicate audio. This additional entry awaits Owner Pixel 8 acceptance; idle Credits and defeat remain unchanged.
+- Owner supersedes full-health GIANT bars: HEAVY/GIANT backing and fill now show only while alive with HP below maxHp, reconstructing injured Continue immediately without stored visual flags. Bar art, hit effects and gameplay remain unchanged; this visibility change awaits Pixel 8 acceptance.
 - P4.43 / #22 current Aegean Diorama/coastal composition is Owner accepted for first public playtest; future attract-mode redesign is deferred. #12 Hybrid D production, #30 artillery smoke/defeat, #31 GIANT and review controls, #32 phone startup/performance, #34 approved font hierarchy and Boss warning placement are Owner Pixel 8 PASS.
 
 ## Remaining release action and deferred work

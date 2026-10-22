@@ -318,8 +318,10 @@ export class EnemyRenderer {
         : presentation.hpAnchor ? presentation.hpAnchor.width * (enemy.visualScaleX ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE) : 1.1;
       const y = giantBar?.y ?? (enemy.visualScaleY ?? enemy.visualScale ?? ENEMY_VISUAL_SCALE)
         * (presentation.scaleY ?? 1) * (presentation.hpAnchor?.top ?? this.roleBatches.heavy.modelTop) + .3;
-      bar.backing.visible = true;
-      bar.fill.visible = fraction > 0;
+      // Authoritative HP also reconstructs injured Continue saves, without pool/Retry history.
+      const injured = enemy.hp > 0 && enemy.hp < enemy.maxHp;
+      bar.backing.visible = injured;
+      bar.fill.visible = injured;
       bar.backing.position.set(giantBar?.x ?? -enemy.x, y, enemy.z);
       // Reuse the rate-limited additive hit impulse; each pooled bar owns its tint.
       const hit = this.heavyHits.strength(enemy.id, nowMs);
