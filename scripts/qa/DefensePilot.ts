@@ -6,6 +6,7 @@ import { Simulation } from '../../src/simulation/Simulation';
 import type { SimulationFrameState } from '../../src/simulation/SimulationState';
 import { grenadeTarget, enemiesInBlast } from '../../src/simulation/grenade';
 import { enemyApproachSpeed, pressureWaveSettings } from '../../src/simulation/enemies/latePressure';
+import { prepareOpeningCohort } from '../../src/app/openingCohort';
 
 const config = GameConfigSchema.parse(data), balance = config.catharsis!;
 export const pilotTuning = { ...config.player, trackHalfWidth: config.track.halfWidth,
@@ -26,9 +27,12 @@ export function pressure(state: SimulationFrameState) {
 }
 export function runPilot(seed: number, hesitation = false, useGrenade = true, adjacentOnly = false, targetLevel = 5,
   includeFinalState = false, balance = config.catharsis!,
-  options: { afterLv6Seconds?: number; prioritizeGiant?: boolean } = {}) {
+  options: { afterLv6Seconds?: number; prioritizeGiant?: boolean; openingCohort?: boolean; dodgeArtillery?: boolean } = {}) {
   const sim = new Simulation({seed,level:LevelDefinitionSchema.parse(levelData),startSquad:1,startRocketCount:0,
     tiers:config.tiers,catharsis:{balance,trackHalfWidth:config.track.halfWidth}});
+  if (options.openingCohort) prepareOpeningCohort(sim);
+  const initialEnemies = sim.getFrameState().enemies.length;
+  const levelPressure: Record<number, { nearestDefenseDistance: number | null; nearDefenseCount: number; casualties: number }> = {};
   const milestones: Record<number,number> = {}, phasePeaks: Record<number,{active:number;near:number;debt:number;heavy:number}> = {};
   let activation: number|null=null, detonation: number|null=null, xpAtSpawn:unknown=null, xpAtDetonation:unknown=null;
   let beforeBlast:ReturnType<typeof pressure>|null=null, afterBlast:ReturnType<typeof pressure>|null=null, twoSecondsAfter:ReturnType<typeof pressure>|null=null;
@@ -52,7 +56,13 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
       const nearest=[...before.enemies].filter(e=>e.z>before.player.z).sort((a,b)=>a.z-b.z||a.id-b.id)[0];
       const giant=before.enemies.find(e=>e.archetype==='giant');
       const threat=options.prioritizeGiant && giant && (!nearest || nearest.z-before.player.z>10) ? giant : nearest;
-      const lane=before.grenade?.supply?.lane ?? threat?.lane ?? before.player.selectedLane!;
+      let lane=before.grenade?.supply?.lane ?? threat?.lane ?? before.player.selectedLane!;
+      if (options.dodgeArtillery) {
+        const current = before.player.selectedLane!;
+        const unsafe = new Set(before.artillery?.shells.map(shell => shell.targetLane));
+        lane = [current - 1, current, current + 1].filter(l => l >= 0 && l < balance.laneCount && !unsafe.has(l))
+          .sort((a, b) => Math.abs(a - lane) - Math.abs(b - lane) || a - b)[0] ?? current;
+      }
       let difference=lane-before.player.selectedLane!;
       while(difference) {sim.stepLane(difference>0?1:-1);difference-=Math.sign(difference);if(adjacentOnly)break;}
     }
@@ -86,6 +96,13 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
       heavies:ordinary.filter(e=>e.archetype==='heavy').length});
     const contacts=sim.consumePresentationEvents();
     contactCasualties+=contacts.reduce((sum,e)=>sum+Math.max(0,e.before.count-e.after.count),0);
+    const observation = levelPressure[before.progression!.level] ??= { nearestDefenseDistance: null, nearDefenseCount: 0, casualties: 0 };
+    const distances = after.enemies.map(e => e.z - (after.player.z - config.track.defenseLineOffset));
+    const breaches = contacts.filter(e => e.kind === 'normalEnemyContact').length;
+    const nearestDefense = breaches ? 0 : distances.length ? Math.min(...distances) : null;
+    if (nearestDefense !== null) observation.nearestDefenseDistance = Math.min(observation.nearestDefenseDistance ?? Infinity, nearestDefense);
+    observation.nearDefenseCount = Math.max(observation.nearDefenseCount, distances.filter(d => d <= 10).length + breaches);
+    observation.casualties += contacts.reduce((sum,e)=>sum+Math.max(0,e.before.count-e.after.count),0);
     const contactIds=new Set(contacts.filter(e=>e.kind==='normalEnemyContact').map(e=>e.enemyId));
     const remaining=new Set(after.enemies.map(e=>e.id));
     for(const enemy of before.enemies)if(!remaining.has(enemy.id)&&!contactIds.has(enemy.id)) {
@@ -135,7 +152,7 @@ export function runPilot(seed: number, hesitation = false, useGrenade = true, ad
       && (options.afterLv6Seconds===undefined || (milestones[6]!==undefined && after.elapsedSeconds>=milestones[6]+options.afterLv6Seconds)))break;
   }
   const end=sim.getFrameState();
-  return {seed,pilot:hesitation?'hesitation':'normal',useGrenade,adjacentOnly,milestones,
+  return {seed,pilot:hesitation?'hesitation':'normal',useGrenade,adjacentOnly,initialEnemies,levelPressure,milestones,
     evolution,ladder,ramps,groupAdmissions,lv4Duration:milestones[5]===undefined?null:milestones[5]-milestones[4],
     lv5Duration:milestones[6]===undefined?null:milestones[6]-milestones[5],
     lv3Duration:milestones[4]===undefined?null:milestones[4]-milestones[3],

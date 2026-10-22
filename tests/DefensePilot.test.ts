@@ -1,5 +1,14 @@
 import { expect, it } from 'vitest';
 import { runPilot } from '../scripts/qa/DefensePilot';
+import config from './helpers/ShippingConfig';
+
+it('observes the real opening cohort without Grenades or modifying the old pilot default', () => {
+  const r = runPilot(17, false, false, true, 2, false, config.catharsis!, { openingCohort: true });
+  expect(r.initialEnemies).toBe(16); expect(r.milestones[2]).toBeGreaterThan(0);
+  expect(r.levelPressure[1].nearestDefenseDistance).toBeGreaterThan(10);
+  expect(r.levelPressure[1].nearDefenseCount).toBe(0); expect(r.levelPressure[1].casualties).toBe(0);
+  expect(r.activation).toBeNull();
+});
 
 it('replays the seeded hesitation pilot and logs authoritative blast XP, lane debt and clocks',()=>{
   const first=runPilot(17,true,true),second=runPilot(17,true,true);

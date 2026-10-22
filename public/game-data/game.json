@@ -63,7 +63,7 @@
     },
     "defenseMotionVersion": 2,
     "defenseWaves": {
-      "intervalSeconds": 6,
+      "intervalSeconds": 5,
       "firstWaveDelaySeconds": 1.6666666666666667
     },
     "carnival": {
@@ -173,12 +173,12 @@
       "lv4": {
         "xpFraction": 0.35,
         "pressureLaneCount": 4,
-        "heavyCount": 2
+        "heavyCount": 3
       },
       "lv5": {
         "xpFraction": 0.25,
         "pressureLaneCount": 3,
-        "heavyCount": 3
+        "heavyCount": 4
       },
       "lv6": {
         "groupSize": 60,
