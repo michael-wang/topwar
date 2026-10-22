@@ -16,14 +16,29 @@ class Music {
   play = vi.fn(() => Music.reject ? Promise.reject(new Error("autoplay denied")) : Promise.resolve()); pause = vi.fn(); load = vi.fn(); removeAttribute = vi.fn();
   constructor(readonly src: string) { Music.instances.push(this); }
 }
-function setup(requestFullscreen = vi.fn()) {
+function setup(requestFullscreen = vi.fn(), context: 'idle' | 'victory' = 'idle') {
   Music.instances = []; Music.reject = false;
   const doc = Object.assign(new EventTarget(), { createElement: () => new Element(), hidden: false, fullscreenElement: null as Element | null });
   vi.stubGlobal('document', doc); vi.stubGlobal('Audio', Music);
-  const host = new Element(), overlay = new CreditsOverlay(host as unknown as HTMLElement, requestFullscreen);
+  const host = new Element(), overlay = new CreditsOverlay(host as unknown as HTMLElement, requestFullscreen, context);
   return { doc, host, overlay, requestFullscreen, entry: host.children[0], dialog: host.children[1] };
 }
 afterEach(() => vi.unstubAllGlobals());
+it('reuses victory music without creating or stopping media on Return, Escape, background or Retry disposal', () => {
+  const { overlay, entry, dialog, doc, requestFullscreen } = setup(vi.fn(), 'victory');
+  entry.dispatchEvent(new Event('click'));
+  expect(dialog.open).toBe(true); expect(dialog.children[2].focus).toHaveBeenCalledOnce();
+  expect(dialog.setAttribute).toHaveBeenCalledWith('aria-labelledby', 'victory-credits-title');
+  const escape = new Event('keydown', { cancelable: true }), stop = vi.spyOn(escape, 'stopPropagation');
+  dialog.dispatchEvent(escape); expect(stop).toHaveBeenCalledOnce(); expect(escape.defaultPrevented).toBe(false);
+  dialog.children[2].dispatchEvent(new Event('click'));
+  expect(dialog.open).toBe(false); expect(entry.focus).toHaveBeenCalledOnce();
+  entry.dispatchEvent(new Event('click')); dialog.close(); // Native Escape dismissal.
+  entry.dispatchEvent(new Event('click')); doc.hidden = true; doc.dispatchEvent(new Event('visibilitychange'));
+  overlay.dispose();
+  expect(dialog.open).toBe(false); expect(Music.instances).toHaveLength(0);
+  expect(requestFullscreen).not.toHaveBeenCalled();
+});
 it('preserves approved names, opens only on a gesture and returns without any game callback', () => {
   const { overlay, entry, dialog } = setup();
   expect(Music.instances).toHaveLength(0);

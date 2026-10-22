@@ -9,6 +9,8 @@ class Element extends EventTarget {
   id = '';
   lang = '';
   type = '';
+  open = false;
+  focus = vi.fn();
   clientHeight = 844;
   dataset: Record<string, string> = {};
   style = { setProperty: vi.fn() };
@@ -17,11 +19,16 @@ class Element extends EventTarget {
   remove = vi.fn();
   append(...children: Element[]) { this.children.push(...children); }
   replaceChildren(...children: Element[]) { this.children = children; }
+  showModal() { this.open = true; }
+  close() { this.open = false; this.dispatchEvent(new Event('close')); }
+}
+function mockDocument() {
+  vi.stubGlobal('document', Object.assign(new EventTarget(), { createElement: () => new Element() }));
 }
 afterEach(() => vi.unstubAllGlobals());
 
 it('preserves final results and replay, rebuilding only for a new clear after Retry', () => {
-  vi.stubGlobal('document', { createElement: () => new Element() });
+  mockDocument();
   const replay = vi.fn(), viewport = new Element();
   const overlay = new StageClearOverlay(viewport as unknown as HTMLElement, replay);
   const root = overlay.element as unknown as Element;
@@ -46,6 +53,26 @@ it('preserves final results and replay, rebuilding only for a new clear after Re
   button.dispatchEvent(new Event('click')); expect(replay).toHaveBeenCalledOnce();
 });
 
+it('opens the existing Credits above victory, preserves results/Replay and clears the modal on Retry', () => {
+  mockDocument();
+  const audio = vi.fn(); vi.stubGlobal('Audio', audio);
+  const replay = vi.fn(), viewport = new Element();
+  const overlay = new StageClearOverlay(viewport as unknown as HTMLElement, replay);
+  overlay.show({ gruntKills: 5, heavyKills: 3, giantKills: 1, shotsFired: 100, shotsHit: 35, grenadesUsed: 2 }, 90);
+  const root = overlay.element as unknown as Element, results = root.children[1].children;
+  const entry = root.children.find(e => e.className === 'stage-clear-credits')!;
+  const dialog = viewport.children.at(-1)!;
+  expect(entry.textContent).toBe('製作名單'); expect(entry.type).toBe('button');
+  entry.dispatchEvent(new Event('click')); expect(dialog.open).toBe(true);
+  dialog.children[2].dispatchEvent(new Event('click'));
+  expect(dialog.open).toBe(false); expect(root.hidden).toBe(false);
+  expect(root.children[1].children).toBe(results); expect(entry.focus).toHaveBeenCalledOnce();
+  root.children[3].dispatchEvent(new Event('click')); expect(replay).toHaveBeenCalledOnce();
+  entry.dispatchEvent(new Event('click')); overlay.reset(); expect(dialog.open).toBe(false);
+  expect(entry.remove).toHaveBeenCalledOnce(); expect(audio).not.toHaveBeenCalled();
+  overlay.dispose();
+});
+
 it('shows three stable defeat results and seated art, then rebuilds after Retry and cleans listeners', () => {
   vi.stubGlobal('document', { createElement: () => new Element() });
   const retry = vi.fn(), viewport = new Element();
@@ -56,6 +83,7 @@ it('shows three stable defeat results and seated art, then rebuilds after Retry 
   overlay.setVisible(true, stats, 90);
   expect(overlay.visible).toBe(true);
   expect(title.textContent).toBe('作戰失敗'); expect(button.textContent).toBe('再試一次');
+  expect(root.children.some(e => e.textContent === '製作名單')).toBe(false);
   expect((illustration as unknown as HTMLImageElement).src).toContain('art/defeat/commander-soldier.webp');
   expect((illustration as unknown as HTMLImageElement).alt).toContain('蹲坐在地上');
   expect(results.children.map(row => row.children.map(child => child.textContent)))

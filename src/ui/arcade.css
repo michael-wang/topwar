@@ -235,6 +235,16 @@
   animation:stage-clear-cta .35s 2.05s ease-out both; }
 .stage-clear-overlay button:active { background:#ffca60; box-shadow:0 1px #142332; }
 .stage-clear-overlay button:focus-visible { outline:3px solid #fff3dc; outline-offset:4px; }
+.stage-clear-overlay .stage-clear-credits {
+  top:max(16%, calc(var(--hud-inset-top, 0px) + 84px)); bottom:auto;
+  right:max(8%, env(safe-area-inset-right)); left:auto; width:110px; height:46px; min-height:46px;
+  padding:8px 12px; transform:none; z-index:2;
+  color:#fff3dc; background:#10263c; border:1px solid #d7bd7d;
+  border-radius:6px; box-shadow:0 2px #07121c; text-shadow:none;
+  font:400 17px/1.2 var(--font-utility, system-ui, sans-serif); letter-spacing:0;
+  animation:stage-clear-reveal .35s .45s ease-out both;
+}
+.stage-clear-overlay .stage-clear-credits:active { background:#193b55; }
 .defeat-results-overlay { background:radial-gradient(ellipse at 58% 60%, #18202c88, #07111be6 90%),
   linear-gradient(#0a1729bb, #0c1825b8 45%, #080f1de6); color:#dce4e8; }
 .defeat-results-overlay .stage-clear-title { color:#e8edef; text-shadow:0 4px #142332, 2px 0 #142332, -2px 0 #142332;

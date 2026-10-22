@@ -8,7 +8,7 @@ const people = [
   ['遊戲製作', '疾如風', 'art/credits/giant-front-walk.webp', 'producer'],
 ] as const;
 
-/** Idle-only presentation: owns no game clock, checkpoint or shared audio state. */
+/** Presentation only: owns no game clock, checkpoint or shared audio state. */
 export class CreditsOverlay {
   readonly button = document.createElement('button');
   private readonly dialog = document.createElement('dialog');
@@ -19,12 +19,15 @@ export class CreditsOverlay {
     if (this.dialog.open) return;
     this.dialog.showModal();
     this.back.focus();
-    // Call play synchronously inside the owner's button gesture. Denial stays silent and usable.
-    this.music = new Audio(publicAssetUrl('audio/stage1-complete.mp3'));
-    this.music.loop = true; this.music.volume = .225;
-    void this.music.play().catch(() => {});
-    // Fullscreen may consume activation: request only after audio, without awaiting.
-    try { this.requestFullscreen(); } catch { /* Optional presentation; Credits stays usable. */ }
+    if (this.context === 'idle') {
+      // Call play synchronously inside the owner's button gesture. Denial stays silent and usable.
+      this.music = new Audio(publicAssetUrl('audio/stage1-complete.mp3'));
+      this.music.loop = true; this.music.volume = .225;
+      void this.music.play().catch(() => {});
+      // Fullscreen may consume activation: request only after audio, without awaiting.
+      try { this.requestFullscreen(); } catch { /* Optional presentation; Credits stays usable. */ }
+    }
+    // Victory keeps GameAudio's existing media, playback position and lifecycle.
   };
   private readonly stopMusic = (): void => {
     if (!this.music) return;
@@ -42,15 +45,19 @@ export class CreditsOverlay {
     finally { this.restoringModal = false; }
   };
   private readonly visibility = (): void => { if (document.hidden) this.stopMusic(); };
+  // Preserve native dialog keys (Escape/Tab/Enter) without reaching battle/menu shortcuts.
+  private readonly keyDown = (event: KeyboardEvent): void => { event.stopPropagation(); };
 
-  constructor(viewport: HTMLElement, private readonly requestFullscreen: () => void = () => {}) {
+  constructor(viewport: HTMLElement, private readonly requestFullscreen: () => void = () => {},
+    private readonly context: 'idle' | 'victory' = 'idle') {
     this.button.type = this.back.type = 'button';
     this.button.className = 'credits-entry'; this.button.textContent = '製作名單';
     this.back.className = 'credits-back'; this.back.textContent = '返回';
     this.dialog.className = 'credits-overlay'; this.dialog.lang = 'zh-Hant';
-    this.dialog.setAttribute('aria-labelledby', 'credits-title');
+    const titleId = context === 'idle' ? 'credits-title' : 'victory-credits-title';
+    this.dialog.setAttribute('aria-labelledby', titleId);
     const header = document.createElement('header'), title = document.createElement('h1');
-    title.textContent = 'CREDITS'; title.id = 'credits-title';
+    title.textContent = 'CREDITS'; title.id = titleId;
     header.append(title);
     const cast = document.createElement('div'); cast.className = 'credits-cast';
     for (const [role, name, asset, section] of people) {
@@ -65,6 +72,7 @@ export class CreditsOverlay {
     this.dialog.append(header, cast, this.back); viewport.append(this.button, this.dialog);
     this.button.addEventListener('click', this.open); this.back.addEventListener('click', this.close);
     this.dialog.addEventListener('close', this.closed);
+    this.dialog.addEventListener('keydown', this.keyDown);
     document.addEventListener('fullscreenchange', this.fullscreenChanged);
     document.addEventListener('visibilitychange', this.visibility);
   }
@@ -73,6 +81,7 @@ export class CreditsOverlay {
     if (this.dialog.open) this.dialog.close();
     this.button.removeEventListener('click', this.open); this.back.removeEventListener('click', this.close);
     this.dialog.removeEventListener('close', this.closed); document.removeEventListener('visibilitychange', this.visibility);
+    this.dialog.removeEventListener('keydown', this.keyDown);
     document.removeEventListener('fullscreenchange', this.fullscreenChanged);
     this.button.remove(); this.dialog.remove();
   }

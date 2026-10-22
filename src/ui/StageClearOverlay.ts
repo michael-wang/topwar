@@ -1,6 +1,7 @@
 import type { CombatStats } from '../simulation/combatStats';
 import { combatResults } from '../simulation/combatStats';
 import { publicAssetUrl } from '../core/publicAssetUrl';
+import { CreditsOverlay } from './CreditsOverlay';
 
 export function clearResultRows(stats: Readonly<CombatStats>, clearSeconds: number): [string, string][] {
   const s = combatResults(stats, clearSeconds), minutes = Math.floor(s.clearSeconds / 60);
@@ -19,8 +20,9 @@ export class StageClearOverlay {
   private readonly illustration = document.createElement('img');
   private readonly button = document.createElement('button');
   private shown = false;
+  private credits: CreditsOverlay | null = null;
   private readonly previewNote = document.createElement('small');
-  constructor(viewport: HTMLElement, private readonly onPlayAgain: () => void,
+  constructor(private readonly viewport: HTMLElement, private readonly onPlayAgain: () => void,
     private readonly outcome: 'victory' | 'defeat' = 'victory') {
     const defeat = outcome === 'defeat', titleId = defeat ? 'defeat-results-title' : 'stage-clear-title';
     this.element.className = defeat ? 'stage-clear-overlay game-over-overlay defeat-results-overlay' : 'stage-clear-overlay'; this.element.hidden = true;
@@ -46,6 +48,11 @@ export class StageClearOverlay {
   show(stats: Readonly<CombatStats>, clearSeconds: number): void {
     if (this.shown) return;
     this.shown = true; this.results.replaceChildren();
+    if (this.outcome === 'victory') {
+      this.credits = new CreditsOverlay(this.viewport, undefined, 'victory');
+      this.credits.button.className = 'stage-clear-credits';
+      this.element.append(this.credits.button);
+    }
     const rows = this.outcome === 'defeat' ? defeatResultRows(stats, clearSeconds) : clearResultRows(stats, clearSeconds);
     for (const [index, [label, value]] of rows.entries()) {
       const row = document.createElement('div'); row.className = 'stage-clear-stat';
@@ -55,8 +62,12 @@ export class StageClearOverlay {
     }
     this.element.hidden = false;
   }
-  reset(): void { this.shown = false; this.element.hidden = true; }
+  reset(): void {
+    this.credits?.dispose(); this.credits = null;
+    this.shown = false; this.element.hidden = true;
+  }
   dispose(): void {
+    this.credits?.dispose(); this.credits = null;
     this.button.removeEventListener('click', this.onPlayAgain); this.element.removeEventListener('pointerdown', this.stopPointer);
     this.element.remove();
   }
