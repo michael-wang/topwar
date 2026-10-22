@@ -61,9 +61,11 @@ async function checkAirSupport(page,width,out) {
  assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isDisabled());
  assert.equal(await page.locator('.commander-focus:not([hidden])').count(),1);
  await page.evaluate(()=>window.__supportButton=document.querySelector('.manual-air-support'));
- const duration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(duration-6.765708)<.002);
- assert.equal(await page.locator('.field-observer p').textContent(),'各位！我剛爭取到空中轟炸支援！');
+ const duration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(duration-3.709375)<.002);
+ assert.equal(await page.locator('.field-observer p').textContent(),'空中支援已經待命！隨時可以下令！');
  await advance(3.3);assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds),null);
+ assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isDisabled());
+ await advance(.9);
  assert(await page.getByRole('button',{name:'呼叫空襲',exact:true}).isEnabled());
  assert(await page.evaluate(()=>window.__supportButton===document.querySelector('.manual-air-support')));
  assert(await page.getByText('新功能：呼叫空襲',{exact:true}).isVisible());
@@ -75,9 +77,11 @@ async function checkAirSupport(page,width,out) {
  await controlledFrames(page);assert.deepEqual(await page.evaluate(()=>window.__testApp.simulation.getState()),saved);
  assert.equal(await page.locator('.manual-air-support i').evaluate(e=>e.style.opacity),'0');
  await page.locator('.hud-actions').getByRole('button',{name:'繼續遊戲',exact:true}).tap();await page.evaluate(()=>window.__draw());
+ await page.waitForFunction(()=>window.__testApp.audio.prepareRadio('zh-TW','airSupportCalled')==='ready');
  await page.getByRole('button',{name:'呼叫空襲',exact:true}).tap();await advance(.1);
  await page.waitForFunction(()=>window.__testApp.audio.voice?.message==='airSupportCalled'&&window.__testApp.audio.voice.source!==null);
- assert.equal(await page.locator('.field-observer p').textContent(),'轟炸機馬上抵達現場！注意！轟炸即將開始！！');
+ assert.equal(await page.locator('.field-observer p').textContent(),'轟炸編隊正在進場！準備進行打擊！');
+ const calledDuration=await page.evaluate(()=>window.__testApp.audio.voice.source.buffer.duration);assert(Math.abs(calledDuration-3.474271)<.002);
  const trigger=await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds);assert(trigger!==null);
  await page.screenshot({path:out+'/air-entry-'+width+'.png',scale:'css'});
  await page.evaluate(()=>{const a=window.__testApp,consume=a.simulation.consumeSupportEvents.bind(a.simulation);window.__raidDamage=[];a.simulation.consumeSupportEvents=()=>{const events=consume();for(const e of events)if(e.kind==='supportBomb')window.__raidDamage.push(e.tankDamage);return events;};});
@@ -87,7 +91,7 @@ async function checkAirSupport(page,width,out) {
  const state=await page.evaluate(()=>window.__testApp.simulation.getState());assert.equal(state.commanderSupport.airstrike.status,'completed');assert.deepEqual(await page.evaluate(()=>window.__raidDamage),[0,0,0,500,0,0]);assert.equal(state.defenseTank.hp,1600);assert.equal(state.combatStats.gruntKills+state.combatStats.heavyKills+state.combatStats.giantKills,0);assert(state.squad.count>0);assert.equal(state.commanderSupport.airstrike.impacts.length,12);
  await page.locator('.tuning-panel > summary').tap();await page.locator('[data-role="air-support"]').tap();await page.evaluate(()=>window.__draw());
  assert.equal(await page.evaluate(()=>window.__testApp.simulation.getState().commanderSupport.airstrike.triggeredAtSeconds),null);
- return {role:'air-support',policy:'manualPlayerCall',voice:duration,damage:[500],bossHp:1600,restored:true,retry:true};
+ return {role:'air-support',policy:'manualPlayerCall',voice:duration,calledVoice:calledDuration,damage:[500],bossHp:1600,restored:true,retry:true};
 }
 async function checkPlaytestScenes(page,width,out) {
  await page.waitForFunction(()=>['destroyer','tankBoss','victory'].every(m=>window.__testApp.audio.radioDurationSeconds('zh-TW',m)>0));
@@ -179,7 +183,7 @@ for(const [query,level]of [['',1],['?review=threats&commander-placement=a',1],['
   const asset=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`art/observer/${expression}.webp`]}`);
   if(!asset.ok()||!asset.headers()['content-type']?.includes('image/webp'))throw Error('Missing local observer portrait under Pages base path');
  }
- for(const name of ['observer_destroyer_zh-TW.mp3','observer_stage1_boss_intro_zh-TW.mp3','commander_stage1_intro_zh-TW.mp3','commander_stage1_victory_zh-TW.mp3','commander_air_support_zh-TW.mp3','commander_giant_warning_zh-TW.mp3','boss-theme.mp3']){
+ for(const name of ['observer_destroyer_zh-TW.mp3','observer_stage1_boss_intro_zh-TW.mp3','commander_stage1_intro_zh-TW.mp3','commander_stage1_victory_zh-TW.mp3','commander_air_support_zh-TW.mp3','commander_air_support_ready_zh-TW.mp3','commander_air_support_called_zh-TW.mp3','commander_giant_warning_zh-TW.mp3','boss-theme.mp3']){
   const voice=await page.request.get(`http://127.0.0.1:5181/topwar/${manifest[`audio/${name}`]}`);
   if(!voice.ok()||!voice.headers()['content-type']?.includes('audio/mpeg')
     ||!(await voice.body()).equals(readFileSync(`public/audio/${name}`)))

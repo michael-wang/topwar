@@ -7,6 +7,10 @@ export const observerSupportDialogue: Record<'giant', Record<ObserverLocale, str
 };
 // Approved 6.766s recording: the sentence break is the silence at 2.6–3.1s.
 export const airSupportTiming = { durationSeconds: 6.95, phraseAtSeconds: 3.05 };
+// New manual E/F: Chrome-decoded approved recordings plus a .35s closing margin.
+// The combined recording/timing above remains authoritative for historical automatic raids.
+export const manualAirSupportTiming = { readyDurationSeconds: 4.059375, calledDurationSeconds: 3.824271 };
+// Retained historical split metadata; current manual E/F files no longer seek these offsets.
 export function airSupportVoiceSegment(message: ObserverMessage): { start: number; end: number } | undefined {
   if (message === 'airSupportReady') return { start: 0, end: airSupportTiming.phraseAtSeconds };
   if (message === 'airSupportCalled') return { start: airSupportTiming.phraseAtSeconds, end: airSupportTiming.durationSeconds };
@@ -14,6 +18,10 @@ export function airSupportVoiceSegment(message: ObserverMessage): { start: numbe
 export const observerAirSupportDialogue: Record<ObserverLocale, readonly string[]> = {
   'zh-TW': ['各位！我剛爭取到空中轟炸支援！', '轟炸機馬上抵達現場！注意！轟炸即將開始！！'],
   en: ['Everyone! I secured bomber support!', 'Bombers arriving! Attention! Bombing is about to begin!'],
+};
+export const observerManualAirSupportDialogue: Record<ObserverLocale, readonly string[]> = {
+  'zh-TW': ['空中支援已經待命！隨時可以下令！', '轟炸編隊正在進場！準備進行打擊！'],
+  en: observerAirSupportDialogue.en,
 };
 export const observerTankDialogue: Record<ObserverLocale, string> = {
   'zh-TW': '警告！發現敵軍超重型坦克！正朝我方防線推進！',
@@ -28,7 +36,7 @@ export const observerVictoryDialogue: Record<ObserverLocale, readonly string[]> 
   en: ['Well done! The enemy super-heavy tank is destroyed!', 'You held the beachhead.', 'Thank you, everyone…', 'I am proud of you!'],
 };
 export const observerDialogue: Record<ObserverLocale, string> = {
-  'zh-TW': '注意，左前方發現敵方驅逐艦！準備閃避砲擊。完畢！',
+  'zh-TW': '注意，左前方發現敵方驅逐艦！準備閃避砲擊',
   en: 'Enemy destroyer approaching from the left! Incoming naval fire. Over.',
 };
 export const OBSERVER_LOCALE_KEY = 'topwar.observer.locale';

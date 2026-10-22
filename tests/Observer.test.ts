@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 // @ts-expect-error Vitest runs in Node; project typecheck exposes browser types only.
 import { createHash } from 'node:crypto';
-import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue, observerVictoryDialogue } from '../src/ui/observerLocale';
+import { loadObserverLocale, selectObserverLocale, saveObserverLocale, observerDialogue, observerMissionDialogue, observerVictoryDialogue, manualAirSupportTiming, type ObserverLocale, type ObserverMessage } from '../src/ui/observerLocale';
 import { ObserverTimeline, MissionObserverTimeline, missionIntroTiming, tankIntroTiming, victoryTiming } from '../src/presentation/ObserverTimeline';
 import { ObserverVoice, ObserverVoiceFiles, observerVoiceAssets, observerMissionVoiceAssets, observerTankVoiceAssets, observerVoiceAsset } from '../src/audio/ObserverVoice';
 import { destroyerDefaults as config } from '../src/config/destroyerConfig';
@@ -39,7 +39,7 @@ it('selects Traditional Chinese browser locales, English fallback and persisted 
   expect(selectObserverLocale(['zh-TW'], 'invalid')).toBe('zh-TW');
   const storage = { getItem: () => { throw Error('denied'); }, setItem: () => { throw Error('denied'); } };
   expect(loadObserverLocale(['zh-TW'], storage)).toBe('zh-TW');expect(() => saveObserverLocale('en', storage)).not.toThrow();
-  expect(observerDialogue.en).toMatch(/Over\.$/);expect(observerDialogue['zh-TW']).toContain('完畢！');
+  expect(observerDialogue.en).toMatch(/Over\.$/);expect(observerDialogue['zh-TW']).toBe('注意，左前方發現敵方驅逐艦！準備閃避砲擊');
 });
 it.each(['ready', 'pending', 'unavailable'] as const)('gives GIANT a complete %s window without a late partial voice or Continue replay', readiness => {
   const {ui,audio} = missionUi(), support = emptyCommanderSupport(true);
@@ -176,7 +176,7 @@ it('bounds hung voice fetches and aborts pending requests on disposal', async ()
 it('bundles the exact approved Mandarin bytes and leaves English without a recording', () => {
   expect(observerVoiceAssets).toEqual({ 'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null });
   const bytes = readFileSync('public/audio/observer_destroyer_zh-TW.mp3');
-  expect(createHash('sha256').update(bytes).digest('hex')).toBe('3e54fc46e2efbb050b7cb0ab6d863c4a938e13436214e83ef81d56faf3806ae8');
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe('22a7500e1e5462b1ab2a83df0e524cbe7b599b3d061ef3fa1ecb46b1eadc1ae8');
   expect(config.radioDurationSeconds).toBeGreaterThan(6.48);
   expect(config.shotTimes[0]).toBeGreaterThan(config.radioAtSeconds + config.radioDurationSeconds);
 });
@@ -258,7 +258,7 @@ function missionUi(portraits = readyPortraits(), search = '') {
   vi.stubGlobal('document',{createElement:()=>new ElementStub()});
   vi.stubGlobal('navigator',{languages:['zh-TW']});vi.stubGlobal('window',{location:{search}});
   const audio={play:vi.fn(),syncRadio:vi.fn(),prepareRadio:vi.fn(()=> 'ready' as const),
-    radioDurationSeconds:vi.fn((): number | null => null)};
+    radioDurationSeconds:vi.fn((_locale: ObserverLocale, _message: ObserverMessage): number | null => null)};
   const ui=new FieldObserver(new ElementStub() as unknown as HTMLElement,audio,portraits);
   return {ui,audio,text:()=>(ui.element as unknown as ElementStub).children[1].textContent};
 }
@@ -300,8 +300,8 @@ it('opts into Commander A only in DEV with the exact query, without changing com
       expect(ui.element.style.left).toBe('max(12px, calc(50% - 155px))');
       expect(ui.element.style.top).toBe(height
         ? `calc(${height}% + var(--hud-inset-top, 0px) * .36 - var(--hud-inset-bottom, 0px) * .64)` : 'calc(50% - 41px + (var(--hud-inset-top, 0px) - var(--hud-inset-bottom, 0px)) * .5)');
-      expect(audio.prepareRadio).toHaveBeenCalledTimes(5);
-      for (const message of ['missionIntro', 'tankBoss', 'victory', 'airSupport'])
+      expect(audio.prepareRadio).toHaveBeenCalledTimes(7);
+      for (const message of ['missionIntro', 'tankBoss', 'victory', 'airSupport', 'airSupportReady', 'airSupportCalled', 'giant'])
         expect(audio.prepareRadio).toHaveBeenCalledWith('zh-TW', message);
     }
   }
@@ -544,42 +544,89 @@ it('plays the original support recording, pauses/seeks without restarting, and r
   voice.reset(); voice.sync('zh-TW', 0, false, 3.8, 'airSupport'); await Promise.resolve();
   expect(nodes).toHaveLength(2); expect(loader).toHaveBeenCalledOnce(); voice.dispose();
 });
-it('bounds the manual phrases to their recording segments, sharing one asset and seeking correctly after Pause', async () => {
-  const { context, nodes } = audioHarness(), loader = vi.fn(async () => ({ duration: 6.765708 } as AudioBuffer));
+it('plays byte-exact independent manual recordings from zero and seeks within each file after Pause', async () => {
+  const { context, nodes } = audioHarness(), loader = vi.fn(async (url: string) => ({ duration: url.includes('_ready_') ? 3.709375 : 3.474271 } as AudioBuffer));
+  for (const [message, file, hash] of [
+    ['airSupportReady', 'commander_air_support_ready_zh-TW.mp3', 'a8a9461c0d2ed08a4c505b970531b4cabf586120a3702f1c662ed6ce125c655e'],
+    ['airSupportCalled', 'commander_air_support_called_zh-TW.mp3', '7b242728f1afe037862be0077205535c597eb442924c686d9f275e478f91cf00'],
+  ] as const) {
+    expect(observerVoiceAsset('zh-TW', message)).toBe('audio/' + file);
+    expect(createHash('sha256').update(readFileSync('public/audio/' + file)).digest('hex')).toBe(hash);
+  }
   const voice = new ObserverVoice(context, {} as AudioNode, observerVoiceAssets, loader);
   voice.prepare('zh-TW', 'airSupportReady'); await Promise.resolve(); await Promise.resolve();
-  voice.sync('zh-TW', 0, false, 3.05, 'airSupportReady'); await Promise.resolve();
-  expect(nodes[0].start).toHaveBeenCalledWith(0, 0, 3.05);
-  voice.sync('zh-TW', 1, true, 3.05, 'airSupportReady'); expect(nodes[0].stop).toHaveBeenCalledOnce();
-  voice.sync('zh-TW', 1, false, 3.05, 'airSupportReady'); await Promise.resolve();
-  expect(nodes[1].start).toHaveBeenCalledWith(0, 1, 2.05);
-  voice.sync('zh-TW', null, false); voice.sync('zh-TW', 0, false, 3.9, 'airSupportCalled'); await Promise.resolve();
-  expect(nodes[2].start.mock.calls[0][1]).toBe(3.05); expect(nodes[2].start.mock.calls[0][2]).toBeCloseTo(3.715708);
-  voice.sync('zh-TW', .7, true, 3.9, 'airSupportCalled'); voice.sync('zh-TW', .7, false, 3.9, 'airSupportCalled'); await Promise.resolve();
-  expect(nodes[3].start.mock.calls[0][1]).toBe(3.75); expect(loader).toHaveBeenCalledOnce(); voice.dispose();
+  voice.sync('zh-TW', 0, false, manualAirSupportTiming.readyDurationSeconds, 'airSupportReady'); await Promise.resolve();
+  expect(nodes[0].start).toHaveBeenCalledWith(0, 0);
+  voice.sync('zh-TW', 1, true, manualAirSupportTiming.readyDurationSeconds, 'airSupportReady'); expect(nodes[0].stop).toHaveBeenCalledOnce();
+  voice.sync('zh-TW', 1, false, manualAirSupportTiming.readyDurationSeconds, 'airSupportReady'); await Promise.resolve();
+  expect(nodes[1].start).toHaveBeenCalledWith(0, 1);
+  voice.prepare('zh-TW', 'airSupportCalled'); await Promise.resolve(); await Promise.resolve();
+  voice.sync('zh-TW', null, false); voice.sync('zh-TW', 0, false, manualAirSupportTiming.calledDurationSeconds, 'airSupportCalled'); await Promise.resolve();
+  expect(nodes[2].start).toHaveBeenCalledWith(0, 0);
+  voice.sync('zh-TW', .7, true, manualAirSupportTiming.calledDurationSeconds, 'airSupportCalled'); voice.sync('zh-TW', .7, false, manualAirSupportTiming.calledDurationSeconds, 'airSupportCalled'); await Promise.resolve();
+  expect(nodes[3].start).toHaveBeenCalledWith(0, .7); expect(loader).toHaveBeenCalledTimes(2); voice.dispose();
 });
-it.each(['ready', 'unavailable'] as const)('keeps manual readiness and call dialogue separate with %s audio, and restores without reopening radio', readiness => {
+it.each(['ready', 'pending', 'unavailable'] as const)('keeps manual readiness and call dialogue separate with %s audio, and restores without reopening radio', readiness => {
   const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = structuredClone(shipping.catharsis!.commanderSupport!);
   c.heavyRaid!.lastStand!.triggerPolicy = 'manualPlayerCall'; delete c.heavyRaid!.lastStand!.livingMgHpThresholds;
   audio.prepareRadio.mockReturnValue(readiness as 'ready');
   ui.update(undefined, undefined, 60, true, false, undefined, s, c);
   s.airstrike!.manual = { availableAtSeconds: 60.1, announcementAtSeconds: null, ready: false };
   ui.update(undefined, undefined, 60.1, true, false, undefined, s, c);
-  expect(text()).toBe('各位！我剛爭取到空中轟炸支援！'); expect(ui.supportNoticeStarted).toBe(true);
+  expect(text()).toBe('空中支援已經待命！隨時可以下令！'); expect(ui.supportNoticeStarted).toBe(true);
   s.airstrike!.manual.announcementAtSeconds = 60.1;
   ui.update(undefined, undefined, 61.1, true, true, undefined, s, c); expect(text()).not.toContain('馬上');
   ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 61.1, true, true, undefined, s, c);
   ui.update(undefined, undefined, 61.1, true, false, undefined, s, c);
-  expect(audio.syncRadio.mock.lastCall?.[1]).toBe(1); expect(audio.play).not.toHaveBeenCalled();
-  ui.update(undefined, undefined, 63.2, true, false, undefined, s, c); expect(ui.supportNoticeComplete).toBe(true);
-  s.airstrike!.manual.ready = true; ui.update(undefined, undefined, 64, true, false, undefined, s, c); expect(ui.element.hidden).toBe(true);
-  s.airstrike!.status = 'waiting'; s.airstrike!.triggeredAtSeconds = 64.1;
-  ui.update(undefined, undefined, 64.1, true, false, undefined, s, c); expect(text()).toBe('轟炸機馬上抵達現場！注意！轟炸即將開始！！');
-  expect(audio.syncRadio.mock.lastCall?.slice(1)).toEqual([0, false, 3.9000000000000004, 'airSupportCalled']);
-  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 65, true, false, undefined, s, c);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBe(readiness === 'ready' ? 1 : null); expect(audio.play).not.toHaveBeenCalled();
+  ui.update(undefined, undefined, 63.2, true, false, undefined, s, c); expect(ui.supportNoticeComplete).toBe(false);
+  ui.update(undefined, undefined, 64.15, true, false, undefined, s, c); expect(ui.supportNoticeComplete).toBe(false);
+  ui.update(undefined, undefined, 64.17, true, false, undefined, s, c); expect(ui.supportNoticeComplete).toBe(true);
+  s.airstrike!.manual.ready = true; ui.update(undefined, undefined, 64.2, true, false, undefined, s, c); expect(ui.element.hidden).toBe(true);
+  s.airstrike!.status = 'waiting'; s.airstrike!.triggeredAtSeconds = 64.3;
+  ui.update(undefined, undefined, 64.3, true, false, undefined, s, c); expect(text()).toBe('轟炸編隊正在進場！準備進行打擊！');
+  expect(audio.syncRadio.mock.lastCall?.slice(1)).toEqual([readiness === 'ready' ? 0 : null, false, manualAirSupportTiming.calledDurationSeconds, 'airSupportCalled']);
+  ui.reset(); audio.play.mockClear(); ui.update(undefined, undefined, 65.2, true, false, undefined, s, c);
   expect(text()).not.toContain('爭取'); expect(audio.play).not.toHaveBeenCalled(); ui.dispose();
 });
-it('shows two support phrases through the entire voice and restores only its remaining portion without an opening cue', () => {
+it('keeps a manual cue subtitle-only when its recording becomes ready too late', () => {
+  const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = structuredClone(shipping.catharsis!.commanderSupport!);
+  c.heavyRaid!.lastStand!.triggerPolicy = 'manualPlayerCall';
+  audio.prepareRadio.mockReturnValue('pending' as 'ready');
+  ui.update(undefined, undefined, 60, true, false, undefined, s, c);
+  s.airstrike!.manual = { availableAtSeconds: 60.1, announcementAtSeconds: null, ready: false };
+  ui.update(undefined, undefined, 60.1, true, false, undefined, s, c);
+  expect(text()).toBe('空中支援已經待命！隨時可以下令！');
+  s.airstrike!.manual.announcementAtSeconds = 60.1;
+  audio.prepareRadio.mockReturnValue('ready');
+  ui.update(undefined, undefined, 60.2, true, false, undefined, s, c);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeNull();
+  expect(ui.supportNoticeComplete).toBe(false);
+  ui.update(undefined, undefined, 64.2, true, false, undefined, s, c);
+  expect(ui.supportNoticeComplete).toBe(true);
+  expect(s.airstrike!.triggeredAtSeconds).toBeNull();
+  s.airstrike!.manual.ready = true; s.airstrike!.status = 'waiting'; s.airstrike!.triggeredAtSeconds = 64.3;
+  audio.prepareRadio.mockReturnValue('pending' as 'ready');
+  ui.update(undefined, undefined, 64.3, true, false, undefined, s, c);
+  expect(text()).toBe('轟炸編隊正在進場！準備進行打擊！');
+  audio.prepareRadio.mockReturnValue('ready');
+  ui.update(undefined, undefined, 64.4, true, false, undefined, s, c);
+  expect(audio.syncRadio.mock.lastCall?.[1]).toBeNull(); ui.dispose();
+});
+it('keeps READY locked until the full decoded E duration and closing margin have elapsed', () => {
+  const { ui, audio } = missionUi(), s = emptyCommanderSupport(true, true), c = structuredClone(shipping.catharsis!.commanderSupport!);
+  c.heavyRaid!.lastStand!.triggerPolicy = 'manualPlayerCall';
+  audio.radioDurationSeconds.mockImplementation((_locale, message) => message === 'airSupportReady' ? 4.2 : null);
+  ui.update(undefined, undefined, 60, true, false, undefined, s, c);
+  s.airstrike!.manual = { availableAtSeconds: 60.1, announcementAtSeconds: null, ready: false };
+  ui.update(undefined, undefined, 60.1, true, false, undefined, s, c);
+  s.airstrike!.manual.announcementAtSeconds = 60.1;
+  ui.update(undefined, undefined, 64.64, true, false, undefined, s, c);
+  expect(ui.supportNoticeComplete).toBe(false);
+  ui.update(undefined, undefined, 64.66, true, false, undefined, s, c);
+  expect(ui.supportNoticeComplete).toBe(true); expect(s.airstrike!.triggeredAtSeconds).toBeNull(); ui.dispose();
+});
+it('shows two historical automatic-support phrases through the original voice and restores only its remaining portion', () => {
   const { ui, audio, text } = missionUi(), s = emptyCommanderSupport(true, true), c = structuredClone(shipping.catharsis!.commanderSupport!);
   c.heavyRaid!.lastStand!.triggerPolicy = 'bossHpBySquad'; c.heavyRaid!.lastStand!.livingMgHpThresholds = [750,750,1200,1600,2000];
   ui.update(undefined, undefined, 60, true, false, undefined, s, c);

@@ -12,7 +12,7 @@ Alert edit (built-in imagegen): Use case: identity-preserve. Image 1 is the EDIT
 
 ## Prerecorded dialogue
 
-Mandarin asset: `public/audio/observer_destroyer_zh-TW.mp3`. Supplied by the project owner and explicitly human-approved as a provisional female Field Observer performance on 2026-10-10. Copied unchanged from the supplied Downloads file; no generation, replacement, trimming, normalization or re-encoding. Performer/service and separate license details were not supplied; approval is recorded from the owner's integration instruction.
+Historical C recording (replaced byte-for-byte by the 2026-10-22 approved take below): `public/audio/observer_destroyer_zh-TW.mp3`. Supplied by the project owner and explicitly human-approved as a provisional female Field Observer performance on 2026-10-10. The retired take remains recoverable in Git history. Performer/service and separate license details were not supplied; approval is recorded from the owner's integration instruction.
 
 - Bytes: 103455.
 - SHA-256: `3e54fc46e2efbb050b7cb0ab6d863c4a938e13436214e83ef81d56faf3806ae8`.
@@ -41,3 +41,19 @@ Owner supplied and listening-approved two ElevenLabs Mandarin takes in the hando
 - GIANT: public/audio/commander_giant_warning_zh-TW.mp3, 86736 bytes, SHA-256 60c991c1d29632fd809343cec61b26c3aa691e183cf61855f05b1294b7b32db9. Chrome decoded 4.3624375s; window 4.7124375s. Existing combined two-sentence subtitle retained throughout. Integrated into the existing radio filter/ducking and bounded readiness/priority queue, without changing simulation.
 
 The canonical observerMissionDialogue and missionIntroTiming now use these approved four lines and offsets; all other approved recordings/timings remain. New files use the existing content-addressed build manifest; dormant English has no voice.
+
+### 2026-10-22 Owner-approved C/E/F recordings
+
+Owner supplied `topwar_commander_CEF_approved_audio_2026-10-22.zip`, with `CODEX_HANDOFF.md` mapping the chronological generation/attachment order to C, E, F. Source: ElevenLabs, approved Chinese female Commander voice, v4, 2026-10-22. All three takes are Owner listening-approved. Codex verified hashes and Chrome decoding, but did not independently listen/transcribe the content; mapping follows the approved handoff. This records provenance, not a separate voice license or copyright claim. Original MP3 bytes are copied unchanged; no generation, re-encoding, normalization, gain changes or trimming of the files.
+
+| Cue | Shipping MP3 under `public/audio/` | Bytes | SHA-256 | Chrome decoded at 48 kHz |
+|---|---|---:|---|---:|
+| C | `observer_destroyer_zh-TW.mp3` | 90497 | `22a7500e1e5462b1ab2a83df0e524cbe7b599b3d061ef3fa1ecb46b1eadc1ae8` | 4.597541667 s |
+| E | `commander_air_support_ready_zh-TW.mp3` | 76287 | `a8a9461c0d2ed08a4c505b970531b4cabf586120a3702f1c662ed6ce125c655e` | 3.709375 s |
+| F | `commander_air_support_called_zh-TW.mp3` | 72525 | `7b242728f1afe037862be0077205535c597eb442924c686d9f275e478f91cf00` | 3.474270833 s |
+
+- C: 「注意，左前方發現敵方驅逐艦！準備閃避砲擊」. Existing saved Destroyer radio/attack schedules are unchanged; the normal 7.2-second communication window accommodates the full take.
+- E: 「空中支援已經待命！隨時可以下令！」. New manual support uses its own file from offset 0; READY unlock follows the complete decoded duration + .35s (fallback 4.059375s).
+- F: 「轟炸編隊正在進場！準備進行打擊！」. Plays only after an actual player call, from offset 0; complete decoded duration + .35s (fallback 3.824271s). The 7.5s call-to-first-bomb delay and six-round sequence remain unchanged.
+
+The original `commander_air_support_zh-TW.mp3` remains byte-identical (SHA-256 `82d89bc1d88ea44a8226255a8de74af3896f1e46b905c5d15f49bc1347c7faea`). Historical automatic-support checkpoints retain its original two subtitles, 3.05s phrase boundary and 6.95s window. Current manual E/F never seek those legacy offsets. All existing radio gain/filter/ducking, Pause/Resume/Restore/Retry and A/B/D/G assets remain unchanged. Missing, denied or late manual voice uses its matching subtitle window without delayed partial speech. Integrated phone voice/subtitle/READY synchronization awaits Owner Pixel 8 PASS; Issue #24 stays open. No Pages deployment.

@@ -1,8 +1,7 @@
 import { publicAssetUrl, hasPublicAsset } from '../core/publicAssetUrl';
 import type { ObserverLocale, ObserverMessage } from '../ui/observerLocale';
-import { airSupportVoiceSegment } from '../ui/observerLocale';
 
-// User-approved provisional Mandarin recording; English awaits an approved asset.
+// Owner-approved Mandarin C recording; English awaits an approved asset.
 export const observerVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
   'zh-TW': 'audio/observer_destroyer_zh-TW.mp3', en: null,
 };
@@ -18,10 +17,17 @@ export const observerTankVoiceAssets: Readonly<Record<ObserverLocale, string | n
 export const observerAirSupportVoiceAssets: Readonly<Record<ObserverLocale, string | null>> = {
   'zh-TW': 'audio/commander_air_support_zh-TW.mp3', en: null,
 };
+export const observerManualAirSupportVoiceAssets = {
+  airSupportReady: { 'zh-TW': 'audio/commander_air_support_ready_zh-TW.mp3', en: null },
+  airSupportCalled: { 'zh-TW': 'audio/commander_air_support_called_zh-TW.mp3', en: null },
+} as const;
 export type ObserverAudioReadiness = 'pending' | 'ready' | 'unavailable';
 export function observerVoiceAsset(locale: ObserverLocale, message: ObserverMessage): string | null {
   if (message === 'giant') return locale === 'zh-TW' ? 'audio/commander_giant_warning_zh-TW.mp3' : null;
-  if (message === 'airSupport' || airSupportVoiceSegment(message)) return hasPublicAsset(observerAirSupportVoiceAssets[locale] ?? '') ? observerAirSupportVoiceAssets[locale] : null;
+  if (message === 'airSupport' || message === 'airSupportReady' || message === 'airSupportCalled') {
+    const asset = message === 'airSupport' ? observerAirSupportVoiceAssets[locale] : observerManualAirSupportVoiceAssets[message][locale];
+    return asset && hasPublicAsset(asset) ? asset : null;
+  }
   const asset = (message === 'victory' ? observerVictoryVoiceAssets : message === 'tankBoss' ? observerTankVoiceAssets
     : message === 'missionIntro' ? observerMissionVoiceAssets : observerVoiceAssets)[locale];
   return asset && (message === 'missionIntro' || message === 'victory') && !hasPublicAsset(asset) ? null : asset;
@@ -79,7 +85,7 @@ export class ObserverVoice {
 
   private asset(locale: ObserverLocale, message: ObserverMessage): string | null {
     if (message === 'giant') return observerVoiceAsset(locale, message);
-    if (message === 'airSupport' || airSupportVoiceSegment(message)) return observerVoiceAsset(locale, message);
+    if (message === 'airSupport' || message === 'airSupportReady' || message === 'airSupportCalled') return observerVoiceAsset(locale, message);
     if (message === 'victory' || message === 'missionIntro' && this.missionAssets === observerMissionVoiceAssets)
       return observerVoiceAsset(locale, message);
     return (message === 'tankBoss' ? observerTankVoiceAssets : message === 'missionIntro' ? this.missionAssets : this.assets)[locale];
@@ -125,13 +131,11 @@ export class ObserverVoice {
     this.started = true;
     const generation = this.generation;
     void pending.then(buffer => {
-      const segment = airSupportVoiceSegment(message);
       if (!buffer || this.disposed || generation !== this.generation || this.paused
         || this.context.state !== 'running' || this.offset >= buffer.duration
         // Historical snapshots keep their old authoritative attack clocks. Use
         // subtitles rather than cutting a newly approved, longer recording short.
-        || (!segment && buffer.duration > this.windowSeconds)
-        || segment && (this.offset >= this.windowSeconds || segment.start + this.offset >= Math.min(segment.end, buffer.duration))) return;
+        || buffer.duration > this.windowSeconds || this.offset >= this.windowSeconds) return;
       try {
         const source = this.context.createBufferSource();
         const filter = this.context.createBiquadFilter();
@@ -142,9 +146,7 @@ export class ObserverVoice {
         source.buffer = buffer; source.connect(filter); filter.connect(gain); gain.connect(this.output);
         this.source = source; this.filter = filter; this.gain = gain;
         source.onended = () => { if (this.source === source) this.stop(); };
-        if (segment) source.start(0, segment.start + this.offset,
-          Math.min(segment.end, buffer.duration, segment.start + this.windowSeconds) - segment.start - this.offset);
-        else source.start(0, this.offset);
+        source.start(0, this.offset);
       } catch { this.stop(); }
     });
   }

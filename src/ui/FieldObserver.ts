@@ -9,7 +9,7 @@ import type { DestroyerState } from '../simulation/destroyer';
 import type { DestroyerSettings } from '../config/destroyerConfig';
 import type { DefenseTankState } from '../simulation/defenseTank';
 import type { CommanderSupportConfig } from '../simulation/commanderSupport';
-import { airSupportTiming, observerAirSupportDialogue } from './observerLocale';
+import { airSupportTiming, manualAirSupportTiming, observerAirSupportDialogue, observerManualAirSupportDialogue } from './observerLocale';
 import { FIELD_OBSERVER_LOCALE, observerDialogue, observerMissionDialogue, observerTankDialogue, observerVictoryDialogue, observerSupportDialogue,
   type ObserverLocale, type ObserverMessage } from './observerLocale';
 
@@ -69,6 +69,8 @@ export class FieldObserver {
     this.audio.prepareRadio(this.locale, 'tankBoss');
     this.audio.prepareRadio(this.locale, 'victory');
     this.audio.prepareRadio(this.locale, 'airSupport');
+    this.audio.prepareRadio(this.locale, 'airSupportReady');
+    this.audio.prepareRadio(this.locale, 'airSupportCalled');
     this.audio.prepareRadio(this.locale, 'giant');
     this.element.className = 'field-observer'; this.element.hidden = true;
     // Accepted full portrait/plaque center; optional historical DEV references only.
@@ -102,7 +104,8 @@ export class FieldObserver {
     this.updateText(); host.append(this.element);
   }
   private updateText(): void {
-    this.text.textContent = this.message === 'airSupport' || this.message === 'airSupportReady' || this.message === 'airSupportCalled'
+    this.text.textContent = this.message === 'airSupportReady' || this.message === 'airSupportCalled'
+      ? observerManualAirSupportDialogue[this.locale][this.phrase] : this.message === 'airSupport'
       ? observerAirSupportDialogue[this.locale][this.phrase] : this.message === 'giant'
       ? observerSupportDialogue[this.message][this.locale] : this.message === 'missionIntro'
       ? observerMissionDialogue[this.locale][this.phrase] : this.message === 'victory'
@@ -141,12 +144,16 @@ export class FieldObserver {
     const notice = { visible: true, begin: true, end: false, offset: 0, duration: 3.8, audible: false };
     const manual = support?.airstrike?.manual;
     const manualPolicy = supportConfig?.heavyRaid?.lastStand?.triggerPolicy === 'manualPlayerCall';
+    const readyDuration = Math.max(manualAirSupportTiming.readyDurationSeconds,
+      (this.audio.radioDurationSeconds?.(this.locale, 'airSupportReady') ?? 0) + .35);
+    const calledDuration = Math.max(manualAirSupportTiming.calledDurationSeconds,
+      (this.audio.radioDurationSeconds?.(this.locale, 'airSupportCalled') ?? 0) + .35);
     if (alive && manualPolicy && manual && support?.airstrike?.status === 'ready' && !manual.ready) {
       const offset = manual.announcementAtSeconds === null ? 0 : Math.max(0, now - manual.announcementAtSeconds);
-      if (offset >= airSupportTiming.phraseAtSeconds) {
+      if (offset >= readyDuration) {
         this.manualNoticePresented = this.manualNoticeElapsed = true;
       } else requests.push({ message: 'airSupportReady', frame: { ...notice, begin: this.observedSupport,
-        offset, duration: airSupportTiming.phraseAtSeconds, audible: true } });
+        offset, duration: readyDuration, audible: this.audio.prepareRadio(this.locale, 'airSupportReady') === 'ready' } });
     }
     if (this.observedSupport && alive) {
       if (giantAt !== null && giantAt !== this.giantAt) this.giantTimeline.start(now);
@@ -158,11 +165,12 @@ export class FieldObserver {
     }
     if (alive && airAt !== null && support?.airstrike?.status !== 'cancelled'
       && (this.observedSupport ? airAt !== this.airAt : !!supportConfig?.heavyRaid && now - airAt
-        < (manualPolicy ? airSupportTiming.durationSeconds - airSupportTiming.phraseAtSeconds : airSupportTiming.durationSeconds))) {
+        < (manualPolicy ? calledDuration : airSupportTiming.durationSeconds))) {
       const modern = !!supportConfig?.heavyRaid;
       requests.push({ frame: { ...notice, begin: this.observedSupport, offset: Math.max(0, now - airAt),
-        duration: manualPolicy ? airSupportTiming.durationSeconds - airSupportTiming.phraseAtSeconds : modern ? airSupportTiming.durationSeconds : 3.8,
-        audible: modern }, message: manualPolicy ? 'airSupportCalled' : 'airSupport' });
+        duration: manualPolicy ? calledDuration : modern ? airSupportTiming.durationSeconds : 3.8,
+        audible: modern && (!manualPolicy || this.audio.prepareRadio(this.locale, 'airSupportCalled') === 'ready') },
+        message: manualPolicy ? 'airSupportCalled' : 'airSupport' });
     }
     this.observedSupport = true; this.giantAt = giantAt; this.airAt = airAt;
     const selected = this.comms.update(requests, now, paused, alive);

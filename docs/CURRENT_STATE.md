@@ -12,6 +12,7 @@ Read only when task scope/status needs orientation, not as another specification
 - P4.43 / #22 current Aegean Diorama/coastal composition is Owner accepted for first public playtest; future attract-mode redesign is deferred. #12 Hybrid D production, #30 artillery smoke/defeat, #31 GIANT and review controls, #32 phone startup/performance, #34 approved font hierarchy and Boss warning placement are Owner Pixel 8 PASS.
 
 ## Remaining release action and deferred work
+- #24 C/E/F update (2026-10-22): Owner-approved original MP3s integrated for Destroyer and separate manual READY/CALLED, with complete voice windows and matching captions. Historical automatic-support recording/dialogue and checkpoint format remain unchanged; A/B/D/G untouched. Integrated voice/sync still needs Owner Pixel 8 PASS; the broader optional editorial backlog remains deferred. See [voice provenance](../public/art/observer/PROVENANCE.md).
 - Owner-accepted visual/VFX sections are frozen for first public playtest. Non-blocking future polish (BOSS/Victory presentation or bomber shadow/audio) requires explicit new feedback; no speculative rework now.
 - Final public Pages HTTPS smoke remains pending until an Owner-authorized manual deployment; Pixel 8 Start/fullscreen and startup/performance are Owner PASS.
 
