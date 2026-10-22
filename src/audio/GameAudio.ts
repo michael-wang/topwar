@@ -186,6 +186,7 @@ export class GameAudio {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private weaponBus: GainNode | null = null;
+  private weaponDuckUntilSeconds: number | null = null;
   private radioDuckBus: GainNode | null = null;
   private voice: ObserverVoice | null = null;
   private readonly voiceFiles = new ObserverVoiceFiles();
@@ -302,6 +303,7 @@ export class GameAudio {
     this.music?.reset();
     this.bossTheme?.reset();
     this.victoryTheme?.reset();
+    this.weaponDuckUntilSeconds = null;
     if(this.weaponBus&&this.context){this.weaponBus.gain.cancelScheduledValues(this.context.currentTime);this.weaponBus.gain.value=1;}
   }
 
@@ -349,6 +351,7 @@ export class GameAudio {
   silenceMusic(): void { this.music?.silence(); this.bossTheme?.silence(); this.victoryTheme?.silence(); }
 
   silenceWeapons(): void {
+    this.weaponDuckUntilSeconds = null;
     if (!this.weaponBus || !this.context) return;
     const now = this.context.currentTime;
     this.weaponBus.gain.cancelScheduledValues(now);
@@ -469,6 +472,14 @@ export class GameAudio {
       const shape = cueShape[cue];
       const weapon = cue==='rifle'||cue==='machineGun';
       if(weapon&&!this.weaponBus){this.weaponBus=context.createGain();this.weaponBus.gain.value=1;this.radioDuckBus=context.createGain();this.radioDuckBus.gain.value=this.radioActive ? .6 : 1;this.weaponBus.connect(this.radioDuckBus);this.radioDuckBus.connect(this.master);}
+      // Short shot sources leave silent gaps: a scheduled ramp alone can leave
+      // the shared bus at a stale duck value. Anchor recovery before the next shot.
+      if (weapon && this.weaponDuckUntilSeconds !== null && context.currentTime >= this.weaponDuckUntilSeconds) {
+        const now = context.currentTime;
+        this.weaponBus!.gain.cancelScheduledValues(now);
+        this.weaponBus!.gain.setValueAtTime(1, now);
+        this.weaponDuckUntilSeconds = null;
+      }
       if(cue==='supplyOpen'&&this.weaponBus){
         // Briefly clear space for opening and the unchanged reward chime,
         // including already-playing MG voices. Gameplay fire is unaffected.
@@ -476,12 +487,14 @@ export class GameAudio {
         this.weaponBus.gain.setValueAtTime(.3,context.currentTime);
         this.weaponBus.gain.setValueAtTime(.3,context.currentTime+.35);
         this.weaponBus.gain.exponentialRampToValueAtTime(1,context.currentTime+.45);
+        this.weaponDuckUntilSeconds = context.currentTime + .45;
       }
       if (cue === 'grenadeLaunch' && this.weaponBus) {
         // Brief release confirmation, affecting weapons only (never radio/warnings/gameplay).
         const gain = this.weaponBus.gain, now = context.currentTime;
         gain.cancelScheduledValues(now); gain.setValueAtTime(.25, now);
         gain.setValueAtTime(.25, now + .16); gain.exponentialRampToValueAtTime(1, now + .26);
+        this.weaponDuckUntilSeconds = now + .26;
       }
       const filter = cue === 'giantDeath' || cue === 'grenadeExplosion' || artillery
         ? context.createBiquadFilter() : null;
